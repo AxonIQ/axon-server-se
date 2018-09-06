@@ -1,0 +1,57 @@
+<script src="js/users.js"></script>
+<div id="users">
+    <section class="msg info" v-if="feedback !== ''">{{feedback}}</section>
+    <section>
+        <div class="results singleHeader">
+            <table>
+                <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Roles</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="user in users">
+                        <td>{{user.userName}}</td>
+                        <td>
+                            <span v-for="role in user.roles">{{role}}<br></span>
+                        </td>
+                        <td v-if="admin">
+                            <span @click="deleteUser(user)" title="Delete"><i class="far fa-trash-alt"/></span>
+                            <span @click="selectUser(user)" title="Edit"><i class="fas fa-pencil-alt"/></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="userDetails" v-if="admin">
+        <div class="column configuration">
+            <form>
+                <ul>
+                    <li>
+                        <span>Username</span>
+                        <input v-model="user.userName"/></span>
+                    </li>
+                    <li>
+                        <span>Password</span>
+                        <input v-model="user.password"/></span>
+                    </li>
+                    <li>
+                        <span>Roles</span>
+                        <span>
+                            <div v-for="role in roles">
+                                <input type="checkbox" v-bind:value="role" v-model="user.roles"/> {{role}}
+                            </div>
+                        </span>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span><button @click.prevent="save(user)" class="button">Save</button></span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </section>
+</div>

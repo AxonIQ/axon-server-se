@@ -1,0 +1,12 @@
+{
+  "plugins": [
+    "ga",
+    "anchors",
+    "codetabs"
+  ],
+  "pluginsConfig": {
+    "ga": {
+      "token": "UA-180286-13"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+server:
+  port: 8024
+
+spring:
+  application:
+    name: AxonHub
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+  datasource:
+    url: jdbc:h2:${axoniq.axonhub.controldb-path:.}/axonhub-controldb;AUTO_SERVER=TRUE
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+axoniq:
+  axonhub:
+    port: 8124
+    internal-port: 8224
+    accesscontrol:
+      enabled: false
+    ssl:
+      enabled: false
+    cluster:
+      enbaled: false
+    metrics-interval: 15
+    metrics-synchronization-rate: 2500
+    connect2contexts: node-contexts
+
+logging:
+  level:
+    root: WARN
+    io.axoniq.axonhub.AxonHubServer: INFO
+    io.axoniq.axonhub.grpc.Gateway: INFO
+    io.axoniq.axonhub.grpc.internal.MessagingClusterServer: INFO
+    org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainer: INFO
+    org.hibernate.orm.deprecation: ERROR
+
+
+management:
+  security:
+    enabled: false
+

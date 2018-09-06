@@ -1,0 +1,27 @@
+server:
+  port: 9991
+
+axoniq:
+  axonhub:
+    servers: localhost
+    command-threads: 4
+    query-threads: 4
+    nr-of-new-permits: 100000
+    initial-nr-of-permits: 100000
+    new-permits-threshold: 5000
+
+logging:
+  level:
+    io.grpc.netty.NettyServerTransport: WARN
+    io.axoniq: INFO
+
+axon:
+  eventhandling:
+    processors:
+      sample:
+        mode: tracking
+        batch-size: 500
+  serializer:
+    general: jackson
+    messages: jackson
+

@@ -1,0 +1,60 @@
+<script src="js/load-balancing.js"></script>
+<span id="load-balance">
+    <section id="feedback" class="msg info" v-if="feedback !== ''">{{feedback}}</section>
+    <section>
+        <div class="nodes">
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Label</th>
+                    <th>Strategy Factory Bean</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="strategy in strategies">
+                        <td>{{strategy.name}}</td>
+                        <td><input v-model="strategy.label" @change="changeLabel(strategy)"></td>
+                        <td>
+                           <select v-model="strategy.factoryBean"  @change="changeFactoryBean(strategy)">
+                                <option v-for="factory in factories" :value="factory">{{factory}}</option>
+                            </select>
+                        </td>
+                        <td v-if="strategy.name !== 'default'">
+                            <span @click="deleteStrategy(strategy)" title="Delete"><i class="far fa-trash-alt"/></span>
+                        </td>
+
+
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section>
+        <div class="column configuration">
+            <form>
+                <ul>
+                    <li>
+                        <span>Strategy Name</span>
+                        <span><input v-model="strategy.name"/></span>
+                    </li>
+                    <li>
+                        <span>Label</span>
+                        <span><input v-model="strategy.label"/></span>
+                    </li>
+                    <li>
+                        <span>Factory Bean</span>
+                        <select v-model="strategy.factoryBean">
+                            <option v-for="factory in factories" :value="factory">{{factory}}</option>
+                        </select>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span><button @click="saveStrategy(strategy)" class="button"
+                        v-bind:disabled="disableSaveButton()">Save</button></span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </section>
+</span>

@@ -1,0 +1,45 @@
+# Java Maven CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-java/ for more details
+#
+version: 2
+jobs:
+  build:
+    branches:
+      ignore:
+        - /feature.*/
+
+    docker:
+      # specify the version you desire here
+      - image: circleci/openjdk:8-jdk
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+      - image: circleci/mongo:3
+
+    working_directory: ~/messaging-platform
+
+    environment:
+      # Customize the JVM maximum heap limit
+      MAVEN_OPTS: -Xmx3200m -Djavax.net.ssl.trustStore=.circleci/nexus.jks -Djavax.net.ssl.trustStorePassword=axoniq
+
+    steps:
+      - checkout
+      # - run: git submodule init && git submodule update --remote
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "pom.xml" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      # run tests!
+      - run: mvn -s .circleci/settings.xml verify -B
+
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}

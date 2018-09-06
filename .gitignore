@@ -1,0 +1,13 @@
+.idea
+*.iml
+target
+# axoniq.license
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+token.properties
+
+#webpack building
+package-lock.json
+*/node/
+*/node_modules/
+*/src/main/resources/static/dist/
