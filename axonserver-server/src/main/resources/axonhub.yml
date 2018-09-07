@@ -6,6 +6,7 @@ spring:
     name: AxonHub
 
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: none
   datasource:
@@ -39,7 +40,14 @@ logging:
     org.hibernate.orm.deprecation: ERROR
 
 
+
+
 management:
   security:
     enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: metrics,info,health,loggers
+
 

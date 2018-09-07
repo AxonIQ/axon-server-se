@@ -1,6 +1,5 @@
 package io.axoniq.axonhub.message.event;
 
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.Confirmation;
@@ -24,11 +23,12 @@ import io.axoniq.axonhub.exception.MessagingPlatformException;
 import io.axoniq.axonhub.grpc.ContextProvider;
 import io.axoniq.axonhub.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonhub.metric.CompositeMetric;
-import io.axoniq.axonhub.metric.Metrics;
 import io.grpc.BindableService;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -46,7 +46,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import static com.codahale.metrics.MetricRegistry.name;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
@@ -55,8 +54,8 @@ import static io.grpc.stub.ServerCalls.*;
 @Component("EventDispatcher")
 public class EventDispatcher implements BindableService {
 
-    private static final String EVENTS_METRIC_NAME = name(EventDispatcher.class, "events");
-    private static final String SNAPSHOTS_METRIC_NAME = name(EventDispatcher.class, "snapshots");
+    private static final String EVENTS_METRIC_NAME = "axon.counter.events";
+    private static final String SNAPSHOTS_METRIC_NAME = "axon.counter.snapshots";
     public static final String NO_EVENT_STORE_CONFIGURED = "No event store configured";
     public static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "Error on connection from event store: {}";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
@@ -87,8 +86,8 @@ public class EventDispatcher implements BindableService {
         this.clusterMetrics = clusterMetrics;
         this.eventStoreClient = eventStoreClient;
         connectors = eventConnectors.orElse(Collections.emptyList());
-        eventsCounter = metricRegistry.counter(EVENTS_METRIC_NAME);
-        snapshotCounter = metricRegistry.counter(SNAPSHOTS_METRIC_NAME);
+        eventsCounter = Metrics.counter(EVENTS_METRIC_NAME);
+        snapshotCounter = Metrics.counter(SNAPSHOTS_METRIC_NAME);
     }
 
 
@@ -113,7 +112,7 @@ public class EventDispatcher implements BindableService {
                 if( ! unitsOfWork.isEmpty()) {
                     unitsOfWork.forEach(c -> c.publish(new GrpcBackedEvent(event)));
                 }
-                eventsCounter.inc();
+                eventsCounter.increment();
             }
 
             @Override
@@ -134,7 +133,7 @@ public class EventDispatcher implements BindableService {
     public void appendSnapshot(Event request, StreamObserver<Confirmation> responseObserver) {
         checkConnection(responseObserver).ifPresent(eventStore -> {
             String context = contextProvider.getContext();
-            snapshotCounter.inc();
+            snapshotCounter.increment();
             eventStore.appendSnapshot(context, request).whenComplete((c, t) -> {
                 if (t != null) {
                     logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, t.getMessage());
@@ -189,11 +188,11 @@ public class EventDispatcher implements BindableService {
 
 
     public long getNrOfEvents() {
-        return eventsCounter.getCount() + new CompositeMetric(new Metrics(EVENTS_METRIC_NAME, clusterMetrics)).size();
+        return (long)eventsCounter.count(); //TODO + new CompositeMetric(new Metrics(EVENTS_METRIC_NAME, clusterMetrics)).size();
     }
 
     public long getNrOfSnapshots() {
-        return snapshotCounter.getCount() + new CompositeMetric(new Metrics(SNAPSHOTS_METRIC_NAME, clusterMetrics)).size();
+        return (long)snapshotCounter.count(); // TODO + new CompositeMetric(new Metrics(SNAPSHOTS_METRIC_NAME, clusterMetrics)).size();
     }
 
     public Map<String, Iterable<Long>> eventTrackerStatus() {
