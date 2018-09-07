@@ -34,8 +34,8 @@
 
                 getStompClient: function() {
                     if( ! this.stompClient) {
-                        console.info("Creating sockjs client: " + document.location.pathname + 'axonhub-platform-websocket')
-                        let socket = new SockJS(document.location.pathname + 'axonhub-platform-websocket');
+                        console.info("Creating sockjs client: " + document.location.pathname + 'axonserver-platform-websocket')
+                        let socket = new SockJS(document.location.pathname + 'axonserver-platform-websocket');
                         this.stompClient = Stomp.over(socket);
                     }
                     return this.stompClient;

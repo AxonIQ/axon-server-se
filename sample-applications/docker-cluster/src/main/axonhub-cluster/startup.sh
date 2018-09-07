@@ -5,7 +5,7 @@ if [[ "$NAMESPACE" = "" ]]; then
   echo "No namespace"
 else
   echo >> axonhub.properties
-  echo "axoniq.axonhub.domain=axonhub.$NAMESPACE.svc.cluster.local" >> axonhub.properties
+  echo "axoniq.axonserver.domain=axonserver.$NAMESPACE.svc.cluster.local" >> axonhub.properties
   if [[ -f axoniq.$NAMESPACE.crt ]]; then
     cp axoniq.$NAMESPACE.crt axoniq.crt
   fi

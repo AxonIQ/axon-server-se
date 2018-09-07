@@ -239,7 +239,7 @@ directory. To change this, set the property:
 Logging is by default set to WARN level for all packages. To change the logging levels for
 specific packages or classes add logging level properties to the axonhub.properties file, for example:
 ```
-logging.level.io.axoniq.axonhub=INFO
+logging.level.io.axoniq.axonserver=INFO
 ```
 
 Log messages are written to stdout by default. To change this add the properties logging.file and/or logging.path

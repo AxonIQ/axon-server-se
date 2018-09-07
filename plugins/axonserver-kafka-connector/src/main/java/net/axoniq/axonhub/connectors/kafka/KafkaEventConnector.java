@@ -1,8 +1,8 @@
 package net.axoniq.axonhub.connectors.kafka;
 
-import io.axoniq.axonhub.connector.Event;
-import io.axoniq.axonhub.connector.EventConnector;
-import io.axoniq.axonhub.connector.UnitOfWork;
+import io.axoniq.axonserver.connector.Event;
+import io.axoniq.axonserver.connector.EventConnector;
+import io.axoniq.axonserver.connector.UnitOfWork;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -77,19 +77,19 @@ public class KafkaEventConnector implements EventConnector {
     @Configuration
     @EnableKafka
     public static class Config {
-        @Value("${axoniq.axonhub.kafka.bootstrapServers:172.17.0.4:9092}")
+        @Value("${axoniq.axonserver.kafka.bootstrapServers:172.17.0.4:9092}")
         private String bootstrapServers;
-        @Value("${axoniq.axonhub.kafka.retries:1}")
+        @Value("${axoniq.axonserver.kafka.retries:1}")
         private int retries;
-        @Value("${axoniq.axonhub.kafka.batchSize:16384}")
+        @Value("${axoniq.axonserver.kafka.batchSize:16384}")
         private int batchSize;
-        @Value("${axoniq.axonhub.kafka.lingerMs:1}")
+        @Value("${axoniq.axonserver.kafka.lingerMs:1}")
         private int lingerMs;
-        @Value("${axoniq.axonhub.kafka.bufferMemory:33554432}")
+        @Value("${axoniq.axonserver.kafka.bufferMemory:33554432}")
         private long bufferMemory;
-        @Value("${axoniq.axonhub.kafka.transactionIdPrefix:axonhub}")
+        @Value("${axoniq.axonserver.kafka.transactionIdPrefix:axonserver}")
         private String transactionIdPrefix;
-        @Value("${axoniq.axonhub.kafka.defaultTopic:test}")
+        @Value("${axoniq.axonserver.kafka.defaultTopic:test}")
         private String defaultTopic;
 
         @Bean

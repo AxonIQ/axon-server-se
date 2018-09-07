@@ -18,6 +18,12 @@
             <groupId>io.axoniq</groupId>
             <artifactId>axonhub-spring-boot-autoconfigure</artifactId>
             <version>${axonhub.client.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.axonframework</groupId>
+                    <artifactId>axon-spring-boot-starter</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.axonframework</groupId>

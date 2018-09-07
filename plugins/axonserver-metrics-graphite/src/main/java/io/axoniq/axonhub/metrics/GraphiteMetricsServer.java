@@ -1,4 +1,4 @@
-package io.axoniq.axonhub.metrics;
+package io.axoniq.axonserver.metrics;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
@@ -23,13 +23,13 @@ public class GraphiteMetricsServer implements SmartLifecycle{
     private GraphiteReporter reporter;
     private boolean running;
 
-    @Value("${axoniq.axonhub.export.graphite.server:192.168.99.100}")
+    @Value("${axoniq.axonserver.export.graphite.server:192.168.99.100}")
     private String server;
-    @Value("${axoniq.axonhub.export.graphite.port:2003}")
+    @Value("${axoniq.axonserver.export.graphite.port:2003}")
     private int port;
-    @Value("${axoniq.axonhub.export.graphite.period:60}")
+    @Value("${axoniq.axonserver.export.graphite.period:60}")
     private int period;
-    @Value("${axoniq.axonhub.name:name}")
+    @Value("${axoniq.axonserver.name:name}")
     private String name;
 
     public GraphiteMetricsServer(MetricRegistry metrics) {

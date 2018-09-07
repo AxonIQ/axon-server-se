@@ -2,9 +2,9 @@ package net.axoniq.axonhub.connectors.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
-import io.axoniq.axonhub.connector.Event;
-import io.axoniq.axonhub.connector.EventConnector;
-import io.axoniq.axonhub.connector.UnitOfWork;
+import io.axoniq.axonserver.connector.Event;
+import io.axoniq.axonserver.connector.EventConnector;
+import io.axoniq.axonserver.connector.UnitOfWork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

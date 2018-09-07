@@ -39,7 +39,7 @@
                 <configuration>
                     <artifactItems>
                         <artifactItem>
-                            <groupId>io.axoniq.axonhub</groupId>
+                            <groupId>io.axoniq.axonserver</groupId>
                             <artifactId>axonhub-server</artifactId>
                             <classifier>exec</classifier>
                             <destFileName>axonhub-server.jar</destFileName>

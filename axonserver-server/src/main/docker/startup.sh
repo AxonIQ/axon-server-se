@@ -5,7 +5,7 @@ if [[ "$DOMAIN" = "" ]]; then
   echo "No domain"
 else
   echo >> axonhub.properties
-  echo "axoniq.axonhub.domain=$DOMAIN" >> axonhub.properties
+  echo "axoniq.axonserver.domain=$DOMAIN" >> axonhub.properties
 fi
 
 /register.sh &

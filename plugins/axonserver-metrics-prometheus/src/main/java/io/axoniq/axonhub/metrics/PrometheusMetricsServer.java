@@ -1,4 +1,4 @@
-package io.axoniq.axonhub.metrics;
+package io.axoniq.axonserver.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import io.prometheus.client.CollectorRegistry;

@@ -1,6 +1,6 @@
 package io.axoniq.sample;
 
-import io.axoniq.axonhub.client.AxonHubConfiguration;
+import io.axoniq.axonserver.client.AxonHubConfiguration;
 import org.axonframework.messaging.MetaData;
 import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.context.annotation.Profile;

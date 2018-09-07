@@ -1,6 +1,6 @@
 package net.axoniq.axonhub.custom;
 
-import io.axoniq.axonhub.connector.Page;
+import io.axoniq.axonserver.connector.Page;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

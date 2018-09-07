@@ -12,17 +12,19 @@
     <modules>
         <module>axonserver-connector-api</module>
         <module>axonserver-server</module>
-		<!--
-        <module>plugins/axonhub-kafka-connector</module>
-        <module>plugins/axonhub-rabbitmq-connector</module>
-        <module>plugins/axonhub-metrics-prometheus</module>
-        <module>plugins/axonhub-metrics-graphite</module>
-        <module>plugins/sample-ui-plugin</module>
         <module>sample-applications/sample-command-processor1</module>
+        <module>axonserver-accessdb</module>
+        <module>axonserver-grpc</module>
+        <!--
+        <module>plugins/axonserver-kafka-connector</module>
+        <module>plugins/axonserver-rabbitmq-connector</module>
+        <module>plugins/axonserver-metrics-prometheus</module>
+        <module>plugins/axonserver-metrics-graphite</module>
+        <module>plugins/sample-ui-plugin</module>
         <module>sample-applications/sample-command-processor2</module>
         <module>sample-applications/docker-cluster</module>
         <module>package</module>
-		-->
+        -->
     </modules>
 
     <properties>

@@ -1,4 +1,4 @@
-package io.axoniq.axonhub.metrics;
+package io.axoniq.axonserver.metrics;
 
 import io.prometheus.client.exporter.MetricsServlet;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;

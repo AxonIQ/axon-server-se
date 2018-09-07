@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ `hostname -s` = "axonhub-0" -o `hostname -s` = "axonhub" ]; then
+if [ `hostname -s` = "axonserver-0" -o `hostname -s` = "axonserver" ]; then
 	echo "First node in cluster - no registration"
 else 
 	echo "Waiting for node to come up" 

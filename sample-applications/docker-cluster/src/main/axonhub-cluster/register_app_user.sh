@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ `hostname -s` = "axonhub-0" -o `hostname -s` = "axonhub" ]; then
+if [ `hostname -s` = "axonserver-0" -o `hostname -s` = "axonserver" ]; then
 	echo "Waiting for node to come up" 
 	HEALTH_CHECK_RETURN=1
 	while [ $HEALTH_CHECK_RETURN -ne 0 ]; do
