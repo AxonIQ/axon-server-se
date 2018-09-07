@@ -41,7 +41,7 @@ podTemplate(label: label,
                         cat /maven_settings/*xml >./settings.xml
                         export AXONIQ_BRANCH=${gitBranch}
                         export AXONIQ_NS=${params.namespace}
-                        ./axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonhub-server -env AXONIQ -envDot -q -dump >jenkins-build.properties
+                        ./axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonserver-server -env AXONIQ -envDot -q -dump >jenkins-build.properties
                     """
                 }
             }
@@ -61,9 +61,7 @@ podTemplate(label: label,
                 container('docker') {
                     sh """
                         cat /dockercfg/system-account.json | docker login -u _json_key --password-stdin https://eu.gcr.io
-                        docker push ${gcloudRegistry}/${gcloudProjectName}/axonhub:${pomVersion}
-                        docker push ${gcloudRegistry}/${gcloudProjectName}/axonhub-cluster:${pomVersion}
-                        docker push ${gcloudRegistry}/${gcloudProjectName}/sample-app:${pomVersion}
+                        docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver:${pomVersion}
                     """
                 }
             }
