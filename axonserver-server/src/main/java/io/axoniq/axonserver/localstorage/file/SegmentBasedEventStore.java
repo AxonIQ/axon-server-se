@@ -14,11 +14,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.util.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.Optional;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -127,6 +130,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
                         return;
                     }
                 }
+                //TODO
                 if (minToken > segment || minTimestampInSegment < minTimestamp) return;
 
             });
@@ -340,6 +344,31 @@ public abstract class SegmentBasedEventStore implements EventStore {
         return true;
     }
 
+    protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {
+        SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
+        File events  = new File(storageProperties.getStorage(context));
+        FileUtils.checkCreateDirectory(events);
+        String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
+        Arrays.stream(eventFiles)
+              .map(name -> Long.valueOf(name.substring(0, name.indexOf('.'))))
+              .filter(segment -> segment < lastInitialized)
+              .forEach(segments::add);
+
+        long firstValidIndex = segments.stream().filter(this::indexValid).findFirst().orElse(-1L);
+        logger.debug("First valid index: {}", firstValidIndex);
+        return segments;
+    }
+
+    private boolean indexValid(long segment) {
+        if( indexManager.validIndex(segment)) {
+            return true;
+        }
+
+        recreateIndex(segment);
+        return false;
+    }
+
+    protected abstract void recreateIndex(long segment);
     private SortedMap<Long, SortedSet<PositionInfo>> getPositionInfos(String aggregateId, long minSequenceNumber) {
         final SortedMap<Long, SortedSet<PositionInfo>> result = new ConcurrentSkipListMap<>();
         for( long segment : getSegments()) {

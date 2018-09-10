@@ -14,7 +14,7 @@ public interface StorageTransactionManager {
 
     long getLastToken();
 
-    boolean reserveSequenceNumbers(List<Event> eventList);
+    void reserveSequenceNumbers(List<Event> eventList);
 
     default long waitingTransactions() {
         return 0;

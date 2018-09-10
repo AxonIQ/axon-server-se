@@ -16,9 +16,11 @@ import java.io.IOException;
  * Author: marc
  */
 public class InputStreamEventSource implements EventSource {
-    private final static Logger logger = LoggerFactory.getLogger(InputStreamEventSource.class);
+    private static final Logger logger = LoggerFactory.getLogger(InputStreamEventSource.class);
     private final PositionKeepingDataInputStream dataInputStream;
     private final EventTransformer eventTransformer;
+    private volatile boolean closed;
+
 
     public InputStreamEventSource(File dataFile,
                                   EventTransformerFactory eventTransformerFactory,
@@ -66,9 +68,12 @@ public class InputStreamEventSource implements EventSource {
     @Override
     public void close()  {
         try {
-            dataInputStream.close();
+            if( ! closed) {
+                dataInputStream.close();
+                closed = true;
+            }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.debug("Error while closing file", e);
         }
     }
 }

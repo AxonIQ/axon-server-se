@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * Author: marc
  */
 @Component
-@ConditionalOnProperty(value = "axoniq.axonhub.cluster.enabled", havingValue = "true")
+@ConditionalOnProperty(value = "axoniq.axonserver.cluster.enabled", havingValue = "true")
 public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
     private final DataSynchronizationMaster dataSynchronizationMaster;
     private final DataSynchronizationReplica dataSynchronizationReplica;

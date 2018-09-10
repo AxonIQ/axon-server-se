@@ -156,8 +156,23 @@ public class EventStoreManager implements SmartLifecycle {
 
     @EventListener
     public void on(ContextEvents.NodeAddedToContext contextCreated) {
-        Context context = context(contextCreated.getName());
-        initContext(context, false);
+        logger.warn("{}: updated {} storage: {}", contextCreated.getName(), contextCreated.getNode().getName(), contextCreated.getNode().isStorage());
+        try {
+            Context context = context(contextCreated.getName());
+            logger.warn("{}: storage members {}", context.getName(), context.getStorageNodeNames());
+            if (context.isStorageMember(nodeName)) {
+                initContext(context, false);
+            } else {
+                localEventStore.cleanupContext(context.getName());
+                if (isMaster(context.getName())) {
+                    masterPerContext.remove(context.getName());
+                    applicationEventPublisher.publishEvent(new ClusterEvents.MasterStepDown(context.getName(),
+                                                                                            false));
+                }
+            }
+        } catch( RuntimeException re) {
+            logger.warn("Failed to process event {}", contextCreated, re);
+        }
     }
 
     @EventListener

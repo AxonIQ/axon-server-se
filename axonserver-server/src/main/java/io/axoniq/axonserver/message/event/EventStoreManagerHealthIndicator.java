@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * Author: marc
  */
 @Component
-@ConditionalOnProperty(value = "axoniq.axonhub.cluster.enabled", havingValue = "true")
+@ConditionalOnProperty(value = "axoniq.axonserver.cluster.enabled", havingValue = "true")
 class EventStoreManagerHealthIndicator extends AbstractHealthIndicator {
 
     private final ContextController contextController;

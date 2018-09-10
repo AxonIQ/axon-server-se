@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.query.subscription.metric;
 
-import com.codahale.metrics.Counter;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
@@ -19,13 +18,12 @@ public class HubSubscriptionMetrics implements SubscriptionMetrics {
     private final ClusterMetric activeSubscriptions;
     private final ClusterMetric updates;
 
-    public HubSubscriptionMetrics(String active, String total, String updates,
-                                  Function<String, Counter> localRegistry,
+    public HubSubscriptionMetrics(CounterMetric active, CounterMetric total, CounterMetric updates,
                                   Function<String, ClusterMetric> clusterRegistry) {
         this(
-                new CompositeMetric(new CounterMetric(localRegistry.apply(total)), clusterRegistry.apply(total)),
-                new CompositeMetric(new CounterMetric(localRegistry.apply(active)), clusterRegistry.apply(active)),
-                new CompositeMetric(new CounterMetric(localRegistry.apply(updates)), clusterRegistry.apply(updates))
+                new CompositeMetric(total, clusterRegistry.apply(total.getName())),
+                new CompositeMetric(active, clusterRegistry.apply(active.getName())),
+                new CompositeMetric(updates, clusterRegistry.apply(updates.getName()))
         );
     }
 

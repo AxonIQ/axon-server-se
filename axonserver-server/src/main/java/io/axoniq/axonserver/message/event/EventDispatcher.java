@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.event;
 
-import com.codahale.metrics.MetricRegistry;
 import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.Confirmation;
 import io.axoniq.axondb.grpc.EventStoreGrpc;
@@ -22,12 +21,13 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.metric.CompositeMetric;
 import io.grpc.BindableService;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -53,10 +53,10 @@ import static io.grpc.stub.ServerCalls.*;
 @Component("EventDispatcher")
 public class EventDispatcher implements BindableService {
 
-    private static final String EVENTS_METRIC_NAME = "axon.counter.events";
-    private static final String SNAPSHOTS_METRIC_NAME = "axon.counter.snapshots";
-    public static final String NO_EVENT_STORE_CONFIGURED = "No event store configured";
-    public static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "Error on connection from event store: {}";
+    private static final String EVENTS_METRIC_NAME = "axon.events.count";
+    private static final String SNAPSHOTS_METRIC_NAME = "axon.snapshots.count";
+    private static final String NO_EVENT_STORE_CONFIGURED = "No event store configured";
+    private static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "Error on connection from event store: {}";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
     public static final MethodDescriptor<GetEventsRequest, InputStream> METHOD_LIST_EVENTS =
             EventStoreGrpc.METHOD_LIST_EVENTS.toBuilder(
@@ -80,13 +80,14 @@ public class EventDispatcher implements BindableService {
 
     public EventDispatcher(EventStoreManager eventStoreClient, Optional<List<EventConnector>> eventConnectors,
                            ContextProvider contextProvider,
-                           MetricRegistry metricRegistry, ClusterMetricTarget clusterMetrics) {
+                           MeterRegistry meterRegistry,
+                           ClusterMetricTarget clusterMetrics) {
         this.contextProvider = contextProvider;
         this.clusterMetrics = clusterMetrics;
         this.eventStoreClient = eventStoreClient;
         connectors = eventConnectors.orElse(Collections.emptyList());
-        eventsCounter = Metrics.counter(EVENTS_METRIC_NAME);
-        snapshotCounter = Metrics.counter(SNAPSHOTS_METRIC_NAME);
+        eventsCounter = meterRegistry.counter(EVENTS_METRIC_NAME);
+        snapshotCounter = meterRegistry.counter(SNAPSHOTS_METRIC_NAME);
     }
 
 
@@ -187,11 +188,11 @@ public class EventDispatcher implements BindableService {
 
 
     public long getNrOfEvents() {
-        return (long)eventsCounter.count(); //TODO + new CompositeMetric(new Metrics(EVENTS_METRIC_NAME, clusterMetrics)).size();
+        return (long)eventsCounter.count() + new CompositeMetric(new io.axoniq.axonserver.metric.Metrics(EVENTS_METRIC_NAME, clusterMetrics)).size();
     }
 
     public long getNrOfSnapshots() {
-        return (long)snapshotCounter.count(); // TODO + new CompositeMetric(new Metrics(SNAPSHOTS_METRIC_NAME, clusterMetrics)).size();
+        return (long)snapshotCounter.count() + new CompositeMetric(new io.axoniq.axonserver.metric.Metrics(SNAPSHOTS_METRIC_NAME, clusterMetrics)).size();
     }
 
     public Map<String, Iterable<Long>> eventTrackerStatus() {

@@ -36,8 +36,7 @@ public interface EventStore {
 
     Optional<Event> getLastEvent(String aggregateId, long minSequenceNumber);
 
-    default boolean reserveSequenceNumbers(List<Event> events) {
-        return false;
+    default void reserveSequenceNumbers(List<Event> events) {
     }
 
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<Event> eventConsumer);

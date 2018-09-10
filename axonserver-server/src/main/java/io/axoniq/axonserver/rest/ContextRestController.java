@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.ContextEvents;
 import io.axoniq.axonserver.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -47,7 +48,11 @@ public class ContextRestController {
     public void addNodeToContext(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
                                  @RequestParam(name="messaging", defaultValue = "true") boolean messaging
                                  ) {
-        applicationEventPublisher.publishEvent(contextController.addNodeToContext(name, node, storage, messaging, false));
+        applicationEventPublisher.publishEvent(contextController.addNodeToContext(name,
+                                                                                    node,
+                                                                                    storage,
+                                                                                    messaging,
+                                                                                    false));
     }
 
     @DeleteMapping(path = "{context}/{node}")

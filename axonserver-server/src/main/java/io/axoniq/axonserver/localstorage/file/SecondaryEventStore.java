@@ -49,29 +49,11 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void init(long lastInitialized)  {
-        File events  = new File(storageProperties.getStorage(context));
-        FileUtils.checkCreateDirectory(events);
-        String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
-        Arrays.stream(eventFiles)
-                           .map(name -> Long.valueOf(name.substring(0, name.indexOf('.'))))
-                           .filter(segment -> segment < lastInitialized)
-                           .forEach(segments::add);
-
-        long firstValidIndex = segments.stream().filter(this::indexValid).findFirst().orElse(-1L);
-        logger.debug("First valid index: {}", firstValidIndex);
+        segments.addAll(prepareSegmentStore(lastInitialized));
         if( next != null) next.init(segments.isEmpty() ? lastInitialized : segments.last());
     }
 
-    private boolean indexValid(long segment) {
-        if( indexManager.validIndex(segment)) {
-            return true;
-        }
-
-        recreateIndex(segment);
-        return false;
-    }
-
-    private void recreateIndex(long segment) {
+    protected void recreateIndex(long segment) {
         ByteBufferEventSource buffer = get(segment);
         EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, segment, segment);
         Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();

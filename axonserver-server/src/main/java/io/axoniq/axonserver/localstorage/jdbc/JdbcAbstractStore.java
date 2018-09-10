@@ -237,11 +237,6 @@ public abstract class JdbcAbstractStore implements EventStore {
         }
     }
 
-    @Override
-    public boolean reserveSequenceNumbers(List<Event> events) {
-        return true;
-    }
-
     protected abstract String getTableName();
 
     @Override

@@ -53,9 +53,7 @@ public class CleanUtils {
             if (delay <= 0) {
                 doCleanup(buf);
             } else {
-                cleanupExecutor.schedule(() -> {
-                    doCleanup(buf);
-                }, delay, TimeUnit.SECONDS);
+                cleanupExecutor.schedule(() -> doCleanup(buf), delay, TimeUnit.SECONDS);
             }
         }
     }
@@ -63,8 +61,8 @@ public class CleanUtils {
     private static void doCleanup(ByteBuffer buf) {
         try {
             cleanMethod.invoke(cleanerMethod.invoke(buf));
-        } catch (IllegalArgumentException | InvocationTargetException | SecurityException | IllegalAccessException ignored) {
-            logger.warn("Clean failed", ignored);
+        } catch (IllegalArgumentException | InvocationTargetException | SecurityException | IllegalAccessException exception) {
+            logger.warn("Clean failed", exception);
         }
     }
 }

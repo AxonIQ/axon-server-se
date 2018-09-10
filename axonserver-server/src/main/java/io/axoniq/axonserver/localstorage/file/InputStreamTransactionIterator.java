@@ -91,9 +91,9 @@ public class InputStreamTransactionIterator implements TransactionIterator {
 
     @Override
     public boolean hasNext() {
-        boolean next = readTransaction();
-        if( ! next) close();
-        return next;
+        boolean hasNext = readTransaction();
+        if( ! hasNext) close();
+        return hasNext;
     }
 
     @Override

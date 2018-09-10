@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.metric;
 
-import com.codahale.metrics.Snapshot;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 
 /**
  * Created by Sara Pellegrini on 18/04/2018.
@@ -8,29 +8,29 @@ import com.codahale.metrics.Snapshot;
  */
 public class SnapshotMetric implements ClusterMetric {
 
-    private final Snapshot snapshot;
+    private final HistogramSnapshot snapshot;
 
-    public SnapshotMetric(Snapshot snapshot) {
+    public SnapshotMetric(HistogramSnapshot snapshot) {
         this.snapshot = snapshot;
     }
 
     @Override
     public long size() {
-        return snapshot.size();
+        return snapshot.count();
     }
 
     @Override
     public long min() {
-        return snapshot.getMin();
+        return 0L;
     }
 
     @Override
     public long max() {
-        return snapshot.getMax();
+        return (long)snapshot.max();
     }
 
     @Override
     public double mean() {
-        return snapshot.getMean();
+        return snapshot.mean();
     }
 }

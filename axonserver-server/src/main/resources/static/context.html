@@ -88,7 +88,7 @@
                         }
                         var context = {context: this.newContext.context, nodes: []};
                         for (var i = 0; i < this.newContext.nodes.length; i++) {
-                            if (this.newContext.nodes[i].selected) {
+                            if (this.newContext.nodes[i].storage || this.newContext.nodes[i].messaging) {
                                 context.nodes.push({
                                                        name: this.newContext.nodes[i].name,
                                                        storage: this.newContext.nodes[i].storage,
@@ -190,7 +190,7 @@
                         <span>Nodes</span>
                         <span>
                             <div v-for="node in newContext.nodes">
-                                <input type="checkbox" v-model="node.selected"/>{{node.name}}
+                                <span class="nodeName">{{node.name}}</span>
                                 <input type="checkbox" v-model="node.messaging"/> Messaging
                                 <input type="checkbox" v-model="node.storage"/> Storage
                             </div>

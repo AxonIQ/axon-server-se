@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.command;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Sets;
+import io.axoniq.axonhub.internal.grpc.Metric;
 import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonhub.Command;
 import io.axoniq.axonhub.CommandResponse;
@@ -11,8 +11,8 @@ import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.context.ContextController;
 import io.axoniq.axonhub.grpc.CommandProviderInbound;
-import io.axoniq.axonserver.metric.HistogramFactory;
 import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -40,7 +40,7 @@ public class CommandDispatcherTest {
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(new MetricRegistry(), new HistogramFactory(15),
+        metricsRegistry = new CommandMetricsRegistry(Metrics.globalRegistry,
                                                      new ClusterMetricTarget());
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry);
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();

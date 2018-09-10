@@ -40,6 +40,12 @@ public class LocalEventStoreTest {
         testSubject.initContext("default", false);
     }
 
+    @After
+    public void close() {
+        testSubject.cleanupContext("default");
+    }
+
+
     @Test
     public void testParallelTransactions() {
         String[] results = new String[2];

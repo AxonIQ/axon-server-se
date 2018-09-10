@@ -34,6 +34,10 @@ public class AggregateReaderTest {
                                                             .newBuilder().build()).build());
 
     }
+    @AfterClass
+    public static void close() {
+        testStorageContainer.close();
+    }
 
     @Before
     public void setUp() {

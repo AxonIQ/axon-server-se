@@ -28,6 +28,11 @@ public class EventStreamReaderTest {
         testStorageContainer.createDummyEvents(1000, 100);
     }
 
+    @AfterClass
+    public static void close() {
+        testStorageContainer.close();
+    }
+
     @Before
     public void setUp() {
         testSubject = new EventStreamReader(testStorageContainer.getDatafileManagerChain(),

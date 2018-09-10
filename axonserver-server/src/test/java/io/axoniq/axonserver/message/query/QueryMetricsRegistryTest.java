@@ -1,10 +1,9 @@
 package io.axoniq.axonserver.message.query;
 
-import com.codahale.metrics.MetricRegistry;
 import io.axoniq.axonserver.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.context.ContextController;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry.QueryMetric;
-import io.axoniq.axonserver.metric.HistogramFactory;
+import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 
 import static org.junit.Assert.*;
@@ -14,12 +13,10 @@ import static org.junit.Assert.*;
  */
 public class QueryMetricsRegistryTest {
     private QueryMetricsRegistry testSubject;
-    private final MetricRegistry metricRegistry = new MetricRegistry();
 
     @Before
     public void setUp() {
-        testSubject = new QueryMetricsRegistry(metricRegistry, new HistogramFactory(15),
-                                               new ClusterMetricTarget());
+        testSubject = new QueryMetricsRegistry(Metrics.globalRegistry, new ClusterMetricTarget());
     }
 
     @Test

@@ -17,7 +17,7 @@
                         <th><div>Processing Mode</div></th>
                         <th><div>Active Threads</div></th>
                         <th><div></div></th>
-                        <th style="text-align: center">Auto Load Balancing</th>
+                        <th v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" style="text-align: center">Auto Load Balancing</th>
                         <th><div></div></th>
                     </tr>
                     </thead>
@@ -36,7 +36,7 @@
                             <span  v-if="processor.mode === 'Tracking'" @click="showLoadBalance(processor)"><i class="fas fa-balance-scale fa-lg"></i></span>
 
                         </td>
-                        <td align="center">
+                        <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="center">
                             <span v-if="processor.mode === 'Tracking'">
                                 <select v-model="processorsLBStrategies[processor.name]"
                                         @change="changeLoadBalancingStrategy(processor.name, processorsLBStrategies[processor.name])">
@@ -54,7 +54,7 @@
             </div>
         </section>
         <section v-if="selected.name" style="display:block; float: left; width: 30%; margin-left: 5%">
-            <div class="column configuration">
+            <div class="results singleHeader">
 
                 <table class="nodes" v-if="selected.mode === 'Tracking'">
                     <colgroup>
@@ -197,10 +197,10 @@
             },
             moveSegment() {
                 axios.patch("v1/components/" + this.component
-                        + "/processors/" + this.selected.name
-                        + "/segments/" + this.movingSegment.segmentId
-                        + "/move?target=" + this.segmentDestination
-                        + "&context=" + this.context).then(
+                                    + "/processors/" + this.selected.name
+                                    + "/segments/" + this.movingSegment.segmentId
+                                    + "/move?target=" + this.segmentDestination
+                                    + "&context=" + this.context).then(
                         response => {
                             this.hideMoveSegment();
                         }
@@ -259,7 +259,7 @@
             },
             loadBalance(){
                 axios.patch("v1/components/" + this.component + "/processors/" + this.loadBalanceProcessor.name +
-                        "/loadbalance?context=" + this.context + "&strategy=" + this.loadBalanceStrategy).then(
+                                    "/loadbalance?context=" + this.context + "&strategy=" + this.loadBalanceStrategy).then(
                         response => {
                             this.enableStatusLoader(this.loadBalanceProcessor);
                             this.$modal.hide('load-balance');
@@ -278,8 +278,8 @@
             changeLoadBalancingStrategy(processor, strategy){
                 console.log("strategy changed 5: "+ strategy);
                 axios.put("v1/components/" + this.component + "/processors/" + processor +
-                        "/loadbalance?context=" + this.context + "&strategy="+ strategy).then(response => {
-                            this.loadLBStrategies();
+                                  "/loadbalance?context=" + this.context + "&strategy="+ strategy).then(response => {
+                    this.loadLBStrategies();
                 });
             }
         }

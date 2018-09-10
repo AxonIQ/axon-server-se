@@ -40,11 +40,6 @@ public class EventWriteStorageTest {
         testSubject = new EventWriteStorage(new SingleInstanceTransactionManager(datafileManagerChain));
     }
 
-    @After
-    public void tearDown() {
-        datafileManagerChain.cleanup();
-    }
-
     @Test
     public void addEvent() throws ExecutionException, InterruptedException {
         Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(0).setAggregateType(

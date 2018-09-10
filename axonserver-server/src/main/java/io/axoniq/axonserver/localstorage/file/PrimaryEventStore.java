@@ -70,28 +70,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         FileUtils.delete(storageProperties.bloomFilter(context, first));
         sequenceNumbersPerAggregate.clear();
         long sequence = first;
-        EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first);
-        Map<String, SortedSet<PositionInfo>> aggregatePositions = new ConcurrentHashMap<>();
-        positionsPerSegmentMap.put(first, aggregatePositions);
-        while( sequence < nextToken && iterator.hasNext()) {
-            EventInformation event = iterator.next();
-            if( isDomainEvent(event.getEvent()) ) {
-                aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                   k -> new ConcurrentSkipListSet<>())
-                                  .add(new PositionInfo(event.getPosition(),
-                                                        event.getEvent().getAggregateSequenceNumber()));
-
-                sequenceNumbersPerAggregate.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                            k -> new AtomicLong()).set(event.getEvent()
-                                                                                            .getAggregateSequenceNumber());
-            }
-            sequence++;
-        }
-        List<EventInformation> pendingEvents = iterator.pendingEvents();
-        if( ! pendingEvents.isEmpty()) {
-            logger.warn("Failed to position to transaction {}, {} events left in transaction, moving to end of transaction", nextToken, pendingEvents.size());
-            for(EventInformation event : pendingEvents) {
-                if( isDomainEvent(event.getEvent()) ) {
+        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first) ) {
+            Map<String, SortedSet<PositionInfo>> aggregatePositions = new ConcurrentHashMap<>();
+            positionsPerSegmentMap.put(first, aggregatePositions);
+            while (sequence < nextToken && iterator.hasNext()) {
+                EventInformation event = iterator.next();
+                if (isDomainEvent(event.getEvent())) {
                     aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
                                                        k -> new ConcurrentSkipListSet<>())
                                       .add(new PositionInfo(event.getPosition(),
@@ -103,8 +87,28 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 }
                 sequence++;
             }
+            List<EventInformation> pendingEvents = iterator.pendingEvents();
+            if (!pendingEvents.isEmpty()) {
+                logger.warn(
+                        "Failed to position to transaction {}, {} events left in transaction, moving to end of transaction",
+                        nextToken,
+                        pendingEvents.size());
+                for (EventInformation event : pendingEvents) {
+                    if (isDomainEvent(event.getEvent())) {
+                        aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
+                                                           k -> new ConcurrentSkipListSet<>())
+                                          .add(new PositionInfo(event.getPosition(),
+                                                                event.getEvent().getAggregateSequenceNumber()));
+
+                        sequenceNumbersPerAggregate.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
+                                                                    k -> new AtomicLong()).set(event.getEvent()
+                                                                                                    .getAggregateSequenceNumber());
+                    }
+                    sequence++;
+                }
+            }
+            lastToken.set(sequence - 1);
         }
-        lastToken.set(sequence-1);
 
         buffer.putInt(buffer.position(), 0);
         WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
@@ -203,24 +207,25 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public boolean reserveSequenceNumbers(List<Event> events) {
+    public void reserveSequenceNumbers(List<Event> events) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
               .filter(this::isDomainEvent)
               .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(), i -> new MinMaxPair(e.getAggregateSequenceNumber())).setMax(e.getAggregateSequenceNumber()));
 
+        Map<String, Long> oldSequenceNumberPerAggregate = new HashMap<>();
         for( Map.Entry<String,MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
             AtomicLong current = sequenceNumbersPerAggregate.computeIfAbsent(entry.getKey(),
                                                                              id -> new AtomicLong(
                                                                                      getLastSequenceNumber(id, 10).orElse(-1L)));
 
             if( ! current.compareAndSet(entry.getValue().getMin() - 1, entry.getValue().getMax())) {
-                logger.info("Invalid sequence number for {}, expected {} found {}", entry.getKey(), entry.getValue().min -1,
-                            current.get());
-                return false;
+                oldSequenceNumberPerAggregate.forEach((aggregateId, sequenceNumber) -> sequenceNumbersPerAggregate.put(aggregateId, new AtomicLong(sequenceNumber)));
+                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE, String.format("Invalid sequence number %d for aggregate %s, expected %d",
+                                                                                               entry.getValue().getMin(), entry.getKey(), current.get()+1));
             }
+            oldSequenceNumberPerAggregate.putIfAbsent(entry.getKey(), entry.getValue().getMin() - 1);
         }
-        return true;
     }
 
     @Override
@@ -246,6 +251,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
 
         initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(context)));
+    }
+
+    @Override
+    protected void recreateIndex(long segment) {
+        // No implementation as for primary segment store there are no index files, index is kept in memory
     }
 
     private void removeSegment(long segment) {

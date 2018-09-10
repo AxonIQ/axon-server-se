@@ -1,13 +1,17 @@
 package io.axoniq.axonserver.message.command;
 
-import com.codahale.metrics.MetricRegistry;
 import io.axoniq.axonserver.cluster.ClusterMetricTarget;
-import io.axoniq.axonserver.metric.HistogramFactory;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.search.Search;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.runners.*;
 
-import static org.junit.Assert.*;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Author: marc
@@ -17,17 +21,16 @@ public class CommandMetricsRegistryTest {
 
     private CommandMetricsRegistry testSubject;
 
-    private final MetricRegistry metricRegistry = new MetricRegistry();
-
     @Before
     public void setUp() {
-        testSubject = new CommandMetricsRegistry(metricRegistry, new HistogramFactory(15), new ClusterMetricTarget());
+        testSubject = new CommandMetricsRegistry(new SimpleMeterRegistry(), new ClusterMetricTarget());
     }
 
     @Test
     public void add() {
         testSubject.add("Command", "Client1",  1);
-        assertEquals(1, metricRegistry.histogram(MetricRegistry.name("command", "Command", "Client1")).getCount());
+
+        assertEquals(1L, testSubject.commandMetric("Command", "Client1", null).getCount());
     }
 
 }

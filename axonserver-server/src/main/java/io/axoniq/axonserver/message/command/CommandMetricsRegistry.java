@@ -1,78 +1,78 @@
 package io.axoniq.axonserver.message.command;
 
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.MetricRegistry.MetricSupplier;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.Metrics;
 import io.axoniq.axonserver.metric.SnapshotMetric;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Objects;
-
-import static com.codahale.metrics.MetricRegistry.name;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Author: marc
  */
 @Service("CommandMetricsRegistry")
 public class CommandMetricsRegistry {
-    private final MetricRegistry metricRegistry;
-    private final MetricSupplier<Histogram> histogramFactory;
-    private final ClusterMetricTarget clusterMetrics;
+    private final Logger logger = LoggerFactory.getLogger(CommandMetricsRegistry.class);
 
-    public CommandMetricsRegistry(MetricRegistry metricRegistry,
-                                  MetricSupplier<Histogram> histogramFactory,
+    private final MeterRegistry meterRegistry;
+    private final ClusterMetricTarget clusterMetrics;
+    private final Map<String, Timer> timerMap = new ConcurrentHashMap<>();
+
+    public CommandMetricsRegistry( MeterRegistry meterRegistry,
                                   ClusterMetricTarget clusterMetrics) {
-        this.metricRegistry = metricRegistry;
-        this.histogramFactory = histogramFactory;
+        this.meterRegistry = meterRegistry;
         this.clusterMetrics = clusterMetrics;
     }
 
 
     public void add(String command, String clientId,  long duration) {
         try {
-            histogram(command, clientId).update(duration);
-        } catch( Exception ignore) {
+            timer(command, clientId).record(duration, TimeUnit.MILLISECONDS);
+        } catch( Exception ex) {
+            logger.debug("Failed to create timer", ex);
         }
     }
 
-    private Histogram histogram(String command, String clientId) {
-        return metricRegistry.histogram(metricName(command, clientId), histogramFactory);
+    private Timer timer(String command, String clientId) {
+        String metricName = metricName(command, clientId);
+        return timerMap.computeIfAbsent(metricName, name ->
+                meterRegistry.timer(name));
     }
 
-    private String metricName(String command, String clientId) {
-        return name("command", command, clientId);
+    private static String metricName(String command, String clientId) {
+        return String.format("axon.command.%s.%s", command, clientId);
     }
 
     private ClusterMetric clusterMetric(String command, String clientId){
         String metricName = metricName(command, clientId);
-        return new CompositeMetric(new SnapshotMetric(histogram(command, clientId).getSnapshot()), new Metrics(metricName, clusterMetrics));
+        return new CompositeMetric(new SnapshotMetric(timer(command, clientId).takeSnapshot()), new Metrics(metricName, clusterMetrics));
     }
 
     public CommandMetric commandMetric(String command, String clientId, String componentName) {
         return new CommandMetric(command,clientId, componentName, clusterMetric(command, clientId).size());
     }
 
-    public void register(String name,
-                      Gauge supplier) {
-        metricRegistry.register(name, supplier);
+    public Counter counter(String commandCounterName) {
+        return Counter.builder(commandCounterName).register(meterRegistry);
     }
 
-    long dispatchedCount(){
-        String name = "commands";
-        return metricRegistry.counter(name).getCount() + new CompositeMetric(new Metrics(name, clusterMetrics)).size();
+    public <T> Gauge gauge(String activeCommandsGauge, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+        return Gauge.builder(activeCommandsGauge, objectToWatch, gaugeFunction)
+             .register(meterRegistry);
     }
-
-    void increaseDispatchedCount(){
-        metricRegistry.counter("commands").inc();
-    }
-
-
 
     @KeepNames
     public static class CommandMetric {

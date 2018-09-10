@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.query;
 
-import com.codahale.metrics.MetricRegistry;
+
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonhub.QueryRequest;
@@ -10,9 +10,9 @@ import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.context.ContextController;
 import io.axoniq.axonhub.grpc.QueryProviderInbound;
-import io.axoniq.axonserver.metric.HistogramFactory;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.axoniq.axonserver.util.FailingStreamObserver;
+import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -43,7 +43,7 @@ public class QueryDispatcherTest {
 
     @Before
     public void setup() {
-        QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(new MetricRegistry(), new HistogramFactory(15), new ClusterMetricTarget());
+        QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(Metrics.globalRegistry, new ClusterMetricTarget());
         queryDispatcher = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry);
     }
 

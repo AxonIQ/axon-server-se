@@ -589,7 +589,8 @@ select {
 }
 
 .nodeName {
-	display: inline-block;
+	display: inline-block !important;
+	float: none !important;
 	width: 200px;
 }
 .messaging {

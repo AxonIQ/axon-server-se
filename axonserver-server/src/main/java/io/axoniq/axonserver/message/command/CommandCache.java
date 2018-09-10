@@ -7,6 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Author: marc
  */
-@Component("CommandCache")
+@Component
 public class CommandCache extends ConcurrentHashMap<String, CommandInformation> {
 }

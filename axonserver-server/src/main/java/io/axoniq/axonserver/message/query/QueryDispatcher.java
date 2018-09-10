@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.query;
 
-import com.codahale.metrics.Gauge;
 import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
@@ -11,6 +10,7 @@ import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.message.FlowControlQueues;
+import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -27,17 +27,22 @@ import java.util.stream.Collectors;
  */
 @Component("QueryDispatcher")
 public class QueryDispatcher {
+    private static final String QUERY_COUNTER_NAME = "axon.queries.count";
+    private static final String ACTIVE_QUERY_GAUGE = "axon.queries.active";
+
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
     private final QueryCache queryCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed());
+    private final Counter queryCounter;
 
     public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache, QueryMetricsRegistry queryMetricsRegistry) {
         this.registrationCache = registrationCache;
-        this.queryCache = queryCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
-        queryMetricsRegistry.register("active.queries", (Gauge<Integer>) queryCache::size);
+        this.queryCache = queryCache;
+        queryMetricsRegistry.gauge(ACTIVE_QUERY_GAUGE, queryCache, QueryCache::size);
+        this.queryCounter = queryMetricsRegistry.counter(QUERY_COUNTER_NAME);
     }
 
     @EventListener
@@ -118,11 +123,11 @@ public class QueryDispatcher {
     }
 
     public long getNrOfQueries() {
-        return queryMetricsRegistry.dispatchedCount();
+        return (long)queryCounter.count();
     }
 
     private void query(String context, QueryRequest query, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
-        queryMetricsRegistry.increaseDispatchedCount();
+        queryCounter.increment();
         long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         Set<? extends QueryHandler> handlers = registrationCache.find(context, query);
         if( handlers.isEmpty()) {

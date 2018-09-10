@@ -1,16 +1,19 @@
 package io.axoniq.axonserver.message.query.subscription.metric;
 
-import com.codahale.metrics.MetricRegistry;
 import io.axoniq.axonserver.SubscriptionQueryEvents;
 import io.axoniq.axonserver.metric.ClusterMetric;
+import io.axoniq.axonserver.metric.CounterMetric;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static com.codahale.metrics.MetricRegistry.name;
 import static io.axoniq.axonhub.SubscriptionQueryResponse.ResponseCase.UPDATE;
 
 /**
@@ -19,31 +22,38 @@ import static io.axoniq.axonhub.SubscriptionQueryResponse.ResponseCase.UPDATE;
  */
 @Component
 public class QuerySubscriptionMetricRegistry  {
-    private final MetricRegistry localRegistry;
+    private final MeterRegistry localRegistry;
     private final Function<String, ClusterMetric> clusterRegistry;
     private final Map<String, String> queries = new ConcurrentHashMap<>();
     private final Map<String, String> contexts = new ConcurrentHashMap<>();
+    private final Map<String, Counter> totalSubscriptionsMap = new ConcurrentHashMap<>();
+    private final Map<String, AtomicInteger> activeSubscriptionsMap = new ConcurrentHashMap<>();
+    private final Map<String, Counter> updatesMap = new ConcurrentHashMap<>();
 
-    public QuerySubscriptionMetricRegistry(MetricRegistry localRegistry,
+
+    public QuerySubscriptionMetricRegistry(MeterRegistry localRegistry,
                                                  Function<String, ClusterMetric> clusterRegistry) {
         this.localRegistry = localRegistry;
         this.clusterRegistry = clusterRegistry;
     }
 
     public HubSubscriptionMetrics get(String component, String query, String context) {
-        String active = activeSubscriptionsMetric(query, context);
-        String total = totalSubscriptionsMetric(query, context);
-        String updates = updatesMetric(component,query, context);
-        return new HubSubscriptionMetrics(active, total, updates, localRegistry::counter, clusterRegistry);
+        AtomicInteger active = activeSubscriptionsMetric(query, context);
+        Counter total = totalSubscriptionsMetric(query, context);
+        Counter updates = updatesMetric(component,query, context);
+        return new HubSubscriptionMetrics(new CounterMetric(activeSubscriptionsMetricName(query, context), ()-> (long)active.get()),
+                                          new CounterMetric(total.getId().getName(), () -> (long)total.count()),
+                                          new CounterMetric(updates.getId().getName(), () -> (long)updates.count()), clusterRegistry);
     }
+
 
 
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryRequested event){
         String queryName = event.subscription().getQueryRequest().getQuery();
         String context = event.context();
-        localRegistry.counter(activeSubscriptionsMetric(queryName, context)).inc();
-        localRegistry.counter(totalSubscriptionsMetric(queryName, context)).inc();
+        activeSubscriptionsMetric(queryName, context).incrementAndGet();
+        totalSubscriptionsMetric(queryName, context).increment();
         queries.put(event.subscriptionId(), queryName);
         contexts.put(event.subscriptionId(), context);
     }
@@ -52,7 +62,7 @@ public class QuerySubscriptionMetricRegistry  {
     public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event){
         String queryName = event.unsubscribe().getQueryRequest().getQuery();
         String context = contexts.remove(event.subscriptionId());
-        localRegistry.counter(activeSubscriptionsMetric(queryName, context)).dec();
+        activeSubscriptionsMetric(queryName, context).decrementAndGet();
         queries.remove(event.subscriptionId(), queryName);
     }
 
@@ -62,20 +72,36 @@ public class QuerySubscriptionMetricRegistry  {
             String componentName = event.response().getUpdate().getComponentName();
             String query = queries.get(event.subscriptionId());
             String context = contexts.get(event.subscriptionId());
-            localRegistry.counter(updatesMetric(componentName, query, context)).inc();
+            updatesMetric(componentName, query, context).increment();
         }
     }
 
-    private String activeSubscriptionsMetric(String query, String context){
-        return name(QuerySubscriptionMetricRegistry.class.getName(), query, context, "active");
+    private AtomicInteger activeSubscriptionsMetric(String query, String context){
+
+        return activeSubscriptionsMap.computeIfAbsent(activeSubscriptionsMetricName(query, context), name -> {
+            AtomicInteger atomicInt = new AtomicInteger(0);
+            Gauge.builder(name, atomicInt, AtomicInteger::get).register(localRegistry);
+            return atomicInt;
+            }
+        );
+    }
+    private String activeSubscriptionsMetricName(String query, String context) {
+        return name(QuerySubscriptionMetricRegistry.class.getSimpleName(), query, context, "active");
     }
 
-    private String totalSubscriptionsMetric(String query, String context){
-        return name(QuerySubscriptionMetricRegistry.class.getName(), query, context, "total");
+    private String name(String name, String query, String context, String active) {
+        return String.format("axon.%s.%s.%s.%s", name, query, context, active);
+    }
+    private String name(String name, String component, String query, String context, String active) {
+        return String.format("axon.%s.%s,%s.%s.%s", name, component, query, context, active);
     }
 
-    private String updatesMetric(String component, String query, String context){
-        return name(QuerySubscriptionMetricRegistry.class.getName(),component, query, context, "updates");
+    private Counter totalSubscriptionsMetric(String query, String context){
+        return totalSubscriptionsMap.computeIfAbsent(name(QuerySubscriptionMetricRegistry.class.getSimpleName(), query, context, "total"), name -> localRegistry.counter(name));
+    }
+
+    private Counter updatesMetric(String component, String query, String context){
+        return updatesMap.computeIfAbsent(name(QuerySubscriptionMetricRegistry.class.getSimpleName(), component, query, context, "updates"), name -> localRegistry.counter(name));
     }
 
 }

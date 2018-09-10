@@ -43,8 +43,6 @@ logging:
     org.hibernate.orm.deprecation: ERROR
 
 
-
-
 management:
   security:
     enabled: false

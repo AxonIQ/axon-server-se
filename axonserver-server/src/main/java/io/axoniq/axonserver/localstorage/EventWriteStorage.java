@@ -2,8 +2,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.EventWithToken;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,8 +85,7 @@ public class EventWriteStorage {
     }
 
     private void validate(List<Event> eventList) {
-        if( ! storageTransactionManager.reserveSequenceNumbers(eventList) )
-            throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE, "Invalid sequence numbers for aggregate");
+        storageTransactionManager.reserveSequenceNumbers(eventList);
     }
 
     public Registration registerEventListener(Consumer<EventWithToken> listener) {

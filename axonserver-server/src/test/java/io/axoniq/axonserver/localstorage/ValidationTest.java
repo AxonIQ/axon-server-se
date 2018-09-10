@@ -19,6 +19,12 @@ public class ValidationTest {
         testStorageContainer.createDummyEvents(1000, 100);
     }
 
+    @AfterClass
+    public static void close() {
+        testStorageContainer.close();
+    }
+
+
     @Test
     public void validate() {
         SegmentBasedEventStore primary = testStorageContainer.getPrimary();

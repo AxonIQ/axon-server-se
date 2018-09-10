@@ -35,6 +35,12 @@ public class InputStreamAggregateReaderTest {
 
     }
 
+    @AfterClass
+    public static void close() {
+        testStorageContainer.close();
+    }
+
+
     @Before
     public void setUp() {
         testSubject = new AggregateReader(testStorageContainer.getDatafileManagerChain(), new SnapshotReader(testStorageContainer.getSnapshotManagerChain()));

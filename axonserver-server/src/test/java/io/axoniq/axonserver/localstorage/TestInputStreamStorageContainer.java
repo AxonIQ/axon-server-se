@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -34,6 +35,7 @@ public class TestInputStreamStorageContainer {
         embeddedDBProperties.getEvent().setSegmentSize(256*1024L);
         embeddedDBProperties.getEvent().setForceInterval(10000);
         embeddedDBProperties.getSnapshot().setStorage(location.getAbsolutePath());
+        embeddedDBProperties.getSnapshot().setSegmentSize(512*1024L);
         EventStoreFactory eventStoreFactory = new LowMemoryEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
                                                                              new DefaultStorageTransactionManagerFactory());
         datafileManagerChain = eventStoreFactory.createEventManagerChain("default");
@@ -48,6 +50,7 @@ public class TestInputStreamStorageContainer {
         createDummyEvents(transactions, transactionSize, "");
     }
     public void createDummyEvents(int transactions, int transactionSize, String prefix) {
+        CountDownLatch countDownLatch = new CountDownLatch(transactions);
         IntStream.range(0, transactions).parallel().forEach(j -> {
             String aggId = prefix + j;
             List<Event> newEvents = new ArrayList<>();
@@ -56,17 +59,10 @@ public class TestInputStreamStorageContainer {
                         SerializedObject
                                 .newBuilder().build()).build());
             });
-            try {
-                eventWriter.store(newEvents).get(1, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (ExecutionException | TimeoutException ignored) {
-                // Ignore during test
-                ignored.printStackTrace();
-            }
+            eventWriter.store(newEvents).whenComplete((r,t) -> countDownLatch.countDown());
         });
         try {
-            Thread.sleep(500);
+            countDownLatch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -92,4 +88,8 @@ public class TestInputStreamStorageContainer {
         return (SegmentBasedEventStore)datafileManagerChain;
     }
 
+    public void close() {
+        datafileManagerChain.cleanup();
+        snapshotManagerChain.cleanup();
+    }
 }

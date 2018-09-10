@@ -1,4 +1,5 @@
 <!DOCTYPE HTML>
+<html>
 <head>
     <title>AxonDashboard: Settings</title>
     <link rel="stylesheet" href="css/style.css">
@@ -73,7 +74,7 @@
 
         Vue.filter('formatDate', function (date) {
             if (date) {
-                return date.year + "-" + addZero(date.monthValue) + "-" + addZero(date.dayOfMonth);
+                return date[0] + "-" + addZero(date[1]) + "-" + addZero(date[2]);
             }
         });
 
@@ -160,7 +161,7 @@
             class="fas fa-window-restore fa-2x"></i>Apps</a>
     <a href="#users" class="menu-users" v-if="admin"><i class="fas fa-users fa-2x"></i> Users</a>
     <a href="#context" class="menu-context" v-if="hasFeature('MULTI_CONTEXT')"><i class="fas fa-sitemap fa-2x"></i> Contexts</a>
-    <a href="#load-balancing" class="menu-load-balancing" v-if="license == 'enterprise'"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>
+    <a href="#load-balancing" class="menu-load-balancing" v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>
 </nav>
 
 

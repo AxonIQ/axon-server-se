@@ -28,7 +28,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
     }
 
     @Override
-    public boolean reserveSequenceNumbers(List<Event> eventList) {
-        return datafileManagerChain.reserveSequenceNumbers(eventList);
+    public void reserveSequenceNumbers(List<Event> eventList) {
+        datafileManagerChain.reserveSequenceNumbers(eventList);
     }
 }

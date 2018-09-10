@@ -15,6 +15,7 @@ import io.axoniq.axondb.grpc.ReadHighestSequenceNrResponse;
 import io.axoniq.axondb.grpc.TrackingToken;
 import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonhub.internal.grpc.TransactionWithToken;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
@@ -101,6 +102,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             public void onCompleted() {
                 workersMap.get(context).eventWriteStorage.store(eventList).whenComplete((result, exception) -> {
                     if( exception != null) {
+                        if( isClientException(exception)) {
+                            logger.warn("Error while storing events: {}", exception.getMessage());
+                        } else {
+                            logger.warn("Error while storing events", exception);
+                        }
                         logger.warn("Error while storing events", exception);
                         responseObserver.onError(exception);
                     } else {
@@ -300,6 +306,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void health(Health.Builder builder) {
         workersMap.values().forEach(worker -> worker.eventStreamReader.health(builder));
     }
+
+    private boolean isClientException(Throwable exception) {
+        return exception instanceof MessagingPlatformException
+                && ((MessagingPlatformException) exception).getErrorCode().isClientException();
+    }
+
 
     private class Workers {
         private final EventWriteStorage eventWriteStorage;

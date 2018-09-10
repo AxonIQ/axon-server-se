@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.event;
 
-import com.codahale.metrics.MetricRegistry;
 import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.Confirmation;
 import io.axoniq.axondb.grpc.EventWithToken;
@@ -10,6 +9,7 @@ import io.axoniq.axonserver.config.AxonDBConfiguration;
 import io.axoniq.axonserver.context.ContextController;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -41,15 +41,14 @@ public class EventDispatcherTest {
     @Mock
     private StreamObserver<Event> appendEventConnection;
 
-    private MetricRegistry metricRegistry = new MetricRegistry();
-
     @Before
     public void setUp() {
         AxonDBConfiguration eventStoreConfiguration = new AxonDBConfiguration();
         eventStoreConfiguration.setServers("localhost:8080");
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
         when(eventStoreManager.getEventStore(any())).thenReturn(eventStoreClient);
-        testSubject = new EventDispatcher(eventStoreManager, Optional.empty(), () -> ContextController.DEFAULT, metricRegistry,
+        testSubject = new EventDispatcher(eventStoreManager, Optional.empty(), () -> ContextController.DEFAULT,
+                                          Metrics.globalRegistry,
                                           new ClusterMetricTarget());
     }
 

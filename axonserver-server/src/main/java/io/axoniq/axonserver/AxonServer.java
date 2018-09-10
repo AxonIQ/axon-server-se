@@ -11,12 +11,14 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Author: marc
  */
 @SpringBootApplication(scanBasePackages = "io.axoniq")
 @EnableAsync
+@EnableScheduling
 @EnableJpaRepositories("io.axoniq")
 @EntityScan("io.axoniq")
 @Import(PluginImportSelector.class)

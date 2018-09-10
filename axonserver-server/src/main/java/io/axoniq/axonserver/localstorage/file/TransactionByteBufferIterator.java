@@ -80,7 +80,7 @@ public class TransactionByteBufferIterator implements TransactionIterator {
             Checksum checksum = new Checksum();
             checksum.update(reader, position, size);
             if( chk != checksum.get()) {
-                throw new RuntimeException("Invalid checksum at " + currentSequenceNumber);
+                throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED, "Invalid checksum at " + currentSequenceNumber);
             }
         }
         return true;

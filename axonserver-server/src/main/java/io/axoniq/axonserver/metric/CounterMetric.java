@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.metric;
 
-import com.codahale.metrics.Counter;
+import java.util.function.Supplier;
 
 /**
  * Created by Sara Pellegrini on 22/06/2018.
@@ -8,15 +8,21 @@ import com.codahale.metrics.Counter;
  */
 public class CounterMetric implements ClusterMetric {
 
-    private final Counter counter;
+    private final String name;
+    private final Supplier<Long> valueProvider;
 
-    public CounterMetric(Counter counter) {
-        this.counter = counter;
+    public CounterMetric(String name, Supplier<Long> valueProvider) {
+        this.name = name;
+        this.valueProvider = valueProvider;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override
     public long size() {
-        return counter.getCount();
+        return valueProvider.get();
     }
 
     @Override
