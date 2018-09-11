@@ -3,6 +3,8 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.file.ByteBufferEventSource;
+import io.axoniq.axonserver.localstorage.file.EventIterator;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
