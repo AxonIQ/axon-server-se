@@ -2,9 +2,9 @@ package io.axoniq.axonserver;
 
 import io.axoniq.axonhub.CommandSubscription;
 import io.axoniq.axonhub.QuerySubscription;
-import io.axoniq.axonserver.grpc.internal.ProxyCommandHandler;
-import io.axoniq.axonserver.grpc.internal.ProxyQueryHandler;
 import io.axoniq.axonserver.message.command.CommandHandler;
+import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryHandler;
 
 /**
@@ -90,7 +90,7 @@ public class SubscriptionEvents {
         }
 
         public boolean isProxied() {
-            return queryHandler instanceof ProxyQueryHandler;
+            return ! (queryHandler instanceof DirectQueryHandler);
         }
     }
 
@@ -120,7 +120,7 @@ public class SubscriptionEvents {
         }
 
         public boolean isProxied() {
-            return handler instanceof ProxyCommandHandler;
+            return !(handler instanceof DirectCommandHandler);
         }
     }
 }

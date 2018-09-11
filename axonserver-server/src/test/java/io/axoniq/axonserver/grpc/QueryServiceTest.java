@@ -9,7 +9,7 @@ import io.axoniq.axonhub.QueryRequest;
 import io.axoniq.axonhub.QueryResponse;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;

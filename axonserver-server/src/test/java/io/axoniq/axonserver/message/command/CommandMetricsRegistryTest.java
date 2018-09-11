@@ -1,15 +1,10 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.cluster.ClusterMetricTarget;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.search.Search;
+import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.runners.*;
-
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 

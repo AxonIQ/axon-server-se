@@ -7,7 +7,7 @@
     <keep-names>
         <class template="class io.axoniq.axonserver.AxonServer"/>
         <class template="class io.axoniq.axonserver.grpc.Gateway"/>
-        <class template="class io.axoniq.axonserver.grpc.internal.MessagingClusterServer"/>
+        <class template="class io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServer"/>
 
         <class template="@org.springframework.web.bind.annotation.RestController class *"/>
         <class template="@org.springframework.context.annotation.Configuration class *"/>

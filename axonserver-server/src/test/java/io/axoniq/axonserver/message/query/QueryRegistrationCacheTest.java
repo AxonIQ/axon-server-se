@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonhub.grpc.QueryProviderInbound;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;

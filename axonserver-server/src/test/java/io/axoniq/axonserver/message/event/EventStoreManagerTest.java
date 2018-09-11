@@ -2,13 +2,14 @@ package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonhub.Confirmation;
 import io.axoniq.axonserver.LifecycleController;
-import io.axoniq.axonserver.cluster.TestMessagingClusterService;
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.cluster.TestMessagingClusterService;
+import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.context.jpa.Context;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.StubFactory;
-import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceInterface;
+import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.grpc.stub.StreamObserver;

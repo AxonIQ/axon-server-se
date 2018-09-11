@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.cluster.ClusterController;
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.platform.grpc.ClientIdentification;
 import io.axoniq.platform.grpc.PlatformInfo;

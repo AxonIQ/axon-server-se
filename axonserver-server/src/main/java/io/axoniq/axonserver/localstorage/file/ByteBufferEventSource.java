@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 /**
  * Author: marc
  */
-class ByteBufferEventSource implements EventSource {
+public class ByteBufferEventSource implements EventSource {
 
 
     private final EventTransformer eventTransformer;

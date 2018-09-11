@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.metric.FakeClusterMetric;
 import org.junit.*;
 import org.junit.runner.*;

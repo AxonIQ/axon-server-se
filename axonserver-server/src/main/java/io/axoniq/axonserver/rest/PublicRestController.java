@@ -1,17 +1,19 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.licensing.LicenseConfiguration;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.topology.AxonServerNode;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,11 +33,10 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping("/v1/public")
 public class PublicRestController {
 
-    private final ClusterController clusterController;
+    private final Topology clusterController;
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
     private final EventDispatcher eventDispatcher;
-    private final ContextController contextController;
     private final Limits limits;
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
@@ -43,11 +44,10 @@ public class PublicRestController {
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
 
 
-    public PublicRestController(ClusterController clusterController,
+    public PublicRestController(Topology clusterController,
                                 CommandDispatcher commandDispatcher,
                                 QueryDispatcher queryDispatcher,
                                 EventDispatcher eventDispatcher,
-                                ContextController contextController,
                                 Limits limits,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
@@ -55,7 +55,6 @@ public class PublicRestController {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.eventDispatcher = eventDispatcher;
-        this.contextController = contextController;
         this.limits = limits;
         this.sslConfiguration = messagingPlatformConfiguration.getSsl();
         this.accessControlConfiguration = messagingPlatformConfiguration.getAccesscontrol();
@@ -65,18 +64,16 @@ public class PublicRestController {
 
 
     @GetMapping
-    public List<ClusterNode> getClusterNodes() {
-        List<ClusterNode> nodes = clusterController.getRemoteConnections().stream()
-                                                   .map(n -> map(n.getClusterNode()))
-                                                   .collect(Collectors.toList());
+    public List<AxonServerNode> getClusterNodes() {
+        List<AxonServerNode> nodes = clusterController.getRemoteConnections();
 
-        nodes.add(map(clusterController.getMe()).setConnected(true));
-        nodes.sort(Comparator.comparing(ClusterNode::getName));
+        nodes.add(clusterController.getMe());
+        nodes.sort(Comparator.comparing(AxonServerNode::getName));
         return nodes;
     }
 
     @GetMapping(path = "me")
-    public ClusterNode getNodeInfo() {
+    public ExtendedClusterNode getNodeInfo() {
         ExtendedClusterNode node = mapExtended(clusterController.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
@@ -136,7 +133,7 @@ public class PublicRestController {
         return null;
     }
 
-    private ExtendedClusterNode mapExtended(io.axoniq.axonserver.cluster.jpa.ClusterNode me) {
+    private ExtendedClusterNode mapExtended(AxonServerNode me) {
         return new ExtendedClusterNode(me.getName(),
                                        me.getHostName(),
                                        me.getInternalHostName(),
@@ -146,8 +143,4 @@ public class PublicRestController {
     }
 
 
-    private ClusterNode map(io.axoniq.axonserver.cluster.jpa.ClusterNode me) {
-        return new ClusterNode(me.getName(), me.getHostName(), me.getInternalHostName(), me.getGrpcInternalPort(),
-                               me.getGrpcPort(), me.getHttpPort());
-    }
 }

@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.slf4j.Logger;

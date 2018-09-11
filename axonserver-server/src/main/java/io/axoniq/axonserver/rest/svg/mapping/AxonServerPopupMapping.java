@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
 import io.axoniq.axonserver.rest.svg.BoxRegistry;
 import io.axoniq.axonserver.rest.svg.Fonts;
 import io.axoniq.axonserver.rest.svg.Mapping;
@@ -9,6 +8,7 @@ import io.axoniq.axonserver.rest.svg.attribute.Position;
 import io.axoniq.axonserver.rest.svg.decorator.Hidden;
 import io.axoniq.axonserver.rest.svg.element.Rectangle;
 import io.axoniq.axonserver.rest.svg.element.TextBox;
+import io.axoniq.axonserver.topology.AxonServerNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +31,7 @@ public class AxonServerPopupMapping implements Mapping<AxonServer> {
     }
 
     public Hidden map(AxonServer hub) {
-        ClusterNode node = hub.node();
+        AxonServerNode node = hub.node();
         List<String> lines = new ArrayList<>();
         lines.add("Hostname: " + node.getHostName());
         lines.add("Grpc Port: " + node.getGrpcPort());

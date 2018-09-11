@@ -4,7 +4,6 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
-import io.axoniq.axonserver.grpc.internal.ProxyCommandHandler;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
@@ -93,9 +92,7 @@ public class CommandRestController {
             CommandHandler commandHandler = entry.getKey();
             jsonCommandMapping.client = commandHandler.getClient();
             jsonCommandMapping.component = commandHandler.getComponentName();
-            if( commandHandler instanceof ProxyCommandHandler) {
-                jsonCommandMapping.proxy = ((ProxyCommandHandler) commandHandler).getMessagingServerName();
-            }
+            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
 
             jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand()).collect(Collectors.toSet());
             return jsonCommandMapping;

@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonhub.Command;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonhub.grpc.CommandProviderInbound;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;

@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.cluster.ClusterController;
 import io.axoniq.axonserver.rest.svg.Element;
 import io.axoniq.axonserver.rest.svg.Elements;
 import io.axoniq.axonserver.rest.svg.Fonts;
@@ -15,6 +14,7 @@ import io.axoniq.axonserver.rest.svg.mapping.ApplicationBoxMapping;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServerBoxMapping;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServerPopupMapping;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,12 +27,12 @@ import java.io.StringWriter;
 @RestController("OverviewModel")
 public class OverviewModel {
 
-    private final ClusterController clusterController;
+    private final Topology clusterController;
     private final Iterable<Application> applications;
     private final Iterable<AxonServer> axonHubs;
     private final Fonts fonts;
 
-    public OverviewModel(ClusterController clusterController,
+    public OverviewModel(Topology clusterController,
                          Iterable<Application> applications,
                          Iterable<AxonServer> axonHubs) {
         this.clusterController = clusterController;

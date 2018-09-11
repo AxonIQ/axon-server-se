@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.TestSystemInfoProvider;
-import io.axoniq.axonserver.cluster.ClusterController;
-import io.axoniq.axonserver.cluster.NodeSelectionStrategy;
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.NodeSelectionStrategy;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.context.ContextController;
-import io.axoniq.axonserver.context.jpa.Context;
+import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonhub.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.platform.grpc.ClientIdentification;

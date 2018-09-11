@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axondb.Event;
-import io.axoniq.axonserver.localstorage.file.DatafileEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
@@ -15,9 +15,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 
 /**

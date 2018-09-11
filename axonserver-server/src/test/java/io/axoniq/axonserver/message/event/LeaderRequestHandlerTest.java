@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
+import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.runners.*;

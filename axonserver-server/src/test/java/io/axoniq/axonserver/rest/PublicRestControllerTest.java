@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.cluster.ClusterController;
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.context.ContextController;
-import io.axoniq.axonserver.grpc.internal.RemoteConnection;
+import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;

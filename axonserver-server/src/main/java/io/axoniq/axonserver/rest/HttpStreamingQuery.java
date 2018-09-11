@@ -6,7 +6,7 @@ import io.axoniq.axondb.grpc.QueryEventsRequest;
 import io.axoniq.axondb.grpc.QueryEventsResponse;
 import io.axoniq.axondb.grpc.RowResponse;
 import io.axoniq.axonserver.message.event.EventStore;
-import io.axoniq.axonserver.message.event.EventStoreManager;
+import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.grpc.stub.StreamObserver;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -28,9 +28,9 @@ import java.util.concurrent.ConcurrentMap;
 public class HttpStreamingQuery {
     private final Logger logger = LoggerFactory.getLogger(HttpStreamingQuery.class);
     private final ConcurrentMap<String, Sender> senderPerClient = new ConcurrentHashMap<>();
-    private final EventStoreManager eventStoreManager;
+    private final EventStoreLocator eventStoreManager;
 
-    public HttpStreamingQuery(EventStoreManager eventStoreManager) {
+    public HttpStreamingQuery(EventStoreLocator eventStoreManager) {
         this.eventStoreManager = eventStoreManager;
     }
 

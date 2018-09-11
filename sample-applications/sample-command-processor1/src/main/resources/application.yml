@@ -25,3 +25,7 @@ axon:
     general: jackson
     messages: jackson
 
+management:
+  endpoint:
+    health:
+      show-details: always

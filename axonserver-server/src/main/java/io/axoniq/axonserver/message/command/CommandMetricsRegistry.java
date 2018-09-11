@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.cluster.ClusterMetricTarget;
+import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.Metrics;

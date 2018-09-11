@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.metric;
 
-import io.axoniq.axonserver.cluster.ClusterMetricTarget;
+import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 
 import java.util.Iterator;
 

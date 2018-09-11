@@ -1,9 +1,8 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.cluster.ClusterController;
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
-import io.axoniq.axonserver.context.jpa.Context;
-import io.axoniq.axonserver.message.event.EventStoreManager;
+import io.axoniq.axonserver.topology.AxonServerNode;
+import io.axoniq.axonserver.topology.EventStoreLocator;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -19,11 +18,11 @@ import javax.annotation.Nonnull;
 @Component
 public class AxonServers implements Iterable<AxonServer> {
 
-    private final ClusterController clusterController;
-    private final EventStoreManager eventStoreManager   ;
+    private final Topology clusterController;
+    private final EventStoreLocator eventStoreManager   ;
 
-    public AxonServers(ClusterController clusterController,
-                       EventStoreManager eventStoreManager) {
+    public AxonServers(Topology clusterController,
+                       EventStoreLocator eventStoreManager) {
         this.clusterController = clusterController;
         this.eventStoreManager = eventStoreManager;
     }
@@ -32,7 +31,7 @@ public class AxonServers implements Iterable<AxonServer> {
     @Nonnull
     public Iterator<AxonServer> iterator() {
         return  clusterController.messagingNodes()
-                                 .sorted(Comparator.comparing(ClusterNode::getName))
+                                 .sorted(Comparator.comparing(AxonServerNode::getName))
                                  .map(node -> (AxonServer) new AxonServer() {
 
                                      @Override
@@ -41,27 +40,27 @@ public class AxonServers implements Iterable<AxonServer> {
                                      }
 
                                      @Override
-                                     public ClusterNode node() {
+                                     public AxonServerNode node() {
                                          return node;
                                      }
 
                                      @Override
                                      public List<String> contexts() {
-                                         return node.getMessagingContexts().stream().map(Context::getName).sorted().collect(
+                                         return node.getMessagingContextNames().stream().sorted().collect(
                                                  Collectors.toList());
                                      }
 
                                      @Override
                                      public List<AxonDB> storage() {
-                                         return node.getStorageContexts().stream().map(context -> new AxonDB() {
+                                         return node.getStorageContextNames().stream().map(contextName -> new AxonDB() {
                                              @Override
                                              public String context() {
-                                                 return context.getName();
+                                                 return contextName;
                                              }
 
                                              @Override
                                              public boolean master() {
-                                                 return eventStoreManager.isMaster(node.getName(), context.getName());
+                                                 return eventStoreManager.isMaster(node.getName(), contextName);
                                              }
                                          } ).sorted(Comparator.comparing(a -> a.context())).collect(Collectors.toList());
                                      }

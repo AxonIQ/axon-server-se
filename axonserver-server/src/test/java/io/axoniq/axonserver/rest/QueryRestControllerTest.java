@@ -3,7 +3,7 @@ package io.axoniq.axonserver.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.component.query.Query;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;

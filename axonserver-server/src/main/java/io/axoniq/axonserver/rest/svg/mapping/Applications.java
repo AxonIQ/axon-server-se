@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.ClusterEvents;
-import io.axoniq.axonserver.cluster.ClusterController;
+import io.axoniq.axonserver.ClientApplicationEvents;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -25,29 +25,29 @@ import static java.util.stream.Collectors.toSet;
 @Component
 public class Applications implements Iterable<Application> {
 
-    private final ClusterController clusterController;
+    private final Topology clusterController;
 
     private final Map<ComponentContext,Set<ConnectedClient>> clientsPerComponent = new ConcurrentHashMap<>();
 
-    public Applications(ClusterController clusterController) {
+    public Applications(Topology clusterController) {
         this.clusterController = clusterController;
     }
 
 
     @EventListener
-    public void on(ClusterEvents.ApplicationDisconnected event) {
+    public void on(ClientApplicationEvents.ApplicationDisconnected event) {
         clientsPerComponent.forEach((k,v) -> v.remove(new ConnectedClient(event.getClient(), null)));
         clientsPerComponent.entrySet().removeIf(entry -> entry.getValue().isEmpty());
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationConnected event) {
+    public void on(ClientApplicationEvents.ApplicationConnected event) {
         clientsPerComponent.computeIfAbsent(new ComponentContext(event.getComponentName(), event.getContext()), k -> new CopyOnWriteArraySet<>())
                            .add(new ConnectedClient(event.getClient(), event.isProxied() ? event.getProxy() : getCurrentNode()));
     }
 
     private String getCurrentNode() {
-        return clusterController.getMe().getName();
+        return clusterController.getName();
     }
 
 

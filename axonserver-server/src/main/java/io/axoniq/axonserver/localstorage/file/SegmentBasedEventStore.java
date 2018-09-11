@@ -68,7 +68,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         return !positionInfos.isEmpty() && positionInfos.first().getAggregateSequenceNumber() <= minSequenceNumber;
     }
 
-    protected abstract void handover(Long segment, Runnable callback);
+    public abstract void handover(Long segment, Runnable callback);
 
     public void next(SegmentBasedEventStore datafileManager) {
         SegmentBasedEventStore last = this;
@@ -186,7 +186,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     @Override
     public void init(boolean validate) {
-        init(Long.MAX_VALUE);
+        initSegments(Long.MAX_VALUE);
         if( validate) validate(storageProperties.getValidationSegments());
     }
 
@@ -258,7 +258,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         return type;
     }
 
-    protected abstract void init(long maxValue);
+    public abstract void initSegments(long maxValue);
 
     public EventIterator getEvents(long segment, long token) {
         Optional<EventSource> reader = getEventSource(segment);

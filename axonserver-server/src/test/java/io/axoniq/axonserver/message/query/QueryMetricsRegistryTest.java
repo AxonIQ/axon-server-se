@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.cluster.ClusterMetricTarget;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry.QueryMetric;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;

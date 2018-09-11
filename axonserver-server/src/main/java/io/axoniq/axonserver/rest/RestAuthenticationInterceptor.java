@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcMetadataKeys;

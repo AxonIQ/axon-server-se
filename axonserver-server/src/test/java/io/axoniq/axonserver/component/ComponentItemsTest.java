@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component;
 
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import org.junit.*;
 
 import java.util.Iterator;

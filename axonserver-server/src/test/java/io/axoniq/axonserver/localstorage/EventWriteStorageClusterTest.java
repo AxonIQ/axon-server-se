@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axondb.Event;
-import io.axoniq.axonserver.localstorage.file.DatafileEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transaction.ReplicationManager;
+import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.platform.SerializedObject;

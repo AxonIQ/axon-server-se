@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.enterprise.storage.file.SecondaryEventStore;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
@@ -113,7 +114,7 @@ public class PrimaryEventStoreTest {
         testSubject.rollback(2);
         assertEquals(2, testSubject.getLastToken());
 
-        testSubject.init(Long.MAX_VALUE);
+        testSubject.initSegments(Long.MAX_VALUE);
         assertEquals(2, testSubject.getLastToken());
     }
 

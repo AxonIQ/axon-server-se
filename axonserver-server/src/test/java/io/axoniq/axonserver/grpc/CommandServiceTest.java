@@ -8,7 +8,7 @@ import io.axoniq.axonhub.grpc.CommandProviderOutbound;
 import io.axoniq.axonhub.grpc.FlowControl;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;

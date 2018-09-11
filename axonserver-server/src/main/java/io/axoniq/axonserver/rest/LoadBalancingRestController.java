@@ -2,10 +2,10 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy.Factory;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyController;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.LoadBalanceStrategyController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.LoadBalancingStrategy;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancingController;
 import io.axoniq.axonserver.component.processor.balancing.strategy.NoLoadBalanceStrategy;
 import io.axoniq.axonserver.serializer.Printable;
 import org.springframework.transaction.annotation.Transactional;

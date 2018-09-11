@@ -15,6 +15,7 @@
         <module>sample-applications/sample-command-processor1</module>
         <module>axonserver-accessdb</module>
         <module>axonserver-grpc</module>
+        <module>axonserver-enterprise</module>
         <!--
         <module>plugins/axonserver-kafka-connector</module>
         <module>plugins/axonserver-rabbitmq-connector</module>

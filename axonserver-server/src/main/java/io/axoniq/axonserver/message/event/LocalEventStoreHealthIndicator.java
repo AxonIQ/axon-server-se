@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;

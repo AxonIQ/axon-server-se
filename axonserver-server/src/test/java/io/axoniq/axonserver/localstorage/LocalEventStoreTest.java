@@ -4,7 +4,7 @@ import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.Confirmation;
 import io.axoniq.axondb.grpc.QueryEventsRequest;
 import io.axoniq.axondb.grpc.QueryEventsResponse;
-import io.axoniq.axonserver.localstorage.file.DatafileEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;

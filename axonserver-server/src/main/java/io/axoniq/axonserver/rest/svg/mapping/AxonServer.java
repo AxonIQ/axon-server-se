@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
+
+import io.axoniq.axonserver.topology.AxonServerNode;
 
 /**
  * Created by Sara Pellegrini on 02/05/2018.
@@ -10,7 +11,7 @@ public interface AxonServer {
 
     boolean isActive();
 
-    ClusterNode node();
+    AxonServerNode node();
 
     Iterable<String> contexts();
 

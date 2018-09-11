@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.cluster.ClusterController;
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.rest.svg.mapping.Application;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.rest.svg.mapping.FakeApplication;

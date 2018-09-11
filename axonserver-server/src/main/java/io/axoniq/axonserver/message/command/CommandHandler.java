@@ -57,4 +57,8 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
     public String queueName() {
         return client;
     }
+
+    public String getMessagingServerName() {
+        return null;
+    }
 }

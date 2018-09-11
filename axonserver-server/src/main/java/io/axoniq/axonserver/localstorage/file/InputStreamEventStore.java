@@ -6,8 +6,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
-import java.io.File;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -31,15 +29,15 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected void handover(Long segment, Runnable callback) {
+    public void handover(Long segment, Runnable callback) {
         segments.add(segment);
         callback.run();
     }
 
     @Override
-    protected void init(long lastInitialized) {
+    public void initSegments(long lastInitialized) {
         segments.addAll(prepareSegmentStore(lastInitialized));
-        if( next != null) next.init(segments.isEmpty() ? lastInitialized : segments.last());
+        if( next != null) next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
 
     }
 

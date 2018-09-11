@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 import io.axoniq.platform.grpc.ProcessorLBStrategy;
 
 /**

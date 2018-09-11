@@ -1,15 +1,14 @@
 package io.axoniq.axonserver.message.command;
 
 import com.google.common.collect.Sets;
-import io.axoniq.axonhub.internal.grpc.Metric;
 import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonhub.Command;
 import io.axoniq.axonhub.CommandResponse;
 import io.axoniq.axonhub.CommandSubscription;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.cluster.ClusterMetricTarget;
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonhub.grpc.CommandProviderInbound;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.micrometer.core.instrument.Metrics;

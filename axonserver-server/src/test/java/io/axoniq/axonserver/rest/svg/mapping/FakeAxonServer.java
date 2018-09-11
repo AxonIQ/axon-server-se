@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.cluster.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 
 import java.util.Collections;
 import java.util.Set;

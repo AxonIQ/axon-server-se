@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.localstorage.transaction;
 
+import io.axoniq.axonserver.enterprise.storage.transaction.ClusterTransactionManager;
+import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.localstorage.EventStore;
 
 /**

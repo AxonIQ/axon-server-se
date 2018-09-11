@@ -56,7 +56,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void init(long lastInitialized) {
+    public void initSegments(long lastInitialized) {
         File storageDir  = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
         eventTransformer = eventTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
@@ -116,7 +116,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         synchronizer.init(writePosition);
 
         if( next != null) {
-            next.init(first);
+            next.initSegments(first);
         }
     }
 
@@ -172,7 +172,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected void handover(Long segment, Runnable callback) {
+    public void handover(Long segment, Runnable callback) {
         callback.run();
     }
 

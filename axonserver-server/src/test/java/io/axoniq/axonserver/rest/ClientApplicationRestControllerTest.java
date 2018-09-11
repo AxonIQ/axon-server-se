@@ -7,7 +7,7 @@ import org.junit.*;
 
 import java.util.Iterator;
 
-import static io.axoniq.axonserver.context.ContextController.DEFAULT;
+import static io.axoniq.axonserver.enterprise.context.ContextController.DEFAULT;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 

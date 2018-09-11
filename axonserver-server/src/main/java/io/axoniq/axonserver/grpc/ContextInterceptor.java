@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.Metadata;

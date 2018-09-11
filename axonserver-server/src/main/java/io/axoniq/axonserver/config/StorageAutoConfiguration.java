@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
-import io.axoniq.axonserver.localstorage.file.DatafileEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transaction.ReplicationManager;
+import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
