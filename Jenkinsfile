@@ -54,6 +54,7 @@ podTemplate(label: label,
                 container("maven") {
                     sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore -Ddockerfile.push.skip -Ddockerfile.build.skip -Pdocker clean package"
                     junit '**/target/surefire-reports/TEST-*.xml'
+                    sh "mvn \${MVN_BLD} -DskipTests deploy"
                 }
             }
 
