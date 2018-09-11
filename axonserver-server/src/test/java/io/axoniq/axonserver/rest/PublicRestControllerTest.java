@@ -1,21 +1,19 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.context.ContextController;
-import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.FakeSubscriptionMetrics;
+import io.axoniq.axonserver.topology.AxonServerNode;
+import io.axoniq.axonserver.topology.SimpleAxonServerNode;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.runners.*;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -29,9 +27,9 @@ import static org.mockito.Mockito.*;
 public class PublicRestControllerTest {
     private PublicRestController testSubject;
     @Mock
-    private Limits limits;
+    private FeatureChecker limits;
     @Mock
-    private ClusterController clusterController;
+    private Topology clusterController;
     @Mock
     private CommandDispatcher commandDispatcher;
     @Mock
@@ -39,21 +37,16 @@ public class PublicRestControllerTest {
     @Mock
     private EventDispatcher eventDispatcher;
 
-    @Mock
-    private ContextController contextController;
-
     @Before
     public void setup() {
         MessagingPlatformConfiguration messagePlatformConfiguration = new MessagingPlatformConfiguration(null);
-        testSubject = new PublicRestController(clusterController, commandDispatcher, queryDispatcher, eventDispatcher, contextController, limits,
+        testSubject = new PublicRestController(clusterController, commandDispatcher, queryDispatcher, eventDispatcher,  limits,
                                                messagePlatformConfiguration,
                                                () -> new FakeSubscriptionMetrics(500, 400, 1000));
 
-        ClusterNode other = new ClusterNode("node2", "host2", "host2", 100, 200, 300);
-        ClusterNode me = new ClusterNode("node1", "host1", "host1", 100, 200, 300);
-        Collection<RemoteConnection> nodes = Collections.singleton(new RemoteConnection(me, other,
-                null,
-                null, messagePlatformConfiguration));
+        AxonServerNode other = new SimpleAxonServerNode("node2", "host2", 100, 200);
+        AxonServerNode me = new SimpleAxonServerNode("node1", "host1", 100, 200);
+        List<AxonServerNode> nodes = Collections.singletonList(other);
         when(clusterController.getRemoteConnections()).thenReturn(nodes);
         when(clusterController.getMe()).thenReturn(me);
         when(eventDispatcher.getNrOfEvents()).thenReturn(200L);
@@ -64,7 +57,7 @@ public class PublicRestControllerTest {
 
     @Test
     public void getClusterNodes() {
-        List<io.axoniq.axonserver.rest.ClusterNode> nodes = testSubject.getClusterNodes();
+        List<PublicRestController.JsonServerNode> nodes = testSubject.getClusterNodes();
         assertEquals(2, nodes.size());
         assertEquals("node1", nodes.get(0).getName());
         assertEquals("node2", nodes.get(1).getName());
@@ -72,13 +65,12 @@ public class PublicRestControllerTest {
 
     @Test
     public void getNodeInfo() {
-        io.axoniq.axonserver.rest.ClusterNode node = testSubject.getNodeInfo();
+        AxonServerNode node = testSubject.getNodeInfo();
         assertEquals("node1", node.getName());
         assertEquals("host1", node.getHostName());
         assertEquals("host1", node.getInternalHostName());
-        assertEquals(100, node.getGrpcPort());
-        assertEquals(200, node.getInternalGrpcPort());
-        assertEquals(300, node.getHttpPort());
+        assertEquals(Integer.valueOf(100), node.getGrpcPort());
+        assertEquals(Integer.valueOf(200), node.getHttpPort());
     }
 
 

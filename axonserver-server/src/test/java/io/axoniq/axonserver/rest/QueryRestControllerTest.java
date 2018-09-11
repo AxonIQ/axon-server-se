@@ -3,11 +3,11 @@ package io.axoniq.axonserver.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.component.query.Query;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import org.junit.*;
 
@@ -31,7 +31,7 @@ public class QueryRestControllerTest {
                 .setComponentName("Component")
                 .setClientName("client")
                 .setNrOfHandlers(1).build();
-        registationCache.add(new QueryDefinition(ContextController.DEFAULT, querySubscription), "Response",
+        registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
                              new DirectQueryHandler(new CountingStreamObserver<>(), querySubscription.getClientName(), querySubscription.getComponentName()));
 
         testSubject = new QueryRestController(registationCache);
@@ -45,7 +45,7 @@ public class QueryRestControllerTest {
 
     @Test
     public void getByComponent(){
-        Iterator<Query> iterator = testSubject.getByComponent("Component", ContextController.DEFAULT).iterator();
+        Iterator<Query> iterator = testSubject.getByComponent("Component", Topology.DEFAULT_CONTEXT).iterator();
         assertTrue(iterator.hasNext());
         GsonMedia media = new GsonMedia();
         iterator.next().printOn(media);
@@ -55,7 +55,7 @@ public class QueryRestControllerTest {
 
     @Test
     public void getByNotExistingComponent(){
-        Iterator iterator = testSubject.getByComponent("otherComponent", ContextController.DEFAULT).iterator();
+        Iterator iterator = testSubject.getByComponent("otherComponent", Topology.DEFAULT_CONTEXT).iterator();
         assertFalse(iterator.hasNext());
     }
 

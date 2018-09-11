@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.message.command.CommandMetricsWebSocket;
 import io.axoniq.axonserver.message.query.QueryMetricsWebSocket;
 import org.springframework.context.annotation.Configuration;
@@ -21,9 +22,9 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig extends AbstractWebSocketMessageBrokerConfigurer {
-    private final Limits limits;
+    private final FeatureChecker limits;
 
-    public WebSocketConfig(Limits limits) {
+    public WebSocketConfig(FeatureChecker limits) {
         this.limits = limits;
     }
 

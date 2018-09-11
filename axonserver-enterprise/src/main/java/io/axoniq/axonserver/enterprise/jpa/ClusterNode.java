@@ -2,8 +2,10 @@ package io.axoniq.axonserver.enterprise.jpa;
 
 import io.axoniq.axonhub.internal.grpc.ContextRole;
 import io.axoniq.axonhub.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.topology.AxonServerNode;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -22,7 +24,7 @@ import javax.persistence.UniqueConstraint;
  */
 @Entity
 @Table(uniqueConstraints={@UniqueConstraint(columnNames = {"internalHostName", "grpcInternalPort"})})
-public class ClusterNode implements Serializable {
+public class ClusterNode implements Serializable, AxonServerNode {
 
     @Id
     private String name;
@@ -83,6 +85,16 @@ public class ClusterNode implements Serializable {
 
     public String getName() {
         return name;
+    }
+
+    @Override
+    public Collection<String> getMessagingContextNames() {
+        return contexts.stream().filter(ContextClusterNode::isMessaging).map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
+    }
+
+    @Override
+    public Collection<String> getStorageContextNames() {
+        return contexts.stream().filter(ContextClusterNode::isStorage).map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
 
     public void setInternalHostName(String internalHostName) {

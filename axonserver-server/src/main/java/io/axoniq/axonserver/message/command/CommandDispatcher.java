@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonhub.Command;
 import io.axoniq.axonhub.CommandResponse;
 import io.axoniq.axonhub.CommandSubscription;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionEvents;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.message.FlowControlQueues;
@@ -89,7 +89,7 @@ public class CommandDispatcher {
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationDisconnected event) {
+    public void on(TopologyEvents.ApplicationDisconnected event) {
         cleanupRegistrations(event.getClient());
         if( ! event.isProxied()) {
             getCommandQueues().move(event.getClient(), this::redispatch);
@@ -97,10 +97,11 @@ public class CommandDispatcher {
         handlePendingCommands(event.getClient());
     }
 
-    @EventListener
-    public void on(ClusterEvents.AxonHubInstanceDisconnected event) {
-        getCommandQueues().move(event.getNodeName(), this::redispatch);
-    }
+    //TODO: move code
+//    @EventListener
+//    public void on(ClusterEvents.AxonHubInstanceDisconnected event) {
+//        getCommandQueues().move(event.getNodeName(), this::redispatch);
+//    }
 
     private void dispatchToCommandHandler(String context, Command command, CommandHandler commandHandler,
                                           Consumer<CommandResponse> responseObserver) {

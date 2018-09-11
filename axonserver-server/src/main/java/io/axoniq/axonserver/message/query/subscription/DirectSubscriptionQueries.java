@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.message.query.subscription;
 
-import io.axoniq.axonserver.ClusterEvents.ApplicationDisconnected;
 import io.axoniq.axonhub.QueryRequest;
 import io.axoniq.axonhub.SubscriptionQuery;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryRequested;
+import io.axoniq.axonserver.TopologyEvents;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +32,7 @@ public class DirectSubscriptionQueries implements Iterable<DirectSubscriptionQue
     }
 
     @EventListener
-    public void on(ApplicationDisconnected applicationDisconnected){
+    public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected){
         map.remove(applicationDisconnected.getClient());
     }
 

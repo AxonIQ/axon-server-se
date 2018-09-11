@@ -8,10 +8,10 @@ import io.axoniq.axonhub.grpc.CommandProviderOutbound;
 import io.axoniq.axonhub.grpc.FlowControl;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -38,7 +38,7 @@ public class CommandServiceTest {
 
         when(commandDispatcher.getCommandQueues()).thenReturn(commandQueue);
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
-        testSubject = new CommandService(commandDispatcher, () -> ContextController.DEFAULT, eventPublisher);
+        testSubject = new CommandService(commandDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
     }
 
     @Test
@@ -48,7 +48,7 @@ public class CommandServiceTest {
         requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientName("name").build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
-        commandQueue.put("name", new WrappedCommand(ContextController.DEFAULT, Command.newBuilder().build()));
+        commandQueue.put("name", new WrappedCommand(Topology.DEFAULT_CONTEXT, Command.newBuilder().build()));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);
     }

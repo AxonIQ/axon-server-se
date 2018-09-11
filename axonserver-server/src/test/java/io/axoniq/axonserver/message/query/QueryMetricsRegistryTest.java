@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry.QueryMetric;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 
@@ -16,20 +16,20 @@ public class QueryMetricsRegistryTest {
 
     @Before
     public void setUp() {
-        testSubject = new QueryMetricsRegistry(Metrics.globalRegistry, new ClusterMetricTarget());
+        testSubject = new QueryMetricsRegistry(Metrics.globalRegistry, new DefaultMetricCollector());
     }
 
     @Test
     public void add() {
-        testSubject.add(new QueryDefinition(ContextController.DEFAULT, "a"), "processor", 1L);
+        testSubject.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), "processor", 1L);
     }
 
     @Test
     public void get()  {
-        testSubject.add(new QueryDefinition(ContextController.DEFAULT, "a"), "processor", 1L);
-        QueryMetric queryMetric = testSubject.queryMetric(new QueryDefinition(ContextController.DEFAULT, "a"), "processor", "");
+        testSubject.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), "processor", 1L);
+        QueryMetric queryMetric = testSubject.queryMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), "processor", "");
         assertEquals(1, queryMetric.getCount());
-        queryMetric = testSubject.queryMetric(new QueryDefinition(ContextController.DEFAULT, "a"), "processor1", "");
+        queryMetric = testSubject.queryMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), "processor1", "");
         assertEquals(0, queryMetric.getCount());
     }
 

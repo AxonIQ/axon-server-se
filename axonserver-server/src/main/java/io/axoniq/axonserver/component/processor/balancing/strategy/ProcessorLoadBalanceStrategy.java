@@ -2,10 +2,10 @@ package io.axoniq.axonserver.component.processor.balancing.strategy;
 
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.LoadBalanceStrategyRepository;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.LoadBalancingStrategy;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyRepository;
+import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
+import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;

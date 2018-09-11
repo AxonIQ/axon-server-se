@@ -6,6 +6,7 @@ import io.axoniq.axonhub.internal.grpc.Metric;
 import io.axoniq.axonhub.internal.grpc.NodeMetrics;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
+import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.metric.NodeMetric;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -24,8 +25,7 @@ import static java.util.stream.StreamSupport.stream;
  * Created by Sara Pellegrini on 17/04/2018.
  * sara.pellegrini@gmail.com
  */
-@Component
-public class ClusterMetricTarget implements Function<String, ClusterMetric> {
+public class ClusterMetricTarget implements MetricCollector {
 
     private final Map<String, Collection<Metric>> clusterMetricMap = new ConcurrentHashMap<>();
 

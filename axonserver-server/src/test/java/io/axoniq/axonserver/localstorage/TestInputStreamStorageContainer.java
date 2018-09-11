@@ -1,6 +1,9 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStoreFactory;
+import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;

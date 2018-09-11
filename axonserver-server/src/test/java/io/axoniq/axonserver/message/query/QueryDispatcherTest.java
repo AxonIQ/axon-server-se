@@ -7,9 +7,9 @@ import io.axoniq.axonhub.QueryRequest;
 import io.axoniq.axonhub.QueryResponse;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonhub.grpc.QueryProviderInbound;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.axoniq.axonserver.util.FailingStreamObserver;
 import io.micrometer.core.instrument.Metrics;
@@ -43,7 +43,7 @@ public class QueryDispatcherTest {
 
     @Before
     public void setup() {
-        QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(Metrics.globalRegistry, new ClusterMetricTarget());
+        QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(Metrics.globalRegistry, new DefaultMetricCollector());
         queryDispatcher = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry);
     }
 
@@ -52,7 +52,7 @@ public class QueryDispatcherTest {
         CountingStreamObserver<QueryProviderInbound> inboundStreamObserver = new CountingStreamObserver<>();
 
         QueryHandler queryHandler = new DirectQueryHandler(inboundStreamObserver,"client", "componentName");
-        queryDispatcher.on(new SubscriptionEvents.SubscribeQuery(ContextController.DEFAULT,
+        queryDispatcher.on(new SubscriptionEvents.SubscribeQuery(Topology.DEFAULT_CONTEXT,
                                                                  QuerySubscription.newBuilder()
                                                                                   .setQuery("test")
                                                                                   .setResultName("testResult")
@@ -60,7 +60,7 @@ public class QueryDispatcherTest {
                                                                                   .setMessageId("testMessageId")
                                                                                   .setNrOfHandlers(1).build(), queryHandler));
         assertEquals(0, inboundStreamObserver.count );
-        verify(registrationCache, times(1)).add(eq(new QueryDefinition(ContextController.DEFAULT, "test")),
+        verify(registrationCache, times(1)).add(eq(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test")),
                                                 any(), any());
     }
 
@@ -100,7 +100,7 @@ public class QueryDispatcherTest {
                 .build();
         CountingStreamObserver<QueryResponse> responseObserver = new CountingStreamObserver<>();
         TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
-        queryDispatcher.on(new DispatchEvents.DispatchQuery(ContextController.DEFAULT, request,
+        queryDispatcher.on(new DispatchEvents.DispatchQuery(Topology.DEFAULT_CONTEXT, request,
                                                             testResponseObserver::onNext,
                                                             client-> testResponseObserver.onCompleted(),
                                                             false));
@@ -123,7 +123,7 @@ public class QueryDispatcherTest {
         handlers.add(new DirectQueryHandler(dispatchStreamObserver, "client", "componentName"));
         when(registrationCache.find(any(), anyObject())).thenReturn(handlers);
         TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
-        queryDispatcher.on(new DispatchEvents.DispatchQuery(ContextController.DEFAULT, request,
+        queryDispatcher.on(new DispatchEvents.DispatchQuery(Topology.DEFAULT_CONTEXT, request,
                                                             testResponseObserver::onNext,
                                                             client-> testResponseObserver.onCompleted(),
                                                             false));
@@ -144,7 +144,7 @@ public class QueryDispatcherTest {
         handlers.add(new DirectQueryHandler(new FailingStreamObserver<>(), "client", "componentName"));
         when(registrationCache.find(any(), anyObject())).thenReturn(handlers);
         TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
-        queryDispatcher.on(new DispatchEvents.DispatchQuery(ContextController.DEFAULT, request,
+        queryDispatcher.on(new DispatchEvents.DispatchQuery(Topology.DEFAULT_CONTEXT, request,
                                                             testResponseObserver::onNext,
                                                             client-> testResponseObserver.onCompleted(),
                                                             false));

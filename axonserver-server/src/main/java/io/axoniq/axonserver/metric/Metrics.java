@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.metric;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
-
 import java.util.Iterator;
 
 import static java.util.stream.StreamSupport.stream;
@@ -14,9 +12,9 @@ public class Metrics implements Iterable<ClusterMetric> {
 
     private String metricName;
 
-    private ClusterMetricTarget target;
+    private MetricCollector target;
 
-    public Metrics(String metricName, ClusterMetricTarget target) {
+    public Metrics(String metricName, MetricCollector target) {
         this.metricName = metricName;
         this.target = target;
     }

@@ -7,7 +7,7 @@ import org.junit.*;
 
 import java.util.Iterator;
 
-import static io.axoniq.axonserver.enterprise.context.ContextController.DEFAULT;
+import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -19,12 +19,12 @@ public class ClientApplicationRestControllerTest {
 
     @Test
     public void getComponentInstances() {
-        Clients clients = () -> asList( (Client) new FakeClient("clientA",DEFAULT, true),
-                                        new FakeClient("clientB",DEFAULT, false),
-                                        new FakeClient("clientC",DEFAULT, false)).iterator();
+        Clients clients = () -> asList( (Client) new FakeClient("clientA",DEFAULT_CONTEXT, true),
+                                        new FakeClient("clientB",DEFAULT_CONTEXT, false),
+                                        new FakeClient("clientC",DEFAULT_CONTEXT, false)).iterator();
 
         ClientApplicationRestController controller = new ClientApplicationRestController(clients);
-        Iterator iterator = controller.getComponentInstances("test", DEFAULT).iterator();
+        Iterator iterator = controller.getComponentInstances("test", DEFAULT_CONTEXT).iterator();
         assertTrue(iterator.hasNext());
         iterator.next();
         assertFalse(iterator.hasNext());

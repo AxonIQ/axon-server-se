@@ -4,10 +4,10 @@ import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.Confirmation;
 import io.axoniq.axondb.grpc.EventWithToken;
 import io.axoniq.axondb.grpc.GetEventsRequest;
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.config.AxonDBConfiguration;
-import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
-import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.topology.EventStoreLocator;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Metrics;
@@ -37,7 +37,7 @@ public class EventDispatcherTest {
     private EventStore eventStoreClient;
 
     @Mock
-    private EventStoreManager eventStoreManager;
+    private EventStoreLocator eventStoreManager;
 
     @Mock
     private StreamObserver<Event> appendEventConnection;
@@ -48,9 +48,9 @@ public class EventDispatcherTest {
         eventStoreConfiguration.setServers("localhost:8080");
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
         when(eventStoreManager.getEventStore(any())).thenReturn(eventStoreClient);
-        testSubject = new EventDispatcher(eventStoreManager, Optional.empty(), () -> ContextController.DEFAULT,
+        testSubject = new EventDispatcher(eventStoreManager, Optional.empty(), () -> Topology.DEFAULT_CONTEXT,
                                           Metrics.globalRegistry,
-                                          new ClusterMetricTarget());
+                                          new DefaultMetricCollector());
     }
 
     @Test

@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,7 +35,7 @@ public class BackupInfoRestController {
 
     @GetMapping("/filenames")
     public List<String> getFilenames(
-            @RequestParam(value = "context", defaultValue = ContextController.DEFAULT) String context,
+            @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp
     ) {

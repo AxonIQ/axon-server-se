@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonhub.grpc.QueryProviderInbound;
+import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
@@ -34,7 +34,7 @@ public class QueryRegistrationCacheTest {
     @Test
     public void remove() {
         DirectQueryHandler provider1 = new DirectQueryHandler(dummyStreamObserver, "client", "component");
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    provider1);
 
@@ -46,10 +46,10 @@ public class QueryRegistrationCacheTest {
     public void removeWithRemaining() {
         DirectQueryHandler provider1 = new DirectQueryHandler(dummyStreamObserver, "client", "component");
         DirectQueryHandler provider2 = new DirectQueryHandler(dummyStreamObserver, "client2", "component");
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    provider1);
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    provider2);
 
@@ -60,14 +60,14 @@ public class QueryRegistrationCacheTest {
     @Test
     public void remove1() {
         DirectQueryHandler provider1 = new DirectQueryHandler(dummyStreamObserver, "client", "component");
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    provider1);
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test1"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test1"),
                                    "test",
                                    provider1);
 
-        queryRegistrationCache.remove(new QueryDefinition(ContextController.DEFAULT, "test1"), provider1.getClientName());
+        queryRegistrationCache.remove(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test1"), provider1.getClientName());
         Map<QueryDefinition, Map<String, Set<QueryHandler>>> all = queryRegistrationCache.getAll();
         assertEquals(1, all.size());
     }
@@ -75,39 +75,39 @@ public class QueryRegistrationCacheTest {
     @Test
     public void add() {
 
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    new DirectQueryHandler(dummyStreamObserver, "client", "component"));
         Map<QueryDefinition, Map<String, Set<QueryHandler>>> all = queryRegistrationCache.getAll();
         assertEquals(1, all.size());
-        assertEquals(1, all.get(new QueryDefinition(ContextController.DEFAULT, "test")).size());
-        assertEquals(1, all.get(new QueryDefinition(ContextController.DEFAULT, "test")).get("component").size());
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        assertEquals(1, all.get(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test")).size());
+        assertEquals(1, all.get(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test")).get("component").size());
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    new DirectQueryHandler(dummyStreamObserver, "client3", "component"));
         all = queryRegistrationCache.getAll();
-        assertEquals(2, all.get(new QueryDefinition(ContextController.DEFAULT , "test")).get("component").size());
+        assertEquals(2, all.get(new QueryDefinition(Topology.DEFAULT_CONTEXT , "test")).get("component").size());
     }
 
     @Test
     public void find() {
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    new DirectQueryHandler(dummyStreamObserver, "client", "component"));
         QueryRequest request = QueryRequest.newBuilder().setQuery("test").build();
 
-        assertNotNull(queryRegistrationCache.find(ContextController.DEFAULT, request,"client"));
-        assertNull(queryRegistrationCache.find(ContextController.DEFAULT, request,  "client1"));
+        assertNotNull(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request,"client"));
+        assertNull(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request,  "client1"));
     }
 
 
     @Test
     public void getForClient() {
         DirectQueryHandler provider1 = new DirectQueryHandler(dummyStreamObserver, "client", "component");
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    provider1);
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test1"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test1"),
                                    "test",
                                    provider1);
         assertEquals(2, queryRegistrationCache.getForClient(provider1.getClientName()).size());
@@ -116,14 +116,14 @@ public class QueryRegistrationCacheTest {
 
     @Test
     public void find1() {
-        queryRegistrationCache.add(new QueryDefinition(ContextController.DEFAULT, "test"),
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    new DirectQueryHandler(dummyStreamObserver, "client", "component"));
         QueryRequest request = QueryRequest.newBuilder().setQuery("test").build();
         QueryRequest request2 = QueryRequest.newBuilder().setQuery("test1").build();
         when( queryHandlerSelector.select(anyObject(), anyObject(), anyObject())).thenReturn("client");
-        assertNotNull(queryRegistrationCache.find(ContextController.DEFAULT, request));
-        assertTrue(queryRegistrationCache.find(ContextController.DEFAULT, request2).isEmpty());
+        assertNotNull(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request));
+        assertTrue(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request2).isEmpty());
     }
 
     private class DummyStreamObserver implements StreamObserver<QueryProviderInbound> {

@@ -1,13 +1,10 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.enterprise.context.ContextController;
-import io.axoniq.axonserver.licensing.LicenseConfiguration;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -37,7 +34,7 @@ public class PublicRestController {
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
     private final EventDispatcher eventDispatcher;
-    private final Limits limits;
+    private final FeatureChecker limits;
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
     private final ClusterConfiguration clusterConfiguration;
@@ -48,7 +45,7 @@ public class PublicRestController {
                                 CommandDispatcher commandDispatcher,
                                 QueryDispatcher queryDispatcher,
                                 EventDispatcher eventDispatcher,
-                                Limits limits,
+                                FeatureChecker limits,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
         this.clusterController = clusterController;
@@ -64,12 +61,11 @@ public class PublicRestController {
 
 
     @GetMapping
-    public List<AxonServerNode> getClusterNodes() {
+    public List<JsonServerNode> getClusterNodes() {
         List<AxonServerNode> nodes = clusterController.getRemoteConnections();
 
         nodes.add(clusterController.getMe());
-        nodes.sort(Comparator.comparing(AxonServerNode::getName));
-        return nodes;
+        return nodes.stream().map(JsonServerNode::new).sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 
     @GetMapping(path = "me")
@@ -77,19 +73,14 @@ public class PublicRestController {
         ExtendedClusterNode node = mapExtended(clusterController.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
-        node.setClustered(limits.isClusterAllowed() && clusterConfiguration.isEnabled());
+        node.setClustered(clusterConfiguration.isEnabled());
         return node;
     }
 
-    @GetMapping(path = "context")
-    public List<ContextJSON> getContexts() {
-        return contextController.getContexts().map(ContextJSON::from).collect(Collectors.toList());
-
-    }
 
     @GetMapping(path="mycontexts")
     public Iterable<String> getMyContextList() {
-        return clusterController.getMyContextsNames();
+        return clusterController.getMyMessagingContextsNames();
     }
 
 
@@ -97,9 +88,9 @@ public class PublicRestController {
     @GetMapping(path = "license")
     public LicenseInfo licenseInfo() {
         LicenseInfo licenseInfo = new LicenseInfo();
-        licenseInfo.setExpiryDate(LicenseConfiguration.getInstance().getExpiryDate());
-        licenseInfo.setEdition(LicenseConfiguration.getInstance().getEdition().name());
-        licenseInfo.setLicensee(LicenseConfiguration.getInstance().getLicensee());
+        licenseInfo.setExpiryDate(limits.getExpiryDate());
+        licenseInfo.setEdition(limits.getEdition());
+        licenseInfo.setLicensee(limits.getLicensee());
         licenseInfo.setFeatureList(limits.getFeatureList());
 
 
@@ -134,13 +125,41 @@ public class PublicRestController {
     }
 
     private ExtendedClusterNode mapExtended(AxonServerNode me) {
-        return new ExtendedClusterNode(me.getName(),
-                                       me.getHostName(),
-                                       me.getInternalHostName(),
-                                       me.getGrpcInternalPort(),
-                                       me.getGrpcPort(),
-                                       me.getHttpPort());
+        return new ExtendedClusterNode(me);
     }
 
 
+    public static class JsonServerNode {
+
+        private final AxonServerNode wrapped;
+
+        public JsonServerNode(AxonServerNode axonServerNode) {
+            this.wrapped = axonServerNode;
+        }
+
+
+        public String getHostName() {
+            return wrapped.getHostName();
+        }
+
+        public Integer getGrpcPort() {
+            return wrapped.getGrpcPort();
+        }
+
+        public String getInternalHostName() {
+            return wrapped.getInternalHostName();
+        }
+
+        public Integer getGrpcInternalPort() {
+            return wrapped.getGrpcInternalPort();
+        }
+
+        public Integer getHttpPort() {
+            return wrapped.getHttpPort();
+        }
+
+        public String getName() {
+            return wrapped.getName();
+        }
+    }
 }

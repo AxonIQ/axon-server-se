@@ -3,7 +3,7 @@ package io.axoniq.axonserver.component.processor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
-import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.platform.grpc.EventProcessorInfo;
 import org.junit.*;
 
@@ -27,7 +27,7 @@ public class ComponentProcessorsTest {
                                                          new FakeClientProcessor("clientId", false, EventProcessorInfo.getDefaultInstance()))
                 .iterator();
 
-        ComponentProcessors processors = new ComponentProcessors("component", ContextController.DEFAULT, clientProcessors);
+        ComponentProcessors processors = new ComponentProcessors("component", Topology.DEFAULT_CONTEXT, clientProcessors);
         Iterator<EventProcessor> iterator = processors.iterator();
         assertTrue(iterator.hasNext());
         iterator.next();

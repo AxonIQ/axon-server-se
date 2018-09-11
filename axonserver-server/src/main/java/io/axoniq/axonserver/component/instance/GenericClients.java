@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component.instance;
 
-import io.axoniq.axonserver.ClusterEvents;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
@@ -30,12 +30,12 @@ public class GenericClients implements Clients {
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationDisconnected event) {
+    public void on(TopologyEvents.ApplicationDisconnected event) {
         this.clientRegistrations.remove(event.getClient());
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationConnected event) {
+    public void on(TopologyEvents.ApplicationConnected event) {
         this.clientRegistrations.put(event.getClient(),
                                      new GenericClient(event.getClient(),
                                                        event.getComponentName(),

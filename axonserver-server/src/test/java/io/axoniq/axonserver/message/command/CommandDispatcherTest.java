@@ -1,15 +1,15 @@
 package io.axoniq.axonserver.message.command;
 
 import com.google.common.collect.Sets;
-import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonhub.Command;
 import io.axoniq.axonhub.CommandResponse;
 import io.axoniq.axonhub.CommandSubscription;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
-import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonhub.grpc.CommandProviderInbound;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
@@ -40,11 +40,11 @@ public class CommandDispatcherTest {
     @Before
     public void setup() {
         metricsRegistry = new CommandMetricsRegistry(Metrics.globalRegistry,
-                                                     new ClusterMetricTarget());
+                                                     new DefaultMetricCollector());
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry);
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
         Set<CommandRegistrationCache.RegistrationEntry> commands =
-                Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(ContextController.DEFAULT, "Command"));
+                Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "Command"));
         dummyRegistrations.put(new DirectCommandHandler(new CountingStreamObserver<>(), "client", "component"),
                 commands);
         when( registrations.getAll()).thenReturn(dummyRegistrations);
@@ -57,7 +57,7 @@ public class CommandDispatcherTest {
         CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1234")
                 .build();
 
-        commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(ContextController.DEFAULT, subscribeRequest, commandHandler));
+        commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(Topology.DEFAULT_CONTEXT, subscribeRequest, commandHandler));
 
         assertEquals(1, countingStreamObserver.count);
         assertEquals("1234", countingStreamObserver.responseList.get(0).getConfirmation().getMessageId());
@@ -65,7 +65,7 @@ public class CommandDispatcherTest {
         CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1235")
                 .build();
         when( registrations.remove(any(), any(), any())).thenReturn(commandHandler);
-        commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(ContextController.DEFAULT, unsubscribeRequest, false));
+        commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(Topology.DEFAULT_CONTEXT, unsubscribeRequest, false));
 
         assertEquals(2, countingStreamObserver.count);
         assertEquals("1235", countingStreamObserver.responseList.get(1).getConfirmation().getMessageId());
@@ -73,8 +73,8 @@ public class CommandDispatcherTest {
 
     @Test
     public void unregisterCommandHandler()  {
-        when(registrations.getCommandsFor(anyObject())).thenReturn(Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(ContextController.DEFAULT, "One")));
-        commandDispatcher.on(new ClusterEvents.ApplicationDisconnected(null, null, "client"));
+        when(registrations.getCommandsFor(anyObject())).thenReturn(Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "One")));
+        commandDispatcher.on(new TopologyEvents.ApplicationDisconnected(null, null, "client"));
     }
 
     @Test
@@ -87,9 +87,9 @@ public class CommandDispatcherTest {
                 .build();
         CountingStreamObserver<CommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound, "client", "component");
-        when(registrations.getNode(eq(ContextController.DEFAULT), anyObject(), anyObject())).thenReturn(result);
+        when(registrations.getNode(eq(Topology.DEFAULT_CONTEXT), anyObject(), anyObject())).thenReturn(result);
 
-        commandDispatcher.dispatch(ContextController.DEFAULT, request, response -> {
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, request, response -> {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }, false);
@@ -108,7 +108,7 @@ public class CommandDispatcherTest {
                 .build();
         when(registrations.getNode(any(), anyObject(), anyObject())).thenReturn(null);
 
-        commandDispatcher.dispatch(ContextController.DEFAULT, request, response -> {
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, request, response -> {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }, false);
@@ -125,11 +125,11 @@ public class CommandDispatcherTest {
         CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1236")
                 .build();
         CommandHandler handler = new DirectCommandHandler(countingStreamObserver, "client", "component");
-        commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(ContextController.DEFAULT, subscribeRequest, handler));
+        commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(Topology.DEFAULT_CONTEXT, subscribeRequest, handler));
         assertEquals(1, countingStreamObserver.count);
         assertEquals("1236", countingStreamObserver.responseList.get(0).getConfirmation().getMessageId());
 
-        Mockito.verify(registrations, Mockito.times(1)).add(eq(ContextController.DEFAULT), eq("command"), anyObject());
+        Mockito.verify(registrations, Mockito.times(1)).add(eq(Topology.DEFAULT_CONTEXT), eq("command"), anyObject());
     }
 
     @Test
@@ -138,11 +138,11 @@ public class CommandDispatcherTest {
         CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1235")
                 .build();
         when(registrations.remove(any(), any(), any())).thenReturn(new DirectCommandHandler(countingStreamObserver, "client", "component"));
-        commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(ContextController.DEFAULT, unsubscribeRequest, false));
+        commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(Topology.DEFAULT_CONTEXT, unsubscribeRequest, false));
         assertEquals(1, countingStreamObserver.count);
         assertEquals("1235", countingStreamObserver.responseList.get(0).getConfirmation().getMessageId());
 
-        Mockito.verify(registrations, Mockito.times(1)).remove(eq(ContextController.DEFAULT), eq("command"), anyObject());
+        Mockito.verify(registrations, Mockito.times(1)).remove(eq(Topology.DEFAULT_CONTEXT), eq("command"), anyObject());
     }
 
     @Test

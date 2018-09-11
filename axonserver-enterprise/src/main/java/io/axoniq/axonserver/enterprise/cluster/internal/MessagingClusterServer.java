@@ -1,8 +1,9 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.ContextInterceptor;
-import io.axoniq.axonserver.licensing.Limits;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
@@ -27,14 +28,14 @@ public class MessagingClusterServer implements SmartLifecycle{
     private final MessagingClusterService messagingClusterService;
     private final DataSynchronizationMaster dataSynchronizerMaster;
     private final InternalEventStoreService internalEventStoreService;
-    private final Limits limits;
+    private final FeatureChecker limits;
     private Server server;
 
     public MessagingClusterServer(MessagingPlatformConfiguration messagingPlatformConfiguration,
                                   MessagingClusterService messagingClusterService,
                                   DataSynchronizationMaster dataSynchronizerMaster,
                                   InternalEventStoreService internalEventStoreService,
-                                  Limits limits) {
+                                  FeatureChecker limits) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.messagingClusterService = messagingClusterService;
         this.dataSynchronizerMaster = dataSynchronizerMaster;
@@ -45,7 +46,7 @@ public class MessagingClusterServer implements SmartLifecycle{
 
     @Override
     public boolean isAutoStartup() {
-        return limits.isClusterAllowed();
+        return Feature.CLUSTERING.enabled(limits);
     }
 
     @Override

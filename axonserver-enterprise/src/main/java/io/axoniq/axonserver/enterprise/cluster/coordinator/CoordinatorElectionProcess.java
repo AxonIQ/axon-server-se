@@ -65,11 +65,11 @@ public class CoordinatorElectionProcess {
         try {
             Thread.sleep(1000);
             if (electionRound(context, coordinatorFound)) return;
-            startElection(context, coordinatorFound);
+            // startElection(context, coordinatorFound);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (Exception e) {
-            startElection(context, coordinatorFound);
+            // startElection(context, coordinatorFound);
         }
     }
 

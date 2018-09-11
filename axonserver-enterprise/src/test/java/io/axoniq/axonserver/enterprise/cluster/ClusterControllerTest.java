@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
@@ -7,17 +8,22 @@ import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonhub.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.platform.application.ApplicationRepository;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -38,6 +44,9 @@ import static org.mockito.Mockito.*;
  * Author: marc
  */
 @RunWith(SpringRunner.class)
+@SpringBootTest(classes = AxonServerEnterprise.class)
+@EnableAutoConfiguration
+@EntityScan("io.axoniq")
 @DataJpaTest
 public class ClusterControllerTest {
     private ClusterController testSubject;
@@ -54,6 +63,17 @@ public class ClusterControllerTest {
     @Before
     public void setUp()  {
         Context context = new Context(ContextController.DEFAULT);
+        FeatureChecker limits = new FeatureChecker() {
+            @Override
+            public boolean isEnterprise() {
+                return true;
+            }
+
+            @Override
+            public int getMaxClusterSize() {
+                return 5;
+            }
+        };
         ClusterNode clusterNode = new ClusterNode("MyName", "LAPTOP-1QH9GIHL.axoniq.io", "LAPTOP-1QH9GIHL.axoniq.net", 8124, 8224, 8024);
         clusterNode.addContext(context, true, true);
         entityManager.persist(clusterNode);
@@ -66,7 +86,6 @@ public class ClusterControllerTest {
         messagingPlatformConfiguration.setDomain("axoniq.io");
         messagingPlatformConfiguration.setInternalDomain("axoniq.net");
         messagingPlatformConfiguration.setCluster(new ClusterConfiguration());
-        when(limits.isClusterAllowed()).thenReturn(true);
 
         StubFactory stubFactory = new StubFactory() {
             @Override

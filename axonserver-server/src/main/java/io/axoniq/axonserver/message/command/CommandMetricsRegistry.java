@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
+import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.metric.Metrics;
 import io.axoniq.axonserver.metric.SnapshotMetric;
 import io.micrometer.core.instrument.Counter;
@@ -28,11 +28,11 @@ public class CommandMetricsRegistry {
     private final Logger logger = LoggerFactory.getLogger(CommandMetricsRegistry.class);
 
     private final MeterRegistry meterRegistry;
-    private final ClusterMetricTarget clusterMetrics;
+    private final MetricCollector clusterMetrics;
     private final Map<String, Timer> timerMap = new ConcurrentHashMap<>();
 
     public CommandMetricsRegistry( MeterRegistry meterRegistry,
-                                  ClusterMetricTarget clusterMetrics) {
+                                   MetricCollector clusterMetrics) {
         this.meterRegistry = meterRegistry;
         this.clusterMetrics = clusterMetrics;
     }

@@ -2,11 +2,11 @@ package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.command.ComponentCommand;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
@@ -30,7 +30,7 @@ public class CommandRestControllerTest {
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
-        commandRegistationCache.add(ContextController.DEFAULT, "DoIt", new DirectCommandHandler(new CountingStreamObserver<>(), "client", "component"));
+        commandRegistationCache.add(Topology.DEFAULT_CONTEXT, "DoIt", new DirectCommandHandler(new CountingStreamObserver<>(), "client", "component"));
         testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
     }
 
@@ -43,7 +43,7 @@ public class CommandRestControllerTest {
 
     @Test
     public void getByComponent(){
-        Iterator<ComponentCommand> iterator = testSubject.getByComponent("component", ContextController.DEFAULT).iterator();
+        Iterator<ComponentCommand> iterator = testSubject.getByComponent("component", Topology.DEFAULT_CONTEXT).iterator();
         assertTrue(iterator.hasNext());
         GsonMedia gsonMedia = new GsonMedia();
         iterator.next().printOn(gsonMedia);
@@ -54,7 +54,7 @@ public class CommandRestControllerTest {
 
     @Test
     public void getByNotExistingComponent(){
-        Iterator<ComponentCommand> iterator = testSubject.getByComponent("otherComponent", ContextController.DEFAULT).iterator();
+        Iterator<ComponentCommand> iterator = testSubject.getByComponent("otherComponent", Topology.DEFAULT_CONTEXT).iterator();
         assertFalse(iterator.hasNext());
     }
 

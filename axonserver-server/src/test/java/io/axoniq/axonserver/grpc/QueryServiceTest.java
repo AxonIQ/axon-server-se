@@ -9,10 +9,10 @@ import io.axoniq.axonhub.QueryRequest;
 import io.axoniq.axonhub.QueryResponse;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -39,7 +39,7 @@ public class QueryServiceTest {
         queryQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
         when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
-        testSubject = new QueryService(queryDispatcher, () -> ContextController.DEFAULT, eventPublisher);
+        testSubject = new QueryService(queryDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
     }
 
     @Test
@@ -49,12 +49,12 @@ public class QueryServiceTest {
         requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2).setClientName("name").build()).build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
-        queryQueue.put("name", new WrappedQuery(ContextController.DEFAULT, QueryRequest.newBuilder()
+        queryQueue.put("name", new WrappedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder()
                                                                                        .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
                                                                                        .build(), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put("name", new WrappedQuery(ContextController.DEFAULT, QueryRequest.newBuilder()
+        queryQueue.put("name", new WrappedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder()
                 .build(), System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);

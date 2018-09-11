@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.component.processor.listener;
 
-import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdate;
 import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdated;
 import io.axoniq.axonhub.internal.grpc.ClientEventProcessorStatus;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.platform.grpc.EventProcessorInfo;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -42,12 +42,12 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     }
 
     @EventListener
-    public void onClientConnected( ClusterEvents.ApplicationConnected event) {
+    public void onClientConnected( TopologyEvents.ApplicationConnected event) {
         clients.put(event.getClient(), event.getComponentName());
     }
 
     @EventListener
-    public void onClientDisconnected(ClusterEvents.ApplicationDisconnected event) {
+    public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
         clients.remove(event.getClient());
         cache.remove(event.getClient());
     }

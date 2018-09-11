@@ -10,13 +10,13 @@ public interface AxonServerNode {
 
     String getHostName();
 
-    String getGrpcPort();
+    Integer getGrpcPort();
 
     String getInternalHostName();
 
-    String getGrpcInternalPort();
+    Integer getGrpcInternalPort();
 
-    String getHttpPort();
+    Integer getHttpPort();
 
     String getName();
 

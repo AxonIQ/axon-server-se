@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.events.UserSynchronizationEvents;
+import io.axoniq.axonserver.UserSynchronizationEvents;
 import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.user.UserController;

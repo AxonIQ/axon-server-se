@@ -3,7 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.features.FeatureChecker;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -12,7 +12,6 @@ import org.mockito.runners.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /**
  * Author: marc
@@ -28,15 +27,19 @@ public class MessagingClusterServerTest {
     private InternalEventStoreService internalEventStore;
     @Mock
     private DataSynchronizationMaster dataSynchronizationMaster;
-    @Mock
-    private Limits limits;
+    private FeatureChecker limits;
 
     @Before
     public void setUp() {
         configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         configuration.setSsl(new SslConfiguration());
+        limits = new FeatureChecker() {
+            @Override
+            public boolean isEnterprise() {
+                return true;
+            }
+        };
         testSubject = new MessagingClusterServer(configuration, clusterService, dataSynchronizationMaster, internalEventStore, limits);
-        when(limits.isClusterAllowed()).thenReturn(true);
     }
 
     @Test(expected = RuntimeException.class)

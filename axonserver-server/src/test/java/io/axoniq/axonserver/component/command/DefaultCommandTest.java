@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.component.command;
 
 import com.google.common.collect.ImmutableSet;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import static org.junit.Assert.*;
@@ -21,7 +21,7 @@ public class DefaultCommandTest {
     @Before
     public void setUp() throws Exception {
         ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new DirectCommandHandler(null, "client", "componentA"));
-        defaultCommand = new DefaultCommand(new CommandRegistrationCache.RegistrationEntry(ContextController.DEFAULT,
+        defaultCommand = new DefaultCommand(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT,
                                                                                            "commandName"), commandHandlers);
     }
 

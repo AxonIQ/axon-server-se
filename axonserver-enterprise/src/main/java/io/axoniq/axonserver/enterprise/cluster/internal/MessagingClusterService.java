@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorConfirmation;
@@ -17,7 +18,7 @@ import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonhub.SubscriptionQueryResponse;
-import io.axoniq.axonserver.enterprise.cluster.events.UserSynchronizationEvents;
+import io.axoniq.axonserver.UserSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.RequestToBeCoordinatorReceived;
 import io.axoniq.axonserver.enterprise.context.ContextController;
@@ -499,10 +500,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
         private void checkClient(String context, String component, String clientName) {
             if( clients.add(clientName)) {
-                eventPublisher.publishEvent(new ClusterEvents.ApplicationConnected(context,
-                                                                                   component,
-                                                                                   clientName,
-                                                                                   messagingServerName));
+                eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
+                                                                                    component,
+                                                                                    clientName,
+                                                                                    messagingServerName));
             }
         }
 
@@ -511,7 +512,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
                 if( clients.add(clientStatus.getClientName())) {
                     // unknown client
-                    eventPublisher.publishEvent(new ClusterEvents.ApplicationConnected(clientStatus.getContext(),
+                    eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
                                                                                        clientStatus.getClientName(),
                                                                                        messagingServerName));
@@ -520,7 +521,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 if( clients.remove(clientStatus.getClientName())) {
                     // known client
                     logger.info("Client disconnected: {}", clientStatus.getClientName());
-                    eventPublisher.publishEvent(new ClusterEvents.ApplicationDisconnected(clientStatus.getContext(),
+                    eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
                                                                                        clientStatus.getClientName(),
                                                                                        messagingServerName));
@@ -552,7 +553,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 queryQueueListener.cancel();
                 queryQueueListener = null;
             }
-            clients.forEach(client -> eventPublisher.publishEvent(new ClusterEvents.ApplicationDisconnected(null,
+            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(null,
                                                                                                         null,
                                                                                                         client,
                                                                                                         messagingServerName)));

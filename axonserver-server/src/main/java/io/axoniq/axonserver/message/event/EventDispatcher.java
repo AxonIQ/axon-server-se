@@ -13,16 +13,16 @@ import io.axoniq.axondb.grpc.QueryEventsResponse;
 import io.axoniq.axondb.grpc.ReadHighestSequenceNrRequest;
 import io.axoniq.axondb.grpc.ReadHighestSequenceNrResponse;
 import io.axoniq.axondb.grpc.TrackingToken;
-import io.axoniq.axonserver.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.connector.EventConnector;
 import io.axoniq.axonserver.connector.UnitOfWork;
-import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.metric.CompositeMetric;
+import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.grpc.BindableService;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
@@ -71,18 +71,18 @@ public class EventDispatcher implements BindableService {
                                               .build();
 
 
-    private final EventStoreManager eventStoreClient;
+    private final EventStoreLocator eventStoreClient;
     private final List<EventConnector> connectors;
     private final ContextProvider contextProvider;
-    private final ClusterMetricTarget clusterMetrics;
+    private final MetricCollector clusterMetrics;
     private final Map<String, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Counter eventsCounter;
     private final Counter snapshotCounter;
 
-    public EventDispatcher(EventStoreManager eventStoreClient, Optional<List<EventConnector>> eventConnectors,
+    public EventDispatcher(EventStoreLocator eventStoreClient, Optional<List<EventConnector>> eventConnectors,
                            ContextProvider contextProvider,
                            MeterRegistry meterRegistry,
-                           ClusterMetricTarget clusterMetrics) {
+                           MetricCollector clusterMetrics) {
         this.contextProvider = contextProvider;
         this.clusterMetrics = clusterMetrics;
         this.eventStoreClient = eventStoreClient;
@@ -172,7 +172,7 @@ public class EventDispatcher implements BindableService {
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationDisconnected applicationDisconnected) {
+    public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected.getClient());
         logger.debug("application disconnected: {}, eventsStreams: {}", applicationDisconnected.getClient(), eventsStreams);
 

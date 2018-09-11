@@ -16,7 +16,8 @@ import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
 import io.axoniq.axonhub.internal.grpc.ContextRole;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.rest.ClusterRestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,7 @@ public class ClusterController implements SmartLifecycle {
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final Limits limits;
+    private final FeatureChecker limits;
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
@@ -64,7 +65,7 @@ public class ClusterController implements SmartLifecycle {
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
                              ApplicationEventPublisher applicationEventPublisher,
-                             Limits limits
+                             FeatureChecker limits
     ) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.entityManager = entityManager;
@@ -113,7 +114,7 @@ public class ClusterController implements SmartLifecycle {
     @Transactional
     public void start() {
         checkCurrentNodeSaved();
-        if (limits.isClusterAllowed()) {
+        if (Feature.CLUSTERING.enabled(limits)) {
             logger.debug("Start cluster controller");
 
             entityManager.createQuery("select c from ClusterNode c", ClusterNode.class)
@@ -130,7 +131,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public boolean isClustered() {
-        return limits.isClusterAllowed() && messagingPlatformConfiguration.getCluster().isEnabled();
+        return Feature.CLUSTERING.enabled(limits) && messagingPlatformConfiguration.getCluster().isEnabled();
     }
 
     private void checkCurrentNodeSaved() {
@@ -318,9 +319,9 @@ public class ClusterController implements SmartLifecycle {
     }
 
 
-    public boolean isActive(ClusterNode clusterNode) {
-        return clusterNode.getName().equals(messagingPlatformConfiguration.getName()) ||
-                (remoteConnections.get(clusterNode.getName()) != null && remoteConnections.get(clusterNode.getName())
+    public boolean isActive(String nodeName) {
+        return nodeName.equals(messagingPlatformConfiguration.getName()) ||
+                (remoteConnections.get(nodeName) != null && remoteConnections.get(nodeName)
                                                                                           .isConnected());
     }
 
@@ -402,6 +403,10 @@ public class ClusterController implements SmartLifecycle {
 
     public Set<String> getMyStorageContexts() {
         return getMe().getStorageContexts().stream().map(Context::getName).collect(Collectors.toSet());
+    }
+
+    public Set<String> getMyMessagingContexts() {
+        return getMe().getMessagingContexts().stream().map(Context::getName).collect(Collectors.toSet());
     }
 
     public boolean isMultiContext() {

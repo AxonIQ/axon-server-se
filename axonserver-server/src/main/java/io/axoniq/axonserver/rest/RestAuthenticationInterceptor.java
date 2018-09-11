@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcMetadataKeys;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -33,7 +33,7 @@ public class RestAuthenticationInterceptor implements HandlerInterceptor {
         }
 
         String context = (String) httpServletRequest.getAttribute(AxonServerAccessController.CONTEXT_PARAM);
-        if( context == null) context = ContextController.DEFAULT;
+        if( context == null) context = Topology.DEFAULT_CONTEXT;
 
         MessagingPlatformException exception = null;
         if(token == null) {

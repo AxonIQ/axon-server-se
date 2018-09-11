@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonhub.CommandSubscription;
 import io.axoniq.axonhub.QuerySubscription;
@@ -121,7 +122,7 @@ public class SubscriptionSynchronizer {
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationDisconnected event) {
+    public void on(TopologyEvents.ApplicationDisconnected event) {
         if (!event.isProxied()) {
             clusterController.activeConnections().forEach(remoteConnection -> remoteConnection
                     .clientStatus(event.getContext(), event.getComponentName(),
@@ -131,7 +132,7 @@ public class SubscriptionSynchronizer {
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationConnected event) {
+    public void on(TopologyEvents.ApplicationConnected event) {
         if (!event.isProxied()) {
             clusterController.activeConnections().forEach(remoteConnection ->
                                                                   remoteConnection.clientStatus(event.getContext(),

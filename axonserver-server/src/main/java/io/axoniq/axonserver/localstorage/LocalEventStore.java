@@ -13,7 +13,6 @@ import io.axoniq.axondb.grpc.QueryEventsResponse;
 import io.axoniq.axondb.grpc.ReadHighestSequenceNrRequest;
 import io.axoniq.axondb.grpc.ReadHighestSequenceNrResponse;
 import io.axoniq.axondb.grpc.TrackingToken;
-import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonhub.internal.grpc.TransactionWithToken;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
@@ -25,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -47,7 +45,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
     private volatile boolean running;
-    @Value("${axoniq.axondb.query.limit:200}")
+    @Value("${axoniq.axonserver.query.limit:200}")
     private long defaultLimit = 200;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
@@ -67,11 +65,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workers.cleanup();
     }
 
-    @EventListener
-    public void on(ClusterEvents.MasterStepDown stepDown) {
-        if( stepDown.isForwarded()) return;
-
-        Workers workers = workersMap.get(stepDown.getContextName());
+    public void cancel(String context) {
+        Workers workers = workersMap.get(context);
         if( workers == null) return;
 
         workers.eventWriteStorage.cancelPendingTransactions();

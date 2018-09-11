@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.features.FeatureStatus;
 
 import java.time.LocalDate;
 import java.util.List;

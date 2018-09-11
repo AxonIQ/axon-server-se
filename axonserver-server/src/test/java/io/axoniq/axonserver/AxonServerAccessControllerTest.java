@@ -2,7 +2,7 @@ package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.platform.application.AccessController;
 import io.axoniq.platform.application.PathMappingRepository;
 import org.junit.*;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 public class AxonServerAccessControllerTest {
     private AxonServerAccessController testSubject;
     @Mock
-    private Limits limits;
+    private FeatureChecker limits;
 
     @Mock
     private AccessController accessController;

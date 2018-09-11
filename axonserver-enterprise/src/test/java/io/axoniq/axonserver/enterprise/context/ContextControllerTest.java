@@ -5,6 +5,8 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonhub.internal.grpc.ContextRole;
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.licensing.Limits;
 import org.junit.*;
 import org.junit.runner.*;
@@ -35,15 +37,23 @@ public class ContextControllerTest {
     private EntityManager entityManager;
 
     @Mock
-    private Limits limits;
-
-    @Mock
     private ApplicationEventPublisher eventPublisher;
 
 
     @Before
     public void setUp()  {
         Context defaultContext = new Context(ContextController.DEFAULT);
+        FeatureChecker limits = new FeatureChecker() {
+            @Override
+            public boolean isEnterprise() {
+                return true;
+            }
+
+            @Override
+            public int getMaxContexts() {
+                return 3;
+            }
+        };
         ClusterNode node1 = new ClusterNode("node1", null, null, null, null, null);
         ClusterNode node2 = new ClusterNode("node2", null, null, null, null, null);
         node1.addContext(defaultContext, true, true);
@@ -92,8 +102,6 @@ public class ContextControllerTest {
 
     @Test
     public void addContext() {
-        when(limits.isAddContextAllowed()).thenReturn(true);
-        when(limits.getMaxContexts()).thenReturn(3);
         testSubject.addContext("test1", Collections.singletonList(new NodeRoles("node1", false, false)), false);
 
         ClusterNode node1 = entityManager.find(ClusterNode.class, "node1");
@@ -106,8 +114,6 @@ public class ContextControllerTest {
 
     @Test
     public void on() {
-        when(limits.isAddContextAllowed()).thenReturn(true);
-        when(limits.getMaxContexts()).thenReturn(3);
         RemoteConnection remoteConnection = mock(RemoteConnection.class);
         ClusterNode node2 = new ClusterNode("node2", null, null, null, null, null);
         when(remoteConnection.getClusterNode()).thenReturn(node2);

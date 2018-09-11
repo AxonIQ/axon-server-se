@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.ClientApplicationEvents;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -35,13 +35,13 @@ public class Applications implements Iterable<Application> {
 
 
     @EventListener
-    public void on(ClientApplicationEvents.ApplicationDisconnected event) {
+    public void on(TopologyEvents.ApplicationDisconnected event) {
         clientsPerComponent.forEach((k,v) -> v.remove(new ConnectedClient(event.getClient(), null)));
         clientsPerComponent.entrySet().removeIf(entry -> entry.getValue().isEmpty());
     }
 
     @EventListener
-    public void on(ClientApplicationEvents.ApplicationConnected event) {
+    public void on(TopologyEvents.ApplicationConnected event) {
         clientsPerComponent.computeIfAbsent(new ComponentContext(event.getComponentName(), event.getContext()), k -> new CopyOnWriteArraySet<>())
                            .add(new ConnectedClient(event.getClient(), event.isProxied() ? event.getProxy() : getCurrentNode()));
     }

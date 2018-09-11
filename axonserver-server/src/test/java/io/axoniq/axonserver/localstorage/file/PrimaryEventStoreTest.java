@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axondb.Event;
-import io.axoniq.axonserver.enterprise.storage.file.SecondaryEventStore;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
@@ -41,7 +40,7 @@ public class PrimaryEventStoreTest {
         IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getEvent());
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT), indexManager, eventTransformerFactory, embeddedDBProperties.getEvent());
-        SecondaryEventStore second = new SecondaryEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
+        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
                                                              eventTransformerFactory,
                                                              embeddedDBProperties.getEvent());
         testSubject.next(second);
@@ -53,7 +52,7 @@ public class PrimaryEventStoreTest {
     public void rollbackDeleteSegments() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(100);
         // setup with 10,000 events
-        IntStream.range(0, 1000).forEach(j -> {
+        IntStream.range(0, 100).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
             List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, 100).forEach(i -> {
@@ -78,10 +77,10 @@ public class PrimaryEventStoreTest {
         latch.await(5, TimeUnit.SECONDS);
         Thread.sleep(1500);
         testSubject.rollback(9899);
-        assertEquals(9899, testSubject.getLastToken());
+        Assert.assertEquals(9899, testSubject.getLastToken());
 
         testSubject.rollback(859);
-        assertEquals(899, testSubject.getLastToken());
+        Assert.assertEquals(899, testSubject.getLastToken());
     }
 
     @Test
@@ -112,10 +111,10 @@ public class PrimaryEventStoreTest {
         latch.await(5, TimeUnit.SECONDS);
         Thread.sleep(1500);
         testSubject.rollback(2);
-        assertEquals(2, testSubject.getLastToken());
+        Assert.assertEquals(2, testSubject.getLastToken());
 
         testSubject.initSegments(Long.MAX_VALUE);
-        assertEquals(2, testSubject.getLastToken());
+        Assert.assertEquals(2, testSubject.getLastToken());
     }
 
 }

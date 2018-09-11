@@ -1,8 +1,8 @@
 package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.licensing.Limits;
-import io.axoniq.axonserver.rest.Feature;
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.platform.application.AccessController;
 import io.axoniq.platform.application.PathMappingRepository;
 import io.axoniq.platform.application.jpa.Application;
@@ -21,12 +21,12 @@ public class AxonServerAccessController {
     private final AccessController accessController;
     private final PathMappingRepository pathMappingRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final Limits limits;
+    private final FeatureChecker limits;
 
     public AxonServerAccessController(AccessController accessController,
                                       PathMappingRepository pathMappingRepository,
                                       MessagingPlatformConfiguration messagingPlatformConfiguration,
-                                      Limits limits) {
+                                      FeatureChecker limits) {
         this.accessController = accessController;
         this.pathMappingRepository = pathMappingRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;

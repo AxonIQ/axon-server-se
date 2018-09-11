@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.events;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonhub.internal.grpc.ContextRole;
 
@@ -11,20 +12,9 @@ import java.util.List;
  */
 public class ClusterEvents {
 
-    public abstract static class ClusterBaseEvent {
-        private final boolean forwarded;
-
-        protected ClusterBaseEvent(boolean forwarded) {
-            this.forwarded = forwarded;
-        }
-
-        public boolean isForwarded() {
-            return forwarded;
-        }
-    }
 
     @KeepNames
-    public static class AxonHubInstanceConnected extends ClusterBaseEvent {
+    public static class AxonHubInstanceConnected extends TopologyEvents.TopologyBaseEvent {
 
         private final RemoteConnection remoteConnection;
         private final long modelVersion;
@@ -59,7 +49,7 @@ public class ClusterEvents {
     }
 
     @KeepNames
-    public static class AxonHubInstanceDisconnected extends ClusterBaseEvent {
+    public static class AxonHubInstanceDisconnected extends TopologyEvents.TopologyBaseEvent {
         private final String nodeName;
 
         public AxonHubInstanceDisconnected(String nodeName) {
@@ -77,7 +67,7 @@ public class ClusterEvents {
      * Author: marc
      */
     @KeepNames
-    public static class MasterStepDown extends ClusterBaseEvent {
+    public static class MasterStepDown extends TopologyEvents.TopologyBaseEvent {
 
         private final String contextName;
 
@@ -95,7 +85,7 @@ public class ClusterEvents {
      * Author: marc
      */
     @KeepNames
-    public static class MasterDisconnected extends ClusterBaseEvent{
+    public static class MasterDisconnected extends TopologyEvents.TopologyBaseEvent{
 
         private final String contextName;
 
@@ -113,7 +103,7 @@ public class ClusterEvents {
      * Author: marc
      */
     @KeepNames
-    public static class MasterConfirmation extends ClusterBaseEvent {
+    public static class MasterConfirmation extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
         private final String node;
@@ -137,7 +127,7 @@ public class ClusterEvents {
      * Author: marc
      */
     @KeepNames
-    public static class BecomeMaster extends ClusterBaseEvent {
+    public static class BecomeMaster extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
         private final String node;
@@ -158,7 +148,7 @@ public class ClusterEvents {
     }
 
     @KeepNames
-    public static class CoordinatorStepDown extends ClusterBaseEvent {
+    public static class CoordinatorStepDown extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
 
@@ -174,7 +164,7 @@ public class ClusterEvents {
     }
 
     @KeepNames
-    public static class CoordinatorConfirmation extends ClusterBaseEvent {
+    public static class CoordinatorConfirmation extends TopologyEvents.TopologyBaseEvent {
 
         private final String node;
         private final String context;
@@ -195,7 +185,7 @@ public class ClusterEvents {
     }
 
     @KeepNames
-    public static class BecomeCoordinator extends ClusterBaseEvent {
+    public static class BecomeCoordinator extends TopologyEvents.TopologyBaseEvent {
 
         private final String node;
         private final String context;

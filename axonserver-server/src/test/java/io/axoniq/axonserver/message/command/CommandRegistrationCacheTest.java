@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonhub.Command;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonhub.grpc.CommandProviderInbound;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -25,21 +25,21 @@ public class CommandRegistrationCacheTest {
         streamObserver1 = new CountingStreamObserver<>();
         streamObserver2 = new CountingStreamObserver<>();
 
-        registrationCache.add(ContextController.DEFAULT, "command1", new DirectCommandHandler(streamObserver1, "client1", "component"));
-        registrationCache.add(ContextController.DEFAULT,"command1", new DirectCommandHandler(streamObserver2, "client2", "component"));
-        registrationCache.add(ContextController.DEFAULT,"command2", new DirectCommandHandler(streamObserver2, "client2", "component"));
+        registrationCache.add(Topology.DEFAULT_CONTEXT, "command1", new DirectCommandHandler(streamObserver1, "client1", "component"));
+        registrationCache.add(Topology.DEFAULT_CONTEXT,"command1", new DirectCommandHandler(streamObserver2, "client2", "component"));
+        registrationCache.add(Topology.DEFAULT_CONTEXT,"command2", new DirectCommandHandler(streamObserver2, "client2", "component"));
     }
 
     @Test
     public void removeCommandSubscription() {
-        registrationCache.remove(ContextController.DEFAULT,"command1", "client2");
+        registrationCache.remove(Topology.DEFAULT_CONTEXT,"command1", "client2");
         assertTrue(registrationCache.getAll().containsKey(new DirectCommandHandler(streamObserver2, "client2", "component")));
         assertEquals(1, registrationCache.getAll().get(new DirectCommandHandler(streamObserver2, "client2", "component")).size());
     }
 
     @Test
     public void removeLastCommandSubscription() {
-        registrationCache.remove(ContextController.DEFAULT,"command1", "client1");
+        registrationCache.remove(Topology.DEFAULT_CONTEXT,"command1", "client1");
         assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(streamObserver1, "client1", "component")));
     }
 
@@ -51,19 +51,19 @@ public class CommandRegistrationCacheTest {
 
     @Test
     public void add() {
-        registrationCache.add(ContextController.DEFAULT,"command2", new DirectCommandHandler(streamObserver1, "client1", "component"));
+        registrationCache.add(Topology.DEFAULT_CONTEXT,"command2", new DirectCommandHandler(streamObserver1, "client1", "component"));
         assertEquals(2, registrationCache.getAll().get(new DirectCommandHandler(streamObserver1, "client1", "component")).size());
     }
 
     @Test
     public void get() {
-        assertNotNull(registrationCache.getNode(ContextController.DEFAULT, Command.newBuilder().setName("command1").build(),
+        assertNotNull(registrationCache.getNode(Topology.DEFAULT_CONTEXT, Command.newBuilder().setName("command1").build(),
                 "command1"));
     }
 
     @Test
     public void getNotFound() {
-        assertNull(registrationCache.getNode(ContextController.DEFAULT, Command.newBuilder().setName("command3").build(),
+        assertNull(registrationCache.getNode(Topology.DEFAULT_CONTEXT, Command.newBuilder().setName("command3").build(),
                 "command1"));
     }
 

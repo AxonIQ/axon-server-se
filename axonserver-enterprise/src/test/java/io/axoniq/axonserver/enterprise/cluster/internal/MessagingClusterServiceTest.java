@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
@@ -86,7 +87,7 @@ public class MessagingClusterServiceTest {
 
         requestStream.onCompleted();
         Object next = eventPublisher.events().iterator().next();
-        assertTrue(next instanceof ClusterEvents.ApplicationConnected);
+        assertTrue(next instanceof TopologyEvents.ApplicationConnected);
     }
 
     @Test

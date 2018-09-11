@@ -1,8 +1,7 @@
 package io.axoniq.axonserver.enterprise.component.processor.balancing;
 
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.ApplicationConnected;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdated;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.UpdatedLoadBalance;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
@@ -46,7 +45,7 @@ public class AutoLoadBalancer {
     }
 
     @EventListener
-    public void onClientConnected(ApplicationConnected event) {
+    public void onClientConnected(TopologyEvents.ApplicationConnected event) {
         componentMap.put(event.getClient(), event.getComponentName());
     }
 
@@ -68,7 +67,7 @@ public class AutoLoadBalancer {
     }
 
     @EventListener
-    public void onClientDisconnected(ApplicationDisconnected event) {
+    public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
         componentMap.remove(event.getClient());
         cache.forEach((processor, clients) -> {
             boolean removed = clients.remove(event.getClient());

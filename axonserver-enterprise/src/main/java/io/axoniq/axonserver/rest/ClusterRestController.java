@@ -2,10 +2,12 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.enterprise.cluster.internal.ClusterJoinRequester;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,19 +32,20 @@ public class ClusterRestController {
 
     private final ClusterController clusterController;
     private final ClusterJoinRequester clusterJoinRequester;
-    private final Limits limits;
+    private final FeatureChecker limits;
 
 
     public ClusterRestController(ClusterController clusterController, ClusterJoinRequester clusterJoinRequester,
-                                 Limits limits) {
+                                 FeatureChecker limits) {
         this.clusterController = clusterController;
         this.clusterJoinRequester = clusterJoinRequester;
         this.limits = limits;
     }
 
+
     @PostMapping
     public Future<Void> add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
-        if( !limits.isClusterAllowed() ) {
+        if( !Feature.CLUSTERING.enabled(limits) ) {
             throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of AxonHub servers");
         }
         if( clusterController.getRemoteConnections().size() >= limits.getMaxClusterSize()) {
@@ -69,7 +72,7 @@ public class ClusterRestController {
 
     @GetMapping(path="{name}")
     public JsonClusterNode getOne(@PathVariable("name") String name) {
-        io.axoniq.axonserver.rest.ClusterNode node = clusterController.getNode(name);
+        ClusterNode node = clusterController.getNode(name);
         if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_APPLICATION, "Node " + name + " not found");
 
         return JsonClusterNode.from(node, true);
@@ -139,10 +142,6 @@ public class ClusterRestController {
 
         public void setGrpcPort(Integer grpcPort) {
             this.grpcPort = grpcPort;
-        }
-
-        public io.axoniq.axonserver.rest.ClusterNode toClusterNode() {
-            return new io.axoniq.axonserver.rest.ClusterNode(name, hostName, internalHostName, grpcPort, internalGrpcPort, httpPort);
         }
 
         public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected) {

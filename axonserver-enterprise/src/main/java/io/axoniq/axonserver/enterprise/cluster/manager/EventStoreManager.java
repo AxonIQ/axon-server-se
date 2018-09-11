@@ -18,6 +18,7 @@ import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
 import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
+import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +47,7 @@ import static java.util.stream.StreamSupport.stream;
 /**
  * Author: marc
  */
-@Controller
-public class EventStoreManager implements SmartLifecycle {
+public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final Logger logger = LoggerFactory.getLogger(EventStoreManager.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final StubFactory stubFactory;
@@ -123,6 +123,9 @@ public class EventStoreManager implements SmartLifecycle {
     public void on(ClusterEvents.MasterStepDown masterStepDown) {
         logger.info("Master stepped down: {}", masterStepDown.getContextName());
         masterPerContext.remove(masterStepDown.getContextName());
+        if( !masterStepDown.isForwarded()) {
+            localEventStore.cancel(masterStepDown.getContextName());
+        }
         logger.debug("Scheduling on step down");
         if( task == null || task.isDone()) {
             task =scheduledExecutorService.schedule(() -> startLeaderElection(

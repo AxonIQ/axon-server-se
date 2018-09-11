@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonhub.QueryRequest;
 import io.axoniq.axonhub.QueryResponse;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.message.FlowControlQueues;
@@ -110,7 +110,7 @@ public class QueryDispatcher {
     }
 
     @EventListener
-    public void on(ClusterEvents.ApplicationDisconnected event) {
+    public void on(TopologyEvents.ApplicationDisconnected event) {
         registrationCache.remove(event.getClient());
     }
 

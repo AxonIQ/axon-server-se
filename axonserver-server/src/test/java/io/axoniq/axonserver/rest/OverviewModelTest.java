@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.rest.svg.mapping.Application;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.rest.svg.mapping.FakeApplication;
 import io.axoniq.axonserver.rest.svg.mapping.FakeAxonServer;
+import io.axoniq.axonserver.topology.SimpleAxonServerNode;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import static java.util.Arrays.asList;
@@ -23,13 +23,13 @@ public class OverviewModelTest {
 
     @Before
     public void setUp() {
-        ClusterController clusterController = mock(ClusterController.class);
+        Topology clusterController = mock(Topology.class);
         Iterable<AxonServer> hubs = asList(new FakeAxonServer(true,
-                                                              new ClusterNode("hub1","localhost","internal",1,2,3),
+                                                              new SimpleAxonServerNode("hub1","localhost",1,2),
                                                               asSet("contex", "default"),
                                                               asSet( "default")),
                                            new FakeAxonServer(false,
-                                                              new ClusterNode("hub2","localhost","internal",4,5,6),
+                                                              new SimpleAxonServerNode("hub2", "localhost",  4, 5),
                                                               asSet("contex"),
                                                               asSet() ));
 

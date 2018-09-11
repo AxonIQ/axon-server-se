@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
@@ -18,7 +18,7 @@ public class CommandMetricsRegistryTest {
 
     @Before
     public void setUp() {
-        testSubject = new CommandMetricsRegistry(new SimpleMeterRegistry(), new ClusterMetricTarget());
+        testSubject = new CommandMetricsRegistry(new SimpleMeterRegistry(), new DefaultMetricCollector());
     }
 
     @Test

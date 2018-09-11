@@ -1,6 +1,10 @@
 package io.axoniq.axonserver.topology;
 
+import org.apache.logging.log4j.util.ReadOnlyStringMap;
+
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -16,11 +20,30 @@ public interface Topology {
         return false;
     }
 
-    boolean isActive(AxonServerNode node);
+    default boolean isActive(AxonServerNode node) {
+        return true;
+    }
 
-    Stream<AxonServerNode> messagingNodes();
+    default Stream<? extends AxonServerNode> messagingNodes() {
+        return Stream.of(getMe());
+    }
 
-    List<AxonServerNode> getRemoteConnections();
+
+    default List<AxonServerNode> getRemoteConnections() {
+        return new ArrayList<>();
+    }
 
     AxonServerNode getMe();
+
+    default Iterable<String> getMyMessagingContextsNames() {
+        return getMe().getMessagingContextNames();
+    }
+
+    default AxonServerNode findNodeForClient(String clientName, String componentName, String context) {
+        return getMe();
+    }
+
+    default Iterable<String> getMyStorageContextNames() {
+        return getMe().getStorageContextNames();
+    }
 }

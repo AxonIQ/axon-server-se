@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.topology.AxonServerNode;
 
 import java.util.Collections;
 import java.util.Set;
@@ -12,11 +12,11 @@ import java.util.Set;
 public class FakeAxonServer implements AxonServer {
 
     private final boolean active;
-    private final ClusterNode node;
+    private final AxonServerNode node;
     private final Set<String> contexts;
     private final Set<String> disconnectedContexts;
 
-    public FakeAxonServer(boolean active, ClusterNode node, Set<String> contexts,
+    public FakeAxonServer(boolean active, AxonServerNode node, Set<String> contexts,
                           Set<String> disconnectedContexts) {
         this.active = active;
         this.node = node;
@@ -31,7 +31,7 @@ public class FakeAxonServer implements AxonServer {
     }
 
     @Override
-    public ClusterNode node() {
+    public AxonServerNode node() {
         return node;
     }
 

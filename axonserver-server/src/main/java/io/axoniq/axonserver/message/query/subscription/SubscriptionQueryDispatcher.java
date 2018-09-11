@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.message.query.subscription;
 
-import io.axoniq.axonserver.ClusterEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonhub.SubscriptionQuery;
 import io.axoniq.axonserver.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryRequestEvent;
 import io.axoniq.axonhub.SubscriptionQueryRequest;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
@@ -98,7 +98,7 @@ public class SubscriptionQueryDispatcher {
 
 
     @EventListener
-    public void on(ClusterEvents.ApplicationDisconnected event){
+    public void on(TopologyEvents.ApplicationDisconnected event){
         subscriptionsSent.remove(event.getClient());
     }
 }

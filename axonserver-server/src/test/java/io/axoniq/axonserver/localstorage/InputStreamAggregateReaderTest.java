@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.Assert.*;
-
 /**
  * Author: marc
  */
@@ -51,7 +49,7 @@ public class InputStreamAggregateReaderTest {
         AtomicLong sequenceNumber = new AtomicLong();
         testSubject.readEvents("1", true, 0,
                                event -> sequenceNumber.set(event.getAggregateSequenceNumber()));
-        assertEquals(99, sequenceNumber.intValue());
+        Assert.assertEquals(99, sequenceNumber.intValue());
     }
 
     @Test
@@ -59,7 +57,7 @@ public class InputStreamAggregateReaderTest {
         AtomicLong sequenceNumber = new AtomicLong();
         testSubject.readEvents("999", true, 0,
                                event -> sequenceNumber.set(event.getAggregateSequenceNumber()));
-        assertEquals(99, sequenceNumber.intValue());
+        Assert.assertEquals(99, sequenceNumber.intValue());
     }
 
     @Test
@@ -69,8 +67,8 @@ public class InputStreamAggregateReaderTest {
             events.add(event);
         });
 
-        assertEquals(25, events.size());
-        assertEquals("Snapshot", events.get(0).getAggregateType());
+        Assert.assertEquals(25, events.size());
+        Assert.assertEquals("Snapshot", events.get(0).getAggregateType());
     }
 
     @Test
@@ -80,8 +78,8 @@ public class InputStreamAggregateReaderTest {
             events.add(event);
         });
 
-        assertEquals(10, events.size());
-        assertEquals("Demo", events.get(0).getAggregateType());
+        Assert.assertEquals(10, events.size());
+        Assert.assertEquals("Demo", events.get(0).getAggregateType());
     }
 
 }
