@@ -3,6 +3,8 @@ package io.axoniq.axonserver.licensing;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.features.FeatureStatus;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -12,6 +14,8 @@ import java.util.stream.Collectors;
 /**
  * Author: marc
  */
+@Component
+@Primary
 public class Limits implements FeatureChecker  {
     public int getMaxClusterSize() {
         if( Feature.CLUSTERING.enabled(this)) return LicenseConfiguration.getInstance().getClusterNodes();

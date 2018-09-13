@@ -52,3 +52,8 @@ management:
         include: metrics,info,health,loggers
 
 
+info:
+  app:
+    name: ${spring.application.name}
+    description: Powered by AxonIQ
+    version: @project.version@

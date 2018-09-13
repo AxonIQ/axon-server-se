@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.config;
 
 import io.axoniq.axonserver.LifecycleController;
+import io.axoniq.axonserver.config.AxonServerFreeConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
@@ -12,30 +13,31 @@ import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFac
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
-import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * Author: marc
  */
 @Configuration
+@AutoConfigureBefore(AxonServerFreeConfiguration.class)
 public class AxonServerEnterpriseConfiguration {
 
     @Bean
+    @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
             ContextController contextController,
             MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -46,11 +48,13 @@ public class AxonServerEnterpriseConfiguration {
     }
 
     @Bean
+    @Conditional(ClusteringAllowed.class)
     public MetricCollector metricCollector() {
         return new ClusterMetricTarget();
     }
 
     @Bean
+    @Conditional(ClusteringAllowed.class)
     public Topology topology(ClusterController clusterController) {
         return new ClusterTopology(clusterController);
     }
@@ -63,6 +67,7 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
+    @Conditional(MemoryMappedStorage.class)
     public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
                                                StorageTransactionManagerFactory storageTransactionManagerFactory) {
         return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
@@ -70,19 +75,9 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
+    @Conditional(ClusteringAllowed.class)
     public StorageTransactionManagerFactory storageTransactionManagerFactory(ReplicationManager replicationManager) {
         return new ClusterTransactionManagerFactory(replicationManager);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(EventTransformerFactory.class)
-    public EventTransformerFactory eventTransformerFactory() {
-        return new DefaultEventTransformerFactory();
-    }
-
-    @Bean
-    public FeatureChecker featureChecker() {
-        return new Limits();
     }
 
 }
