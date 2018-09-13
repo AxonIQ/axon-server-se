@@ -34,7 +34,7 @@ public class AutoRebalancing  {
     protected void rebalance() {
         if( !Feature.CONNECTION_BALANCING.enabled(featureChecker)) return;
         Set<PlatformService.ClientComponent> connectedClients = platformService.getConnectedClients();
-        logger.warn("Rebalance: {}", connectedClients);
+        logger.debug("Rebalance: {}", connectedClients);
         connectedClients.stream().filter(e -> clusterController.canRebalance(e.getClient(), e.getComponent(), e.getContext())).findFirst()
                 .ifPresent(platformService::requestReconnect);
     }

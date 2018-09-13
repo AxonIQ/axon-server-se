@@ -161,10 +161,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @EventListener
     public void on(ContextEvents.NodeAddedToContext contextCreated) {
-        logger.warn("{}: updated {} storage: {}", contextCreated.getName(), contextCreated.getNode().getName(), contextCreated.getNode().isStorage());
+        logger.debug("{}: updated {} storage: {}", contextCreated.getName(), contextCreated.getNode().getName(), contextCreated.getNode().isStorage());
         try {
             Context context = context(contextCreated.getName());
-            logger.warn("{}: storage members {}", context.getName(), context.getStorageNodeNames());
+            logger.debug("{}: storage members {}", context.getName(), context.getStorageNodeNames());
             if (context.isStorageMember(nodeName)) {
                 initContext(context, false);
             } else {

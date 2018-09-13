@@ -3,7 +3,7 @@ server:
 
 axoniq:
   axonhub:
-    servers: localhost
+    servers: localhost:8124,localhost:8125,localhost:8126
     command-threads: 4
     query-threads: 4
     nr-of-new-permits: 100000

@@ -39,6 +39,8 @@ logging:
     io.axoniq.axonserver.AxonServerEnterprise: INFO
     io.axoniq.axonserver.grpc.Gateway: INFO
     io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServer: INFO
+    io.axoniq.axonserver.enterprise.logging.ClusterEventsLogger: INFO
+    io.axoniq.axonserver.logging.TopologyEventsLogger: INFO
     org.springframework.boot.web.embedded.tomcat.TomcatWebServer: INFO
     org.hibernate.orm.deprecation: ERROR
 

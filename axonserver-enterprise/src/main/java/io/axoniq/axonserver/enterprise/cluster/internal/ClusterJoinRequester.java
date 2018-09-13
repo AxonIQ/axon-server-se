@@ -4,15 +4,14 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonhub.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
-import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
@@ -20,7 +19,6 @@ import java.util.concurrent.Future;
  * Author: marc
  */
 @Component
-@ConditionalOnBean(ClusterTopology.class)
 public class ClusterJoinRequester {
     private final ClusterController clusterController;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
@@ -30,11 +28,11 @@ public class ClusterJoinRequester {
 
     public ClusterJoinRequester(ClusterController clusterController,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
-                                EventStoreManager eventStoreManager,
+                                Optional<EventStoreManager> eventStoreManager,
                                 StubFactory stubFactory) {
         this.clusterController = clusterController;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
-        this.eventStoreManager = eventStoreManager;
+        this.eventStoreManager = eventStoreManager.orElse(null);
         this.stubFactory = stubFactory;
     }
 

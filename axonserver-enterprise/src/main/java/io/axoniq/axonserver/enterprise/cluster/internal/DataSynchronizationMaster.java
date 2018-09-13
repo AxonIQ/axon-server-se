@@ -303,7 +303,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
 
             @Override
             protected String sender() {
-                return replica.nodeName;
+                return replica != null ? replica.nodeName : "None";
             }
 
             @Override
