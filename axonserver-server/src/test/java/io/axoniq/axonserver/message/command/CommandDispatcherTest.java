@@ -12,6 +12,7 @@ import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -39,7 +40,7 @@ public class CommandDispatcherTest {
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(Metrics.globalRegistry,
+        metricsRegistry = new CommandMetricsRegistry(new SimpleMeterRegistry(),
                                                      new DefaultMetricCollector());
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry);
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();

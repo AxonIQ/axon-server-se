@@ -4,6 +4,7 @@ import io.axoniq.axonserver.message.query.QueryMetricsRegistry.QueryMetric;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import static org.junit.Assert.*;
@@ -16,7 +17,7 @@ public class QueryMetricsRegistryTest {
 
     @Before
     public void setUp() {
-        testSubject = new QueryMetricsRegistry(Metrics.globalRegistry, new DefaultMetricCollector());
+        testSubject = new QueryMetricsRegistry(new SimpleMeterRegistry(), new DefaultMetricCollector());
     }
 
     @Test

@@ -13,9 +13,7 @@ COPY ${JAR_FILE} app.jar
 
 ADD maven/axoniq-cli.jar cli.jar
 ADD axonserver.properties .
-#ADD axoniq.license .
 ADD startup.sh .
-ADD register.sh .
 RUN dos2unix *.properties *.sh
 RUN chmod +x *.sh
 ENTRYPOINT ["/startup.sh"]

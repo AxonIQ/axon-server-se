@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
@@ -11,7 +12,10 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -27,6 +31,9 @@ import static org.mockito.Mockito.*;
  * Author: marc
  */
 @RunWith(SpringRunner.class)
+@SpringBootTest(classes = AxonServerEnterprise.class)
+@EnableAutoConfiguration
+@EntityScan("io.axoniq")
 @DataJpaTest
 public class ContextControllerTest {
 

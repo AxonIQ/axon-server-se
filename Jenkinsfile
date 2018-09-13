@@ -63,6 +63,7 @@ podTemplate(label: label,
                     sh """
                         cat /dockercfg/system-account.json | docker login -u _json_key --password-stdin https://eu.gcr.io
                         docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver:${pomVersion}
+                        docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver-enterprise:${pomVersion}
                     """
                 }
             }

@@ -8,5 +8,4 @@ else
   echo "axoniq.axonserver.domain=$DOMAIN" >> axonhub.properties
 fi
 
-/register.sh &
 java -Djava.security.egd=file:/dev/./urandom -Xmx512m -jar app.jar
