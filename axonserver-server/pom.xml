@@ -559,8 +559,8 @@
                         <configuration>
                             <images>
                                 <image>
-                                    <alias>axonhub</alias>
-                                    <name>${gcloud.registry}/${gcloud.project.name}/axonhub:${project.version}</name>
+                                    <alias>axonserver</alias>
+                                    <name>${gcloud.registry}/${gcloud.project.name}/axonserver:${project.version}</name>
 
                                     <build>
                                         <from>openjdk:8-jdk-alpine</from>
@@ -592,9 +592,9 @@
                                         <namingStrategy>alias</namingStrategy>
                                         <network>
                                             <name>axoniq</name>
-                                            <alias>axonhub</alias>
+                                            <alias>axonserver</alias>
                                         </network>
-                                        <hostname>axonhub.axoniq</hostname>
+                                        <hostname>axonserver.axoniq</hostname>
                                         <ports>
                                             <port>8024:8024</port>
                                             <port>8124:8124</port>
