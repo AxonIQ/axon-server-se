@@ -9,6 +9,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonhub.internal.grpc.ContextRole;
 import io.axoniq.axonhub.internal.grpc.ContextUpdate;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
@@ -27,9 +28,6 @@ import javax.persistence.EntityManager;
  */
 @Controller
 public class ContextController {
-
-    public static final String DEFAULT = "default";
-
     private final EntityManager entityManager;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -72,7 +70,7 @@ public class ContextController {
 
     @Transactional
     public ContextEvents.ContextDeleted deleteContext(String name, boolean proxied) {
-        if (DEFAULT.equals(name)) {
+        if (Topology.DEFAULT_CONTEXT.equals(name)) {
             throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_DEFAULT,
                                                  "Not allowed to delete default context");
         }

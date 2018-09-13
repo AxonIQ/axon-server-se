@@ -11,6 +11,7 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.platform.KeepNames;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -129,6 +130,7 @@ public class PublicRestController {
     }
 
 
+    @KeepNames
     public static class JsonServerNode {
 
         private final AxonServerNode wrapped;

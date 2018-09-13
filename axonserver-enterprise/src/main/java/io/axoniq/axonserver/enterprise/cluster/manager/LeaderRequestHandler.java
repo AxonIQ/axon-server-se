@@ -7,6 +7,7 @@ import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,7 @@ import java.util.function.Function;
  * Author: marc
  */
 @Component
+@ConditionalOnBean(EventStoreManager.class)
 public class LeaderRequestHandler {
     private final Function<String, String> currentMasterProvider;
     private final Consumer<ConnectorCommand> commandPublisher;

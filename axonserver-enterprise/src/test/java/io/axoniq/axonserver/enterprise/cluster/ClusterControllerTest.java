@@ -6,7 +6,6 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
@@ -15,7 +14,7 @@ import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceI
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonhub.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
-import io.axoniq.platform.application.ApplicationRepository;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -62,7 +61,7 @@ public class ClusterControllerTest {
 
     @Before
     public void setUp()  {
-        Context context = new Context(ContextController.DEFAULT);
+        Context context = new Context(Topology.DEFAULT_CONTEXT);
         FeatureChecker limits = new FeatureChecker() {
             @Override
             public boolean isEnterprise() {
@@ -165,11 +164,11 @@ public class ClusterControllerTest {
     public void findNodeForClient() {
         List<ClusterNode> clusterNodes = new ArrayList<>();
         clusterNodes.add(new ClusterNode("MyName", "hostName", "internalHostName", 0, 0, 0));
-        Context context = new Context(ContextController.DEFAULT);
+        Context context = new Context(Topology.DEFAULT_CONTEXT);
         clusterNodes.get(0).addContext(context, true, true);
         testSubject.start();
         when(nodeSelectionStrategy.selectNode(any(), any(), any())).thenReturn("Dummy");
-        ClusterNode node = testSubject.findNodeForClient("client", "component", ContextController.DEFAULT);
+        ClusterNode node = testSubject.findNodeForClient("client", "component", Topology.DEFAULT_CONTEXT);
         assertEquals(testSubject.getMe(), node);
     }
 
@@ -192,7 +191,7 @@ public class ClusterControllerTest {
 
     @Test
     public void canRebalance()  {
-        assertFalse(testSubject.canRebalance("client", "component", ContextController.DEFAULT));
+        assertFalse(testSubject.canRebalance("client", "component", Topology.DEFAULT_CONTEXT));
     }
 
     @Test

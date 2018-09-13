@@ -19,6 +19,7 @@ import io.axoniq.axonhub.internal.grpc.ContextRole;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.rest.ClusterRestController;
+import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -176,7 +177,7 @@ public class ClusterController implements SmartLifecycle {
                     clusterNode.addContext(contextClusterNode);
                 });
             } else {
-                clusterNode.addContext(entityManager.find(Context.class, ContextController.DEFAULT), true, true);
+                clusterNode.addContext(entityManager.find(Context.class, Topology.DEFAULT_CONTEXT), true, true);
             }
             entityManager.persist(clusterNode);
         }

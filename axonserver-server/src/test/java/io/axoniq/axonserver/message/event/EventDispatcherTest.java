@@ -4,7 +4,6 @@ import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.Confirmation;
 import io.axoniq.axondb.grpc.EventWithToken;
 import io.axoniq.axondb.grpc.GetEventsRequest;
-import io.axoniq.axonserver.config.AxonDBConfiguration;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
@@ -44,8 +43,6 @@ public class EventDispatcherTest {
 
     @Before
     public void setUp() {
-        AxonDBConfiguration eventStoreConfiguration = new AxonDBConfiguration();
-        eventStoreConfiguration.setServers("localhost:8080");
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
         when(eventStoreManager.getEventStore(any())).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreManager, Optional.empty(), () -> Topology.DEFAULT_CONTEXT,

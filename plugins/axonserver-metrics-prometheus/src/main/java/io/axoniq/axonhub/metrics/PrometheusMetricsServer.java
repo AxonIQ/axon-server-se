@@ -1,11 +1,9 @@
-package io.axoniq.axonserver.metrics;
+package io.axoniq.axonhub.metrics;
 
-import com.codahale.metrics.MetricRegistry;
-import io.prometheus.client.CollectorRegistry;
-import io.prometheus.client.dropwizard.DropwizardExports;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Service;
-
 
 
 /**
@@ -13,13 +11,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class PrometheusMetricsServer implements SmartLifecycle {
+    private final Logger logger = LoggerFactory.getLogger(PrometheusMetricsServer.class);
     private boolean running;
-    private final MetricRegistry metrics;
-    private DropwizardExports collector;
-
-    public PrometheusMetricsServer(MetricRegistry metrics) {
-        this.metrics = metrics;
-    }
 
     @Override
     public boolean isAutoStartup() {
@@ -29,15 +22,13 @@ public class PrometheusMetricsServer implements SmartLifecycle {
     @Override
     public void stop(Runnable runnable) {
         if( running) {
-            CollectorRegistry.defaultRegistry.unregister(collector);
             running = false;
         }
     }
 
     @Override
     public void start() {
-        collector = new DropwizardExports(metrics);
-        CollectorRegistry.defaultRegistry.register(collector);
+        logger.warn("Using PrometheusMetrics integration");
         running = true;
     }
 

@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,16 +15,23 @@ import org.springframework.stereotype.Component;
 public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
     private final DataSynchronizationMaster dataSynchronizationMaster;
     private final DataSynchronizationReplica dataSynchronizationReplica;
+    private final FeatureChecker featureChecker;
 
     public StorageReplicationHealthIndicator(
             DataSynchronizationMaster dataSynchronizationMaster,
-            DataSynchronizationReplica dataSynchronizationReplica) {
+            DataSynchronizationReplica dataSynchronizationReplica,
+            FeatureChecker featureChecker) {
         this.dataSynchronizationMaster = dataSynchronizationMaster;
         this.dataSynchronizationReplica = dataSynchronizationReplica;
+        this.featureChecker = featureChecker;
     }
 
     @Override
-    protected void doHealthCheck(Health.Builder builder) throws Exception {
+    protected void doHealthCheck(Health.Builder builder)  {
+        if(!Feature.CLUSTERING.enabled(featureChecker)) {
+            builder.down();
+            return;
+        }
         dataSynchronizationMaster.getConnectionsPerContext().forEach(
                 (context, replicas) -> {
                     builder.withDetail( context, "Master");

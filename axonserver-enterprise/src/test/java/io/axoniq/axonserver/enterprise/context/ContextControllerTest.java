@@ -5,9 +5,8 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonhub.internal.grpc.ContextRole;
-import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -42,7 +41,7 @@ public class ContextControllerTest {
 
     @Before
     public void setUp()  {
-        Context defaultContext = new Context(ContextController.DEFAULT);
+        Context defaultContext = new Context(Topology.DEFAULT_CONTEXT);
         FeatureChecker limits = new FeatureChecker() {
             @Override
             public boolean isEnterprise() {
@@ -75,8 +74,8 @@ public class ContextControllerTest {
     public void addNodeToContext() {
         ClusterNode node3 = new ClusterNode("node3", null, null, null, null, null);
         entityManager.persist(node3);
-        testSubject.addNodeToContext(ContextController.DEFAULT, "node3", true, true, false);
-        Context defaultContext = entityManager.find(Context.class, ContextController.DEFAULT);
+        testSubject.addNodeToContext(Topology.DEFAULT_CONTEXT, "node3", true, true, false);
+        Context defaultContext = entityManager.find(Context.class, Topology.DEFAULT_CONTEXT);
         assertEquals(3, defaultContext.getStorageNodes().size());
     }
 
@@ -95,7 +94,7 @@ public class ContextControllerTest {
 
     @Test
     public void deleteNodeFromContext() {
-        testSubject.deleteNodeFromContext(ContextController.DEFAULT, "node1", false);
+        testSubject.deleteNodeFromContext(Topology.DEFAULT_CONTEXT, "node1", false);
         ClusterNode node1 = entityManager.find(ClusterNode.class, "node1");
         assertEquals(0, node1.getContextNames().size());
     }

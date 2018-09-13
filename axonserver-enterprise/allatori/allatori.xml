@@ -1,0 +1,61 @@
+<config>
+    <input single-jar="@project.build.finalName@.jar">
+        <jar in="@project.build.finalName@.jar" out="@project.build.finalName@-obs.jar"/>
+        <jar in="dependency/*.jar" out="dependency/*.jar"/>
+    </input>
+
+    <keep-names>
+        <class template="class io.axoniq.axonserver.AxonServerEnterprise"/>
+        <class template="class io.axoniq.axonserver.grpc.Gateway"/>
+        <class template="class io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServer"/>
+
+        <class template="@org.springframework.web.bind.annotation.RestController class *"/>
+        <class template="@org.springframework.context.annotation.Configuration class *"/>
+        <class template="@org.springframework.stereotype.Component class *"/>
+        <class template="@org.springframework.stereotype.Controller class *"/>
+        <class template="@org.springframework.stereotype.Repository class *"/>
+        <class template="@org.springframework.stereotype.Service class *">
+            <method access="protected+"/>
+        </class>
+        <!-- for JSON objects -->
+        <class template="@io.axoniq.axonserver.KeepNames class *">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
+        <class template="@io.axoniq.platform.KeepNames class *">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
+        <class template="@javax.persistence.Entity class *">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
+        <class template="class * implements org.springframework.data.jpa.repository.JpaRepository">
+            <method access="protected+"/>
+        </class>
+        <class template="@org.springframework.boot.context.properties.ConfigurationProperties class *">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
+
+        <class template="class * implements io.axoniq.axonserver.localstorage.query.ExpressionFactory">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
+        <class template="class * extends io.axoniq.axonserver.localstorage.query.expressions.AbstractExpressionFactory">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
+
+        <method template="@org.springframework.context.annotation.Bean *(**)"/>
+
+        <!-- For toString on GRPC generated message classes -->
+        <method template="newBuilder(**)"/>
+        <method template="getDefaultInstance(**)"/>
+    </keep-names>
+
+    <property name="string-encryption" value="disable"/>
+    <property name="string-encryption-type" value="strong"/>
+    <property name="extensive-flow-obfuscation" value="maximum"/>
+    <property name="log-file" value="allatori-log-@project.version@.xml"/>
+</config>

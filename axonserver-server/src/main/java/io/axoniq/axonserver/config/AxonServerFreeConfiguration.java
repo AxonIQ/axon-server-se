@@ -22,6 +22,8 @@ import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Author: marc
@@ -77,5 +79,11 @@ public class AxonServerFreeConfiguration {
     public FeatureChecker featureChecker() {
         return new DefaultFeatureChecker();
     }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
 
 }

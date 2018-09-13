@@ -1,43 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>axonhub</artifactId>
-        <groupId>io.axoniq.axonhub</groupId>
-        <version>1.2-SNAPSHOT</version>
+        <groupId>io.axoniq.axonserver</groupId>
+        <artifactId>axonserver</artifactId>
+        <version>4.0-SNAPSHOT</version>
+        <relativePath>../..</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>axonhub-metrics-prometheus</artifactId>
 
-    <properties>
-        <prometheus.version>0.1.0</prometheus.version>
-    </properties>
-
     <dependencies>
         <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_dropwizard</artifactId>
-            <version>${prometheus.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient</artifactId>
-            <version>${prometheus.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_hotspot</artifactId>
-            <version>${prometheus.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_servlet</artifactId>
-            <version>${prometheus.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-            <scope>provided</scope>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
     </dependencies>
 
@@ -52,10 +36,25 @@
                     <shadedClassifierName>metrics</shadedClassifierName>
                     <artifactSet>
                         <includes>
-                            <include>io.prometheus:*:*:*</include>
+                            <include>io.micrometer:*</include>
+                            <include>org.hdrhistogram:*</include>
+                            <include>org.latencyutils:*</include>
+                            <include>io.prometheus:*</include>
                         </includes>
                     </artifactSet>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>package-lib</id>
+                        <configuration>
+                            <shadedClassifierName>metrics</shadedClassifierName>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -10,12 +10,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>axonserver-enterprise</artifactId>
+    <properties>
+        <exec.plugin.version>1.6.0</exec.plugin.version>
+        <allatori-jar.full-path>${allatori.dir}\lib\allatori.jar</allatori-jar.full-path>
+
+        <gcloud.project.name>axoniq-platform</gcloud.project.name>
+        <gcloud.registry>eu.gcr.io</gcloud.registry>
+        <docker.certspath>${env.HOMEDRIVE}${env.HOMEPATH}/.docker/machine/certs</docker.certspath>
+    </properties>
 
     <dependencies>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver-server</artifactId>
             <version>4.0-SNAPSHOT</version>
+            <classifier>lib</classifier>
         </dependency>
 
         <dependency>
@@ -65,5 +74,306 @@
                 </includes>
             </resource>
         </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Loader-Path>exts</Loader-Path>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                        <configuration>
+                            <executable>true</executable>
+                            <classifier>exec</classifier>
+                            <layout>ZIP</layout>
+                            <mainClass>io.axoniq.axonserver.AxonServerEnterprise</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.7</version>
+                <configuration>
+                    <sources>false</sources>
+                    <javadoc>false</javadoc>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.1</version>
+
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <!--
+               We perform obfuscation if the obfuscator is present. This is required to ensure compliance with
+               our current single dev license for Allatori. Obfuscation is done on Frans' machine prior to
+               external release.
+            -->
+            <id>obfuscate</id>
+            <activation>
+                <file>
+                    <exists>${allatori-jar.full-path}</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-base-axonserver</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>io.axoniq.axonserver</groupId>
+                                            <artifactId>axonserver-server</artifactId>
+                                            <classifier>lib</classifier>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-and-filter-allatori-config</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${basedir}/target</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${basedir}/allatori</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-and-filter-installers</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${basedir}/target</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${basedir}/src/main/installers</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Running Allatori -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>${exec.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>run-allatori</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>-Xms128m</argument>
+                                <argument>-Xmx512m</argument>
+                                <argument>-jar</argument>
+                                <argument>${allatori-jar.full-path}</argument>
+                                <argument>${basedir}/target/allatori.xml</argument>
+                            </arguments>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>repackage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <excludes>
+                                <exclude>
+                                    <groupId>io.axoniq.axonserver</groupId>
+                                    <artifactId>axonserver-accessdb</artifactId>
+                                </exclude>
+                                <exclude>
+                                    <groupId>io.axoniq.axonserver</groupId>
+                                    <artifactId>axonserver-server</artifactId>
+                                </exclude>
+                                <exclude>
+                                    <groupId>io.axoniq.axonserver</groupId>
+                                    <artifactId>axonserver-grpc</artifactId>
+                                </exclude>
+                                <exclude>
+                                    <groupId>io.axoniq.axondb</groupId>
+                                    <artifactId>query-parser</artifactId>
+                                </exclude>
+                            </excludes>
+                            <layout>ZIP</layout>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-allatori</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>attach-artifact</goal>
+                                </goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${basedir}/target/allatori-log-${project.parent.version}.xml</file>
+                                            <type>xml</type>
+                                            <classifier>allatori</classifier>
+                                        </artifact>
+                                    </artifacts>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>docker</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <version>0.26.0</version>
+                        <configuration>
+                            <images>
+                                <image>
+                                    <alias>axonserver-enterprise</alias>
+                                    <name>${gcloud.registry}/${gcloud.project.name}/axonserver-enterprise:${project.version}</name>
+
+                                    <build>
+                                        <from>openjdk:8-jdk-alpine</from>
+                                        <dockerFileDir>${basedir}/src/main/docker</dockerFileDir>
+                                        <assembly>
+                                            <inline>
+                                                <files>
+                                                    <file>
+                                                        <source>${project.build.directory}/${project.artifactId}-${project.version}-exec.jar</source>
+                                                    </file>
+                                                </files>
+                                                <dependencySets>
+                                                    <dependencySet>
+                                                        <includes>
+                                                            <include>io.axoniq.platform:axoniq-cli:jar:exec</include>
+                                                        </includes>
+                                                        <outputDirectory>.</outputDirectory>
+                                                        <outputFileNameMapping>axoniq-cli.jar</outputFileNameMapping>
+                                                    </dependencySet>
+                                                </dependencySets>
+                                            </inline>
+                                        </assembly>
+                                        <args>
+                                            <JAR_FILE>maven/${project.build.finalName}-exec.jar</JAR_FILE>
+                                        </args>
+                                    </build>
+
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <network>
+                                            <name>axoniq</name>
+                                            <alias>axonserver</alias>
+                                        </network>
+                                        <hostname>axonserver.axoniq</hostname>
+                                        <ports>
+                                            <port>8024:8024</port>
+                                            <port>8124:8124</port>
+                                            <port>8224:8224</port>
+                                        </ports>
+                                        <wait>
+                                            <log>Tomcat started</log>
+                                            <time>30000</time>
+                                        </wait>
+                                    </run>
+                                </image>
+                            </images>
+                            <certPath>${docker.certspath}</certPath>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>start</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                    <!-- goal>push</goal -->
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

@@ -3,11 +3,13 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.enterprise.cluster.internal.ClusterJoinRequester;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +30,7 @@ import javax.validation.constraints.NotNull;
  */
 @RestController("ClusterRestController")
 @RequestMapping("/v1/cluster")
+@ConditionalOnBean(ClusterTopology.class)
 public class ClusterRestController {
 
     private final ClusterController clusterController;

@@ -55,5 +55,5 @@ management:
 info:
   app:
     name: ${spring.application.name}
-    description: Powered by AxonIQ
+    description: AxonIQ
     version: @project.version@

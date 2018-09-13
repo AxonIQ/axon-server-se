@@ -6,6 +6,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -49,7 +50,7 @@ public class ContextRestController {
 
     @DeleteMapping( path = "context/{name}")
     public void deleteContext(@PathVariable("name")  String name) {
-        if( ContextController.DEFAULT.equals(name)) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_DEFAULT, "Cannot delete default context");
+        if( Topology.DEFAULT_CONTEXT.equals(name)) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_DEFAULT, "Cannot delete default context");
 
         applicationEventPublisher.publishEvent(contextController.deleteContext(name, false));
     }

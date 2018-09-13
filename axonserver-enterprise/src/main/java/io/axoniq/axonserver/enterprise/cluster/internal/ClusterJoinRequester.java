@@ -4,9 +4,11 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonhub.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
+import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
@@ -18,6 +20,7 @@ import java.util.concurrent.Future;
  * Author: marc
  */
 @Component
+@ConditionalOnBean(ClusterTopology.class)
 public class ClusterJoinRequester {
     private final ClusterController clusterController;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;

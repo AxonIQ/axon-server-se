@@ -222,19 +222,35 @@
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.0.0</version>
                 <configuration>
-                    <archive>
-                        <manifestEntries>
-                            <Loader-Path>exts</Loader-Path>
-                        </manifestEntries>
-                    </archive>
+                    <shadedArtifactAttached>true</shadedArtifactAttached>
+                    <artifactSet>
+                        <includes>
+                            <include>io.axoniq.axonserver:*</include>
+                            <include>io.axoniq.axondb:*</include>
+                        </includes>
+                    </artifactSet>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>package-lib</id>
+                        <configuration>
+                            <shadedClassifierName>lib</shadedClassifierName>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>2.0.2.RELEASE</version>
                 <executions>
                     <execution>
                         <goals>
@@ -455,6 +471,7 @@
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
+                        <version>2.0.2.RELEASE</version>
                         <executions>
                             <execution>
                                 <goals>
@@ -501,48 +518,6 @@
                                 </configuration>
                             </execution>
                         </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>copy-to-gcloud</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <version>1.8</version>
-                        <executions>
-                            <execution>
-                                <id>scp-to-remote</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>run</goal>
-                                </goals>
-                                <configuration>
-                                    <target>
-                                        <sshexec host="event-store-instance-1" username="${env.USERNAME}" keyfile="D:/test/gcloud-keys/${env.USERNAME}-private.ppk" command="./messaging/stopMessaging.sh" />
-                                        <scp localFile="${project.build.directory}/${project.build.finalName}-exec.jar" remoteToFile="${env.USERNAME}@event-store-instance-1:/home/${env.USERNAME}/messaging" verbose="true" trust="true" keyfile="D:/test/gcloud-keys/${env.USERNAME}-private.ppk" passphrase="">
-                                        </scp>
-                                        <sshexec host="event-store-instance-1" username="${env.USERNAME}" keyfile="D:/test/gcloud-keys/${env.USERNAME}-private.ppk" command="./messaging/startMessaging.sh ${project.version}" />
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.jcraft</groupId>
-                                <artifactId>jsch</artifactId>
-                                <version>0.1.53</version>
-                            </dependency>
-                            <dependency>
-                                <groupId>ant</groupId>
-                                <artifactId>ant-jsch</artifactId>
-                                <version>1.6.5</version>
-                            </dependency>
-                        </dependencies>
                     </plugin>
                 </plugins>
             </build>

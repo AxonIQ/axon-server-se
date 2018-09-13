@@ -5,6 +5,7 @@ import io.axoniq.axonserver.enterprise.jpa.Safepoint;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Controller;
  * Author: marc
  */
 @Controller
+@ConditionalOnBean(EventStoreManager.class)
 public class SafepointSynchronizer {
     private final SafepointRepository safepointRepository;
     private final EventStoreManager eventStoreManager;

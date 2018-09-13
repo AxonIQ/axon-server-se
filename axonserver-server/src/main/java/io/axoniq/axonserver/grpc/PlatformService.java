@@ -31,6 +31,7 @@ import java.util.Deque;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
@@ -47,6 +48,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
 
+
     @FunctionalInterface
     public interface InstructionConsumer {
         void accept(String client, String context, PlatformInboundInstruction instruction);
@@ -59,22 +61,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
     }
-
-//    private void notifyNewNode(ClusterEvent clusterNodeEvent) {
-//        NodeInfo.Builder builder = NodeInfo.newBuilder()
-//                .setHostName(clusterNodeEvent.getClusterNode().getHostName())
-//                .setGrpcPort(clusterNodeEvent.getClusterNode().getGrpcPort())
-//                .setVersion(0);
-//        switch (clusterNodeEvent.getEventType()) {
-//            case NODE_DELETED:
-//                builder.setVersion(-1);
-//                break;
-//        }
-//        connectionMap.values().forEach(streamObserver ->
-//                streamObserver.onNext(PlatformOutboundInstruction.newBuilder()
-//                        .setNodeNotification(builder)
-//                        .build()));
-//    }
 
     @Override
     public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {
@@ -145,12 +131,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         };
     }
 
-//    private void rebalance() {
-//        logger.debug("Rebalance: {}", connectionMap.keySet() );
-//        connectionMap.keySet().stream().filter(e -> clusterController.canRebalance(e.client, e.component, e.context)).findFirst()
-//                .ifPresent(this::requestReconnect);
-//    }
-
     public boolean requestReconnect(ClientComponent clientName) {
         logger.debug("Request reconnect: {}", clientName);
         StreamObserver<PlatformOutboundInstruction> stream = connectionMap.get(clientName);
@@ -177,25 +157,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .forEach(stream -> stream.onNext(instruction));
     }
 
-    public void sendAllClients(PlatformOutboundInstruction instruction){
-        connectionMap.values().forEach(stream -> stream.onNext(instruction));
-    }
 
-//    @EventListener
-//    public void on(ContextEvents.ContextDeleted contextDeleted) {
-//        connectionMap.entrySet().stream()
-//                            .filter(e -> e.getKey().context.equals(contextDeleted.getName()))
-//                            .forEach(e -> requestReconnect(e.getKey()));
-//    }
-//
-//    @EventListener
-//    public void on(ContextEvents.NodeDeletedFromContext nodeDeletedFromContext) {
-//        if( this.configuration.getName().equals(nodeDeletedFromContext.getNode())) {
-//            connectionMap.entrySet().stream()
-//                         .filter(e -> e.getKey().context.equals(nodeDeletedFromContext.getName()))
-//                         .forEach(e -> requestReconnect(e.getKey()));
-//        }
-//    }
+    public void requestReconnectForContext(String context) {
+        connectionMap.entrySet().stream()
+                            .filter(e -> e.getKey().context.equals(context))
+                            .forEach(e -> requestReconnect(e.getKey()));
+
+    }
 
     @EventListener
     public void onPauseEventProcessorRequest(PauseEventProcessorRequest evt){
@@ -260,10 +228,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                 SendingStreamObserver<PlatformOutboundInstruction> responseObserver){
         connectionMap.put(clientComponent, responseObserver);
         logger.debug("Registered client : {}", clientComponent);
-//        if(limits.isClusterAutobalancingEnabled() && reconnectTask == null) {
-//            ClusterConfiguration conf = configuration.getCluster();
-//            reconnectTask = scheduler.scheduleAtFixedRate(this::rebalance, conf.getRebalanceDelay(), conf.getRebalanceInterval(), SECONDS);
-//        }
         eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientComponent.context,
                                                                             clientComponent.component, clientComponent.client));
     }
@@ -277,8 +241,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     }
 
+    public Set<ClientComponent> getConnectedClients() {
+        return connectionMap.keySet();
+    }
 
-    private class ClientComponent {
+    public static class ClientComponent {
 
         private final String client;
         private final String component;
@@ -296,6 +263,18 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             if (o == null || getClass() != o.getClass()) return false;
             ClientComponent that = (ClientComponent) o;
             return Objects.equals(client, that.client);
+        }
+
+        public String getClient() {
+            return client;
+        }
+
+        public String getComponent() {
+            return component;
+        }
+
+        public String getContext() {
+            return context;
         }
 
         @Override

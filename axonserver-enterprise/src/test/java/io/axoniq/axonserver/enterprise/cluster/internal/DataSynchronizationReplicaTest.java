@@ -15,6 +15,7 @@ import io.axoniq.axonhub.internal.grpc.SynchronizationReplicaInbound;
 import io.axoniq.axonhub.internal.grpc.SynchronizationReplicaOutbound;
 import io.axoniq.axonhub.internal.grpc.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
@@ -59,7 +60,7 @@ public class DataSynchronizationReplicaTest {
     public void setUp()  {
         when(clusterController.getName()).thenReturn("me");
         ClusterNode myNode = new ClusterNode("me", "host", "host", 0, 0, 0);
-        myNode.addContext(new Context(ContextController.DEFAULT), true, true);
+        myNode.addContext(new Context(Topology.DEFAULT_CONTEXT), true, true);
         when(clusterController.getMe()).thenReturn(myNode);
         when(safepointRespository.findById(any())).thenReturn(Optional.empty());
         doAnswer(invocationOnMock -> {
@@ -133,55 +134,55 @@ public class DataSynchronizationReplicaTest {
 
     @Test
     public void masterConfirmation() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         assertEquals(1, sentMessages.size());
-        assertTrue(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertTrue(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
     }
 
     @Test
     public void stepDown() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
 
-        testSubject.on(new ClusterEvents.MasterStepDown(ContextController.DEFAULT, false));
+        testSubject.on(new ClusterEvents.MasterStepDown(Topology.DEFAULT_CONTEXT, false));
         assertTrue(completed.get());
-        assertFalse(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
     }
 
     @Test
     public void masterDisconnected() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
-        testSubject.on(new ClusterEvents.MasterDisconnected(ContextController.DEFAULT, false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterDisconnected(Topology.DEFAULT_CONTEXT, false));
         assertTrue(completed.get());
-        assertFalse(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
     }
 
     @Test
     public void masterError() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onError(new RuntimeException("Failed by JUnit"));
-        assertFalse(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
     }
 
     @Test
     public void masterCompleted() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onCompleted();
-        assertFalse(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
         assertTrue(completed.get());
     }
 
     @Test
     public void noMessagesForOneMinute() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         clock.add(1, TimeUnit.MINUTES);
         testSubject.checkAlive();
-        assertFalse(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
         assertTrue(completed.get());
     }
 
     @Test
     public void receivedMessages() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
 
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSafepoint(SafepointMessage.newBuilder()
@@ -191,13 +192,13 @@ public class DataSynchronizationReplicaTest {
                                                                 .build());
         clock.add(5, TimeUnit.SECONDS);
         testSubject.checkAlive();
-        assertTrue(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertTrue(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
         assertFalse(completed.get());
     }
 
     @Test
     public void noMessagesWhileProcessingBacklog() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSafepoint(SafepointMessage.newBuilder()
                                                                                               .setType("EVENT")
@@ -206,13 +207,13 @@ public class DataSynchronizationReplicaTest {
                                                                 .build());
         clock.add(15, TimeUnit.SECONDS);
         testSubject.checkAlive();
-        assertFalse(testSubject.getConnectionPerContext().containsKey(ContextController.DEFAULT));
+        assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
         assertTrue(completed.get());
     }
 
     @Test
     public void handleInOrderEvents() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setEvent(TransactionWithToken.newBuilder()
                                                                                               .setToken(1)
@@ -228,7 +229,7 @@ public class DataSynchronizationReplicaTest {
                                                                 .build());
         assertEquals(3, sentMessages.size());
         DataSynchronizationReplica.ReplicaConnection connection = testSubject.getConnectionPerContext().get(
-                ContextController.DEFAULT);
+                Topology.DEFAULT_CONTEXT);
         assertNotNull(connection);
         assertEquals(3, connection.getExpectedEventToken());
         assertEquals(0, connection.waitingEvents());
@@ -236,7 +237,7 @@ public class DataSynchronizationReplicaTest {
 
     @Test
     public void handleOutOfOrderEvents() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
                                                                                               .setToken(2)
@@ -245,7 +246,7 @@ public class DataSynchronizationReplicaTest {
                                                                 .build());
         assertEquals(1, sentMessages.size());
         DataSynchronizationReplica.ReplicaConnection connection = testSubject.getConnectionPerContext().get(
-                ContextController.DEFAULT);
+                Topology.DEFAULT_CONTEXT);
         assertNotNull(connection);
         assertEquals(1, connection.getExpectedSnapshotToken());
         assertEquals(1, connection.waitingSnapshots());
@@ -258,7 +259,7 @@ public class DataSynchronizationReplicaTest {
         assertEquals(3, sentMessages.size());
 
         connection = testSubject.getConnectionPerContext().get(
-                ContextController.DEFAULT);
+                Topology.DEFAULT_CONTEXT);
         assertNotNull(connection);
         assertEquals(3, connection.getExpectedSnapshotToken());
         assertEquals(0, connection.waitingSnapshots());
@@ -267,7 +268,7 @@ public class DataSynchronizationReplicaTest {
 
     @Test
     public void setPermits() {
-        testSubject.on(new ClusterEvents.MasterConfirmation(ContextController.DEFAULT, "demo", false));
+        testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         IntStream.range(0,10).forEach(i ->
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()

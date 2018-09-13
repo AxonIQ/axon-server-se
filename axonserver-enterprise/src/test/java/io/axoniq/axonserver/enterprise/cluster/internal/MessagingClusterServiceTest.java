@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.context.ContextController;
@@ -14,6 +13,7 @@ import io.axoniq.axonhub.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.user.UserController;
@@ -81,7 +81,7 @@ public class MessagingClusterServiceTest {
                                 .setClientName("Client")
                                 .setResultName("Result")
                                 .setNrOfHandlers(1))
-                .setContext(ContextController.DEFAULT))
+                .setContext(Topology.DEFAULT_CONTEXT))
                 .build());
         assertEquals(0, responseStream.count);
 
