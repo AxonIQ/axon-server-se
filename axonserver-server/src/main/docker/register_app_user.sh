@@ -8,5 +8,5 @@ if [ `hostname -s` = "axon-server-0" -o `hostname -s` = "axon-server" ]; then
 		sleep 5s
 	done
 	echo "Adding default user"
-	java -jar cli.jar register-user -S http://localhost:8024 -u admin -p hello
+	java -jar cli.jar register-user -S http://localhost:8024 -u admin -p hello -r ADMIN
 fi
