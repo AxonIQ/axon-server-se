@@ -30,7 +30,6 @@ import javax.validation.constraints.NotNull;
  */
 @RestController("ClusterRestController")
 @RequestMapping("/v1/cluster")
-@ConditionalOnBean(ClusterTopology.class)
 public class ClusterRestController {
 
     private final ClusterController clusterController;
