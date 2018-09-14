@@ -13,6 +13,7 @@ COPY ${JAR_FILE} app.jar
 
 ADD maven/axoniq-cli.jar cli.jar
 ADD axonserver.properties .
+ADD register_app_user.sh .
 ADD startup.sh .
 RUN dos2unix *.properties *.sh
 RUN chmod +x *.sh
