@@ -1,12 +1,14 @@
 #!/bin/bash
 
+export AXONSERVER_HOME=/opt/axonserver
+cd ${AXONSERVER_HOME}
+
 DOMAIN=`hostname -d`
 if [[ "$DOMAIN" = "" ]]; then
   echo "No domain"
 else
-  echo >> axonhub.properties
-  echo "axoniq.axonserver.domain=$DOMAIN" >> axonserver.properties
+  echo >> ${AXONSERVER_HOME}/axonserver.properties
+  echo "axoniq.axonserver.domain=$DOMAIN" >> ${AXONSERVER_HOME}/axonserver.properties
 fi
 
-/register_app_user.sh &
-java -Djava.security.egd=file:/dev/./urandom -Xmx512m -jar app.jar
+java -Djava.security.egd=file:/dev/./urandom -Xmx512m -jar ${AXONSERVER_HOME}/app.jar

@@ -1,4 +1,8 @@
 #!/bin/bash
+
+export AXONSERVER_HOME=/opt/axonserver
+cd ${AXONSERVER_HOME}
+
 if [ `hostname -s` = "axon-server-0" -o `hostname -s` = "axon-server" ]; then
 	echo "First node in cluster - no registration"
 else 
@@ -10,5 +14,5 @@ else
 		sleep 5s
 	done
 	echo "Registering this node with node 0" 
-	java -jar cli.jar register-node -S http://localhost:8024 -h axon-server-0.`hostname -d` -p 8224
+	java -jar ${AXONSERVER_HOME}/cli.jar register-node -S http://localhost:8024 -h axon-server-0.`hostname -d` -p 8224
 fi
