@@ -1,6 +1,6 @@
 package io.axoniq.platform.user;
 
-import io.axoniq.platform.application.ApplicationController;
+import io.axoniq.platform.application.ApplicationModelController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,22 +18,22 @@ import java.util.function.Consumer;
 public class UserController {
     private final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final PasswordEncoder passwordEncoder;
-    private final ApplicationController applicationController;
+    private final ApplicationModelController applicationModelController;
     private final UserRepository userRepository;
     private final Map<String, Consumer<User>> updateListeners = new ConcurrentHashMap<>();
     private final Map<String, Consumer<String>> deleteListeners = new ConcurrentHashMap<>();
 
 
-    public UserController(PasswordEncoder passwordEncoder, ApplicationController applicationController, UserRepository userRepository) {
+    public UserController(PasswordEncoder passwordEncoder, ApplicationModelController applicationModelController, UserRepository userRepository) {
         this.passwordEncoder = passwordEncoder;
-        this.applicationController = applicationController;
+        this.applicationModelController = applicationModelController;
         this.userRepository = userRepository;
     }
 
     public void deleteUser(String username) {
         userRepository.deleteById(username);
         deleteListeners.forEach((k,v)-> v.accept(username));
-        applicationController.incrementModelVersion();
+        applicationModelController.incrementModelVersion(User.class);
     }
 
     public List<User> getUsers() {
@@ -64,7 +64,7 @@ public class UserController {
     public User updateUser(String username, String password, String[] roles) {
         User user = syncUser(username, password == null ? null: passwordEncoder.encode(password), roles);
         updateListeners.forEach((k,v)-> v.accept(user));
-        applicationController.incrementModelVersion();
+        applicationModelController.incrementModelVersion(User.class);
         return user;
     }
 
@@ -74,6 +74,6 @@ public class UserController {
 
     public void syncUser(User jpaUser) {
         userRepository.save(jpaUser);
-        applicationController.incrementModelVersion();
+        applicationModelController.incrementModelVersion(User.class);
     }
 }

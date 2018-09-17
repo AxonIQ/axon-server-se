@@ -2,7 +2,7 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axondb.Event;
 import io.axoniq.axondb.grpc.EventWithToken;
-import io.axoniq.axonhub.internal.grpc.TransactionWithToken;
+import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.boot.actuate.health.Health;
 

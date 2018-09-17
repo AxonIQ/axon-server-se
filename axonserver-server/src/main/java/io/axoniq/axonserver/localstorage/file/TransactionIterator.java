@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonhub.internal.grpc.TransactionWithToken;
+import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
 
 import java.util.Iterator;
 

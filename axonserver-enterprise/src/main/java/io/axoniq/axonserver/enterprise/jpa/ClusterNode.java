@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
-import io.axoniq.axonhub.internal.grpc.ContextRole;
-import io.axoniq.axonhub.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
 import java.io.Serializable;

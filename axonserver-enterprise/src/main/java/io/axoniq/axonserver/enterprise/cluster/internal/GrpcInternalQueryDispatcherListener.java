@@ -4,7 +4,7 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonhub.QueryRequest;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.QueryRequestValidator;
-import io.axoniq.axonhub.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.grpc.stub.StreamObserver;

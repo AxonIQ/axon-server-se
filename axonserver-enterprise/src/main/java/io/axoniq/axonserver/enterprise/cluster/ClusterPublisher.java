@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Publisher;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
 import org.springframework.stereotype.Component;
 
 /**

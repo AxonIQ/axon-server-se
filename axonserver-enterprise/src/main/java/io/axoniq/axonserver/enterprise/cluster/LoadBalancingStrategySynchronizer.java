@@ -8,11 +8,11 @@ import io.axoniq.axonserver.grpc.Converter;
 import io.axoniq.axonserver.grpc.LoadBalancingStrategyProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterService;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.ConnectorResponse;
-import io.axoniq.axonhub.internal.grpc.GetLBStrategiesRequest;
-import io.axoniq.axonhub.internal.grpc.LoadBalancingStrategies;
-import io.axoniq.platform.application.ApplicationController;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.internal.grpc.GetLBStrategiesRequest;
+import io.axoniq.axonserver.internal.grpc.LoadBalancingStrategies;
+import io.axoniq.platform.application.ApplicationModelController;
 import io.axoniq.platform.grpc.Action;
 import io.axoniq.platform.grpc.LoadBalanceStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
-import static io.axoniq.axonhub.internal.grpc.ConnectorCommand.RequestCase.REQUEST_LOAD_BALANCING_STRATEGIES;
+import static io.axoniq.axonserver.internal.grpc.ConnectorCommand.RequestCase.REQUEST_LOAD_BALANCING_STRATEGIES;
 
 /**
  * Created by Sara Pellegrini on 16/08/2018.
@@ -29,13 +29,13 @@ import static io.axoniq.axonhub.internal.grpc.ConnectorCommand.RequestCase.REQUE
 @Controller @Transactional
 public class LoadBalancingStrategySynchronizer {
 
-    private final ApplicationController applicationController;
+    private final ApplicationModelController applicationController;
     private final LoadBalanceStrategyRepository repository;
     private final Converter<LoadBalanceStrategy, LoadBalancingStrategy> mapping;
     private final Publisher<ConnectorResponse> publisher;
 
     @Autowired
-    public LoadBalancingStrategySynchronizer(ApplicationController applicationController,
+    public LoadBalancingStrategySynchronizer(ApplicationModelController applicationController,
                                              LoadBalanceStrategyRepository repository,
                                              MessagingClusterService clusterService) {
         this(applicationController, repository,
@@ -45,7 +45,7 @@ public class LoadBalancingStrategySynchronizer {
         clusterService.onConnectorCommand(REQUEST_LOAD_BALANCING_STRATEGIES, this::onRequestLBStrategies);
     }
 
-    LoadBalancingStrategySynchronizer(ApplicationController applicationController,
+    LoadBalancingStrategySynchronizer(ApplicationModelController applicationController,
                                       LoadBalanceStrategyRepository repository,
                                       Publisher<ConnectorResponse> publisher,
                                       Converter<LoadBalanceStrategy, LoadBalancingStrategy> mapping) {
@@ -77,12 +77,12 @@ public class LoadBalancingStrategySynchronizer {
         repository.deleteAll();
         repository.flush();
         event.strategies().getStrategyList().forEach(processor -> repository.save(mapping.map(processor)));
-        applicationController.updateModelVersion(event.strategies().getVersion());
+        applicationController.updateModelVersion(LoadBalancingStrategy.class, event.strategies().getVersion());
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceConnected event) {
-        if (applicationController.getModelVersion() < event.getModelVersion()) {
+    public void on(ClusterEvents.AxonServerInstanceConnected event) {
+        if (applicationController.getModelVersion(LoadBalancingStrategy.class) < event.getModelVersion(LoadBalancingStrategy.class.getName())) {
             ConnectorCommand command = ConnectorCommand
                     .newBuilder()
                     .setRequestLoadBalancingStrategies(GetLBStrategiesRequest.newBuilder())
@@ -94,7 +94,7 @@ public class LoadBalancingStrategySynchronizer {
     public void onRequestLBStrategies(ConnectorCommand requestStrategy,
                                       Publisher<ConnectorResponse> responsePublisher){
         LoadBalancingStrategies.Builder strategies = LoadBalancingStrategies
-                .newBuilder().setVersion(applicationController.getModelVersion());
+                .newBuilder().setVersion(applicationController.getModelVersion(LoadBalancingStrategy.class));
         repository.findAll().forEach(processor -> strategies.addStrategy(mapping.unmap(processor)));
         responsePublisher.publish(ConnectorResponse.newBuilder().setLoadBalancingStrategies(strategies).build());
     }

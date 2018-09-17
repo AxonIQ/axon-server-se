@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
-import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
 
 import java.util.function.Consumer;
 

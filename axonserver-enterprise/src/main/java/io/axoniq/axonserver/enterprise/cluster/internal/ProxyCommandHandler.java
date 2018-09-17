@@ -3,7 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonhub.Command;
 import io.axoniq.axonhub.Confirmation;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonhub.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.grpc.stub.StreamObserver;
 

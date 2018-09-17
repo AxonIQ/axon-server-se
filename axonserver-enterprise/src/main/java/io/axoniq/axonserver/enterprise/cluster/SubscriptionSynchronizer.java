@@ -37,7 +37,7 @@ public class SubscriptionSynchronizer {
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceConnected event) {
+    public void on(ClusterEvents.AxonServerInstanceConnected event) {
 
         connectedClients.forEach((key, value) ->
                                          event.getRemoteConnection().clientStatus(value.getContext(),
@@ -66,7 +66,7 @@ public class SubscriptionSynchronizer {
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceDisconnected event) {
+    public void on(ClusterEvents.AxonServerInstanceDisconnected event) {
         clusterController.closeConnection(event.getNodeName());
     }
 

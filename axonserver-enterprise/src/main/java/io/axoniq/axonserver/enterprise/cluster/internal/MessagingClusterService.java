@@ -29,26 +29,30 @@ import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
-import io.axoniq.axonhub.internal.grpc.Applications;
-import io.axoniq.axonhub.internal.grpc.ClientEventProcessor;
-import io.axoniq.axonhub.internal.grpc.ClientEventProcessorSegment;
-import io.axoniq.axonhub.internal.grpc.ClientStatus;
-import io.axoniq.axonhub.internal.grpc.ConnectResponse;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand.RequestCase;
-import io.axoniq.axonhub.internal.grpc.ConnectorResponse;
-import io.axoniq.axonhub.internal.grpc.ContextRole;
-import io.axoniq.axonhub.internal.grpc.Group;
-import io.axoniq.axonhub.internal.grpc.MessagingClusterServiceGrpc;
-import io.axoniq.axonhub.internal.grpc.NodeContext;
-import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
-import io.axoniq.axonhub.internal.grpc.NodeInfo;
-import io.axoniq.axonhub.internal.grpc.Users;
+import io.axoniq.axonserver.internal.grpc.Applications;
+import io.axoniq.axonserver.internal.grpc.ClientEventProcessor;
+import io.axoniq.axonserver.internal.grpc.ClientEventProcessorSegment;
+import io.axoniq.axonserver.internal.grpc.ClientStatus;
+import io.axoniq.axonserver.internal.grpc.ConnectResponse;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand.RequestCase;
+import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.Group;
+import io.axoniq.axonserver.internal.grpc.MessagingClusterServiceGrpc;
+import io.axoniq.axonserver.internal.grpc.ModelVersion;
+import io.axoniq.axonserver.internal.grpc.NodeContext;
+import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.internal.grpc.Users;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.platform.application.ApplicationController;
+import io.axoniq.platform.application.ApplicationModelController;
+import io.axoniq.platform.application.jpa.Application;
 import io.axoniq.platform.grpc.Action;
+import io.axoniq.platform.user.User;
 import io.axoniq.platform.user.UserController;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
@@ -96,6 +100,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final ClusterController clusterController;
     private final UserController userController;
     private final ApplicationController applicationController;
+    private final ApplicationModelController applicationModelController;
     private final ContextController contextController;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<String, ConnectorReceivingStreamObserver> connections = new ConcurrentHashMap<>();
@@ -114,6 +119,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             ClusterController clusterController,
             UserController userController,
             ApplicationController applicationController,
+            ApplicationModelController applicationModelController,
             ContextController contextController,
             ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
@@ -121,6 +127,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         this.clusterController = clusterController;
         this.userController = userController;
         this.applicationController = applicationController;
+        this.applicationModelController = applicationModelController;
         this.contextController = contextController;
         this.eventPublisher = eventPublisher;
     }
@@ -263,7 +270,12 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         logger.debug("Received connect from: {} - {}", messagingServerName, connectorCommand.getConnect());
 
                         ConnectResponse.Builder connectResponseBuilder = ConnectResponse.newBuilder()
-                                .setApplicationModelVersion(applicationController.getModelVersion())
+                                .addAllModelVersions(applicationModelController.getModelVersions().stream().map(m -> ModelVersion.newBuilder()
+                                                                                                                            .setName(m.getApplicationName())
+                                                                                                                            .setValue(m.getVersion())
+                                                                                                                            .build())
+                                                     .collect(Collectors.toList())
+                                )
                                 .addAllContexts(clusterController.getMyContexts().stream().map(c -> ContextRole.newBuilder()
                                                                                                                .setName(c.getContext().getName())
                                                                                                .setMessaging(c.isMessaging())
@@ -376,8 +388,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         break;
                     case REQUEST_APPLICATIONS:
                         Applications.Builder applicationsBuilder = Applications.newBuilder()
-                                                                               .setVersion(applicationController
-                                                                                                   .getModelVersion());
+                                                                               .setVersion(applicationModelController
+                                                                                                   .getModelVersion(
+                                                                                                           Application.class));
                         applicationController.getApplications().forEach(app ->
                                                                                 applicationsBuilder.addApplication(
                                                                                         ProtoConverter
@@ -388,8 +401,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                  .build());
                         break;
                     case REQUEST_USERS:
-                        Users.Builder usersBuilder = Users.newBuilder().setVersion(applicationController
-                                                                                           .getModelVersion());
+                        Users.Builder usersBuilder = Users.newBuilder().setVersion(applicationModelController
+                                                                                           .getModelVersion(User.class));
                         userController.getUsers().forEach(user ->
                                                                   usersBuilder.addUser(ProtoConverter.createUser(
                                                                           user,
@@ -557,7 +570,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                                         null,
                                                                                                         client,
                                                                                                         messagingServerName)));
-            eventPublisher.publishEvent(new ClusterEvents.AxonHubInstanceDisconnected(messagingServerName));
+            eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
         }
 
         public void publish(ConnectorResponse connectorResponse) {

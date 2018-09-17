@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 

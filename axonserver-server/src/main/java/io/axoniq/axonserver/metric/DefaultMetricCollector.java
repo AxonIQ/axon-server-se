@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.metric;
 
-import io.axoniq.axonhub.internal.grpc.Metric;
+import io.axoniq.axonserver.internal.grpc.Metric;
 import java.util.Collections;
 
 /**

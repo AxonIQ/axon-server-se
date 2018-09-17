@@ -1,15 +1,12 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
-import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
-import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

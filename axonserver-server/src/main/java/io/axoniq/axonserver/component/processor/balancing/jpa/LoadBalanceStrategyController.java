@@ -2,7 +2,7 @@ package io.axoniq.axonserver.component.processor.balancing.jpa;
 
 import io.axoniq.axonserver.LoadBalancingSynchronizationEvents;
 import io.axoniq.axonserver.grpc.LoadBalancingStrategyProtoConverter;
-import io.axoniq.platform.application.ApplicationController;
+import io.axoniq.platform.application.ApplicationModelController;
 import io.axoniq.platform.grpc.Action;
 import io.axoniq.platform.grpc.LoadBalanceStrategy;
 import org.springframework.context.ApplicationEventPublisher;
@@ -20,7 +20,7 @@ public class LoadBalanceStrategyController {
 
     private final ProcessorLoadBalancingController processorLoadBalancingController;
 
-    private final ApplicationController applicationController;
+    private final ApplicationModelController applicationController;
 
     private final LoadBalanceStrategyRepository repository;
 
@@ -28,7 +28,7 @@ public class LoadBalanceStrategyController {
 
     public LoadBalanceStrategyController(
             ProcessorLoadBalancingController processorLoadBalancingController,
-            ApplicationController applicationController,
+            ApplicationModelController applicationController,
             LoadBalanceStrategyRepository repository,
             ApplicationEventPublisher eventPublisher) {
         this.processorLoadBalancingController = processorLoadBalancingController;
@@ -43,7 +43,7 @@ public class LoadBalanceStrategyController {
     }
 
     private void sync(String strategyName, Action action) {
-        applicationController.incrementModelVersion();
+        applicationController.incrementModelVersion(LoadBalancingStrategy.class);
         LoadBalanceStrategy loadBalanceStrategy = null;
         switch (action){
             case MERGE:

@@ -5,7 +5,7 @@ import io.axoniq.axonhub.Confirmation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonhub.internal.grpc.NodeContext;
+import io.axoniq.axonserver.internal.grpc.NodeContext;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static io.axoniq.axonhub.internal.grpc.NodeContext.newBuilder;
+import static io.axoniq.axonserver.internal.grpc.NodeContext.newBuilder;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**

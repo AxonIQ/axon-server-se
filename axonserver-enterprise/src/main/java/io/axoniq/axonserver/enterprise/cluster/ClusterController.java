@@ -1,12 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonhub.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.NodeRoles;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
@@ -14,8 +13,8 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.ContextRole;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.rest.ClusterRestController;
@@ -230,7 +229,7 @@ public class ClusterController implements SmartLifecycle {
 
     @EventListener
     @Transactional
-    public void on(ClusterEvents.AxonHubInstanceConnected axonHubInstanceConnected) {
+    public void on(ClusterEvents.AxonServerInstanceConnected axonHubInstanceConnected) {
         if (axonHubInstanceConnected.getNodesList() != null) {
             axonHubInstanceConnected.getNodesList().forEach(this::addConnection);
         }

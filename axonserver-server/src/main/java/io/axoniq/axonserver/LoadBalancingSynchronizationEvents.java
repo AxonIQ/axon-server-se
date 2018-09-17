@@ -1,7 +1,7 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonhub.internal.grpc.LoadBalancingStrategies;
-import io.axoniq.axonhub.internal.grpc.ProcessorsLBStrategy;
+import io.axoniq.axonserver.internal.grpc.LoadBalancingStrategies;
+import io.axoniq.axonserver.internal.grpc.ProcessorsLBStrategy;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.platform.grpc.LoadBalanceStrategy;
 import io.axoniq.platform.grpc.ProcessorLBStrategy;

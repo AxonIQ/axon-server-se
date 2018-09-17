@@ -14,12 +14,12 @@ public class ClusterEventsLogger {
     private final Logger logger = LoggerFactory.getLogger(ClusterEventsLogger.class);
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceConnected event) {
+    public void on(ClusterEvents.AxonServerInstanceConnected event) {
         logger.info("AxonHub instance connected: {}", event.getRemoteConnection().getClusterNode().getName());
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceDisconnected event) {
+    public void on(ClusterEvents.AxonServerInstanceDisconnected event) {
         logger.info("AxonHub instance disconnected: {}", event.getNodeName());
     }
 

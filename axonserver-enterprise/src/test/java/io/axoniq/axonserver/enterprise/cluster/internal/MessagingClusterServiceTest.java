@@ -4,18 +4,19 @@ import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonhub.QuerySubscription;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.context.ContextController;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.ConnectorResponse;
-import io.axoniq.axonhub.internal.grpc.Group;
-import io.axoniq.axonhub.internal.grpc.InternalFlowControl;
-import io.axoniq.axonhub.internal.grpc.InternalQuerySubscription;
-import io.axoniq.axonhub.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.internal.grpc.Group;
+import io.axoniq.axonserver.internal.grpc.InternalFlowControl;
+import io.axoniq.axonserver.internal.grpc.InternalQuerySubscription;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.axoniq.platform.application.ApplicationController;
+import io.axoniq.platform.application.ApplicationModelController;
 import io.axoniq.platform.user.UserController;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -25,7 +26,7 @@ import org.mockito.runners.*;
 
 import java.util.Collections;
 
-import static io.axoniq.axonhub.internal.grpc.ConnectorResponse.ResponseCase.CONNECT_RESPONSE;
+import static io.axoniq.axonserver.internal.grpc.ConnectorResponse.ResponseCase.CONNECT_RESPONSE;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -52,11 +53,16 @@ public class MessagingClusterServiceTest {
     @Mock
     private ContextController contextController;
 
+    @Mock
+    private ApplicationModelController applicationModelController;
+
     @Before
     public void setUp() {
         this.eventPublisher = new FakeApplicationEventPublisher();
         messagingClusterService = new MessagingClusterService(
-                                                              commandDispatcher, queryDispatcher, clusterController, userController, applicationController, contextController, eventPublisher);
+                commandDispatcher, queryDispatcher, clusterController, userController, applicationController,
+                applicationModelController,
+                contextController, eventPublisher);
         when(clusterController.getMyContexts()).thenReturn(Collections.emptySet());
     }
 

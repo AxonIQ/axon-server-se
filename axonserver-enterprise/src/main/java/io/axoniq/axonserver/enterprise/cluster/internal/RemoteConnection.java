@@ -21,17 +21,17 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.ClusterFlowControlStreamObserver;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
-import io.axoniq.axonhub.internal.grpc.ClientStatus;
-import io.axoniq.axonhub.internal.grpc.ClientSubscriptionQueryRequest;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.ConnectorResponse;
-import io.axoniq.axonhub.internal.grpc.ContextRole;
-import io.axoniq.axonhub.internal.grpc.GetApplicationsRequest;
-import io.axoniq.axonhub.internal.grpc.GetUsersRequest;
-import io.axoniq.axonhub.internal.grpc.InternalCommandSubscription;
-import io.axoniq.axonhub.internal.grpc.InternalQuerySubscription;
-import io.axoniq.axonhub.internal.grpc.NodeInfo;
-import io.axoniq.axonhub.internal.grpc.QueryComplete;
+import io.axoniq.axonserver.internal.grpc.ClientStatus;
+import io.axoniq.axonserver.internal.grpc.ClientSubscriptionQueryRequest;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.GetApplicationsRequest;
+import io.axoniq.axonserver.internal.grpc.GetUsersRequest;
+import io.axoniq.axonserver.internal.grpc.InternalCommandSubscription;
+import io.axoniq.axonserver.internal.grpc.InternalQuerySubscription;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.internal.grpc.QueryComplete;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import io.axoniq.platform.MetaDataValue;
@@ -134,16 +134,15 @@ public class RemoteConnection  {
                                     break;
 
                                 case CONNECT_RESPONSE:
-                                    logger.debug("Connected, received response: {}",
+                                    logger.warn("Connected, received response: {}",
                                                  connectorResponse.getConnectResponse());
                                     try {
 
 
                                         applicationEventPublisher
-                                                .publishEvent(new ClusterEvents.AxonHubInstanceConnected(
+                                                .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
                                                         RemoteConnection.this,
-                                                        connectorResponse.getConnectResponse()
-                                                                         .getApplicationModelVersion(),
+                                                        connectorResponse.getConnectResponse().getModelVersionsList(),
                                                         connectorResponse.getConnectResponse().getContextsList(),
                                                         connectorResponse.getConnectResponse().getNodesList()));
                                     } catch (Exception ex) {
@@ -222,7 +221,7 @@ public class RemoteConnection  {
 
                     private void closeConnection() {
                         if( connected) {
-                            applicationEventPublisher.publishEvent(new ClusterEvents.AxonHubInstanceDisconnected(clusterNode.getName()));
+                            applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(clusterNode.getName()));
                         }
                         connected = false;
                         connectionPending = 0;

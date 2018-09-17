@@ -1,5 +1,5 @@
 syntax = "proto3";
-package io.axoniq.axonhub.internal.grpc;
+package io.axoniq.axonserver.internal.grpc;
 import "messaging_messages.proto";
 import "eventstore_messages.proto";
 import "platform_api.proto";
@@ -18,7 +18,7 @@ service MessagingClusterService {
 
     // Other node requests to become leader for EventStore for a specific context. Respond with positive confirmation
     // when other node is more up-to-date as this node is.
-    rpc RequestLeader(NodeContextInfo) returns (Confirmation) {
+    rpc RequestLeader(NodeContextInfo) returns (io.axoniq.axonhub.Confirmation) {
     }
 
     // Node sends a request to join an existing cluster
@@ -27,7 +27,7 @@ service MessagingClusterService {
     rpc Join( NodeInfo ) returns (stream NodeInfo) {}
 
 
-    rpc RequestToBeCoordinator(NodeContext) returns (Confirmation) {}
+    rpc RequestToBeCoordinator(NodeContext) returns (io.axoniq.axonhub.Confirmation) {}
 }
 
 message NodeContext {
@@ -40,10 +40,10 @@ message ConnectorCommand {
         NodeInfo connect = 1;
         InternalCommandSubscription subscribe_command = 2;
         InternalCommandSubscription unsubscribe_command = 3;
-        CommandResponse command_response = 4;
+        io.axoniq.axonhub.CommandResponse command_response = 4;
         InternalQuerySubscription subscribe_query = 5;
         InternalQuerySubscription unsubscribe_query = 6;
-        QueryResponse query_response = 7;
+        io.axoniq.axonhub.QueryResponse query_response = 7;
         InternalFlowControl flow_control = 8;
         NodeInfo delete_node = 9;
         GetApplicationsRequest request_applications = 10;
@@ -56,7 +56,7 @@ message ConnectorCommand {
         ClientEventProcessor pause_client_event_processor = 17;
         DBInstanceStatus db_status = 18;
         ContextUpdate context = 25;
-        SubscriptionQueryResponse subscription_query_response = 26;
+        io.axoniq.axonhub.SubscriptionQueryResponse subscription_query_response = 26;
         NodeContextInfo master_confirmation = 30;
         NodeContext coordinator_confirmation = 31;
         ClientEventProcessorSegment release_segment = 32;
@@ -81,21 +81,21 @@ message DBInstanceStatus {
 }
 
 message InternalCommandSubscription {
-    CommandSubscription command = 1;
+    io.axoniq.axonhub.CommandSubscription command = 1;
     string context = 2;
 }
 
 message InternalQuerySubscription {
-    QuerySubscription query = 1;
+    io.axoniq.axonhub.QuerySubscription query = 1;
     string context = 2;
 }
 
 message ConnectorResponse {
     oneof response {
-        Confirmation confirmation = 1;
-        Command command = 2;
+        io.axoniq.axonhub.Confirmation confirmation = 1;
+        io.axoniq.axonhub.Command command = 2;
         ConnectResponse connect_response = 3;
-        QueryRequest query = 4;
+        io.axoniq.axonhub.QueryRequest query = 4;
         io.axoniq.platform.grpc.Application application = 5;
         Applications applications = 6;
         io.axoniq.platform.grpc.User user = 7;
@@ -111,13 +111,18 @@ message ConnectorResponse {
 message ClientSubscriptionQueryRequest {
     string client = 1;
     string context = 2;
-    SubscriptionQueryRequest subscription_query_request = 3;
+    io.axoniq.axonhub.SubscriptionQueryRequest subscription_query_request = 3;
 }
 
 message ConnectResponse {
-    int64 application_model_version = 1;
     repeated ContextRole contexts = 2;
     repeated NodeInfo nodes = 3;
+    repeated ModelVersion model_versions = 4;
+}
+
+message ModelVersion {
+    string name = 1;
+    int64 value = 2;
 }
 
 message ContextRole {
@@ -258,7 +263,7 @@ message SynchronizationReplicaOutbound {
         StartSynchronization start = 1;
         Permits permits = 2;
         TransactionConfirmation confirmation = 3;
-        Confirmation safepoint_confirmation = 4;
+        io.axoniq.axonhub.Confirmation safepoint_confirmation = 4;
     }
 
 }

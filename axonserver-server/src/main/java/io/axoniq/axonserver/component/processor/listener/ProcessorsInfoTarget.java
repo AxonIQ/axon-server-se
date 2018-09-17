@@ -2,7 +2,7 @@ package io.axoniq.axonserver.component.processor.listener;
 
 import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdate;
 import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdated;
-import io.axoniq.axonhub.internal.grpc.ClientEventProcessorStatus;
+import io.axoniq.axonserver.internal.grpc.ClientEventProcessorStatus;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.platform.grpc.EventProcessorInfo;
 import org.springframework.context.event.EventListener;

@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.coordinator;
 
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.NodeContext;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.NodeContext;
 import org.junit.*;
 
 import java.util.concurrent.atomic.AtomicBoolean;

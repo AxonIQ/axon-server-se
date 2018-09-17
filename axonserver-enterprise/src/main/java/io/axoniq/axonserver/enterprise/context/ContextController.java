@@ -7,8 +7,8 @@ import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonhub.internal.grpc.ContextRole;
-import io.axoniq.axonhub.internal.grpc.ContextUpdate;
+import io.axoniq.axonserver.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.ContextUpdate;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -140,7 +140,7 @@ public class ContextController {
 
     @EventListener
     @Transactional
-    public void on(ClusterEvents.AxonHubInstanceConnected axonHubInstanceConnected) {
+    public void on(ClusterEvents.AxonServerInstanceConnected axonHubInstanceConnected) {
         String node = axonHubInstanceConnected.getRemoteConnection().getClusterNode().getName();
         ClusterNode clusterNode = entityManager.find(ClusterNode.class, node);
         if (clusterNode == null) {

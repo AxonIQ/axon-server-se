@@ -113,7 +113,7 @@ public class AxonHubManager {
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceDisconnected event) {
+    public void on(ClusterEvents.AxonServerInstanceDisconnected event) {
         contextsCoordinatedBy(event.getNodeName()).forEach(context -> {
             eventPublisher.publishEvent(new ClusterEvents.CoordinatorStepDown(context, false));
         });

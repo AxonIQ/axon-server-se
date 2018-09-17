@@ -5,7 +5,7 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonhub.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.ContextRole;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
@@ -124,8 +124,8 @@ public class ContextControllerTest {
         ClusterNode node2 = new ClusterNode("node2", null, null, null, null, null);
         when(remoteConnection.getClusterNode()).thenReturn(node2);
 
-        ClusterEvents.AxonHubInstanceConnected axonhubInstanceConnected = new ClusterEvents.AxonHubInstanceConnected(remoteConnection, 0,
-                                                                                                                     Collections
+        ClusterEvents.AxonServerInstanceConnected axonhubInstanceConnected = new ClusterEvents.AxonServerInstanceConnected(remoteConnection, Collections.emptyList(),
+                                                                                                                           Collections
                                                                                                                              .singletonList(
                                                                                                                                      ContextRole.newBuilder().setName("test1").build()), Collections.emptyList());
         testSubject.on(axonhubInstanceConnected);

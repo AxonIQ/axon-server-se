@@ -2,10 +2,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonhub.internal.grpc.TransactionWithToken;
-import io.axoniq.axonserver.localstorage.file.ByteBufferEventSource;
-import io.axoniq.axonserver.localstorage.file.Checksum;
-import io.axoniq.axonserver.localstorage.file.TransactionIterator;
+import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -31,7 +28,7 @@ public class TransactionByteBufferIterator implements TransactionIterator {
         forwardTo(token);
     }
 
-    public void forwardTo(long firstSequence) {
+    private void forwardTo(long firstSequence) {
         reader.position(5);
         while (firstSequence > currentSequenceNumber) {
 

@@ -2,20 +2,18 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.MetricsEvents;
-import io.axoniq.axonhub.internal.grpc.Metric;
-import io.axoniq.axonhub.internal.grpc.NodeMetrics;
+import io.axoniq.axonserver.internal.grpc.Metric;
+import io.axoniq.axonserver.internal.grpc.NodeMetrics;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.metric.NodeMetric;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
@@ -43,7 +41,7 @@ public class ClusterMetricTarget implements MetricCollector {
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceDisconnected axonHubInstanceDisconnected){
+    public void on(ClusterEvents.AxonServerInstanceDisconnected axonHubInstanceDisconnected){
         this.clusterMetricMap.remove(axonHubInstanceDisconnected.getNodeName());
     }
 

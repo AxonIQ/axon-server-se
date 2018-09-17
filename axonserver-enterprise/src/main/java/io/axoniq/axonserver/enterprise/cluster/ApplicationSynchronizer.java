@@ -4,7 +4,8 @@ import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronization
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.grpc.Application;
+import io.axoniq.platform.application.ApplicationModelController;
+import io.axoniq.platform.application.jpa.Application;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -17,14 +18,17 @@ import org.springframework.stereotype.Controller;
 public class ApplicationSynchronizer {
     private final Logger logger = LoggerFactory.getLogger(ApplicationSynchronizer.class);
     private final ApplicationController applicationController;
+    private final ApplicationModelController applicationModelController;
 
-    public ApplicationSynchronizer(ApplicationController applicationController) {
+    public ApplicationSynchronizer(ApplicationController applicationController,
+                                   ApplicationModelController applicationModelController) {
         this.applicationController = applicationController;
+        this.applicationModelController = applicationModelController;
     }
 
     @EventListener
     public void on(ApplicationSynchronizationEvents.ApplicationReceived event) {
-        Application application = event.getApplication();
+        io.axoniq.platform.grpc.Application application = event.getApplication();
         try {
             switch (application.getAction()) {
                 case MERGE:
@@ -45,20 +49,19 @@ public class ApplicationSynchronizer {
     @EventListener
     public void on(ApplicationSynchronizationEvents.ApplicationsReceived event) {
         synchronized (applicationController) {
-            if( applicationController.getModelVersion() < event.getApplications().getVersion()) {
+            if( applicationModelController.getModelVersion(Application.class) < event.getApplications().getVersion()) {
                 applicationController.clearApplications();
                 event.getApplications().getApplicationList().forEach(app -> applicationController
                         .synchronize(ProtoConverter.createJpaApplication(app)));
-                applicationController.updateModelVersion(event.getApplications().getVersion());
+                applicationModelController.updateModelVersion(Application.class, event.getApplications().getVersion());
             }
         }
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceConnected event) {
-        if (applicationController.getModelVersion() < event.getModelVersion()) {
+    public void on(ClusterEvents.AxonServerInstanceConnected event) {
+        if (applicationModelController.getModelVersion(Application.class) < event.getModelVersion(Application.class.getName())) {
             event.getRemoteConnection().requestApplications();
-            event.getRemoteConnection().requestUsers();
         }
     }
 }

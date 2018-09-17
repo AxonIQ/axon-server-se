@@ -21,7 +21,7 @@ public abstract class ReceivingStreamObserver<T> implements StreamObserver<T> {
         try {
             consume(message);
         } catch( RuntimeException cause) {
-            logger.warn("{}: Execution of command failed: {}", sender(), cause.getMessage());
+            logger.warn("{}: Execution of command {} failed", sender(), message, cause.getMessage(), cause);
         }
     }
 

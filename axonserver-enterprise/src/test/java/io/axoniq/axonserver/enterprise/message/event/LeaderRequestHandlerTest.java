@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.message.event;
 
-import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.manager.LeaderRequestHandler;
 import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;

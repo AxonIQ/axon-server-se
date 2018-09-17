@@ -33,7 +33,7 @@ public class ApplicationControllerTest {
     @Autowired
     private ApplicationRepository applicationRepository;
     @Autowired
-    private ApplicationModelVersionRepository versionRepository;
+    private ApplicationModelController versionRepository;
     private BcryptHasher hasher =  new BcryptHasher();
 
 
@@ -51,10 +51,10 @@ public class ApplicationControllerTest {
     public void updateNew() {
         AtomicBoolean updateListenerCalled = new AtomicBoolean(false);
         testSubject.registerUpdateListener("sample", app -> updateListenerCalled.set(true));
-        long modelVersion = testSubject.getModelVersion();
+        long modelVersion = versionRepository.getModelVersion(Application.class);
         assertNotEquals( "Token already returned", testSubject.updateJson(new Application("Test1", "TEST1", null,
                 null, new ApplicationRole("READ", "default", null))).getTokenString());
-        assertEquals(modelVersion+1, testSubject.getModelVersion());
+        assertEquals(modelVersion+1, versionRepository.getModelVersion(Application.class));
         assertTrue(updateListenerCalled.get());
     }
 
@@ -99,8 +99,8 @@ public class ApplicationControllerTest {
 
     @Test
     public void updateModelVersion() {
-        testSubject.updateModelVersion(100);
-        assertEquals(100, testSubject.getModelVersion());
+        versionRepository.updateModelVersion(Application.class, 100);
+        assertEquals(100, versionRepository.getModelVersion(Application.class));
     }
 
 }

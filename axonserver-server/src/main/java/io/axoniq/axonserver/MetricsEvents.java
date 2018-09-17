@@ -1,6 +1,6 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonhub.internal.grpc.NodeMetrics;
+import io.axoniq.axonserver.internal.grpc.NodeMetrics;
 
 /**
  * Created by Sara Pellegrini on 11/04/2018.

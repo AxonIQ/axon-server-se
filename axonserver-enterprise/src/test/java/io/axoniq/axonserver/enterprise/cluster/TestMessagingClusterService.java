@@ -2,11 +2,11 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonhub.Confirmation;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
-import io.axoniq.axonhub.internal.grpc.ConnectResponse;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.ConnectorResponse;
-import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
-import io.axoniq.axonhub.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.internal.grpc.ConnectResponse;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
 import io.grpc.stub.StreamObserver;
 
 import java.util.concurrent.Executors;
@@ -27,7 +27,7 @@ public class TestMessagingClusterService implements MessagingClusterServiceInter
             public void onNext(ConnectorCommand connectorCommand) {
                 switch (connectorCommand.getRequestCase()) {
                     case CONNECT:
-                        scheduledExecutorService.schedule(() -> responseObserver.onNext(ConnectorResponse.newBuilder().setConnectResponse(ConnectResponse.newBuilder().setApplicationModelVersion(1)).build()), 50, TimeUnit.MILLISECONDS);
+                        scheduledExecutorService.schedule(() -> responseObserver.onNext(ConnectorResponse.newBuilder().setConnectResponse(ConnectResponse.newBuilder()).build()), 50, TimeUnit.MILLISECONDS);
                         break;
                     case SUBSCRIBE_COMMAND:
                         break;

@@ -5,6 +5,7 @@ import io.axoniq.platform.application.jpa.ApplicationModelVersion;
 import io.axoniq.platform.application.jpa.ApplicationRole;
 import org.springframework.stereotype.Controller;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,19 +20,18 @@ import static io.axoniq.platform.util.StringUtils.getOrDefault;
  */
 @Controller
 public class ApplicationController {
-    private static final String DUMMY_APPLICATION_NAME = "__Name";
     public static final int PREFIX_LENGTH = 8;
 
     private final ApplicationRepository applicationRepository;
-    private final ApplicationModelVersionRepository applicationModelVersionRepository;
+    private final ApplicationModelController applicationModelController;
     private final Hasher hasher;
     private final Map<String, Consumer<Application>> updateListeners = new ConcurrentHashMap<>();
     private final Map<String, Consumer<Application>> deleteListeners = new ConcurrentHashMap<>();
 
 
-    public ApplicationController(ApplicationRepository applicationRepository, ApplicationModelVersionRepository versionRepository, Hasher hasher) {
+    public ApplicationController(ApplicationRepository applicationRepository, ApplicationModelController applicationModelController, Hasher hasher) {
         this.applicationRepository = applicationRepository;
-        this.applicationModelVersionRepository = versionRepository;
+        this.applicationModelController = applicationModelController;
         this.hasher = hasher;
     }
 
@@ -49,7 +49,7 @@ public class ApplicationController {
         existingApplication.setHashedToken(hasher.hash(token));
         existingApplication.setTokenPrefix(token.substring(0, PREFIX_LENGTH));
         updateListeners.forEach((key, listener) -> listener.accept(existingApplication));
-        incrementModelVersion();
+        applicationModelController.incrementModelVersion(Application.class);
         return new ApplicationWithToken(token, existingApplication);
     }
 
@@ -77,7 +77,7 @@ public class ApplicationController {
         application.getRoles().forEach(role -> finalApplication.getRoles().add(new ApplicationRole(role.getRole(), role.getContext(), role.getEndDate())));
         applicationRepository.save(finalApplication);
         updateListeners.forEach((key, listener) -> listener.accept(finalApplication));
-        incrementModelVersion();
+        applicationModelController.incrementModelVersion(Application.class);
         return new ApplicationWithToken(token, finalApplication);
     }
 
@@ -108,7 +108,7 @@ public class ApplicationController {
         final Application finalApplication = application;
         if( synchronizeRoles) updatedApplication.getRoles().forEach(role -> finalApplication.getRoles().add(new ApplicationRole(role.getRole(), role.getContext(), role.getEndDate())));
         applicationRepository.save(application);
-        incrementModelVersion();
+        applicationModelController.incrementModelVersion(Application.class);
     }
 
     public Application get(String name) {
@@ -126,7 +126,7 @@ public class ApplicationController {
         }
         applicationRepository.delete(application);
         deleteListeners.forEach((key, deleteListener) -> deleteListener.accept(application));
-        incrementModelVersion();
+        applicationModelController.incrementModelVersion(Application.class);
     }
 
     public void registerUpdateListener(String name, Consumer<Application> updateListener) {
@@ -143,36 +143,9 @@ public class ApplicationController {
     }
 
 
-    public long getModelVersion() {
-        return applicationModelVersionRepository.findById(DUMMY_APPLICATION_NAME)
-                                                .map(ApplicationModelVersion::getVersion)
-                                                .orElse(0L);
-    }
-
-    public void updateModelVersion(long version) {
-        ApplicationModelVersion applicationModelVersion =
-                applicationModelVersionRepository.findById(DUMMY_APPLICATION_NAME)
-                                                 .map(v -> {
-                                                        v.setVersion(version);
-                                                        return v;}
-                                                        )
-                                                 .orElse(new ApplicationModelVersion(DUMMY_APPLICATION_NAME, version));
-        applicationModelVersionRepository.save(applicationModelVersion);
-    }
 
     public void clearApplications() {
         applicationRepository.deleteAll();
     }
 
-    public long incrementModelVersion() {
-        ApplicationModelVersion applicationModelVersion =
-                applicationModelVersionRepository.findById(DUMMY_APPLICATION_NAME)
-                                                 .map(v -> {
-                                                     v.setVersion(v.getVersion()+1);
-                                                     return v;}
-                                                 )
-                                                 .orElse(new ApplicationModelVersion(DUMMY_APPLICATION_NAME, 1));
-        applicationModelVersionRepository.save(applicationModelVersion);
-        return applicationModelVersion.getVersion();
-    }
 }

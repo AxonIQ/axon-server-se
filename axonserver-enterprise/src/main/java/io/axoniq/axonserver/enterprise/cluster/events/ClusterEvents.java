@@ -3,7 +3,9 @@ package io.axoniq.axonserver.enterprise.cluster.events;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonhub.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.ContextRole;
+import io.axoniq.axonserver.internal.grpc.ModelVersion;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
 
 import java.util.List;
 
@@ -14,19 +16,20 @@ public class ClusterEvents {
 
 
     @KeepNames
-    public static class AxonHubInstanceConnected extends TopologyEvents.TopologyBaseEvent {
+    public static class AxonServerInstanceConnected extends TopologyEvents.TopologyBaseEvent {
 
         private final RemoteConnection remoteConnection;
-        private final long modelVersion;
+        private final List<ModelVersion> modelVersionsList;
         private final List<ContextRole> contextsList;
-        private final List<io.axoniq.axonhub.internal.grpc.NodeInfo> nodesList;
+        private final List<io.axoniq.axonserver.internal.grpc.NodeInfo> nodesList;
 
-        public AxonHubInstanceConnected(RemoteConnection remoteConnection, long modelVersion,
-                                        List<ContextRole> contextsList,
-                                        List<io.axoniq.axonhub.internal.grpc.NodeInfo> nodesList){
+        public AxonServerInstanceConnected(RemoteConnection remoteConnection,
+                                           List<ModelVersion> modelVersionsList,
+                                           List<ContextRole> contextsList,
+                                           List<NodeInfo> nodesList){
             super(false);
             this.remoteConnection = remoteConnection;
-            this.modelVersion = modelVersion;
+            this.modelVersionsList = modelVersionsList;
             this.contextsList = contextsList;
             this.nodesList = nodesList;
         }
@@ -35,24 +38,28 @@ public class ClusterEvents {
             return remoteConnection;
         }
 
-        public long getModelVersion() {
-            return modelVersion;
+        public long getModelVersion(String name) {
+            return modelVersionsList.stream()
+                                    .filter(mv -> mv.getName().equals(name))
+                                    .findFirst()
+                                    .map(ModelVersion::getValue)
+                                    .orElse(0L);
         }
 
         public List<ContextRole> getContextsList() {
             return contextsList;
         }
 
-        public List<io.axoniq.axonhub.internal.grpc.NodeInfo> getNodesList() {
+        public List<io.axoniq.axonserver.internal.grpc.NodeInfo> getNodesList() {
             return nodesList;
         }
     }
 
     @KeepNames
-    public static class AxonHubInstanceDisconnected extends TopologyEvents.TopologyBaseEvent {
+    public static class AxonServerInstanceDisconnected extends TopologyEvents.TopologyBaseEvent {
         private final String nodeName;
 
-        public AxonHubInstanceDisconnected(String nodeName) {
+        public AxonServerInstanceDisconnected(String nodeName) {
             super(false);
             this.nodeName = nodeName;
         }

@@ -14,8 +14,8 @@ import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
-import io.axoniq.axonhub.internal.grpc.ConnectorCommand;
-import io.axoniq.axonhub.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -26,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Controller;
 
 import java.nio.charset.Charset;
 import java.util.Map;
@@ -145,7 +144,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     @EventListener
-    public void on(ClusterEvents.AxonHubInstanceConnected event) {
+    public void on(ClusterEvents.AxonServerInstanceConnected event) {
         masterPerContext.forEach((context, node) -> {
             if( node.equals(nodeName)) {
                 event.getRemoteConnection().publish(ConnectorCommand.newBuilder().setMasterConfirmation(NodeContextInfo.newBuilder().setContext(context).setNodeName(node)).build());

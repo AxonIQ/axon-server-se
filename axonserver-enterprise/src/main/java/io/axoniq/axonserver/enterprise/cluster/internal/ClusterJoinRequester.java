@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonhub.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -47,7 +47,7 @@ public class ClusterJoinRequester {
         }
         eventStoreManager.stop();
         MessagingClusterServiceInterface stub = stubFactory.messagingClusterServiceStub(messagingPlatformConfiguration, host, port);
-        logger.warn("Sending join request: {}", clusterController.getMe().toNodeInfo());
+        logger.debug("Sending join request: {}", clusterController.getMe().toNodeInfo());
         stub.join(clusterController.getMe().toNodeInfo(), new StreamObserver<NodeInfo>() {
                                        @Override
                                        public void onNext(NodeInfo nodeInfo) {
