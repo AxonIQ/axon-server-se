@@ -1,27 +1,5 @@
 == Release notes
 
-=== 1.1.1 (Client-only)
+=== 4.0-RC1
 
-* Fix for missing upcaster
-* Resolved high memory consumption in EventBuffer when event stream was closed by client
-* Performance improvement in readEvents
-
-=== 1.1
-
-* Subscription query
-* Support for new operations in AxonFramework 3.3 StreamableMessageSource through new AxonDB operations.
-* Performance improvement on tracking event processors through AxonHub
-
-=== 1.0.3
-
-* Keep alive between clients and servers and between AxonHub servers in cluster (see AxonHub Guide section Keep-Alive)
-* Improved initialization of cluster when using Kubernetes
-
-=== 1.0.2
-
-* Simplified default configuration of controldb path
-* Null handling in query result
-
-=== 1.0
-
-* First GA release of AxonHub
+* First release candidate of AxonServer 4.0

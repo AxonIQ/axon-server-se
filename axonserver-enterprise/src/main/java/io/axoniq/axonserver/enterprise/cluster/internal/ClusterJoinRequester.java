@@ -2,6 +2,8 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.internal.grpc.NodeInfo;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.grpc.stub.StreamObserver;
@@ -42,33 +44,36 @@ public class ClusterJoinRequester {
         try {
             InetAddress.getAllByName(host);
         } catch (UnknownHostException e) {
-            future.completeExceptionally(e);
+            future.completeExceptionally(new MessagingPlatformException(ErrorCode.UNKNOWN_HOST, "Unknown host: " + e.getMessage(), e));
             return future;
         }
         eventStoreManager.stop();
-        MessagingClusterServiceInterface stub = stubFactory.messagingClusterServiceStub(messagingPlatformConfiguration, host, port);
+        MessagingClusterServiceInterface stub = stubFactory.messagingClusterServiceStub(
+                    messagingPlatformConfiguration,
+                    host,
+                    port);
         logger.debug("Sending join request: {}", clusterController.getMe().toNodeInfo());
         stub.join(clusterController.getMe().toNodeInfo(), new StreamObserver<NodeInfo>() {
-                                       @Override
-                                       public void onNext(NodeInfo nodeInfo) {
-                                           if( ! messagingPlatformConfiguration.getName().equals(nodeInfo.getNodeName())) {
-                                               clusterController.addConnection(nodeInfo);
-                                               eventStoreManager.start();
-                                           }
-                                       }
+                @Override
+                public void onNext(NodeInfo nodeInfo) {
+                    if (!messagingPlatformConfiguration.getName().equals(nodeInfo.getNodeName())) {
+                        clusterController.addConnection(nodeInfo);
+                        eventStoreManager.start();
+                    }
+                }
 
-                                       @Override
-                                       public void onError(Throwable throwable) {
-                                           logger.warn("Error connecting to {}:{} - {}", host, port, throwable.getMessage());
-                                           eventStoreManager.start();
-                                           future.completeExceptionally(throwable);
-                                       }
+                @Override
+                public void onError(Throwable throwable) {
+                    logger.warn("Error connecting to {}:{} - {}", host, port, throwable.getMessage());
+                    eventStoreManager.start();
+                    future.completeExceptionally(new MessagingPlatformException(ErrorCode.OTHER, "Error joining " + host + ":" + port + ": " + throwable.getMessage(), throwable));
+                }
 
-                                       @Override
-                                       public void onCompleted() {
-                                           future.complete(null);
-                                       }
-                                   });
+                @Override
+                public void onCompleted() {
+                    future.complete(null);
+                }
+            });
         return future;
     }
 }

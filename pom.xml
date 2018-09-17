@@ -16,6 +16,7 @@
         <module>axonserver-accessdb</module>
         <module>axonserver-grpc</module>
         <module>axonserver-enterprise</module>
+        <module>package</module>
         <module>plugins/axonserver-metrics-prometheus</module>
         <!--
         <module>plugins/axonserver-kafka-connector</module>

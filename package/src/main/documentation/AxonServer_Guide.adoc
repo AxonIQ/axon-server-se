@@ -1,0 +1,442 @@
+:doctype: book
+:imagesdir: images
+:numbered:
+
+= AxonIQ AxonServer Guide
+AxonIQ B.V.
+:revnumber: 1.0
+:revdate: {localdate}
+:cliversion: 1.1
+:Cli: axoniq-cli.jar
+:CliCmd: java -jar {Cli}
+:clientrevnumber: {revnumber}
+
+== Introduction
+
+=== About
+
+AxonServer is a messaging platform specifically built to support distributed Axon Framework applications.
+It is a drop in replacement for the other CommandBus, EventBus and QueryBus implementations.
+
+The key characteristics for AxonServer are:
+
+- Dedicated infrastructure for exchanging messages in a message-driven micro-services environment.
+- Easy-to-use and easy-to-manage
+- Built-in knowledge on CQRS message patterns
+
+=== License
+
+The Axon Framework itself is open source and licensed under the Apache License v2.0.
+
+AxonIQ AxonServer is a commercial software product by AxonIQ B.V. Please contact us via https://axoniq.io or
+sales@axoniq.io if you are interested in acquiring a license and support contract. To facilitate evaluation
+and development, AxonIQ offers a free edition of the software.
+
+The Java client to AxonServer is open source under the Apache License 2.0. It is available through
+GitHub (https://github.com/AxonIQ) and can be downloaded from Maven Central.
+
+
+== Architecture
+
+=== Overview
+
+In a message-driven micro-services environment it is extremely important that communication
+between services is efficient, reliable and easy to manage and monitor. Routing of messages
+should not require any manual configuration and adding new services should be easy to do.
+
+With Axon Framework the internals of communication are hidden for the application developers.
+AxonServer provides this same experience in a distributed environment. It is an easy-to-use,
+easy-to-manage platform to handle all events, commands and queries.
+
+AxonServer has knowledge about the different types of messages that are being exchanged:
+events, sent from one service to one or many other services, to notify the services that something has happened,
+commands, sent to one service to do something, potentially waiting for a result
+queries, sent to one or more services to retrieve information.
+
+Each of these messages requires a different strategy, all supported by AxonServer.
+
+Applications connect to the messaging platform and register their capabilities. One application may be able to execute a specific set of commands, another may handle a number of queries. There may be multiple instances of the same application connected to the messaging platform, each instance having the same capabilities.
+
+=== Message patterns
+
+A client or application sends a request to the messaging platform. The platform finds the appropriate connected application(s) to send the request to, and forwards the request. It receives the reply, or replies, and forwards that to the caller.
+Commands are always sent to exactly one application. Commands for the same aggregate are always sent to the same application instance, to avoid problems with concurrent updates of the aggregate.
+Queries are sent to all applications capable of answering the query. If there are multiple instances of the same application, the query is only sent to one of the instances.
+Events are stored in the event store and sent to all registered listeners.
+
+=== High Available
+
+AxonServer can operate in a clustered mode. Each node in the cluster is active and applications are dynamically load balanced over the nodes. Instances of the same application will connect to the same messaging node to optimize performance. Instances of different applications are distributed over the nodes to spread the load.
+
+
+=== Flow control
+
+AxonServer controls the flow of messages being sent to the message handlers. The message handlers sent a number of permits to the messing platform, indicating the number of messages the messaging platform may send. Once the handler is ready for more request it sends another message with a number of additional permits.
+AxonServer queues messages when there are no permits for the handler left. When a handler is disconnected while there are still queued messages, these are re-routed to another handler (if possible).
+
+=== QoS Messages
+
+Clients can indicate priority of their request. This way, for example, commands originating from a batch process can be executed with lower priority than online request.
+
+=== Access control
+
+Applications need to be granted access to the messaging platform. This avoids the risk that random clients can start sending commands into the system.
+
+
+=== Implementation technology
+
+The AxonIQ AxonServer has been developed fully in Java, building on Spring Boot. It is distributed as a single jar
+file containing all libraries used through shading.
+
+Configuration information for AxonServer is stored in a small h2 database. This contains the information about the
+messaging platform nodes and the applications that have access. This information is automatically replicated
+between nodes in the cluster.
+
+The messaging platform has 2 types of interfaces:
+
+- HTTP
+- gRPC (HTTP 2.0)
+
+Communication between the standard Axon Framework AxonServer client and the messaging platform uses gRPC.
+
+== Setting up the AxonServer server
+
+=== Prerequisites
+A Java 8+ JRE should be installed on the system.
+
+=== Installation procedure
+
+The AxonServer delivery contains the following artifacts:
+
+- axon-server.jar
+- axonserver.properties
+- {Cli}
+- AxonServer_Guide.pdf
+
+Copy axonserver-server.jar and axonserver.properties to a directory of your choice. As AxonServer also acts
+as an event store, you need to tell it where to store the events. In the provided axonserver.properties file
+this is set up to be the events subdirectory in the startup directory. If you want to change this you can
+change the value of the property *axoniq.axonserver.event.storage* to the location where you want to store the
+files.
+
+Default ports used by AxonServer are:
+
+- 8024: HTTP port for REST calls and HTML pages
+- 8124: gRPC port, used by applications to connect to AxonServer.
+- 8224: Internal gRPC port, used by AxonServer nodes for internal communication
+
+Basically, you are ready to go now. Start the Axon server using the following command:
+
+[subs="attributes"]
+```sh
+# ./axon-server.jar
+```
+or when not running bash shell:
+[subs="attributes"]
+```sh
+# java -jar axon-server.jar
+```
+
+To verify that the server is started correctly, open the page http://localhost:8024.
+
+
+== Using AxonServer from applications
+
+The same configuration can also be done manually, when you are not using Spring boot. For this you need
+to include the following dependency:
+
+[subs="verbatim,attributes"]
+```xml
+<dependency>
+  <groupId>io.axoniq</groupId>
+  <artifactId>axonserver-connector</artifactId>
+  <version>{clientrevnumber}</version>
+</dependency>
+```
+
+In your Axon application you need to configure the various buses manually, e.g.:
+
+```java
+public class AxonStarter {
+    public static void main(String[] args) {
+        AxonHubConfiguration axonhubConfiguration = AxonHubConfiguration.newBuilder("localhost", "AxonStarter").build();
+        PlatformConnectionManager platformConnectionManager = new PlatformConnectionManager(axonhubConfiguration);
+
+        Serializer serializer = new JacksonSerializer();
+        EventBus axonHubEventStore = new AxonHubEventStore(axonhubConfiguration, platformConnectionManager, serializer);
+        CommandBus localSegment = new SimpleCommandBus();
+        CommandBus axonHubCommandBus = new AxonHubCommandBus(platformConnectionManager, axonhubConfiguration, localSegment, serializer,
+                new AnnotationRoutingStrategy());
+
+        QueryBus localQueryBus = new SimpleQueryBus();
+        QueryBus axonHubQueryBus = new AxonHubQueryBus(platformConnectionManager, axonhubConfiguration, localQueryBus, serializer,
+                new QueryPriorityCalculator() {});
+
+        Configuration config = DefaultConfigurer.defaultConfiguration()
+                .configureEventBus(c -> axonHubEventStore)
+                .configureCommandBus(c -> axonHubCommandBus)
+                .configureQueryBus(c -> axonHubQueryBus)
+                // more configuration for Axon
+                .configureSerializer(c -> serializer)
+                .buildConfiguration();
+
+        config.start();
+    }
+}
+```
+
+== Advanced configuration
+
+=== Names and ports
+
+
+- *axoniq.axonserver.name*: the unique node name of the AxonServer node is taken from the hostname of the server.
+- *axoniq.axonserver.hostname*: the hostname of the AxonServer node, as returned to clients, is taken from the hostname of the server.
+- *axoniq.axonserver.port*: the gRPC port for clients to connect is set to 8124 by default
+- *server.port*: the HTTP port for REST clients to connect is set to 8024 by default
+
+=== Database
+
+By default each AxonServer node will create its own H2 database in a file axonserver-controldb in the working
+directory. To change this, set the property:
+
+- *axoniq.axonserver.controldb-path*: Path to controlDB
+
+=== Logging
+
+Logging is by default set to WARN level for all packages. To change the logging levels for
+specific packages or classes add logging level properties to the axonserver.properties file, for example:
+```
+logging.level.io.axoniq.axonserver=INFO
+```
+
+Log messages are written to stdout by default. To change this add the properties logging.file and/or logging.path
+to the axonserver.properties file.
+```sh
+# write log entries to file called messaging.log
+logging.file=messaging.log
+# create logfiles in directory /var/log
+logging.path=/var/log
+```
+
+=== Cluster [Not in Free edition]
+
+When runnning AxonServer in a licensed edition, you can set up a cluster of Axon servers. The servers run in
+active/active mode, so each node can receive and handle requests.
+
+You can set the following properties in the axonserver.properties configuration file:
+
+- *axoniq.axonserver.name* - logical name of the node in the cluster. _This must be unique within the cluster_.
+- *axoniq.axonserver.hostname* - sets the hostname as this node advertises it to clients
+- *axoniq.axonserver.domain* - sets the domain as used in returning the server address to clients
+- *axoniq.axonserver.internal-hostname* - hostname to be used by other nodes in the server cluster
+- *axoniq.axonserver.internal-domain* - domain to be used by other nodes in the server cluster
+- *axoniq.axonserver.internal-port* - internal gRPC port number for communication to other nodes
+
+When there is no hostname specified it defaults to the hostname as returned by the *hostname* command.
+
+
+Sample configuration:
+----
+axoniq.axonserver.hostname=messaging1.axoniq.io
+axoniq.axonserver.name=messaging1
+----
+
+Connecting the nodes of a cluster is done using the command line interface.
+Send the register-node command to one node, specifying the address of another node
+in the cluster, e.g.
+
+[subs="attributes"]
+```sh
+# {CliCmd} register-node -S http://node-to-add:port -h node-in-cluster -p internal-port-of-node-in-cluster
+```
+
+This only has to be done once, each node maintains a list of all nodes in the cluster.
+
+
+=== Flow control
+
+Flow control is the process of managing the rate of data transmission between two nodes
+to prevent a fast sender from overwhelming a slow receiver.
+
+In the messaging platform flow control is possible both between the messaging platform and the message handlers,
+and between the nodes in the messaging platform cluster.
+
+Messaging platform - message handler::
+
+The client needs to set the following properties to configure flow control:
+
+* *axoniq.axonserver.initial-nr-of-permits* [100000] - number of messages that the server can initially send to client.
+* *axoniq.axonserver.nr-of-new-permits* [90000] - additional number of messages that the server can send to client.
+* *axoniq.axonserver.new-permits-threshold* [10000] -  when client reaches this threshold in remaining messages, it sends a request with additional number of messages to receive.
+
+AxonServer nodes::
+
+Set the following properties to set flow control on the synchronization between nodes in an AxonServer cluster:
+
+* *axoniq.axonserver.commandFlowControl.initial-nr-of-permits* [100000] - number of messages that the master can initially send to replica.
+* *axoniq.axonserver.commandFlowControl.nr-of-new-permits* [90000] - additional number of messages that the master can send to replica.
+* *axoniq.axonserver.commandFlowControl.new-permits-threshold* [10000] - when replica reaches this threshold in remaining messages, it sends a request with additional number of messages to receive.
+* *axoniq.axonserver.queryFlowControl.initial-nr-of-permits* [100000] - number of messages that the master can initially send to replica.
+* *axoniq.axonserver.queryFlowControl.nr-of-new-permits* [90000] - additional number of messages that the master can send to replica.
+* *axoniq.axonserver.queryFlowControl.new-permits-threshold* [10000] - when replica reaches this threshold in remaining messages, it sends a request with additional number of messages to receive.
+
+
+=== Access control
+
+To enable access control add the following property to the axonserver.properties:
+
+* *axoniq.axonserver.accesscontrol.enabled*=true
+
+To register an application and get an access token use the following command:
+
+[subs="attributes"]
+```
+{CliCmd} register-application -S http://messaging:8080 -a applicationname -d description -r READ,WRITE,ADMIN
+```
+
+The address of the server specified in this command is the address of the current master node. The master will distribute the applications to all the replicas.
+
+This command returns the generated token to use. _Note that this token is only generated once, if you loose it you must delete the application and register it again to get a new token_.
+If you want to define the token yourself, you can provide one in the command line command using the -T flag, e.g.:
+[subs="attributes"]
+```
+{CliCmd} register-application -S http://messaging:8080 -a applicationname -d description -r READ,WRITE -T this-is-my-token
+```
+The minimum length for a token is 8 characters.
+
+Specify the access token in the client by setting the property:
+
+* *axoniq.axonserver.token*=[Token]
+
+In the Free Edition it is not possible to create applications. If you want to use access control in this edition
+specify the property *axoniq.axonserver.accesscontrol.token* with any value you want on the Axon server and set the same value
+in the *axoniq.axonserver.token* property on the client.
+
+You can access the Axon webpages when access control is enabled by providing a username and password. Users are created
+through the command line using the following command:
+
+[subs="attributes"]
+```
+{CliCmd} register-user -S http://axonserver:8024 -u USERNAME -r USER,ADMIN
+```
+
+The command will prompt for a password. If you want to set the password directly you can use the -p option.
+
+Note that the command line interface also requires a token when executing remote commands. If you execute a command
+from an AxonServer node itself, you do not need to provide a token.
+
+If access control is enabled and AxonServer is running in clustered mode,
+the nodes in the cluster also need to attach a token with the messages sent between them.
+This token must be defined in the application properties file on each node with property *axoniq.axonserver.accesscontrol.internal-token*. The value of this property
+must be the same for all nodes.
+
+
+=== SSL
+
+Requires private key and public certificate. The same certificate is used to connect to all event store servers.
+
+For gRPC communication add file locations to the axonserver.properties file:
+
+* *axoniq.axonserver.ssl.cert-chain-file* - location of the public certificate file
+* *axoniq.axonserver.ssl.private-key-file* - location of the private key file
+
+Sample:
+----
+axoniq.axonserver.ssl.enabled=true
+axoniq.axonserver.ssl.cert-chain-file=./resources/axoniq-public.crt
+axoniq.axonserver.ssl.private-key-file=./resources/axoniq-private.pem
+----
+
+For HTTPs configuration the certificate and key need to be installed in a p12 keystore.
+To install the keys use the following command:
+```
+openssl pkcs12 -export -in [public-cert-file] -inkey [private-key-file] -out [keystore-file] -name [alias]
+```
+
+Configure the Messaging Platform server to use HTTPs by adding the following properties to the axonserver.properties file:
+----
+server.port=8443
+server.ssl.key-store=[keystore-file]
+server.ssl.key-store-password=[password]
+server.ssl.key-store-type=PKCS12
+server.ssl.key-alias=[alias]
+----
+
+== Operations
+
+=== Starting the AxonServer
+Start AxonServer with the following queryDefinition:
+[subs="attributes"]
+```sh
+# java -jar axon-server.jar
+```
+
+=== Stopping the Event Store
+Either press Ctrl-C in the console window, or kill the process.
+
+[appendix]
+
+include::../resources/releasenotes.adoc[]
+
+[appendix]
+== Configuration Properties
+
+The following table gives a complete list of all the configuration properties available for the Axon Server.
+
+[width="95%", cols="3,1,1,5", options="header"]
+|===========================
+|Name|Default value|Type|Description
+|server.port|8024|Integer|The Http Server port
+|axoniq.axonserver.name||String|Node name of this AxonServer node, if not set defaults to the hostname.
+|axoniq.axonserver.port|8124|Integer|gRPC port for AxonServer
+|axoniq.axonserver.internal-port|8224|Integer|gRPC port for communication between messing platform nodes
+|axoniq.axonserver.hostname||String|Hostname of this node as communicated to clients, defaults to the result of hostname command
+|axoniq.axonserver.internal-hostname||String|Hostname as communicated to other nodes of the cluster. Defaults to hostname.
+|axoniq.axonserver.domain||String|Domain of this node as communicated to clients. Optional, if set will be appended to the hostname in communication with clients.
+|axoniq.axonserver.internal-domain||String|Domain as communicated to other nodes of the cluster. Optional, if not set, it will use the domain value.
+|axoniq.axonserver.accesscontrol.enabled|false|Boolean|Access control active
+|axoniq.axonserver.accesscontrol.cache-ttl|30000|Long|Milliseconds that authenticated tokens will be cached
+|axoniq.axonserver.accesscontrol.internal-token||String|Token to add to AxonServer internal cluster message
+|axoniq.axonserver.accesscontrol.token||String|Token expected from client requests [Developer edition only]
+|axoniq.axonserver.cluster.enabled|false|Boolean|Cluster enabled
+|axoniq.axonserver.cluster.connection-check-delay|1000|Long|Delay before the first run of the connection checker (in ms.)
+|axoniq.axonserver.cluster.connection-check-interval|1000|Long|Interval between each run of the connection checker (in ms.)
+|axoniq.axonserver.cluster.rebalance-delay|7|Long|Delay before the first run of the rebalancer (in seconds) [Enterprise edition only]
+|axoniq.axonserver.cluster.rebalance-interval|15|Long|Interval between each run of the rebalancer (in seconds) [Enterprise edition only]
+|axoniq.axonserver.command-flow-control.initial-permits|10000|Long|Initial number of permits granted in communication between AxonServer nodes.
+|axoniq.axonserver.command-flow-control.new-permits|10000|Long|Additional number of permits granted in communication between AxonServer nodes.
+|axoniq.axonserver.command-flow-control.threshold|1000|Long|Threshold at which the node will send another grant of newPermits to the connected platform node.
+|axoniq.axonserver.query-flow-control.initial-permits|10000|Long|Initial number of permits granted in communication between AxonServer nodes.
+|axoniq.axonserver.query-flow-control.new-permits|10000|Long|Additional number of permits granted in communication between AxonServer nodes.
+|axoniq.axonserver.query-flow-control.threshold|1000|Long|Threshold at which the node will send another grant of newPermits to the connected platform node.
+|axoniq.axonserver.ssl.enabled|false|Boolean|SSL enabled for gRPC servers
+|axoniq.axonserver.ssl.cert-chain-file||String|
+|axoniq.axonserver.ssl.internal-cert-chain-file||String|
+|axoniq.axonserver.ssl.private-key-file||String|
+|axoniq.axonserver.controldb-path|.|String|Path to the AxonServer controlDB|
+|===========================
+
+[appendix]
+== Client Configuration Properties
+
+The following table gives a complete list of all the configuration properties available for
+ the AxonServer Client.
+[width="95%", cols="3,1,1,5", options="header"]
+|===========================
+|Name|Default value|Type|Description
+|axoniq.axonserver.servers||String|Comma separated list of AxonServer servers
+|axoniq.axonserver.ssl-enabled|false|Boolean|Use SSL for connection to AxonServer
+|axoniq.axonserver.cert-file||String|Path to certificate file to use for SSL
+|axoniq.axonserver.token||String|Authentication token sent with each request. Only if AxonServer is running in Authentication mode.
+|axoniq.axonserver.client-name||String|Client name as communicated to AxonServer. If not set, defaults to hostname:processId.
+|axoniq.axonserver.component-name||String|Component name, all instances of the same application must have the same component name. Defaults to Spring application name.
+|axoniq.axonserver.initial-nr-of-permits|100000|Long|Initial number of permits granted in communication with AxonServer.
+|axoniq.axonserver.new-permits-threshold|1000|Long|Threshold at which the node client send another grant of newPermits to the connected platform node.
+|axoniq.axonserver.nr-of-new-permits|90000|Long|Additional number of permits granted in communication with AxonServer nodes.
+|axoniq.axonserver.command-threads|10|Integer|Number of threads processing commands
+|axoniq.axonserver.query-threads|10|Integer|Number of threads processing queries
+|axoniq.axonserver.context||String|AxonServer context used by the application (Enterprise Edition only)
+|axoniq.axonserver.keep-alive-time|0|Long|Interval for keep alive messages, 0 disables keep alive messages
+|axoniq.axonserver.keep-alive-timeout|5000|Long|Timeout for keep alive messages, only of keep-alive-time is greater than 0
+|===========================
