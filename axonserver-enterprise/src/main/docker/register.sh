@@ -5,7 +5,7 @@ else
 	echo "Waiting for node to come up" 
 	HEALTH_CHECK_RETURN=1
 	while [ $HEALTH_CHECK_RETURN -ne 0 ]; do
-		wget --quiet --spider http://localhost:8024/health
+		wget --quiet --spider http://localhost:8024/actuator/health
 		HEALTH_CHECK_RETURN=$?
 		sleep 5s
 	done
