@@ -24,7 +24,7 @@ import static org.junit.Assert.*;
 @RunWith(SpringRunner.class)
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@SpringBootTest(classes = ApplicationRepository.class)
+@SpringBootTest(classes = {ApplicationRepository.class, ApplicationModelController.class})
 @EnableAutoConfiguration
 @EntityScan("io.axoniq.platform")
 public class ApplicationControllerTest {
