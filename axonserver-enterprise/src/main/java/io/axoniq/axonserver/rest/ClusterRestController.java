@@ -48,7 +48,7 @@ public class ClusterRestController {
     @PostMapping
     public Future<Void> add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
         if( !Feature.CLUSTERING.enabled(limits) ) {
-            throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of AxonHub servers");
+            throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
         }
         if( clusterController.getRemoteConnections().size() >= limits.getMaxClusterSize()) {
             throw new MessagingPlatformException(ErrorCode.MAX_CLUSTER_SIZE_REACHED, "Maximum allowed number of nodes reached");
@@ -62,6 +62,9 @@ public class ClusterRestController {
 
     @DeleteMapping( path = "{name}")
     public void deleteNode(@PathVariable("name") String name) {
+        if( !Feature.CLUSTERING.enabled(limits) ) {
+            throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
+        }
         clusterController.sendDeleteNode(name);
     }
 
@@ -75,7 +78,7 @@ public class ClusterRestController {
     @GetMapping(path="{name}")
     public JsonClusterNode getOne(@PathVariable("name") String name) {
         ClusterNode node = clusterController.getNode(name);
-        if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_APPLICATION, "Node " + name + " not found");
+        if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, "Node " + name + " not found");
 
         return JsonClusterNode.from(node, true);
     }

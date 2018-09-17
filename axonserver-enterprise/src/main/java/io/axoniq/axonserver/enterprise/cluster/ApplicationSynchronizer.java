@@ -58,6 +58,7 @@ public class ApplicationSynchronizer {
     public void on(ClusterEvents.AxonHubInstanceConnected event) {
         if (applicationController.getModelVersion() < event.getModelVersion()) {
             event.getRemoteConnection().requestApplications();
+            event.getRemoteConnection().requestUsers();
         }
     }
 }
