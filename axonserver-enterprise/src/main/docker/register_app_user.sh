@@ -11,7 +11,7 @@ if [ `hostname -s` = "axon-server-0" -o `hostname -s` = "axon-server" ]; then
 	
 	wget -O - http://localhost:8024/v1/applications/admin
 	if [ $? -ne 0 ]; then
-		java -jar cli.jar register-application -S http://localhost:8024 -a admin -r ADMIN -T token-for-my-test-cluster
+		java -jar cli.jar register-application -S http://localhost:8024 -a admin -r ADMIN,READ,WRITE -T token-for-my-test-cluster
 		java -jar cli.jar register-user -S http://localhost:8024 -u admin -p hello -r ADMIN 
 	fi
 fi
