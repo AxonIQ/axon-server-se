@@ -29,7 +29,7 @@ public class AuthenticationInterceptor implements ServerInterceptor{
         if( token == null) {
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING, "Token missing");
         } else if( ! axonHubAccessController.allowed( serverCall.getMethodDescriptor().getFullMethodName(), context, token)) {
-            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token");
+            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token for " + serverCall.getMethodDescriptor().getFullMethodName());
         }
 
         if( sre != null) {

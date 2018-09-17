@@ -52,13 +52,13 @@ insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStore/
 insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStore/ListAggregateEvents', 'READ');
 insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStore/ReadHighestSequenceNr', 'READ');
 
-insert into path_mapping( path, role) values ('io.axoniq.axonhubrpc.CommandService/OpenStream', 'WRITE');
-insert into path_mapping( path, role) values ('io.axoniq.axonhubrpc.CommandService/Dispatch', 'WRITE');
+insert into path_mapping( path, role) values ('io.axoniq.axonhub.grpc.CommandService/OpenStream', 'WRITE');
+insert into path_mapping( path, role) values ('io.axoniq.axonhub.grpc.CommandService/Dispatch', 'WRITE');
 
-insert into path_mapping( path, role) values ('io.axoniq.axonhubrpc.QueryService/OpenStream', 'READ');
-insert into path_mapping( path, role) values ('io.axoniq.axonhubrpc.QueryService/Query', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axonhub.grpc.QueryService/OpenStream', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axonhub.grpc.QueryService/Query', 'READ');
 
-insert into path_mapping( path, role) values ('io.axoniq.axonhubrpc.InstructionService/OpenStream', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axonhub.grpc.InstructionService/OpenStream', 'READ');
 
 insert into path_mapping( path, role) values ('io.axoniq.platform.grpc.PlatformService/GetPlatformServer', 'READ');
 insert into path_mapping( path, role) values ('io.axoniq.platform.grpc.PlatformService/OpenStream', 'READ');
