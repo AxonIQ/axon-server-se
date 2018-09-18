@@ -13,7 +13,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
-import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
+import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.grpc.MethodDescriptor;

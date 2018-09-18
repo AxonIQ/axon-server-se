@@ -2,7 +2,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
+import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;

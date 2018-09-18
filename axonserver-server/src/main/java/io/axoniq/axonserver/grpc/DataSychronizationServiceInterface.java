@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.internal.grpc.SynchronizationReplicaInbound;
-import io.axoniq.axonserver.internal.grpc.SynchronizationReplicaOutbound;
+import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaInbound;
+import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaOutbound;
 import io.grpc.stub.StreamObserver;
 
 /**

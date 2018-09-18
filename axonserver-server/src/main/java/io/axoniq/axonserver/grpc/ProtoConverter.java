@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.grpc;
 
 
-import io.axoniq.axonserver.internal.grpc.Action;
-import io.axoniq.axonserver.internal.grpc.Application;
-import io.axoniq.axonserver.internal.grpc.ApplicationRole;
-import io.axoniq.axonserver.internal.grpc.User;
+import io.axoniq.axonserver.grpc.internal.Action;
+import io.axoniq.axonserver.grpc.internal.Application;
+import io.axoniq.axonserver.grpc.internal.ApplicationRole;
+import io.axoniq.axonserver.grpc.internal.User;
 import io.axoniq.platform.user.UserRole;
 
 import java.util.Date;

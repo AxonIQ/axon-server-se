@@ -1,5 +1,5 @@
 syntax = "proto3";
-package io.axoniq.axonserver.internal.grpc;
+package io.axoniq.axonserver.grpc.internal;
 import "common.proto";
 import "command.proto";
 import "query.proto";
@@ -94,7 +94,7 @@ message InternalQuerySubscription {
 
 message ConnectorResponse {
     oneof response {
-        io.axoniq.axonserver.grpc.Confirmation confirmation = 1;
+        Confirmation confirmation = 1;
         io.axoniq.axonserver.grpc.command.Command command = 2;
         ConnectResponse connect_response = 3;
         io.axoniq.axonserver.grpc.query.QueryRequest query = 4;
@@ -265,7 +265,7 @@ message SynchronizationReplicaOutbound {
         StartSynchronization start = 1;
         Permits permits = 2;
         TransactionConfirmation confirmation = 3;
-        io.axoniq.axonserver.grpc.Confirmation safepoint_confirmation = 4;
+        Confirmation safepoint_confirmation = 4;
     }
 
 }

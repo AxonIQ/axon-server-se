@@ -4,13 +4,13 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.Group;
-import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.Group;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import org.junit.*;
 
-import static io.axoniq.axonserver.internal.grpc.ConnectorCommand.RequestCase.*;
+import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.*;
 import static org.junit.Assert.*;
 
 /**
