@@ -24,24 +24,17 @@ import java.util.concurrent.TimeUnit;
 @Component("Gateway")
 public class Gateway implements SmartLifecycle {
     private final Logger logger = LoggerFactory.getLogger(Gateway.class);
-    private final PlatformService instructionService;
+    private final List<AxonServerClientService> axonServerClientServices;
     private final AxonServerAccessController axonHubAccessController;
     private boolean started;
     private Server server;
     private final MessagingPlatformConfiguration routingConfiguration;
-    private final EventDispatcher eventDispatcher;
-    private final CommandService commandService;
-    private final QueryService queryService;
 
 
-    public Gateway(MessagingPlatformConfiguration routingConfiguration, EventDispatcher eventDispatcher, CommandService commandService,
-                   QueryService queryService, PlatformService instructionService,
+    public Gateway(MessagingPlatformConfiguration routingConfiguration, List<AxonServerClientService> axonServerClientServices,
                    AxonServerAccessController axonHubAccessController) {
         this.routingConfiguration = routingConfiguration;
-        this.eventDispatcher = eventDispatcher;
-        this.commandService = commandService;
-        this.queryService = queryService;
-        this.instructionService = instructionService;
+        this.axonServerClientServices = axonServerClientServices;
         this.axonHubAccessController = axonHubAccessController;
     }
 
@@ -102,23 +95,18 @@ public class Gateway implements SmartLifecycle {
             sslMessage = "SSL enabled";
         }
 
-        serverBuilder
-                .addService(commandService)
-                .addService(queryService)
-                .addService(eventDispatcher)
-                .addService(instructionService);
+        axonServerClientServices.forEach(serverBuilder::addService);
 
+
+        // Note that the last interceptor is executed first
         List<ServerInterceptor> interceptorList = new ArrayList<>();
         if( routingConfiguration.getAccesscontrol().isEnabled()) {
             interceptorList.add( new AuthenticationInterceptor(axonHubAccessController));
         }
         interceptorList.add(new ContextInterceptor());
 
-        // Note that the last interceptor is executed first
-        serverBuilder.addService(ServerInterceptors.intercept(commandService, interceptorList));
-        serverBuilder.addService(ServerInterceptors.intercept(queryService, interceptorList));
-        serverBuilder.addService(ServerInterceptors.intercept(eventDispatcher, interceptorList));
-        serverBuilder.addService(ServerInterceptors.intercept(instructionService, interceptorList));
+        axonServerClientServices.forEach(s -> ServerInterceptors.intercept(s,interceptorList));
+
 
 //        if( routingConfiguration.getKeepAliveTime() > 0) {
 //            serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)

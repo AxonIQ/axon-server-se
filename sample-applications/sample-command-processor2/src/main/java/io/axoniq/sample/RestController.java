@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 
 /**
  * Author: marc
@@ -24,7 +25,9 @@ public class RestController {
     @RequestMapping("echo")
     public Future<String> echo(@RequestParam(value="text") String text) {
         CompletableFuture<String> result = new CompletableFuture<>();
-        commandGateway.send(new EchoCommand(UUID.randomUUID().toString(), text)).whenComplete((r, t) -> result.complete(String.valueOf(r)));
+        StringBuilder builder = new StringBuilder();
+        IntStream.range(0, 10000000).forEach(i -> builder.append(text));
+        commandGateway.send(new EchoCommand(UUID.randomUUID().toString(), builder.toString())).whenComplete((r, t) -> result.complete(String.valueOf(r)));
         return result;
     }
 }

@@ -18,6 +18,7 @@ import io.axoniq.axonserver.connector.EventConnector;
 import io.axoniq.axonserver.connector.UnitOfWork;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.metric.CompositeMetric;
@@ -52,7 +53,7 @@ import static io.grpc.stub.ServerCalls.*;
  * Author: marc
  */
 @Component("EventDispatcher")
-public class EventDispatcher implements BindableService {
+public class EventDispatcher implements AxonServerClientService {
 
     private static final String EVENTS_METRIC_NAME = "axon.events.count";
     private static final String SNAPSHOTS_METRIC_NAME = "axon.snapshots.count";
@@ -240,7 +241,7 @@ public class EventDispatcher implements BindableService {
                                               .build();
     }
 
-    private void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
+    public void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
         checkConnection(responseObserver).ifPresent(client ->
             client.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
@@ -256,27 +257,27 @@ public class EventDispatcher implements BindableService {
         return Optional.of(eventStore);
     }
 
-    private void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
+    public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
         checkConnection(responseObserver).ifPresent(client ->
                                                             client.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
-    private void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
+    public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
         checkConnection(responseObserver).ifPresent(client ->
                                                             client.getTokenAt(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
-    private void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
-                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
+    public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
+                                      StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
         checkConnection(responseObserver).ifPresent(client ->
                                                             client.readHighestSequenceNr(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
 
-    private StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver) {
+    public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver) {
         return checkConnection(responseObserver).map(client -> client.queryEvents(contextProvider.getContext(), responseObserver)).orElse(null);
     }
 

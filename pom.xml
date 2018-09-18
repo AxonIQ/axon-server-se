@@ -13,6 +13,7 @@
         <module>axonserver-connector-api</module>
         <module>axonserver-server</module>
         <module>sample-applications/sample-command-processor1</module>
+        <module>sample-applications/sample-command-processor2</module>
         <module>axonserver-accessdb</module>
         <module>axonserver-grpc</module>
         <module>axonserver-enterprise</module>

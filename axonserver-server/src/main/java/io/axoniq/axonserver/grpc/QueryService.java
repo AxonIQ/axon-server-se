@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
  * Author: marc
  */
 @Service("QueryService")
-public class QueryService extends QueryServiceGrpc.QueryServiceImplBase {
+public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implements AxonServerClientService {
 
     private final QueryDispatcher queryDispatcher;
     private final ContextProvider contextProvider;

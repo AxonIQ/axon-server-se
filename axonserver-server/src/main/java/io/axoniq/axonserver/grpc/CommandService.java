@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
  * Author: marc
  */
 @Service("CommandService")
-public class CommandService extends CommandServiceGrpc.CommandServiceImplBase {
+public class CommandService extends CommandServiceGrpc.CommandServiceImplBase implements AxonServerClientService {
 
     private final CommandDispatcher commandDispatcher;
     private final ContextProvider contextProvider;

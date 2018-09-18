@@ -39,7 +39,7 @@ import java.util.concurrent.ScheduledFuture;
  * Author: marc
  */
 @Service("PlatformService")
-public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase {
+public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase implements AxonServerClientService {
     private final Map<ClientComponent, SendingStreamObserver<PlatformOutboundInstruction>> connectionMap = new ConcurrentHashMap<>();
     private final Logger logger = LoggerFactory.getLogger(PlatformService.class);
 
