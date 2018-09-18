@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.component.processor.listener;
 
 import io.axoniq.axonserver.component.ComponentItem;
-import io.axoniq.platform.grpc.EventProcessorInfo;
-import io.axoniq.platform.grpc.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
 
 import java.util.Iterator;
 

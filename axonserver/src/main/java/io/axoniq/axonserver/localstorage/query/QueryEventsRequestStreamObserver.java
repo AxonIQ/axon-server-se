@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.localstorage.query;
 
-import io.axoniq.axondb.QueryValue;
-import io.axoniq.axondb.grpc.ColumnsResponse;
-import io.axoniq.axondb.grpc.Confirmation;
-import io.axoniq.axondb.grpc.EventWithToken;
-import io.axoniq.axondb.grpc.QueryEventsRequest;
-import io.axoniq.axondb.grpc.QueryEventsResponse;
-import io.axoniq.axondb.grpc.RowResponse;
+import io.axoniq.axonserver.grpc.event.QueryValue;
+import io.axoniq.axonserver.grpc.event.ColumnsResponse;
+import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
+import io.axoniq.axonserver.grpc.event.RowResponse;
 import io.axoniq.axondb.query.EventStoreQueryParser;
 import io.axoniq.axondb.query.Query;
 import io.axoniq.axonserver.localstorage.EventStreamReader;

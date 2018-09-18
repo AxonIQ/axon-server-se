@@ -1,9 +1,9 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonhub.Command;
-import io.axoniq.axonhub.CommandResponse;
-import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonhub.QueryResponse;
+import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
 
 import java.util.function.Consumer;
 

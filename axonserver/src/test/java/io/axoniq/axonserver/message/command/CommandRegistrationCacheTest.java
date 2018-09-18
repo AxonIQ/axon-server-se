@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonhub.Command;
-import io.axoniq.axonhub.grpc.CommandProviderInbound;
+import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;

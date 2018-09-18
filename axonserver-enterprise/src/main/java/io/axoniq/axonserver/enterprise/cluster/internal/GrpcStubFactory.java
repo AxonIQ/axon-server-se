@@ -1,14 +1,14 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonhub.Confirmation;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
-import io.axoniq.axonserver.internal.grpc.DataSynchronizerGrpc;
-import io.axoniq.axonserver.internal.grpc.MessagingClusterServiceGrpc;
-import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
-import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.DataSynchronizerGrpc;
+import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
+import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;

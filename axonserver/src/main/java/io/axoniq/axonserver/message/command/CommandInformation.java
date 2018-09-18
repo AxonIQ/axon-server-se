@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonhub.CommandResponse;
+import io.axoniq.axonserver.grpc.command.CommandResponse;
 
 import java.util.function.Consumer;
 

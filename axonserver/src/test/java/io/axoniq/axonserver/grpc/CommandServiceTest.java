@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonhub.Command;
-import io.axoniq.axonhub.CommandResponse;
-import io.axoniq.axonhub.CommandSubscription;
-import io.axoniq.axonhub.grpc.CommandProviderInbound;
-import io.axoniq.axonhub.grpc.CommandProviderOutbound;
-import io.axoniq.axonhub.grpc.FlowControl;
+import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
+import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
+import io.axoniq.axonserver.grpc.FlowControl;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.message.FlowControlQueues;

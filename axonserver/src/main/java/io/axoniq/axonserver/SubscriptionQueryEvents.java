@@ -1,13 +1,13 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonhub.SubscriptionQuery;
-import io.axoniq.axonhub.SubscriptionQueryRequest;
-import io.axoniq.axonhub.SubscriptionQueryResponse;
+import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 
 import java.util.function.Consumer;
 
-import static io.axoniq.axonhub.SubscriptionQueryRequest.RequestCase.UNSUBSCRIBE;
+import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCase.UNSUBSCRIBE;
 
 
 /**

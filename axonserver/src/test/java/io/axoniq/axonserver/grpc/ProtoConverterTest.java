@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.platform.grpc.Action;
-import io.axoniq.platform.grpc.Application;
-import io.axoniq.platform.grpc.ApplicationRole;
+import io.axoniq.axonserver.grpc.internal.Action;
+import io.axoniq.axonserver.grpc.internal.Application;
+import io.axoniq.axonserver.grpc.internal.ApplicationRole;
 import org.junit.*;
 
 import static org.junit.Assert.*;

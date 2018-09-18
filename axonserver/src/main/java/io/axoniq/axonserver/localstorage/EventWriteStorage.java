@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axondb.Event;
-import io.axoniq.axondb.grpc.EventWithToken;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

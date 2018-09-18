@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axondb.QueryValue;
-import io.axoniq.axondb.grpc.ColumnsResponse;
-import io.axoniq.axondb.grpc.QueryEventsRequest;
-import io.axoniq.axondb.grpc.QueryEventsResponse;
-import io.axoniq.axondb.grpc.RowResponse;
+import io.axoniq.axonserver.grpc.event.QueryValue;
+import io.axoniq.axonserver.grpc.event.ColumnsResponse;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
+import io.axoniq.axonserver.grpc.event.RowResponse;
 import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.grpc.stub.StreamObserver;

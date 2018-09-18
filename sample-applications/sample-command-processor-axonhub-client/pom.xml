@@ -11,24 +11,13 @@
     <artifactId>sample-command-processor-axonhub-client</artifactId>
   <version>2.0.2.RELEASE</version>
     <properties>
-        <axonhub.client.version>1.2-ONEJAR-SNAPSHOT</axonhub.client.version>
+        <axon.version>3.4-SNAPSHOT</axon.version>
     </properties>
     <dependencies>
         <dependency>
-            <groupId>io.axoniq</groupId>
-            <artifactId>axonhub-spring-boot-autoconfigure</artifactId>
-            <version>${axonhub.client.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.axonframework</groupId>
-                    <artifactId>axon-spring-boot-starter</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
             <groupId>org.axonframework</groupId>
             <artifactId>axon-spring-boot-starter</artifactId>
-            <version>3.3.1</version>
+            <version>${axon.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

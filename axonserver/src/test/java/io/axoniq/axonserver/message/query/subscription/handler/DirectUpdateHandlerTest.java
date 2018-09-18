@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.message.query.subscription.handler;
 
-import io.axoniq.axonhub.QueryUpdate;
-import io.axoniq.axonhub.QueryUpdateComplete;
-import io.axoniq.axonhub.QueryUpdateCompleteExceptionally;
-import io.axoniq.axonhub.SubscriptionQueryResponse;
+import io.axoniq.axonserver.grpc.query.QueryUpdate;
+import io.axoniq.axonserver.grpc.query.QueryUpdateComplete;
+import io.axoniq.axonserver.grpc.query.QueryUpdateCompleteExceptionally;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import org.junit.*;
 
 import java.util.LinkedList;

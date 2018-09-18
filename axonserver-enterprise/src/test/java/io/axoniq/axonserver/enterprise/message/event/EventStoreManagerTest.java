@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.message.event;
 
-import io.axoniq.axonhub.Confirmation;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.enterprise.cluster.TestMessagingClusterService;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
@@ -10,7 +10,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
-import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.AssertUtils;
 import io.grpc.stub.StreamObserver;

@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
 
-import io.axoniq.platform.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.grpc.Channel;
 
 /**

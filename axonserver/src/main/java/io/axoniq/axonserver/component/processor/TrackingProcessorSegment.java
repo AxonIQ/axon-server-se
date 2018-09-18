@@ -2,7 +2,7 @@ package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
-import io.axoniq.platform.grpc.EventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 /**
  * Created by Sara Pellegrini on 21/03/2018.

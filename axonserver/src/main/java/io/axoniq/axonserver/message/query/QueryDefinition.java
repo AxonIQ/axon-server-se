@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonhub.QuerySubscription;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 
 import java.util.Objects;
 

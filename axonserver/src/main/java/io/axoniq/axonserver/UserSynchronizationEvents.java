@@ -1,8 +1,8 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.internal.grpc.Users;
+import io.axoniq.axonserver.grpc.internal.Users;
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.platform.grpc.User;
+import io.axoniq.axonserver.grpc.internal.User;
 
 /**
  * Author: marc

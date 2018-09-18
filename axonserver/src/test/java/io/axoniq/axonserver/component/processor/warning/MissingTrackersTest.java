@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.component.processor.warning;
 
-import io.axoniq.platform.grpc.EventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.junit.*;
 
 import java.util.List;
 
-import static io.axoniq.platform.grpc.EventProcessorInfo.EventTrackerInfo.newBuilder;
+import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo.newBuilder;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 

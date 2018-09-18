@@ -2,8 +2,8 @@ package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axondb.Event;
-import io.axoniq.axondb.grpc.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.grpc.stub.StreamObserver;

@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonhub.grpc.CommandProviderInbound;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.grpc.stub.StreamObserver;

@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonhub.Confirmation;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
-import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
-import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.stub.StreamObserver;
 
 /**

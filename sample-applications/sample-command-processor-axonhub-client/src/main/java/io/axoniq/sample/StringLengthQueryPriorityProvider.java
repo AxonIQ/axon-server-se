@@ -1,6 +1,6 @@
 package io.axoniq.sample;
 
-import io.axoniq.axonhub.client.query.QueryPriorityCalculator;
+import org.axonframework.axonserver.connector.query.QueryPriorityCalculator;
 import org.axonframework.queryhandling.QueryMessage;
 
 /**

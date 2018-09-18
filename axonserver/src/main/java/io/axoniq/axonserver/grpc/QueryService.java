@@ -1,15 +1,15 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonhub.grpc.QueryProviderInbound;
-import io.axoniq.axonhub.grpc.QueryProviderOutbound;
-import io.axoniq.axonhub.grpc.QueryServiceGrpc;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
+import io.axoniq.axonserver.grpc.query.QueryServiceGrpc;
 import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonhub.QueryResponse;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
-import io.axoniq.axonhub.SubscriptionQueryRequest;
-import io.axoniq.axonhub.SubscriptionQueryResponse;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;

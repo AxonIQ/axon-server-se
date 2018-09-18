@@ -3,11 +3,11 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonhub.QueryResponse;
-import io.axoniq.axonhub.QuerySubscription;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonhub.grpc.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;

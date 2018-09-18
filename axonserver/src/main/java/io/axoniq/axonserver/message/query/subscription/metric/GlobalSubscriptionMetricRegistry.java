@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.axoniq.axonhub.SubscriptionQueryResponse.ResponseCase.UPDATE;
+import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.UPDATE;
 
 /**
  * Created by Sara Pellegrini on 20/06/2018.

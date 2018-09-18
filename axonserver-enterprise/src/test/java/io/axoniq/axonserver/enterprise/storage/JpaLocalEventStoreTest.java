@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.enterprise.storage;
 
-import io.axoniq.axondb.Event;
-import io.axoniq.axondb.grpc.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.enterprise.storage.jdbc.JdbcEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.jdbc.StorageProperties;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.platform.SerializedObject;
+import io.axoniq.axonserver.grpc.SerializedObject;
 import io.grpc.stub.StreamObserver;
 import junit.framework.TestCase;
 import org.junit.*;

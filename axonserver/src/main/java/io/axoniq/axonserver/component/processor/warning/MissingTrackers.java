@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component.processor.warning;
 
-import io.axoniq.platform.grpc.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
 
 import java.util.HashSet;
 import java.util.Set;

@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axondb.Event;
-import io.axoniq.axondb.grpc.EventWithToken;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
+import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;

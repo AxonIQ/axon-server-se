@@ -1,14 +1,14 @@
 package io.axoniq.axonserver.localstorage.query;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axondb.Event;
-import io.axoniq.axondb.grpc.EventWithToken;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axondb.query.EventStoreQueryParser;
 import io.axoniq.axondb.query.Query;
 import io.axoniq.axonserver.localstorage.query.result.DefaultQueryResult;
 import io.axoniq.axonserver.localstorage.query.result.EventExpressionResult;
-import io.axoniq.platform.MetaDataValue;
-import io.axoniq.platform.SerializedObject;
+import io.axoniq.axonserver.grpc.MetaDataValue;
+import io.axoniq.axonserver.grpc.SerializedObject;
 import org.junit.*;
 
 import java.text.ParseException;

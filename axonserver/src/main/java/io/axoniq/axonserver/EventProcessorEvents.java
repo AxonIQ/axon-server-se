@@ -1,6 +1,6 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.internal.grpc.ClientEventProcessorStatus;
+import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 
 /**
  * Created by Sara Pellegrini on 09/04/2018.

@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonhub.Command;
-import io.axoniq.axonhub.Confirmation;
-import io.axoniq.axonhub.grpc.CommandProviderInbound;
+import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.grpc.stub.StreamObserver;
 
 /**

@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.Group;
-import io.axoniq.axonserver.internal.grpc.InternalFlowControl;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.Group;
+import io.axoniq.axonserver.grpc.internal.InternalFlowControl;
 import io.grpc.stub.StreamObserver;
 
 import java.util.concurrent.atomic.AtomicLong;

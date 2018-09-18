@@ -28,7 +28,7 @@ public class ApplicationSynchronizer {
 
     @EventListener
     public void on(ApplicationSynchronizationEvents.ApplicationReceived event) {
-        io.axoniq.platform.grpc.Application application = event.getApplication();
+        io.axoniq.axonserver.grpc.internal.Application application = event.getApplication();
         try {
             switch (application.getAction()) {
                 case MERGE:

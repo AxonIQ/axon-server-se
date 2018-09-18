@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonhub.SubscriptionQueryRequest;
-import io.axoniq.axonhub.grpc.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.grpc.stub.StreamObserver;
 
 /**

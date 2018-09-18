@@ -5,7 +5,7 @@ import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.UpdatedLoadBalance;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
-import io.axoniq.axonserver.internal.grpc.ClientEventProcessorStatus;
+import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;

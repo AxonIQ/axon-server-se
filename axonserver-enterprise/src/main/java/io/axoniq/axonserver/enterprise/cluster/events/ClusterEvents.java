@@ -3,9 +3,9 @@ package io.axoniq.axonserver.enterprise.cluster.events;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonserver.internal.grpc.ContextRole;
-import io.axoniq.axonserver.internal.grpc.ModelVersion;
-import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.ModelVersion;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ public class ClusterEvents {
         private final RemoteConnection remoteConnection;
         private final List<ModelVersion> modelVersionsList;
         private final List<ContextRole> contextsList;
-        private final List<io.axoniq.axonserver.internal.grpc.NodeInfo> nodesList;
+        private final List<io.axoniq.axonserver.grpc.internal.NodeInfo> nodesList;
 
         public AxonServerInstanceConnected(RemoteConnection remoteConnection,
                                            List<ModelVersion> modelVersionsList,
@@ -50,7 +50,7 @@ public class ClusterEvents {
             return contextsList;
         }
 
-        public List<io.axoniq.axonserver.internal.grpc.NodeInfo> getNodesList() {
+        public List<io.axoniq.axonserver.grpc.internal.NodeInfo> getNodesList() {
             return nodesList;
         }
     }

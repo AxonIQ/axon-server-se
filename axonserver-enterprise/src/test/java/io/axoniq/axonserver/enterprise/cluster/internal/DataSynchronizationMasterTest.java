@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
-import io.axoniq.axonserver.internal.grpc.StartSynchronization;
-import io.axoniq.axonserver.internal.grpc.SynchronizationReplicaInbound;
-import io.axoniq.axonserver.internal.grpc.SynchronizationReplicaOutbound;
-import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
+import io.axoniq.axonserver.grpc.internal.StartSynchronization;
+import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaInbound;
+import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaOutbound;
+import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;

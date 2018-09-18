@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonhub.grpc.FlowControl;
-import io.axoniq.axonhub.grpc.QueryProviderInbound;
-import io.axoniq.axonhub.grpc.QueryProviderOutbound;
+import io.axoniq.axonserver.grpc.FlowControl;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonhub.QueryResponse;
-import io.axoniq.axonhub.QuerySubscription;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;

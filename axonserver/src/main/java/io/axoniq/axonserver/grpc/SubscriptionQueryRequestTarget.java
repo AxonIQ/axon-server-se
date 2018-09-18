@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonhub.SubscriptionQuery;
+import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryRequested;
-import io.axoniq.axonhub.SubscriptionQueryRequest;
-import io.axoniq.axonhub.SubscriptionQueryResponse;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import io.axoniq.axonserver.message.query.subscription.handler.DirectUpdateHandler;
 import io.grpc.Status;

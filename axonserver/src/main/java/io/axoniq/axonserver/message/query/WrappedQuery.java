@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonhub.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
 
 /**
  * Author: marc

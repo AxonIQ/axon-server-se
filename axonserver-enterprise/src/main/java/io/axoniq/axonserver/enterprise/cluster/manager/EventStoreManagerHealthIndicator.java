@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
-import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
