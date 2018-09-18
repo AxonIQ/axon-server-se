@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonhub.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;

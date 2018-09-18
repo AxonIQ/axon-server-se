@@ -3,8 +3,8 @@ package io.axoniq.axonserver.component.processor.balancing.strategy;
 import io.axoniq.axonserver.component.processor.balancing.SameProcessor;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
-import io.axoniq.platform.grpc.EventProcessorInfo;
-import io.axoniq.platform.grpc.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
 
 import java.util.List;
 import java.util.Set;

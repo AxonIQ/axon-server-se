@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-import io.axoniq.platform.SerializedObject;
+import io.axoniq.axonserver.grpc.SerializedObject;
 import org.junit.*;
 import org.junit.rules.*;
 

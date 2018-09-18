@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.manager;
 
 import com.google.common.hash.Hashing;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonhub.Confirmation;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;

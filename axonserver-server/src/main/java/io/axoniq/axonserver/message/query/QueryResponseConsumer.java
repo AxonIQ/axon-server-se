@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonhub.QueryResponse;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
 /**
  * Author: marc
  */

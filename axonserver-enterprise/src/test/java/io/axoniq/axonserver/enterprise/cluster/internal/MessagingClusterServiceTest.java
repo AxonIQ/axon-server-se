@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonhub.QuerySubscription;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.internal.grpc.ConnectorCommand;

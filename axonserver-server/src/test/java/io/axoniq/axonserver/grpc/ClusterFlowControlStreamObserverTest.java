@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonhub.CommandResponse;
-import io.axoniq.axonhub.QueryResponse;
+import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.internal.grpc.ConnectorCommand;

@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axondb.Event;
-import io.axoniq.axondb.grpc.EventWithToken;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.internal.grpc.TransactionWithToken;
@@ -12,7 +12,7 @@ import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
-import io.axoniq.platform.SerializedObject;
+import io.axoniq.axonserver.grpc.SerializedObject;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

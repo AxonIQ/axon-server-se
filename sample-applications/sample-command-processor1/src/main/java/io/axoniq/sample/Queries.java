@@ -1,6 +1,6 @@
 package io.axoniq.sample;
 
-import io.axoniq.axonhub.client.AxonHubConfiguration;
+import org.axonframework.axonserver.connector.AxonServerConfiguration;
 import org.axonframework.messaging.MetaData;
 import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
@@ -12,9 +12,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class Queries {
 
-    private final AxonHubConfiguration messagingConfiguration;
+    private final AxonServerConfiguration messagingConfiguration;
 
-    public Queries(AxonHubConfiguration messagingConfiguration) {
+    public Queries(AxonServerConfiguration messagingConfiguration) {
         this.messagingConfiguration = messagingConfiguration;
     }
 

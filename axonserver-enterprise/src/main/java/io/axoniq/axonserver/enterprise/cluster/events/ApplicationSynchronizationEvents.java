@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.events;
 
 import io.axoniq.axonserver.internal.grpc.Applications;
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.platform.grpc.Application;
+import io.axoniq.axonserver.internal.grpc.Application;
 
 /**
  * Author: marc

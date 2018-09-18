@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.message.event;
 
-import io.axoniq.axonhub.Confirmation;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.enterprise.cluster.TestMessagingClusterService;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;

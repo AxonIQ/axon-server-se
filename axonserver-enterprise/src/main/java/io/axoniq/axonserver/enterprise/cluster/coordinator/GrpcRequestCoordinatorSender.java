@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.coordinator;
 
-import io.axoniq.axonhub.Confirmation;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;

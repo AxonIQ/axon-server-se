@@ -14,7 +14,7 @@
     <dependencies>
         <dependency>
             <groupId>io.axoniq</groupId>
-            <artifactId>axonhub-grpc-proto</artifactId>
+            <artifactId>axon-server-api</artifactId>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
@@ -93,7 +93,7 @@
                             <artifactItems>
                                 <artifactItem>
                                     <groupId>io.axoniq</groupId>
-                                    <artifactId>axonhub-grpc-proto</artifactId>
+                                    <artifactId>axon-server-api</artifactId>
                                     <outputDirectory>${project.build.directory}/proto</outputDirectory>
                                     <includes>*.proto</includes>
                                 </artifactItem>

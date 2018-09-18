@@ -2,8 +2,8 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonhub.CommandSubscription;
-import io.axoniq.axonhub.QuerySubscription;
+import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;

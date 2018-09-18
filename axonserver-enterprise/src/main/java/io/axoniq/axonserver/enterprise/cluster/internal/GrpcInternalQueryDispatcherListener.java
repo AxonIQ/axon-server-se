@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonhub.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.QueryRequestValidator;
 import io.axoniq.axonserver.internal.grpc.ConnectorResponse;

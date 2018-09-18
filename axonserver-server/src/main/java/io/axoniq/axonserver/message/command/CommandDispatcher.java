@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonhub.Command;
-import io.axoniq.axonhub.CommandResponse;
-import io.axoniq.axonhub.CommandSubscription;
+import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionEvents;

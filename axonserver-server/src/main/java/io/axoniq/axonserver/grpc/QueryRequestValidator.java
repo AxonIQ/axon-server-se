@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonhub.ProcessingKey;
-import io.axoniq.axonhub.QueryRequest;
+import io.axoniq.axonserver.grpc.ProcessingKey;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import org.slf4j.Logger;

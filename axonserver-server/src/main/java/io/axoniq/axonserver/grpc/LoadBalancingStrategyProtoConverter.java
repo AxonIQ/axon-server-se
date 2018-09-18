@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
-import io.axoniq.platform.grpc.LoadBalanceStrategy;
+import io.axoniq.axonserver.internal.grpc.LoadBalanceStrategy;
 
 /**
  * Created by Sara Pellegrini on 17/08/2018.

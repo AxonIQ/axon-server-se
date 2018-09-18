@@ -6,13 +6,13 @@ import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
 import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.internal.grpc.ClientEventProcessorStatus;
-import io.axoniq.platform.grpc.PlatformInboundInstruction;
+import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 
-import static io.axoniq.platform.grpc.PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO;
+import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO;
 
 /**
  * Created by Sara Pellegrini on 27/03/2018.

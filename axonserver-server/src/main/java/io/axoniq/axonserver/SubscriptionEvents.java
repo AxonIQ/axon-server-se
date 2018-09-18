@@ -1,7 +1,7 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonhub.CommandSubscription;
-import io.axoniq.axonhub.QuerySubscription;
+import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;

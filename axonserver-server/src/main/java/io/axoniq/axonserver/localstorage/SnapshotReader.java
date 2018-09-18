@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.grpc.event.Event;
 
 import java.util.Optional;
 

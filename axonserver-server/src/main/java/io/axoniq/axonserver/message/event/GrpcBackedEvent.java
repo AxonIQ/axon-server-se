@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.connector.Event;
-import io.axoniq.platform.MetaDataValue;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,9 +10,9 @@ import java.util.Map;
  * Author: marc
  */
 public class GrpcBackedEvent implements Event {
-    private final io.axoniq.axondb.Event wrapped;
+    private final io.axoniq.axonserver.grpc.event.Event wrapped;
 
-    public GrpcBackedEvent(io.axoniq.axondb.Event wrapped) {
+    public GrpcBackedEvent(io.axoniq.axonserver.grpc.event.Event wrapped) {
         this.wrapped = wrapped;
     }
 

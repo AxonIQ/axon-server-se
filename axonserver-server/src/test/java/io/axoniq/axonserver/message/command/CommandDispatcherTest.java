@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.message.command;
 
 import com.google.common.collect.Sets;
-import io.axoniq.axonhub.Command;
-import io.axoniq.axonhub.CommandResponse;
-import io.axoniq.axonhub.CommandSubscription;
+import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonhub.grpc.CommandProviderInbound;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;

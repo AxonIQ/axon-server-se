@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonhub.Confirmation;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.SafepointRepository;
 import io.axoniq.axonserver.enterprise.jpa.Safepoint;

@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.internal.grpc.StartSynchronization;

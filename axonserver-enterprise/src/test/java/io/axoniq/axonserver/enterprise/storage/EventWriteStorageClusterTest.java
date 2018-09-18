@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage;
 
-import io.axoniq.axondb.Event;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventStore;
@@ -11,7 +11,7 @@ import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.platform.SerializedObject;
+import io.axoniq.axonserver.grpc.SerializedObject;
 import org.junit.*;
 import org.junit.rules.*;
 

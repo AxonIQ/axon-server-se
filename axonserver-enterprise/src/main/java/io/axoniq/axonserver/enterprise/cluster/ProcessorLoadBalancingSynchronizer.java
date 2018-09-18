@@ -13,7 +13,7 @@ import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
 import io.axoniq.axonserver.internal.grpc.GetProcessorsLBStrategyRequest;
 import io.axoniq.axonserver.internal.grpc.ProcessorsLBStrategy;
 import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.platform.grpc.ProcessorLBStrategy;
+import io.axoniq.axonserver.internal.grpc.ProcessorLBStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;

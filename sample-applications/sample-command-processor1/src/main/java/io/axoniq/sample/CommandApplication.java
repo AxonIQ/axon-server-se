@@ -1,6 +1,6 @@
 package io.axoniq.sample;
 
-import io.axoniq.axonhub.client.command.CommandPriorityCalculator;
+import org.axonframework.axonserver.connector.command.CommandPriorityCalculator;
 import org.axonframework.commandhandling.CommandMessage;
 import org.axonframework.eventhandling.tokenstore.TokenStore;
 import org.axonframework.eventhandling.tokenstore.inmemory.InMemoryTokenStore;

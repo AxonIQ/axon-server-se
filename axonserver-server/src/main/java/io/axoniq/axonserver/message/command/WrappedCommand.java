@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonhub.Command;
+import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 
 /**

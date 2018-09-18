@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonhub.Confirmation;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.internal.grpc.ConnectResponse;
 import io.axoniq.axonserver.internal.grpc.ConnectorCommand;

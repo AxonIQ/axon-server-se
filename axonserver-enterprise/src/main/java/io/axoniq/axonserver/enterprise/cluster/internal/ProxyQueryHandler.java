@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonhub.QueryRequest;
-import io.axoniq.axonhub.SubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.internal.grpc.ClientSubscriptionQueryRequest;
 import io.axoniq.axonserver.internal.grpc.ConnectorResponse;

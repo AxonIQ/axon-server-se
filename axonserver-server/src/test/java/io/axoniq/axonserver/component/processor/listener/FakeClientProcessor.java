@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component.processor.listener;
 
-import io.axoniq.platform.grpc.EventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 /**
  * Created by Sara Pellegrini on 30/03/2018.

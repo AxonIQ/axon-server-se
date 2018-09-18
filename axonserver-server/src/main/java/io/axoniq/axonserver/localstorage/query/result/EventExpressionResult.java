@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.localstorage.query.result;
 
-import io.axoniq.axondb.grpc.EventWithToken;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
-import io.axoniq.platform.MetaDataValue;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;

@@ -5,7 +5,7 @@ import io.axoniq.axonserver.UserSynchronizationEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ProtoConverter;
-import io.axoniq.platform.grpc.Action;
+import io.axoniq.axonserver.internal.grpc.Action;
 import io.axoniq.platform.user.User;
 import io.axoniq.platform.user.UserController;
 import io.axoniq.platform.user.UserRole;

@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonhub.SubscriptionQueryResponse;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
