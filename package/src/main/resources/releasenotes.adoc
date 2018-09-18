@@ -1,5 +1,5 @@
 == Release notes
 
-=== 4.0-RC1
+=== {revnumber}
 
 * First release candidate of AxonServer 4.0
