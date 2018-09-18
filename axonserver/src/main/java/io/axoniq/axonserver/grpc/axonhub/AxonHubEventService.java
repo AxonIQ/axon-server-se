@@ -1,5 +1,6 @@
-package io.axoniq.axonserver.grpc;
+package io.axoniq.axonserver.grpc.axonhub;
 
+import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
@@ -29,8 +30,8 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
  * Author: marc
  */
 @Component
-public class AxonServerEventService implements AxonServerClientService {
-    public static final String SERVICE_NAME = "io.axoniq.axonserver.grpc.eventstore.api.EventStore";
+public class AxonHubEventService implements AxonServerClientService {
+    public static final String SERVICE_NAME = "io.axoniq.axondb.grpc.EventStore";
 
     public static final MethodDescriptor<Event,io.axoniq.axonserver.grpc.event.Confirmation> METHOD_APPEND_EVENT =
             MethodDescriptor.newBuilder(ProtoUtils.marshaller(Event.getDefaultInstance()),
@@ -100,7 +101,7 @@ public class AxonServerEventService implements AxonServerClientService {
 
     private final EventDispatcher eventDispatcher;
 
-    public AxonServerEventService(EventDispatcher eventDispatcher) {
+    public AxonHubEventService(EventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
     }
 

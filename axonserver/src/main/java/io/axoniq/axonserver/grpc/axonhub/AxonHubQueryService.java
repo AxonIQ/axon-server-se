@@ -21,7 +21,7 @@ import static io.grpc.stub.ServerCalls.asyncServerStreamingCall;
  * Author: marc
  */
 @Component
-public class AxonServerQueryService implements AxonServerClientService {
+public class AxonHubQueryService implements AxonServerClientService {
     public static final String SERVICE_NAME = "io.axoniq.axonhub.grpc.QueryService";
 
     public static final io.grpc.MethodDescriptor<QueryProviderOutbound, QueryProviderInbound> METHOD_OPEN_STREAM =
@@ -48,7 +48,7 @@ public class AxonServerQueryService implements AxonServerClientService {
 
     private final QueryService queryService;
 
-    public AxonServerQueryService(QueryService queryService) {
+    public AxonHubQueryService(QueryService queryService) {
         this.queryService = queryService;
     }
 

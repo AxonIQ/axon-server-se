@@ -1,5 +1,7 @@
-package io.axoniq.axonserver.grpc;
+package io.axoniq.axonserver.grpc.axonhub;
 
+import io.axoniq.axonserver.grpc.AxonServerClientService;
+import io.axoniq.axonserver.grpc.CommandService;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
@@ -17,7 +19,7 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
  * Author: marc
  */
 @Component
-public class AxonServerCommandService implements AxonServerClientService {
+public class AxonHubCommandService implements AxonServerClientService {
     public static final String SERVICE_NAME = "io.axoniq.axonhub.grpc.CommandService";
     // Static method descriptors that strictly reflect the proto.
     @io.grpc.ExperimentalApi("https://github.com/grpc/grpc-java/issues/1901")
@@ -39,7 +41,7 @@ public class AxonServerCommandService implements AxonServerClientService {
 
     private final CommandService commandService;
 
-    public AxonServerCommandService(CommandService commandService) {
+    public AxonHubCommandService(CommandService commandService) {
         this.commandService = commandService;
     }
 
