@@ -6,9 +6,9 @@ import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
 import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.grpc.Publisher;
-import io.axoniq.axonserver.internal.grpc.ClientEventProcessor;
-import io.axoniq.axonserver.internal.grpc.ClientEventProcessorSegment;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
+import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

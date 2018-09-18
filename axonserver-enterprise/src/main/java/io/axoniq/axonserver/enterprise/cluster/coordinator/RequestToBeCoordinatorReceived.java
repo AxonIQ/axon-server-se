@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.coordinator;
 
-import io.axoniq.axonserver.internal.grpc.NodeContext;
+import io.axoniq.axonserver.grpc.internal.NodeContext;
 
 import java.util.function.Consumer;
 

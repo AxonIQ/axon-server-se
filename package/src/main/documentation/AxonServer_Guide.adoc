@@ -139,8 +139,16 @@ or when not running bash shell:
 
 To verify that the server is started correctly, open the page http://localhost:8024.
 
-
 == Using AxonServer from applications
+
+```xml
+<dependency>
+  <groupId>org.axonframework</groupId>
+  <artifactId>axon-spring-boot-starter</artifactId>
+  <version>{clientrevnumber}</version>
+</dependency>
+```
+
 
 The same configuration can also be done manually, when you are not using Spring boot. For this you need
 to include the following dependency:
@@ -148,7 +156,7 @@ to include the following dependency:
 [subs="verbatim,attributes"]
 ```xml
 <dependency>
-  <groupId>io.axoniq</groupId>
+  <groupId>org.axonframework</groupId>
   <artifactId>axonserver-connector</artifactId>
   <version>{clientrevnumber}</version>
 </dependency>

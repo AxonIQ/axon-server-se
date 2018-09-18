@@ -1,15 +1,15 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonhub.QuerySubscription;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.context.ContextController;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
-import io.axoniq.axonserver.internal.grpc.Group;
-import io.axoniq.axonserver.internal.grpc.InternalFlowControl;
-import io.axoniq.axonserver.internal.grpc.InternalQuerySubscription;
-import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.Group;
+import io.axoniq.axonserver.grpc.internal.InternalFlowControl;
+import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
@@ -26,7 +26,7 @@ import org.mockito.runners.*;
 
 import java.util.Collections;
 
-import static io.axoniq.axonserver.internal.grpc.ConnectorResponse.ResponseCase.CONNECT_RESPONSE;
+import static io.axoniq.axonserver.grpc.internal.ConnectorResponse.ResponseCase.CONNECT_RESPONSE;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 

@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.ContextAction;
-import io.axoniq.axonserver.internal.grpc.ContextUpdate;
-import io.axoniq.axonserver.internal.grpc.NodeRole;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ContextAction;
+import io.axoniq.axonserver.grpc.internal.ContextUpdate;
+import io.axoniq.axonserver.grpc.internal.NodeRole;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

@@ -2,9 +2,9 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.Publisher;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.Metric;
-import io.axoniq.axonserver.internal.grpc.NodeMetrics;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.Metric;
+import io.axoniq.axonserver.grpc.internal.NodeMetrics;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Meter;

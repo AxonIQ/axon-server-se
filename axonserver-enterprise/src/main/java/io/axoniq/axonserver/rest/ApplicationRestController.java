@@ -9,7 +9,7 @@ import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationNotFoundException;
 import io.axoniq.platform.application.ApplicationWithToken;
-import io.axoniq.platform.grpc.Action;
+import io.axoniq.axonserver.grpc.internal.Action;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -83,7 +83,7 @@ public class ApplicationRestController {
         try {
             applicationController.delete(name);
             eventPublisher.publishEvent(new ApplicationSynchronizationEvents.ApplicationReceived(
-                    io.axoniq.platform.grpc.Application.newBuilder()
+                    io.axoniq.axonserver.grpc.internal.Application.newBuilder()
                                                                .setName(name)
                     .setAction(Action.DELETE)
                     .build(), false));

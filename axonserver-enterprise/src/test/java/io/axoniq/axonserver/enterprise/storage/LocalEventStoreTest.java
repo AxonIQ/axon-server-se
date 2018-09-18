@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.enterprise.storage;
 
-import io.axoniq.axondb.Event;
-import io.axoniq.axondb.grpc.Confirmation;
-import io.axoniq.axondb.grpc.QueryEventsRequest;
-import io.axoniq.axondb.grpc.QueryEventsResponse;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
