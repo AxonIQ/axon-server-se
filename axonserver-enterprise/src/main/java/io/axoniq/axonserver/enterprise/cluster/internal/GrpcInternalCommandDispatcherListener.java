@@ -3,7 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.grpc.stub.StreamObserver;

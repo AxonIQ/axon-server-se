@@ -4,7 +4,7 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;

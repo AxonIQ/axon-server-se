@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

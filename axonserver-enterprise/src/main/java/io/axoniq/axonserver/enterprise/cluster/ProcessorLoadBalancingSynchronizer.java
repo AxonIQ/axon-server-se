@@ -8,17 +8,17 @@ import io.axoniq.axonserver.grpc.Converter;
 import io.axoniq.axonserver.grpc.ProcessorLoadBalancingProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterService;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
-import io.axoniq.axonserver.internal.grpc.GetProcessorsLBStrategyRequest;
-import io.axoniq.axonserver.internal.grpc.ProcessorsLBStrategy;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.GetProcessorsLBStrategyRequest;
+import io.axoniq.axonserver.grpc.internal.ProcessorsLBStrategy;
 import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.axonserver.internal.grpc.ProcessorLBStrategy;
+import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 
-import static io.axoniq.axonserver.internal.grpc.ConnectorCommand.RequestCase.REQUEST_PROCESSOR_LOAD_BALANCING_STRATEGIES;
+import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.REQUEST_PROCESSOR_LOAD_BALANCING_STRATEGIES;
 
 /**
  * Created by Sara Pellegrini on 16/08/2018.

@@ -5,13 +5,13 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
-import io.axoniq.axonserver.internal.grpc.MessagingClusterServiceGrpc.MessagingClusterServiceStub;
-import io.axoniq.axonserver.internal.grpc.NodeContext;
+import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc.MessagingClusterServiceStub;
+import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
 
-import static io.axoniq.axonserver.internal.grpc.MessagingClusterServiceGrpc.newStub;
+import static io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc.newStub;
 
 /**
  * Created by Sara Pellegrini on 23/08/2018.

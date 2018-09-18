@@ -2,11 +2,11 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
-import io.axoniq.axonserver.internal.grpc.ConnectResponse;
-import io.axoniq.axonserver.internal.grpc.ConnectorCommand;
-import io.axoniq.axonserver.internal.grpc.ConnectorResponse;
-import io.axoniq.axonserver.internal.grpc.NodeContextInfo;
-import io.axoniq.axonserver.internal.grpc.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.ConnectResponse;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.stub.StreamObserver;
 
 import java.util.concurrent.Executors;

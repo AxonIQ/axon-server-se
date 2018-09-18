@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.events;
 
-import io.axoniq.axonserver.internal.grpc.Applications;
+import io.axoniq.axonserver.grpc.internal.Applications;
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.internal.grpc.Application;
+import io.axoniq.axonserver.grpc.internal.Application;
 
 /**
  * Author: marc
