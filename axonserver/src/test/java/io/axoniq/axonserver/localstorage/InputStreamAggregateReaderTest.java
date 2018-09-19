@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.SerializedObject;
+import io.axoniq.axonserver.grpc.event.Event;
 import org.junit.*;
 import org.junit.rules.*;
 

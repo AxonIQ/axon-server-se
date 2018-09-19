@@ -12,8 +12,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
-
 /**
  * Author: marc
  */

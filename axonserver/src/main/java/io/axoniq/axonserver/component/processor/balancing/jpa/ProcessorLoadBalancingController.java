@@ -2,8 +2,8 @@ package io.axoniq.axonserver.component.processor.balancing.jpa;
 
 import io.axoniq.axonserver.LoadBalancingSynchronizationEvents;
 import io.axoniq.axonserver.grpc.ProcessorLoadBalancingProtoConverter;
-import io.axoniq.platform.application.ApplicationModelController;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
+import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Controller;
 

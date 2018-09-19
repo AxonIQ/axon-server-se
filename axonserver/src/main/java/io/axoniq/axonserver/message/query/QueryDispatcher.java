@@ -2,13 +2,13 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
-import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;

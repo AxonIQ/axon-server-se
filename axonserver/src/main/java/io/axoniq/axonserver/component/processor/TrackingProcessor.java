@@ -4,9 +4,9 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.warning.DuplicatedTrackers;
 import io.axoniq.axonserver.component.processor.warning.MissingTrackers;
 import io.axoniq.axonserver.component.processor.warning.Warning;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 import java.util.Collection;
 import java.util.List;

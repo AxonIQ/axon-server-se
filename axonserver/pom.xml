@@ -8,6 +8,7 @@
         <version>4.0-SNAPSHOT</version>
     </parent>
     <artifactId>axonserver</artifactId>
+    <name>AxonServer - Free edition</name>
 
     <properties>
         <timestamp>${maven.build.timestamp}</timestamp>
@@ -172,9 +173,9 @@
         </dependency>
 
         <dependency>
-            <groupId>io.axoniq.platform</groupId>
-            <artifactId>axoniq-cli</artifactId>
-            <version>${axoniq.cli.version}</version>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-cli</artifactId>
+            <version>${project.parent.version}</version>
             <classifier>exec</classifier>
             <scope>runtime</scope>
         </dependency>
@@ -231,6 +232,9 @@
                             <include>io.axoniq.axonserver:*</include>
                             <include>io.axoniq.axondb:*</include>
                         </includes>
+                        <excludes>
+                            <exclude>io.axoniq.axonserver:axonserver-cli:*</exclude>
+                        </excludes>
                     </artifactSet>
                 </configuration>
                 <executions>
@@ -550,7 +554,7 @@
                                                 <dependencySets>
                                                     <dependencySet>
                                                         <includes>
-                                                            <include>io.axoniq.platform:axoniq-cli:jar:exec</include>
+                                                            <include>io.axoniq.axonserver:axonserver-cli:jar:exec</include>
                                                         </includes>
                                                         <outputDirectory>.</outputDirectory>
                                                         <outputFileNameMapping>axoniq-cli.jar</outputFileNameMapping>

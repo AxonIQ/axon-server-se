@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.query.subscription.handler;
 
-import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.grpc.Publisher;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

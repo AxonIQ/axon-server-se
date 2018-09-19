@@ -29,7 +29,10 @@ public class User {
         this.userName = userName;
         this.password = password;
         this.enabled = true;
-        Arrays.stream(roles).forEach(r -> this.roles.add(new UserRole(this, r)));
+        if( roles == null ) this.roles.add(new UserRole(this, "USER"));
+        else {
+            Arrays.stream(roles).forEach(r -> this.roles.add(new UserRole(this, r)));
+        }
     }
 
     public User() {

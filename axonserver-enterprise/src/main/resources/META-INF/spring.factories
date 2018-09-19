@@ -1,0 +1,4 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+ io.axoniq.axonserver.enterprise.config.AxonServerEnterpriseConfiguration,\
+ io.axoniq.axonserver.enterprise.storage.jdbc.JdbcEventStoreFactory,\
+ io.axoniq.axonserver.enterprise.storage.advancedstorage.AdvancedStorageAutoConfiguration

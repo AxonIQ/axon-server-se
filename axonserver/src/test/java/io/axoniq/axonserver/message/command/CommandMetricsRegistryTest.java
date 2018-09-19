@@ -6,7 +6,7 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.runners.*;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  * Author: marc

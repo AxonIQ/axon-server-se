@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.component.query.Query;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;

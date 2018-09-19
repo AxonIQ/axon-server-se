@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.enterprise.storage;
 
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.enterprise.storage.jdbc.JdbcEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.jdbc.StorageProperties;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.grpc.SerializedObject;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.grpc.stub.StreamObserver;
 import junit.framework.TestCase;
 import org.junit.*;
@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
-
-import static junit.framework.TestCase.assertEquals;
 
 /**
  * Author: marc

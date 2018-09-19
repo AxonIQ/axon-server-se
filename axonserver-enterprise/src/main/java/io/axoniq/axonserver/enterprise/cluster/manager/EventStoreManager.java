@@ -1,19 +1,19 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
 import com.google.common.hash.Hashing;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.LifecycleController;
-import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
+import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
+import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
+import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
-import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
-import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
-import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;

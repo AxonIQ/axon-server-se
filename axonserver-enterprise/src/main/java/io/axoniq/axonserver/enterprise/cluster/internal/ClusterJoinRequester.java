@@ -1,11 +1,12 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,9 +65,9 @@ public class ClusterJoinRequester {
 
                 @Override
                 public void onError(Throwable throwable) {
-                    logger.warn("Error connecting to {}:{} - {}", host, port, throwable.getMessage());
+                    logger.warn("Error connecting to {}:{} - {}", host, port, processMessage(throwable));
                     eventStoreManager.start();
-                    future.completeExceptionally(new MessagingPlatformException(ErrorCode.OTHER, "Error joining " + host + ":" + port + ": " + throwable.getMessage(), throwable));
+                    future.completeExceptionally(new MessagingPlatformException(ErrorCode.OTHER, "Error joining " + host + ":" + port + ": " + processMessage(throwable), throwable));
                 }
 
                 @Override
@@ -75,5 +76,26 @@ public class ClusterJoinRequester {
                 }
             });
         return future;
+    }
+
+    private String processMessage(Throwable throwable) {
+        if( throwable instanceof StatusRuntimeException) {
+            StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable;
+            switch (statusRuntimeException.getStatus().getCode()) {
+                case UNAVAILABLE:
+                    if( "UNAVAILABLE: Network closed for unknown reason".equals(statusRuntimeException.getMessage()) ) {
+                        return "Wrong port. Send join request to internal GRPC port (default 8224)";
+                    }
+                    if( statusRuntimeException.getCause() != null)
+                        return statusRuntimeException.getCause().getMessage();
+
+                    break;
+                case UNIMPLEMENTED:
+                    return "Wrong port. Send join request to internal GRPC port (default 8224)";
+
+                default:
+            }
+        }
+        return throwable.getMessage();
     }
 }

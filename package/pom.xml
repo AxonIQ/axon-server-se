@@ -24,14 +24,14 @@
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.axoniq.platform</groupId>
-            <artifactId>axoniq-cli</artifactId>
-            <version>${axoniq.cli.version}</version>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-cli</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.axoniq.axondb</groupId>
-            <artifactId>axondb-migration</artifactId>
-            <version>1.3.4</version>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-migration</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
     </dependencies>
 
@@ -55,19 +55,19 @@
                             <groupId>io.axoniq.axonserver</groupId>
                             <artifactId>${axon-server-jar}</artifactId>
                             <classifier>exec</classifier>
-                            <destFileName>axon-server.jar</destFileName>
+                            <destFileName>axonserver.jar</destFileName>
                         </artifactItem>
                         <artifactItem>
-                            <groupId>io.axoniq.platform</groupId>
-                            <artifactId>axoniq-cli</artifactId>
+                            <groupId>io.axoniq.axonserver</groupId>
+                            <artifactId>axonserver-cli</artifactId>
                             <classifier>exec</classifier>
                             <destFileName>axoniq-cli.jar</destFileName>
                         </artifactItem>
                         <artifactItem>
-                            <groupId>io.axoniq.axondb</groupId>
-                            <artifactId>axondb-migration</artifactId>
+                            <groupId>io.axoniq.axonserver</groupId>
+                            <artifactId>axonserver-migration</artifactId>
                             <classifier>exec</classifier>
-                            <destFileName>axondb-migration.jar</destFileName>
+                            <destFileName>axonserver-migration.jar</destFileName>
                         </artifactItem>
                     </artifactItems>
                     <outputDirectory>${project.build.directory}</outputDirectory>

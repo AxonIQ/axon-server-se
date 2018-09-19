@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
@@ -30,6 +30,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -117,6 +118,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
         for( long segment: getSegments() ) {
             Optional<EventSource> eventSource = getEventSource(segment);
+            AtomicBoolean done = new AtomicBoolean();
             eventSource.ifPresent(e -> {
                 long minTimestampInSegment = Long.MAX_VALUE;
                 EventInformation eventWithToken;
@@ -130,10 +132,9 @@ public abstract class SegmentBasedEventStore implements EventStore {
                         return;
                     }
                 }
-                //TODO
-                if (minToken > segment || minTimestampInSegment < minTimestamp) return;
-
+                if (minToken > segment || minTimestampInSegment < minTimestamp) done.set(true);
             });
+            if( done.get()) return;
         }
 
         if( next != null) {

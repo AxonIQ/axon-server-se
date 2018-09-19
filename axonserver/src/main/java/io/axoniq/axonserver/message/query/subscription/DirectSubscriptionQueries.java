@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.message.query.subscription;
 
-import io.axoniq.axonserver.grpc.query.QueryRequest;
-import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryRequested;
 import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

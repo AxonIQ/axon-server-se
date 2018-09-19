@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.topology;
 
-import java.util.Arrays;
 import java.util.Collection;
 
 /**

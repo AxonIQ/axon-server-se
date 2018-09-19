@@ -16,7 +16,6 @@ import org.mockito.*;
 import org.mockito.runners.*;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.*;

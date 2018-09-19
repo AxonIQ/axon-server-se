@@ -2,14 +2,12 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.internal.ClusterJoinRequester;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.enterprise.cluster.internal.ClusterJoinRequester;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.validation.Valid;
@@ -46,18 +44,30 @@ public class ClusterRestController {
 
 
     @PostMapping
-    public Future<Void> add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
+    public void add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
         if( !Feature.CLUSTERING.enabled(limits) ) {
             throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
         }
-        if( clusterController.getRemoteConnections().size() >= limits.getMaxClusterSize()) {
-            throw new MessagingPlatformException(ErrorCode.MAX_CLUSTER_SIZE_REACHED, "Maximum allowed number of nodes reached");
+        if( ! clusterController.getRemoteConnections().isEmpty()) {
+            throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER, "This node is already a member of a cluster");
         }
 
         if( jsonClusterNode.contexts != null && ! jsonClusterNode.contexts.isEmpty()) {
             clusterController.setMyContexts(jsonClusterNode.contexts);
         }
-        return clusterJoinRequester.addNode(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort);
+        try {
+            clusterJoinRequester.addNode(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Request interrupted");
+        } catch (ExecutionException e) {
+            handleExecutionException(e.getCause());
+        }
+    }
+
+    private void handleExecutionException(Throwable cause) {
+        if( cause instanceof RuntimeException) throw (RuntimeException)cause;
+        throw new MessagingPlatformException(ErrorCode.OTHER, cause.getMessage(), cause);
     }
 
     @DeleteMapping( path = "{name}")

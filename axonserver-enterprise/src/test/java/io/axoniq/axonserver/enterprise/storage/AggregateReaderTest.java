@@ -1,18 +1,16 @@
 package io.axoniq.axonserver.enterprise.storage;
 
+import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.AggregateReader;
 import io.axoniq.axonserver.localstorage.SnapshotReader;
 import io.axoniq.axonserver.localstorage.SnapshotWriteStorage;
-import io.axoniq.axonserver.grpc.SerializedObject;
 import org.junit.*;
 import org.junit.rules.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.junit.Assert.*;
 
 /**
  * Author: marc

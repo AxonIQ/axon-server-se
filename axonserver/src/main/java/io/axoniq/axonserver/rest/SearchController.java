@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.beans.factory.annotation.Value;

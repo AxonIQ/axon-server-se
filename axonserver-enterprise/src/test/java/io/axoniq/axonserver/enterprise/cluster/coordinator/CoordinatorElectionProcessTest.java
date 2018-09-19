@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.enterprise.cluster.coordinator;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
 import io.grpc.stub.StreamObserver;

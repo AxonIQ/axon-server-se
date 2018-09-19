@@ -1,10 +1,6 @@
 package io.axoniq.axonserver.topology;
 
-import org.apache.logging.log4j.util.ReadOnlyStringMap;
-
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 

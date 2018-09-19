@@ -3,7 +3,6 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry.QueryMetric;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.Topology;
-import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 

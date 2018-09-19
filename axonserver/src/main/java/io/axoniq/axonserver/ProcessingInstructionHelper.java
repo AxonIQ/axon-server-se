@@ -1,8 +1,8 @@
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.ProcessingKey;
-import io.axoniq.axonserver.grpc.MetaDataValue;
 
 import java.util.List;
 

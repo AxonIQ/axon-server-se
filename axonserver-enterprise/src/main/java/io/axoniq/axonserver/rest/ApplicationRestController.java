@@ -1,15 +1,15 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.ProtoConverter;
+import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationNotFoundException;
 import io.axoniq.platform.application.ApplicationWithToken;
-import io.axoniq.axonserver.grpc.internal.Action;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;

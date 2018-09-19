@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster.coordinator;
 
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.BecomeCoordinator;
-import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.BecomeCoordinator;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -59,18 +59,19 @@ public class CoordinatorElectionProcess {
         this.sender = sender;
     }
 
-    void startElection(Context context, Supplier<Boolean> coordinatorFound) {
-        if (context == null) return;
-        if (coordinatorFound.get()) return;
+    boolean startElection(Context context, Supplier<Boolean> coordinatorFound) {
+        logger.debug("Star coordinator election for {}", context);
+        if (context == null) return false;
+        if (coordinatorFound.get()) return false;
         try {
-            Thread.sleep(1000);
-            if (electionRound(context, coordinatorFound)) return;
-            // startElection(context, coordinatorFound);
+            if (electionRound(context, coordinatorFound)) return false;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            // startElection(context, coordinatorFound);
+            return false;
+        } catch (RuntimeException e) {
+            logger.warn("Error during coordinator election round", e);
         }
+        return true;
     }
 
     boolean electionRound(Context context, Supplier<Boolean> coordinatorFound) throws InterruptedException {
@@ -85,7 +86,9 @@ public class CoordinatorElectionProcess {
                                     node,
                                     new ConfirmationTarget(node::getName, approved, responseCount, countdownLatch))
         );
-        countdownLatch.await(waitMilliseconds, MILLISECONDS);
+        if( !countdownLatch.await(waitMilliseconds, MILLISECONDS) ) {
+            logger.debug("Not received all responses in coordinator election round");
+        }
         if (coordinatorFound.get()) return true;
         if (approved.get() && hasQuorumToChange(context.getMessagingNodes().size(), responseCount.get())) {
             logger.info("Become coordinator for context {} ", contextName);

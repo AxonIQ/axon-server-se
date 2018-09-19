@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.component.processor;
 
-import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.serializer.GsonMedia;
 import org.junit.*;
 
 import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo.newBuilder;

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: axondb-migration
+  profiles:
+    active: migrate-from-jpa
+  jpa:
+    database: default
+
+axoniq:
+  migration:
+    batch-size: 1000
+
+  datasource:
+    migration:
+      url: jdbc:h2:./migrationdb
+
+axon:
+  serializer:
+    events: xstream

@@ -43,9 +43,9 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
 
     @Override
     protected Optional<EventSource> getEventSource(long segment) {
-        logger.warn("Get eventsource: {}", segment);
+        logger.debug("Get eventsource: {}", segment);
         InputStreamEventSource eventSource = get(segment);
-        logger.warn("result={}", eventSource);
+        logger.trace("result={}", eventSource);
         if( eventSource == null)
             return Optional.empty();
         return Optional.of(eventSource);

@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.localstorage.transformation;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
 
 /**
  * Author: marc

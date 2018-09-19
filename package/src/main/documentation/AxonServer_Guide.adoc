@@ -167,26 +167,28 @@ In your Axon application you need to configure the various buses manually, e.g.:
 ```java
 public class AxonStarter {
     public static void main(String[] args) {
-        AxonHubConfiguration axonhubConfiguration = AxonHubConfiguration.newBuilder("localhost", "AxonStarter").build();
-        PlatformConnectionManager platformConnectionManager = new PlatformConnectionManager(axonhubConfiguration);
+        AxonServerConfiguration axonServerConfiguration = AxonServerConfiguration.newBuilder("localhost", "AxonStarter").build();
+        PlatformConnectionManager platformConnectionManager = new PlatformConnectionManager(axonServerConfiguration);
 
-        Serializer serializer = new JacksonSerializer();
-        EventBus axonHubEventStore = new AxonHubEventStore(axonhubConfiguration, platformConnectionManager, serializer);
+        Serializer genericSerializer = new JacksonSerializer();
+        EventBus axonHubEventStore = new AxonServerEventStore(axonServerConfiguration, platformConnectionManager, genericSerializer, genericSerializer,
+                                                              NoOpEventUpcaster.INSTANCE);
         CommandBus localSegment = new SimpleCommandBus();
-        CommandBus axonHubCommandBus = new AxonHubCommandBus(platformConnectionManager, axonhubConfiguration, localSegment, serializer,
-                new AnnotationRoutingStrategy());
+        CommandBus axonHubCommandBus = new AxonServerCommandBus(platformConnectionManager, axonServerConfiguration, localSegment, genericSerializer,
+                                                                new AnnotationRoutingStrategy());
 
-        QueryBus localQueryBus = new SimpleQueryBus();
-        QueryBus axonHubQueryBus = new AxonHubQueryBus(platformConnectionManager, axonhubConfiguration, localQueryBus, serializer,
-                new QueryPriorityCalculator() {});
+        SimpleQueryBus localQueryBus = new SimpleQueryBus();
+        QueryBus axonHubQueryBus = new AxonServerQueryBus(platformConnectionManager, axonServerConfiguration, localQueryBus, localQueryBus,  genericSerializer,
+                                                          genericSerializer,
+                                                          new QueryPriorityCalculator() {});
 
         Configuration config = DefaultConfigurer.defaultConfiguration()
-                .configureEventBus(c -> axonHubEventStore)
-                .configureCommandBus(c -> axonHubCommandBus)
-                .configureQueryBus(c -> axonHubQueryBus)
-                // more configuration for Axon
-                .configureSerializer(c -> serializer)
-                .buildConfiguration();
+                                                .configureEventBus(c -> axonHubEventStore)
+                                                .configureCommandBus(c -> axonHubCommandBus)
+                                                .configureQueryBus(c -> axonHubQueryBus)
+                                                // more configuration for Axon
+                                                .configureSerializer(c -> genericSerializer)
+                                                .buildConfiguration();
 
         config.start();
     }
@@ -259,6 +261,17 @@ in the cluster, e.g.
 # {CliCmd} register-node -S http://node-to-add:port -h node-in-cluster -p internal-port-of-node-in-cluster
 ```
 
+When you have a default setup with all nodes using the default port you can omit a number of parameters from
+this request. To connect node2 to with node1 run the following command on node2:
+
+[subs="attributes"]
+```sh
+# {CliCmd} register-node -h node1
+```
+
+Default value for -S option is http://localhost:8024 and for -p is 8224 (default internal communication port).
+
+
 This only has to be done once, each node maintains a list of all nodes in the cluster.
 
 
@@ -274,9 +287,9 @@ Messaging platform - message handler::
 
 The client needs to set the following properties to configure flow control:
 
-* *axoniq.axonserver.initial-nr-of-permits* [100000] - number of messages that the server can initially send to client.
-* *axoniq.axonserver.nr-of-new-permits* [90000] - additional number of messages that the server can send to client.
-* *axoniq.axonserver.new-permits-threshold* [10000] -  when client reaches this threshold in remaining messages, it sends a request with additional number of messages to receive.
+* *axon.axonserver.initial-nr-of-permits* [100000] - number of messages that the server can initially send to client.
+* *axon.axonserver.nr-of-new-permits* [90000] - additional number of messages that the server can send to client.
+* *axon.axonserver.new-permits-threshold* [10000] -  when client reaches this threshold in remaining messages, it sends a request with additional number of messages to receive.
 
 AxonServer nodes::
 
@@ -309,13 +322,13 @@ This command returns the generated token to use. _Note that this token is only g
 If you want to define the token yourself, you can provide one in the command line command using the -T flag, e.g.:
 [subs="attributes"]
 ```
-{CliCmd} register-application -S http://messaging:8080 -a applicationname -d description -r READ,WRITE -T this-is-my-token
+{CliCmd} register-application -a applicationname -d description -r READ,WRITE -T this-is-my-token
 ```
 The minimum length for a token is 8 characters.
 
 Specify the access token in the client by setting the property:
 
-* *axoniq.axonserver.token*=[Token]
+* *axon.axonserver.token*=[Token]
 
 In the Free Edition it is not possible to create applications. If you want to use access control in this edition
 specify the property *axoniq.axonserver.accesscontrol.token* with any value you want on the Axon server and set the same value
@@ -371,13 +384,91 @@ server.ssl.key-store-type=PKCS12
 server.ssl.key-alias=[alias]
 ----
 
+=== Multi-context [Enterprise Edition only]
+
+You can use a single AxonDB (cluster) to store events for multiple bounded contexts. Each context will have its own
+set of files (stored in a separate directory). Each context may have a different master in an AxonDB cluster.
+
+Creating a new context is done using the command line interface:
+
+[subs="attributes"]
+```
+{CliCmd} register-context -S http://axondb1:8023 -c context-name
+```
+
+The server address here is the address of the master for the *default* context. It is not possible to delete the *default*
+context.
+
+=== Multi-tier storage [Enterprise Edition only]
+
+AxonDB Enterprise Edition supports storing older files in a different location. It is for instance possible to store the
+first 100 segments in one location (using SSD disks) and move all the older segments to another location, on cheaper storage.
+
+For this there are 2 options:
+
+1. keep all files for each node in the cluster on the node itself
+2. move older files to a shared location
+
+To set-up the first option add the following properties to the axondb.properties file:
+
+```
+axoniq.axondb.file.maxFilesInPrimaryLocation=100
+axoniq.axondb.file.alternateStorage=/test/oldEvents
+```
+
+For the second option, use these properties:
+```
+axoniq.axondb.file.maxFilesInPrimaryLocation=100
+axoniq.axondb.file.sharedStorage=/test/sharedEvents
+```
+
+=== Migration
+
+The {ProductName} package contains a migration tool to migrate from an already existing RDBMS event store to a new {ProductName} instance.
+The tool reads events and snapshots from the existing store and pushes them to the {ProductName} server.
+
+The migration tool maintains the state of its migration, so it can be run multiple times.
+
+Set the following properties to define the existing event store and the target {ProductName} server:
+
+* *axoniq.axondb.servers* - comma separated list of hostnames and ports for the {ProductName} cluster.
+* *axoniq.datasource.eventstore.url* - URL of the JDBC data store containing the existing event store
+* *axoniq.datasource.eventstore.username* - Username to connect to the JDBC data store containing the existing event store
+* *axoniq.datasource.eventstore.password* - Password to connect to the JDBC data store containing the existing event store
+
+The default settings expect the data in the current event store to be serialized using the XstreamSerializer. When the data is serialized using the JacksonSerializer add the following
+property:
+
+* *spring.profiles.active*=migrate-from-jpa,jackson
+
+To run the migration tool create a file application.properties, containing the properties mentioned above, e.g.
+----
+axoniq.axonserver.servers=localhost
+axoniq.datasource.eventstore.url=jdbc:mysql://localhost:3306/applicationdb?useSSL=false
+axoniq.datasource.eventstore.username=myusername
+axoniq.datasource.eventstore.password=mypassword
+----
+
+Run the command:
+[subs="attributes"]
+----
+axonserver-migration.jar
+----
+
+When the source eventstore is requiring a specific JDBC driver, you should put the required JDBC driver jar files
+in the libs directory.
+
+Note that the migration tool only migrates the event store data to AxonDB. It does not update the tracking token values in
+token_entry tables. Tracking tokens are highly dependent on the implementation of the actual event store used. Migrating
+them is case specific and error prone. Our recommendation is to reset the tracking processors after the migration.
+
 == Operations
 
 === Starting the AxonServer
 Start AxonServer with the following queryDefinition:
 [subs="attributes"]
 ```sh
-# java -jar axon-server.jar
+# java -jar axonserver.jar
 ```
 
 === Stopping the Event Store
@@ -433,18 +524,18 @@ The following table gives a complete list of all the configuration properties av
 [width="95%", cols="3,1,1,5", options="header"]
 |===========================
 |Name|Default value|Type|Description
-|axoniq.axonserver.servers||String|Comma separated list of AxonServer servers
-|axoniq.axonserver.ssl-enabled|false|Boolean|Use SSL for connection to AxonServer
-|axoniq.axonserver.cert-file||String|Path to certificate file to use for SSL
-|axoniq.axonserver.token||String|Authentication token sent with each request. Only if AxonServer is running in Authentication mode.
-|axoniq.axonserver.client-name||String|Client name as communicated to AxonServer. If not set, defaults to hostname:processId.
-|axoniq.axonserver.component-name||String|Component name, all instances of the same application must have the same component name. Defaults to Spring application name.
-|axoniq.axonserver.initial-nr-of-permits|100000|Long|Initial number of permits granted in communication with AxonServer.
-|axoniq.axonserver.new-permits-threshold|1000|Long|Threshold at which the node client send another grant of newPermits to the connected platform node.
-|axoniq.axonserver.nr-of-new-permits|90000|Long|Additional number of permits granted in communication with AxonServer nodes.
-|axoniq.axonserver.command-threads|10|Integer|Number of threads processing commands
-|axoniq.axonserver.query-threads|10|Integer|Number of threads processing queries
-|axoniq.axonserver.context||String|AxonServer context used by the application (Enterprise Edition only)
-|axoniq.axonserver.keep-alive-time|0|Long|Interval for keep alive messages, 0 disables keep alive messages
-|axoniq.axonserver.keep-alive-timeout|5000|Long|Timeout for keep alive messages, only of keep-alive-time is greater than 0
+|axon.axonserver.servers|localhost|String|Comma separated list of AxonServer servers
+|axon.axonserver.ssl-enabled|false|Boolean|Use SSL for connection to AxonServer
+|axon.axonserver.cert-file||String|Path to certificate file to use for SSL
+|axon.axonserver.token||String|Authentication token sent with each request. Only if AxonServer is running in Authentication mode.
+|axon.axonserver.client-name||String|Client name as communicated to AxonServer. If not set, defaults to hostname:processId.
+|axon.axonserver.component-name||String|Component name, all instances of the same application must have the same component name. Defaults to Spring application name.
+|axon.axonserver.initial-nr-of-permits|100000|Long|Initial number of permits granted in communication with AxonServer.
+|axon.axonserver.new-permits-threshold|1000|Long|Threshold at which the node client send another grant of newPermits to the connected platform node.
+|axon.axonserver.nr-of-new-permits|90000|Long|Additional number of permits granted in communication with AxonServer nodes.
+|axon.axonserver.command-threads|10|Integer|Number of threads processing commands
+|axon.axonserver.query-threads|10|Integer|Number of threads processing queries
+|axon.axonserver.context||String|AxonServer context used by the application (Enterprise Edition only)
+|axon.axonserver.keep-alive-time|0|Long|Interval for keep alive messages, 0 disables keep alive messages
+|axon.axonserver.keep-alive-timeout|5000|Long|Timeout for keep alive messages, only of keep-alive-time is greater than 0
 |===========================

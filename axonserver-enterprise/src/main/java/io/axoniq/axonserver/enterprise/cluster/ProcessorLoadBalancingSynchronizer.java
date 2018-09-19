@@ -1,19 +1,19 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingRepository;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.LoadBalancingSynchronizationEvents;
 import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterService;
 import io.axoniq.axonserver.grpc.Converter;
 import io.axoniq.axonserver.grpc.ProcessorLoadBalancingProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
-import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterService;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.GetProcessorsLBStrategyRequest;
+import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorsLBStrategy;
 import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;

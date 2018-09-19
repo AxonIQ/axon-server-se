@@ -4,7 +4,6 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.message.event.EventDispatcher;
 import org.junit.*;
 
 import java.util.Collections;

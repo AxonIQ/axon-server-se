@@ -5,8 +5,8 @@ import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
 import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.grpc.PlatformService;
-import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
+import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 

@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster.coordinator;
 
-import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
+import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc.MessagingClusterServiceStub;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.grpc.ManagedChannel;

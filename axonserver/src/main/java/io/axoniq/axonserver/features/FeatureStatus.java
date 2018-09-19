@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.features;
 
-import io.axoniq.axonserver.features.Feature;
 import io.axoniq.platform.KeepNames;
 
 /**

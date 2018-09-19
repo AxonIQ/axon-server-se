@@ -1,11 +1,12 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.DataSynchronizerGrpc;
 import io.axoniq.axonserver.grpc.internal.SafepointMessage;
 import io.axoniq.axonserver.grpc.internal.StartSynchronization;
@@ -17,7 +18,6 @@ import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.StorageCallback;
-import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

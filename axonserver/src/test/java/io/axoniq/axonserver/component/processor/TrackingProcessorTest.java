@@ -2,8 +2,8 @@ package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
-import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.serializer.GsonMedia;
 import org.junit.*;
 
 import java.util.List;

@@ -1,7 +1,13 @@
 package io.axoniq.axonserver.enterprise.messaging.event;
 
-import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
+import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
@@ -13,12 +19,6 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
-import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.message.event.ContextAddingInterceptor;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.grpc.CallOptions;

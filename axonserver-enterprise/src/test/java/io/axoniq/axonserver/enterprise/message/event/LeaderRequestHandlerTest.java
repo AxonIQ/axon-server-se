@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.enterprise.message.event;
 
-import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.manager.LeaderRequestHandler;
 import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
+import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import junit.framework.TestCase;
 import org.junit.*;
 import org.junit.runner.*;
@@ -11,10 +11,6 @@ import org.mockito.runners.*;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 /**
  * Author: marc

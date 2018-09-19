@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
@@ -10,6 +9,7 @@ import io.axoniq.axonserver.grpc.internal.Group;
 import io.axoniq.axonserver.grpc.internal.InternalFlowControl;
 import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;

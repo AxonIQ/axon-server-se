@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.MetricsEvents;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.internal.Metric;
 import io.axoniq.axonserver.grpc.internal.NodeMetrics;
 import io.axoniq.axonserver.metric.ClusterMetric;

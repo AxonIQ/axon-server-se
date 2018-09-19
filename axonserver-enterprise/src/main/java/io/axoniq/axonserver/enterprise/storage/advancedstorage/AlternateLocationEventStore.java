@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.storage.advancedstorage;
 
+import io.axoniq.axonserver.enterprise.storage.file.SecondaryEventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
-import io.axoniq.axonserver.enterprise.storage.file.SecondaryEventStore;
 import io.axoniq.axonserver.localstorage.file.StorageProperties;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.springframework.util.FileCopyUtils;

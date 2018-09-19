@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.coordinator;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import org.slf4j.Logger;
@@ -142,8 +142,10 @@ public class AxonHubManager {
     private void scheduleCoordinationElection(String context) {
         if (task == null || task.isDone()) {
             task = scheduledExecutorService.schedule(() -> {
-                electionProcess.startElection(context(context), () -> coordinatorPerContext.containsKey(context));
-            }, 0, TimeUnit.SECONDS);
+                if( electionProcess.startElection(context(context), () -> coordinatorPerContext.containsKey(context))) {
+                    scheduleCoordinationElection(context);
+                }
+            }, 1, TimeUnit.SECONDS);
         }
     }
 
