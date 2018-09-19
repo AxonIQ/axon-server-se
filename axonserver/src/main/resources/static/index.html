@@ -86,11 +86,13 @@
                         el: '#nav',
                         data: {
                             admin: globals.admin,
+                            licenseLoaded: false,
                             license: "free",
                         }, mounted() {
                             axios.get("v1/public/license").then(response => {
                                 globals.license = response.data.edition.toLowerCase();
                                 globals.features = response.data.featureList;
+                                this.licenseLoaded = true;
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
                                     globals.admin = !globals.authenticationEnabled;
@@ -152,6 +154,7 @@
 </head>
 <body>
 <nav id="nav">
+    <span v-if="licenseLoaded"/>
     <a href="#" class="menu-settings current"><i class="fas fa-cog fa-2x"></i>Settings</a>
     <a href="#overview" class="menu-overview" v-if="hasFeature('APPLICATION_OVERVIEW')"><i class="fas fa-eye fa-2x"></i>Overview</a>
     <a href="#query" class="menu-query" v-if="hasFeature('AD_HOC_QUERIES')"><i class="fas fa-search fa-2x"></i>Search</a>
