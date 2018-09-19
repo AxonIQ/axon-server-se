@@ -1,5 +1,13 @@
 <script src="js/load-balancing.js"></script>
 <span id="load-balance">
+    <div v-if="!hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" class="msg warning">
+        Defining additional load balancing stategies is not allowed.
+    </div>
+
+
+    <div v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')">
+
+
     <section id="feedback" class="msg info" v-if="feedback !== ''">{{feedback}}</section>
     <section>
         <div class="results singleHeader">
@@ -57,4 +65,5 @@
             </form>
         </div>
     </section>
+    </div>
 </span>

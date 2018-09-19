@@ -513,7 +513,7 @@ The following table gives a complete list of all the configuration properties av
 |axoniq.axonserver.ssl.cert-chain-file||String|
 |axoniq.axonserver.ssl.internal-cert-chain-file||String|
 |axoniq.axonserver.ssl.private-key-file||String|
-|axoniq.axonserver.controldb-path|.|String|Path to the AxonServer controlDB|
+|axoniq.axonserver.controldb-path|.|String|Path to the AxonServer controlDB, note that this has to be an absolute path or start with '.'|
 |===========================
 
 [appendix]

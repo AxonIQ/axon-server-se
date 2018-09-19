@@ -8,7 +8,7 @@ spring:
 
 axoniq:
   migration:
-    batch-size: 1000
+    batchSize: 100
 
   datasource:
     migration:
