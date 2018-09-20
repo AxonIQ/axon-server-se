@@ -46,7 +46,7 @@
         <netty.tcnative.version>2.0.8.Final</netty.tcnative.version>
         <axon.version>3.3.1</axon.version>
         <axonserver.api.version>4.0-M1</axonserver.api.version>
-        <axon.version>3.4-SNAPSHOT</axon.version>
+        <axon.version>4.0-M1</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
 
@@ -144,16 +144,16 @@
         </repository>
     </distributionManagement>
 
-    <repositories>
-        <repository>
-            <id>axoniq-nexus</id>
-            <url>https://dev-nexus.axoniq.io/repository/products/</url>
-        </repository>
-        <repository>
-            <id>sonatype</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
+    <!--<repositories>-->
+        <!--<repository>-->
+            <!--<id>axoniq-nexus</id>-->
+            <!--<url>https://dev-nexus.axoniq.io/repository/products/</url>-->
+        <!--</repository>-->
+        <!--<repository>-->
+            <!--<id>sonatype</id>-->
+            <!--<url>https://oss.sonatype.org/content/repositories/snapshots/</url>-->
+        <!--</repository>-->
+    <!--</repositories>-->
 
     <organization>
         <name>AxonIQ BV</name>
