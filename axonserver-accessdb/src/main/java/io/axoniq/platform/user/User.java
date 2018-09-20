@@ -22,14 +22,14 @@ public class User {
     private Set<UserRole> roles = new HashSet<>();
 
     public User(String userName, String password) {
-        this(userName, password, new String[]{"USER"});
+        this(userName, password, new String[]{"READ"});
     }
 
     public User(String userName, String password, String[] roles) {
         this.userName = userName;
         this.password = password;
         this.enabled = true;
-        if( roles == null ) this.roles.add(new UserRole(this, "USER"));
+        if( roles == null ) this.roles.add(new UserRole(this, "READ"));
         else {
             Arrays.stream(roles).forEach(r -> this.roles.add(new UserRole(this, r)));
         }

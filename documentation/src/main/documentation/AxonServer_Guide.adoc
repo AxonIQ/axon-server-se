@@ -141,6 +141,8 @@ To verify that the server is started correctly, open the page http://localhost:8
 
 == Using AxonServer from applications
 
+AxonServer is configured by default when you use the axon-spring-boot-starter with Maven dependency:
+
 ```xml
 <dependency>
   <groupId>org.axonframework</groupId>

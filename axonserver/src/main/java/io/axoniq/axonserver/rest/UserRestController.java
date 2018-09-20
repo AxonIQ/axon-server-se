@@ -6,6 +6,8 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.axonserver.grpc.internal.Action;
+import io.axoniq.platform.role.Role;
+import io.axoniq.platform.role.RoleController;
 import io.axoniq.platform.user.User;
 import io.axoniq.platform.user.UserController;
 import io.axoniq.platform.user.UserRole;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
@@ -36,16 +39,25 @@ public class UserRestController {
 
     private final Logger logger = LoggerFactory.getLogger(UserRestController.class);
     private final UserController userController;
+    private final RoleController roleController;
     private final ApplicationEventPublisher eventPublisher;
 
     public UserRestController(UserController userController,
+                              RoleController roleController,
                               ApplicationEventPublisher eventPublisher) {
         this.userController = userController;
+        this.roleController = roleController;
         this.eventPublisher = eventPublisher;
     }
 
     @PostMapping("users")
     public void createUser(@RequestBody @Valid UserJson userJson) {
+        Set<String> validRoles = roleController.listUserRoles().stream().map(Role::name).collect(Collectors.toSet());
+        if( userJson.roles != null) {
+            for (String role : userJson.roles) {
+                if( ! validRoles.contains(role)) throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE, role + ": Role unknown");
+            }
+        }
         User updatedUser = userController.updateUser(userJson.userName, userJson.password, userJson.roles);
         eventPublisher.publishEvent(new UserSynchronizationEvents.UserReceived(ProtoConverter.createUser(updatedUser,
                                                                                                          Action.MERGE), false));

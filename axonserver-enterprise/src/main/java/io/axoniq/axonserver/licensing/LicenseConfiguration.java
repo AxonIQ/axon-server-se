@@ -2,10 +2,15 @@ package io.axoniq.axonserver.licensing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Singleton that provides access to information from the license key used by this
@@ -26,9 +31,11 @@ import java.util.UUID;
 public final class LicenseConfiguration {
 
     private static final String AXON_HUB = "AxonHub";
+    private static final String AXON_SERVER = "AxonServer";
+    private static final String AXON_DB = "AxonDB";
 
     public enum Edition {
-        Enterprise, Free
+        Enterprise, Free, Standard
     }
     private static final Logger log = LoggerFactory.getLogger(LicenseConfiguration.class);
     private static LicenseConfiguration instance;
@@ -39,19 +46,30 @@ public final class LicenseConfiguration {
             if(properties == null) {
                 log.warn("License property not specified - Running in Free mode");
                 instance = new LicenseConfiguration(null, Edition.Free, UUID.randomUUID().toString(),
-                        1, 1, null);
+                                                    1, 1, null,
+                                                    properties.getProperty("licensee"),
+                                                    properties.getProperty("product"),
+                                                    LocalDate.parse(properties.getProperty("grace_date")));
             } else {
                 instance = new LicenseConfiguration(
-                        LocalDate.parse(properties.getProperty("expiry_date")),
+                        getLocalDate(properties.getProperty("expiry_date")),
                         Edition.valueOf(properties.getProperty("edition")),
                         properties.getProperty("license_key_id"),
                         Integer.valueOf(properties.getProperty("contexts", "1")),
                         Integer.valueOf(properties.getProperty("clusterNodes", "3")),
-                        properties.getProperty("licensee"));
-                if(LocalDate.now().isAfter(instance.expiryDate))
-                    throw LicenseException.expired(instance.expiryDate);
+                        properties.getProperty("licensee"),
+                        properties.getProperty("product"),
+                        properties.getProperty("packs"),
+                        getLocalDate(properties.getProperty("grace_date")));
+                if(LocalDate.now().isAfter(instance.expiryDate)) {
+                    if( LocalDate.now().isBefore(instance.graceDate)) {
+                        log.warn("License has expired, AxonServer will continue working until {}", instance.graceDate);
+                    } else {
+                        throw LicenseException.expired(instance.expiryDate);
+                    }
+                }
                 if(!validProduct(properties.getProperty("product"))) {
-                    throw LicenseException.wrongProduct(AXON_HUB);
+                    throw LicenseException.wrongProduct(AXON_SERVER);
                 }
                 log.info("Licensed to: {}", instance.licensee);
                 log.info("Running {} mode", instance.edition);
@@ -61,8 +79,14 @@ public final class LicenseConfiguration {
         return instance;
     }
 
+    private static LocalDate getLocalDate(String dateString) {
+        if(StringUtils.isEmpty(dateString)) return null;
+        return LocalDate.parse(dateString);
+
+    }
+
     private static boolean validProduct(String product) {
-        return product != null && product.contains(AXON_HUB);
+        return product != null && (product.contains(AXON_HUB) || product.contains(AXON_DB) || product.contains(AXON_SERVER));
     }
 
     private final LocalDate expiryDate;
@@ -71,18 +95,43 @@ public final class LicenseConfiguration {
     private final int contexts;
     private final int clusterNodes;
     private final String licensee;
+    private final LocalDate graceDate;
+    private final String product;
+    private final Set<String> packs;
 
-    LicenseConfiguration(LocalDate expiryDate, Edition edition, String licenseId, int contexts, int clusterNodes, String licensee) {
+    LicenseConfiguration(LocalDate expiryDate, Edition edition, String licenseId, int contexts, int clusterNodes,
+                         String licensee, String product, String packs, LocalDate graceDate) {
         this.expiryDate = expiryDate;
         this.edition = edition;
         this.licenseId = licenseId;
         this.contexts = contexts;
         this.clusterNodes = clusterNodes;
         this.licensee = licensee;
+        this.product = product;
+        this.graceDate = graceDate == null ? expiryDate : graceDate;
+        this.packs = StringUtils.isEmpty(packs) ? Collections.emptySet() : Arrays.stream(packs.split(",")).collect(
+                Collectors.toSet());
+
     }
 
     public LocalDate getExpiryDate() {
         return expiryDate;
+    }
+
+    public LocalDate getGraceDateDate() {
+        return graceDate;
+    }
+
+    public boolean hasPack(String pack) {
+        return packs.contains(pack);
+    }
+
+    public boolean isMessaging() {
+        return product.contains(AXON_HUB) || product.contains(AXON_SERVER);
+    }
+
+    public boolean isStorage() {
+        return product.contains(AXON_DB) || product.contains(AXON_SERVER);
     }
 
     public Edition getEdition() {
@@ -110,6 +159,6 @@ public final class LicenseConfiguration {
     }
 
     public static boolean isEnterprise() {
-        return Edition.Enterprise.equals(getInstance().edition);
+        return Edition.Enterprise.equals(getInstance().edition) || Edition.Standard.equals(getInstance().edition);
     }
 }

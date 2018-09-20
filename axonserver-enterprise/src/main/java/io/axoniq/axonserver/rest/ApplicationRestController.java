@@ -10,6 +10,8 @@ import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationNotFoundException;
 import io.axoniq.platform.application.ApplicationWithToken;
+import io.axoniq.platform.role.Role;
+import io.axoniq.platform.role.RoleController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -37,14 +40,16 @@ public class ApplicationRestController {
     public static final String ACTION_NOT_SUPPORTED_IN_DEVELOPMENT_MODE = "Action not supported in Development mode";
     public static final String APPLICATION_NOT_FOUND = "Application %s not found";
     private final ApplicationController applicationController;
+    private final RoleController roleController;
     private final FeatureChecker limits;
     private final ApplicationEventPublisher eventPublisher;
 
 
     public ApplicationRestController(ApplicationController applicationController,
-                                     FeatureChecker limits,
+                                     RoleController roleController, FeatureChecker limits,
                                      ApplicationEventPublisher eventPublisher) {
         this.applicationController = applicationController;
+        this.roleController = roleController;
         this.limits = limits;
         this.eventPublisher = eventPublisher;
     }
@@ -58,11 +63,19 @@ public class ApplicationRestController {
     @PostMapping("applications")
     public String updateJson(@RequestBody ApplicationJSON application) {
         checkEdition();
+        checkRoles(application);
         ApplicationWithToken result = applicationController.updateJson(application.toApplication());
         eventPublisher.publishEvent(new ApplicationSynchronizationEvents.ApplicationReceived(
                 ProtoConverter.createApplication(result.getApplication(), Action.MERGE),
                  false));
         return result.getTokenString();
+    }
+
+    private void checkRoles(ApplicationJSON application) {
+        Set<String> validRoles = roleController.listApplicationRoles().stream().map(Role::name).collect(Collectors.toSet());
+        for (ApplicationJSON.ApplicationRoleJSON role : application.getRoles()) {
+            if( ! validRoles.contains(role.getRole())) throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE, role.getRole() + ": Role unknown");
+        }
     }
 
 
