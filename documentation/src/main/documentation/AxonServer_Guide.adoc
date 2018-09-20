@@ -108,12 +108,14 @@ A Java 8+ JRE should be installed on the system.
 
 The AxonServer delivery contains the following artifacts:
 
-- axon-server.jar
+- axonserver.jar
+- axonserver-migration.jar
 - axonserver.properties
 - {Cli}
 - AxonServer_Guide.pdf
 
-Copy axonserver-server.jar and axonserver.properties to a directory of your choice. As AxonServer also acts
+
+Copy axonserver.jar and axonserver.properties to a directory of your choice. As AxonServer also acts
 as an event store, you need to tell it where to store the events. In the provided axonserver.properties file
 this is set up to be the events subdirectory in the startup directory. If you want to change this you can
 change the value of the property *axoniq.axonserver.event.storage* to the location where you want to store the
@@ -129,12 +131,12 @@ Basically, you are ready to go now. Start the Axon server using the following co
 
 [subs="attributes"]
 ```sh
-# ./axon-server.jar
+# ./axonserver.jar
 ```
 or when not running bash shell:
 [subs="attributes"]
 ```sh
-# java -jar axon-server.jar
+# java -jar axonserver.jar
 ```
 
 To verify that the server is started correctly, open the page http://localhost:8024.
@@ -143,6 +145,7 @@ To verify that the server is started correctly, open the page http://localhost:8
 
 AxonServer is configured by default when you use the axon-spring-boot-starter with Maven dependency:
 
+[subs="verbatim,attributes"]
 ```xml
 <dependency>
   <groupId>org.axonframework</groupId>
@@ -388,52 +391,29 @@ server.ssl.key-alias=[alias]
 
 === Multi-context [Enterprise Edition only]
 
-You can use a single AxonDB (cluster) to store events for multiple bounded contexts. Each context will have its own
+You can use a single AxonServer (cluster) to store events for multiple bounded contexts. Each context will have its own
 set of files (stored in a separate directory). Each context may have a different master in an AxonDB cluster.
 
 Creating a new context is done using the command line interface:
 
 [subs="attributes"]
 ```
-{CliCmd} register-context -S http://axondb1:8023 -c context-name
+{CliCmd} register-context -S http://axonserver:8024 -c context-name
 ```
 
 The server address here is the address of the master for the *default* context. It is not possible to delete the *default*
 context.
 
-=== Multi-tier storage [Enterprise Edition only]
-
-AxonDB Enterprise Edition supports storing older files in a different location. It is for instance possible to store the
-first 100 segments in one location (using SSD disks) and move all the older segments to another location, on cheaper storage.
-
-For this there are 2 options:
-
-1. keep all files for each node in the cluster on the node itself
-2. move older files to a shared location
-
-To set-up the first option add the following properties to the axondb.properties file:
-
-```
-axoniq.axondb.file.maxFilesInPrimaryLocation=100
-axoniq.axondb.file.alternateStorage=/test/oldEvents
-```
-
-For the second option, use these properties:
-```
-axoniq.axondb.file.maxFilesInPrimaryLocation=100
-axoniq.axondb.file.sharedStorage=/test/sharedEvents
-```
-
 === Migration
 
-The {ProductName} package contains a migration tool to migrate from an already existing RDBMS event store to a new {ProductName} instance.
-The tool reads events and snapshots from the existing store and pushes them to the {ProductName} server.
+The AxonServer package contains a migration tool to migrate from an already existing RDBMS event store to a new AxonServer instance.
+The tool reads events and snapshots from the existing store and pushes them to the AxonServer server.
 
 The migration tool maintains the state of its migration, so it can be run multiple times.
 
-Set the following properties to define the existing event store and the target {ProductName} server:
+Set the following properties to define the existing event store and the target AxonServer server:
 
-* *axoniq.axondb.servers* - comma separated list of hostnames and ports for the {ProductName} cluster.
+* *axoniq.axonserver.servers* - comma separated list of hostnames and ports for the AxonServer cluster.
 * *axoniq.datasource.eventstore.url* - URL of the JDBC data store containing the existing event store
 * *axoniq.datasource.eventstore.username* - Username to connect to the JDBC data store containing the existing event store
 * *axoniq.datasource.eventstore.password* - Password to connect to the JDBC data store containing the existing event store
@@ -441,7 +421,7 @@ Set the following properties to define the existing event store and the target {
 The default settings expect the data in the current event store to be serialized using the XstreamSerializer. When the data is serialized using the JacksonSerializer add the following
 property:
 
-* *spring.profiles.active*=migrate-from-jpa,jackson
+* *axon.serializer.events*=jackson
 
 To run the migration tool create a file application.properties, containing the properties mentioned above, e.g.
 ----
@@ -460,7 +440,7 @@ axonserver-migration.jar
 When the source eventstore is requiring a specific JDBC driver, you should put the required JDBC driver jar files
 in the libs directory.
 
-Note that the migration tool only migrates the event store data to AxonDB. It does not update the tracking token values in
+Note that the migration tool only migrates the event store data to AxonServer. It does not update the tracking token values in
 token_entry tables. Tracking tokens are highly dependent on the implementation of the actual event store used. Migrating
 them is case specific and error prone. Our recommendation is to reset the tracking processors after the migration.
 
@@ -515,6 +495,8 @@ The following table gives a complete list of all the configuration properties av
 |axoniq.axonserver.ssl.cert-chain-file||String|
 |axoniq.axonserver.ssl.internal-cert-chain-file||String|
 |axoniq.axonserver.ssl.private-key-file||String|
+|axoniq.axonserver.event.storage||String|Location for the event data
+|axoniq.axonserver.snapshot.storage||String|Location for the snapshot data, defaults to the same as the event data.
 |axoniq.axonserver.controldb-path|.|String|Path to the AxonServer controlDB, note that this has to be an absolute path or start with '.'|
 |===========================
 
@@ -538,6 +520,4 @@ The following table gives a complete list of all the configuration properties av
 |axon.axonserver.command-threads|10|Integer|Number of threads processing commands
 |axon.axonserver.query-threads|10|Integer|Number of threads processing queries
 |axon.axonserver.context||String|AxonServer context used by the application (Enterprise Edition only)
-|axon.axonserver.keep-alive-time|0|Long|Interval for keep alive messages, 0 disables keep alive messages
-|axon.axonserver.keep-alive-timeout|5000|Long|Timeout for keep alive messages, only of keep-alive-time is greater than 0
 |===========================
