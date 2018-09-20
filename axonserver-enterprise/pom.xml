@@ -325,7 +325,7 @@
                                                 <dependencySets>
                                                     <dependencySet>
                                                         <includes>
-                                                            <include>io.axoniq.server:axonserver-cli:jar:exec</include>
+                                                            <include>io.axoniq.axonserver:axonserver-cli:jar:exec</include>
                                                         </includes>
                                                         <outputDirectory>.</outputDirectory>
                                                         <outputFileNameMapping>axoniq-cli.jar</outputFileNameMapping>
