@@ -77,7 +77,7 @@ podTemplate(label: label,
             }
 
             stage('Trigger followup') {
-                build job: 'axon-server-dockerimages', 
+                build job: 'axon-server-dockerimages/master', propagate: false, wait: false,
                     parameters: [
                         string(name: 'namespace', value: params.namespace),
                         string(name: 'groupId', value: props ['project.groupId']),
