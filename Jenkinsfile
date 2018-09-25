@@ -75,5 +75,15 @@ podTemplate(label: label,
                     }
                 }
             }
+
+            stage('Trigger followup') {
+                build job: 'axon-server-dockerimages', 
+                    parameters: [
+                        string(name: 'namespace', value: params.namespace),
+                        string(name: 'groupId', value: props ['project.groupId']),
+                        string(name: 'artifactId', value: props ['project.artifactId']),
+                        string(name: 'projectVersion', value: props ['project.version'])
+                    ]
+            }
         }
     }
