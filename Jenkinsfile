@@ -81,7 +81,7 @@ podTemplate(label: label,
                     parameters: [
                         string(name: 'namespace', value: params.namespace),
                         string(name: 'groupId', value: props ['project.groupId']),
-                        string(name: 'artifactId', value: props ['project.artifactId']),
+                        string(name: 'artifactId', value: /*props ['project.artifactId']*/'axonserver'),
                         string(name: 'projectVersion', value: props ['project.version'])
                     ]
             }
