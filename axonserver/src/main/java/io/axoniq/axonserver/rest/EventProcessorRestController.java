@@ -63,8 +63,8 @@ public class EventProcessorRestController {
                             @PathVariable("segment") int segment,
                             @RequestParam("target") String target,
                             @RequestParam("context") String context) {
-        Iterable<Client> clients = new ComponentItems<>(component, context, this.clients);
-        clients.forEach(client -> {
+        Iterable<Client> clientIterable = new ComponentItems<>(component, context, this.clients);
+        clientIterable.forEach(client -> {
             if (!target.equals(client.name())){
                 this.processorEventsSource.releaseSegment(client.name(), processor, segment);
             }

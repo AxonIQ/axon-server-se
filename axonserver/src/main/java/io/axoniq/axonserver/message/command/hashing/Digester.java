@@ -27,7 +27,7 @@ public class Digester {
         try {
             return new Digester(MessageDigest.getInstance(algorithm));
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("This environment doesn't support the MD5 hashing algorithm", e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "This environment doesn't support the MD5 hashing algorithm", e);
         }
     }
 

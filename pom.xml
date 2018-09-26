@@ -19,16 +19,7 @@
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
         <module>axonserver-cli</module>
-        <module>documentation</module>
-        <module>package-axonserver</module>
-        <module>package-axonserver-enterprise</module>
         <module>plugins/axonserver-metrics-prometheus</module>
-        <!--
-        <module>plugins/axonserver-kafka-connector</module>
-        <module>plugins/axonserver-rabbitmq-connector</module>
-        <module>plugins/axonserver-metrics-graphite</module>
-        <module>plugins/sample-ui-plugin</module>
-        -->
     </modules>
 
     <properties>
@@ -169,4 +160,22 @@
             </roles>
         </developer>
     </developers>
+
+    <profiles>
+        <profile>
+            <id>build-release-packages</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <modules>
+                <module>documentation</module>
+                <module>package-axonserver</module>
+                <module>package-axonserver-enterprise</module>
+            </modules>
+        </profile>
+    </profiles>
+
 </project>

@@ -23,11 +23,11 @@ public class ContextAddingInterceptor implements ClientInterceptor {
     }
 
     @Override
-    public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+    public <T, R> ClientCall<T, R> interceptCall(MethodDescriptor<T, R> methodDescriptor, CallOptions callOptions, Channel channel) {
 
-        return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(channel.newCall(methodDescriptor, callOptions)) {
+        return new ForwardingClientCall.SimpleForwardingClientCall<T, R>(channel.newCall(methodDescriptor, callOptions)) {
             @Override
-            public void start(Listener<RespT> responseListener, Metadata headers) {
+            public void start(Listener<R> responseListener, Metadata headers) {
                 String context = contextSupplier.get();
                 if( context != null) headers.put(GrpcMetadataKeys.AXONDB_CONTEXT_MD_KEY, context);
                 super.start(responseListener, headers);

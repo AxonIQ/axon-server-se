@@ -12,7 +12,7 @@ public interface FeatureChecker {
 
     default boolean isBasic() {
         return true;
-    };
+    }
 
     default boolean isEnterprise() {
         return false;
