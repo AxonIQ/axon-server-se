@@ -11,7 +11,7 @@ podTemplate(label: label,
     containers: [
         containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven:3.5.4-jdk-8',
             command: 'cat', ttyEnabled: true,
-            resourceRequestCpu: '50m', resourceLimitCpu: '100m',
+            resourceRequestCpu: '1000m', resourceLimitCpu: '1000m',
             resourceRequestMemory: '3200Mi', resourceLimitMemory: '4Gi',
             envVars: [
                 envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
