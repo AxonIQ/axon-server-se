@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
@@ -34,6 +35,19 @@ public final class LicenseConfiguration {
     private static final String AXON_SERVER = "AxonServer";
     private static final String AXON_DB = "AxonDB";
 
+    public static void refresh() {
+        Properties properties = new LicensePropertyReader().readLicenseProperties();
+        if(properties == null) {
+            if( ! Edition.Free.equals(instance.edition)) {
+                instance = instance.withGraceDate( LocalDate.now().minus(1, ChronoUnit.DAYS));
+            }
+        } else {
+            instance = instance.withGraceDate( getLocalDate(properties.getProperty("grace_date")))
+            .withExpiryDate(getLocalDate(properties.getProperty("expiry_date")));
+        }
+    }
+
+
     public enum Edition {
         Enterprise, Free, Standard
     }
@@ -47,9 +61,9 @@ public final class LicenseConfiguration {
                 log.warn("License property not specified - Running in Free mode");
                 instance = new LicenseConfiguration(null, Edition.Free, UUID.randomUUID().toString(),
                                                     1, 1, null,
-                                                    properties.getProperty("licensee"),
-                                                    properties.getProperty("product"),
-                                                    LocalDate.parse(properties.getProperty("grace_date")));
+                                                    "None",
+                                                    AXON_SERVER,
+                                                    null);
             } else {
                 instance = new LicenseConfiguration(
                         getLocalDate(properties.getProperty("expiry_date")),
@@ -118,7 +132,7 @@ public final class LicenseConfiguration {
         return expiryDate;
     }
 
-    public LocalDate getGraceDateDate() {
+    public LocalDate getGraceDate() {
         return graceDate;
     }
 
@@ -160,5 +174,17 @@ public final class LicenseConfiguration {
 
     public static boolean isEnterprise() {
         return Edition.Enterprise.equals(getInstance().edition) || Edition.Standard.equals(getInstance().edition);
+    }
+
+    private LicenseConfiguration withExpiryDate(LocalDate newExpiryDate) {
+        return new LicenseConfiguration(newExpiryDate, edition, licenseId, contexts,
+                                        clusterNodes, licensee, product,
+                                        String.join(",", packs), graceDate);
+    }
+
+    private LicenseConfiguration withGraceDate(LocalDate newGraceDate) {
+        return new LicenseConfiguration(expiryDate, edition, licenseId, contexts,
+                                        clusterNodes, licensee, product,
+                                        String.join( ",", packs), newGraceDate);
     }
 }
