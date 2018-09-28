@@ -10,6 +10,7 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
@@ -81,6 +82,14 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
                                     StreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
         stub.listAggregateEvents(request, responseStreamObserver);
+
+    }
+
+    @Override
+    public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
+                                    StreamObserver<InputStream> responseStreamObserver) {
+        EventDispatcherStub stub = getNonMarshallingStub(context);
+        stub.listAggregateSnapshots(request, responseStreamObserver);
 
     }
 
@@ -169,6 +178,11 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
         public void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseStream) {
             ClientCalls.asyncServerStreamingCall(
                     getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_EVENTS, getCallOptions()), request, responseStream);
+        }
+
+        public void listAggregateSnapshots(GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseStream) {
+            ClientCalls.asyncServerStreamingCall(
+                    getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_SNAPSHOTS, getCallOptions()), request, responseStream);
         }
 
     }

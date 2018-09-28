@@ -3,6 +3,7 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.grpc.event.Event;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Author: marc
@@ -20,4 +21,7 @@ public class SnapshotReader {
                     .map(s -> Event.newBuilder(s).setSnapshot(true).build());
     }
 
+    public void streamByAggregateId(String aggregateId, long minSequenceNumber, Consumer<Event> eventConsumer) {
+        datafileManagerChain.streamByAggregateId(aggregateId, minSequenceNumber, eventConsumer);
+    }
 }

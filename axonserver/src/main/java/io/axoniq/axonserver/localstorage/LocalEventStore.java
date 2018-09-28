@@ -5,6 +5,7 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
@@ -102,7 +103,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         } else {
                             logger.warn("Error while storing events", exception);
                         }
-                        logger.warn("Error while storing events", exception);
                         responseObserver.onError(exception);
                     } else {
                         responseObserver.onNext(CONFIRMATION);
@@ -120,6 +120,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .marshaller(Event.getDefaultInstance());
         workersMap.get(context).aggregateReader.readEvents( request.getAggregateId(),
                                                             request.getAllowSnapshots(),
+                                                            request.getInitialSequence(),
+                                                            event -> responseStreamObserver.onNext(marshaller.stream(event)));
+        responseStreamObserver.onCompleted();
+    }
+
+    @Override
+    public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
+                                    StreamObserver<InputStream> responseStreamObserver) {
+        MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
+                .marshaller(Event.getDefaultInstance());
+        workersMap.get(context).aggregateReader.readSnapshots( request.getAggregateId(),
                                                             request.getInitialSequence(),
                                                             event -> responseStreamObserver.onNext(marshaller.stream(event)));
         responseStreamObserver.onCompleted();
@@ -162,12 +173,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void getLastToken(String context, GetLastTokenRequest request,
                              StreamObserver<TrackingToken> responseObserver) {
-        try {
-            responseObserver.onNext(TrackingToken.newBuilder().setToken(workersMap.get(context).eventWriteStorage.getLastToken()).build());
-            responseObserver.onCompleted();
-        } catch (RuntimeException ex) {
-            responseObserver.onError(ex);
-        }
+        responseObserver.onNext(TrackingToken.newBuilder().setToken(workersMap.get(context).eventWriteStorage.getLastToken()).build());
+        responseObserver.onCompleted();
     }
 
     @Override
@@ -180,13 +187,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        try {
             long sequenceNumber = workersMap.get(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
             responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
             responseObserver.onCompleted();
-        } catch (RuntimeException ex) {
-            responseObserver.onError(ex);
-        }
     }
 
 

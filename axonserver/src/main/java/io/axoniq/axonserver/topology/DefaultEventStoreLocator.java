@@ -27,6 +27,8 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
 
     @Override
     public EventStore getEventStore(String context) {
-        return localEventStore;
+        if( Topology.DEFAULT_CONTEXT.equals(context))
+            return localEventStore;
+        return null;
     }
 }

@@ -47,8 +47,8 @@ public final class LicenseConfiguration {
                 log.warn("License property not specified - Running in Free mode");
                 instance = new LicenseConfiguration(null, Edition.Free, UUID.randomUUID().toString(),
                                                     1, 1, null,
-                                                    properties.getProperty("licensee"),
-                                                    properties.getProperty("product"),
+                                                    AXON_SERVER,
+                                                    null,
                                                     LocalDate.parse(properties.getProperty("grace_date")));
             } else {
                 instance = new LicenseConfiguration(

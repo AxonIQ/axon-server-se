@@ -83,10 +83,24 @@ public interface ProcessingInstructionHelper {
                 .build();
     }
 
+    static ProcessingInstruction numberOfResults(long numberOfResults) {
+        return ProcessingInstruction.newBuilder()
+                                    .setKey(ProcessingKey.NR_OF_RESULTS)
+                                    .setValue(MetaDataValue.newBuilder().setNumberValue(numberOfResults))
+                                    .build();
+    }
+
     static ProcessingInstruction routingKey(String routingKey) {
         return ProcessingInstruction.newBuilder()
                 .setKey(ProcessingKey.ROUTING_KEY)
                 .setValue(MetaDataValue.newBuilder().setTextValue(routingKey))
                 .build();
+    }
+
+    static ProcessingInstruction priority(long priority) {
+        return ProcessingInstruction.newBuilder()
+                                    .setKey(ProcessingKey.PRIORITY)
+                                    .setValue(MetaDataValue.newBuilder().setNumberValue(priority))
+                                    .build();
     }
 }

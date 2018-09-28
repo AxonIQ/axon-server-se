@@ -55,7 +55,7 @@ public class LeaderRequestHandler {
 
     @EventListener
     public void on(RequestLeaderEvent requestLeaderEvent) {
-        logger.warn("Received requestLeaver {}", requestLeaderEvent.getRequest());
+        logger.debug("Received requestLeader {}", requestLeaderEvent.getRequest());
         NodeContextInfo candidate = requestLeaderEvent.getRequest();
         if (currentMasterProvider.apply(candidate.getContext()) != null) {
             requestLeaderEvent.getCallback().accept(false);

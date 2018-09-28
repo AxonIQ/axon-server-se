@@ -12,73 +12,62 @@ import io.axoniq.axonserver.message.query.QueryHandler;
  */
 public class SubscriptionEvents {
     public abstract static class SubscriptionBaseEvent {
-
-    }
-    @KeepNames
-    public static class UnsubscribeCommand extends SubscriptionBaseEvent {
-
         private final String context;
-        private final CommandSubscription request;
         private final boolean isProxied;
 
-        public UnsubscribeCommand(String context, CommandSubscription request, boolean isProxied) {
+        SubscriptionBaseEvent(String context, boolean isProxied) {
             this.context = context;
-            this.request = request;
             this.isProxied = isProxied;
         }
 
         public String getContext() {
             return context;
+        }
+
+        public boolean isProxied() {
+            return isProxied;
+        }
+    }
+    @KeepNames
+    public static class UnsubscribeCommand extends SubscriptionBaseEvent {
+
+        private final CommandSubscription request;
+
+        public UnsubscribeCommand(String context, CommandSubscription request, boolean isProxied) {
+            super(context, isProxied);
+            this.request = request;
         }
 
         public CommandSubscription getRequest() {
             return request;
         }
 
-        public boolean isProxied() {
-            return isProxied;
-        }
     }
 
     @KeepNames
     public static class UnsubscribeQuery extends SubscriptionBaseEvent {
-        private final String context;
         private final QuerySubscription unsubscribe;
-        private final boolean isProxied;
 
         public UnsubscribeQuery(String context, QuerySubscription unsubscribe, boolean isProxied) {
-            this.context = context;
+            super(context, isProxied);
             this.unsubscribe = unsubscribe;
-            this.isProxied = isProxied;
-        }
-
-        public String getContext() {
-            return context;
         }
 
         public QuerySubscription getUnsubscribe() {
             return unsubscribe;
         }
 
-        public boolean isProxied() {
-            return isProxied;
-        }
     }
     @KeepNames
     public static class SubscribeQuery extends SubscriptionBaseEvent {
 
-        private final String context;
         private final QuerySubscription subscription;
         private final QueryHandler queryHandler;
 
         public SubscribeQuery(String context, QuerySubscription subscription, QueryHandler queryHandler) {
-            this.context = context;
+            super(context, !(queryHandler instanceof DirectQueryHandler));
             this.subscription = subscription;
             this.queryHandler = queryHandler;
-        }
-
-        public String getContext() {
-            return context;
         }
 
         public QuerySubscription getSubscription() {
@@ -89,26 +78,18 @@ public class SubscriptionEvents {
             return queryHandler;
         }
 
-        public boolean isProxied() {
-            return ! (queryHandler instanceof DirectQueryHandler);
-        }
     }
 
     @KeepNames
     public static class SubscribeCommand extends SubscriptionBaseEvent {
 
-        private final String context;
         private final CommandSubscription request;
         private final CommandHandler handler;
 
         public SubscribeCommand(String context, CommandSubscription request, CommandHandler handler) {
-            this.context = context;
+            super(context, !(handler instanceof DirectCommandHandler));
             this.request = request;
             this.handler = handler;
-        }
-
-        public String getContext() {
-            return context;
         }
 
         public CommandSubscription getRequest() {
@@ -119,8 +100,5 @@ public class SubscriptionEvents {
             return handler;
         }
 
-        public boolean isProxied() {
-            return !(handler instanceof DirectCommandHandler);
-        }
     }
 }
