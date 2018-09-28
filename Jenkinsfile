@@ -41,7 +41,7 @@ podTemplate(label: label,
                         cat /maven_settings/*xml >./settings.xml
                         export AXONIQ_BRANCH=${gitBranch}
                         export AXONIQ_NS=${params.namespace}
-                        ./axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonserver-server -env AXONIQ -envDot -q -dump >jenkins-build.properties
+                        ./axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonserver -env AXONIQ -envDot -q -dump >jenkins-build.properties
                     """
                 }
             }
@@ -77,11 +77,34 @@ podTemplate(label: label,
             }
 
             stage('Trigger followup') {
-                build job: 'axon-server-dockerimages/master', propagate: false, wait: false,
+
+// Axon Server - Build Docker Images
+//        string(name: 'namespace', defaultValue: 'devops'),
+//        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
+//        string(name: 'artifactId', defaultValue: 'axonserver'),
+//        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+                build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
                     parameters: [
                         string(name: 'namespace', value: params.namespace),
                         string(name: 'groupId', value: props ['project.groupId']),
-                        string(name: 'artifactId', value: /*props ['project.artifactId']*/'axonserver'),
+                        string(name: 'artifactId', value: props ['project.artifactId']),
+                        string(name: 'projectVersion', value: props ['project.version'])
+                    ]
+
+// Axon Server - Canary tests
+//        string(name: 'namespace', defaultValue: 'axon-server-canary'),
+//        string(name: 'imageName', defaultValue: 'axonserver'),
+//        string(name: 'serverName', defaultValue: 'axon-server'),
+//        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
+//        string(name: 'artifactId', defaultValue: 'axonserver'),
+//        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+                build job: 'axon-server-canary/master', propagate: false, wait: false,
+                    parameters: [
+                        string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
+                        string(name: 'imageName', defaultValue: 'axonserver'),
+                        string(name: 'serverName', defaultValue: 'axon-server'),
+                        string(name: 'groupId', value: props ['project.groupId']),
+                        string(name: 'artifactId', value: props ['project.artifactId']),
                         string(name: 'projectVersion', value: props ['project.version'])
                     ]
             }
