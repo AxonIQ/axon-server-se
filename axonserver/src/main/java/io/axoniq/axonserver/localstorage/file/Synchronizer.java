@@ -105,7 +105,7 @@ public class Synchronizer {
         return current != null && current.segment != writePosition.segment;
     }
 
-    public void init(WritePosition writePosition) {
+    public synchronized void init(WritePosition writePosition) {
         current = writePosition;
         if( syncJob == null) {
             syncJob = fsync.scheduleWithFixedDelay(this::syncAndCloseFile, 1, 1, TimeUnit.SECONDS);
@@ -116,7 +116,9 @@ public class Synchronizer {
     }
 
     public void forceCurrent() {
-        if( current != null) current.force();
+        if( current != null) {
+            current.force();
+        }
     }
 
     public void shutdown() {

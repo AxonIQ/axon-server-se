@@ -173,7 +173,7 @@ public class ClusterRestController {
     }
 
     @KeepNames
-    private static class ClusterJoinRequest {
+    public static class ClusterJoinRequest {
         @NotNull(message = "missing required field: internalHostName")
         private String internalHostName;
         @NotNull(message = "missing required field: internalGrpcPort")
@@ -206,6 +206,7 @@ public class ClusterRestController {
         }
     }
 
+    @KeepNames
     public static class ContextRoleJSON {
         private String name;
         private boolean storage;

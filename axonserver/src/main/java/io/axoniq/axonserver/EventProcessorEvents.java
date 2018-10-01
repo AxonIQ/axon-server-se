@@ -9,6 +9,7 @@ import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 public class EventProcessorEvents {
 
 
+    @KeepNames
     public abstract static class BaseEventProcessorsEvent {
 
         private final boolean proxied;

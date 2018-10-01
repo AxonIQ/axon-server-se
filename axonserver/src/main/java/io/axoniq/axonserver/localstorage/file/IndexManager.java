@@ -37,10 +37,8 @@ public class IndexManager {
 
     public void createIndex(Long segment, Map<String, SortedSet<PositionInfo>> positionsPerAggregate, boolean force) {
         File tempFile = storageProperties.indexTemp(context, segment);
-        if( tempFile.exists()) {
-            if( ! force) return;
-
-            FileUtils.delete(tempFile);
+        if( tempFile.exists() && (! force || ! FileUtils.delete(tempFile))) {
+            return;
         }
 
         DB db = DBMaker.fileDB(tempFile)

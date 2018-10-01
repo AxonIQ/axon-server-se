@@ -134,7 +134,7 @@ public class RemoteConnection  {
                                     break;
 
                                 case CONNECT_RESPONSE:
-                                    logger.warn("Connected, received response: {}",
+                                    logger.debug("Connected, received response: {}",
                                                  connectorResponse.getConnectResponse());
                                     try {
 

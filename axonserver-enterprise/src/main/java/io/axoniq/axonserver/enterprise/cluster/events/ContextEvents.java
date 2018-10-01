@@ -9,6 +9,7 @@ import java.util.List;
  * Author: marc
  */
 public class ContextEvents {
+    @KeepNames
     public abstract static class BaseContextEvent {
         private final String name;
         private final boolean proxied;

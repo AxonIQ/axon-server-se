@@ -217,10 +217,10 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         }
 
         public void addPermits(long newPermits) {
-            logger.warn("Received new permits {}, {} left", newPermits, permits);
+            logger.info("Received new permits {}, {} left", newPermits, permits);
             long before = permits.getAndAccumulate(newPermits, (old, inc) -> Math.max(old, 0) + inc);
             if( before <= 0) {
-                logger.warn("restart streaming with {} permits", newPermits);
+                logger.debug("restart streaming with {} permits", newPermits);
                 startStreaming(lastEventTransaction.get(), lastSnapshotTransaction.get());
             }
         }

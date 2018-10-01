@@ -5,6 +5,7 @@ package io.axoniq.axonserver;
  */
 public class TopologyEvents {
 
+    @KeepNames
     public abstract static class TopologyBaseEvent {
         private final boolean forwarded;
 

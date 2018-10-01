@@ -54,9 +54,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public void initContext(String context, boolean validating) {
         if( workersMap.containsKey(context)) return;
-        Workers workers = new Workers(context);
-        workers.init(validating);
-        workersMap.put(context, workers);
+        Workers workers = workersMap.putIfAbsent(context, new Workers(context));
+        if( workers == null) {
+            workersMap.get(context).init(validating);
+        }
     }
 
     public void cleanupContext(String context) {
@@ -331,7 +332,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventSyncStorage = new SyncStorage(eventDatafileManagerChain);
         }
 
-        public void init(boolean validate) {
+        public synchronized void init(boolean validate) {
             eventDatafileManagerChain.init(validate);
             snapshotDatafileManagerChain.init(validate);
         }
