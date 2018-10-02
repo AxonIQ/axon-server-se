@@ -15,13 +15,6 @@ public class DirectQueryHandler extends QueryHandler<QueryProviderInbound> {
     }
 
     @Override
-    public void dispatch(QueryRequest query) {
-            streamObserver.onNext(QueryProviderInbound.newBuilder()
-                    .setQuery(query)
-                    .build());
-    }
-
-    @Override
     public void dispatch(SubscriptionQueryRequest query) {
         streamObserver.onNext(QueryProviderInbound.newBuilder()
                                                   .setSubscriptionQueryRequest(query)

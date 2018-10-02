@@ -22,8 +22,6 @@ public abstract class QueryHandler<T>  {
         this.componentName = componentName;
     }
 
-    public abstract void dispatch(QueryRequest query);
-
     public abstract void dispatch(SubscriptionQueryRequest query);
 
     public String getClientName() {
@@ -38,8 +36,8 @@ public abstract class QueryHandler<T>  {
         return clientName;
     }
 
-    public void enqueue(String context, QueryRequest request, FlowControlQueues<WrappedQuery> commandQueue, long timeout) {
-        commandQueue.put(clientName, new WrappedQuery(context, request, timeout));
+    public void enqueue(String context, QueryRequest request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
+        queryQueue.put(clientName, new WrappedQuery(context, request, timeout));
     }
 
     @Override

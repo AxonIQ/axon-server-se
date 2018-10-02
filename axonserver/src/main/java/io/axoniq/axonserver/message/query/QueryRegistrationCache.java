@@ -3,6 +3,7 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,6 +18,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Author: marc
@@ -60,12 +62,12 @@ public class QueryRegistrationCache {
         return queryInformation.getHandlersPerComponent().entrySet().stream()
                                                     .map( entry -> pickOne(queryDefinition, entry.getKey(), entry.getValue()))
                                                     .filter(Objects::nonNull)
-                                                    .collect(Collectors.toSet());
+                                                    .collect(toSet());
     }
 
-    public Set<QueryHandler> findAll(String context, QueryRequest request) {
+    public Collection<QueryHandler> findAll(String context, QueryRequest request) {
         QueryDefinition def = new QueryDefinition(context, request.getQuery());
-        return (registrationsPerQuery.containsKey(def)) ?  registrationsPerQuery.get(def).handlers : emptySet();
+        return (registrationsPerQuery.containsKey(def)) ?  registrationsPerQuery.get(def).handlers.values() : emptySet();
     }
 
     private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName, NavigableSet<String> queryHandlers) {
@@ -80,7 +82,7 @@ public class QueryRegistrationCache {
         registrationsPerQuery.forEach((query,queryInformation) -> {
             Map<String, Set<QueryHandler>> componentsMap = new HashMap<>();
             all.put(query, componentsMap);
-            queryInformation.handlers.forEach(h ->
+            queryInformation.handlers.values().forEach(h ->
                 componentsMap.computeIfAbsent(h.getComponentName(), c -> new HashSet<>()).add(h)
             );
         });
@@ -101,7 +103,7 @@ public class QueryRegistrationCache {
     }
 
     public Set<String> getClients() {
-        return registrationsPerQuery.values().stream().flatMap(q -> q.handlers.stream().map(QueryHandler::getClientName)).distinct().collect(Collectors.toSet());
+        return registrationsPerQuery.values().stream().flatMap(q -> q.handlers.keySet().stream()).collect(toSet());
     }
 
     public Set<String> getResponseTypes(QueryDefinition key) {
@@ -127,10 +129,10 @@ public class QueryRegistrationCache {
     }
 
     private class QueryInformation {
-        private final Set<QueryHandler> handlers = new CopyOnWriteArraySet<>();
+        private final Map<String,QueryHandler> handlers = new ConcurrentHashMap<>();
         private final Set<String> resultNames = new CopyOnWriteArraySet<>();
         public void removeClient(String clientId) {
-            handlers.removeIf(h -> h.getClientName().equals(clientId));
+            handlers.remove(clientId);
         }
 
         public boolean isEmpty() {
@@ -143,17 +145,17 @@ public class QueryRegistrationCache {
         }
 
         public QueryInformation addHandler(QueryHandler queryHandler) {
-            handlers.add(queryHandler);
+            handlers.put(queryHandler.getClientName(), queryHandler);
             return this;
         }
 
         public QueryHandler getHandler(String client) {
-            return handlers.stream().filter(h -> h.getClientName().equals(client)).findFirst().orElse(null);
+            return handlers.get(client);
         }
 
         public Map<String, NavigableSet<String>> getHandlersPerComponent() {
             Map<String,NavigableSet<String>> map = new HashMap<>();
-            handlers.forEach(queryHandler -> map.computeIfAbsent(queryHandler.getComponentName(), c -> new TreeSet<>()).add(queryHandler.getClientName()));
+            handlers.values().forEach(queryHandler -> map.computeIfAbsent(queryHandler.getComponentName(), c -> new TreeSet<>()).add(queryHandler.getClientName()));
             return map;
         }
     }

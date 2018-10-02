@@ -2,6 +2,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -9,6 +10,7 @@ import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.runners.*;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -124,6 +126,17 @@ public class QueryRegistrationCacheTest {
         when( queryHandlerSelector.select(anyObject(), anyObject(), anyObject())).thenReturn("client");
         assertNotNull(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request));
         assertTrue(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request2).isEmpty());
+    }
+
+    @Test
+    public void querySubscriptionTwice(){
+        QueryDefinition queryDefinition = new QueryDefinition("MyContext", "MyQuery");
+        QueryHandler queryHandler = new DirectQueryHandler(null, "MyClientName", "MyComponentName") ;
+        queryRegistrationCache.add(queryDefinition, "resultName", queryHandler);
+        queryRegistrationCache.add(queryDefinition, "resultName", queryHandler);
+        QueryRequest queryRequest = QueryRequest.newBuilder().setQuery("MyQuery").build();
+        Collection<QueryHandler> handlers = queryRegistrationCache.findAll("MyContext", queryRequest);
+        assertEquals(1, handlers.size());
     }
 
     private class DummyStreamObserver implements StreamObserver<QueryProviderInbound> {
