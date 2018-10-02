@@ -168,10 +168,6 @@ public final class LicenseConfiguration {
         return clusterNodes;
     }
 
-    public static boolean isDeveloper() {
-        return Edition.Free.equals(getInstance().edition);
-    }
-
     public static boolean isEnterprise() {
         return Edition.Enterprise.equals(getInstance().edition) || Edition.Standard.equals(getInstance().edition);
     }
