@@ -233,8 +233,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
     private void checkMasterForAllStorageContexts(List<ContextRole> contextsList) {
         for (ContextRole contextRole : contextsList) {
-            if( contextRole.getStorage() && eventStoreManager.getMaster(contextRole.getName()) == null) {
-                throw new MessagingPlatformException(ErrorCode.CANNOT_JOIN, "Cannot join context " + contextRole.getName() + " for storage as it does not have an active master");
+            if( contextRole.getStorage() && eventStoreManager.getMaster(contextRole.getName()) == null && clusterController.disconnectedNodes()) {
+                throw new MessagingPlatformException(ErrorCode.CANNOT_JOIN, "Cannot join context " + contextRole.getName()
+                        + " for storage as it does not have an active master and not all AxonServer nodes are connected");
             }
         }
     }
