@@ -61,7 +61,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     protected void recreateIndex(long segment) {
-        ByteBufferEventSource buffer = get(segment);
+        ByteBufferEventSource buffer = get(segment, true);
         EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, segment, segment);
         Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
         while( iterator.hasNext()) {
@@ -79,7 +79,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
     @Override
     protected Optional<EventSource> getEventSource(long segment) {
-        return Optional.ofNullable(get(segment));
+        return Optional.ofNullable(get(segment, false));
     }
 
     @Override
@@ -173,8 +173,8 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
 
-    private ByteBufferEventSource get(long segment)  {
-        if( ! segments.contains(segment)) return null;
+    private ByteBufferEventSource get(long segment, boolean force)  {
+        if( ! segments.contains(segment) && !force) return null;
         WeakReference<ByteBufferEventSource> bufferRef = lruMap.get(segment);
         if( bufferRef != null ) {
             ByteBufferEventSource b =  bufferRef.get();

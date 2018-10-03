@@ -24,6 +24,8 @@ public class StorageProperties {
     private int numberOfSegments = 5;
     private int primaryCleanupDelay = 60;
     private int secondaryCleanupDelay = 15;
+    private int maxIndexesInMemory = 50;
+    private int maxBloomFiltersInMemory = 100;
 
     public StorageProperties() {
     }
@@ -144,5 +146,21 @@ public class StorageProperties {
 
     public void setSecondaryCleanupDelay(int secondaryCleanupDelay) {
         this.secondaryCleanupDelay = secondaryCleanupDelay;
+    }
+
+    public int getMaxIndexesInMemory() {
+        return maxIndexesInMemory;
+    }
+
+    public void setMaxIndexesInMemory(int maxIndexesInMemory) {
+        this.maxIndexesInMemory = maxIndexesInMemory;
+    }
+
+    public int getMaxBloomFiltersInMemory() {
+        return maxBloomFiltersInMemory;
+    }
+
+    public void setMaxBloomFiltersInMemory(int maxBloomFiltersInMemory) {
+        this.maxBloomFiltersInMemory = maxBloomFiltersInMemory;
     }
 }

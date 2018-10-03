@@ -104,7 +104,7 @@ public class Gateway implements SmartLifecycle {
         }
         interceptorList.add(new ContextInterceptor());
 
-        axonServerClientServices.forEach(s -> ServerInterceptors.intercept(s,interceptorList));
+        axonServerClientServices.forEach(s -> serverBuilder.addService(ServerInterceptors.intercept(s,interceptorList)));
 
 
 //        if( routingConfiguration.getKeepAliveTime() > 0) {

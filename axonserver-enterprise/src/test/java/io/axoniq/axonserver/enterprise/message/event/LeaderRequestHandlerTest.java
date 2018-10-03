@@ -24,7 +24,7 @@ public class LeaderRequestHandlerTest {
 
         testSubject = new LeaderRequestHandler("test",
                 context -> null,
-                connectorCommand -> {},
+                                               (node,connectorCommand) -> {},
                 context -> 10L,
                 name -> 0
         );
@@ -95,7 +95,7 @@ public class LeaderRequestHandlerTest {
         AtomicInteger messageCount = new AtomicInteger();
         testSubject = new LeaderRequestHandler("test",
                 context -> "node2",
-                connectorCommand -> messageCount.incrementAndGet(),
+                                               (node, connectorCommand) -> messageCount.incrementAndGet(),
                 context -> 10L,
                 name -> 0
         );

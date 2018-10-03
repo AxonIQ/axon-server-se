@@ -105,24 +105,30 @@ public class Synchronizer {
         return current != null && current.segment != writePosition.segment;
     }
 
-    public void init(WritePosition writePosition) {
+    public synchronized void init(WritePosition writePosition) {
         current = writePosition;
+        log.debug("Initializing at {}", writePosition);
         if( syncJob == null) {
             syncJob = fsync.scheduleWithFixedDelay(this::syncAndCloseFile, 1, 1, TimeUnit.SECONDS);
+            log.debug("Scheduled syncJob");
         }
         if( forceJob == null) {
             forceJob = fsync.scheduleWithFixedDelay(this::forceCurrent, storageProperties.getForceInterval(), storageProperties.getForceInterval(), TimeUnit.MILLISECONDS);
+            log.debug("Scheduled forceJob");
         }
     }
 
     public void forceCurrent() {
-        if( current != null) current.force();
+        if( current != null) {
+            current.force();
+        }
     }
 
     public void shutdown() {
         if( syncJob != null) syncJob.cancel(false);
         if( forceJob != null) forceJob.cancel(false);
-        fsync.shutdownNow();
+        syncJob = null;
+        forceJob = null;
         while( ! syncAndCloseFile.isEmpty()) {
             syncAndCloseFile();
         }
