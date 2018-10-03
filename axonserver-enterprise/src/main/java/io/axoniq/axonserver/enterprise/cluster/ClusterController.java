@@ -459,6 +459,11 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public void publishTo(String nodeName, ConnectorCommand connectorCommand) {
-        remoteConnections.get(nodeName).publish(connectorCommand);
+        if( remoteConnections.containsKey(nodeName))
+            remoteConnections.get(nodeName).publish(connectorCommand);
+    }
+
+    public boolean disconnectedNodes() {
+        return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
     }
 }

@@ -176,7 +176,7 @@ public class DataSynchronizationReplicaTest {
         clock.add(1, TimeUnit.MINUTES);
         testSubject.checkAlive();
         assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
-        assertTrue(completed.get());
+        assertNotNull(exception.get());
     }
 
     @Test
@@ -207,7 +207,7 @@ public class DataSynchronizationReplicaTest {
         clock.add(15, TimeUnit.SECONDS);
         testSubject.checkAlive();
         assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
-        assertTrue(completed.get());
+        assertNotNull(exception.get());
     }
 
     @Test

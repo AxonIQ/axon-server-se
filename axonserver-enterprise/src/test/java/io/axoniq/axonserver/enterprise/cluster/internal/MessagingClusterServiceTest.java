@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
@@ -56,13 +57,16 @@ public class MessagingClusterServiceTest {
     @Mock
     private ApplicationModelController applicationModelController;
 
+    @Mock
+    private EventStoreManager eventStoreManager;
+
     @Before
     public void setUp() {
         this.eventPublisher = new FakeApplicationEventPublisher();
         messagingClusterService = new MessagingClusterService(
                 commandDispatcher, queryDispatcher, clusterController, userController, applicationController,
                 applicationModelController,
-                contextController, eventPublisher);
+                contextController,eventStoreManager, eventPublisher);
         when(clusterController.getMyContexts()).thenReturn(Collections.emptySet());
     }
 

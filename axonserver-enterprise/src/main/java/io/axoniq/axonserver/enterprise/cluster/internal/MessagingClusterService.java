@@ -17,6 +17,7 @@ import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronization
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorConfirmation;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorStepDown;
+import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -68,6 +69,7 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -102,6 +104,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final ApplicationController applicationController;
     private final ApplicationModelController applicationModelController;
     private final ContextController contextController;
+    private final EventStoreManager eventStoreManager;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<String, ConnectorReceivingStreamObserver> connections = new ConcurrentHashMap<>();
     private final Map<RequestCase, Collection<BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>>>> handlers
@@ -121,6 +124,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             ApplicationController applicationController,
             ApplicationModelController applicationModelController,
             ContextController contextController,
+            EventStoreManager eventStoreManager,
             ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
@@ -129,6 +133,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         this.applicationController = applicationController;
         this.applicationModelController = applicationModelController;
         this.contextController = contextController;
+        this.eventStoreManager = eventStoreManager;
         this.eventPublisher = eventPublisher;
     }
 
@@ -215,6 +220,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
         try {
             checkConnection(request.getInternalHostName());
+            checkMasterForAllStorageContexts(request.getContextsList());
             clusterController.addConnection(request);
             clusterController.messagingNodes().forEach(clusterNode -> responseObserver
                     .onNext(clusterNode.toNodeInfo()));
@@ -222,6 +228,15 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         } catch (Exception mpe) {
             logger.warn("Join request failed", mpe);
             responseObserver.onError(GrpcExceptionBuilder.build(mpe));
+        }
+    }
+
+    private void checkMasterForAllStorageContexts(List<ContextRole> contextsList) {
+        for (ContextRole contextRole : contextsList) {
+            if( contextRole.getStorage() && eventStoreManager.getMaster(contextRole.getName()) == null && clusterController.disconnectedNodes()) {
+                throw new MessagingPlatformException(ErrorCode.CANNOT_JOIN, "Cannot join context " + contextRole.getName()
+                        + " for storage as it does not have an active master and not all AxonServer nodes are connected");
+            }
         }
     }
 

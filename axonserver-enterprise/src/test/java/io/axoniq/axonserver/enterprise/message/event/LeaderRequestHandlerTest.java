@@ -94,7 +94,7 @@ public class LeaderRequestHandlerTest {
     public void leaderRequestMasterSet() {
         AtomicInteger messageCount = new AtomicInteger();
         testSubject = new LeaderRequestHandler("test",
-                context -> "node2",
+                context -> "test",
                                                (node, connectorCommand) -> messageCount.incrementAndGet(),
                 context -> 10L,
                 name -> 0
