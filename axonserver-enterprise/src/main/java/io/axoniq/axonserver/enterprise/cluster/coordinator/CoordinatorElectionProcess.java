@@ -59,10 +59,18 @@ public class CoordinatorElectionProcess {
         this.sender = sender;
     }
 
+    /**
+     * Starts an election round for one context
+     * @param context the context
+     * @param coordinatorFound function to indicate that if a coordinator has already been found
+     * @return true if new round must be scheduled (no coordinator found)
+     */
     boolean startElection(Context context, Supplier<Boolean> coordinatorFound) {
-        logger.debug("Star coordinator election for {}", context);
-        if (context == null) return false;
-        if (coordinatorFound.get()) return false;
+        logger.debug("Start coordinator election for {}", context);
+        if (context == null
+                || ! context.isMessagingMember(thisNodeName)
+                || coordinatorFound.get()
+                ) return false;
         try {
             if (electionRound(context, coordinatorFound)) return false;
         } catch (InterruptedException e) {
@@ -79,15 +87,17 @@ public class CoordinatorElectionProcess {
         AtomicBoolean approved = new AtomicBoolean(true);
         AtomicInteger responseCount = new AtomicInteger(1);
         Set<ClusterNode> nodes = context.getMessagingNodes();
-        CountDownLatch countdownLatch = new CountDownLatch(nodes.size() - 1);
-        NodeContext message = newBuilder().setNodeName(thisNodeName).setContext(context.getName()).build();
-        nodes.stream().filter(this::isNotThisNode).forEach(
-                node -> sender.send(message,
-                                    node,
-                                    new ConfirmationTarget(node::getName, approved, responseCount, countdownLatch))
-        );
-        if( !countdownLatch.await(waitMilliseconds, MILLISECONDS) ) {
-            logger.debug("Not received all responses in coordinator election round");
+        if( nodes.size() > 1) {
+            CountDownLatch countdownLatch = new CountDownLatch(nodes.size() - 1);
+            NodeContext message = newBuilder().setNodeName(thisNodeName).setContext(context.getName()).build();
+            nodes.stream().filter(this::isNotThisNode).forEach(
+                    node -> sender.send(message,
+                                        node,
+                                        new ConfirmationTarget(node::getName, approved, responseCount, countdownLatch))
+            );
+            if (!countdownLatch.await(waitMilliseconds, MILLISECONDS)) {
+                logger.debug("Not received all responses in coordinator election round");
+            }
         }
         if (coordinatorFound.get()) return true;
         if (approved.get() && hasQuorumToChange(context.getMessagingNodes().size(), responseCount.get())) {

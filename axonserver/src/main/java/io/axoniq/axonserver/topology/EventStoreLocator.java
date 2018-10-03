@@ -10,4 +10,6 @@ public interface EventStoreLocator {
     boolean isMaster(String nodeName, String contextName);
 
     EventStore getEventStore(String context);
+
+    String getMaster(String context);
 }

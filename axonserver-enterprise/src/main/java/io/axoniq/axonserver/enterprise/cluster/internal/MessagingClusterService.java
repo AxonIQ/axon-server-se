@@ -50,6 +50,7 @@ import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
+import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationModelController;
 import io.axoniq.platform.application.jpa.Application;
@@ -104,7 +105,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final ApplicationController applicationController;
     private final ApplicationModelController applicationModelController;
     private final ContextController contextController;
-    private final EventStoreManager eventStoreManager;
+    private final EventStoreLocator eventStoreManager;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<String, ConnectorReceivingStreamObserver> connections = new ConcurrentHashMap<>();
     private final Map<RequestCase, Collection<BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>>>> handlers
@@ -124,7 +125,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             ApplicationController applicationController,
             ApplicationModelController applicationModelController,
             ContextController contextController,
-            EventStoreManager eventStoreManager,
+            EventStoreLocator eventStoreManager,
             ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;

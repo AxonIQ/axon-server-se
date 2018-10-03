@@ -69,8 +69,8 @@ public class AxonServerFreeConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventStoreLocator.class)
-    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore) {
-        return new DefaultEventStoreLocator(localEventStore);
+    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore, MessagingPlatformConfiguration messagingPlatformConfiguration) {
+        return new DefaultEventStoreLocator(localEventStore, messagingPlatformConfiguration);
     }
 
     @Bean
