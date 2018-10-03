@@ -103,8 +103,8 @@ podTemplate(label: label,
                 build job: 'axon-server-canary/master', propagate: false, wait: false,
                     parameters: [
                         string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
-                        string(name: 'imageName', defaultValue: 'axonserver'),
-                        string(name: 'serverName', defaultValue: 'axon-server'),
+                        string(name: 'imageName', value: 'axonserver'),
+                        string(name: 'serverName', value: 'axon-server'),
                         string(name: 'groupId', value: props ['project.groupId']),
                         string(name: 'artifactId', value: props ['project.artifactId']),
                         string(name: 'projectVersion', value: props ['project.version'])

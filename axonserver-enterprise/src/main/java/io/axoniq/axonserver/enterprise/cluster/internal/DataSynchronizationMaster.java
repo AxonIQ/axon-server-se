@@ -29,9 +29,7 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -45,7 +43,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     private final Logger logger = LoggerFactory.getLogger(DataSynchronizationMaster.class);
     private final Map<String, Integer> quorumPerContext = new ConcurrentHashMap<>();
     private final Map<EventTypeContext, Consumer<Long>> confirmationListeners = new ConcurrentHashMap<>();
-    private final Map<String, Set<Replica>> connectionsPerContext = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Replica>> connectionsPerContext = new ConcurrentHashMap<>();
     private final ContextController contextController;
     private final ApplicationEventPublisher eventPublisher;
     private ApplicationContext applicationContext;
@@ -73,18 +71,18 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
                                                                         .setToken(token)
                                                                         .addAllEvents(eventList)
                                                                         .build();
-        Set<Replica> connections = connectionsPerContext.get(type.getContext());
+        Map<String, Replica> connections = connectionsPerContext.get(type.getContext());
         if( connections == null) {
-            logger.warn("No connections found for context {}, cannot synchronize message", type.getContext());
+            logger.trace("No connections found for context {}, cannot synchronize message", type.getContext());
             return;
         }
         SynchronizationReplicaInbound message ;
         if (type.getEventType() == EventType.SNAPSHOT) {
             message = SynchronizationReplicaInbound.newBuilder().setSnapshot(transactionWithToken).build();
-            connections.forEach(r -> r.publishSnapshot(message));
+            connections.forEach((name,r) -> r.publishSnapshot(message));
         } else if (type.getEventType() == EventType.EVENT) {
             message = SynchronizationReplicaInbound.newBuilder().setEvent(transactionWithToken).build();
-            connections.forEach(r -> r.publishEvent(message));
+            connections.forEach((name,r) -> r.publishEvent(message));
         }
     }
 
@@ -99,18 +97,18 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         SynchronizationReplicaInbound snapshotSynchronizationMessage =
                 safepointMessage(context, snapshotToken, EventType.SNAPSHOT);
 
-        Set<Replica> targets = connectionsPerContext.get(context);
+        Map<String, Replica> targets = connectionsPerContext.get(context);
         if( targets != null) {
-            targets.forEach(replica -> replica.sendMessage(eventSynchronizationMessage));
-            targets.forEach(replica -> replica.sendMessage(snapshotSynchronizationMessage));
+            targets.forEach((n,replica) -> replica.sendMessage(eventSynchronizationMessage));
+            targets.forEach((n,replica) -> replica.sendMessage(snapshotSynchronizationMessage));
         }
     }
 
     @EventListener
     public void on(ClusterEvents.MasterStepDown masterStepDown) {
-        Set<Replica> replicas = connectionsPerContext.remove(masterStepDown.getContextName());
+        Map<String,Replica> replicas = connectionsPerContext.remove(masterStepDown.getContextName());
         if( replicas != null) {
-            replicas.forEach(Replica::disconnect);
+            replicas.forEach((n,replica) -> replica.disconnect());
         }
     }
 
@@ -148,7 +146,13 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
 
         private boolean publish(SynchronizationReplicaInbound message) {
             if( permits.decrementAndGet() > 0) {
-                replicaInboundStreamObserver.onNext(message);
+                try {
+                    replicaInboundStreamObserver.onNext(message);
+                } catch( RuntimeException runtimeException) {
+                    logger.warn("{}: Send message to {} failed", context, nodeName, runtimeException);
+                    cancel(this);
+                    return false;
+                }
                 return true;
             }
             logger.trace("No permits left: {}", permits);
@@ -217,10 +221,10 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         }
 
         public void addPermits(long newPermits) {
-            logger.warn("Received new permits {}, {} left", newPermits, permits);
+            logger.info("Received new permits {}, {} left", newPermits, permits);
             long before = permits.getAndAccumulate(newPermits, (old, inc) -> Math.max(old, 0) + inc);
             if( before <= 0) {
-                logger.warn("restart streaming with {} permits", newPermits);
+                logger.debug("restart streaming with {} permits", newPermits);
                 startStreaming(lastEventTransaction.get(), lastSnapshotTransaction.get());
             }
         }
@@ -271,8 +275,8 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
                         replica = new Replica(start.getNodeName(), context, replicaInboundStreamObserver);
                         replica.lastEventTransaction.set(start.getEventToken()-1);
                         replica.lastSnapshotTransaction.set(start.getSnaphshotToken()-1);
-                        connectionsPerContext.computeIfAbsent(start.getContext(), c -> new CopyOnWriteArraySet<>())
-                                             .add(replica);
+                        connectionsPerContext.computeIfAbsent(start.getContext(), c -> new ConcurrentHashMap<>())
+                                             .put(replica.nodeName, replica);
 
                         replica.init(start.getEventToken(), start.getSnaphshotToken(), start.getPermits());
                         break;
@@ -310,21 +314,23 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             public void onError(Throwable throwable) {
                 if( replica != null) {
                     logger.warn("{}: Error on connection from {}", context, replica.nodeName, throwable);
-                    // replica errors connection (down)
-                    connectionsPerContext.get(context).remove(replica);
-                    checkQuorum(context);
+                    cancel(replica);
                 }
             }
 
             @Override
             public void onCompleted() {
                 if( replica != null) {
-                    connectionsPerContext.get(context).remove(replica);
                     replica.replicaInboundStreamObserver.onCompleted();
-                    checkQuorum(context);
+                    cancel(replica);
                 }
             }
         };
+    }
+
+    private void cancel(Replica replica) {
+        connectionsPerContext.get(replica.context).remove(replica);
+        checkQuorum(replica.context);
     }
 
     private void checkQuorum(String contextName) {
@@ -336,7 +342,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         }
     }
 
-    public Map<String, Set<Replica>> getConnectionsPerContext() {
+    public Map<String, Map<String,Replica>> getConnectionsPerContext() {
         return connectionsPerContext;
     }
 }

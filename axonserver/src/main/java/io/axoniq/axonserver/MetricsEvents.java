@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.internal.NodeMetrics;
  */
 public class MetricsEvents {
 
+    @KeepNames
     public static class MetricsChanged {
 
         private final NodeMetrics nodeMetrics;
