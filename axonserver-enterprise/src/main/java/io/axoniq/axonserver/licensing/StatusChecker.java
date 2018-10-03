@@ -20,11 +20,11 @@ public class StatusChecker {
         this.lifecycleController = lifecycleController;
     }
 
-    @Scheduled(fixedRateString = "${axoniq.axonserver.checker-rate:3600000}",
-            initialDelayString = "${axoniq.axonserver.checker-delay:3600000}")
+    // not configurable, as must not be changed by customer
+    @Scheduled(fixedRate = 3600000, initialDelay = 3600000)
     protected void checkLicense() {
         LicenseConfiguration.refresh();
-        if(LocalDate.now().isAfter(LicenseConfiguration.getInstance().getExpiryDate())) {
+        if( LicenseConfiguration.isEnterprise() && LocalDate.now().isAfter(LicenseConfiguration.getInstance().getExpiryDate())) {
             if( LocalDate.now().isBefore(LicenseConfiguration.getInstance().getGraceDate())) {
                 log.warn("License has expired, AxonServer will continue working until {}", LicenseConfiguration.getInstance().getGraceDate());
             } else {

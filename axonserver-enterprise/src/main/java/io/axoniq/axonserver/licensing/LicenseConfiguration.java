@@ -61,8 +61,8 @@ public final class LicenseConfiguration {
                 log.warn("License property not specified - Running in Free mode");
                 instance = new LicenseConfiguration(null, Edition.Free, UUID.randomUUID().toString(),
                                                     1, 1, null,
-                                                    "None",
                                                     AXON_SERVER,
+                                                    null,
                                                     null);
             } else {
                 instance = new LicenseConfiguration(
@@ -166,10 +166,6 @@ public final class LicenseConfiguration {
 
     public int getClusterNodes() {
         return clusterNodes;
-    }
-
-    public static boolean isDeveloper() {
-        return Edition.Free.equals(getInstance().edition);
     }
 
     public static boolean isEnterprise() {
