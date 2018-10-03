@@ -129,7 +129,7 @@ public class DataSynchronizationReplica {
         });
 
         invalidConnections.forEach(context -> {
-            ReplicaConnection old = connectionPerContext.get(context);
+            ReplicaConnection old = connectionPerContext.remove(context);
             if( old != null) {
                 old.error("No longer alive");
                 applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));

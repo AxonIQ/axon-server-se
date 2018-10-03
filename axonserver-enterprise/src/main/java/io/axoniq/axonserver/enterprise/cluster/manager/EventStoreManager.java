@@ -113,7 +113,6 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @EventListener
     public void on(ClusterEvents.MasterConfirmation masterConfirmation) {
-        if( ! running) return;
         masterPerContext.put(masterConfirmation.getContext(),
                              masterConfirmation.getNode());
     }

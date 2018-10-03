@@ -35,9 +35,9 @@ public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
         dataSynchronizationMaster.getConnectionsPerContext().forEach(
                 (context, replicas) -> {
                     builder.withDetail( context, "Master");
-                    replicas.forEach(replica -> {
-                        builder.withDetail(String.format("%s.%s.lastConfirmedEventTransaction", context, replica.getNodeName()), replica.getLastEventTransaction());
-                        builder.withDetail(String.format("%s.%s.lastConfirmedSnapshotTransaction", context, replica.getNodeName()), replica.getLastSnapshotTransaction());
+                    replicas.forEach((n, replica) -> {
+                        builder.withDetail(String.format("%s.%s.lastConfirmedEventTransaction", context, n), replica.getLastEventTransaction());
+                        builder.withDetail(String.format("%s.%s.lastConfirmedSnapshotTransaction", context, n), replica.getLastSnapshotTransaction());
                     });
                 }
         );

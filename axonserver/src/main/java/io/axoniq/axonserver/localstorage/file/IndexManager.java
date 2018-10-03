@@ -17,6 +17,9 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Author: marc
@@ -28,6 +31,7 @@ public class IndexManager {
     private final ConcurrentNavigableMap<Long, PersistedBloomFilter> bloomFilterPerSegment = new ConcurrentSkipListMap<>();
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
     private final String context;
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 
     public IndexManager(String context, StorageProperties storageProperties) {
         this.storageProperties = storageProperties;
@@ -87,8 +91,23 @@ public class IndexManager {
         if( index == null || index.db.isClosed()) {
             index = new Index(segment, false);
             indexMap.put(segment, index);
+            indexCleanup();
         }
         return index;
+    }
+
+    private void indexCleanup() {
+        while( indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
+            Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
+            logger.debug("Closing index {}", entry.getKey());
+            scheduledExecutorService.schedule(() -> entry.getValue().db.close(), 2, TimeUnit.SECONDS);
+        }
+
+        while( bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
+            Map.Entry<Long, PersistedBloomFilter> removed = bloomFilterPerSegment.pollFirstEntry();
+            logger.debug("Removed bloomfilter for {} from memory", removed.getKey());
+        }
+
     }
 
     private boolean notInBloomIndex(Long segment, String aggregateId) {

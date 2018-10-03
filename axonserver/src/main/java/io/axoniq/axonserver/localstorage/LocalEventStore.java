@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -55,9 +56,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void initContext(String context, boolean validating) {
         if( workersMap.containsKey(context)) return;
         Workers workers = workersMap.putIfAbsent(context, new Workers(context));
-        if( workers == null) {
-            workersMap.get(context).init(validating);
-        }
+        workersMap.get(context).init(validating);
     }
 
     public void cleanupContext(String context) {
@@ -103,7 +102,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         } else {
                             logger.warn("Error while storing events", exception);
                         }
-                        logger.warn("Error while storing events", exception);
                         responseObserver.onError(exception);
                     } else {
                         responseObserver.onNext(CONFIRMATION);
@@ -317,12 +315,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final EventStreamReader snapshotStreamReader;
         private final EventStore eventDatafileManagerChain;
         private final EventStore snapshotDatafileManagerChain;
+        private final String context;
         private final SyncStorage eventSyncStorage;
         private final SyncStorage snapshotSyncStorage;
+        private final AtomicBoolean initialized = new AtomicBoolean();
 
         public Workers(String context) {
             this.eventDatafileManagerChain = eventStoreFactory.createEventManagerChain(context);
             this.snapshotDatafileManagerChain = eventStoreFactory.createSnapshotManagerChain(context);
+            this.context = context;
             this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventDatafileManagerChain));
             this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotDatafileManagerChain));
             this.aggregateReader = new AggregateReader(eventDatafileManagerChain, new SnapshotReader(snapshotDatafileManagerChain));
@@ -333,8 +334,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
 
         public synchronized void init(boolean validate) {
-            eventDatafileManagerChain.init(validate);
-            snapshotDatafileManagerChain.init(validate);
+            logger.debug("{}: init called", context);
+            if( initialized.compareAndSet(false, true)) {
+                logger.debug("{}: initializing", context);
+                eventDatafileManagerChain.init(validate);
+                snapshotDatafileManagerChain.init(validate);
+            }
         }
 
         public void cleanup() {

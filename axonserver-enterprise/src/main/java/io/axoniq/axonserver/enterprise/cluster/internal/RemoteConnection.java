@@ -42,6 +42,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -52,7 +53,9 @@ import java.util.stream.Collectors;
  * Author: marc
  */
 public class RemoteConnection  {
+
     private static final Logger logger = LoggerFactory.getLogger(RemoteConnection.class);
+    public static final int IGNORE_SAME_ERROR_COUT = 10;
     private final ClusterNode me;
     private final ClusterNode clusterNode;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -63,7 +66,7 @@ public class RemoteConnection  {
     private volatile ClusterFlowControlStreamObserver requestStreamObserver;
     private volatile String errorMessage;
     private final long connectionWaitTime;
-
+    private final AtomicInteger repeatedErrorCount = new AtomicInteger(IGNORE_SAME_ERROR_COUT);
 
     public RemoteConnection(ClusterNode me, ClusterNode clusterNode,
                             ApplicationEventPublisher applicationEventPublisher,
@@ -83,7 +86,11 @@ public class RemoteConnection  {
             InetAddress[] addresses = InetAddress.getAllByName(clusterNode.getInternalHostName());
             logger.debug("Connect to {}", addresses);
         } catch (UnknownHostException e) {
-            logger.warn("Unknown host: {}", clusterNode.getInternalHostName());
+            if (!String.valueOf(e.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
+                logger.warn("Unknown host: {}", clusterNode.getInternalHostName());
+                errorMessage = String.valueOf(e.getMessage());
+                repeatedErrorCount.set(IGNORE_SAME_ERROR_COUT);
+            }
             return this;
         }
         requestStreamObserver = new ClusterFlowControlStreamObserver(stubFactory.messagingClusterServiceStub(messagingPlatformConfiguration, clusterNode)
@@ -210,10 +217,11 @@ public class RemoteConnection  {
 
                     @Override
                     public void onError(Throwable throwable) {
-                        if (!String.valueOf(throwable.getMessage()).equals(errorMessage)) {
+                        if (!String.valueOf(throwable.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
                             ManagedChannelHelper.checkShutdownNeeded(clusterNode.getName(), throwable);
                             logger.warn("Error on {}:{} - {}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort(), throwable.getMessage());
                             errorMessage = String.valueOf(throwable.getMessage());
+                            repeatedErrorCount.set(IGNORE_SAME_ERROR_COUT);
                         }
                         closeConnection();
                         logger.debug("Connected: {}, connection pending: {}", connected, connectionPending);

@@ -457,4 +457,8 @@ public class ClusterController implements SmartLifecycle {
     public void on(ContextEvents.BaseContextEvent contextEvent) {
         nodeMap.clear();
     }
+
+    public void publishTo(String nodeName, ConnectorCommand connectorCommand) {
+        remoteConnections.get(nodeName).publish(connectorCommand);
+    }
 }
