@@ -11,7 +11,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
@@ -20,7 +20,7 @@ import java.util.function.Function;
 @Component
 public class LeaderRequestHandler {
     private final Function<String, String> currentMasterProvider;
-    private final Consumer<ConnectorCommand> commandPublisher;
+    private final BiConsumer<String, ConnectorCommand> commandPublisher;
     private final String nodeName;
     private final Function<String, Long> lastTokenProvider;
     private final Function<String, Integer> nrOfMasterContextsProvider;
@@ -37,13 +37,13 @@ public class LeaderRequestHandler {
             this.currentMasterProvider = context -> nodeName;
             this.nrOfMasterContextsProvider = context -> 0;
         }
-        this.commandPublisher = clusterConfiguration::publish;
+        this.commandPublisher = clusterConfiguration::publishTo;
         this.lastTokenProvider = localEventStore::getLastToken;
     }
 
     public LeaderRequestHandler(String nodeName,
                                 Function<String, String> currentMasterProvider,
-                                Consumer<ConnectorCommand> commandPublisher,
+                                BiConsumer<String, ConnectorCommand> commandPublisher,
                                 Function<String, Long> lastTokenProvider,
                                 Function<String, Integer> nrOfMasterContextsProvider) {
         this.currentMasterProvider = currentMasterProvider;
@@ -57,12 +57,18 @@ public class LeaderRequestHandler {
     public void on(RequestLeaderEvent requestLeaderEvent) {
         logger.debug("Received requestLeader {}", requestLeaderEvent.getRequest());
         NodeContextInfo candidate = requestLeaderEvent.getRequest();
-        if (currentMasterProvider.apply(candidate.getContext()) != null) {
+        String currentMaster = currentMasterProvider.apply(candidate.getContext());
+        if (currentMaster != null) {
             requestLeaderEvent.getCallback().accept(false);
-            commandPublisher.accept(ConnectorCommand.newBuilder().setMasterConfirmation(NodeContextInfo.newBuilder()
-                                                                                                            .setContext(candidate.getContext())
-                                                                                                            .setNodeName(currentMasterProvider.apply(candidate.getContext()))
-                                                                                                            .build()).build());
+            if( nodeName.equals(currentMaster)) {
+                commandPublisher.accept(requestLeaderEvent.getRequest().getNodeName(),
+                                        ConnectorCommand.newBuilder()
+                                                        .setMasterConfirmation(NodeContextInfo.newBuilder()
+                                                                                              .setContext(candidate.getContext())
+                                                                                              .setNodeName(currentMasterProvider.apply(candidate.getContext()))
+                                                                                              .build())
+                                                        .build());
+            }
             return;
         }
         requestLeaderEvent.getCallback().accept(checkOnFields(nodeName, candidate));

@@ -129,7 +129,7 @@ public class DataSynchronizationReplica {
         });
 
         invalidConnections.forEach(context -> {
-            ReplicaConnection old = connectionPerContext.get(context);
+            ReplicaConnection old = connectionPerContext.remove(context);
             if( old != null) {
                 old.error("No longer alive");
                 applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
@@ -293,7 +293,7 @@ public class DataSynchronizationReplica {
         private void markConsumed() {
             permitsLeft.decrementAndGet();
             if( permitsLeft.compareAndSet(0, flowControl.getNewPermits())) {
-                logger.warn("Granting new {} permits", flowControl.getNewPermits());
+                logger.info("Granting new {} permits", flowControl.getNewPermits());
                 streamObserver.onNext(SynchronizationReplicaOutbound.newBuilder().setPermits(Permits.newBuilder().setPermits(flowControl.getNewPermits()).build()).build());
             }
 

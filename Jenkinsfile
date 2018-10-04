@@ -10,7 +10,9 @@ def label = "worker-${UUID.randomUUID().toString()}"
 podTemplate(label: label,
     containers: [
         containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven:3.5.4-jdk-8',
-           command: 'cat', ttyEnabled: true,
+            command: 'cat', ttyEnabled: true,
+            resourceRequestCpu: '1000m', resourceLimitCpu: '1000m',
+            resourceRequestMemory: '3200Mi', resourceLimitMemory: '4Gi',
             envVars: [
                 envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
@@ -41,7 +43,7 @@ podTemplate(label: label,
                         cat /maven_settings/*xml >./settings.xml
                         export AXONIQ_BRANCH=${gitBranch}
                         export AXONIQ_NS=${params.namespace}
-                        ./axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonserver-server -env AXONIQ -envDot -q -dump >jenkins-build.properties
+                        ./axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonserver -env AXONIQ -envDot -q -dump >jenkins-build.properties
                     """
                 }
             }
@@ -77,11 +79,34 @@ podTemplate(label: label,
             }
 
             stage('Trigger followup') {
-                build job: 'axon-server-dockerimages/master', propagate: false, wait: false,
+
+// Axon Server - Build Docker Images
+//        string(name: 'namespace', defaultValue: 'devops'),
+//        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
+//        string(name: 'artifactId', defaultValue: 'axonserver'),
+//        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+                build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
                     parameters: [
                         string(name: 'namespace', value: params.namespace),
                         string(name: 'groupId', value: props ['project.groupId']),
-                        string(name: 'artifactId', value: /*props ['project.artifactId']*/'axonserver'),
+                        string(name: 'artifactId', value: props ['project.artifactId']),
+                        string(name: 'projectVersion', value: props ['project.version'])
+                    ]
+
+// Axon Server - Canary tests
+//        string(name: 'namespace', defaultValue: 'axon-server-canary'),
+//        string(name: 'imageName', defaultValue: 'axonserver'),
+//        string(name: 'serverName', defaultValue: 'axon-server'),
+//        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
+//        string(name: 'artifactId', defaultValue: 'axonserver'),
+//        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+                build job: 'axon-server-canary/master', propagate: false, wait: false,
+                    parameters: [
+                        string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
+                        string(name: 'imageName', value: 'axonserver'),
+                        string(name: 'serverName', value: 'axon-server'),
+                        string(name: 'groupId', value: props ['project.groupId']),
+                        string(name: 'artifactId', value: props ['project.artifactId']),
                         string(name: 'projectVersion', value: props ['project.version'])
                     ]
             }

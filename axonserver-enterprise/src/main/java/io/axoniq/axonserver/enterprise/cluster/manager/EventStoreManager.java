@@ -28,6 +28,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 
 import java.nio.charset.Charset;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -113,10 +114,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @EventListener
     public void on(ClusterEvents.MasterConfirmation masterConfirmation) {
-        if( ! running) return;
         masterPerContext.put(masterConfirmation.getContext(),
                              masterConfirmation.getNode());
     }
+
 
     @EventListener
     public void on(ClusterEvents.MasterStepDown masterStepDown) {
@@ -150,6 +151,19 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                 event.getRemoteConnection().publish(ConnectorCommand.newBuilder().setMasterConfirmation(NodeContextInfo.newBuilder().setContext(context).setNodeName(node)).build());
             }
         });
+    }
+
+    @EventListener
+    public void on(ClusterEvents.AxonServerInstanceDisconnected disconnected) {
+        Set<String> contexts = new HashSet<>();
+        masterPerContext.forEach((context, node) -> {
+            if( node.equals(disconnected.getNodeName())) {
+                contexts.add(context);
+            }
+        });
+
+        contexts.forEach(c -> on(new ClusterEvents.MasterStepDown(c, true)));
+
     }
 
     @EventListener

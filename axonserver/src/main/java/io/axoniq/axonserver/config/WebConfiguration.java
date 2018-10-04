@@ -5,6 +5,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.rest.RestAuthenticationInterceptor;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
+import io.axoniq.platform.KeepNames;
 import org.springframework.boot.web.servlet.error.DefaultErrorAttributes;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.context.annotation.Bean;
@@ -97,6 +98,7 @@ public class WebConfiguration implements WebMvcConfigurer {
 //    }
 
     @ControllerAdvice
+    @KeepNames
     public static class GlobalExceptionHandler {
         @ExceptionHandler({ IllegalArgumentException.class })
         @ResponseStatus( HttpStatus.BAD_REQUEST)

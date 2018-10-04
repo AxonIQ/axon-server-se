@@ -58,6 +58,7 @@ public class ClusterController implements SmartLifecycle {
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String,ClusterNode> nodeMap = new ConcurrentHashMap<>();
     private volatile boolean running;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -424,7 +425,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode getNode(String name) {
-        return entityManager.find(ClusterNode.class, name);
+        return nodeMap.computeIfAbsent(name, n -> entityManager.find(ClusterNode.class, n));
     }
 
     @Transactional
@@ -450,5 +451,19 @@ public class ClusterController implements SmartLifecycle {
 
         oldContexts.forEach(clusterNode::removeContext);
         entityManager.flush();
+    }
+
+    @EventListener
+    public void on(ContextEvents.BaseContextEvent contextEvent) {
+        nodeMap.clear();
+    }
+
+    public void publishTo(String nodeName, ConnectorCommand connectorCommand) {
+        if( remoteConnections.containsKey(nodeName))
+            remoteConnections.get(nodeName).publish(connectorCommand);
+    }
+
+    public boolean disconnectedNodes() {
+        return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
     }
 }

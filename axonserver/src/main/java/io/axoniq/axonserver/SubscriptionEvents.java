@@ -11,6 +11,7 @@ import io.axoniq.axonserver.message.query.QueryHandler;
  * Author: marc
  */
 public class SubscriptionEvents {
+    @KeepNames
     public abstract static class SubscriptionBaseEvent {
         private final String context;
         private final boolean isProxied;
