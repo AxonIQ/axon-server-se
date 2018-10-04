@@ -252,7 +252,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         logger.debug("Start leader election for {}: master: {}", contextName, masterPerContext.get(contextName));
         if( ! running || masterPerContext.containsKey(contextName)) return;
         Context context = context(contextName);
-        if( context == null) return;
+        if( context == null || ! context.isStorageMember(nodeName)) return;
 
         NodeContextInfo nodeContextInfo = NodeContextInfo.newBuilder()
                                                          .setActiveSince(0)
@@ -264,34 +264,44 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                          .build();
 
         Set<ClusterNode> storageNodes = context.getStorageNodes();
-        CountDownLatch countdownLatch = new CountDownLatch(storageNodes.size() - 1);
-        AtomicInteger responseCount = new AtomicInteger(1);
-        AtomicBoolean approved = new AtomicBoolean(true);
-        storageNodes
-               .stream()
-               .filter(node -> ! node.getName().equals(nodeName))
-               .forEach(node -> requestBecomeLeader(node, nodeContextInfo, countdownLatch, responseCount,approved));
+        if( ! storageNodes.isEmpty() ) {
+            CountDownLatch countdownLatch = new CountDownLatch(storageNodes.size() - 1);
+            AtomicInteger responseCount = new AtomicInteger(1);
+            AtomicBoolean approved = new AtomicBoolean(true);
+            storageNodes
+                    .stream()
+                    .filter(node -> !node.getName().equals(nodeName))
+                    .forEach(node -> requestBecomeLeader(node,
+                                                         nodeContextInfo,
+                                                         countdownLatch,
+                                                         responseCount,
+                                                         approved));
 
-        try {
-            if( !countdownLatch.await(connectWaitTime, TimeUnit.MILLISECONDS) ) {
-                logger.debug("Timeout while waiting for responses from nodes");
-            }
-            if( !running || masterPerContext.containsKey(context.getName())) return;
+            try {
+                if (!countdownLatch.await(connectWaitTime, TimeUnit.MILLISECONDS)) {
+                    logger.debug("Timeout while waiting for responses from nodes");
+                }
+                if (!running || masterPerContext.containsKey(context.getName())) return;
 
-            if( approved.get() && hasQuorumToChange( storageNodes.size(), responseCount.get())) {
-                logger.info("Become master");
-                masterPerContext.put(context.getName(), nodeName);
-                applicationEventPublisher.publishEvent(new ClusterEvents.BecomeMaster(context.getName(), nodeName, false));
-            } else {
-                logger.debug("Rescheduling as no master found");
+                if (approved.get() && hasQuorumToChange(storageNodes.size(), responseCount.get())) {
+                    logger.info("Become master");
+                    masterPerContext.put(context.getName(), nodeName);
+                    applicationEventPublisher.publishEvent(new ClusterEvents.BecomeMaster(context.getName(),
+                                                                                          nodeName,
+                                                                                          false));
+                } else {
+                    logger.debug("Rescheduling as no master found");
+                    task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName),
+                                                             1,
+                                                             TimeUnit.SECONDS);
+                }
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while waiting for responses", e);
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                logger.warn("Rescheduling on exception during leader election", e);
                 task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName), 1, TimeUnit.SECONDS);
             }
-        } catch (InterruptedException e) {
-            logger.debug("Interrupted while waiting for responses", e);
-            Thread.currentThread().interrupt();
-        } catch( Exception e) {
-            logger.warn("Rescheduling on exception during leader election", e);
-            task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName), 1, TimeUnit.SECONDS);
         }
     }
 

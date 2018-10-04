@@ -87,7 +87,7 @@ public class CoordinatorElectionProcess {
         AtomicBoolean approved = new AtomicBoolean(true);
         AtomicInteger responseCount = new AtomicInteger(1);
         Set<ClusterNode> nodes = context.getMessagingNodes();
-        if( nodes.size() > 1) {
+        if( ! nodes.isEmpty()) {
             CountDownLatch countdownLatch = new CountDownLatch(nodes.size() - 1);
             NodeContext message = newBuilder().setNodeName(thisNodeName).setContext(context.getName()).build();
             nodes.stream().filter(this::isNotThisNode).forEach(
@@ -98,12 +98,12 @@ public class CoordinatorElectionProcess {
             if (!countdownLatch.await(waitMilliseconds, MILLISECONDS)) {
                 logger.debug("Not received all responses in coordinator election round");
             }
-        }
-        if (coordinatorFound.get()) return true;
-        if (approved.get() && hasQuorumToChange(context.getMessagingNodes().size(), responseCount.get())) {
-            logger.info("Become coordinator for context {} ", contextName);
-            eventPublisher.publishEvent(new BecomeCoordinator(thisNodeName, contextName, false));
-            return true;
+            if (coordinatorFound.get()) return true;
+            if (approved.get() && hasQuorumToChange(context.getMessagingNodes().size(), responseCount.get())) {
+                logger.info("Become coordinator for context {} ", contextName);
+                eventPublisher.publishEvent(new BecomeCoordinator(thisNodeName, contextName, false));
+                return true;
+            }
         }
         return false;
     }
