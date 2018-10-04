@@ -98,8 +98,12 @@ public class AxonHubManager {
     }
 
     @EventListener
-    public void on(ContextEvents.NodeAddedToContext event) {
-        initContext(event.getName());
+    public void on(ContextEvents.NodeRolesUpdated event) {
+        if (event.getNode().getName().equals(thisNodeName) && !event.getNode().isMessaging() && isCoordinatorFor(event.getName())) {
+            eventPublisher.publishEvent(new ClusterEvents.CoordinatorStepDown(event.getName(), false));
+        } else {
+            initContext(event.getName());
+        }
     }
 
     @EventListener
@@ -117,13 +121,6 @@ public class AxonHubManager {
         contextsCoordinatedBy(event.getNodeName()).forEach(context -> {
             eventPublisher.publishEvent(new ClusterEvents.CoordinatorStepDown(context, false));
         });
-    }
-
-    @EventListener
-    public void on(ContextEvents.NodeDeletedFromContext event) {
-        if (isCoordinatorFor(event.getName())) {
-            eventPublisher.publishEvent(new ClusterEvents.CoordinatorStepDown(event.getName(), false));
-        }
     }
 
     @EventListener

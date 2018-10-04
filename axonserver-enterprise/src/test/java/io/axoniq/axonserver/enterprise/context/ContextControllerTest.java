@@ -81,7 +81,7 @@ public class ContextControllerTest {
     public void addNodeToContext() {
         ClusterNode node3 = new ClusterNode("node3", null, null, null, null, null);
         entityManager.persist(node3);
-        testSubject.addNodeToContext(Topology.DEFAULT_CONTEXT, "node3", true, true, false);
+        testSubject.updateNodeRoles(Topology.DEFAULT_CONTEXT, "node3", true, true, false);
         Context defaultContext = entityManager.find(Context.class, Topology.DEFAULT_CONTEXT);
         assertEquals(3, defaultContext.getStorageNodes().size());
     }

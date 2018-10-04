@@ -44,9 +44,10 @@ public class ContextController {
     }
 
     @Transactional
-    public ContextEvents.NodeAddedToContext addNodeToContext(String contextName, String nodeName,
-                                                             boolean storage,boolean messaging,
-                                                             boolean proxied) {
+    public ContextEvents.NodeRolesUpdated updateNodeRoles(String contextName, String nodeName,
+                                                          boolean storage, boolean messaging,
+                                                          boolean proxied) {
+        if( ! storage && ! messaging) return deleteNodeFromContext(contextName, nodeName, proxied);
         Context context = entityManager.find(Context.class, contextName);
         if (context == null) {
             throw new IllegalArgumentException("Context does not exist: " + contextName);
@@ -65,7 +66,7 @@ public class ContextController {
             contextClusterNode.setMessaging(messaging);
         }
         entityManager.flush();
-        return new ContextEvents.NodeAddedToContext(contextName, new NodeRoles(contextClusterNode), proxied);
+        return new ContextEvents.NodeRolesUpdated(contextName, new NodeRoles(contextClusterNode), proxied);
     }
 
     @Transactional
@@ -81,7 +82,7 @@ public class ContextController {
     }
 
     @Transactional
-    public ContextEvents.NodeDeletedFromContext deleteNodeFromContext(String contextName, String nodeName,
+    public ContextEvents.NodeRolesUpdated deleteNodeFromContext(String contextName, String nodeName,
                                                                       boolean proxied) {
         Context context = entityManager.find(Context.class, contextName);
         if (context == null) {
@@ -92,7 +93,7 @@ public class ContextController {
             entityManager.remove(contextClusterNode);
             entityManager.flush();
         }
-        return new ContextEvents.NodeDeletedFromContext(contextName, nodeName, proxied);
+        return new ContextEvents.NodeRolesUpdated(contextName, new NodeRoles(nodeName, false, false), proxied);
     }
 
 
@@ -124,9 +125,9 @@ public class ContextController {
                 return deleteEvent != null ? Collections.singleton(deleteEvent) : Collections.emptySet();
             case ADD_NODES:
                 return context.getNodesList().stream().map(node ->
-                                                                   addNodeToContext(context.getName(), node.getName(),
-                                                                                    node.getStorage(),
-                                                                                    node.getMessaging(), true)
+                                                                   updateNodeRoles(context.getName(), node.getName(),
+                                                                                   node.getStorage(),
+                                                                                   node.getMessaging(), true)
                 ).collect(Collectors.toSet());
             case DELETE_NODES:
                 return context.getNodesList().stream().map(node ->
@@ -153,7 +154,7 @@ public class ContextController {
         axonHubInstanceConnected.getContextsList().forEach(context -> {
             Context context1 = entityManager.find(Context.class, context.getName());
             if (context1 != null) {
-                events.add(addNodeToContext(context.getName(), node, context.getStorage(), context.getMessaging(), true));
+                events.add(updateNodeRoles(context.getName(), node, context.getStorage(), context.getMessaging(), true));
             } else {
                 events.add(addContext(context.getName(), Collections.singletonList(new NodeRoles(node, context.getMessaging(), context.getStorage())), true));
             }

@@ -437,8 +437,8 @@ public class ClusterController implements SmartLifecycle {
             mergeContext(clusterNode, contextRoleJSON.getName(), contextRoleJSON.isStorage(), contextRoleJSON.isMessaging());
             if( contextRoleJSON.isStorage()) {
                 if( ! oldStorageContexts.remove(contextRoleJSON.getName()) ) {
-                    applicationEventPublisher.publishEvent(new ContextEvents.NodeAddedToContext(contextRoleJSON.getName(),
-                                                                                                new NodeRoles(getName(),contextRoleJSON.isMessaging(), contextRoleJSON.isStorage()), false));
+                    applicationEventPublisher.publishEvent(new ContextEvents.NodeRolesUpdated(contextRoleJSON.getName(),
+                                                                                              new NodeRoles(getName(),contextRoleJSON.isMessaging(), contextRoleJSON.isStorage()), false));
                 }
             }
             oldContexts.remove(contextRoleJSON.getName());

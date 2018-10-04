@@ -46,7 +46,7 @@ public class ContextSynchronizer {
     }
 
     @EventListener(condition = "!#a0.proxied")
-    public void on(ContextEvents.NodeAddedToContext contextCreated) {
+    public void on(ContextEvents.NodeRolesUpdated contextCreated) {
         ContextUpdate update = ContextUpdate.newBuilder().setAction(ContextAction.ADD_NODES)
                                             .setName(contextCreated.getName())
                                             .addNodes(NodeRole.newBuilder()
@@ -54,18 +54,6 @@ public class ContextSynchronizer {
                                                                    .setMessaging(contextCreated.getNode().isMessaging())
                                                                    .setStorage(contextCreated.getNode().isStorage())
                                                                    .build())
-                                            .build();
-
-        clusterController.publish(ConnectorCommand.newBuilder().setContext(update).build());
-    }
-
-    @EventListener(condition = "!#a0.proxied")
-    public void on(ContextEvents.NodeDeletedFromContext contextCreated) {
-        ContextUpdate update = ContextUpdate.newBuilder().setAction(ContextAction.DELETE_NODES)
-                                            .setName(contextCreated.getName())
-                                            .addNodes(NodeRole.newBuilder()
-                                                              .setName(contextCreated.getNode())
-                                                              .build())
                                             .build();
 
         clusterController.publish(ConnectorCommand.newBuilder().setContext(update).build());

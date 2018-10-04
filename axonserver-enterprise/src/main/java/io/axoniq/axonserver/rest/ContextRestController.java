@@ -55,14 +55,14 @@ public class ContextRestController {
     }
 
     @PostMapping(path = "context/{context}/{node}")
-    public void addNodeToContext(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
-                                 @RequestParam(name="messaging", defaultValue = "true") boolean messaging
+    public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
+                                @RequestParam(name="messaging", defaultValue = "true") boolean messaging
                                  ) {
-        applicationEventPublisher.publishEvent(contextController.addNodeToContext(name,
-                                                                                    node,
-                                                                                    storage,
-                                                                                    messaging,
-                                                                                    false));
+        applicationEventPublisher.publishEvent(contextController.updateNodeRoles(name,
+                                                                                 node,
+                                                                                 storage,
+                                                                                 messaging,
+                                                                                 false));
     }
 
     @DeleteMapping(path = "context/{context}/{node}")
