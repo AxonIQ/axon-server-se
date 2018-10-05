@@ -12,6 +12,7 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
@@ -56,7 +57,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     private static final String EVENTS_METRIC_NAME = "axon.events.count";
     private static final String SNAPSHOTS_METRIC_NAME = "axon.snapshots.count";
-    private static final String NO_EVENT_STORE_CONFIGURED = "No event store configured";
+    private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
     private static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "Error on connection from event store: {}";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
     public static final MethodDescriptor<GetEventsRequest, InputStream> METHOD_LIST_EVENTS =
@@ -70,6 +71,11 @@ public class EventDispatcher implements AxonServerClientService {
                     InputStreamMarshaller.inputStreamMarshaller())
                                               .build();
 
+    public static final MethodDescriptor<GetAggregateSnapshotsRequest, InputStream> METHOD_LIST_AGGREGATE_SNAPSHOTS =
+            EventStoreGrpc.METHOD_LIST_AGGREGATE_SNAPSHOTS.toBuilder(
+                    ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
+                    InputStreamMarshaller.inputStreamMarshaller())
+                                                       .build();
 
     private final EventStoreLocator eventStoreClient;
     private final List<EventConnector> connectors;
@@ -93,12 +99,15 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public StreamObserver<Event> appendEvent(StreamObserver<Confirmation> responseObserver) {
-        String context = contextProvider.getContext();
+        return appendEvent(contextProvider.getContext(), new ForwardingStreamObserver<>(responseObserver));
+    }
+
+    public StreamObserver<Event> appendEvent(String context, StreamObserver<Confirmation> responseObserver) {
         EventStore eventStore = eventStoreClient.getEventStore(context);
 
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
-                                                                    NO_EVENT_STORE_CONFIGURED));
+                                                                    NO_EVENT_STORE_CONFIGURED + context));
             return null;
         }
         StreamObserver<Event> appendEventConnection = eventStore.createAppendEventConnection(context,
@@ -120,7 +129,7 @@ public class EventDispatcher implements AxonServerClientService {
             public void onError(Throwable throwable) {
                 logger.warn("Error on connection from client: {}", throwable.getMessage());
                 unitsOfWork.forEach(UnitOfWork::rollback);
-                appendEventConnection.onError(GrpcExceptionBuilder.build(throwable));
+                appendEventConnection.onError(throwable);
             }
 
             @Override
@@ -131,14 +140,18 @@ public class EventDispatcher implements AxonServerClientService {
         };
     }
 
-    public void appendSnapshot(Event request, StreamObserver<Confirmation> responseObserver) {
-        checkConnection(responseObserver).ifPresent(eventStore -> {
-            String context = contextProvider.getContext();
+
+    public void appendSnapshot(Event event, StreamObserver<Confirmation> confirmationStreamObserver) {
+        appendSnapshot(contextProvider.getContext(), event, new ForwardingStreamObserver<>(confirmationStreamObserver));
+    }
+
+    public void appendSnapshot(String context, Event request, StreamObserver<Confirmation> responseObserver) {
+        checkConnection(context, responseObserver).ifPresent(eventStore -> {
             snapshotCounter.increment();
             eventStore.appendSnapshot(context, request).whenComplete((c, t) -> {
                 if (t != null) {
                     logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, t.getMessage());
-                    responseObserver.onError(GrpcExceptionBuilder.build(t));
+                    responseObserver.onError(t);
                 } else {
                     responseObserver.onNext(c);
                     responseObserver.onCompleted();
@@ -148,23 +161,29 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
-        checkConnection(responseObserver).ifPresent(eventStore -> {
-            String context = contextProvider.getContext();
+        listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver));
+    }
+
+    public void listAggregateEvents(String context, GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
+        checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventStore.listAggregateEvents(context, request, responseObserver);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, t.getMessage(), t);
-                responseObserver.onError(GrpcExceptionBuilder.build(t));
+                responseObserver.onError(t);
             }
         });
     }
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        String context = contextProvider.getContext();
+        return listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(responseObserver));
+    }
+
+    public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
         EventStore eventStore = eventStoreClient.getEventStore(context);
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
-                                                                    NO_EVENT_STORE_CONFIGURED));
+                                                                    NO_EVENT_STORE_CONFIGURED + context));
             return null;
         }
 
@@ -199,7 +218,7 @@ public class EventDispatcher implements AxonServerClientService {
     public Map<String, Iterable<Long>> eventTrackerStatus() {
         Map<String, Iterable<Long>> trackers = new HashMap<>();
         trackingEventProcessors.forEach((client, infos) -> {
-            Set<Long> status = infos.stream().map(EventTrackerInfo::getLastToken).collect(Collectors.toSet());
+            List<Long> status = infos.stream().map(EventTrackerInfo::getLastToken).collect(Collectors.toList());
             trackers.put(client, status);
         });
         return trackers;
@@ -219,6 +238,9 @@ public class EventDispatcher implements AxonServerClientService {
                                               .addMethod(
                                                       METHOD_LIST_AGGREGATE_EVENTS,
                                                       asyncServerStreamingCall(this::listAggregateEvents))
+                                              .addMethod(
+                                                      METHOD_LIST_AGGREGATE_SNAPSHOTS,
+                                                      asyncServerStreamingCall(this::listAggregateSnapshots))
                                               .addMethod(
                                                       METHOD_LIST_EVENTS,
                                                       asyncBidiStreamingCall(this::listEvents))
@@ -240,45 +262,68 @@ public class EventDispatcher implements AxonServerClientService {
                                               .build();
     }
 
-    public void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(responseObserver).ifPresent(client ->
+    public void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
             client.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
-    private Optional<EventStore> checkConnection(StreamObserver<?> responseObserver) {
-        EventStore eventStore = eventStoreClient.getEventStore(contextProvider.getContext());
+    private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
+        EventStore eventStore = eventStoreClient.getEventStore(context);
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
-                                                                    NO_EVENT_STORE_CONFIGURED));
+                                                                    NO_EVENT_STORE_CONFIGURED + context));
             return Optional.empty();
         }
         return Optional.of(eventStore);
     }
 
-    public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(responseObserver).ifPresent(client ->
+    public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
                                                             client.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
-    public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(responseObserver).ifPresent(client ->
+    public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver0) {
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
                                                             client.getTokenAt(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
-                                      StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        checkConnection(responseObserver).ifPresent(client ->
+                                      StreamObserver<ReadHighestSequenceNrResponse> responseObserver0) {
+        ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
                                                             client.readHighestSequenceNr(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
 
-    public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver) {
-        return checkConnection(responseObserver).map(client -> client.queryEvents(contextProvider.getContext(), responseObserver)).orElse(null);
+    public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver0) {
+        ForwardingStreamObserver<QueryEventsResponse> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        return checkConnection(contextProvider.getContext(), responseObserver).map(client -> client.queryEvents(contextProvider.getContext(), responseObserver)).orElse(null);
     }
+
+    public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
+                                       StreamObserver<InputStream> responseObserver) {
+        checkConnection(context, responseObserver).ifPresent(eventStore -> {
+            try {
+                eventStore.listAggregateSnapshots(context, request, responseObserver);
+            } catch (RuntimeException t) {
+                logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, t.getMessage(), t);
+                responseObserver.onError(GrpcExceptionBuilder.build(t));
+            }
+        });
+    }
+
+    public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
+                                       StreamObserver<InputStream> responseObserver) {
+        listAggregateSnapshots(contextProvider.getContext(), request, responseObserver);
+    }
+
 
 
     private static class EventTrackerInfo {

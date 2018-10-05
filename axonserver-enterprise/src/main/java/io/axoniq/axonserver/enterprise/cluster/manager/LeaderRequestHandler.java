@@ -55,7 +55,7 @@ public class LeaderRequestHandler {
 
     @EventListener
     public void on(RequestLeaderEvent requestLeaderEvent) {
-        logger.warn("Received requestLeader {}", requestLeaderEvent.getRequest());
+        logger.debug("Received requestLeader {}", requestLeaderEvent.getRequest());
         NodeContextInfo candidate = requestLeaderEvent.getRequest();
         String currentMaster = currentMasterProvider.apply(candidate.getContext());
         if (currentMaster != null) {

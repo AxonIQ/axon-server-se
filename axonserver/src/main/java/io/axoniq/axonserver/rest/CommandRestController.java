@@ -7,8 +7,11 @@ import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+import javax.validation.Valid;
 
 /**
  * Author: marc
@@ -46,10 +52,18 @@ public class CommandRestController {
         return registrationCache.getAll().entrySet().stream().map(JsonClientMapping::from).collect(Collectors.toList());
     }
 
+    @PostMapping("commands")
+    public Future<CommandResponseJson> execute(@RequestBody @Valid CommandRequestJson command) {
+        CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, command.asCommand(), r -> result.complete(new CommandResponseJson(r)), false);
+        return result;
+    }
+
     @GetMapping("commands/queues")
     public List<JsonQueueInfo> queues() {
         return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(Collectors.toList());
     }
+
     @GetMapping("commands/count")
     public int count() {
         return commandDispatcher.commandCount();

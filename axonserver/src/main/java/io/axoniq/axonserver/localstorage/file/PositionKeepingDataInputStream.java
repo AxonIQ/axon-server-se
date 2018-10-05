@@ -41,7 +41,10 @@ public class PositionKeepingDataInputStream {
 
     private byte[] readBytes(int size) throws IOException {
         byte[] bytes = new byte[size];
-        reader.read(bytes);
+        int total = reader.read(bytes);
+        while( total < size ) {
+            total += reader.read(bytes, total, size-total);
+        }
         position  += size;
         return bytes;
     }

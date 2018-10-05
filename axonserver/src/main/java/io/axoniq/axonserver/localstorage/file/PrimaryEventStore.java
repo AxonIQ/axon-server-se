@@ -211,7 +211,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
               .filter(this::isDomainEvent)
-              .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(), i -> new MinMaxPair(e.getAggregateSequenceNumber())).setMax(e.getAggregateSequenceNumber()));
+              .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(), i -> new MinMaxPair(e.getAggregateIdentifier(), e.getAggregateSequenceNumber())).setMax(e.getAggregateSequenceNumber()));
 
         Map<String, Long> oldSequenceNumberPerAggregate = new HashMap<>();
         for( Map.Entry<String,MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
@@ -361,10 +361,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     private class MinMaxPair {
 
+        private final String key;
         private final long min;
         private volatile long max;
 
-        public MinMaxPair(long min) {
+        public MinMaxPair(String key, long min) {
+            this.key = key;
             this.min = min;
             this.max = min-1;
         }
@@ -378,7 +380,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
 
         public void setMax(long max) {
-            if( max != this.max + 1) throw new IndexOutOfBoundsException();
+            if( max != this.max + 1) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE, String.format("Invalid sequence number %d for aggregate %s, expected %d",
+                                                                                               max, key, this.max+1));
+
+            }
             this.max = max;
         }
     }
