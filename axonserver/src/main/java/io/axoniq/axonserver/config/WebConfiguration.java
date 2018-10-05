@@ -31,12 +31,8 @@ import java.util.Map;
  */
 @Configuration
 public class WebConfiguration implements WebMvcConfigurer {
-    private final AxonServerAccessController axonHubAccessController;
-    private final MessagingPlatformConfiguration configuration;
 
-    public WebConfiguration(AxonServerAccessController axonHubAccessController, MessagingPlatformConfiguration configuration) {
-        this.axonHubAccessController = axonHubAccessController;
-        this.configuration = configuration;
+    public WebConfiguration() {
     }
 
     @Override
@@ -76,16 +72,6 @@ public class WebConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-//        if( configuration.getAccesscontrol() != null && configuration.getAccesscontrol().isEnabled()) {
-//            registry.addInterceptor(new RestAuthenticationInterceptor(axonHubAccessController)).addPathPatterns(
-//                    "/v1/queries",
-//                    "/v1/commands",
-//                    "/v1/events",
-//                    "/v1/users",
-//                    "/v1/processors",
-//                    "/v1/client"
-//            );
-//        }
     }
 
 

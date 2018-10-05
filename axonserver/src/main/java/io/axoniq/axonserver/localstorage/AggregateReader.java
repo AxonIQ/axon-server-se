@@ -30,7 +30,6 @@ public class AggregateReader {
 
     }
     public void readSnapshots(String aggregateId, long minSequenceNumber, Consumer<Event> eventConsumer) {
-        long actualMinSequenceNumber = minSequenceNumber;
         snapshotReader.streamByAggregateId(aggregateId, minSequenceNumber, eventConsumer);
 
     }
