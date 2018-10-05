@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
@@ -112,6 +113,27 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         }
     }
 
+    @EventListener
+    public void on(ContextEvents.ContextDeleted contextDeleted) {
+        Map<String,Replica> replicas = connectionsPerContext.remove(contextDeleted.getName());
+        if( replicas != null) {
+            replicas.forEach((n,replica) -> replica.disconnect());
+        }
+    }
+
+    @EventListener
+    public void on(ContextEvents.NodeRolesUpdated nodeRolesUpdated) {
+        if( !nodeRolesUpdated.getNode().isStorage()) {
+            Map<String,Replica> replicas = connectionsPerContext.get(nodeRolesUpdated.getName());
+            if( replicas != null) {
+                Replica replica = replicas.remove(nodeRolesUpdated.getNode().getName());
+                if (replica != null) {
+                    replica.disconnect();
+                }
+            }
+        }
+        quorumPerContext.remove(nodeRolesUpdated.getName());
+    }
 
     private SynchronizationReplicaInbound safepointMessage(String context, long eventToken, EventType eventType) {
         return SynchronizationReplicaInbound.newBuilder()
@@ -329,8 +351,11 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     }
 
     private void cancel(Replica replica) {
-        connectionsPerContext.get(replica.context).remove(replica);
-        checkQuorum(replica.context);
+        Map<String, Replica> connection = connectionsPerContext.get(replica.context);
+        if( connection != null) {
+            connection.remove(replica);
+            checkQuorum(replica.context);
+        }
     }
 
     private void checkQuorum(String contextName) {

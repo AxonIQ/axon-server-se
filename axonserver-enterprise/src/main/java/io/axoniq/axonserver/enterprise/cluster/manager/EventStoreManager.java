@@ -173,10 +173,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     @EventListener
-    public void on(ContextEvents.NodeRolesUpdated contextCreated) {
-        logger.debug("{}: updated {} storage: {}", contextCreated.getName(), contextCreated.getNode().getName(), contextCreated.getNode().isStorage());
+    public void on(ContextEvents.NodeRolesUpdated contextUpdated) {
+        logger.debug("{}: updated {} storage: {}", contextUpdated.getName(), contextUpdated.getNode().getName(), contextUpdated.getNode().isStorage());
         try {
-            Context context = context(contextCreated.getName());
+            Context context = context(contextUpdated.getName());
             logger.debug("{}: storage members {}", context.getName(), context.getStorageNodeNames());
             if (context.isStorageMember(nodeName)) {
                 initContext(context, false);
@@ -189,7 +189,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                 }
             }
         } catch( RuntimeException re) {
-            logger.warn("Failed to process event {}", contextCreated, re);
+            logger.warn("Failed to process event {}", contextUpdated, re);
         }
     }
 

@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @KeepNames
 public class ContextJSON {
     private String context;
+    private String master;
+    private String coordinator;
     private List<NodeRoles> nodes = new ArrayList<>();
 
     public ContextJSON() {
@@ -34,6 +36,26 @@ public class ContextJSON {
 
     public void setNodes(List<NodeRoles> nodes) {
         this.nodes = nodes;
+    }
+
+    public void setContext(String context) {
+        this.context = context;
+    }
+
+    public String getMaster() {
+        return master;
+    }
+
+    public void setMaster(String master) {
+        this.master = master;
+    }
+
+    public String getCoordinator() {
+        return coordinator;
+    }
+
+    public void setCoordinator(String coordinator) {
+        this.coordinator = coordinator;
     }
 
     public static ContextJSON from(Context c) {

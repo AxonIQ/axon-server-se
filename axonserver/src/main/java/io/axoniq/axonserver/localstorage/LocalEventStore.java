@@ -30,9 +30,12 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -55,7 +58,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public void initContext(String context, boolean validating) {
         if( workersMap.containsKey(context)) return;
-        Workers workers = workersMap.putIfAbsent(context, new Workers(context));
+        workersMap.putIfAbsent(context, new Workers(context));
         workersMap.get(context).init(validating);
     }
 
@@ -70,7 +73,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if( workers == null) return;
 
         workers.eventWriteStorage.cancelPendingTransactions();
-
     }
 
     @Override
@@ -129,7 +131,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                        StreamObserver<InputStream> responseStreamObserver) {
         MethodDescriptor.Marshaller<EventWithToken> marshaller = ProtoUtils
                 .marshaller(EventWithToken.getDefaultInstance());
-        EventStreamController controller = workersMap.get(context).eventStreamReader.createController(
+        EventStreamController controller = workersMap.get(context).createController(
                 eventWithToken -> responseStreamObserver.onNext(marshaller.stream(eventWithToken)),responseStreamObserver::onError);
         return new StreamObserver<GetEventsRequest>() {
             @Override
@@ -139,13 +141,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
             @Override
             public void onError(Throwable throwable) {
-                controller.stop();
+                if( workersMap.containsKey(context))
+                    workersMap.get(context).stop(controller);
 
             }
 
             @Override
             public void onCompleted() {
-                controller.stop();
+                if( workersMap.containsKey(context))
+                    workersMap.get(context).stop(controller);
             }
         };
     }
@@ -319,6 +323,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final SyncStorage eventSyncStorage;
         private final SyncStorage snapshotSyncStorage;
         private final AtomicBoolean initialized = new AtomicBoolean();
+        private final Set<EventStreamController> eventStreamControllerSet = new CopyOnWriteArraySet<>();
 
         public Workers(String context) {
             this.eventDatafileManagerChain = eventStoreFactory.createEventManagerChain(context);
@@ -345,8 +350,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void cleanup() {
             eventDatafileManagerChain.cleanup();
             snapshotDatafileManagerChain.cleanup();
+            eventStreamControllerSet.forEach(controller -> controller.cancel());
+            eventStreamControllerSet.clear();
+        }
 
+        public EventStreamController createController(Consumer<EventWithToken> consumer, Consumer<Throwable> errorCallback) {
+            EventStreamController controller = eventStreamReader.createController(consumer, errorCallback);
+            eventStreamControllerSet.add(controller);
+            return controller;
+        }
 
+        public void stop(EventStreamController controller) {
+            eventStreamControllerSet.remove(controller);
+            controller.stop();
         }
     }
 }

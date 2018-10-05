@@ -5,6 +5,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.SafepointRepository;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.jpa.Safepoint;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -110,7 +111,22 @@ public class DataSynchronizationReplica {
     public void on(ClusterEvents.MasterStepDown masterStepDown) {
         ReplicaConnection old = connectionPerContext.remove(masterStepDown.getContextName());
         if( old != null) old.complete();
+    }
 
+    @EventListener
+    public void on(ContextEvents.ContextDeleted contextDeleted) {
+        ReplicaConnection old = connectionPerContext.remove(contextDeleted.getName());
+        if( old != null) old.complete();
+    }
+
+
+    @EventListener
+    public void on(ContextEvents.NodeRolesUpdated nodeRolesUpdated) {
+        if( nodeRolesUpdated.getNode().getName().equals(messagingPlatformConfiguration.getName()) &&
+            !nodeRolesUpdated.getNode().isStorage()) {
+            ReplicaConnection old = connectionPerContext.remove(nodeRolesUpdated.getName());
+            if( old != null) old.complete();
+        }
     }
 
     @EventListener
@@ -224,7 +240,7 @@ public class DataSynchronizationReplica {
                 @Override
                 public void onCompleted() {
                     logger.warn("Received close from {}", node);
-                    applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
+                    //applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
                 }
             }));
 

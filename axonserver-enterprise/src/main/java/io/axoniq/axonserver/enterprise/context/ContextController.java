@@ -123,15 +123,11 @@ public class ContextController {
             case DELETE_CONTEXT:
                 ContextEvents.ContextDeleted deleteEvent = deleteContext(context.getName(), true);
                 return deleteEvent != null ? Collections.singleton(deleteEvent) : Collections.emptySet();
-            case ADD_NODES:
+            case NODES_UPDATED:
                 return context.getNodesList().stream().map(node ->
                                                                    updateNodeRoles(context.getName(), node.getName(),
                                                                                    node.getStorage(),
                                                                                    node.getMessaging(), true)
-                ).collect(Collectors.toSet());
-            case DELETE_NODES:
-                return context.getNodesList().stream().map(node ->
-                                                                   deleteNodeFromContext(context.getName(), node.getName(), true)
                 ).collect(Collectors.toSet());
             case UNRECOGNIZED:
                 break;

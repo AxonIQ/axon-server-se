@@ -1,6 +1,9 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
+import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
@@ -30,21 +33,34 @@ import javax.validation.Valid;
 public class ContextRestController {
 
     private final ContextController contextController;
+    private final EventStoreManager eventStoreManager;
+    private final AxonHubManager axonHubManager;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
 
-    public ContextRestController( ContextController contextController,
-                                  ApplicationEventPublisher applicationEventPublisher,
-                                  FeatureChecker limits) {
+    public ContextRestController(ContextController contextController,
+                                 EventStoreManager eventStoreManager,
+                                 AxonHubManager axonHubManager,
+                                 ApplicationEventPublisher applicationEventPublisher,
+                                 FeatureChecker limits) {
         this.contextController = contextController;
+        this.eventStoreManager = eventStoreManager;
+        this.axonHubManager = axonHubManager;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
 
     @GetMapping(path = "public/context")
     public List<ContextJSON> getContexts() {
-        return contextController.getContexts().map(ContextJSON::from).collect(Collectors.toList());
+        return contextController.getContexts().map(this::createContextJSON).collect(Collectors.toList());
 
+    }
+
+    private ContextJSON createContextJSON(Context context) {
+        ContextJSON contextJSON = ContextJSON.from(context);
+        contextJSON.setMaster(eventStoreManager.getMaster(context.getName()));
+        contextJSON.setCoordinator(axonHubManager.coordinatorFor(context.getName()));
+        return contextJSON;
     }
 
     @DeleteMapping( path = "context/{name}")

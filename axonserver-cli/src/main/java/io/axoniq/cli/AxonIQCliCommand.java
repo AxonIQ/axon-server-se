@@ -86,7 +86,7 @@ public class AxonIQCliCommand {
         HttpGet httpGet = new HttpGet(url);
         httpGet.addHeader("Accept", "application/json");
         if (token != null) {
-            httpGet.addHeader("Access-Token", token);
+            httpGet.addHeader("AxonIQ-Access-Token", token);
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -114,7 +114,7 @@ public class AxonIQCliCommand {
     protected static <T> T getMap(CloseableHttpClient httpclient, String url, TypeReference<T> typeReference, int expectedStatusCode, String token) throws IOException {
         HttpGet httpGet = new HttpGet(url);
         if (token != null) {
-            httpGet.addHeader("Access-Token", token);
+            httpGet.addHeader("AxonIQ-Access-Token", token);
         }
         httpGet.addHeader("Accept", "application/json");
 
@@ -135,7 +135,7 @@ public class AxonIQCliCommand {
     protected static void delete(CloseableHttpClient httpclient, String url, int expectedStatusCode, String token) throws IOException {
         HttpDelete httpDelete = new HttpDelete(url);
         if (token != null) {
-            httpDelete.addHeader("Access-Token", token);
+            httpDelete.addHeader("AxonIQ-Access-Token", token);
         }
 
         CloseableHttpResponse response = httpclient.execute(httpDelete);
@@ -148,7 +148,7 @@ public class AxonIQCliCommand {
             throws IOException {
             HttpPost httpPost = new HttpPost(url);
             if (token != null) {
-                httpPost.addHeader("Access-Token", token);
+                httpPost.addHeader("AxonIQ-Access-Token", token);
             }
             ObjectMapper objectMapper = new ObjectMapper();
             httpPost.addHeader("Content-Type", "application/json");

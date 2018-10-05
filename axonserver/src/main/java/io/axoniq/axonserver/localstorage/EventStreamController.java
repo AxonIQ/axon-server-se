@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,5 +131,9 @@ public class EventStreamController {
     public void stop() {
         running.set(false);
         cancelListener();
+    }
+
+    public void cancel() {
+        storageCallback.onError(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by cleanup"));
     }
 }

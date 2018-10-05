@@ -49,4 +49,13 @@ public class NodeRoles {
     public void setMessaging(boolean messaging) {
         this.messaging = messaging;
     }
+
+    @Override
+    public String toString() {
+        return "NodeRoles{" +
+                "name='" + name + '\'' +
+                ", storage=" + storage +
+                ", messaging=" + messaging +
+                '}';
+    }
 }

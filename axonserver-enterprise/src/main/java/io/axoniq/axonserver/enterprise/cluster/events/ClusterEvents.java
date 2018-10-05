@@ -6,6 +6,7 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ModelVersion;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import org.springframework.context.ApplicationEvent;
 
 import java.util.List;
 
@@ -212,4 +213,16 @@ public class ClusterEvents {
         }
     }
 
+    public static class AxonServerNodeDeleted extends TopologyEvents.TopologyBaseEvent {
+        private final String node;
+
+        public AxonServerNodeDeleted(String name) {
+            super(false);
+            this.node =name;
+        }
+
+        public String node() {
+            return node;
+        }
+    }
 }

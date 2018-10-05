@@ -148,8 +148,7 @@ message ContextUpdate {
 enum ContextAction {
     MERGE_CONTEXT = 0;
     DELETE_CONTEXT = 1;
-    ADD_NODES = 2;
-    DELETE_NODES = 3;
+    NODES_UPDATED = 2;
 }
 
 message QueryComplete {
