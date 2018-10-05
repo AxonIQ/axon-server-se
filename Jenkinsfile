@@ -7,6 +7,25 @@ properties([
 
 def label = "worker-${UUID.randomUUID().toString()}"
 
+def deployingBranches = [
+    "master"
+]
+def dockerBranches = [
+    "master"
+]
+def sonarBranches = [
+    "master"
+]
+
+def relevantBranch(thisBranch, branches) {
+    for (br in branches) {
+        if (thisBranch == br) {
+            return true;
+        }
+    }
+    return false;
+}
+
 podTemplate(label: label,
     containers: [
         containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven:3.5.4-jdk-8',
@@ -54,24 +73,37 @@ podTemplate(label: label,
 
             stage ('Maven build') {
                 container("maven") {
-                    sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore -Ddockerfile.push.skip -Ddockerfile.build.skip -Pdocker clean package"
+                    sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore clean package"
                     junit '**/target/surefire-reports/TEST-*.xml'
-                    sh "mvn \${MVN_BLD} -DskipTests deploy"
+
+                    when(relevantBranch(gitBranch, deployingBranches)) {
+                        sh "mvn \${MVN_BLD} -DskipTests deploy"
+                    }
                 }
             }
 
             stage('Docker build') {
-                container('docker') {
-                    sh """
-                        cat /dockercfg/system-account.json | docker login -u _json_key --password-stdin https://eu.gcr.io
-                        docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver:${pomVersion}
-                        docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver-enterprise:${pomVersion}
-                    """
+                when(relevantBranch(gitBranch, dockerBranches)) {
+                    container("maven") {
+                        sh "mvn \${MVN_BLD} -DskipTests -Ddockerfile.push.skip -Ddockerfile.build.skip -Pdocker package"
+                    }
+                }
+            }
+
+            stage('Docker push') {
+                when(relevantBranch(gitBranch, dockerBranches)) {
+                    container('docker') {
+                        sh """
+                            cat /dockercfg/system-account.json | docker login -u _json_key --password-stdin https://eu.gcr.io
+                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver:${pomVersion}
+                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver-enterprise:${pomVersion}
+                        """
+                    }
                 }
             }
 
             stage ('Run SonarQube') {
-                when(gitBranch == 'master') {
+                when(relevantBranch(gitBranch, sonarBranches)) {
                     container("maven") {
                         sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
                     }
@@ -80,19 +112,22 @@ podTemplate(label: label,
 
             stage('Trigger followup') {
 
+                when(relevantBranch(gitBranch, dockerBranches)) {
 // Axon Server - Build Docker Images
 //        string(name: 'namespace', defaultValue: 'devops'),
 //        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
 //        string(name: 'artifactId', defaultValue: 'axonserver'),
 //        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
-                build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
-                    parameters: [
-                        string(name: 'namespace', value: params.namespace),
-                        string(name: 'groupId', value: props ['project.groupId']),
-                        string(name: 'artifactId', value: props ['project.artifactId']),
-                        string(name: 'projectVersion', value: props ['project.version'])
-                    ]
+                    build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
+                        parameters: [
+                            string(name: 'namespace', value: params.namespace),
+                            string(name: 'groupId', value: props ['project.groupId']),
+                            string(name: 'artifactId', value: props ['project.artifactId']),
+                            string(name: 'projectVersion', value: props ['project.version'])
+                        ]
+                }
 
+                when(relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
 // Axon Server - Canary tests
 //        string(name: 'namespace', defaultValue: 'axon-server-canary'),
 //        string(name: 'imageName', defaultValue: 'axonserver'),
@@ -100,15 +135,16 @@ podTemplate(label: label,
 //        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
 //        string(name: 'artifactId', defaultValue: 'axonserver'),
 //        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
-                build job: 'axon-server-canary/master', propagate: false, wait: false,
-                    parameters: [
-                        string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
-                        string(name: 'imageName', value: 'axonserver'),
-                        string(name: 'serverName', value: 'axon-server'),
-                        string(name: 'groupId', value: props ['project.groupId']),
-                        string(name: 'artifactId', value: props ['project.artifactId']),
-                        string(name: 'projectVersion', value: props ['project.version'])
-                    ]
+                    build job: 'axon-server-canary/master', propagate: false, wait: false,
+                        parameters: [
+                            string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
+                            string(name: 'imageName', value: 'axonserver'),
+                            string(name: 'serverName', value: 'axon-server'),
+                            string(name: 'groupId', value: props ['project.groupId']),
+                            string(name: 'artifactId', value: props ['project.artifactId']),
+                            string(name: 'projectVersion', value: props ['project.version'])
+                        ]
+                }
             }
         }
     }
