@@ -85,8 +85,13 @@ public class ContextRestController {
     }
 
     @PatchMapping(path = "context/{context}/move")
-    public void releaseContext(@PathVariable("context") String name) {
+    public void releaseContextMaster(@PathVariable("context") String name) {
         applicationEventPublisher.publishEvent(new ClusterEvents.MasterStepDown(name, false));
+    }
+
+    @PatchMapping(path = "context/{context}/coordinator/move")
+    public void releaseContextCoordinator(@PathVariable("context") String name) {
+        applicationEventPublisher.publishEvent(new ClusterEvents.CoordinatorStepDown(name, false));
     }
 
     @PostMapping(path ="context")
