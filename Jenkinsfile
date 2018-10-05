@@ -82,25 +82,25 @@ podTemplate(label: label,
                 }
             }
 
-            stage('Docker build') {
-                when(relevantBranch(gitBranch, dockerBranches)) {
-                    container("maven") {
-                        sh "mvn \${MVN_BLD} -DskipTests -Ddockerfile.push.skip -Ddockerfile.build.skip -Pdocker package"
-                    }
-                }
-            }
+//            stage('Docker build') {
+//                when(relevantBranch(gitBranch, dockerBranches)) {
+//                    container("maven") {
+//                        sh "mvn \${MVN_BLD} -DskipTests -Ddockerfile.push.skip -Ddockerfile.build.skip -Pdocker package"
+//                    }
+//                }
+//            }
 
-            stage('Docker push') {
-                when(relevantBranch(gitBranch, dockerBranches)) {
-                    container('docker') {
-                        sh """
-                            cat /dockercfg/system-account.json | docker login -u _json_key --password-stdin https://eu.gcr.io
-                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver:${pomVersion}
-                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver-enterprise:${pomVersion}
-                        """
-                    }
-                }
-            }
+//            stage('Docker push') {
+//                when(relevantBranch(gitBranch, dockerBranches)) {
+//                    container('docker') {
+//                        sh """
+//                            cat /dockercfg/system-account.json | docker login -u _json_key --password-stdin https://eu.gcr.io
+//                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver:${pomVersion}
+//                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver-enterprise:${pomVersion}
+//                        """
+//                    }
+//                }
+//            }
 
             stage ('Run SonarQube') {
                 when(relevantBranch(gitBranch, sonarBranches)) {
