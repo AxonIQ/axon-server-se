@@ -12,6 +12,7 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
@@ -69,6 +70,12 @@ public class EventDispatcher implements AxonServerClientService {
                     InputStreamMarshaller.inputStreamMarshaller())
                                               .build();
 
+    public static final MethodDescriptor<GetAggregateSnapshotsRequest, InputStream> METHOD_LIST_AGGREGATE_SNAPSHOTS =
+            EventStoreGrpc.METHOD_LIST_AGGREGATE_SNAPSHOTS.toBuilder(
+                    ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
+                    InputStreamMarshaller.inputStreamMarshaller())
+                                                       .build();
+
     private final EventStoreLocator eventStoreClient;
     private final List<EventConnector> connectors;
     private final ContextProvider contextProvider;
@@ -91,7 +98,7 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public StreamObserver<Event> appendEvent(StreamObserver<Confirmation> responseObserver) {
-        return appendEvent(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, responseObserver));
+        return appendEvent(contextProvider.getContext(), new ForwardingStreamObserver<>(responseObserver));
     }
 
     public StreamObserver<Event> appendEvent(String context, StreamObserver<Confirmation> responseObserver) {
@@ -134,8 +141,7 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public void appendSnapshot(Event event, StreamObserver<Confirmation> confirmationStreamObserver) {
-        appendSnapshot(contextProvider.getContext(), event, new ForwardingStreamObserver<>(logger,
-                                                                                           confirmationStreamObserver));
+        appendSnapshot(contextProvider.getContext(), event, new ForwardingStreamObserver<>(confirmationStreamObserver));
     }
 
     public void appendSnapshot(String context, Event request, StreamObserver<Confirmation> responseObserver) {
@@ -154,8 +160,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
-        listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger,
-                                                                                                  responseObserver));
+        listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver));
     }
 
     public void listAggregateEvents(String context, GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
@@ -164,13 +169,13 @@ public class EventDispatcher implements AxonServerClientService {
                 eventStore.listAggregateEvents(context, request, responseObserver);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, t.getMessage(), t);
-                responseObserver.onError(t);
+                responseObserver.onError(GrpcExceptionBuilder.build(t));
             }
         });
     }
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        return listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, responseObserver));
+        return listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(responseObserver));
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
@@ -233,6 +238,9 @@ public class EventDispatcher implements AxonServerClientService {
                                                       METHOD_LIST_AGGREGATE_EVENTS,
                                                       asyncServerStreamingCall(this::listAggregateEvents))
                                               .addMethod(
+                                                      METHOD_LIST_AGGREGATE_SNAPSHOTS,
+                                                      asyncServerStreamingCall(this::listAggregateSnapshots))
+                                              .addMethod(
                                                       METHOD_LIST_EVENTS,
                                                       asyncBidiStreamingCall(this::listEvents))
                                               .addMethod(
@@ -254,11 +262,9 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                  responseObserver0);
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
         checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-            client.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger,
-                                                                                                       responseObserver))
+            client.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
@@ -273,42 +279,50 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                  responseObserver0);
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
         checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                            client.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(
-                                                                    logger,
-                                                                    responseObserver))
+                                                            client.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver0) {
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                  responseObserver0);
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
         checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                            client.getTokenAt(contextProvider.getContext(), request, new ForwardingStreamObserver<>(
-                                                                    logger,
-                                                                    responseObserver))
+                                                            client.getTokenAt(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver0) {
-        ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                                  responseObserver0);
+        ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
         checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                            client.readHighestSequenceNr(contextProvider.getContext(), request, new ForwardingStreamObserver<>(
-                                                                    logger,
-                                                                    responseObserver))
+                                                            client.readHighestSequenceNr(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
         );
     }
 
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver0) {
-        ForwardingStreamObserver<QueryEventsResponse> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                        responseObserver0);
+        ForwardingStreamObserver<QueryEventsResponse> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
         return checkConnection(contextProvider.getContext(), responseObserver).map(client -> client.queryEvents(contextProvider.getContext(), responseObserver)).orElse(null);
     }
+
+    public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
+                                       StreamObserver<InputStream> responseObserver) {
+        checkConnection(context, responseObserver).ifPresent(eventStore -> {
+            try {
+                eventStore.listAggregateSnapshots(context, request, responseObserver);
+            } catch (RuntimeException t) {
+                logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, t.getMessage(), t);
+                responseObserver.onError(GrpcExceptionBuilder.build(t));
+            }
+        });
+    }
+
+    public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
+                                       StreamObserver<InputStream> responseObserver) {
+        listAggregateSnapshots(contextProvider.getContext(), request, responseObserver);
+    }
+
 
 
     private static class EventTrackerInfo {

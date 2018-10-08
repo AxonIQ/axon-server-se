@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.Context;
@@ -13,6 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,19 +35,17 @@ import javax.validation.Valid;
 public class ContextRestController {
 
     private final ContextController contextController;
-    private final EventStoreManager eventStoreManager;
     private final AxonHubManager axonHubManager;
+    private final EventStoreManager eventStoreManager;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
 
-    public ContextRestController(ContextController contextController,
-                                 EventStoreManager eventStoreManager,
-                                 AxonHubManager axonHubManager,
-                                 ApplicationEventPublisher applicationEventPublisher,
-                                 FeatureChecker limits) {
+    public ContextRestController( ContextController contextController, AxonHubManager axonHubManager, EventStoreManager eventStoreManager,
+                                  ApplicationEventPublisher applicationEventPublisher,
+                                  FeatureChecker limits) {
         this.contextController = contextController;
-        this.eventStoreManager = eventStoreManager;
         this.axonHubManager = axonHubManager;
+        this.eventStoreManager = eventStoreManager;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
@@ -84,6 +84,16 @@ public class ContextRestController {
     @DeleteMapping(path = "context/{context}/{node}")
     public void deleteNodeFromContext(@PathVariable("context") String name, @PathVariable("node") String node){
         applicationEventPublisher.publishEvent(contextController.deleteNodeFromContext(name, node, false));
+    }
+
+    @PatchMapping(path = "context/{context}/move")
+    public void releaseContextMaster(@PathVariable("context") String name) {
+        applicationEventPublisher.publishEvent(new ClusterEvents.MasterStepDown(name, false));
+    }
+
+    @PatchMapping(path = "context/{context}/coordinator/move")
+    public void releaseContextCoordinator(@PathVariable("context") String name) {
+        applicationEventPublisher.publishEvent(new ClusterEvents.CoordinatorStepDown(name, false));
     }
 
     @PostMapping(path ="context")

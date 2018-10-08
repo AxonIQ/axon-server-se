@@ -29,6 +29,10 @@ public class AggregateReader {
         datafileManagerChain.streamByAggregateId(aggregateId, actualMinSequenceNumber, eventConsumer);
 
     }
+    public void readSnapshots(String aggregateId, long minSequenceNumber, Consumer<Event> eventConsumer) {
+        snapshotReader.streamByAggregateId(aggregateId, minSequenceNumber, eventConsumer);
+
+    }
 
     public long readHighestSequenceNr(String aggregateId) {
         return datafileManagerChain.getLastSequenceNumber(aggregateId).orElse(-1L);

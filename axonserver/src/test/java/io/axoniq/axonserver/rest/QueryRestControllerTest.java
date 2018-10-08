@@ -5,6 +5,7 @@ import io.axoniq.axonserver.component.query.Query;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
@@ -15,6 +16,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * Author: marc
@@ -22,10 +24,12 @@ import static org.junit.Assert.*;
 public class QueryRestControllerTest {
     private QueryRestController testSubject;
     private QueryRegistrationCache registationCache;
+    private QueryDispatcher queryDispatcher;
 
     @Before
     public void setUp() throws Exception {
         registationCache = new QueryRegistrationCache(null);
+        queryDispatcher = mock(QueryDispatcher.class);
         QuerySubscription querySubscription = QuerySubscription.newBuilder()
                 .setQuery("Request")
                 .setComponentName("Component")
@@ -34,7 +38,7 @@ public class QueryRestControllerTest {
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
                              new DirectQueryHandler(new CountingStreamObserver<>(), querySubscription.getClientName(), querySubscription.getComponentName()));
 
-        testSubject = new QueryRestController(registationCache);
+        testSubject = new QueryRestController(registationCache, queryDispatcher);
     }
 
     @Test
