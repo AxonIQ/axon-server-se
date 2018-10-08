@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
@@ -45,6 +46,11 @@ public class InternalEventStoreService implements BindableService {
                     ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
                     InputStreamMarshaller.inputStreamMarshaller())
                                              .build();
+    private static final MethodDescriptor<GetAggregateSnapshotsRequest, InputStream> METHOD_LIST_AGGREGATE_SNAPSHOTS =
+            EventStoreGrpc.METHOD_LIST_AGGREGATE_SNAPSHOTS .toBuilder(
+                    ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
+                    InputStreamMarshaller.inputStreamMarshaller())
+                                             .build();
     private static final MethodDescriptor<GetAggregateEventsRequest, InputStream> METHOD_LIST_AGGREGATE_EVENTS =
             EventStoreGrpc.METHOD_LIST_AGGREGATE_EVENTS.toBuilder(
                     ProtoUtils.marshaller(GetAggregateEventsRequest.getDefaultInstance()),
@@ -74,6 +80,9 @@ public class InternalEventStoreService implements BindableService {
                                               .addMethod(
                                                       METHOD_LIST_EVENTS,
                                                       asyncBidiStreamingCall(this::listEvents))
+                                              .addMethod(
+                                                      METHOD_LIST_AGGREGATE_SNAPSHOTS,
+                                                      asyncServerStreamingCall(this::listAggregateSnapshots))
                                               .addMethod(
                                                       EventStoreGrpc.METHOD_READ_HIGHEST_SEQUENCE_NR,
                                                       asyncUnaryCall(this::readHighestSequenceNr))
@@ -115,6 +124,10 @@ public class InternalEventStoreService implements BindableService {
 
     private void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
         localEventStore.listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
+    }
+
+    private void listAggregateSnapshots(GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseObserver) {
+        localEventStore.listAggregateSnapshots(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
     }
 
     private StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
