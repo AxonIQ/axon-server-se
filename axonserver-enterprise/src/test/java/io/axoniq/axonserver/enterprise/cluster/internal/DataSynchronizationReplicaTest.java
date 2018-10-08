@@ -167,7 +167,6 @@ public class DataSynchronizationReplicaTest {
         testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onCompleted();
         assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
-        assertTrue(completed.get());
     }
 
     @Test

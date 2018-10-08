@@ -15,7 +15,7 @@ public class TestSystemInfoProvider implements SystemInfoProvider {
     }
 
     @Override
-    public String getHostName() throws UnknownHostException {
+    public String getHostName() {
         return "localhost";
     }
 }

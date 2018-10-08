@@ -5,6 +5,7 @@ import io.axoniq.axonserver.rest.svg.Fonts;
 import io.axoniq.axonserver.rest.svg.Mapping;
 import io.axoniq.axonserver.rest.svg.TextLine;
 import io.axoniq.axonserver.rest.svg.attribute.Position;
+import io.axoniq.axonserver.rest.svg.attribute.StyleClass;
 import io.axoniq.axonserver.rest.svg.decorator.Hidden;
 import io.axoniq.axonserver.rest.svg.element.Rectangle;
 import io.axoniq.axonserver.rest.svg.element.TextBox;
@@ -38,10 +39,10 @@ public class AxonServerPopupMapping implements Mapping<AxonServer> {
         lines.add("Internal Hostname: " + node.getInternalHostName());
         lines.add("Internal Grpc Port: " + node.getGrpcInternalPort());
         lines.add("Http Port: " + node.getHttpPort());
-        List<TextLine> textLines = lines.stream().map(text -> new TextLine(text, fonts.popup(), "popup")).collect(toList());
+        List<TextLine> textLines = lines.stream().map(text -> new TextLine(text, fonts.popup(), StyleClass.POPUP)).collect(toList());
         Rectangle r = hubRegistry.get(node.getName()).rectangle();
         Position position = r.position().shift(10, r.height()-5);
-        TextBox content = new TextBox(textLines, position, "popup", new TextBox.Left(5), 10);
-        return new Hidden(node.getName() + "-details", content, "popup");
+        TextBox content = new TextBox(textLines, position, StyleClass.POPUP, new TextBox.Left(5), 10);
+        return new Hidden(node.getName() + "-details", content, StyleClass.POPUP);
     }
 }

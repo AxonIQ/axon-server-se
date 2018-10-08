@@ -41,7 +41,7 @@ public class FakeAxonServer implements AxonServer {
     }
 
     @Override
-    public Set<AxonDB> storage() {
+    public Set<Storage> storage() {
         return Collections.emptySet();
     }
 }

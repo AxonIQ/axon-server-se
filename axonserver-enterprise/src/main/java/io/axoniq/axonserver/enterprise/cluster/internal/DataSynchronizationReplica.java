@@ -240,6 +240,7 @@ public class DataSynchronizationReplica {
                 @Override
                 public void onCompleted() {
                     logger.debug("Received close from {}", node);
+                    DataSynchronizationReplica.this.connectionPerContext.remove(context);
                 }
             }));
 

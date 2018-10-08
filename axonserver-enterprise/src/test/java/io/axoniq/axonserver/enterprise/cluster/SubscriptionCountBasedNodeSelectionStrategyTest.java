@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.TestSystemInfoProvider;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ProxyCommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
@@ -13,13 +15,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
-import static io.axoniq.axonserver.enterprise.cluster.NodeSelectionStrategy.ME;
 import static org.junit.Assert.*;
 
 /**
  * Author: marc
  */
 public class SubscriptionCountBasedNodeSelectionStrategyTest {
+
+    private static final String ME = "THIS_NODE";
     private SubscriptionCountBasedNodeSelectionStrategy testSubject;
     private CommandRegistrationCache commandRegistry;
     @Before
@@ -27,13 +30,15 @@ public class SubscriptionCountBasedNodeSelectionStrategyTest {
         QueryHandlerSelector queryHandlerSelector= (queryDefinition, componentName, queryHandlers) -> null;
         QueryRegistrationCache queryRegistry = new QueryRegistrationCache(queryHandlerSelector);
         commandRegistry = new CommandRegistrationCache();
-        testSubject = new SubscriptionCountBasedNodeSelectionStrategy(commandRegistry, queryRegistry);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
+        configuration.setName(ME);
+        testSubject = new SubscriptionCountBasedNodeSelectionStrategy(commandRegistry, queryRegistry, configuration);
     }
 
     @Test
     public void selectNodeNoSubscriptions() {
         Collection<String> activeNodes = Collections.emptyList();
-        assertEquals(NodeSelectionStrategy.ME, testSubject.selectNode("client1", "component1", activeNodes));
+        assertEquals(ME, testSubject.selectNode("client1", "component1", activeNodes));
     }
 
     @Test

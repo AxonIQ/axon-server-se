@@ -17,7 +17,6 @@ import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronization
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorConfirmation;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorStepDown;
-import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -223,7 +222,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             checkConnection(request.getInternalHostName());
             checkMasterForAllStorageContexts(request.getContextsList());
             clusterController.addConnection(request, true);
-            clusterController.messagingNodes().forEach(clusterNode -> responseObserver
+            clusterController.nodes().forEach(clusterNode -> responseObserver
                     .onNext(clusterNode.toNodeInfo()));
             responseObserver.onCompleted();
         } catch (Exception mpe) {
@@ -322,7 +321,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                                             Collectors
                                                                                                                     .toList()));
 
-                            clusterController.getNodes().stream()
+                            clusterController.nodes()
                                              .filter(c -> !c.getName().equals(messagingServerName))
                                              .forEach(c -> connectResponseBuilder.addNodes(c.toNodeInfo()));
                             responseObserver.onNext(ConnectorResponse.newBuilder()

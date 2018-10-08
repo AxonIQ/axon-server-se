@@ -174,19 +174,19 @@ public class ClusterControllerTest {
 
     @Test
     public void messagingNodes() {
-        assertEquals(1, testSubject.messagingNodes().count());
+        assertEquals(1, testSubject.nodes().count());
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
                 .build(), false);
-        assertEquals(2, testSubject.messagingNodes().count());
+        assertEquals(2, testSubject.nodes().count());
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
                 .build(), false);
-        assertEquals(2, testSubject.messagingNodes().count());
+        assertEquals(2, testSubject.nodes().count());
     }
 
     @Test

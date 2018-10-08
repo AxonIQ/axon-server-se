@@ -77,7 +77,7 @@ public class LifecycleController {
     }
 
     public void configurationError(String parameter) {
-        logger.error("Cannot start AxonDB: Missing required configuration parameter: {}", parameter);
+        logger.error("Cannot start AxonServer: Missing required configuration parameter: {}", parameter);
         SpringApplication.exit(applicationContext, () -> {
             System.exit(1);
             return 1;

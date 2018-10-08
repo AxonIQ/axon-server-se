@@ -15,5 +15,5 @@ public interface AxonServer {
 
     Iterable<String> contexts();
 
-    Iterable<AxonDB> storage();
+    Iterable<Storage> storage();
 }

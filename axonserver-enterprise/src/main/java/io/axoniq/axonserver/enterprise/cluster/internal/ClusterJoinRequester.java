@@ -67,7 +67,7 @@ public class ClusterJoinRequester {
                 public void onError(Throwable throwable) {
                     logger.warn("Error connecting to {}:{} - {}", host, port, processMessage(throwable));
                     eventStoreManager.start();
-                    future.completeExceptionally(new MessagingPlatformException(ErrorCode.OTHER, "Error joining " + host + ":" + port + ": " + processMessage(throwable), throwable));
+                    future.completeExceptionally(new MessagingPlatformException(ErrorCode.OTHER, "Error processing join request on " + host + ":" + port + ": " + processMessage(throwable), throwable));
                 }
 
                 @Override

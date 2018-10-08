@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ProxyCommandHandler;
 import io.axoniq.axonserver.enterprise.cluster.internal.ProxyQueryHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
@@ -22,10 +23,13 @@ public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectio
     private final Logger logger = LoggerFactory.getLogger(SubscriptionCountBasedNodeSelectionStrategy.class);
     private final CommandRegistrationCache commandRegistrationCache;
     private final QueryRegistrationCache queryRegistrationCache;
+    private final String thisNodeName;
 
-    public SubscriptionCountBasedNodeSelectionStrategy(CommandRegistrationCache commandRegistrationCache, QueryRegistrationCache queryRegistrationCache) {
+    public SubscriptionCountBasedNodeSelectionStrategy(CommandRegistrationCache commandRegistrationCache, QueryRegistrationCache queryRegistrationCache,
+                                                       MessagingPlatformConfiguration configuration) {
         this.commandRegistrationCache = commandRegistrationCache;
         this.queryRegistrationCache = queryRegistrationCache;
+        this.thisNodeName = configuration.getName();
     }
 
     @Override
@@ -33,43 +37,50 @@ public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectio
         Map<String, Integer> nodeWeights = new HashMap<>();
         activeNodes.forEach(n -> nodeWeights.put(n, 0));
 
-        commandRegistrationCache.getAll().forEach((client, actions) -> {
-            if( ! client.getClient().equals(clientName)) {
-                int weight = 100 + actions.size() + ((client.getComponentName()!= null
-                        && client.getComponentName().equals(componentName)) ? 1000 : 0);
-                String key = (client instanceof ProxyCommandHandler) ? ((ProxyCommandHandler)client).getMessagingServerName() : ME;
-                nodeWeights.computeIfPresent(key, (k, old) -> weight + old);
-            }
-        });
+        calculateWeightsForCommands(clientName, componentName, nodeWeights);
+        calculateWeightsForQueries(clientName, componentName, nodeWeights);
 
+        Map.Entry<String, Integer> minValue = nodeWeights.entrySet().stream()
+                .min(Comparator.comparing(Map.Entry::getValue)).orElse(null);
 
+        if( minValue == null || minValue.getValue().equals( nodeWeights.get(thisNodeName))) {
+            return thisNodeName;
+        }
+        return minValue.getKey();
+    }
+
+    private void calculateWeightsForQueries(String clientName, String componentName, Map<String, Integer> nodeWeights) {
         queryRegistrationCache.getClients().forEach(client -> {
             if( !client.equals(clientName)) {
                 List<QueryRegistrationCache.QueryRegistration> queries = queryRegistrationCache.getForClient(client);
-                if (queries != null && queries.size() > 0) {
+                if (queries != null && ! queries.isEmpty()) {
                     QueryRegistrationCache.QueryRegistration registration = queries.get(0);
                     String key = (registration
                             .getQueryHandler() instanceof ProxyQueryHandler) ? ((ProxyQueryHandler) registration
-                            .getQueryHandler()).getMessagingServerName() : ME;
+                            .getQueryHandler()).getMessagingServerName() : thisNodeName;
 
                     int weight = 100 + queries.size() + (contains(queries, componentName) ? 1000 : 0);
                     nodeWeights.computeIfPresent(key, (k, old) -> weight + old);
                 }
             }
         });
+    }
 
-        Map.Entry<String, Integer> minValue = nodeWeights.entrySet().stream()
-                .min(Comparator.comparing(Map.Entry::getValue)).orElse(null);
-
-        if( minValue == null || minValue.getValue().equals( nodeWeights.get(ME))) {
-            return ME;
-        }
-        return minValue.getKey();
+    private void calculateWeightsForCommands(String clientName, String componentName,
+                                             Map<String, Integer> nodeWeights) {
+        commandRegistrationCache.getAll().forEach((client, actions) -> {
+            if( ! client.getClient().equals(clientName)) {
+                int weight = 100 + actions.size() + ((client.getComponentName()!= null
+                        && client.getComponentName().equals(componentName)) ? 1000 : 0);
+                String key = (client instanceof ProxyCommandHandler) ? ((ProxyCommandHandler)client).getMessagingServerName() : thisNodeName;
+                nodeWeights.computeIfPresent(key, (k, old) -> weight + old);
+            }
+        });
     }
 
     private boolean contains(
             List<QueryRegistrationCache.QueryRegistration> queries, String componentName) {
-        return queries.size() > 0 && queries.get(0).getQueryHandler().getComponentName().equals(componentName);
+        return !queries.isEmpty() && queries.get(0).getQueryHandler().getComponentName().equals(componentName);
     }
 
     @Override
@@ -78,6 +89,6 @@ public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectio
         String assignedNode = selectNode(clientName, componentName, activeNodes);
         logger.debug("Result for rebalance {}/{}, {}", clientName, componentName, assignedNode);
 
-        return ! assignedNode.equals(ME);
+        return ! assignedNode.equals(thisNodeName);
     }
 }

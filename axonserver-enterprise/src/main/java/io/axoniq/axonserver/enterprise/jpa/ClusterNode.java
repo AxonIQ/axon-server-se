@@ -14,6 +14,8 @@ import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.PreRemove;
 import javax.persistence.Table;
@@ -24,6 +26,12 @@ import javax.persistence.UniqueConstraint;
  */
 @Entity
 @Table(uniqueConstraints={@UniqueConstraint(columnNames = {"internalHostName", "grpcInternalPort"})})
+@NamedQueries(
+        {
+                @NamedQuery(name = "ClusterNode.findAll", query = "select c from ClusterNode c"),
+                @NamedQuery(name = "ClusterNode.findByInternalHostNameAndPort", query=" select c from ClusterNode c where c.internalHostName = :internalHostName and c.grpcInternalPort = :internalPort")
+        }
+)
 public class ClusterNode implements Serializable, AxonServerNode {
 
     @Id

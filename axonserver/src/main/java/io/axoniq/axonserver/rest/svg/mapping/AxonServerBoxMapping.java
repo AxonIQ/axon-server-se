@@ -42,17 +42,17 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
     @Override
     public Element map(AxonServer hub, Position position) {
         List<TextLine> lines = new ArrayList<>();
-        lines.add(new TextLine("AxonServer", fonts.type(), "type"));
+        lines.add(new TextLine("AxonServer", fonts.type(), StyleClass.TYPE));
         String name = hub.node().getName();
-        String extraClass = (hub.isActive() ? "hubToHub" : "hubToHub down");
+        String extraClass = (hub.isActive() ? StyleClass.SERVER_TO_SERVER : StyleClass.SERVER_TO_SERVER + " " + StyleClass.DOWN);
         if( name.equals(currentNode)) {
-            extraClass += " current";
+            extraClass += " " + StyleClass.CURRENT;
         }
-        String nodeType = "axonserver " + extraClass;
+        String nodeType = StyleClass.AXONSERVER + extraClass;
         lines.add(new TextLine(name, fonts.messaging(), nodeType));
         Iterable<String> contextNames = hub.contexts();
         if (showContexts) {
-            contextNames.forEach(context -> lines.add(new TextLine(context, fonts.client(), "client")));
+            contextNames.forEach(context -> lines.add(new TextLine(context, fonts.client(), StyleClass.CLIENT)));
         }
         String popupName = name + "-details";
         ShowDetail showDetail = new ShowDetail(popupName, nodeType, null, null);
@@ -60,8 +60,8 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
         int contentHeight = tmpContent.dimension().height() + 20;
         Position dbPosition = new Position(position.x(), position.y() + contentHeight);
         List<Store> stores = new ArrayList<>();
-        for (AxonDB axonDB : hub.storage()) {
-            Store newStore = new Store(showContexts ? new TextLine(axonDB.context(), fonts.messaging(), "axonserver"):null, dbPosition, new StyleClass("axondb" + (axonDB.master() ? " master" : "")));
+        for (Storage axonDB : hub.storage()) {
+            Store newStore = new Store(showContexts ? new TextLine(axonDB.context(), fonts.messaging(), StyleClass.AXONSERVER):null, dbPosition, new StyleClass(StyleClass.STORAGE + (axonDB.master() ? " " + StyleClass.MASTER : "")));
             stores.add(newStore);
             dbPosition = new Position(dbPosition.x() + newStore.dimension().width() + 10, dbPosition.y());
         }

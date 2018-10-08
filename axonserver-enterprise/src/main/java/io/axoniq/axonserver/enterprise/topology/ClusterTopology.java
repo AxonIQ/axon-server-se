@@ -36,7 +36,7 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Stream<? extends AxonServerNode> messagingNodes() {
-        return clusterController.messagingNodes();
+        return clusterController.nodes();
     }
 
     @Override

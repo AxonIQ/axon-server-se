@@ -1,8 +1,6 @@
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.rest.RestAuthenticationInterceptor;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
 import io.axoniq.platform.KeepNames;
@@ -18,7 +16,6 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -31,9 +28,6 @@ import java.util.Map;
  */
 @Configuration
 public class WebConfiguration implements WebMvcConfigurer {
-
-    public WebConfiguration() {
-    }
 
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
@@ -69,19 +63,6 @@ public class WebConfiguration implements WebMvcConfigurer {
             }
         };
     }
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-    }
-
-
-//    @Bean("mappingCustomizer")
-//    public EndpointHandlerMappingCustomizer mappingCustomizer() {
-//        if( configuration.getAccesscontrol() != null && configuration.getAccesscontrol().isEnabled()) {
-//            return mapping -> mapping.setInterceptors(new RestAuthenticationInterceptor(axonHubAccessController));
-//        }
-//        return mapping -> {};
-//    }
 
     @ControllerAdvice
     @KeepNames

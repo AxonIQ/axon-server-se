@@ -124,9 +124,7 @@ public class ClusterController implements SmartLifecycle {
         if (Feature.CLUSTERING.enabled(limits)) {
             logger.debug("Start cluster controller");
 
-            entityManager.createQuery("select c from ClusterNode c", ClusterNode.class)
-                         .getResultList()
-                         .forEach(clusterNode -> startRemoteConnection(clusterNode, true));
+            nodes().forEach(clusterNode -> startRemoteConnection(clusterNode, true));
             ClusterConfiguration clusterConfiguration = messagingPlatformConfiguration.getCluster();
 
             reconnectExecutor.scheduleWithFixedDelay(this::checkConnections,
@@ -152,9 +150,7 @@ public class ClusterController implements SmartLifecycle {
             existingClusterNode.setInternalHostName(messagingPlatformConfiguration.getFullyQualifiedInternalHostname());
         } else {
 
-            List<ClusterNode> clusterNodes = entityManager.createQuery(
-                    "select c from ClusterNode c where c.internalHostName = :internalHostName and c.grpcInternalPort = :internalPort",
-                    ClusterNode.class)
+            List<ClusterNode> clusterNodes = entityManager.createNamedQuery("ClusterNode.findByInternalHostNameAndPort", ClusterNode.class)
                                                           .setParameter("internalHostName",
                                                                         messagingPlatformConfiguration
                                                                                 .getFullyQualifiedInternalHostname())
@@ -273,9 +269,6 @@ public class ClusterController implements SmartLifecycle {
     private ClusterNode merge(NodeInfo nodeInfo, boolean updateContexts) {
         ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
         if (existing == null) {
-//            if( ! addNodeIfMissing) {
-//                throw new MessagingPlatformException(ErrorCode.NOT_A_MEMBER, nodeInfo.getNodeName() + ": not a member of the cluster");
-//            }
             existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
                                                                       nodeInfo.getGrpcInternalPort());
             if (existing != null) {
@@ -313,9 +306,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     private ClusterNode findFirstByInternalHostNameAndGrpcInternalPort(String internalHostName, int grpcInternalPort) {
-        List<ClusterNode> clusterNodes = entityManager.createQuery(
-                "select c from ClusterNode c where c.internalHostName = :internalHostName and c.grpcInternalPort = :internalPort",
-                ClusterNode.class)
+        List<ClusterNode> clusterNodes = entityManager.createNamedQuery("ClusterNode.findByInternalHostNameAndPort", ClusterNode.class)
                                                       .setParameter("internalHostName",
                                                                     internalHostName)
                                                       .setParameter("internalPort",
@@ -350,7 +341,7 @@ public class ClusterController implements SmartLifecycle {
         List<String> activeNodes = new ArrayList<>();
         Collection<String> nodesInContext = context1.getMessagingNodeNames();
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
-            activeNodes.add(NodeSelectionStrategy.ME);
+            activeNodes.add(messagingPlatformConfiguration.getName());
         }
         nodesInContext.stream().map(remoteConnections::get).filter(remoteConnection -> remoteConnection != null &&
                 remoteConnection.isConnected()).forEach(e -> activeNodes.add(e.getClusterNode().getName()));
@@ -367,8 +358,9 @@ public class ClusterController implements SmartLifecycle {
     }
 
 
-    public Stream<ClusterNode> messagingNodes() {
-        return entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList().stream();
+    public Stream<ClusterNode> nodes() {
+        return entityManager.createNamedQuery("ClusterNode.findAll", ClusterNode.class).getResultList()
+                            .stream();
     }
 
     public boolean canRebalance(String clientName, String componentName, String context) {
@@ -379,7 +371,7 @@ public class ClusterController implements SmartLifecycle {
         List<String> activeNodes = new ArrayList<>();
         Collection<String> nodesInContext = context1.getMessagingNodeNames();
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
-            activeNodes.add(NodeSelectionStrategy.ME);
+            activeNodes.add(messagingPlatformConfiguration.getName());
         }
         remoteConnections.entrySet().stream().filter(e -> e.getValue().isConnected()).forEach(e -> activeNodes
                 .add(e.getKey()));
@@ -419,10 +411,6 @@ public class ClusterController implements SmartLifecycle {
 
     public Set<String> getMyMessagingContexts() {
         return getMe().getMessagingContexts().stream().map(Context::getName).collect(Collectors.toSet());
-    }
-
-    public boolean isMultiContext() {
-        return entityManager.createQuery("select count(c) from Context c", Long.class).getSingleResult() > 1;
     }
 
     public void closeConnection(String nodeName) {
@@ -478,7 +466,4 @@ public class ClusterController implements SmartLifecycle {
         return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
     }
 
-    public Collection<ClusterNode> getNodes() {
-        return entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList();
-    }
 }
