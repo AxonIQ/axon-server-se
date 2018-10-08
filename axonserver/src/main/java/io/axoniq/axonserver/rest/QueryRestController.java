@@ -10,6 +10,8 @@ import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.platform.KeepNames;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +34,7 @@ import javax.validation.Valid;
 @RestController("QueryRestController")
 @RequestMapping("/v1")
 public class QueryRestController {
+    private final Logger logger = LoggerFactory.getLogger(QueryRestController.class);
 
     private final QueryRegistrationCache registrationCache;
     private final QueryDispatcher queryDispatcher;
@@ -62,7 +65,7 @@ public class QueryRestController {
                                                                                          try {
                                                                                              sseEmitter.send(SseEmitter.event().data(new QueryResponseJson(r)));
                                                                                          } catch (IOException e) {
-                                                                                             e.printStackTrace();
+                                                                                             logger.debug("Error while emitting query response", e);
                                                                                          }
                                                                                      },
                                                                                      completed->sseEmitter.complete(),
