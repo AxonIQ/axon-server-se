@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.rest;
+package io.axoniq.axonserver.rest.json;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.topology.AxonServerNode;
@@ -9,14 +9,14 @@ import java.util.Collection;
  * Author: marc
  */
 @KeepNames
-class ExtendedClusterNode implements  AxonServerNode{
+public class ExtendedClusterNode implements AxonServerNode {
 
     private final AxonServerNode delegate;
     private boolean authentication;
     private boolean clustered;
     private boolean ssl;
 
-    ExtendedClusterNode(AxonServerNode delegate) {
+    public ExtendedClusterNode(AxonServerNode delegate) {
         this.delegate = delegate;
     }
 

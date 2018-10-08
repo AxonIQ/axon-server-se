@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.rest;
+package io.axoniq.axonserver.rest.json;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;

@@ -10,6 +10,8 @@ import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.message.event.EventDispatcher;
+import io.axoniq.axonserver.rest.json.MetaDataJson;
+import io.axoniq.axonserver.rest.json.SerializedObjectJson;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.platform.util.StringUtils;
 import io.grpc.stub.StreamObserver;

@@ -7,6 +7,8 @@ import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
+import io.axoniq.axonserver.rest.json.CommandRequestJson;
+import io.axoniq.axonserver.rest.json.CommandResponseJson;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

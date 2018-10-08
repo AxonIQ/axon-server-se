@@ -16,7 +16,7 @@ import javax.validation.constraints.NotNull;
  * Author: marc
  */
 @Configuration
-public class LicenseDependentConfiguration {
+public class MetricsConfiguration {
 
     @Bean
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(MessagingPlatformConfiguration messagingPlatformConfiguration) {

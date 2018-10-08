@@ -9,6 +9,9 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.rest.json.ExtendedClusterNode;
+import io.axoniq.axonserver.rest.json.StatusInfo;
+import io.axoniq.axonserver.rest.json.UserInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.platform.KeepNames;
@@ -66,7 +69,9 @@ public class PublicRestController {
         List<AxonServerNode> nodes = clusterController.getRemoteConnections();
 
         nodes.add(clusterController.getMe());
-        return nodes.stream().map(JsonServerNode::new).sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
+        return nodes.stream()
+                    .map(n -> new JsonServerNode(n, clusterController.isActive(n)))
+                    .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 
     @GetMapping(path = "me")
@@ -134,9 +139,11 @@ public class PublicRestController {
     public static class JsonServerNode {
 
         private final AxonServerNode wrapped;
+        private final boolean connected;
 
-        public JsonServerNode(AxonServerNode axonServerNode) {
+        public JsonServerNode(AxonServerNode axonServerNode, boolean connected) {
             this.wrapped = axonServerNode;
+            this.connected = connected;
         }
 
 
@@ -162,6 +169,10 @@ public class PublicRestController {
 
         public String getName() {
             return wrapped.getName();
+        }
+
+        public boolean isConnected() {
+            return connected;
         }
     }
 }

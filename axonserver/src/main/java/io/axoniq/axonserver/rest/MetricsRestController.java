@@ -21,16 +21,16 @@ import java.util.stream.Collectors;
 /**
  * Author: marc
  */
-@RestController("WebAppRestController")
+@RestController
 @RequestMapping("/v1/public")
-public class WebAppRestController {
+public class MetricsRestController {
 
     private final CommandRegistrationCache commandRegistrationCache;
     private final CommandMetricsRegistry commandMetricsRegistry;
     private final QueryRegistrationCache queryRegistrationCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
 
-    public WebAppRestController(CommandRegistrationCache commandRegistrationCache, CommandMetricsRegistry commandMetricsRegistry, QueryRegistrationCache queryRegistrationCache, QueryMetricsRegistry queryMetricsRegistry) {
+    public MetricsRestController(CommandRegistrationCache commandRegistrationCache, CommandMetricsRegistry commandMetricsRegistry, QueryRegistrationCache queryRegistrationCache, QueryMetricsRegistry queryMetricsRegistry) {
         this.commandRegistrationCache = commandRegistrationCache;
         this.commandMetricsRegistry = commandMetricsRegistry;
         this.queryRegistrationCache = queryRegistrationCache;
@@ -39,7 +39,7 @@ public class WebAppRestController {
 
 
     @GetMapping("/command-metrics")
-    public List<CommandMetricsRegistry.CommandMetric> get() {
+    public List<CommandMetricsRegistry.CommandMetric> getCommandMetrics() {
         List<CommandMetricsRegistry.CommandMetric> metrics = new ArrayList<>();
         commandRegistrationCache.getAll().forEach((commandHander, registrations) -> metrics.addAll(getMetrics(commandHander, registrations)));
         return metrics;

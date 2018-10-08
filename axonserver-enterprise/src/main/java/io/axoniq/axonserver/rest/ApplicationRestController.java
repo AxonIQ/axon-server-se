@@ -7,6 +7,7 @@ import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.axonserver.grpc.internal.Action;
+import io.axoniq.axonserver.rest.json.ApplicationJSON;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationNotFoundException;
 import io.axoniq.platform.application.ApplicationWithToken;

@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.rest;
+package io.axoniq.axonserver.rest.json;
 
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.platform.KeepNames;

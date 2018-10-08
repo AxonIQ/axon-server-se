@@ -8,6 +8,8 @@ import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.rest.json.QueryRequestJson;
+import io.axoniq.axonserver.rest.json.QueryResponseJson;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.platform.KeepNames;
 import org.slf4j.Logger;
