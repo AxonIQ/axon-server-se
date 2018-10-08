@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -45,6 +46,9 @@ public class ContextControllerTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private ClusterController clusterController;
+
 
     @Before
     public void setUp()  {
@@ -67,7 +71,7 @@ public class ContextControllerTest {
         entityManager.persist(node1);
         entityManager.persist(node2);
         entityManager.flush();
-        testSubject = new ContextController(entityManager, eventPublisher);
+        testSubject = new ContextController(entityManager, clusterController, eventPublisher);
     }
 
     @Test
@@ -81,7 +85,7 @@ public class ContextControllerTest {
     public void addNodeToContext() {
         ClusterNode node3 = new ClusterNode("node3", null, null, null, null, null);
         entityManager.persist(node3);
-        testSubject.addNodeToContext(Topology.DEFAULT_CONTEXT, "node3", true, true, false);
+        testSubject.updateNodeRoles(Topology.DEFAULT_CONTEXT, "node3", true, true, false);
         Context defaultContext = entityManager.find(Context.class, Topology.DEFAULT_CONTEXT);
         assertEquals(3, defaultContext.getStorageNodes().size());
     }

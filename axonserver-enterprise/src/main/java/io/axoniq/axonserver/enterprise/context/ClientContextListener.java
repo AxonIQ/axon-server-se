@@ -27,9 +27,9 @@ public class ClientContextListener {
     }
 
     @EventListener
-    public void on(ContextEvents.NodeDeletedFromContext nodeDeletedFromContext) {
-        if( nodeName.equals(nodeDeletedFromContext.getNode())) {
-            platformService.requestReconnectForContext(nodeDeletedFromContext.getName());
+    public void on(ContextEvents.NodeRolesUpdated nodeRolesUpdated) {
+        if( ! nodeRolesUpdated.getNode().isMessaging() && nodeName.equals(nodeRolesUpdated.getNode().getName())) {
+            platformService.requestReconnectForContext(nodeRolesUpdated.getName());
         }
     }
 

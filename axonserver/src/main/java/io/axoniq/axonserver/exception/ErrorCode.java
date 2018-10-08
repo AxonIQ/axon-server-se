@@ -2,6 +2,7 @@ package io.axoniq.axonserver.exception;
 
 import io.grpc.Status;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
 
 /**
  * Author: marc
@@ -13,7 +14,9 @@ public enum ErrorCode {
     NODE_IS_REPLICA("AXONIQ-1100", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
     NO_SUCH_APPLICATION("AXONIQ-1300", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
     NO_SUCH_NODE("AXONIQ-1301", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
-    NO_AXONHUB_FOR_CONTEXT("AXONIQ-1400", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
+    CONTEXT_NOT_FOUND("AXONIQ-1302", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
+    NO_AXONSERVER_FOR_CONTEXT("AXONIQ-1400", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
+    AXONSERVER_NODE_NOT_CONNECTED("AXONIQ-1500", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
 
     // Input errors
     INVALID_SEQUENCE("AXONIQ-2000", Status.OUT_OF_RANGE, HttpStatus.CONFLICT, true),
@@ -27,6 +30,7 @@ public enum ErrorCode {
     CANNOT_DELETE_DEFAULT("AXONIQ-2304", Status.PERMISSION_DENIED, HttpStatus.FORBIDDEN, true),
     MAX_CLUSTER_SIZE_REACHED("AXONIQ-2305", Status.PERMISSION_DENIED, HttpStatus.FORBIDDEN, true),
     ALREADY_MEMBER_OF_CLUSTER("AXONIQ-2306", Status.ALREADY_EXISTS, HttpStatus.NOT_ACCEPTABLE, true),
+    NOT_A_MEMBER("AXONIQ-2307", Status.PERMISSION_DENIED, HttpStatus.FORBIDDEN, true),
     SAME_NODE_NAME("AXONIQ-2500", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
     UNKNOWN_HOST("AXONIQ-2501", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
     CANNOT_JOIN("AXONIQ-2502", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
@@ -79,6 +83,17 @@ public enum ErrorCode {
     ErrorCode(String code, Status grpcCode, HttpStatus httpCode, boolean clientException) {
         this(code, grpcCode, httpCode);
         this.clientException = clientException;
+    }
+
+    public static ErrorCode find(String errorCode) {
+        if(StringUtils.isEmpty(errorCode)) return ErrorCode.OTHER;
+
+        for (ErrorCode value : ErrorCode.values()) {
+            if( value.code.equals(errorCode)) {
+                return value;
+            }
+        }
+        return ErrorCode.OTHER;
     }
 
 

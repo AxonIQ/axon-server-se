@@ -4,8 +4,10 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.messaging.RemoteAxonServerStreamObserver;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
@@ -44,7 +46,7 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
-    public EventStoreGrpc.EventStoreStub getEventStoreStub(String context) {
+    private EventStoreGrpc.EventStoreStub getEventStoreStub(String context) {
         Channel channel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, clusterNode);
         if (channel == null) throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                   "No connection to event store available");
@@ -53,7 +55,7 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
                 new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken()));
     }
 
-    public EventDispatcherStub getNonMarshallingStub(String context) {
+    private EventDispatcherStub getNonMarshallingStub(String context) {
         Channel channel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, clusterNode);
         if (channel == null) throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                   "No connection to event store available");
@@ -74,14 +76,14 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     public StreamObserver<Event> createAppendEventConnection(String context,
                                                                    StreamObserver<Confirmation> responseObserver) {
         EventStoreGrpc.EventStoreStub stub = getEventStoreStub(context);
-        return stub.appendEvent(responseObserver);
+        return stub.appendEvent(new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
-        stub.listAggregateEvents(request, responseStreamObserver);
+        stub.listAggregateEvents(request, new RemoteAxonServerStreamObserver<>(responseStreamObserver));
 
     }
 
@@ -89,7 +91,7 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
-        stub.listAggregateSnapshots(request, responseStreamObserver);
+        stub.listAggregateSnapshots(request, new RemoteAxonServerStreamObserver<>(responseStreamObserver));
 
     }
 
@@ -97,44 +99,44 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     public StreamObserver<GetEventsRequest> listEvents(String context,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
-        return stub.listEvents(responseStreamObserver);
+        return stub.listEvents(new RemoteAxonServerStreamObserver<>(responseStreamObserver));
     }
 
     @Override
     public void getFirstToken(String context, GetFirstTokenRequest request,
                               StreamObserver<TrackingToken> responseObserver) {
-        getEventStoreStub(context).getFirstToken(request, responseObserver);
+        getEventStoreStub(context).getFirstToken(request, new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
     @Override
     public void getLastToken(String context, GetLastTokenRequest request,
                              StreamObserver<TrackingToken> responseObserver) {
 
-        getEventStoreStub(context).getLastToken(request, responseObserver);
+        getEventStoreStub(context).getLastToken(request, new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
     @Override
     public void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
-        getEventStoreStub(context).getTokenAt(request, responseObserver);
+        getEventStoreStub(context).getTokenAt(request, new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
     @Override
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        getEventStoreStub(context).readHighestSequenceNr(request, responseObserver);
+        getEventStoreStub(context).readHighestSequenceNr(request, new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
     @Override
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
-        return getEventStoreStub(context).queryEvents(responseObserver);
+        return getEventStoreStub(context).queryEvents(new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
     private static class CompletableStreamObserver<T> implements StreamObserver<T> {
 
         private final CompletableFuture<T> completableFuture;
 
-        public CompletableStreamObserver(
+        private CompletableStreamObserver(
                 CompletableFuture<T> completableFuture) {
             this.completableFuture = completableFuture;
         }
@@ -146,7 +148,7 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
 
         @Override
         public void onError(Throwable throwable) {
-            completableFuture.completeExceptionally(throwable);
+            completableFuture.completeExceptionally(GrpcExceptionBuilder.parse(throwable));
 
         }
 
@@ -157,11 +159,11 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     }
 
     private static class EventDispatcherStub extends AbstractStub<EventDispatcherStub> {
-        protected EventDispatcherStub(Channel channel) {
+        private EventDispatcherStub(Channel channel) {
             super(channel);
         }
 
-        protected EventDispatcherStub(Channel channel, CallOptions callOptions) {
+        private EventDispatcherStub(Channel channel, CallOptions callOptions) {
             super(channel, callOptions);
         }
 
@@ -170,12 +172,12 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
             return new EventDispatcherStub(channel, callOptions);
         }
 
-        public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> inputStream) {
+        private StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> inputStream) {
             return ClientCalls.asyncBidiStreamingCall(
                     getChannel().newCall(EventDispatcher.METHOD_LIST_EVENTS, getCallOptions()), inputStream);
         }
 
-        public void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseStream) {
+        private void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseStream) {
             ClientCalls.asyncServerStreamingCall(
                     getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_EVENTS, getCallOptions()), request, responseStream);
         }

@@ -77,6 +77,12 @@ public class ClusterController implements SmartLifecycle {
     }
 
 
+    @EventListener
+    @Transactional
+    public void on(ClusterEvents.AxonServerNodeDeleted nodeDeleted) {
+        deleteNode(nodeDeleted.node());
+    }
+
     @Transactional
     public void deleteNode(String name) {
         logger.warn("Delete node: {}", name);
@@ -232,12 +238,12 @@ public class ClusterController implements SmartLifecycle {
     @Transactional
     public void on(ClusterEvents.AxonServerInstanceConnected axonHubInstanceConnected) {
         if (axonHubInstanceConnected.getNodesList() != null) {
-            axonHubInstanceConnected.getNodesList().forEach(this::addConnection);
+            axonHubInstanceConnected.getNodesList().forEach(nodeInfo -> addConnection(nodeInfo, false));
         }
     }
 
     @Transactional
-    public synchronized void addConnection(NodeInfo nodeInfo) {
+    public synchronized void addConnection(NodeInfo nodeInfo, boolean updateContexts) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same node name");
@@ -246,7 +252,7 @@ public class ClusterController implements SmartLifecycle {
                 && nodeInfo.getGrpcInternalPort() == messagingPlatformConfiguration.getInternalPort()) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same hostname and internal port");
         }
-        ClusterNode node = merge(nodeInfo);
+        ClusterNode node = merge(nodeInfo, updateContexts);
         if (!remoteConnections.containsKey(node.getName())) {
             startRemoteConnection(node, false);
             nodeListeners.forEach(listener -> listener
@@ -264,9 +270,12 @@ public class ClusterController implements SmartLifecycle {
         }
     }
 
-    private ClusterNode merge(NodeInfo nodeInfo) {
+    private ClusterNode merge(NodeInfo nodeInfo, boolean updateContexts) {
         ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
         if (existing == null) {
+//            if( ! addNodeIfMissing) {
+//                throw new MessagingPlatformException(ErrorCode.NOT_A_MEMBER, nodeInfo.getNodeName() + ": not a member of the cluster");
+//            }
             existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
                                                                       nodeInfo.getGrpcInternalPort());
             if (existing != null) {
@@ -286,8 +295,10 @@ public class ClusterController implements SmartLifecycle {
             existing.setHttpPort(nodeInfo.getHttpPort());
             existing.setInternalHostName(nodeInfo.getInternalHostName());
         }
-        for (ContextRole context : nodeInfo.getContextsList()) {
-            mergeContext(existing, context.getName(), context.getStorage(), context.getMessaging());
+        if( updateContexts) {
+            for (ContextRole context : nodeInfo.getContextsList()) {
+                mergeContext(existing, context.getName(), context.getStorage(), context.getMessaging());
+            }
         }
         return existing;
     }
@@ -329,7 +340,7 @@ public class ClusterController implements SmartLifecycle {
     public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
         Context context1 = entityManager.find(Context.class, context);
         if (context1 == null) {
-            throw new MessagingPlatformException(ErrorCode.NO_AXONHUB_FOR_CONTEXT,
+            throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No AxonHub servers found for context: " + context);
         }
         if (clientName == null || clientName.isEmpty()) {
@@ -345,7 +356,7 @@ public class ClusterController implements SmartLifecycle {
                 remoteConnection.isConnected()).forEach(e -> activeNodes.add(e.getClusterNode().getName()));
 
         if (activeNodes.isEmpty()) {
-            throw new MessagingPlatformException(ErrorCode.NO_AXONHUB_FOR_CONTEXT,
+            throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No active Axon servers found for context: " + context);
         }
         String nodeName = nodeSelectionStrategy.selectNode(clientName, componentName, activeNodes);
@@ -437,8 +448,8 @@ public class ClusterController implements SmartLifecycle {
             mergeContext(clusterNode, contextRoleJSON.getName(), contextRoleJSON.isStorage(), contextRoleJSON.isMessaging());
             if( contextRoleJSON.isStorage()) {
                 if( ! oldStorageContexts.remove(contextRoleJSON.getName()) ) {
-                    applicationEventPublisher.publishEvent(new ContextEvents.NodeAddedToContext(contextRoleJSON.getName(),
-                                                                                                new NodeRoles(getName(),contextRoleJSON.isMessaging(), contextRoleJSON.isStorage()), false));
+                    applicationEventPublisher.publishEvent(new ContextEvents.NodeRolesUpdated(contextRoleJSON.getName(),
+                                                                                              new NodeRoles(getName(),contextRoleJSON.isMessaging(), contextRoleJSON.isStorage()), false));
                 }
             }
             oldContexts.remove(contextRoleJSON.getName());
@@ -465,5 +476,9 @@ public class ClusterController implements SmartLifecycle {
 
     public boolean disconnectedNodes() {
         return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
+    }
+
+    public Collection<ClusterNode> getNodes() {
+        return entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList();
     }
 }

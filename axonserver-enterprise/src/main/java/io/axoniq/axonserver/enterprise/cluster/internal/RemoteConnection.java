@@ -13,7 +13,10 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ClusterFlowControlStreamObserver;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.ProcessingKey;
@@ -217,6 +220,11 @@ public class RemoteConnection  {
 
                     @Override
                     public void onError(Throwable throwable) {
+                        MessagingPlatformException mpe = GrpcExceptionBuilder.parse(throwable);
+                        if(ErrorCode.NOT_A_MEMBER.equals(mpe.getErrorCode())) {
+                            applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeDeleted(clusterNode.getName()));
+                            return;
+                        }
                         if (!String.valueOf(throwable.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
                             ManagedChannelHelper.checkShutdownNeeded(clusterNode.getName(), throwable);
                             logger.warn("Error on {}:{} - {}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort(), throwable.getMessage());

@@ -58,7 +58,7 @@ public class ClusterJoinRequester {
                 @Override
                 public void onNext(NodeInfo nodeInfo) {
                     if (!messagingPlatformConfiguration.getName().equals(nodeInfo.getNodeName())) {
-                        clusterController.addConnection(nodeInfo);
+                        clusterController.addConnection(nodeInfo, true);
                         eventStoreManager.start();
                     }
                 }

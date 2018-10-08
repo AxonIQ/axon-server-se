@@ -471,7 +471,7 @@ The following table gives a complete list of all the configuration properties av
 |server.port|8024|Integer|The Http Server port
 |axoniq.axonserver.name||String|Node name of this AxonServer node, if not set defaults to the hostname.
 |axoniq.axonserver.port|8124|Integer|gRPC port for AxonServer
-|axoniq.axonserver.internal-port|8224|Integer|gRPC port for communication between messing platform nodes
+|axoniq.axonserver.internal-port|8224|Integer|gRPC port for communication between AxonServer nodes
 |axoniq.axonserver.hostname||String|Hostname of this node as communicated to clients, defaults to the result of hostname command
 |axoniq.axonserver.internal-hostname||String|Hostname as communicated to other nodes of the cluster. Defaults to hostname.
 |axoniq.axonserver.domain||String|Domain of this node as communicated to clients. Optional, if set will be appended to the hostname in communication with clients.

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -29,11 +30,15 @@ import javax.persistence.EntityManager;
 @Controller
 public class ContextController {
     private final EntityManager entityManager;
+    private final ClusterController clusterController;
     private final ApplicationEventPublisher eventPublisher;
 
     public ContextController(
-            EntityManager entityManager, ApplicationEventPublisher eventPublisher) {
+            EntityManager entityManager,
+            ClusterController clusterController,
+            ApplicationEventPublisher eventPublisher) {
         this.entityManager = entityManager;
+        this.clusterController = clusterController;
         this.eventPublisher = eventPublisher;
     }
 
@@ -44,9 +49,10 @@ public class ContextController {
     }
 
     @Transactional
-    public ContextEvents.NodeAddedToContext addNodeToContext(String contextName, String nodeName,
-                                                             boolean storage,boolean messaging,
-                                                             boolean proxied) {
+    public ContextEvents.NodeRolesUpdated updateNodeRoles(String contextName, String nodeName,
+                                                          boolean storage, boolean messaging,
+                                                          boolean proxied) {
+        if( ! storage && ! messaging) return deleteNodeFromContext(contextName, nodeName, proxied);
         Context context = entityManager.find(Context.class, contextName);
         if (context == null) {
             throw new IllegalArgumentException("Context does not exist: " + contextName);
@@ -65,7 +71,7 @@ public class ContextController {
             contextClusterNode.setMessaging(messaging);
         }
         entityManager.flush();
-        return new ContextEvents.NodeAddedToContext(contextName, new NodeRoles(contextClusterNode), proxied);
+        return new ContextEvents.NodeRolesUpdated(contextName, new NodeRoles(contextClusterNode), proxied);
     }
 
     @Transactional
@@ -81,7 +87,7 @@ public class ContextController {
     }
 
     @Transactional
-    public ContextEvents.NodeDeletedFromContext deleteNodeFromContext(String contextName, String nodeName,
+    public ContextEvents.NodeRolesUpdated deleteNodeFromContext(String contextName, String nodeName,
                                                                       boolean proxied) {
         Context context = entityManager.find(Context.class, contextName);
         if (context == null) {
@@ -92,7 +98,7 @@ public class ContextController {
             entityManager.remove(contextClusterNode);
             entityManager.flush();
         }
-        return new ContextEvents.NodeDeletedFromContext(contextName, nodeName, proxied);
+        return new ContextEvents.NodeRolesUpdated(contextName, new NodeRoles(nodeName, false, false), proxied);
     }
 
 
@@ -122,15 +128,11 @@ public class ContextController {
             case DELETE_CONTEXT:
                 ContextEvents.ContextDeleted deleteEvent = deleteContext(context.getName(), true);
                 return deleteEvent != null ? Collections.singleton(deleteEvent) : Collections.emptySet();
-            case ADD_NODES:
+            case NODES_UPDATED:
                 return context.getNodesList().stream().map(node ->
-                                                                   addNodeToContext(context.getName(), node.getName(),
-                                                                                    node.getStorage(),
-                                                                                    node.getMessaging(), true)
-                ).collect(Collectors.toSet());
-            case DELETE_NODES:
-                return context.getNodesList().stream().map(node ->
-                                                                   deleteNodeFromContext(context.getName(), node.getName(), true)
+                                                                   updateNodeRoles(context.getName(), node.getName(),
+                                                                                   node.getStorage(),
+                                                                                   node.getMessaging(), true)
                 ).collect(Collectors.toSet());
             case UNRECOGNIZED:
                 break;
@@ -153,7 +155,7 @@ public class ContextController {
         axonHubInstanceConnected.getContextsList().forEach(context -> {
             Context context1 = entityManager.find(Context.class, context.getName());
             if (context1 != null) {
-                events.add(addNodeToContext(context.getName(), node, context.getStorage(), context.getMessaging(), true));
+                events.add(updateNodeRoles(context.getName(), node, context.getStorage(), context.getMessaging(), true));
             } else {
                 events.add(addContext(context.getName(), Collections.singletonList(new NodeRoles(node, context.getMessaging(), context.getStorage())), true));
             }
@@ -172,5 +174,38 @@ public class ContextController {
 
     public Context getContext(String contextName){
         return entityManager.find(Context.class, contextName);
+    }
+
+    public void canDeleteContext(String name) {
+        Context context = getContext(name);
+        if( context == null) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, name + " not found");
+        }
+        for (ContextClusterNode node : context.getAllNodes()) {
+            if( ! clusterController.isActive(node.getClusterNode().getName())) {
+                throw new MessagingPlatformException(ErrorCode.AXONSERVER_NODE_NOT_CONNECTED, node.getClusterNode().getName() + " not connected, cannot update context " + name);
+            }
+        }
+    }
+
+    public void canUpdateContext(String name, String node) {
+        Context context = getContext(name);
+        if( context == null) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, name + " not found");
+        }
+
+        if( !clusterController.isActive(node) ) {
+            throw new MessagingPlatformException(ErrorCode.AXONSERVER_NODE_NOT_CONNECTED, node + " not connected, cannot update context " + name);
+        }
+    }
+
+    public void canAddContext(List<NodeRoles> nodes) {
+        for (NodeRoles node : nodes) {
+            if( ! clusterController.isActive(node.getName())) {
+                throw new MessagingPlatformException(ErrorCode.AXONSERVER_NODE_NOT_CONNECTED, node.getName() + " not connected, cannot create context");
+            }
+
+        }
+
     }
 }

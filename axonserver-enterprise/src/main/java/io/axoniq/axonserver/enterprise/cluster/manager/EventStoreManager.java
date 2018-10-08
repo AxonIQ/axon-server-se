@@ -173,10 +173,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     @EventListener
-    public void on(ContextEvents.NodeAddedToContext contextCreated) {
-        logger.debug("{}: updated {} storage: {}", contextCreated.getName(), contextCreated.getNode().getName(), contextCreated.getNode().isStorage());
+    public void on(ContextEvents.NodeRolesUpdated contextUpdated) {
+        logger.debug("{}: updated {} storage: {}", contextUpdated.getName(), contextUpdated.getNode().getName(), contextUpdated.getNode().isStorage());
         try {
-            Context context = context(contextCreated.getName());
+            Context context = context(contextUpdated.getName());
             logger.debug("{}: storage members {}", context.getName(), context.getStorageNodeNames());
             if (context.isStorageMember(nodeName)) {
                 initContext(context, false);
@@ -189,19 +189,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                 }
             }
         } catch( RuntimeException re) {
-            logger.warn("Failed to process event {}", contextCreated, re);
-        }
-    }
-
-    @EventListener
-    public void on(ContextEvents.NodeDeletedFromContext nodeDeletedFromContext) {
-        Context context = context(nodeDeletedFromContext.getName());
-        if (context.isStorageMember(nodeName)) return;
-        localEventStore.cleanupContext(nodeDeletedFromContext.getName());
-        if( isMaster(nodeDeletedFromContext.getName())) {
-            masterPerContext.remove(nodeDeletedFromContext.getName());
-            applicationEventPublisher.publishEvent(new ClusterEvents.MasterStepDown(nodeDeletedFromContext.getName(),
-                                                                                    false));
+            logger.warn("Failed to process event {}", contextUpdated, re);
         }
     }
 

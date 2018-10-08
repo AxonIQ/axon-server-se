@@ -4,6 +4,7 @@ import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
@@ -51,36 +52,39 @@ public class ContextRestController {
 
     @GetMapping(path = "public/context")
     public List<ContextJSON> getContexts() {
-        return contextController.getContexts().map(c -> {
-            ContextJSON contextJSON = ContextJSON.from(c);
-            contextJSON.setMaster(eventStoreManager.getMaster(c.getName()));
-            contextJSON.setCoordinator(axonHubManager.coordinatorFor(c.getName()));
+        return contextController.getContexts().map(this::createContextJSON).collect(Collectors.toList());
 
-            return contextJSON;
-        }).collect(Collectors.toList());
+    }
 
+    private ContextJSON createContextJSON(Context context) {
+        ContextJSON contextJSON = ContextJSON.from(context);
+        contextJSON.setMaster(eventStoreManager.getMaster(context.getName()));
+        contextJSON.setCoordinator(axonHubManager.coordinatorFor(context.getName()));
+        return contextJSON;
     }
 
     @DeleteMapping( path = "context/{name}")
     public void deleteContext(@PathVariable("name")  String name) {
         if( Topology.DEFAULT_CONTEXT.equals(name)) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_DEFAULT, "Cannot delete default context");
-
+        contextController.canDeleteContext(name);
         applicationEventPublisher.publishEvent(contextController.deleteContext(name, false));
     }
 
     @PostMapping(path = "context/{context}/{node}")
-    public void addNodeToContext(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
-                                 @RequestParam(name="messaging", defaultValue = "true") boolean messaging
+    public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
+                                @RequestParam(name="messaging", defaultValue = "true") boolean messaging
                                  ) {
-        applicationEventPublisher.publishEvent(contextController.addNodeToContext(name,
-                                                                                    node,
-                                                                                    storage,
-                                                                                    messaging,
-                                                                                    false));
+        contextController.canUpdateContext(name, node);
+        applicationEventPublisher.publishEvent(contextController.updateNodeRoles(name,
+                                                                                 node,
+                                                                                 storage,
+                                                                                 messaging,
+                                                                                 false));
     }
 
     @DeleteMapping(path = "context/{context}/{node}")
     public void deleteNodeFromContext(@PathVariable("context") String name, @PathVariable("node") String node){
+        contextController.canUpdateContext(name, node);
         applicationEventPublisher.publishEvent(contextController.deleteNodeFromContext(name, node, false));
     }
 
@@ -97,6 +101,7 @@ public class ContextRestController {
     @PostMapping(path ="context")
     public void addContext(@RequestBody @Valid ContextJSON contextJson) {
         if(!Feature.MULTI_CONTEXT.enabled(limits)) throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "License does not allow creating contexts");
+        contextController.canAddContext(contextJson.getNodes());
         applicationEventPublisher.publishEvent(contextController.addContext(contextJson.getContext(), contextJson.getNodes(), false));
     }
 

@@ -222,7 +222,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         try {
             checkConnection(request.getInternalHostName());
             checkMasterForAllStorageContexts(request.getContextsList());
-            clusterController.addConnection(request);
+            clusterController.addConnection(request, true);
             clusterController.messagingNodes().forEach(clusterNode -> responseObserver
                     .onNext(clusterNode.toNodeInfo()));
             responseObserver.onCompleted();
@@ -281,31 +281,57 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     .forEach(consumer -> consumer.accept(connectorCommand, responseObserver::onNext));
                 switch (connectorCommand.getRequestCase()) {
                     case CONNECT:
-                        messagingServerName = connectorCommand.getConnect().getNodeName();
-                        clusterController.addConnection(connectorCommand.getConnect());
-                        logger.debug("Received connect from: {} - {}", messagingServerName, connectorCommand.getConnect());
+                        try {
+                            messagingServerName = connectorCommand.getConnect().getNodeName();
+                            clusterController.addConnection(connectorCommand.getConnect(), false);
+                            logger.debug("Received connect from: {} - {}",
+                                         messagingServerName,
+                                         connectorCommand.getConnect());
 
-                        ConnectResponse.Builder connectResponseBuilder = ConnectResponse.newBuilder()
-                                .addAllModelVersions(applicationModelController.getModelVersions().stream().map(m -> ModelVersion.newBuilder()
-                                                                                                                            .setName(m.getApplicationName())
-                                                                                                                            .setValue(m.getVersion())
-                                                                                                                            .build())
-                                                     .collect(Collectors.toList())
-                                )
-                                .addAllContexts(clusterController.getMyContexts().stream().map(c -> ContextRole.newBuilder()
-                                                                                                               .setName(c.getContext().getName())
-                                                                                               .setMessaging(c.isMessaging())
-                                                                                               .setStorage(c.isStorage())
-                                                                                               .build()
-                                                ).collect(Collectors.toList()));
+                            ConnectResponse.Builder connectResponseBuilder = ConnectResponse.newBuilder()
+                                                                                            .addAllModelVersions(
+                                                                                                    applicationModelController
+                                                                                                            .getModelVersions()
+                                                                                                            .stream()
+                                                                                                            .map(m -> ModelVersion
+                                                                                                                    .newBuilder()
+                                                                                                                    .setName(
+                                                                                                                            m.getApplicationName())
+                                                                                                                    .setValue(
+                                                                                                                            m.getVersion())
+                                                                                                                    .build())
+                                                                                                            .collect(
+                                                                                                                    Collectors
+                                                                                                                            .toList())
+                                                                                            )
+                                                                                            .addAllContexts(
+                                                                                                    clusterController
+                                                                                                            .getMyContexts()
+                                                                                                            .stream()
+                                                                                                            .map(c -> ContextRole
+                                                                                                                    .newBuilder()
+                                                                                                                    .setName(
+                                                                                                                            c.getContext()
+                                                                                                                             .getName())
+                                                                                                                    .setMessaging(
+                                                                                                                            c.isMessaging())
+                                                                                                                    .setStorage(
+                                                                                                                            c.isStorage())
+                                                                                                                    .build()
+                                                                                                            ).collect(
+                                                                                                            Collectors
+                                                                                                                    .toList()));
 
-                        clusterController.getRemoteConnections().stream()
-                                         .filter(c -> ! c.getClusterNode().getName().equals(messagingServerName))
-                                         .forEach(c -> connectResponseBuilder.addNodes(c.getClusterNode().toNodeInfo()));
-                        responseObserver.onNext(ConnectorResponse.newBuilder()
-                                                                 .setConnectResponse(connectResponseBuilder)
-                                                                 .build());
-                        connections.put(messagingServerName, this);
+                            clusterController.getNodes().stream()
+                                             .filter(c -> !c.getName().equals(messagingServerName))
+                                             .forEach(c -> connectResponseBuilder.addNodes(c.toNodeInfo()));
+                            responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                     .setConnectResponse(connectResponseBuilder)
+                                                                     .build());
+                            connections.put(messagingServerName, this);
+                        } catch( MessagingPlatformException mpe) {
+                            responseObserver.onError(mpe);
+                        }
                         break;
                     case SUBSCRIBE_COMMAND:
                         CommandSubscription command = connectorCommand.getSubscribeCommand()

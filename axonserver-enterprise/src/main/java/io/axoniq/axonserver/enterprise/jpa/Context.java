@@ -16,7 +16,7 @@ import javax.persistence.PreRemove;
 /**
  * Author: marc
  */
-@Entity
+@Entity(name = "Context")
 public class Context implements Serializable {
     @Id
     private String name;

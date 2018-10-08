@@ -4,13 +4,13 @@
             <thead>
             <tr>
                 <th><div>Instance Name</div></th>
-                <th><div>AxonHub Server</div></th>
+                <th><div>AxonServer Node</div></th>
             </tr>
             </thead>
             <tbody class="selectable">
             <tr v-for="instance in instances">
                 <td><div>{{instance.name}}</div></td>
-                <td><div>{{instance.axonHubServer}}</div></td>
+                <td><div>{{instance.axonServerNode}}</div></td>
             </tr>
             </tbody>
         </table>

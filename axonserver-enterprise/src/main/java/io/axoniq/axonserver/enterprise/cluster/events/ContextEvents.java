@@ -50,29 +50,15 @@ public class ContextEvents {
     }
 
     @KeepNames
-    public static class NodeAddedToContext extends BaseContextEvent {
+    public static class NodeRolesUpdated extends BaseContextEvent {
         private final NodeRoles node;
 
-        public NodeAddedToContext(String name, NodeRoles node, boolean proxied) {
+        public NodeRolesUpdated(String name, NodeRoles node, boolean proxied) {
             super(name, proxied);
             this.node = node;
         }
 
         public NodeRoles getNode() {
-            return node;
-        }
-    }
-
-    @KeepNames
-    public static class NodeDeletedFromContext extends BaseContextEvent {
-        private final String node;
-
-        public NodeDeletedFromContext(String name, String node, boolean proxied) {
-            super(name, proxied);
-            this.node = node;
-        }
-
-        public String getNode() {
             return node;
         }
     }

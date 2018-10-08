@@ -26,4 +26,24 @@ public class GrpcExceptionBuilder {
         logger.debug("Internal Server Error found", throwable);
         return build(ErrorCode.OTHER, throwable.getMessage());
     }
+
+    public static MessagingPlatformException parse(Throwable throwable) {
+        if( throwable instanceof StatusRuntimeException) {
+            StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable;
+            String errorCode = statusRuntimeException.getTrailers().get(GrpcMetadataKeys.ERROR_CODE_KEY);
+            ErrorCode standardErrorCode = ErrorCode.find(errorCode);
+
+            return new MessagingPlatformException(standardErrorCode, cleanupDescription(standardErrorCode, statusRuntimeException.getStatus().getDescription()));
+        }
+        return new MessagingPlatformException(ErrorCode.OTHER, throwable.getMessage());
+    }
+
+    // Trim AXONIQ error code from message
+    private static String cleanupDescription(ErrorCode standardErrorCode, String description) {
+        String stdPrefix = "[" + standardErrorCode.getCode() + "] ";
+        if( description != null && description.startsWith(stdPrefix)) {
+            return description.substring(stdPrefix.length());
+        }
+        return description;
+    }
 }

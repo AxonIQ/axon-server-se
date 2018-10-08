@@ -13,13 +13,13 @@ public class GenericClient implements Client {
     private final String componentName;
 
     private final String context;
-    private final String axonHubServer;
+    private final String axonServerNode;
 
-    public GenericClient(String clientId, String componentName, String context, String axonHubServer) {
+    public GenericClient(String clientId, String componentName, String context, String axonServerNode) {
         this.clientId = clientId;
         this.componentName = componentName;
         this.context = context;
-        this.axonHubServer = axonHubServer;
+        this.axonServerNode = axonServerNode;
     }
 
     @Override
@@ -39,6 +39,6 @@ public class GenericClient implements Client {
 
     @Override
     public void printOn(Media media) {
-        media.with("name", name()).with("componentName", componentName).with("axonHubServer", axonHubServer);
+        media.with("name", name()).with("componentName", componentName).with("axonServerNode", axonServerNode);
     }
 }

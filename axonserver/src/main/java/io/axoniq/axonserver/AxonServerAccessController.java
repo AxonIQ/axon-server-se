@@ -53,9 +53,13 @@ public class AxonServerAccessController {
     }
 
     public Application getApplication(String token) {
-        if(! Feature.APP_AUTHENTICATION.enabled(limits) && messagingPlatformConfiguration.getAccesscontrol().getToken().equals(token)) {
-            return new Application("Dummy");
+        if(! Feature.APP_AUTHENTICATION.enabled(limits)) {
+            if( messagingPlatformConfiguration.getAccesscontrol().getToken().equals(token) ) {
+                return new Application("Dummy");
+            }
+            return null;
         }
+
         return accessController.getApplicationByToken(token);
     }
 }
