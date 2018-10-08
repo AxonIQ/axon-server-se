@@ -40,6 +40,7 @@ public class CoordinatorElectionProcessTest {
     public void setUp() throws Exception {
         context = mock(Context.class);
         when(context.getMessagingNodes()).thenReturn(nodes);
+        when(context.isMessagingMember(any())).thenReturn(true);
         when(context.getName()).thenReturn("defaultContext");
         elected = new AtomicBoolean();
         eventPublisher = new FakeApplicationEventPublisher();
@@ -60,7 +61,7 @@ public class CoordinatorElectionProcessTest {
     public void testNoQuorum() throws InterruptedException {
         sender = (message, node, callback) -> {
             if (node.getName().equals("nodeB")) callback.onNext(Confirmation.newBuilder().setSuccess(true).build());
-            else callback.onError(new RuntimeException("Node B unavailable"));
+            else callback.onError(new RuntimeException(node.getName() + " unavailable"));
         };
         CoordinatorElectionProcess electionProcess = new CoordinatorElectionProcess("nodeA", 100L, eventPublisher, sender);
         electionProcess.electionRound(context, elected::get);

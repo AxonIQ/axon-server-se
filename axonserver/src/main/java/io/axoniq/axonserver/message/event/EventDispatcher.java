@@ -98,7 +98,7 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public StreamObserver<Event> appendEvent(StreamObserver<Confirmation> responseObserver) {
-        return appendEvent(contextProvider.getContext(), new ForwardingStreamObserver<>(responseObserver));
+        return appendEvent(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, responseObserver));
     }
 
     public StreamObserver<Event> appendEvent(String context, StreamObserver<Confirmation> responseObserver) {
@@ -141,7 +141,7 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public void appendSnapshot(Event event, StreamObserver<Confirmation> confirmationStreamObserver) {
-        appendSnapshot(contextProvider.getContext(), event, new ForwardingStreamObserver<>(confirmationStreamObserver));
+        appendSnapshot(contextProvider.getContext(), event, new ForwardingStreamObserver<>(logger, confirmationStreamObserver));
     }
 
     public void appendSnapshot(String context, Event request, StreamObserver<Confirmation> responseObserver) {
@@ -160,7 +160,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
-        listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver));
+        listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
     }
 
     public void listAggregateEvents(String context, GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
@@ -175,7 +175,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        return listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(responseObserver));
+        return listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, responseObserver));
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
@@ -262,9 +262,9 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger, responseObserver0);
         checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-            client.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
+            client.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver))
         );
     }
 
@@ -279,30 +279,32 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger, responseObserver0);
         checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                            client.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
+                                                            client.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver))
         );
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver0) {
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                            client.getTokenAt(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
+        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger, responseObserver0);
+        checkConnection(contextProvider.getContext(), responseObserver)
+                .ifPresent(client ->client.getTokenAt(contextProvider.getContext(), request,
+                                                      new ForwardingStreamObserver<>(logger, responseObserver))
         );
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver0) {
-        ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                            client.readHighestSequenceNr(contextProvider.getContext(), request, new ForwardingStreamObserver<>(responseObserver))
+        ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver = new ForwardingStreamObserver<>(logger, responseObserver0);
+        checkConnection(contextProvider.getContext(), responseObserver)
+                .ifPresent(client -> client.readHighestSequenceNr(contextProvider.getContext(), request,
+                                                                  new ForwardingStreamObserver<>(logger, responseObserver))
         );
     }
 
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver0) {
-        ForwardingStreamObserver<QueryEventsResponse> responseObserver = new ForwardingStreamObserver<>(responseObserver0);
+        ForwardingStreamObserver<QueryEventsResponse> responseObserver = new ForwardingStreamObserver<>(logger, responseObserver0);
         return checkConnection(contextProvider.getContext(), responseObserver).map(client -> client.queryEvents(contextProvider.getContext(), responseObserver)).orElse(null);
     }
 
