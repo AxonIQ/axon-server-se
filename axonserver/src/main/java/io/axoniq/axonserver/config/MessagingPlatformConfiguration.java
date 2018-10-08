@@ -88,6 +88,7 @@ public class MessagingPlatformConfiguration {
     private int executorThreads ;
     private int bossThreads;
     private int workerThreads;
+    private String controlDbBackupLocation = ".";
 
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
@@ -300,5 +301,13 @@ public class MessagingPlatformConfiguration {
 
     public void setWorkerThreads(int workerThreads) {
         this.workerThreads = workerThreads;
+    }
+
+    public String getControlDbBackupLocation() {
+        return controlDbBackupLocation;
+    }
+
+    public void setControlDbBackupLocation(String controlDbBackupLocation) {
+        this.controlDbBackupLocation = controlDbBackupLocation;
     }
 }

@@ -1,5 +1,8 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.topology.Topology;
@@ -26,11 +29,14 @@ public class BackupInfoRestController {
 
     private final DataSource dataSource;
     private final LocalEventStore localEventStore;
+    private final String controlDbBackupLocation;
 
     public BackupInfoRestController(DataSource dataSource,
+                                    MessagingPlatformConfiguration messagingPlatformConfiguration,
                                     LocalEventStore localEventStore) {
         this.dataSource = dataSource;
         this.localEventStore = localEventStore;
+        this.controlDbBackupLocation = messagingPlatformConfiguration.getControlDbBackupLocation();
     }
 
     @GetMapping("/filenames")
@@ -46,7 +52,11 @@ public class BackupInfoRestController {
 
     @PostMapping("/createControlDbBackup")
     public String createControlDbBackup() throws SQLException {
-        File file = new File("controldb" + System.currentTimeMillis() + ".zip");
+        File path = new File(controlDbBackupLocation);
+        if( ! path.exists() && ! path.mkdirs()) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to create directory: " + path.getAbsolutePath());
+        }
+        File file = new File(path.getAbsolutePath() + "/controldb" + System.currentTimeMillis() + ".zip");
         try(Connection connection = dataSource.getConnection()) {
             try(PreparedStatement preparedStatement = connection.prepareStatement("BACKUP TO '" + file.getName() + "'")) {
                 preparedStatement.execute();
