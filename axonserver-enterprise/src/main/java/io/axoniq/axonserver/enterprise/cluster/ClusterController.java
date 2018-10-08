@@ -273,9 +273,9 @@ public class ClusterController implements SmartLifecycle {
     private ClusterNode merge(NodeInfo nodeInfo, boolean updateContexts) {
         ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
         if (existing == null) {
-            if( ! updateContexts) {
-                throw new MessagingPlatformException(ErrorCode.NOT_A_MEMBER, nodeInfo.getNodeName() + ": not a member of the cluster");
-            }
+//            if( ! addNodeIfMissing) {
+//                throw new MessagingPlatformException(ErrorCode.NOT_A_MEMBER, nodeInfo.getNodeName() + ": not a member of the cluster");
+//            }
             existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
                                                                       nodeInfo.getGrpcInternalPort());
             if (existing != null) {
@@ -340,7 +340,7 @@ public class ClusterController implements SmartLifecycle {
     public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
         Context context1 = entityManager.find(Context.class, context);
         if (context1 == null) {
-            throw new MessagingPlatformException(ErrorCode.NO_AXONHUB_FOR_CONTEXT,
+            throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No AxonHub servers found for context: " + context);
         }
         if (clientName == null || clientName.isEmpty()) {
@@ -356,7 +356,7 @@ public class ClusterController implements SmartLifecycle {
                 remoteConnection.isConnected()).forEach(e -> activeNodes.add(e.getClusterNode().getName()));
 
         if (activeNodes.isEmpty()) {
-            throw new MessagingPlatformException(ErrorCode.NO_AXONHUB_FOR_CONTEXT,
+            throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No active Axon servers found for context: " + context);
         }
         String nodeName = nodeSelectionStrategy.selectNode(clientName, componentName, activeNodes);

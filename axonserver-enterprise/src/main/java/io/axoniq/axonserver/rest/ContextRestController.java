@@ -66,7 +66,7 @@ public class ContextRestController {
     @DeleteMapping( path = "context/{name}")
     public void deleteContext(@PathVariable("name")  String name) {
         if( Topology.DEFAULT_CONTEXT.equals(name)) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_DEFAULT, "Cannot delete default context");
-
+        contextController.canDeleteContext(name);
         applicationEventPublisher.publishEvent(contextController.deleteContext(name, false));
     }
 
@@ -74,6 +74,7 @@ public class ContextRestController {
     public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
                                 @RequestParam(name="messaging", defaultValue = "true") boolean messaging
                                  ) {
+        contextController.canUpdateContext(name, node);
         applicationEventPublisher.publishEvent(contextController.updateNodeRoles(name,
                                                                                  node,
                                                                                  storage,
@@ -83,6 +84,7 @@ public class ContextRestController {
 
     @DeleteMapping(path = "context/{context}/{node}")
     public void deleteNodeFromContext(@PathVariable("context") String name, @PathVariable("node") String node){
+        contextController.canUpdateContext(name, node);
         applicationEventPublisher.publishEvent(contextController.deleteNodeFromContext(name, node, false));
     }
 
@@ -99,6 +101,7 @@ public class ContextRestController {
     @PostMapping(path ="context")
     public void addContext(@RequestBody @Valid ContextJSON contextJson) {
         if(!Feature.MULTI_CONTEXT.enabled(limits)) throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "License does not allow creating contexts");
+        contextController.canAddContext(contextJson.getNodes());
         applicationEventPublisher.publishEvent(contextController.addContext(contextJson.getContext(), contextJson.getNodes(), false));
     }
 

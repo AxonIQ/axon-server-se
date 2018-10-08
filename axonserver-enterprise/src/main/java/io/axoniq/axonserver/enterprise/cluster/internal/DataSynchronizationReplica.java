@@ -239,8 +239,7 @@ public class DataSynchronizationReplica {
 
                 @Override
                 public void onCompleted() {
-                    logger.warn("Received close from {}", node);
-                    //applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
+                    logger.debug("Received close from {}", node);
                 }
             }));
 

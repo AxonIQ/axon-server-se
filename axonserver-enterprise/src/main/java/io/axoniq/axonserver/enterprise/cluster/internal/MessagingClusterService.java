@@ -222,7 +222,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         try {
             checkConnection(request.getInternalHostName());
             checkMasterForAllStorageContexts(request.getContextsList());
-            clusterController.addConnection(request, false);
+            clusterController.addConnection(request, true);
             clusterController.messagingNodes().forEach(clusterNode -> responseObserver
                     .onNext(clusterNode.toNodeInfo()));
             responseObserver.onCompleted();

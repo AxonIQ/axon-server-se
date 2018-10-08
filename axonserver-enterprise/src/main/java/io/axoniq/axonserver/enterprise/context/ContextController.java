@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -29,11 +30,15 @@ import javax.persistence.EntityManager;
 @Controller
 public class ContextController {
     private final EntityManager entityManager;
+    private final ClusterController clusterController;
     private final ApplicationEventPublisher eventPublisher;
 
     public ContextController(
-            EntityManager entityManager, ApplicationEventPublisher eventPublisher) {
+            EntityManager entityManager,
+            ClusterController clusterController,
+            ApplicationEventPublisher eventPublisher) {
         this.entityManager = entityManager;
+        this.clusterController = clusterController;
         this.eventPublisher = eventPublisher;
     }
 
@@ -169,5 +174,38 @@ public class ContextController {
 
     public Context getContext(String contextName){
         return entityManager.find(Context.class, contextName);
+    }
+
+    public void canDeleteContext(String name) {
+        Context context = getContext(name);
+        if( context == null) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, name + " not found");
+        }
+        for (ContextClusterNode node : context.getAllNodes()) {
+            if( ! clusterController.isActive(node.getClusterNode().getName())) {
+                throw new MessagingPlatformException(ErrorCode.AXONSERVER_NODE_NOT_CONNECTED, node.getClusterNode().getName() + " not connected, cannot update context " + name);
+            }
+        }
+    }
+
+    public void canUpdateContext(String name, String node) {
+        Context context = getContext(name);
+        if( context == null) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, name + " not found");
+        }
+
+        if( !clusterController.isActive(node) ) {
+            throw new MessagingPlatformException(ErrorCode.AXONSERVER_NODE_NOT_CONNECTED, node + " not connected, cannot update context " + name);
+        }
+    }
+
+    public void canAddContext(List<NodeRoles> nodes) {
+        for (NodeRoles node : nodes) {
+            if( ! clusterController.isActive(node.getName())) {
+                throw new MessagingPlatformException(ErrorCode.AXONSERVER_NODE_NOT_CONNECTED, node.getName() + " not connected, cannot create context");
+            }
+
+        }
+
     }
 }
