@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory;
  */
 public class GrpcInternalCommandDispatcherListener extends GrpcFlowControlledDispatcherListener<ConnectorResponse, WrappedCommand> {
     private static final Logger logger = LoggerFactory.getLogger(GrpcInternalCommandDispatcherListener.class);
-    public GrpcInternalCommandDispatcherListener(FlowControlQueues<WrappedCommand> commandQueue, String messagingServerName, StreamObserver<ConnectorResponse> commandProviderInboundStreamObserver) {
-        super(commandQueue, messagingServerName, commandProviderInboundStreamObserver);
+    public GrpcInternalCommandDispatcherListener(FlowControlQueues<WrappedCommand> commandQueue, String messagingServerName, StreamObserver<ConnectorResponse> commandProviderInboundStreamObserver, int threads) {
+        super(commandQueue, messagingServerName, commandProviderInboundStreamObserver, threads);
     }
 
     @Override

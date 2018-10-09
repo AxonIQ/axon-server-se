@@ -37,6 +37,7 @@ public class CommandMetricsWebSocket {
 
     @Scheduled(initialDelayString = "10000", fixedRateString = "1000")
     public void publish() {
+        if( subscriptions.isEmpty()) return;
         commandRegistrationCache.getAll().forEach(
                 (commandHandler, registrations) -> getMetrics(commandHandler, registrations).forEach(
                         commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric)

@@ -20,8 +20,8 @@ public class GrpcInternalQueryDispatcherListener extends GrpcFlowControlledDispa
     private static final Logger logger = LoggerFactory.getLogger(GrpcInternalQueryDispatcherListener.class);
     private final QueryDispatcher queryDispatcher;
 
-    public GrpcInternalQueryDispatcherListener(QueryDispatcher queryDispatcher, String messagingServerName, StreamObserver<ConnectorResponse> commandProviderInboundStreamObserver) {
-        super(queryDispatcher.getQueryQueue(), messagingServerName, commandProviderInboundStreamObserver);
+    public GrpcInternalQueryDispatcherListener(QueryDispatcher queryDispatcher, String messagingServerName, StreamObserver<ConnectorResponse> commandProviderInboundStreamObserver, int threads) {
+        super(queryDispatcher.getQueryQueue(), messagingServerName, commandProviderInboundStreamObserver, threads);
         this.queryDispatcher = queryDispatcher;
     }
 

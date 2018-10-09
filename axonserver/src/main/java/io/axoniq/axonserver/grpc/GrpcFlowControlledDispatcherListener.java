@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 
 /**
  * Reads messages for a specific client from a queue and sends them to the client using gRPC.
@@ -22,12 +23,13 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     private final AtomicLong permitsLeft = new AtomicLong(0);
     private final FlowControlQueues<T> queues;
     private final String queueName;
-    private Future<?> future;
+    private Future<?>[] futures;
 
-    public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, String queueName, StreamObserver<I> inboundStream) {
+    public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, String queueName, StreamObserver<I> inboundStream, int threads) {
         this.queues = queues;
         this.queueName = queueName;
         this.inboundStream = inboundStream;
+        futures = new Future[threads];
     }
 
     private void process() {
@@ -59,14 +61,16 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     public void addPermits(long count) {
         long old = permitsLeft.getAndAdd(count);
         getLogger().debug("Adding {} permits, #permits was: {}", count, old);
-        if (old <= 0)
-            future = executorService.submit(this::process);
+        if (old <= 0) {
+            futures = new Future[4];
+            IntStream.range(0, futures.length).forEach(i -> futures[i] = executorService.submit(this::process));
+        }
     }
 
     public void cancel() {
         permitsLeft.set(0);
         getLogger().debug("cancel listener for {} ", queueName);
-        future.cancel(true);
+        IntStream.range(0, futures.length).forEach(i -> futures[i].cancel(true));
     }
 
     protected abstract Logger getLogger();

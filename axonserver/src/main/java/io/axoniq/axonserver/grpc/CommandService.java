@@ -12,6 +12,7 @@ import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,8 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
 
+    @Value("${axoniq.axonserver.command-threads:0}")
+    private final int processingThreads = 1;
 
     public CommandService(CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
@@ -75,7 +78,7 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
                             listener = new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
                                                                          commandFromSubscriber.getFlowControl()
                                                                                               .getClientName(),
-                                                                         wrappedResponseObserver);
+                                                                         wrappedResponseObserver, processingThreads);
                         }
                         listener.addPermits(commandFromSubscriber.getFlowControl().getPermits());
                         break;

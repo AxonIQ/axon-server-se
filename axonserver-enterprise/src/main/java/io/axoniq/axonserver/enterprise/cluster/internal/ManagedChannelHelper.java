@@ -51,6 +51,7 @@ public class ManagedChannelHelper {
             } else {
                 builder.usePlaintext();
             }
+            builder.directExecutor();
             channel = builder.build();
         } catch(Exception ex) {
             logger.debug("Error while building channel - {}", ex.getMessage());

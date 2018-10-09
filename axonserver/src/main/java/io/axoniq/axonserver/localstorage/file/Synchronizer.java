@@ -109,7 +109,7 @@ public class Synchronizer {
         current = writePosition;
         log.debug("Initializing at {}", writePosition);
         if( syncJob == null) {
-            syncJob = fsync.scheduleWithFixedDelay(this::syncAndCloseFile, 1, 1, TimeUnit.SECONDS);
+            syncJob = fsync.scheduleWithFixedDelay(this::syncAndCloseFile, storageProperties.getSyncInterval(), storageProperties.getSyncInterval(), TimeUnit.MILLISECONDS);
             log.debug("Scheduled syncJob");
         }
         if( forceJob == null) {

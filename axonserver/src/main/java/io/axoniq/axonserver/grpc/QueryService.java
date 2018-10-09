@@ -16,6 +16,7 @@ import io.axoniq.axonserver.message.query.QueryResponseConsumer;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
+
+    @Value("${axoniq.axonserver.query-threads:1}")
+    private final int processingThreads = 1;
 
 
     public QueryService(QueryDispatcher queryDispatcher, ContextProvider contextProvider, ApplicationEventPublisher eventPublisher) {
@@ -83,7 +87,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                             listener = new GrpcQueryDispatcherListener(queryDispatcher,
                                                                        queryProviderOutbound.getFlowControl()
                                                                                             .getClientName(),
-                                                                       wrappedQueryProviderInboundObserver);
+                                                                       wrappedQueryProviderInboundObserver, processingThreads);
                         }
                         listener.addPermits(queryProviderOutbound.getFlowControl().getPermits());
                         break;

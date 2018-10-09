@@ -115,6 +115,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private int connectionCheckRetries = 5;
     @Value("${axoniq.axonserver.cluster.connectionCheckRetryWait:1000}")
     private int connectionCheckRetryWait = 1000;
+    @Value("${axoniq.axonserver.cluster.query-threads:1}")
+    private final int queryProcessingThreads = 1;
+    @Value("${axoniq.axonserver.cluster.command-threads:1}")
+    private final int commandProcessingThreads = 1;
+
 
     public MessagingClusterService(
             CommandDispatcher commandDispatcher,
@@ -531,7 +536,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                      connectorCommand
                                                                                              .getFlowControl()
                                                                                              .getNodeName(),
-                                                                                     responseObserver);
+                                                                                     responseObserver, commandProcessingThreads);
                 }
                 commandQueueListener.addPermits(connectorCommand.getFlowControl().getPermits());
             }
@@ -541,7 +546,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                  connectorCommand
                                                                                          .getFlowControl()
                                                                                          .getNodeName(),
-                                                                                 responseObserver);
+                                                                                 responseObserver, queryProcessingThreads);
                 }
                 queryQueueListener.addPermits(connectorCommand.getFlowControl().getPermits());
             }

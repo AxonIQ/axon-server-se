@@ -26,6 +26,7 @@ public class StorageProperties {
     private int secondaryCleanupDelay = 15;
     private int maxIndexesInMemory = 50;
     private int maxBloomFiltersInMemory = 100;
+    private long syncInterval = 1000;
 
     public StorageProperties() {
     }
@@ -162,5 +163,13 @@ public class StorageProperties {
 
     public void setMaxBloomFiltersInMemory(int maxBloomFiltersInMemory) {
         this.maxBloomFiltersInMemory = maxBloomFiltersInMemory;
+    }
+
+    public long getSyncInterval() {
+        return syncInterval;
+    }
+
+    public void setSyncInterval(long syncInterval) {
+        this.syncInterval = syncInterval;
     }
 }
