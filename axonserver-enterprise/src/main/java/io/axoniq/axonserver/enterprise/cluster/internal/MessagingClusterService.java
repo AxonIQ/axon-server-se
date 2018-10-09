@@ -10,6 +10,8 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.UserSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.RequestToBeCoordinatorReceived;
@@ -33,6 +35,7 @@ import io.axoniq.axonserver.grpc.internal.Applications;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
+import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase;
@@ -44,6 +47,7 @@ import io.axoniq.axonserver.grpc.internal.ModelVersion;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.Users;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
@@ -421,6 +425,18 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         break;
                     case CLIENT_STATUS:
                         updateClientStatus(connectorCommand.getClientStatus());
+                        break;
+                    case QUERY_HANDLER_STATUS:
+                        QueryHandlerStatus queryHandlerStatus = connectorCommand.getQueryHandlerStatus();
+                        if (!queryHandlerStatus.getConnected()){
+                            eventPublisher.publishEvent(new QueryHandlerDisconnected(queryHandlerStatus.getContext(), queryHandlerStatus.getClientName(), true));
+                        }
+                        break;
+                    case COMMAND_HANDLER_STATUS:
+                        CommandHandlerStatus commandHandlerStatus = connectorCommand.getCommandHandlerStatus();
+                        if (!commandHandlerStatus.getConnected()){
+                            eventPublisher.publishEvent(new CommandHandlerDisconnected(commandHandlerStatus.getContext(), commandHandlerStatus.getClientName(), true));
+                        }
                         break;
                     case CLIENT_EVENT_PROCESSOR_STATUS:
                         eventPublisher.publishEvent(

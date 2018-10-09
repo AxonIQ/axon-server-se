@@ -98,4 +98,64 @@ public class TopologyEvents {
         }
 
     }
+
+    @KeepNames
+    public static class CommandHandlerDisconnected extends TopologyBaseEvent {
+        private final String context;
+        private final String client;
+
+        public CommandHandlerDisconnected(String context, String client, boolean proxied) {
+            super(proxied);
+            this.context = context;
+            this.client = client;
+        }
+
+        public CommandHandlerDisconnected(String context, String client
+        ) {
+            this(context, client, false);
+        }
+
+        public String getClient() {
+            return client;
+        }
+
+        public String getContext() {
+            return context;
+        }
+
+        public boolean isProxied() {
+            return isForwarded();
+        }
+
+    }
+
+    @KeepNames
+    public static class QueryHandlerDisconnected extends TopologyBaseEvent {
+        private final String context;
+        private final String client;
+
+        public QueryHandlerDisconnected(String context, String client, boolean proxied) {
+            super(proxied);
+            this.context = context;
+            this.client = client;
+        }
+
+        public QueryHandlerDisconnected(String context, String client
+        ) {
+            this(context, client, false);
+        }
+
+        public String getClient() {
+            return client;
+        }
+
+        public String getContext() {
+            return context;
+        }
+
+        public boolean isProxied() {
+            return isForwarded();
+        }
+
+    }
 }

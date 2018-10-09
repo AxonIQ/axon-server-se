@@ -2,6 +2,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
+import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
@@ -100,6 +101,7 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
             }
 
             private void cleanup() {
+                eventPublisher.publishEvent(new CommandHandlerDisconnected(context, client));
                 if (listener != null) {
                     listener.cancel();
                 }

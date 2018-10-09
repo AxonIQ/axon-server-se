@@ -3,6 +3,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
+import io.axoniq.axonserver.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -119,6 +120,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             }
 
             private void cleanup() {
+                eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client));
                 if (listener != null) {
                     listener.cancel();
                 }
