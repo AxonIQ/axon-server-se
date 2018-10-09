@@ -71,13 +71,13 @@ public class EventStreamReaderTest {
         EventStreamController controller = testSubject.createController(eventWithToken -> counter.incrementAndGet(),
                                                                         Throwable::printStackTrace);
 
-        controller.update(95000, 10000);
+        controller.update(95000, 100000);
         ExecutorService executor = Executors.newFixedThreadPool(8);
         Future<?> task = executor.submit(() -> {
             testStorageContainer.createDummyEvents(5000, 1, "live-");
         });
 
-        AssertUtils.assertWithin(5000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(10000, counter.get()));
+        AssertUtils.assertWithin(2000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(10000, counter.get()));
         if( ! task.isDone()) task.cancel(true);
     }
 
