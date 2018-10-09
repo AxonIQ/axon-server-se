@@ -25,7 +25,7 @@ import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.runners.*;
 
-import java.util.Collections;
+import java.util.stream.Stream;
 
 import static io.axoniq.axonserver.grpc.internal.ConnectorResponse.ResponseCase.CONNECT_RESPONSE;
 import static org.junit.Assert.*;
@@ -67,7 +67,7 @@ public class MessagingClusterServiceTest {
                 commandDispatcher, queryDispatcher, clusterController, userController, applicationController,
                 applicationModelController,
                 contextController,eventStoreManager, eventPublisher);
-        when(clusterController.getMyContexts()).thenReturn(Collections.emptySet());
+        when(clusterController.nodes()).thenReturn(Stream.empty());
     }
 
     @Test
