@@ -4,7 +4,6 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
@@ -58,18 +57,7 @@ public class PrimaryEventStoreTest {
                                    .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
             });
                 PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
-                testSubject.store(preparedTransaction, new StorageCallback() {
-                    @Override
-                    public boolean onCompleted(long firstToken) {
-                        latch.countDown();
-                        return true;
-                    }
-
-                    @Override
-                    public void onError(Throwable cause) {
-
-                    }
-                });
+                testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 
         latch.await(5, TimeUnit.SECONDS);
@@ -92,18 +80,7 @@ public class PrimaryEventStoreTest {
                                    .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
             });
             PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
-            testSubject.store(preparedTransaction, new StorageCallback() {
-                @Override
-                public boolean onCompleted(long firstToken) {
-                    latch.countDown();
-                    return true;
-                }
-
-                @Override
-                public void onError(Throwable cause) {
-
-                }
-            });
+            testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 
         latch.await(5, TimeUnit.SECONDS);

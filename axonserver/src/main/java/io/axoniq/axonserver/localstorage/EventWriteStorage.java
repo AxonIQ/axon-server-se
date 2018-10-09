@@ -35,10 +35,8 @@ public class EventWriteStorage {
         try {
             validate(eventList);
 
-            storageTransactionManager.store(eventList, new StorageCallback() {
-
-                @Override
-                public boolean onCompleted(long firstToken) {
+            storageTransactionManager.store(eventList).whenComplete((firstToken, cause) -> {
+                if( cause == null) {
                     completableFuture.complete(null);
                     lastCommitted.set(firstToken + eventList.size() - 1);
 
@@ -53,11 +51,7 @@ public class EventWriteStorage {
                                               .forEach(consumer -> safeForwardEvent(consumer, event));
                                  });
                     }
-                    return true;
-                }
-
-                @Override
-                public void onError(Throwable cause) {
+                } else {
                     completableFuture.completeExceptionally(cause);
                 }
             });

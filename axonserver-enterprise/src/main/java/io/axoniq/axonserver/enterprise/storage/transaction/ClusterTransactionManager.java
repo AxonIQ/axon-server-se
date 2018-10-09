@@ -5,7 +5,6 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
@@ -13,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -37,35 +37,32 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     }
 
     @Override
-    public void store(List<Event> eventList, StorageCallback storageCallback) {
+    public CompletableFuture<Long> store(List<Event> eventList) {
+        CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
         activeTransactions.put( preparedTransaction.getToken(),
-                                new TransactionInformation( storageCallback, replicationManager.getQuorum(type.getContext())));
+                                new TransactionInformation( completableFuture, replicationManager.getQuorum(type.getContext())));
         try {
             replicationManager.publish(type, eventList, preparedTransaction.getToken());
-            datafileManagerChain.store(preparedTransaction, new StorageCallback() {
-                @Override
-                public boolean onCompleted(long firstToken) {
+            datafileManagerChain.store(preparedTransaction).whenComplete((firstToken, cause) -> {
+                if( cause == null) {
                     replicationCompleted(firstToken);
-                    return true;
-                }
-
-                @Override
-                public void onError(Throwable cause) {
+                } else {
                     // What if local storage fails
                     logger.error("Failed to store event", cause);
                 }
-            });
+                                                                         });
         } catch( Exception ex) {
-            storageCallback.onError(ex);
+            completableFuture.completeExceptionally(ex);
             activeTransactions.remove(preparedTransaction.getToken());
         }
+        return completableFuture;
     }
 
     private void replicationCompleted(long token) {
         TransactionInformation transactionInformation = activeTransactions.get(token);
         if (transactionInformation != null && transactionInformation.completed()) {
-            transactionInformation.storageCallback.onCompleted(token);
+            transactionInformation.storageCallback.complete(token);
             activeTransactions.remove(token);
         }
     }
@@ -92,17 +89,17 @@ public class ClusterTransactionManager implements StorageTransactionManager {
 
     @Override
     public void cancelPendingTransactions() {
-        activeTransactions.forEach((key, information) -> information.storageCallback.onError(new MessagingPlatformException(
+        activeTransactions.forEach((key, information) -> information.storageCallback.completeExceptionally(new MessagingPlatformException(
                 ErrorCode.NO_MASTER_AVAILABLE, "Cancelled as master stepped down during transaction")));
         activeTransactions.clear();
     }
 
     private class TransactionInformation {
 
-        private final StorageCallback storageCallback;
+        private final CompletableFuture<Long> storageCallback;
         private final AtomicInteger quorum;
 
-        public TransactionInformation(StorageCallback storageCallback, int quorum) {
+        public TransactionInformation(CompletableFuture<Long> storageCallback, int quorum) {
             this.storageCallback = storageCallback;
             this.quorum = new AtomicInteger(quorum);
         }

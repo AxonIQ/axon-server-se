@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -140,7 +141,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void store(PreparedTransaction basePreparedTransaction, StorageCallback storageCallback) {
+    public CompletableFuture<Long> store(PreparedTransaction basePreparedTransaction) {
+        CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
             FilePreparedTransaction preparedTransaction = (FilePreparedTransaction)basePreparedTransaction;
             List<ProcessedEvent> eventList = preparedTransaction.getEventList();
@@ -152,7 +154,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 @Override
                 public boolean onCompleted(long firstToken) {
                     if( execute.getAndSet(false)) {
-                        storageCallback.onCompleted(firstToken);
+                        completableFuture.complete(firstToken);
                         lastToken.set(firstToken + eventList.size() -1);
                         return true;
                     }
@@ -161,14 +163,16 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 @Override
                 public void onError(Throwable cause) {
-                    storageCallback.onError(cause);
+                    completableFuture.completeExceptionally(cause);
                 }
             });
             write(writePosition, eventSize, eventList);
             synchronizer.notifyWritePositions();
         } catch (RuntimeException cause) {
-            storageCallback.onError(cause);
+            completableFuture.completeExceptionally(cause);
         }
+
+        return completableFuture;
     }
 
     @Override

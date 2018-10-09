@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.StorageCallback;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -159,7 +159,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         private final StreamObserver<SynchronizationReplicaInbound> replicaInboundStreamObserver;
         private final AtomicLong permits = new AtomicLong();
 
-        public Replica(String nodeName, String context,
+        private Replica(String nodeName, String context,
                        StreamObserver<SynchronizationReplicaInbound> replicaInboundStreamObserver) {
             this.nodeName = nodeName;
             this.context = context;
@@ -190,14 +190,17 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             LocalEventStore localEventStore = applicationContext.getBean(LocalEventStore.class);
             streamingEvents.set(true);
             streamingSnapshots.set(true);
-            localEventStore.streamEventTransactions(context,
-                                                    eventToken,
-                                                    this::publishEventFromStream,
-                                                    new StreamCallback(streamingEvents));
-            localEventStore.streamSnapshotTransactions(context,
-                                                       snapshotToken,
-                                                       this::publishSnapshotFromStream,
-                                                       new StreamCallback(streamingSnapshots));
+            localEventStore.streamEventTransactions(context, eventToken, this::publishEventFromStream)
+                           .exceptionally(this::streamingFailed)
+                           .thenAccept(v -> streamingEvents.set(false));
+            localEventStore.streamSnapshotTransactions(context, snapshotToken, this::publishSnapshotFromStream)
+                           .exceptionally(this::streamingFailed)
+                           .thenAccept(v -> streamingSnapshots.set(false));
+        }
+
+        private Void streamingFailed(Throwable cause) {
+            replicaInboundStreamObserver.onError(cause);
+            return null;
         }
 
         private boolean publishEventFromStream(TransactionWithToken transactionWithToken) {
@@ -252,30 +255,18 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         }
 
         public void sendMessage(SynchronizationReplicaInbound synchronizationReplicaInbound) {
-            replicaInboundStreamObserver.onNext(synchronizationReplicaInbound);
+            try {
+                replicaInboundStreamObserver.onNext(synchronizationReplicaInbound);
+            } catch (StatusRuntimeException sre) {
+                logger.warn("{}: Send message to {} failed", context, nodeName, sre);
+                cancel(this);
+            }
         }
 
         public void disconnect() {
             replicaInboundStreamObserver.onCompleted();
         }
 
-        private class StreamCallback implements StorageCallback {
-            private final AtomicBoolean statusField;
-            public StreamCallback(AtomicBoolean statusField) {
-                this.statusField = statusField;
-            }
-
-            @Override
-            public boolean onCompleted(long firstToken) {
-                statusField.set(false);
-                return true;
-            }
-
-            @Override
-            public void onError(Throwable cause) {
-                replicaInboundStreamObserver.onError(cause);
-            }
-        }
     }
 
 
@@ -353,7 +344,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     private void cancel(Replica replica) {
         Map<String, Replica> connection = connectionsPerContext.get(replica.context);
         if( connection != null) {
-            connection.remove(replica);
+            connection.remove(replica.nodeName);
             checkQuorum(replica.context);
         }
     }

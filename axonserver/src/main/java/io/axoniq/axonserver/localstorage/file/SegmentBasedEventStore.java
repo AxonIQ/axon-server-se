@@ -8,7 +8,6 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.StorageCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
@@ -289,34 +288,27 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamEvents(long token, StorageCallback storageCallback, Predicate<EventWithToken> onEvent)  {
+    public void streamEvents(long token, Predicate<EventWithToken> onEvent) {
         long lastSegment = -1;
         long segment = getSegmentFor(token);
         EventInformation eventWithToken = null;
-        try {
-            while (segment > lastSegment) {
-                EventIterator eventIterator = getEvents(segment, token);
-                while (eventIterator.hasNext()) {
-                    eventWithToken = eventIterator.next();
-                    if (!onEvent.test(eventWithToken.asEventWithToken())) {
-                        eventIterator.close();
-                        storageCallback.onCompleted(eventWithToken.getToken());
-                        return;
-                    }
+        while (segment > lastSegment) {
+            EventIterator eventIterator = getEvents(segment, token);
+            while (eventIterator.hasNext()) {
+                eventWithToken = eventIterator.next();
+                if (!onEvent.test(eventWithToken.asEventWithToken())) {
+                    eventIterator.close();
+                    return;
                 }
-                lastSegment = segment;
-                segment = getSegmentFor(eventWithToken == null ? token : eventWithToken.getToken() + 1);
-                token = segment;
             }
-            storageCallback.onCompleted(eventWithToken == null ? token: eventWithToken.getToken()+1);
-        } catch (RuntimeException throwable) {
-            storageCallback.onError(throwable);
+            lastSegment = segment;
+            segment = getSegmentFor(eventWithToken == null ? token : eventWithToken.getToken() + 1);
+            token = segment;
         }
-
     }
 
     @Override
-    public void streamTransactions(long token, StorageCallback storageCallback, Predicate<TransactionWithToken> onEvent)  {
+    public void streamTransactions(long token, Predicate<TransactionWithToken> onEvent)  {
         logger.debug("{}: Start streaming {} transactions at {}", context, type.getEventType(), token);
 
         long lastSegment = -1;
@@ -337,7 +329,6 @@ public abstract class SegmentBasedEventStore implements EventStore {
             segment = getSegmentFor(token);
         }
         logger.debug("{}: Done streaming event transactions", context);
-        storageCallback.onCompleted(eventWithToken == null ? token : eventWithToken.getToken() + eventWithToken.getEventsCount());
     }
 
     @Override

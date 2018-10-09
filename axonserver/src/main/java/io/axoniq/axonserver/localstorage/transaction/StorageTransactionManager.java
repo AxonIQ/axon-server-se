@@ -1,16 +1,16 @@
 package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.StorageCallback;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Author: marc
  */
 public interface StorageTransactionManager {
 
-    void store(List<Event> eventList, StorageCallback storageCallback);
+    CompletableFuture<Long> store(List<Event> eventList);
 
     long getLastToken();
 

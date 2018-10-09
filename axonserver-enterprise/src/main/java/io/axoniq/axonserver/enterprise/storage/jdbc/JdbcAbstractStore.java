@@ -9,7 +9,6 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
@@ -22,6 +21,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -62,7 +62,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamTransactions(long firstToken, StorageCallback callbacks, Predicate<TransactionWithToken> transactionConsumer) {
+    public void streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
         throw new UnsupportedOperationException();
     }
 
@@ -108,7 +108,8 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void store(PreparedTransaction preparedTransaction, StorageCallback storageCallback) {
+    public CompletableFuture<Long> store(PreparedTransaction preparedTransaction) {
+        CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
             long firstToken = preparedTransaction.getToken();
@@ -129,10 +130,11 @@ public abstract class JdbcAbstractStore implements EventStore {
                 }
             }
             connection.commit();
-            storageCallback.onCompleted(preparedTransaction.getToken());
+            completableFuture.complete(preparedTransaction.getToken());
         } catch (SQLException e) {
-            storageCallback.onError(e);
+            completableFuture.completeExceptionally(e);
         }
+        return completableFuture;
     }
 
     @Override
@@ -159,7 +161,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamEvents(long token,  StorageCallback callbacks,
+    public void streamEvents(long token,
                              Predicate<EventWithToken> onEvent) {
         try (Connection connection = dataSource.getConnection();
                      PreparedStatement preparedStatement = connection.prepareStatement(
@@ -170,14 +172,12 @@ public abstract class JdbcAbstractStore implements EventStore {
                 while (resultSet.next()) {
                     event = readEventWithToken(resultSet);
                     if (!onEvent.test(event)) {
-                        callbacks.onCompleted(event.getToken());
                         return;
                     }
                 }
             }
-            callbacks.onCompleted(event != null? event.getToken()+1 : token);
         } catch (SQLException e) {
-            callbacks.onError(e);
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }
     }
 

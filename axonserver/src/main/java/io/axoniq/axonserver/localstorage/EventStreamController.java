@@ -21,7 +21,7 @@ public class EventStreamController {
     private static final Executor threadPool = Executors.newCachedThreadPool(new CustomizableThreadFactory("event-stream-"));
     private static final Logger logger = LoggerFactory.getLogger(EventStreamController.class);
     private final Consumer<EventWithToken> eventWithTokenConsumer;
-    private final StorageCallback storageCallback;
+    private final Consumer<Throwable> errorCallback;
     private final EventStore datafileManagerChain;
     private final EventWriteStorage eventWriteStorage;
     private final AtomicLong remainingPermits = new AtomicLong();
@@ -34,20 +34,7 @@ public class EventStreamController {
             Consumer<EventWithToken> eventWithTokenConsumer,
             Consumer<Throwable> errorCallback, EventStore datafileManagerChain, EventWriteStorage eventWriteStorage) {
         this.eventWithTokenConsumer = eventWithTokenConsumer;
-        this.storageCallback = new StorageCallback() {
-            @Override
-            public boolean onCompleted(long firstToken) {
-                processingBacklog.set(false);
-                logger.debug("Done processing backlog at: {}", currentTrackingToken.get());
-
-                return false;
-            }
-
-            @Override
-            public void onError(Throwable cause) {
-                errorCallback.accept(cause);
-            }
-        };
+        this.errorCallback = errorCallback;
         this.datafileManagerChain = datafileManagerChain;
         this.eventWriteStorage = eventWriteStorage;
     }
@@ -60,6 +47,7 @@ public class EventStreamController {
         }
     }
 
+    // always run async so that calling thread is not blocked by this method
     private void startTracker() {
         try {
             if( processingBacklog.compareAndSet(false, true) ) {
@@ -67,14 +55,17 @@ public class EventStreamController {
                 cancelListener();
                 running.set(true);
                 this.eventListener = eventWriteStorage.registerEventListener(this::sendFromWriter);
-                datafileManagerChain.streamEvents(currentTrackingToken.get(), storageCallback,
+                datafileManagerChain.streamEvents(currentTrackingToken.get(),
                                                   this::sendFromStream);
 
+                processingBacklog.set(false);
+                logger.debug("Done processing backlog at: {}", currentTrackingToken.get());
             }
         } catch(Exception ex) {
+            processingBacklog.set(false);
             logger.warn("Failed to stream", ex);
             cancelListener();
-            storageCallback.onError(ex);
+            errorCallback.accept(ex);
         }
     }
 
@@ -123,6 +114,7 @@ public class EventStreamController {
     private void cancelListener() {
         if( eventListener != null) {
             eventListener.cancel();
+            running.set(false);
             eventListener = null;
         }
     }
@@ -134,6 +126,6 @@ public class EventStreamController {
     }
 
     public void cancel() {
-        storageCallback.onError(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by cleanup"));
+        errorCallback.accept(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by cleanup"));
     }
 }

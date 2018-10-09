@@ -5,6 +5,7 @@ import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Author: marc
@@ -18,8 +19,8 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
     }
 
     @Override
-    public void store(List<Event> eventList, StorageCallback storageCallback) {
-        datafileManagerChain.store(datafileManagerChain.prepareTransaction(eventList), storageCallback);
+    public CompletableFuture<Long> store(List<Event> eventList) {
+        return datafileManagerChain.store(datafileManagerChain.prepareTransaction(eventList));
     }
 
     @Override

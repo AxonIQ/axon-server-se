@@ -6,7 +6,6 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -22,24 +21,9 @@ public class SyncStorage {
     }
 
     public void sync(List<Event> eventList) {
-        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
-        datafileManagerChain.store(preparedTransaction, new StorageCallback() {
-
-            @Override
-            public boolean onCompleted(long firstToken) {
-                completableFuture.complete(null);
-                return true;
-            }
-
-            @Override
-            public void onError(Throwable cause) {
-                completableFuture.completeExceptionally(cause);
-            }
-        });
-
         try {
-            completableFuture.get();
+            datafileManagerChain.store(preparedTransaction).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e);

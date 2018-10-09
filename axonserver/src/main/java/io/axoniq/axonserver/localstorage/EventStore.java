@@ -8,6 +8,7 @@ import org.springframework.boot.actuate.health.Health;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -19,8 +20,10 @@ public interface EventStore {
 
     void init(boolean validate);
 
-    default void store(PreparedTransaction eventList, StorageCallback storageCallback) {
-        storageCallback.onError(new UnsupportedOperationException("Cannot create writable datafile"));
+    default CompletableFuture<Long> store(PreparedTransaction eventList) {
+        CompletableFuture<Long> completableFuture = new CompletableFuture<>();
+        completableFuture.completeExceptionally(new UnsupportedOperationException("Cannot create writable datafile"));
+        return completableFuture;
     }
 
     default long getLastToken() {
@@ -32,7 +35,7 @@ public interface EventStore {
     default void cleanup() {
     }
 
-    void streamEvents(long token, StorageCallback callbacks, Predicate<EventWithToken> onEvent);
+    void streamEvents(long token, Predicate<EventWithToken> onEvent);
 
     Optional<Event> getLastEvent(String aggregateId, long minSequenceNumber);
 
@@ -49,7 +52,7 @@ public interface EventStore {
 
     EventTypeContext getType();
 
-    void streamTransactions(long firstToken, StorageCallback callbacks,
+    void streamTransactions(long firstToken,
                             Predicate<TransactionWithToken> transactionConsumer);
 
     void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer);

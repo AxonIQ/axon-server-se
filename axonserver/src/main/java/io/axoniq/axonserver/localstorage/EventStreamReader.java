@@ -4,8 +4,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import org.springframework.boot.actuate.health.Health;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -15,8 +14,6 @@ import java.util.function.Predicate;
 public class EventStreamReader {
     private final EventStore datafileManagerChain;
     private final EventWriteStorage eventWriteStorage;
-    private static final Executor threadPool = Executors.newCachedThreadPool();
-
 
     public EventStreamReader(EventStore datafileManagerChain,
                              EventWriteStorage eventWriteStorage) {
@@ -28,9 +25,8 @@ public class EventStreamReader {
         return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage);
     }
 
-    public void streamTransactions( long firstToken, StorageCallback storageCallback, Predicate<TransactionWithToken> transactionConsumer) {
-        threadPool.execute(() -> datafileManagerChain.streamTransactions(firstToken, storageCallback, transactionConsumer));
-
+    public CompletableFuture<Void>  streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
+        return CompletableFuture.runAsync(() -> datafileManagerChain.streamTransactions(firstToken, transactionConsumer));
     }
 
     public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {

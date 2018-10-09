@@ -22,16 +22,12 @@ public class SnapshotWriteStorage {
 
     public CompletableFuture<Confirmation> store(Event eventMessage) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        storageTransactionManager.store(Collections.singletonList(eventMessage), new StorageCallback() {
-            @Override
-            public boolean onCompleted(long firstToken) {
-                completableFuture.complete(Confirmation.newBuilder().setSuccess(true).build());
+        storageTransactionManager.store(Collections.singletonList(eventMessage))
+                                 .whenComplete((firstToken, cause) ->  {
+            if( cause == null ) {
                 lastCommitted.set(firstToken);
-                return true;
-            }
-
-            @Override
-            public void onError(Throwable cause) {
+                completableFuture.complete(Confirmation.newBuilder().setSuccess(true).build());
+            } else {
                 completableFuture.completeExceptionally(cause);
             }
         });

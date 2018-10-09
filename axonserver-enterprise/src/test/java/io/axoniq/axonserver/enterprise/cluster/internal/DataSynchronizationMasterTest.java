@@ -10,7 +10,6 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -22,6 +21,7 @@ import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
 import static org.junit.Assert.*;
@@ -59,6 +59,8 @@ public class DataSynchronizationMasterTest {
         };
         testSubject = new DataSynchronizationMaster(contextController, eventPublisher);
         when(applicationContext.getBean(eq(LocalEventStore.class))).thenReturn(localEventStore);
+        when( localEventStore.streamEventTransactions(any(), anyLong(), any())).thenReturn(new CompletableFuture<>());
+        when( localEventStore.streamSnapshotTransactions(any(), anyLong(), any())).thenReturn(new CompletableFuture<>());
 
         testSubject.setApplicationContext(applicationContext);
     }
@@ -122,16 +124,14 @@ public class DataSynchronizationMasterTest {
         doAnswer(invocationOnMock -> {
             long token = (long)invocationOnMock.getArguments()[1];
             Predicate<TransactionWithToken> consumer = (Predicate<TransactionWithToken>) invocationOnMock.getArguments()[2];
-            StorageCallback callback = (StorageCallback)invocationOnMock.getArguments()[3];
             TransactionWithToken transactionWithToken;
             do{
                 transactionWithToken = TransactionWithToken.newBuilder().setToken(token++)
                                                            .addEvents(Event.newBuilder().build()).build();
 
             } while( consumer.test(transactionWithToken));
-            callback.onCompleted(token-1);
-            return null;
-        }).when(localEventStore).streamEventTransactions(any(), anyLong(), any(), any());
+            return new CompletableFuture<>();
+        }).when(localEventStore).streamEventTransactions(any(), anyLong(), any());
 
         setupConnection(new CountingStreamObserver<>(), "demo");
     }

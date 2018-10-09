@@ -5,6 +5,7 @@ import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.PlatformService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,9 @@ public class AutoRebalancing  {
     private final ClusterController clusterController;
     private final FeatureChecker featureChecker;
 
+    @Value("${axoniq.axonserver.cluster.auto-balancing:true}")
+    private final boolean enabled = true;
+
     public AutoRebalancing(PlatformService platformService,
                            ClusterController clusterController,
                            FeatureChecker featureChecker) {
@@ -32,7 +36,7 @@ public class AutoRebalancing  {
 
     @Scheduled(fixedRateString = "${axoniq.axonserver.cluster.balancing-rate:15000}")
     protected void rebalance() {
-        if( !Feature.CONNECTION_BALANCING.enabled(featureChecker)) return;
+        if( !Feature.CONNECTION_BALANCING.enabled(featureChecker) || !enabled) return;
         Set<PlatformService.ClientComponent> connectedClients = platformService.getConnectedClients();
         logger.debug("Rebalance: {}", connectedClients);
         connectedClients.stream().filter(e -> clusterController.canRebalance(e.getClient(), e.getComponent(), e.getContext())).findFirst()

@@ -243,13 +243,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotWriteStorage.getLastToken();
     }
 
-    public void streamEventTransactions(String context, long firstToken, Predicate<TransactionWithToken> transactionConsumer, StorageCallback onCompleted) {
-        workersMap.get(context).eventStreamReader.streamTransactions( firstToken, onCompleted, transactionConsumer);
+    public CompletableFuture<Void> streamEventTransactions(String context, long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
+        return workersMap.get(context).eventStreamReader.streamTransactions( firstToken, transactionConsumer);
     }
 
-    public void streamSnapshotTransactions(String context, long firstToken,
-                                           Predicate<TransactionWithToken> transactionConsumer, StorageCallback onCompleted) {
-        workersMap.get(context).snapshotStreamReader.streamTransactions(firstToken, onCompleted, transactionConsumer);
+    public CompletableFuture<Void> streamSnapshotTransactions(String context, long firstToken,
+                                                              Predicate<TransactionWithToken> transactionConsumer) {
+        return workersMap.get(context).snapshotStreamReader.streamTransactions(firstToken, transactionConsumer);
     }
 
     public long syncEvents(String context, TransactionWithToken value) {
@@ -354,7 +354,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void cleanup() {
             eventDatafileManagerChain.cleanup();
             snapshotDatafileManagerChain.cleanup();
-            eventStreamControllerSet.forEach(controller -> controller.cancel());
+            eventStreamControllerSet.forEach(EventStreamController::cancel);
             eventStreamControllerSet.clear();
         }
 
