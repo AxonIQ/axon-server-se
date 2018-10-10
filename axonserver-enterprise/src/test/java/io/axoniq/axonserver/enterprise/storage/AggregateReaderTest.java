@@ -29,6 +29,18 @@ public class AggregateReaderTest {
         testStorageContainer.createDummyEvents(1000, 100);
 
         SnapshotWriteStorage snapshotWriteStorage = new SnapshotWriteStorage(testStorageContainer.getTransactionManager(testStorageContainer.getSnapshotManagerChain()));
+        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(5)
+                                        .setAggregateType("Snapshot")
+                                        .setPayload(SerializedObject
+                                                            .newBuilder().build()).build());
+        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(15)
+                                        .setAggregateType("Snapshot")
+                                        .setPayload(SerializedObject
+                                                            .newBuilder().build()).build());
+        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(25)
+                                        .setAggregateType("Snapshot")
+                                        .setPayload(SerializedObject
+                                                            .newBuilder().build()).build());
         snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(75)
                                         .setAggregateType("Snapshot")
                                         .setPayload(SerializedObject
@@ -59,6 +71,22 @@ public class AggregateReaderTest {
         testSubject.readEvents("999", true, 0,
                                event -> sequenceNumber.set(event.getAggregateSequenceNumber()));
         Assert.assertEquals(99, sequenceNumber.intValue());
+    }
+
+    @Test
+    public void readSnapshots() {
+        List<Long> sequenceNumbers = new ArrayList<>();
+        testSubject.readSnapshots("55", 10, 50, 10,
+                               event -> sequenceNumbers.add(event.getAggregateSequenceNumber()));
+        Assert.assertEquals(2, sequenceNumbers.size());
+    }
+
+    @Test
+    public void readAllSnapshots() {
+        List<Long> sequenceNumbers = new ArrayList<>();
+        testSubject.readSnapshots("55", 0, 0, 0,
+                                  event -> sequenceNumbers.add(event.getAggregateSequenceNumber()));
+        Assert.assertEquals(4, sequenceNumbers.size());
     }
 
     @Test

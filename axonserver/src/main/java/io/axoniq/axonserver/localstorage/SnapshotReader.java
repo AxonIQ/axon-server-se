@@ -21,7 +21,7 @@ public class SnapshotReader {
                     .map(s -> Event.newBuilder(s).setSnapshot(true).build());
     }
 
-    public void streamByAggregateId(String aggregateId, long minSequenceNumber, Consumer<Event> eventConsumer) {
-        datafileManagerChain.streamByAggregateId(aggregateId, minSequenceNumber, eventConsumer);
+    public void streamByAggregateId(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<Event> eventConsumer) {
+        datafileManagerChain.streamByAggregateId(aggregateId, minSequenceNumber, maxSequenceNumber, maxResults, eventConsumer);
     }
 }

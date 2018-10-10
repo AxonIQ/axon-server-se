@@ -134,6 +134,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .marshaller(Event.getDefaultInstance());
         workersMap.get(context).aggregateReader.readSnapshots( request.getAggregateId(),
                                                             request.getInitialSequence(),
+                                                            request.getMaxSequence(),
+                                                            request.getMaxResults(),
                                                             event -> responseStreamObserver.onNext(marshaller.stream(event)));
         responseStreamObserver.onCompleted();
     }
