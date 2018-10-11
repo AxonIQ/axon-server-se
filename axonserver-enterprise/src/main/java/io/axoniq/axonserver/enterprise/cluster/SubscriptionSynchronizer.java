@@ -4,6 +4,9 @@ import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
@@ -128,6 +131,32 @@ public class SubscriptionSynchronizer {
                     .clientStatus(event.getContext(), event.getComponentName(),
                                   event.getClient(), false));
             connectedClients.remove(event.getClient());
+        }
+    }
+
+    @EventListener
+    public void on(TopologyEvents.QueryHandlerDisconnected event) {
+        if (!event.isProxied()) {
+            QueryHandlerStatus status = QueryHandlerStatus.newBuilder()
+                                                          .setClientName(event.getClient())
+                                                          .setContext(event.getContext())
+                                                          .setConnected(false)
+                                                          .build();
+            ConnectorCommand command = ConnectorCommand.newBuilder().setQueryHandlerStatus(status).build();
+            clusterController.activeConnections().forEach(remoteConnection -> remoteConnection.publish(command));
+        }
+    }
+
+    @EventListener
+    public void on(TopologyEvents.CommandHandlerDisconnected event) {
+        if (!event.isProxied()) {
+            CommandHandlerStatus status = CommandHandlerStatus.newBuilder()
+                                                              .setClientName(event.getClient())
+                                                              .setContext(event.getContext())
+                                                              .setConnected(false)
+                                                              .build();
+            ConnectorCommand command = ConnectorCommand.newBuilder().setCommandHandlerStatus(status).build();
+            clusterController.activeConnections().forEach(remoteConnection -> remoteConnection.publish(command));
         }
     }
 

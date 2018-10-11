@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
@@ -19,7 +18,7 @@ import org.junit.*;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  * Author: marc
@@ -52,11 +51,6 @@ public class MetricsRestControllerTest {
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryRegistrationCache.add(new QueryDefinition("context", "query"), "result", new QueryHandler(null, "testclient", "testcomponent") {
-            @Override
-            public void dispatch(QueryRequest query) {
-
-            }
-
             @Override
             public void dispatch(SubscriptionQueryRequest query) {
 

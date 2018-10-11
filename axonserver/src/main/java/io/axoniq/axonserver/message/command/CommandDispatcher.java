@@ -90,11 +90,20 @@ public class CommandDispatcher {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        cleanupRegistrations(event.getClient());
-        if( ! event.isProxied()) {
-            getCommandQueues().move(event.getClient(), this::redispatch);
+        handleDisconnection(event.getClient(), event.isProxied());
+    }
+
+    @EventListener
+    public void on(TopologyEvents.CommandHandlerDisconnected event){
+        handleDisconnection(event.getClient(), event.isProxied());
+    }
+
+    private void handleDisconnection(String client, boolean proxied){
+        cleanupRegistrations(client);
+        if(!proxied) {
+            getCommandQueues().move(client, this::redispatch);
         }
-        handlePendingCommands(event.getClient());
+        handlePendingCommands(client);
     }
 
     //TODO: move code

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
@@ -112,6 +113,16 @@ public class CommandServiceTest {
         CountingStreamObserver<CommandResponse> responseObserver = new CountingStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.count);
+    }
+
+    @Test
+    public void commandHandlerDisconnected(){
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        requestStream.onNext(CommandProviderOutbound.newBuilder()
+                                                    .setSubscribe(CommandSubscription.newBuilder().setClientName("name").setComponentName("component").setCommand("command"))
+                                                    .build());
+        requestStream.onError(new RuntimeException("failed"));
+        verify(eventPublisher).publishEvent(isA(TopologyEvents.CommandHandlerDisconnected.class));
     }
 
 }

@@ -65,6 +65,8 @@ message ConnectorCommand {
         GetLBStrategiesRequest request_load_balancing_strategies = 33;
         GetProcessorsLBStrategyRequest request_processor_load_balancing_strategies = 34;
         ClientEventProcessor request_processor_status = 35;
+        CommandHandlerStatus command_handler_status = 36;
+        QueryHandlerStatus query_handler_status = 37;
     }
 }
 
@@ -73,6 +75,18 @@ message ClientStatus {
     string component_name = 2;
     string context = 3;
     bool connected = 4;
+}
+
+message CommandHandlerStatus {
+    string context = 1;
+    string client_name = 2;
+    bool connected = 3;
+}
+
+message QueryHandlerStatus {
+    string context = 1;
+    string client_name = 2;
+    bool connected = 3;
 }
 
 message DBInstanceStatus {
