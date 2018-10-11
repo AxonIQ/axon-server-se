@@ -3,6 +3,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionEvents;
+import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -121,6 +122,17 @@ public class QueryServiceTest {
         CountingStreamObserver<QueryResponse> responseObserver = new CountingStreamObserver<>();
         testSubject.query(QueryRequest.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.count);
+    }
+
+    @Test
+    public void queryHandlerDisconnected(){
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        requestStream.onNext(QueryProviderOutbound.newBuilder()
+                                                  .setSubscribe(QuerySubscription.newBuilder().setClientName("name").setComponentName("component").setQuery("command"))
+                                                  .build());
+        requestStream.onError(new RuntimeException("failed"));
+        verify(eventPublisher).publishEvent(isA(TopologyEvents.QueryHandlerDisconnected.class));
+
     }
 
 }

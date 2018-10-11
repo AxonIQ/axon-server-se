@@ -29,13 +29,6 @@ public class ProxyQueryHandler extends QueryHandler<ConnectorResponse> {
         return messagingServerName;
     }
 
-    @Override
-    public void dispatch(QueryRequest query) {
-        streamObserver.onNext(ConnectorResponse.newBuilder()
-                .setQuery(QueryRequest.newBuilder(query)
-                        .addProcessingInstructions(ProcessingInstructionHelper.targetClient(getClientName()))
-                ).build());
-    }
 
     @Override
     public void dispatch(SubscriptionQueryRequest query) {
@@ -52,11 +45,11 @@ public class ProxyQueryHandler extends QueryHandler<ConnectorResponse> {
     }
 
     @Override
-    public void enqueue(String context, QueryRequest request, FlowControlQueues<WrappedQuery> commandQueue, long timeout) {
+    public void enqueue(String context, QueryRequest request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
         QueryRequest updated = QueryRequest.newBuilder(request)
                 .addProcessingInstructions(ProcessingInstructionHelper.targetClient(getClientName()))
                 .build();
-        commandQueue.put(messagingServerName, new WrappedQuery(context, updated, timeout));
+        queryQueue.put(messagingServerName, new WrappedQuery(context, updated, timeout));
     }
 
 }

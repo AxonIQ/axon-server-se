@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,7 +55,7 @@ public class SubscriptionQueryDispatcher {
     public void on(SubscriptionQueryRequestEvent event) {
         logger.debug("Dispatch subscription query request with subscriptionId = {}", event.subscriptionId());
         SubscriptionQuery query = event.subscription();
-        Set<? extends QueryHandler> handlers = registrationCache.findAll(event.context(), query.getQueryRequest());
+        Collection<? extends QueryHandler> handlers = registrationCache.findAll(event.context(), query.getQueryRequest());
         if (handlers == null || handlers.isEmpty()) {
             event.errorHandler().accept(new IllegalArgumentException(ErrorCode.NO_HANDLER_FOR_QUERY.getCode()));
             return;
@@ -72,7 +73,7 @@ public class SubscriptionQueryDispatcher {
                                                                         .setUnsubscribe(evt.unsubscribe())
                                                                         .setContext(evt.context())
                                                                         .build();
-        Set<QueryHandler> handlers = registrationCache.findAll(evt.context(), evt.unsubscribe().getQueryRequest());
+        Collection<QueryHandler> handlers = registrationCache.findAll(evt.context(), evt.unsubscribe().getQueryRequest());
         handlers.forEach(handler -> handler.dispatch(queryRequest));
     }
 

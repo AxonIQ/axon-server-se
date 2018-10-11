@@ -114,6 +114,11 @@ public class QueryDispatcher {
         registrationCache.remove(event.getClient());
     }
 
+    @EventListener
+    public void on(TopologyEvents.QueryHandlerDisconnected event) {
+        registrationCache.remove(event.getClient());
+    }
+
     public void removeFromCache( String messageId) {
         queryCache.remove(messageId);
     }
