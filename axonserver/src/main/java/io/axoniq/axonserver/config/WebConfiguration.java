@@ -1,6 +1,9 @@
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.features.Feature;
+import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
 import io.axoniq.platform.KeepNames;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -28,6 +32,18 @@ import java.util.Map;
  */
 @Configuration
 public class WebConfiguration implements WebMvcConfigurer {
+
+    private final FeatureChecker featureChecker;
+    private final AxonServerAccessController accessController;
+    private final boolean accessControlEnabled;
+
+    public WebConfiguration(FeatureChecker featureChecker,
+                            MessagingPlatformConfiguration configuration,
+                            AxonServerAccessController accessController) {
+        this.featureChecker = featureChecker;
+        this.accessController = accessController;
+        this.accessControlEnabled = configuration.getAccesscontrol().isEnabled();
+    }
 
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
@@ -63,6 +79,19 @@ public class WebConfiguration implements WebMvcConfigurer {
             }
         };
     }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        if(accessControlEnabled && Feature.APP_AUTHENTICATION.enabled(featureChecker)) {
+            registry.addInterceptor(new RestAuthenticationInterceptor(accessController)).addPathPatterns(
+                    "/v1/commands/run",
+                    "/v1/queries/run",
+                    "/v1/events",
+                    "/v1/snapshots"
+            );
+        }
+    }
+
 
     @ControllerAdvice
     @KeepNames

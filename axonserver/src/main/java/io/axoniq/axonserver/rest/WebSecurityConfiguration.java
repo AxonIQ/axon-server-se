@@ -8,6 +8,7 @@ import io.axoniq.platform.application.jpa.Application;
 import io.axoniq.platform.application.jpa.ApplicationRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -161,7 +162,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     token = request.getParameter(AxonServerAccessController.TOKEN_PARAM);
                 }
 
-                if (token == null && isLocalRequest(request)) {
+                if ( isLocalRequest(request)) {
                     SecurityContextHolder.getContext().setAuthentication(
                             new AuthenticationToken(true,
                                                     "LocalAdmin",
@@ -185,14 +186,31 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                             }
                             return;
                         }
+                    } else if( stopRedirect(request.getHeader(HttpHeaders.USER_AGENT))) {
+                        HttpServletResponse httpServletResponse = (HttpServletResponse)servletResponse;
+                        httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_TOKEN_MISSING.getHttpCode().value());
+                        try (ServletOutputStream outputStream = httpServletResponse.getOutputStream() ) {
+                            outputStream.println("Missing header: " + AxonServerAccessController.TOKEN_PARAM);
+                        }
+                        return;
                     }
                 }
             }
             filterChain.doFilter(servletRequest, servletResponse);
         }
 
+        private boolean stopRedirect(String header) {
+            if( header == null) return false;
+            String lowercaseHeader = header.toLowerCase();
+            return lowercaseHeader.startsWith("apache-httpclient") || lowercaseHeader.startsWith("curl")
+                    || lowercaseHeader.startsWith("wget");
+        }
+
         private boolean isLocalRequest(HttpServletRequest httpServletRequest) {
-            return httpServletRequest.getRequestURI().startsWith("/v1/")
+            return ( httpServletRequest.getRequestURI().startsWith("/v1/cluster") ||
+                    httpServletRequest.getRequestURI().startsWith("/v1/context") ||
+                    httpServletRequest.getRequestURI().startsWith("/v1/users") ||
+                    httpServletRequest.getRequestURI().startsWith("/v1/applications") )
                     && httpServletRequest.getLocalAddr().equals(httpServletRequest.getRemoteAddr());
         }
     }

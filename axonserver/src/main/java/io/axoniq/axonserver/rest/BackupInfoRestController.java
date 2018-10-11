@@ -36,7 +36,7 @@ public class BackupInfoRestController {
                                     LocalEventStore localEventStore) {
         this.dataSource = dataSource;
         this.localEventStore = localEventStore;
-        this.controlDbBackupLocation = messagingPlatformConfiguration.getControlDbBackupLocation();
+        this.controlDbBackupLocation = messagingPlatformConfiguration.getControldbBackupLocation();
     }
 
     @GetMapping("/filenames")
@@ -58,7 +58,7 @@ public class BackupInfoRestController {
         }
         File file = new File(path.getAbsolutePath() + "/controldb" + System.currentTimeMillis() + ".zip");
         try(Connection connection = dataSource.getConnection()) {
-            try(PreparedStatement preparedStatement = connection.prepareStatement("BACKUP TO '" + file.getName() + "'")) {
+            try(PreparedStatement preparedStatement = connection.prepareStatement("BACKUP TO '" + file.getAbsolutePath() + "'")) {
                 preparedStatement.execute();
             }
         }

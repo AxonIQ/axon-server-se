@@ -10,10 +10,13 @@ import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.rest.json.CommandRequestJson;
 import io.axoniq.axonserver.rest.json.CommandResponseJson;
 import io.axoniq.axonserver.topology.Topology;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +30,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
+
+import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
+import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 
 /**
  * Author: marc
@@ -54,10 +60,15 @@ public class CommandRestController {
         return registrationCache.getAll().entrySet().stream().map(JsonClientMapping::from).collect(Collectors.toList());
     }
 
-    @PostMapping("commands")
-    public Future<CommandResponseJson> execute(@RequestBody @Valid CommandRequestJson command) {
+    @PostMapping("commands/run")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
+                    required = false, dataType = "string", paramType = "header")
+    })
+    public Future<CommandResponseJson> execute(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
+                                               @RequestBody @Valid CommandRequestJson command) {
         CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
-        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, command.asCommand(), r -> result.complete(new CommandResponseJson(r)), false);
+        commandDispatcher.dispatch(context, command.asCommand(), r -> result.complete(new CommandResponseJson(r)), false);
         return result;
     }
 
