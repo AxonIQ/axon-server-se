@@ -28,7 +28,7 @@ public class WritePosition  implements Comparable<WritePosition> {
     }
 
     WritePosition reset(WritableEventSource buffer) {
-        return new WritePosition(sequence, SegmentBasedEventStore.VERSION_BYTES + SegmentBasedEventStore.FILE_TX_COUNT_BYTES, buffer, sequence);
+        return new WritePosition(sequence, SegmentBasedEventStore.VERSION_BYTES + SegmentBasedEventStore.FILE_OPTIONS_BYTES, buffer, sequence);
     }
 
     boolean isOverflow(int transactionLength) {

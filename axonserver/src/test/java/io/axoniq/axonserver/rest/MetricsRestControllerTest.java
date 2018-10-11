@@ -31,7 +31,7 @@ public class MetricsRestControllerTest {
     @Before
     public void setUp()  {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
-        commandRegistrationCache.add(Topology.DEFAULT_CONTEXT, "Sample", new CommandHandler(null, "testclient", "testcomponent") {
+        commandRegistrationCache.add(Topology.DEFAULT_CONTEXT, "Sample", new CommandHandler<Object>(null, "testclient", "testcomponent") {
             @Override
             public void dispatch(Command request) {
 
@@ -43,14 +43,14 @@ public class MetricsRestControllerTest {
             }
 
             @Override
-            public int compareTo(@NotNull Object o) {
+            public int compareTo(@NotNull CommandHandler o) {
                 return 0;
             }
         });
         commandMetricsRegistry = new CommandMetricsRegistry(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
-        queryRegistrationCache.add(new QueryDefinition("context", "query"), "result", new QueryHandler(null, "testclient", "testcomponent") {
+        queryRegistrationCache.add(new QueryDefinition("context", "query"), "result", new QueryHandler<Object>(null, "testclient", "testcomponent") {
             @Override
             public void dispatch(SubscriptionQueryRequest query) {
 
