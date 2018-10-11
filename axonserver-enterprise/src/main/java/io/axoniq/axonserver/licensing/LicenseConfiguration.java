@@ -30,10 +30,7 @@ import java.util.stream.Collectors;
  *
  */
 public final class LicenseConfiguration {
-
-    private static final String AXON_HUB = "AxonHub";
     private static final String AXON_SERVER = "AxonServer";
-    private static final String AXON_DB = "AxonDB";
 
     public static void refresh() {
         Properties properties = new LicensePropertyReader().readLicenseProperties();
@@ -49,7 +46,7 @@ public final class LicenseConfiguration {
 
 
     public enum Edition {
-        Enterprise, Free, Standard
+        Enterprise, Free
     }
     private static final Logger log = LoggerFactory.getLogger(LicenseConfiguration.class);
     private static LicenseConfiguration instance;
@@ -67,7 +64,7 @@ public final class LicenseConfiguration {
             } else {
                 instance = new LicenseConfiguration(
                         getLocalDate(properties.getProperty("expiry_date")),
-                        Edition.valueOf(properties.getProperty("edition")),
+                        Edition.Enterprise,
                         properties.getProperty("license_key_id"),
                         Integer.valueOf(properties.getProperty("contexts", "1")),
                         Integer.valueOf(properties.getProperty("clusterNodes", "3")),
@@ -100,7 +97,7 @@ public final class LicenseConfiguration {
     }
 
     private static boolean validProduct(String product) {
-        return product != null && (product.contains(AXON_HUB) || product.contains(AXON_DB) || product.contains(AXON_SERVER));
+        return product != null && product.contains(AXON_SERVER);
     }
 
     private final LocalDate expiryDate;
@@ -140,14 +137,6 @@ public final class LicenseConfiguration {
         return packs.contains(pack);
     }
 
-    public boolean isMessaging() {
-        return product.contains(AXON_HUB) || product.contains(AXON_SERVER);
-    }
-
-    public boolean isStorage() {
-        return product.contains(AXON_DB) || product.contains(AXON_SERVER);
-    }
-
     public Edition getEdition() {
         return edition;
     }
@@ -169,7 +158,7 @@ public final class LicenseConfiguration {
     }
 
     public static boolean isEnterprise() {
-        return Edition.Enterprise.equals(getInstance().edition) || Edition.Standard.equals(getInstance().edition);
+        return Edition.Enterprise.equals(getInstance().edition);
     }
 
     private LicenseConfiguration withExpiryDate(LocalDate newExpiryDate) {

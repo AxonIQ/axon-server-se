@@ -17,7 +17,7 @@ public class StorageProperties {
 
     private long segmentSize = 1024 * 1024 * 256L;
 
-    private String storage;
+    private String storage = "./data";
     private float bloomIndexFpp = 0.03f;
     private long forceInterval = 1000;
     private int validationSegments = 10;
