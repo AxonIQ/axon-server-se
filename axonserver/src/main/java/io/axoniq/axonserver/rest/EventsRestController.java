@@ -63,12 +63,14 @@ public class EventsRestController {
     })
     public SseEmitter findSnapshots(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
                                     @RequestParam(value = "aggregateId", required = true) String aggregateId,
+                                    @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
                                     @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence) {
         SseEmitter sseEmitter = new SseEmitter();
         GetAggregateSnapshotsRequest request = GetAggregateSnapshotsRequest.newBuilder()
-                .setAggregateId(aggregateId)
-                .setInitialSequence(initialSequence)
-                .build();
+                                                                           .setAggregateId(aggregateId)
+                                                                           .setInitialSequence(initialSequence)
+                                                                           .setMaxSequence(maxSequence >= 0? maxSequence : Long.MAX_VALUE)
+                                                                           .build();
         eventStoreClient.listAggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT), request, new StreamObserver<InputStream>() {
             @Override
             public void onNext(InputStream event) {

@@ -30,7 +30,7 @@ public class AggregateReader {
 
     }
     public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<Event> eventConsumer) {
-        snapshotReader.streamByAggregateId(aggregateId, minSequenceNumber, maxSequenceNumber> 0 ? maxSequenceNumber : Long.MAX_VALUE,
+        snapshotReader.streamByAggregateId(aggregateId, minSequenceNumber, maxSequenceNumber,
                                            maxResults > 0 ? maxResults : Integer.MAX_VALUE, eventConsumer);
 
     }
