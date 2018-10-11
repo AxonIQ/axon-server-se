@@ -41,7 +41,7 @@ public interface FeatureChecker {
     }
 
     default String getEdition() {
-        return "Free edition";
+        return "Standard edition";
     }
 
     default String getLicensee() {
