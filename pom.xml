@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-parent</artifactId>
     <packaging>pom</packaging>
-    <version>4.0-M3-SNAPSHOT</version>
+    <version>4.0-M4-SNAPSHOT</version>
 
     <name>AxonIQ AxonServer</name>
 
@@ -19,7 +19,6 @@
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
         <module>axonserver-cli</module>
-        <module>plugins/axonserver-metrics-prometheus</module>
     </modules>
 
     <properties>
@@ -37,7 +36,7 @@
         <netty.tcnative.version>2.0.8.Final</netty.tcnative.version>
         <axon.version>3.3.1</axon.version>
         <axonserver.api.version>4.0-M2</axonserver.api.version>
-        <axon.version>4.0-SNAPSHOT</axon.version>
+        <axon.version>4.0-M2</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
 
@@ -143,6 +142,8 @@
         <repository>
             <id>sonatype-snapshots</id>
             <url>https://dev-nexus.axoniq.io/repository/sonatype-snapshots/</url>
+            <releases><enabled>false</enabled></releases>
+            <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
 

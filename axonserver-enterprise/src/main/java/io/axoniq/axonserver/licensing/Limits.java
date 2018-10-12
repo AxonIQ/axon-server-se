@@ -61,7 +61,7 @@ public class Limits implements FeatureChecker  {
 
     @Override
     public String getEdition() {
-        return LicenseConfiguration.getInstance().getEdition().name();
+        return LicenseConfiguration.getInstance().getEdition().displayName();
     }
 
     @Override

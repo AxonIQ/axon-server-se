@@ -1,4 +1,4 @@
-package net.axoniq.axonhub.connectors.rabbitmq;
+package net.axoniq.axonserver.connectors.rabbitmq;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;

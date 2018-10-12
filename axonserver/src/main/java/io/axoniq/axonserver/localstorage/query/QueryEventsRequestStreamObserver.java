@@ -49,16 +49,18 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private final EventWriteStorage eventWriteStorage;
     private final EventStreamReader eventStreamReader;
     private final long defaultLimit;
+    private final long timeout;
     private final StreamObserver<QueryEventsResponse> responseObserver;
     private volatile Registration registration;
     private volatile Pipeline pipeLine;
     private volatile Sender sender;
 
-    public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader, long defaultLimit,
+    public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader, long defaultLimit, long timeout,
                                             StreamObserver<QueryEventsResponse> responseObserver) {
         this.eventWriteStorage = eventWriteStorage;
         this.eventStreamReader = eventStreamReader;
         this.defaultLimit = defaultLimit;
+        this.timeout = timeout;
         this.responseObserver = responseObserver;
     }
 
@@ -68,7 +70,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             if(sender == null) {
                 sender = new Sender(queryEventsRequest.getNumberOfPermits(),
                                     queryEventsRequest.getLiveEvents(),
-                                    System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(30));
+                                    System.currentTimeMillis() + timeout);
                 long connectionToken = eventWriteStorage.getLastToken();
                 long minConnectionToken = StringUtils.isEmpty(queryEventsRequest.getQuery()) ? Math.max(
                         connectionToken - defaultLimit, 0) : 0;
