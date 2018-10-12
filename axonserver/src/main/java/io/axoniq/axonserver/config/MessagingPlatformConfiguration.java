@@ -89,6 +89,7 @@ public class MessagingPlatformConfiguration {
     private int bossThreads;
     private int workerThreads;
     private String controldbBackupLocation = ".";
+    private int maxMessageSize = 0;
 
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
@@ -309,5 +310,13 @@ public class MessagingPlatformConfiguration {
 
     public void setControldbBackupLocation(String controldbBackupLocation) {
         this.controldbBackupLocation = controldbBackupLocation;
+    }
+
+    public int getMaxMessageSize() {
+        return maxMessageSize;
+    }
+
+    public void setMaxMessageSize(int maxMessageSize) {
+        this.maxMessageSize = maxMessageSize;
     }
 }

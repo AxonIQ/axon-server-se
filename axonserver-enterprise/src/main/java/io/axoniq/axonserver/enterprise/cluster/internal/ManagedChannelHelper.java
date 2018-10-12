@@ -51,6 +51,9 @@ public class ManagedChannelHelper {
             } else {
                 builder.usePlaintext();
             }
+            if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
+                builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
+            }
             builder.directExecutor();
             channel = builder.build();
         } catch(Exception ex) {

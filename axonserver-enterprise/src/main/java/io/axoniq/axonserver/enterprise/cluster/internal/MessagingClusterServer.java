@@ -66,6 +66,11 @@ public class MessagingClusterServer implements SmartLifecycle{
         NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(messagingPlatformConfiguration.getInternalPort());
 //                .permitKeepAliveTime(messagingPlatformConfiguration.getMinKeepAliveTime(), TimeUnit.MILLISECONDS)
 //                .permitKeepAliveWithoutCalls(true);
+
+
+        if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
+            serverBuilder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
+        }
         String sslMessage = "no SSL";
         if( messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl().isEnabled()) {
             if( messagingPlatformConfiguration.getSsl().getInternalCertChainFile() == null) {
