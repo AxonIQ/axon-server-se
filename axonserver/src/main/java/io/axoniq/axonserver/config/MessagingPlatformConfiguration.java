@@ -50,7 +50,7 @@ public class MessagingPlatformConfiguration {
      */
     private int httpPort;
 
-    private long keepAliveTimeout = 0;
+    private long keepAliveTimeout = 5000;
     private long keepAliveTime = 0;
     private long minKeepAliveTime = 1000;
 
