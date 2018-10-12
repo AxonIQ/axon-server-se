@@ -1,4 +1,4 @@
-package net.axoniq.axonhub.connectors.rabbitmq;
+package net.axoniq.axonserver.connectors.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 

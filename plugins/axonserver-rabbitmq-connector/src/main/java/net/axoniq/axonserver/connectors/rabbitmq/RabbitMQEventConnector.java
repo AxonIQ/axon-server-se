@@ -1,4 +1,4 @@
-package net.axoniq.axonhub.connectors.rabbitmq;
+package net.axoniq.axonserver.connectors.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
@@ -49,8 +49,6 @@ public class RabbitMQEventConnector implements EventConnector {
     private Config config;
     private final Logger logger = LoggerFactory.getLogger(RabbitMQEventConnector.class);
 
-    public RabbitMQEventConnector() {
-    }
 
     @Override
     public UnitOfWork createUnitOfWork() {

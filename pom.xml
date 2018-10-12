@@ -19,7 +19,6 @@
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
         <module>axonserver-cli</module>
-        <module>plugins/axonserver-metrics-prometheus</module>
     </modules>
 
     <properties>

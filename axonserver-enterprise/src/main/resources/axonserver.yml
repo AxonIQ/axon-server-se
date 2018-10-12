@@ -42,6 +42,7 @@ logging:
     io.axoniq.axonserver.enterprise.logging: INFO
     io.axoniq.axonserver.logging: INFO
     org.springframework.boot.web.embedded.tomcat.TomcatWebServer: INFO
+    org.springframework.http.converter.json.Jackson2ObjectMapperBuilder: ERROR
     org.hibernate.orm.deprecation: ERROR
 
 

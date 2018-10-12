@@ -37,6 +37,10 @@
             <field template="*"/>
             <method access="protected+"/>
         </class>
+        <class template="class * org.springframework.context.annotation.ImportSelector">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
 
         <class template="class * implements io.axoniq.axonserver.localstorage.query.ExpressionFactory">
             <field template="*"/>

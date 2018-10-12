@@ -250,6 +250,7 @@
                         </includes>
                         <excludes>
                             <exclude>io.axoniq.axonserver:axonserver-cli:*</exclude>
+                            <exclude>io.axoniq.axonserver:axonserver-connector-api:*</exclude>
                         </excludes>
                     </artifactSet>
                 </configuration>
