@@ -63,9 +63,9 @@ public class MessagingClusterServer implements SmartLifecycle{
 
     @Override
     public void start() {
-        NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(messagingPlatformConfiguration.getInternalPort());
-//                .permitKeepAliveTime(messagingPlatformConfiguration.getMinKeepAliveTime(), TimeUnit.MILLISECONDS)
-//                .permitKeepAliveWithoutCalls(true);
+        NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(messagingPlatformConfiguration.getInternalPort())
+                .permitKeepAliveTime(messagingPlatformConfiguration.getMinKeepAliveTime(), TimeUnit.MILLISECONDS)
+                .permitKeepAliveWithoutCalls(true);
 
 
         if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
@@ -93,14 +93,11 @@ public class MessagingClusterServer implements SmartLifecycle{
             serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration),
                                                                   new ContextInterceptor()));
         }
-//        if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
-//            serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);
-//            serverBuilder.keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
-//        }
+        if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
+            serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);
+            serverBuilder.keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
+        }
 
-//        if( messagingPlatformConfiguration.getInternalExecutorThreads() > 0) {
-//            serverBuilder.executor(Executors.newFixedThreadPool(messagingPlatformConfiguration.getInternalExecutorThreads()));
-//        }
         serverBuilder.directExecutor();
 
 

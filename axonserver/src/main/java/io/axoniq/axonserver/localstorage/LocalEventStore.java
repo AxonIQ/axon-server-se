@@ -52,6 +52,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private volatile boolean running;
     @Value("${axoniq.axonserver.query.limit:200}")
     private long defaultLimit = 200;
+    @Value("${axoniq.axonserver.query.timeout:300000}")
+    private long timeout = 300000;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
         this.eventStoreFactory = eventStoreFactory;
@@ -201,7 +203,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workersMap.get(context);
-        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage, workers.eventStreamReader, defaultLimit, responseObserver);
+        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage, workers.eventStreamReader, defaultLimit, timeout, responseObserver);
     }
 
     @Override

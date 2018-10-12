@@ -41,9 +41,12 @@ public class ManagedChannelHelper {
         ManagedChannel channel = null;
         try {
             NettyChannelBuilder builder = NettyChannelBuilder.forAddress(host, port);
-//                                                             .keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
-//                                                             .keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS)
-//                                                             .keepAliveWithoutCalls(true);
+
+            if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
+                builder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
+                       .keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS)
+                       .keepAliveWithoutCalls(true);
+            }
             if( messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl().isEnabled()) {
                 if (addSslConfig(messagingPlatformConfiguration, builder)) {
                     return null;

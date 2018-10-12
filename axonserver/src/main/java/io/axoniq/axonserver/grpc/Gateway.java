@@ -94,14 +94,10 @@ public class Gateway implements SmartLifecycle {
         axonServerClientServices.forEach(s -> serverBuilder.addService(ServerInterceptors.intercept(s,interceptorList)));
 
 
-//        if( routingConfiguration.getKeepAliveTime() > 0) {
-//            serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
-//                         .keepAliveTimeout(routingConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
-//        }
-//
-//        if( routingConfiguration.getExecutorThreads() > 0) {
-//            serverBuilder.executor(Executors.newFixedThreadPool(routingConfiguration.getExecutorThreads()));
-//        }
+        if( routingConfiguration.getKeepAliveTime() > 0) {
+            serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
+                         .keepAliveTimeout(routingConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
+        }
         serverBuilder.directExecutor();
 
         server = serverBuilder.build();
