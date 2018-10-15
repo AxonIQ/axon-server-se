@@ -43,7 +43,7 @@ public class SnapshotRestController {
         SampleCommandHandler snapshot = new SampleCommandHandler();
         snapshot.setId(aggregateIdentifier);
 
-        eventStore.storeSnapshot(new GenericDomainEventMessage<SampleCommandHandler>(SampleCommandHandler.class.getTypeName(), aggregateIdentifier, sequenceNumber, snapshot));
+        eventStore.storeSnapshot(new GenericDomainEventMessage<>(SampleCommandHandler.class.getTypeName(), aggregateIdentifier, sequenceNumber, snapshot));
 
     }
 
