@@ -33,24 +33,25 @@ import javax.sql.DataSource;
  */
 public abstract class JdbcAbstractStore implements EventStore {
 
-    public final String maxGlobalIndex = String.format("select max(global_index) from %s", getTableName());
-    public final String createTable = String.format("create table %s (global_index bigint not null, aggregate_identifier varchar(255) not null, event_identifier varchar(255) not null, meta_data blob, payload blob not null, payload_revision varchar(255), payload_type varchar(255) not null, sequence_number bigint not null, time_stamp bigint not null, type varchar(255) not null, primary key (global_index))", getTableName());
-    public final String createIndexAggidSeqnr = String.format("alter table %s add constraint %s_uk1 unique (aggregate_identifier, sequence_number)", getTableName(), getTableName());
-    public final String createIndexEventId = String.format("alter table %s add constraint %s_uk2 unique (event_identifier)", getTableName(), getTableName());
-    public final String insertEvent = String.format("insert into %s(global_index, aggregate_identifier, event_identifier, meta_data, payload, payload_revision, payload_type, sequence_number, time_stamp, type) values (?,?,?,?,?,?,?,?,?,?)", getTableName());
-    public final String maxSeqnrForAggid = String.format("select max(sequence_number) from %s where aggregate_identifier = ?", getTableName());
-    public final String readEvents = String.format("select * from %s where global_index >= ? order by global_index asc", getTableName());
+    private final String maxGlobalIndex = String.format("select max(global_index) from %s", getTableName());
+    private final String createTable = String.format("create table %s (global_index bigint not null, aggregate_identifier varchar(255) not null, event_identifier varchar(255) not null, meta_data blob, payload blob not null, payload_revision varchar(255), payload_type varchar(255) not null, sequence_number bigint not null, time_stamp bigint not null, type varchar(255) not null, primary key (global_index))", getTableName());
+    private final String createIndexAggidSeqnr = String.format("alter table %s add constraint %s_uk1 unique (aggregate_identifier, sequence_number)", getTableName(), getTableName());
+    private final String createIndexEventId = String.format("alter table %s add constraint %s_uk2 unique (event_identifier)", getTableName(), getTableName());
+    private final String insertEvent = String.format("insert into %s(global_index, aggregate_identifier, event_identifier, meta_data, payload, payload_revision, payload_type, sequence_number, time_stamp, type) values (?,?,?,?,?,?,?,?,?,?)", getTableName());
+    private final String maxSeqnrForAggid = String.format("select max(sequence_number) from %s where aggregate_identifier = ?", getTableName());
+    private final String readEvents = String.format("select * from %s where global_index >= ? order by global_index asc", getTableName());
 
-    public final String readEventsForAggidAsc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number asc", getTableName());
-    public final String readEventsForAggidDesc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number desc", getTableName());
-    public final String tokenAt = String.format("select min(token) from %s where time_stamp >= ?", getTableName());
-    public final String minToken = String.format("select min(token) from %s", getTableName());
+    private final String readEventsForAggidWithinRangeDesc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? and sequence_number <= ? order by sequence_number desc", getTableName());
+    private final String readEventsForAggidDesc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number desc", getTableName());
+    private final String readEventsForAggidAsc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number asc", getTableName());
+    private final String tokenAt = String.format("select min(token) from %s where time_stamp >= ?", getTableName());
+    private final String minToken = String.format("select min(token) from %s", getTableName());
 
     private final AtomicLong lastToken = new AtomicLong(-1);
     private final EventTypeContext eventTypeContext;
     private final DataSource dataSource;
 
-    public JdbcAbstractStore(EventTypeContext eventTypeContext,
+    protected JdbcAbstractStore(EventTypeContext eventTypeContext,
                              DataSource dataSource) {
         this.eventTypeContext = eventTypeContext;
         this.dataSource = dataSource;
@@ -69,7 +70,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     @Override
     public void init(boolean validating) {
         try (Connection connection = dataSource.getConnection()) {
-            boolean tableExists = false;
+            boolean tableExists;
             try (ResultSet resultSet = connection.getMetaData().getTables(null, null, getTableName(), null)) {
                 tableExists = resultSet.next();
             }
@@ -166,7 +167,7 @@ public abstract class JdbcAbstractStore implements EventStore {
         try (Connection connection = dataSource.getConnection();
                      PreparedStatement preparedStatement = connection.prepareStatement(
                              readEvents)) {
-            EventWithToken event = null;
+            EventWithToken event;
             preparedStatement.setLong(1, token);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
@@ -215,6 +216,25 @@ public abstract class JdbcAbstractStore implements EventStore {
             }
 
             return Optional.empty();
+        } catch (SQLException e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<Event> eventConsumer) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(
+                     readEventsForAggidWithinRangeDesc)) {
+            preparedStatement.setString(1, aggregateId);
+            preparedStatement.setLong(2, actualMinSequenceNumber);
+            preparedStatement.setLong(3, actualMaxSequenceNumber);
+            preparedStatement.setMaxRows(maxResults);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    eventConsumer.accept(readEvent(resultSet));
+                }
+            }
         } catch (SQLException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }

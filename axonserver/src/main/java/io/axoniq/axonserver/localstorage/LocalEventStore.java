@@ -132,11 +132,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
-        MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
-                .marshaller(Event.getDefaultInstance());
-        workersMap.get(context).aggregateReader.readSnapshots( request.getAggregateId(),
-                                                            request.getInitialSequence(),
-                                                            event -> responseStreamObserver.onNext(marshaller.stream(event)));
+        if( request.getMaxSequence() >= 0) {
+            MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
+                    .marshaller(Event.getDefaultInstance());
+            workersMap.get(context).aggregateReader.readSnapshots(request.getAggregateId(),
+                                                                  request.getInitialSequence(),
+                                                                  request.getMaxSequence(),
+                                                                  request.getMaxResults(),
+                                                                  event -> responseStreamObserver
+                                                                          .onNext(marshaller.stream(event)));
+        }
         responseStreamObserver.onCompleted();
     }
 
