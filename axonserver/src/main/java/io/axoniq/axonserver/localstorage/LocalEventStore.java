@@ -52,6 +52,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private volatile boolean running;
     @Value("${axoniq.axonserver.query.limit:200}")
     private long defaultLimit = 200;
+    @Value("${axoniq.axonserver.query.timeout:300000}")
+    private long timeout = 300000;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
         this.eventStoreFactory = eventStoreFactory;
@@ -74,6 +76,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if( workers == null) return;
 
         workers.eventWriteStorage.cancelPendingTransactions();
+        workers.cancelTrackingEventProcessors();
     }
 
     @Override
@@ -130,11 +133,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
-        MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
-                .marshaller(Event.getDefaultInstance());
-        workersMap.get(context).aggregateReader.readSnapshots( request.getAggregateId(),
-                                                            request.getInitialSequence(),
-                                                            event -> responseStreamObserver.onNext(marshaller.stream(event)));
+        if( request.getMaxSequence() >= 0) {
+            MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
+                    .marshaller(Event.getDefaultInstance());
+            workersMap.get(context).aggregateReader.readSnapshots(request.getAggregateId(),
+                                                                  request.getInitialSequence(),
+                                                                  request.getMaxSequence(),
+                                                                  request.getMaxResults(),
+                                                                  event -> responseStreamObserver
+                                                                          .onNext(marshaller.stream(event)));
+        }
         responseStreamObserver.onCompleted();
     }
 
@@ -201,7 +209,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workersMap.get(context);
-        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage, workers.eventStreamReader, defaultLimit, responseObserver);
+        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage, workers.eventStreamReader, defaultLimit, timeout, responseObserver);
     }
 
     @Override
@@ -354,8 +362,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void cleanup() {
             eventDatafileManagerChain.cleanup();
             snapshotDatafileManagerChain.cleanup();
-            eventStreamControllerSet.forEach(EventStreamController::cancel);
-            eventStreamControllerSet.clear();
+            cancelTrackingEventProcessors();
         }
 
         public EventStreamController createController(Consumer<EventWithToken> consumer, Consumer<Throwable> errorCallback) {
@@ -367,6 +374,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void stop(EventStreamController controller) {
             eventStreamControllerSet.remove(controller);
             controller.stop();
+        }
+
+        public void cancelTrackingEventProcessors() {
+            eventStreamControllerSet.forEach(EventStreamController::cancel);
+            eventStreamControllerSet.clear();
         }
     }
 }

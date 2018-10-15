@@ -79,7 +79,7 @@ public class PublicRestControllerTest {
     @Test
     public void licenseInfo() {
         LicenseInfo licenseInfo = testSubject.licenseInfo();
-        assertEquals("Free edition", licenseInfo.getEdition());
+        assertEquals("Standard edition", licenseInfo.getEdition());
     }
 
 

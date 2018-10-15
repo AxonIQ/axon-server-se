@@ -44,6 +44,8 @@ public interface EventStore {
 
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<Event> eventConsumer);
 
+    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<Event> eventConsumer);
+
     PreparedTransaction prepareTransaction(List<Event> eventList);
 
     default boolean replicated() {

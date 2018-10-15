@@ -18,6 +18,7 @@ public class PluginImportSelector implements ImportSelector {
     private Logger logger = LoggerFactory.getLogger(PluginImportSelector.class);
     @Override
     public String[] selectImports(AnnotationMetadata annotationMetadata) {
+        logger.debug("Selecting imports");
         Set<String> classes = new HashSet<>();
         ServiceLoader.load(Page.class, Thread.currentThread().getContextClassLoader()).forEach(e -> {
             logger.info("Adding page {}", e.getClass().getName());

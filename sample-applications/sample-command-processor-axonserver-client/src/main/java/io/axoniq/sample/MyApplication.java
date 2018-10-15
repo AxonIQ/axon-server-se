@@ -12,4 +12,21 @@ public class MyApplication {
         SpringApplication.run(MyApplication.class, args);
     }
 
+//    @Bean
+//    public EventStore eventStore(AxonServerConfiguration axonServerConfiguration,
+//                                 AxonConfiguration configuration,
+//                                 PlatformConnectionManager platformConnectionManager,
+//                                 Serializer snapshotSerializer,
+//                                 @Qualifier("eventSerializer") Serializer eventSerializer) {
+//        return AxonServerEventStore.builder()
+//                                   .configuration(axonServerConfiguration)
+//                                   .snapshotFilter(snapshotData -> (snapshotData.getSequenceNumber() % 3) == 0)
+//                                   .platformConnectionManager(platformConnectionManager)
+//                                   .snapshotSerializer(snapshotSerializer)
+//                                   .eventSerializer(eventSerializer)
+//                                   .upcasterChain(configuration.upcasterChain())
+//                                   .build();
+//    }
+//
+
 }

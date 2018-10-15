@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -27,9 +28,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -42,12 +45,10 @@ import java.util.stream.Stream;
 public abstract class SegmentBasedEventStore implements EventStore {
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
 
-    static final int TRANSACTION_LENGTH_BYTES = 4;
-    static final int EVENT_LENGTH_BYTES = 4;
-    static final int NUMBER_OF_EVENTS_BYTES = 2;
+    private static final int TRANSACTION_LENGTH_BYTES = 4;
+    private static final int NUMBER_OF_EVENTS_BYTES = 2;
     static final int VERSION_BYTES = 1;
-    static final int FILE_TX_COUNT_OFFSET = 1;
-    static final int FILE_TX_COUNT_BYTES = 4;
+    static final int FILE_OPTIONS_BYTES = 4;
     static final int TX_CHECKSUM_BYTES = 4;
     static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
     static final byte VERSION = 1;
@@ -64,7 +65,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         this.storageProperties = storageProperties;
     }
 
-    protected boolean foundFirstSequenceNumber(SortedSet<PositionInfo> positionInfos, long minSequenceNumber) {
+    private boolean foundFirstSequenceNumber(SortedSet<PositionInfo> positionInfos, long minSequenceNumber) {
         return !positionInfos.isEmpty() && positionInfos.first().getAggregateSequenceNumber() <= minSequenceNumber;
     }
 
@@ -78,7 +79,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         last.next = datafileManager;
     }
 
-    protected Optional<PositionInfo> getLastPosition(String aggregateIdentifier, int maxSegments) {
+    private Optional<PositionInfo> getLastPosition(String aggregateIdentifier, int maxSegments) {
         Comparator<PositionInfo> writePositionComparator = Comparator
                 .comparingLong(PositionInfo::getAggregateSequenceNumber);
         return
@@ -110,6 +111,31 @@ public abstract class SegmentBasedEventStore implements EventStore {
                      .forEach(segment -> retrieveEventsForAnAggregate(segment,
                                                                           positionInfos.get(segment),
                                                                           eventConsumer));
+
+    }
+
+    @Override
+    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
+                                    int maxResults, Consumer<Event> eventConsumer) {
+        SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber, maxSequenceNumber, maxResults);
+        AtomicInteger toDo = new AtomicInteger(maxResults);
+        if( ! positionInfos.isEmpty()) {
+            SortedSet<PositionInfo> first = positionInfos.get(positionInfos.firstKey());
+            positionInfos.keySet().forEach(segment -> retrieveEventsForAnAggregate(segment,
+                                                                          positionInfos.get(segment),
+                                                                          e -> {
+                                                                                if( toDo.getAndDecrement() > 0) {
+                                                                                    eventConsumer.accept(e);
+                                                                                }
+                                                                          }));
+            if( foundFirstSequenceNumber(first, firstSequenceNumber)) toDo.set(0);
+        }
+
+        if( toDo.get() > 0 && next != null) {
+            next.streamByAggregateId(aggregateId, firstSequenceNumber, maxSequenceNumber, toDo.get(), eventConsumer);
+        }
+
+
 
     }
 
@@ -361,6 +387,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     protected abstract void recreateIndex(long segment);
+
     private SortedMap<Long, SortedSet<PositionInfo>> getPositionInfos(String aggregateId, long minSequenceNumber) {
         final SortedMap<Long, SortedSet<PositionInfo>> result = new ConcurrentSkipListMap<>();
         for( long segment : getSegments()) {
@@ -377,6 +404,37 @@ public abstract class SegmentBasedEventStore implements EventStore {
         }
 
         return result;
+    }
+
+    // Returns a map of segmentNr, positions for the aggregate with sequence number between minSequenceNumber and maxSequenceNumber (inclusive) and at most maxResults
+    // finds the highest matching sequence numbers
+    private SortedMap<Long, SortedSet<PositionInfo>> getPositionInfos(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults) {
+        final SortedMap<Long, SortedSet<PositionInfo>> result = new ConcurrentSkipListMap<>((k1,k2) -> Long.compare(k2, k1));
+        long actualMax = maxSequenceNumber < Long.MAX_VALUE ? maxSequenceNumber + 1 : Long.MAX_VALUE;
+        int toDo = maxResults;
+        for( long segment : getSegments()) {
+            SortedSet<PositionInfo> positionInfos = getPositions(segment, aggregateId);
+            if (positionInfos != null) {
+                boolean minInSet = foundFirstSequenceNumber(positionInfos, minSequenceNumber);
+                positionInfos = positionInfos.subSet(new PositionInfo(0, minSequenceNumber), new PositionInfo(0, actualMax));
+                if (!positionInfos.isEmpty()) {
+                    result.put(segment, reverse(positionInfos));
+                    toDo -= positionInfos.size();
+                }
+
+                if (minInSet || toDo <= 0) {
+                    return result;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private SortedSet<PositionInfo> reverse(SortedSet<PositionInfo> positionInfos) {
+        SortedSet<PositionInfo> reversedPositionInfos = new TreeSet<>(Collections.reverseOrder());
+        reversedPositionInfos.addAll(positionInfos);
+        return reversedPositionInfos;
     }
 
     private void retrieveEventsForAnAggregate(long segment, SortedSet<PositionInfo> positions, Consumer<Event> onEvent) {

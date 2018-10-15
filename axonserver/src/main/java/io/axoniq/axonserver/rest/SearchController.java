@@ -24,7 +24,7 @@ public class SearchController {
     private final HttpStreamingQuery httpStreamingQuery;
     private final FeatureChecker limits;
 
-    @Value("${axoniq.axondb.query.timeout:300000}")
+    @Value("${axoniq.axonserver.query.timeout:300000}")
     private long timeout = 300000;
 
     public SearchController(HttpStreamingQuery httpStreamingQuery, FeatureChecker limits) {
