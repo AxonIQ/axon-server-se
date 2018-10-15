@@ -593,6 +593,16 @@ select {
 	float: none !important;
 	width: 200px;
 }
+.contextName {
+	display: inline-block !important;
+	float: none !important;
+	width: 180px;
+}
+.roleName {
+	display: inline-block !important;
+	float: none !important;
+	width: 180px;
+}
 .messaging {
 	display: inline-block;
 	width: 100px;

@@ -63,23 +63,10 @@ public class Gateway implements SmartLifecycle {
                                                              .permitKeepAliveWithoutCalls(true)
                                                              .permitKeepAliveTime(routingConfiguration.getMinKeepAliveTime(), TimeUnit.MILLISECONDS);
 
-//        if(Epoll.isAvailable()) {
-//            serverBuilder.channelType(EpollServerSocketChannel.class);
-//            if (routingConfiguration.getWorkerThreads() > 0) {
-//                serverBuilder.workerEventLoopGroup(new EpollEventLoopGroup(routingConfiguration.getWorkerThreads()));
-//            }
-//            if (routingConfiguration.getBossThreads() > 0) {
-//                serverBuilder.bossEventLoopGroup(new EpollEventLoopGroup(routingConfiguration.getBossThreads()));
-//            }
-//        } else {
-//            serverBuilder.channelType(NioServerSocketChannel.class);
-//            if (routingConfiguration.getWorkerThreads() > 0) {
-//                serverBuilder.workerEventLoopGroup(new NioEventLoopGroup(routingConfiguration.getWorkerThreads()));
-//            }
-//            if (routingConfiguration.getBossThreads() > 0) {
-//                serverBuilder.bossEventLoopGroup(new NioEventLoopGroup(routingConfiguration.getBossThreads()));
-//            }
-//        }
+
+        if( routingConfiguration.getMaxMessageSize() > 0) {
+            serverBuilder.maxInboundMessageSize(routingConfiguration.getMaxMessageSize());
+        }
 
         String sslMessage = "no SSL";
         if( routingConfiguration.getSsl() != null && routingConfiguration.getSsl().isEnabled()) {
@@ -107,14 +94,10 @@ public class Gateway implements SmartLifecycle {
         axonServerClientServices.forEach(s -> serverBuilder.addService(ServerInterceptors.intercept(s,interceptorList)));
 
 
-//        if( routingConfiguration.getKeepAliveTime() > 0) {
-//            serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
-//                         .keepAliveTimeout(routingConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
-//        }
-//
-//        if( routingConfiguration.getExecutorThreads() > 0) {
-//            serverBuilder.executor(Executors.newFixedThreadPool(routingConfiguration.getExecutorThreads()));
-//        }
+        if( routingConfiguration.getKeepAliveTime() > 0) {
+            serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
+                         .keepAliveTimeout(routingConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
+        }
         serverBuilder.directExecutor();
 
         server = serverBuilder.build();

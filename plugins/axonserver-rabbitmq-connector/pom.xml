@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>axonhub</artifactId>
-        <groupId>io.axoniq.axonhub</groupId>
-        <version>1.2-SNAPSHOT</version>
+        <groupId>io.axoniq.axonserver</groupId>
+        <artifactId>axonserver-parent</artifactId>
+        <version>4.0-M4-SNAPSHOT</version>
+        <relativePath>../..</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>axonhub-rabbitmq-connector</artifactId>
     <dependencies>
         <dependency>
-            <groupId>io.axoniq.axonhub</groupId>
-            <artifactId>axonhub-connector-api</artifactId>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-connector-api</artifactId>
             <version>${project.parent.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -34,17 +35,30 @@
                 <version>3.0.0</version>
                 <configuration>
                     <shadedArtifactAttached>true</shadedArtifactAttached>
-                    <minimizeJar>true</minimizeJar>
+                    <minimizeJar>false</minimizeJar>
                     <shadedClassifierName>connector</shadedClassifierName>
                     <artifactSet>
                         <includes>
                             <include>org.springframework.boot:spring-boot-starter-amqp:jar:*</include>
                             <include>org.springframework.amqp:spring-rabbit:jar:*</include>
                             <include>org.springframework.amqp:spring-amqp:jar:*</include>
+                            <include>org.springframework.retry:spring-retry:jar:*</include>
                             <include>com.rabbitmq:*:*:*</include>
                         </includes>
                     </artifactSet>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>package-lib</id>
+                        <configuration>
+                            <shadedClassifierName>ext</shadedClassifierName>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

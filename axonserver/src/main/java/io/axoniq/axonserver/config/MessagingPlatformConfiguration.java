@@ -51,7 +51,7 @@ public class MessagingPlatformConfiguration {
     private int httpPort;
 
     private long keepAliveTimeout = 5000;
-    private long keepAliveTime = 2500;
+    private long keepAliveTime = 0;
     private long minKeepAliveTime = 1000;
 
 
@@ -89,7 +89,7 @@ public class MessagingPlatformConfiguration {
     private int bossThreads;
     private int workerThreads;
     private String controldbBackupLocation = ".";
-
+    private int maxMessageSize = 0;
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -310,4 +310,13 @@ public class MessagingPlatformConfiguration {
     public void setControldbBackupLocation(String controldbBackupLocation) {
         this.controldbBackupLocation = controldbBackupLocation;
     }
+
+    public int getMaxMessageSize() {
+        return maxMessageSize;
+    }
+
+    public void setMaxMessageSize(int maxMessageSize) {
+        this.maxMessageSize = maxMessageSize;
+    }
+
 }

@@ -17,14 +17,14 @@
                 <tr>
                     <th class="applicationName">Name</th>
                     <th class="applicationDescription">Description</th>
-                    <th class="roles" v-if="license === 'enterprise'">Roles</th>
+                    <th class="roles">Roles</th>
                 </tr>
                 </thead>
                 <tbody>
                     <tr v-for="app in applications">
                         <td>{{app.name}}</td>
                         <td>{{app.description}}</td>
-                        <td v-if="license === 'enterprise'">
+                        <td>
                             <span v-for="role in app.roles">{{role.context}}:{{role.role}}<br></span>
                         </td>
                         <td  v-if="admin">
@@ -50,7 +50,7 @@
                         <span>Application Description</span>
                         <span><input v-model="application.description"/></span>
                     </li>
-                    <li v-if="license === 'enterprise'">
+                    <li>
                         <span>Roles</span>
                         <span>
                             <table class="roles">
@@ -69,12 +69,12 @@
                                     </tr>
                                     <tr class="row">
                                         <td class="context">
-                                            <select v-model="newRole.context">
+                                            <select class="contextName" v-model="newRole.context">
                                                 <option v-for="r in contexts">{{r.context}}</option>
                                             </select>
                                         </td>
                                         <td class="role">
-                                            <select v-model="newRole.role">
+                                            <select class="roleName" v-model="newRole.role">
                                                 <option v-for="r in appRoles">{{r}}</option>
                                             </select>
                                         </td>

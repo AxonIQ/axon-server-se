@@ -35,7 +35,7 @@ public final class LicenseConfiguration {
     public static void refresh() {
         Properties properties = new LicensePropertyReader().readLicenseProperties();
         if(properties == null) {
-            if( ! Edition.Free.equals(instance.edition)) {
+            if( ! Edition.Standard.equals(instance.edition)) {
                 instance = instance.withGraceDate( LocalDate.now().minus(1, ChronoUnit.DAYS));
             }
         } else {
@@ -46,7 +46,18 @@ public final class LicenseConfiguration {
 
 
     public enum Edition {
-        Enterprise, Free
+        Enterprise("Enterprise edition"), Standard("Standard Edition");
+
+
+        private final String displayName;
+
+        Edition(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String displayName() {
+            return displayName;
+        }
     }
     private static final Logger log = LoggerFactory.getLogger(LicenseConfiguration.class);
     private static LicenseConfiguration instance;
@@ -55,8 +66,8 @@ public final class LicenseConfiguration {
         if(instance == null) {
             Properties properties = new LicensePropertyReader().readLicenseProperties();
             if(properties == null) {
-                log.warn("License property not specified - Running in Free mode");
-                instance = new LicenseConfiguration(null, Edition.Free, UUID.randomUUID().toString(),
+                log.warn("License property not specified - Running in Standard mode");
+                instance = new LicenseConfiguration(null, Edition.Standard, UUID.randomUUID().toString(),
                                                     1, 1, null,
                                                     AXON_SERVER,
                                                     null,

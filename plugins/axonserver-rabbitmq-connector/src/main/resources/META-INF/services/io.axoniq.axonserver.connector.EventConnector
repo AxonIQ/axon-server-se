@@ -1,1 +1,1 @@
-net.axoniq.axonhub.connectors.rabbitmq.RabbitMQEventConnector
+net.axoniq.axonserver.connectors.rabbitmq.RabbitMQEventConnector
