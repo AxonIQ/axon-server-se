@@ -76,6 +76,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if( workers == null) return;
 
         workers.eventWriteStorage.cancelPendingTransactions();
+        workers.cancelTrackingEventProcessors();
     }
 
     @Override
@@ -361,8 +362,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void cleanup() {
             eventDatafileManagerChain.cleanup();
             snapshotDatafileManagerChain.cleanup();
-            eventStreamControllerSet.forEach(EventStreamController::cancel);
-            eventStreamControllerSet.clear();
+            cancelTrackingEventProcessors();
         }
 
         public EventStreamController createController(Consumer<EventWithToken> consumer, Consumer<Throwable> errorCallback) {
@@ -374,6 +374,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void stop(EventStreamController controller) {
             eventStreamControllerSet.remove(controller);
             controller.stop();
+        }
+
+        public void cancelTrackingEventProcessors() {
+            eventStreamControllerSet.forEach(EventStreamController::cancel);
+            eventStreamControllerSet.clear();
         }
     }
 }

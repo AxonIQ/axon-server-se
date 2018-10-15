@@ -126,6 +126,7 @@ public class EventStreamController {
     }
 
     public void cancel() {
-        errorCallback.accept(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by cleanup"));
+        cancelListener();
+        errorCallback.accept(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by server"));
     }
 }
