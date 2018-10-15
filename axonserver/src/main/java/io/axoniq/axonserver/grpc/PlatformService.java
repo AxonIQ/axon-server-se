@@ -70,7 +70,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                                                   request.getComponentName(),
                                                                   context);
             responseObserver.onNext(PlatformInfo.newBuilder()
-                                                .setRedirected(!connectTo.getName().equals(topology.getName()))
+                                                .setSameConnection(connectTo.getName().equals(topology.getName()))
                                                 .setPrimary(NodeInfo.newBuilder().setNodeName(connectTo.getName())
                                                                     .setHostName(connectTo.getHostName())
                                                                     .setGrpcPort(connectTo.getGrpcPort())

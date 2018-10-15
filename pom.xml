@@ -36,7 +36,7 @@
         <grpc.version>1.13.1</grpc.version>
         <netty.tcnative.version>2.0.8.Final</netty.tcnative.version>
         <axon.version>3.3.1</axon.version>
-        <axonserver.api.version>4.0-M2</axonserver.api.version>
+        <axonserver.api.version>4.0-M3</axonserver.api.version>
         <axon.version>4.0-M2</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
