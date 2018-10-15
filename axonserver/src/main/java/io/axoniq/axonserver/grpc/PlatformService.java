@@ -43,7 +43,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final Map<ClientComponent, SendingStreamObserver<PlatformOutboundInstruction>> connectionMap = new ConcurrentHashMap<>();
     private final Logger logger = LoggerFactory.getLogger(PlatformService.class);
 
-    private final Topology clusterController;
+    private final Topology topology;
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
@@ -54,10 +54,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         void accept(String client, String context, PlatformInboundInstruction instruction);
     }
 
-    public PlatformService(Topology clusterController,
+    public PlatformService(Topology topology,
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher) {
-        this.clusterController = clusterController;
+        this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
     }
@@ -66,10 +66,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {
         String context = contextProvider.getContext();
         try {
-            AxonServerNode connectTo = clusterController.findNodeForClient(request.getClientName(),
-                                                                           request.getComponentName(),
-                                                                           context);
+            AxonServerNode connectTo = topology.findNodeForClient(request.getClientName(),
+                                                                  request.getComponentName(),
+                                                                  context);
             responseObserver.onNext(PlatformInfo.newBuilder()
+                                                .setSameConnection(connectTo.getName().equals(topology.getName()))
                                                 .setPrimary(NodeInfo.newBuilder().setNodeName(connectTo.getName())
                                                                     .setHostName(connectTo.getHostName())
                                                                     .setGrpcPort(connectTo.getGrpcPort())
