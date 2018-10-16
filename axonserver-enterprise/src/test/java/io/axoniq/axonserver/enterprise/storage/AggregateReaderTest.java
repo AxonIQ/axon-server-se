@@ -84,7 +84,7 @@ public class AggregateReaderTest {
     @Test
     public void readAllSnapshots() {
         List<Long> sequenceNumbers = new ArrayList<>();
-        testSubject.readSnapshots("55", 0, 0, 0,
+        testSubject.readSnapshots("55", 0, Long.MAX_VALUE, 0,
                                   event -> sequenceNumbers.add(event.getAggregateSequenceNumber()));
         Assert.assertEquals(4, sequenceNumbers.size());
     }
