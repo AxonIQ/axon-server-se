@@ -1,6 +1,7 @@
 package io.axoniq.sample;
 
-import org.axonframework.commandhandling.TargetAggregateIdentifier;
+
+import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
 /**
  * Author: marc
