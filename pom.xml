@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-parent</artifactId>
     <packaging>pom</packaging>
-    <version>4.0-RC1</version>
+    <version>4.0-RC2-SNAPSHOT</version>
 
     <name>AxonIQ AxonServer</name>
 
@@ -117,7 +117,7 @@
         <connection>scm:git:https://github.com/AxonIQ/axoniq-axonhub-server.git</connection>
         <developerConnection>scm:git:https://github.com/AxonIQ/axoniq-axonhub-server.git</developerConnection>
         <url>https://github.com/AxonIQ/axoniq-axonhub-server</url>
-        <tag>axonserver-parent-4.0-RC1</tag>
+        <tag>master</tag>
     </scm>
 
     <distributionManagement>
