@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.migration;
 
 import org.axonframework.axonserver.connector.AxonServerConfiguration;
-import org.axonframework.axonserver.connector.PlatformConnectionManager;
-import org.axonframework.axonserver.connector.event.AxonDBClient;
+import org.axonframework.axonserver.connector.AxonServerConnectionManager;
+import org.axonframework.axonserver.connector.event.AxonServerEventStoreClient;
 import org.axonframework.serialization.Serializer;
 import org.axonframework.serialization.json.JacksonSerializer;
 import org.axonframework.serialization.xml.XStreamSerializer;
@@ -21,9 +21,9 @@ public class AxonConfiguration implements ApplicationContextAware {
     @Bean
     public Serializer serializer(MigrationProperties migrationProperties) {
         if( SerializerType.JACKSON.equals(migrationProperties.getEvents() ) ) {
-            return new JacksonSerializer();
+            return JacksonSerializer.builder().build();
         }
-        return new XStreamSerializer();
+        return XStreamSerializer.builder().build();
     }
 
 
@@ -41,16 +41,16 @@ public class AxonConfiguration implements ApplicationContextAware {
     }
 
     @Bean
-    public AxonDBClient axonDBClient(AxonServerConfiguration axonServerConfiguration,
-            PlatformConnectionManager platformConnectionManager
+    public AxonServerEventStoreClient axonDBClient(AxonServerConfiguration axonServerConfiguration,
+                                                   AxonServerConnectionManager axonServerConnectionManager
             ) {
-        return new AxonDBClient(axonServerConfiguration, platformConnectionManager);
+        return new AxonServerEventStoreClient(axonServerConfiguration, axonServerConnectionManager);
 
     }
 
     @Bean
-    public PlatformConnectionManager platformConnectionManager(AxonServerConfiguration routingConfiguration) {
-        return new PlatformConnectionManager(routingConfiguration);
+    public AxonServerConnectionManager axonServerConnectionManager(AxonServerConfiguration axonServerConfiguration) {
+        return new AxonServerConnectionManager(axonServerConfiguration);
     }
 
     @Override

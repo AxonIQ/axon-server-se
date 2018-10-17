@@ -12,7 +12,7 @@
     <dependencies>
         <dependency>
             <groupId>org.axonframework</groupId>
-            <artifactId>axon-core</artifactId>
+            <artifactId>axon-configuration</artifactId>
             <version>${axon.version}</version>
         </dependency>
 

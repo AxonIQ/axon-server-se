@@ -9,10 +9,8 @@ import io.axoniq.axonserver.migration.db.MigrationStatus;
 import io.axoniq.axonserver.migration.db.MigrationStatusRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.axonframework.axonserver.connector.AxonServerConfiguration;
-import org.axonframework.axonserver.connector.PlatformConnectionManager;
 import org.axonframework.axonserver.connector.event.AppendEventTransaction;
-import org.axonframework.axonserver.connector.event.AxonDBClient;
+import org.axonframework.axonserver.connector.event.AxonServerEventStoreClient;
 import org.axonframework.axonserver.connector.util.GrpcMetaDataConverter;
 import org.axonframework.messaging.MetaData;
 import org.axonframework.serialization.SerializedMetaData;
@@ -37,7 +35,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 @Component
 public class MigrationRunner implements CommandLineRunner {
     private final EventProducer eventProducer;
-    private final AxonDBClient axonDBClient;
+    private final AxonServerEventStoreClient axonDBClient;
     private final Serializer serializer;
     private final MigrationStatusRepository migrationStatusRepository;
     private final Logger logger = LoggerFactory.getLogger(MigrationRunner.class);
@@ -53,7 +51,7 @@ public class MigrationRunner implements CommandLineRunner {
 
     public MigrationRunner(EventProducer eventProducer, Serializer serializer,
                            MigrationStatusRepository migrationStatusRepository, MeterRegistry meterRegistry,
-                           MetricReporter metricReporter, AxonDBClient axonDBClient
+                           MetricReporter metricReporter, AxonServerEventStoreClient axonDBClient
                            ) {
         this.eventProducer = eventProducer;
         this.axonDBClient = axonDBClient;
@@ -90,7 +88,7 @@ public class MigrationRunner implements CommandLineRunner {
             while(keepRunning) {
                 keepRunning = false;
                 List<? extends SnapshotEvent> result = eventProducer.findSnapshots(lastProcessedTimestamp, batchSize);
-                if( result.size() == 0) {
+                if( result.isEmpty()) {
                     logger.info("No more snapshots found");
                     return;
                 }
@@ -130,9 +128,7 @@ public class MigrationRunner implements CommandLineRunner {
         if (metadataBytes != null) {
             MetaData metaData = serializer.deserialize(new SerializedMetaData<>(metadataBytes, byte[].class));
             Map<String, MetaDataValue> metaDataValues = new HashMap<>();
-            metaData.forEach((k, v) -> {
-                metaDataValues.put(k, grpcMetaDataConverter.convertToMetaDataValue(v));
-            });
+            metaData.forEach((k, v) -> metaDataValues.put(k, grpcMetaDataConverter.convertToMetaDataValue(v)));
             eventBuilder.putAllMetaData(metaDataValues);
         }
     }
@@ -147,7 +143,7 @@ public class MigrationRunner implements CommandLineRunner {
 
         while(keepRunning) {
             List<? extends DomainEvent> result = eventProducer.findEvents(lastProcessedToken, batchSize);
-            if( result.size() == 0) {
+            if( result.isEmpty()) {
                 logger.info("No more events found");
                 return;
             }

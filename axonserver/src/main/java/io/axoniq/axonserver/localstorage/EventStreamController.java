@@ -50,7 +50,7 @@ public class EventStreamController {
     // always run async so that calling thread is not blocked by this method
     private void startTracker() {
         try {
-            if( processingBacklog.compareAndSet(false, true) ) {
+            if( remainingPermits.get() > 0 && processingBacklog.compareAndSet(false, true) ) {
                 logger.info("Start tracker from token: {}", currentTrackingToken);
                 cancelListener();
                 running.set(true);
