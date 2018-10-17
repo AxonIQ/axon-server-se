@@ -387,7 +387,7 @@ public class EventDispatcher implements AxonServerClientService {
 
         private boolean registerEventTracker(GetEventsRequest getEventsRequest) {
             if( eventStoreRequestObserver == null) {
-                trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClient(), getEventsRequest.getTrackingToken()-1);
+                trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClientId(), getEventsRequest.getTrackingToken()-1);
                 try {
                     eventStoreRequestObserver =
                             eventStore.listEvents(context, new StreamObserver<InputStream>() {
@@ -425,8 +425,8 @@ public class EventDispatcher implements AxonServerClientService {
 
                 trackingEventProcessors.computeIfAbsent(trackerInfo.client, key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
                 logger.info("Starting tracking event processor for {}:{} - {}",
-                            getEventsRequest.getClient(),
-                            getEventsRequest.getComponent(),
+                            getEventsRequest.getClientId(),
+                            getEventsRequest.getComponentName(),
                             getEventsRequest.getTrackingToken());
             }
             return true;

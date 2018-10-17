@@ -58,7 +58,7 @@ public class QueryDispatcher {
     public void on(SubscriptionEvents.UnsubscribeQuery event) {
         QuerySubscription unsubscribe = event.getUnsubscribe();
         QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), unsubscribe);
-        registrationCache.remove(queryDefinition, unsubscribe.getClientName());
+        registrationCache.remove(queryDefinition, unsubscribe.getClientId());
     }
 
     @EventListener
@@ -139,7 +139,7 @@ public class QueryDispatcher {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
                                          .setMessageIdentifier(query.getMessageIdentifier())
-                                         .setMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
+                                         .setErrorMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
                                          .build());
             onCompleted.accept("NoClient");
         } else {
@@ -167,7 +167,7 @@ public class QueryDispatcher {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
                                          .setMessageIdentifier(query.getMessageIdentifier())
-                                         .setMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
+                                         .setErrorMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
                                          .build());
             onCompleted.accept(client);
         } else {

@@ -66,7 +66,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {
         String context = contextProvider.getContext();
         try {
-            AxonServerNode connectTo = topology.findNodeForClient(request.getClientName(),
+            AxonServerNode connectTo = topology.findNodeForClient(request.getClientId(),
                                                                   request.getComponentName(),
                                                                   context);
             responseObserver.onNext(PlatformInfo.newBuilder()
@@ -98,7 +98,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 switch (requestCase) {
                     case REGISTER:
                         ClientIdentification client = instruction.getRegister();
-                        clientComponent = new ClientComponent(client.getClientName(), client.getComponentName(), context);
+                        clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
                         registerClient(clientComponent, sendingStreamObserver);
                         break;
                     case REQUEST_NOT_SET:

@@ -59,7 +59,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                 switch (queryProviderOutbound.getRequestCase()) {
                     case SUBSCRIBE:
                         if (client == null) {
-                            client = queryProviderOutbound.getSubscribe().getClientName();
+                            client = queryProviderOutbound.getSubscribe().getClientId();
                         }
                         eventPublisher.publishEvent(
                                 new SubscriptionEvents.SubscribeQuery(context,
@@ -69,7 +69,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                               wrappedQueryProviderInboundObserver,
                                                                               queryProviderOutbound
                                                                                       .getSubscribe()
-                                                                                      .getClientName(),
+                                                                                      .getClientId(),
                                                                               queryProviderOutbound
                                                                                       .getSubscribe()
                                                                                       .getComponentName())));
@@ -83,21 +83,21 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                             false));
                         }
                         break;
-                    case FLOWCONTROL:
+                    case FLOW_CONTROL:
                         if (this.listener == null) {
                             listener = new GrpcQueryDispatcherListener(queryDispatcher,
                                                                        queryProviderOutbound.getFlowControl()
-                                                                                            .getClientName(),
+                                                                                            .getClientId(),
                                                                        wrappedQueryProviderInboundObserver, processingThreads);
                         }
                         listener.addPermits(queryProviderOutbound.getFlowControl().getPermits());
                         break;
 
-                    case QUERYRESPONSE:
+                    case QUERY_RESPONSE:
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(), client, false);
                         break;
 
-                    case QUERYCOMPLETE:
+                    case QUERY_COMPLETE:
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
                                                                           client,
                                                                           false);

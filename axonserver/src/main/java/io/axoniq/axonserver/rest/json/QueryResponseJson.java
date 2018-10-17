@@ -11,7 +11,7 @@ public class QueryResponseJson {
     private final String messageIdentifier;
     private final String requestIdentifier;
     private final String errorCode;
-    private final MessageJson message;
+    private final MessageJson errorMessage;
     private final SerializedObjectJson payload;
     private final MetaDataJson metaData;
 
@@ -20,7 +20,7 @@ public class QueryResponseJson {
         requestIdentifier = r.getRequestIdentifier();
         errorCode = r.getErrorCode();
         payload = r.hasPayload() ? new SerializedObjectJson(r.getPayload()) : null;
-        message = r.hasMessage() ? new MessageJson(r.getMessage()) : null;
+        errorMessage = r.hasErrorMessage() ? new MessageJson(r.getErrorMessage()) : null;
         metaData = new MetaDataJson(r.getMetaDataMap());
     }
 
@@ -36,8 +36,8 @@ public class QueryResponseJson {
         return errorCode;
     }
 
-    public MessageJson getMessage() {
-        return message;
+    public MessageJson getErrorMessage() {
+        return errorMessage;
     }
 
     public SerializedObjectJson getPayload() {

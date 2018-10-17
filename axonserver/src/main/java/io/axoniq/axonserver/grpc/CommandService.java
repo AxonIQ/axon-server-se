@@ -54,7 +54,7 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
                 switch (commandFromSubscriber.getRequestCase()) {
                     case SUBSCRIBE:
                         if (this.client == null) {
-                            client = commandFromSubscriber.getSubscribe().getClientName();
+                            client = commandFromSubscriber.getSubscribe().getClientId();
                         }
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(context,
                                                                                             commandFromSubscriber
@@ -74,16 +74,16 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
                                                                                                   false));
                         }
                         break;
-                    case FLOWCONTROL:
+                    case FLOW_CONTROL:
                         if (this.listener == null) {
                             listener = new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
                                                                          commandFromSubscriber.getFlowControl()
-                                                                                              .getClientName(),
+                                                                                              .getClientId(),
                                                                          wrappedResponseObserver, processingThreads);
                         }
                         listener.addPermits(commandFromSubscriber.getFlowControl().getPermits());
                         break;
-                    case COMMANDRESPONSE:
+                    case COMMAND_RESPONSE:
                         commandDispatcher.handleResponse(commandFromSubscriber.getCommandResponse(),false);
                         break;
 

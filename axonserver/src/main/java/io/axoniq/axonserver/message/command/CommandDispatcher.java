@@ -62,7 +62,7 @@ public class CommandDispatcher {
         CommandSubscription request = event.getRequest();
         CommandHandler commandHandler = registrations.remove(event.getContext(),
                                                              request.getCommand(),
-                                                             request.getClientName());
+                                                             request.getClientId());
         if (commandHandler != null) {
             commandHandler.confirm(request.getMessageId());
         }
@@ -119,7 +119,7 @@ public class CommandDispatcher {
                                                    .setMessageIdentifier(command.getMessageIdentifier())
                                                    .setRequestIdentifier(command.getMessageIdentifier())
                                                    .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
-                                                   .setMessage(ErrorMessageFactory.build("No Handler for command: " + command.getName()))
+                                                   .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + command.getName()))
                                                    .build());
             return;
         }
@@ -162,7 +162,7 @@ public class CommandDispatcher {
             commandInformation.getResponseConsumer().accept(CommandResponse.newBuilder()
                     .setMessageIdentifier(request.getMessageIdentifier()).setRequestIdentifier(request.getMessageIdentifier())
                     .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
-                    .setMessage(ErrorMessageFactory.build("No Handler for command: " + request.getName()))
+                    .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + request.getName()))
                     .build());
             return null;
         }
@@ -183,7 +183,7 @@ public class CommandDispatcher {
                 ci.getResponseConsumer().accept(CommandResponse.newBuilder()
                         .setMessageIdentifier(m)
                                                                .setRequestIdentifier(m)
-                        .setMessage(ErrorMessageFactory.build("Connection lost while executing command on: " + ci.getClientId()))
+                        .setErrorMessage(ErrorMessageFactory.build("Connection lost while executing command on: " + ci.getClientId()))
                         .setErrorCode(ErrorCode.CONNECTION_TO_HANDLER_LOST.getCode())
                         .build());
             }

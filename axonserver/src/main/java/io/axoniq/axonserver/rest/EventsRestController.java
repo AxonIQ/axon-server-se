@@ -178,7 +178,7 @@ public class EventsRestController {
             requestStream.onNext(GetEventsRequest.newBuilder()
                                                  .setTrackingToken(trackingToken)
                                                  .setNumberOfPermits(10000)
-                                                 .setClient("REST")
+                                                 .setClientId("REST")
                                                  .build());
             sseEmitter.onTimeout(requestStream::onCompleted);
             sseEmitter.onCompletion(requestStream::onCompleted);

@@ -11,7 +11,7 @@ public class CommandResponseJson {
 
     private final String requestIdentifier;
     private final String errorCode;
-    private final MessageJson message;
+    private final MessageJson errorMessage;
     private final SerializedObjectJson payload;
     private final String messageIdentifier;
     private MetaDataJson metaData;
@@ -19,7 +19,7 @@ public class CommandResponseJson {
     public CommandResponseJson(CommandResponse r) {
         requestIdentifier = r.getRequestIdentifier();
         errorCode = r.getErrorCode();
-        message = r.hasMessage() ? new MessageJson(r.getMessage()) : null;
+        errorMessage = r.hasErrorMessage() ? new MessageJson(r.getErrorMessage()) : null;
         payload = r.hasPayload() ? new SerializedObjectJson(r.getPayload()) : null;
         messageIdentifier = r.getMessageIdentifier();
         metaData = new MetaDataJson(r.getMetaDataMap());
@@ -33,8 +33,8 @@ public class CommandResponseJson {
         return errorCode;
     }
 
-    public MessageJson getMessage() {
-        return message;
+    public MessageJson getErrorMessage() {
+        return errorMessage;
     }
 
     public SerializedObjectJson getPayload() {

@@ -80,7 +80,7 @@ public class SubscriptionQueryDispatcher {
 
     @EventListener
     public void on(SubscriptionEvents.SubscribeQuery event){
-        String clientName = event.getSubscription().getClientName();
+        String clientName = event.getSubscription().getClientId();
         QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), event.getSubscription().getQuery());
         directSubscriptions.forEach(subscription -> {
             String subscriptionId = subscription.subscriptionQuery().getSubscriptionIdentifier();
