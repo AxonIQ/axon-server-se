@@ -1,5 +1,6 @@
 package io.axoniq.sample;
 
+
 import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
 /**
