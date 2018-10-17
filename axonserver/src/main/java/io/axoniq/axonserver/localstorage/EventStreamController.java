@@ -41,10 +41,8 @@ public class EventStreamController {
 
     public void update(long trackingToken, long numberOfPermits) {
         currentTrackingToken.compareAndSet(Long.MIN_VALUE, trackingToken);
-        long oldRemaining = remainingPermits.getAndAdd(numberOfPermits);
-        if( oldRemaining == 0) {
-            threadPool.execute(this::startTracker);
-        }
+        remainingPermits.getAndAdd(numberOfPermits);
+        threadPool.execute(this::startTracker);
     }
 
     // always run async so that calling thread is not blocked by this method
@@ -54,10 +52,16 @@ public class EventStreamController {
                 logger.info("Start tracker from token: {}", currentTrackingToken);
                 cancelListener();
                 running.set(true);
-                this.eventListener = eventWriteStorage.registerEventListener(this::sendFromWriter);
-                datafileManagerChain.streamEvents(currentTrackingToken.get(),
-                                                  this::sendFromStream);
+                while( running.get() && remainingPermits.get() > 0 && ! datafileManagerChain.streamEvents(currentTrackingToken.get(),
+                                                  this::sendFromStream) ) {
+                    if( remainingPermits.get() > 0) {
+                        logger.info("restart tracker from token: {}, remaining permits after run {}",
+                                    currentTrackingToken,
+                                    remainingPermits.get());
+                    }
+                }
 
+                this.eventListener = eventWriteStorage.registerEventListener(this::sendFromWriter);
                 processingBacklog.set(false);
                 logger.debug("Done processing backlog at: {}", currentTrackingToken.get());
             }

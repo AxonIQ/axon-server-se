@@ -314,7 +314,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamEvents(long token, Predicate<EventWithToken> onEvent) {
+    public boolean streamEvents(long token, Predicate<EventWithToken> onEvent) {
         logger.debug("Start streaming event from files at {}", token);
         long lastSegment = -1;
         long segment = getSegmentFor(token);
@@ -326,7 +326,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
                 if (!onEvent.test(eventWithToken.asEventWithToken())) {
                     eventIterator.close();
                     logger.debug("Stopped streaming event from files at {}, out of permits", eventWithToken.getToken());
-                    return;
+                    return false;
                 }
             }
             lastSegment = segment;
@@ -334,6 +334,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
             token = segment;
         }
         logger.debug("Stopped streaming event from files at {}", eventWithToken == null? token: eventWithToken.getToken());
+        return true;
     }
 
     @Override

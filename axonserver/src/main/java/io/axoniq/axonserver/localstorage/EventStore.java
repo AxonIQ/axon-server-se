@@ -35,7 +35,7 @@ public interface EventStore {
     default void cleanup() {
     }
 
-    void streamEvents(long token, Predicate<EventWithToken> onEvent);
+    boolean streamEvents(long token, Predicate<EventWithToken> onEvent);
 
     Optional<Event> getLastEvent(String aggregateId, long minSequenceNumber);
 

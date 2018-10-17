@@ -162,7 +162,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamEvents(long token,
+    public boolean streamEvents(long token,
                              Predicate<EventWithToken> onEvent) {
         try (Connection connection = dataSource.getConnection();
                      PreparedStatement preparedStatement = connection.prepareStatement(
@@ -173,10 +173,11 @@ public abstract class JdbcAbstractStore implements EventStore {
                 while (resultSet.next()) {
                     event = readEventWithToken(resultSet);
                     if (!onEvent.test(event)) {
-                        return;
+                        return false;
                     }
                 }
             }
+            return true;
         } catch (SQLException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }
