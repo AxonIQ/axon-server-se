@@ -41,8 +41,8 @@ public class EventStreamController {
 
     public void update(long trackingToken, long numberOfPermits) {
         currentTrackingToken.compareAndSet(Long.MIN_VALUE, trackingToken);
-        remainingPermits.getAndAdd(numberOfPermits);
-        threadPool.execute(this::startTracker);
+        if( remainingPermits.getAndAdd(numberOfPermits) <= 0)
+            threadPool.execute(this::startTracker);
     }
 
     // always run async so that calling thread is not blocked by this method

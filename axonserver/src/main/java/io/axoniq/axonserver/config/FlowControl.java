@@ -10,15 +10,15 @@ public class FlowControl {
     /**
      * Initial number of permits granted in communication between axonserver platform nodes.
      */
-    private long initialPermits=100000;
+    private long initialPermits=10000;
     /**
      * Threshold at which the node will send another grant of newPermits to the connected platform node.
      */
-    private long threshold=10000;
+    private long threshold=5000;
     /**
      * Additional number of permits granted in communication between axonserver platform nodes.
      */
-    private long newPermits=100000;
+    private long newPermits=5000;
 
     public long getInitialPermits() {
         return initialPermits;
