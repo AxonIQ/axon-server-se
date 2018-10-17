@@ -345,19 +345,19 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         CommandSubscription command = connectorCommand.getSubscribeCommand()
                                                                       .getCommand();
                         logger.debug("SUBSCRIBE [{}] [{}] [{}]", command.getCommand(),
-                                     command.getClientName(),
+                                     command.getClientId(),
                                      messagingServerName);
 
                         checkClient(connectorCommand.getSubscribeCommand().getContext(),
                                     command.getComponentName(),
-                                    command.getClientName());
+                                    command.getClientId());
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(connectorCommand
                                                                                                     .getSubscribeCommand()
                                                                                                     .getContext(),
                                                                                             command,
                                                                                             new ProxyCommandHandler(
                                                                                                     responseObserver,
-                                                                                                    command.getClientName(),
+                                                                                                    command.getClientId(),
                                                                                                     command.getComponentName(),
                                                                                                     messagingServerName)
                         ));
@@ -365,7 +365,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     case UNSUBSCRIBE_COMMAND:
                         logger.debug("UNSUBSCRIBE [{}] [{}] [{}]",
                                      connectorCommand.getUnsubscribeCommand().getCommand(),
-                                     connectorCommand.getUnsubscribeCommand().getCommand().getClientName(),
+                                     connectorCommand.getUnsubscribeCommand().getCommand().getClientId(),
                                      messagingServerName);
                         eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(
                                 connectorCommand.getUnsubscribeCommand().getContext(),
@@ -381,18 +381,18 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         QuerySubscription query = connectorCommand.getSubscribeQuery().getQuery();
                         logger.debug("SUBSCRIBE [{}/{}] [{}] [{}]", query.getQuery(),
                                      query.getResultName(),
-                                     query.getClientName(),
+                                     query.getClientId(),
                                      messagingServerName);
                         checkClient(connectorCommand.getSubscribeQuery().getContext(),
                                     query.getComponentName(),
-                                    query.getClientName());
+                                    query.getClientId());
 
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeQuery(connectorCommand
                                                                                                   .getSubscribeQuery()
                                                                                                   .getContext(),
                                                                                           query
                                 , new ProxyQueryHandler(responseObserver,
-                                                        query.getClientName(),
+                                                        query.getClientId(),
                                                         query.getComponentName(),
                                                         messagingServerName)
                         ));
@@ -402,7 +402,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         logger.debug("UNSUBSCRIBE [{}/{}] [{}] [{}]",
                                      connectorCommand.getUnsubscribeQuery().getQuery().getQuery(),
                                      connectorCommand.getUnsubscribeQuery().getQuery().getResultName(),
-                                     connectorCommand.getUnsubscribeQuery().getQuery().getClientName(),
+                                     connectorCommand.getUnsubscribeQuery().getQuery().getClientId(),
                                      messagingServerName);
                         eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeQuery(connectorCommand
                                                                                                     .getUnsubscribeQuery()

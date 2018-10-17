@@ -88,7 +88,7 @@ public class MessagingClusterServiceTest {
                         QuerySubscription.newBuilder()
                                 .setQuery("query")
                                 .setComponentName("Component")
-                                .setClientName("Client")
+                                .setClientId("Client")
                                 .setResultName("Result")
                                 .setNrOfHandlers(1))
                 .setContext(Topology.DEFAULT_CONTEXT))

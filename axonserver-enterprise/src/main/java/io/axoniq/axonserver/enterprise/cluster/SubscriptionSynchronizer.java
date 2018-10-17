@@ -83,7 +83,7 @@ public class SubscriptionSynchronizer {
                                                                           Collections.singleton(subscription
                                                                                                         .getResultName()),
                                                                           subscription.getComponentName(),
-                                                                          subscription.getClientName()));
+                                                                          subscription.getClientId()));
         }
     }
 
@@ -95,7 +95,7 @@ public class SubscriptionSynchronizer {
             clusterController.activeConnections()
                              .forEach(listener -> listener.unsubscribeQuery(queryDefinition,
                                                                             subscription.getComponentName(),
-                                                                            subscription.getClientName()));
+                                                                            subscription.getClientId()));
         }
     }
 
@@ -107,7 +107,7 @@ public class SubscriptionSynchronizer {
                              .forEach(remoteConnection ->
                                               remoteConnection.subscribeCommand(event.getContext(),
                                                                                 request.getCommand(),
-                                                                                request.getClientName(),
+                                                                                request.getClientId(),
                                                                                 request.getComponentName()));
         }
     }
@@ -119,7 +119,7 @@ public class SubscriptionSynchronizer {
             clusterController.activeConnections().forEach(remoteConnection -> remoteConnection
                     .unsubscribeCommand(event.getContext(),
                                         request.getCommand(),
-                                        request.getClientName(),
+                                        request.getClientId(),
                                         request.getComponentName()));
         }
     }

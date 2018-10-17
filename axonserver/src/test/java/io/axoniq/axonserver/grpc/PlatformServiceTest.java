@@ -50,7 +50,7 @@ public class PlatformServiceTest {
 
             }
         };
-        ClientIdentification client = ClientIdentification.newBuilder().setClientName("client").setClientName("component").build();
+        ClientIdentification client = ClientIdentification.newBuilder().setClientId("client").setComponentName("component").build();
         platformService.getPlatformServer(client, responseObserver);
     }
 
@@ -73,7 +73,7 @@ public class PlatformServiceTest {
             }
         });
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                .setClientName("client")
+                .setClientId("client")
                 .setComponentName("component")
                 ).build());
 

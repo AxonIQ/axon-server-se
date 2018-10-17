@@ -57,7 +57,7 @@ public class ClusterServiceTest {
     public void retrieveClusterInfo() throws Exception {
         ClientIdentification request = ClientIdentification.newBuilder()
                 .setComponentName("component")
-                .setClientName("client")
+                .setClientId("client")
                 .build();
         AtomicReference<PlatformInfo> clusterInfoRef = new AtomicReference<>();
         AtomicBoolean completed = new AtomicBoolean(false);

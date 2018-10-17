@@ -321,7 +321,7 @@ public class RemoteConnection  {
                     .setUnsubscribeCommand(InternalCommandSubscription.newBuilder()
                             .setCommand(
                                     CommandSubscription.newBuilder()
-                                            .setClientName(client)
+                                            .setClientId(client)
                                             .setCommand(command)
                                             .setComponentName(componentName)
                             ).setContext(context))
@@ -333,7 +333,7 @@ public class RemoteConnection  {
             publish(ConnectorCommand.newBuilder()
                     .setSubscribeCommand(InternalCommandSubscription.newBuilder()
                             .setCommand(CommandSubscription.newBuilder()
-                                    .setClientName(client)
+                                    .setClientId(client)
                                     .setCommand(command)
                                     .setComponentName(componentName)
                             ).setContext(context))
@@ -350,7 +350,7 @@ public class RemoteConnection  {
                         ConnectorCommand.newBuilder().setSubscribeQuery(
                                 InternalQuerySubscription.newBuilder().setQuery(
                                         QuerySubscription.newBuilder()
-                                                         .setClientName(clientName)
+                                                         .setClientId(clientName)
                                                          .setQuery(query.getQueryName())
                                                          .setResultName(resultName)
                                                          .setComponentName(component)
@@ -362,7 +362,7 @@ public class RemoteConnection  {
         publish(ConnectorCommand.newBuilder()
                     .setUnsubscribeQuery(InternalQuerySubscription.newBuilder()
                             .setQuery(QuerySubscription.newBuilder()
-                                    .setClientName(client)
+                                    .setClientId(client)
                                     .setQuery(queryDefinition.getQueryName())
                                     .setComponentName(componentName))
                             .setContext(queryDefinition.getContext())

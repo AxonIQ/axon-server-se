@@ -33,10 +33,10 @@ public class QueryRestControllerTest {
         QuerySubscription querySubscription = QuerySubscription.newBuilder()
                 .setQuery("Request")
                 .setComponentName("Component")
-                .setClientName("client")
+                .setClientId("client")
                 .setNrOfHandlers(1).build();
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
-                             new DirectQueryHandler(new CountingStreamObserver<>(), querySubscription.getClientName(), querySubscription.getComponentName()));
+                             new DirectQueryHandler(new CountingStreamObserver<>(), querySubscription.getClientId(), querySubscription.getComponentName()));
 
         testSubject = new QueryRestController(registationCache, queryDispatcher);
     }

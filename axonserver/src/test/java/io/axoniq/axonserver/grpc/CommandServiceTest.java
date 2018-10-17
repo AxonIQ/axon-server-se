@@ -45,7 +45,7 @@ public class CommandServiceTest {
     public void flowControl() throws Exception {
         CountingStreamObserver<CommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientName("name").build()).build());
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
         commandQueue.put("name", new WrappedCommand(Topology.DEFAULT_CONTEXT, Command.newBuilder().build()));
@@ -57,7 +57,7 @@ public class CommandServiceTest {
     public void subscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setSubscribe(CommandSubscription.newBuilder().setClientName("name").setComponentName("component").setCommand("command"))
+                .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
         verify(eventPublisher).publishEvent(isA(SubscriptionEvents.SubscribeCommand.class));
     }
@@ -65,7 +65,7 @@ public class CommandServiceTest {
     public void unsubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setUnsubscribe(CommandSubscription.newBuilder().setClientName("name").setComponentName("component").setCommand("command"))
+                .setUnsubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
         verify(eventPublisher, times(0)).publishEvent(isA(SubscriptionEvents.UnsubscribeCommand.class));
     }
@@ -73,10 +73,10 @@ public class CommandServiceTest {
     public void unsubscribeAfterSubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setSubscribe(CommandSubscription.newBuilder().setClientName("name").setComponentName("component").setCommand("command"))
+                .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setUnsubscribe(CommandSubscription.newBuilder().setClientName("name").setComponentName("component").setCommand("command"))
+                .setUnsubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
         verify(eventPublisher).publishEvent(isA(SubscriptionEvents.UnsubscribeCommand.class));
     }
@@ -85,7 +85,7 @@ public class CommandServiceTest {
     public void cancelAfterSubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setSubscribe(CommandSubscription.newBuilder().setClientName("name").setComponentName("component").setCommand("command"))
+                .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
         requestStream.onError(new RuntimeException("failed"));
     }
@@ -99,7 +99,7 @@ public class CommandServiceTest {
     @Test
     public void close() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientName("name").build()).build());
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         requestStream.onCompleted();
     }
 
@@ -119,7 +119,7 @@ public class CommandServiceTest {
     public void commandHandlerDisconnected(){
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                                                    .setSubscribe(CommandSubscription.newBuilder().setClientName("name").setComponentName("component").setCommand("command"))
+                                                    .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                                                     .build());
         requestStream.onError(new RuntimeException("failed"));
         verify(eventPublisher).publishEvent(isA(TopologyEvents.CommandHandlerDisconnected.class));

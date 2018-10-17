@@ -54,7 +54,7 @@ public class CommandDispatcherTest {
     public void registerCommandHandler()  {
         CountingStreamObserver<CommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
         CommandHandler commandHandler = new DirectCommandHandler(countingStreamObserver, "client", "component");
-        CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1234")
+        CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1234")
                 .build();
 
         commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(Topology.DEFAULT_CONTEXT, subscribeRequest, commandHandler));
@@ -62,7 +62,7 @@ public class CommandDispatcherTest {
         assertEquals(1, countingStreamObserver.count);
         assertEquals("1234", countingStreamObserver.responseList.get(0).getConfirmation().getMessageId());
 
-        CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1235")
+        CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1235")
                 .build();
         when( registrations.remove(any(), any(), any())).thenReturn(commandHandler);
         commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(Topology.DEFAULT_CONTEXT, unsubscribeRequest, false));
@@ -122,7 +122,7 @@ public class CommandDispatcherTest {
     @Test
     public void subscribe() {
         CountingStreamObserver<CommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
-        CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1236")
+        CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1236")
                 .build();
         CommandHandler handler = new DirectCommandHandler(countingStreamObserver, "client", "component");
         commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(Topology.DEFAULT_CONTEXT, subscribeRequest, handler));
@@ -135,7 +135,7 @@ public class CommandDispatcherTest {
     @Test
     public void unsubscribe() {
         CountingStreamObserver<CommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
-        CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientName("client").setMessageId("1235")
+        CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1235")
                 .build();
         when(registrations.remove(any(), any(), any())).thenReturn(new DirectCommandHandler(countingStreamObserver, "client", "component"));
         commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(Topology.DEFAULT_CONTEXT, unsubscribeRequest, false));
