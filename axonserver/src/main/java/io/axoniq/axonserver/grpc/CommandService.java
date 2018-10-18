@@ -17,6 +17,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import javax.annotation.PreDestroy;
+
 /**
  * Author: marc
  */
@@ -30,6 +34,7 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
 
     @Value("${axoniq.axonserver.command-threads:0}")
     private final int processingThreads = 1;
+    private final Set<GrpcFlowControlledDispatcherListener> dispatcherListenerSet = new CopyOnWriteArraySet<>();
 
     public CommandService(CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
@@ -38,6 +43,12 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        dispatcherListenerSet.forEach(GrpcFlowControlledDispatcherListener::cancel);
+        dispatcherListenerSet.clear();
     }
 
     @Override
@@ -80,6 +91,7 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
                                                                          commandFromSubscriber.getFlowControl()
                                                                                               .getClientId(),
                                                                          wrappedResponseObserver, processingThreads);
+                            dispatcherListenerSet.add(listener);
                         }
                         listener.addPermits(commandFromSubscriber.getFlowControl().getPermits());
                         break;
@@ -107,6 +119,7 @@ public class CommandService extends CommandServiceGrpc.CommandServiceImplBase im
                 eventPublisher.publishEvent(new CommandHandlerDisconnected(context, client));
                 if (listener != null) {
                     listener.cancel();
+                    dispatcherListenerSet.remove(listener);
                 }
             }
 

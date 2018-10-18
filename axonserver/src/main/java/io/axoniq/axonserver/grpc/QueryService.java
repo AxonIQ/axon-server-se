@@ -21,6 +21,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import javax.annotation.PreDestroy;
+
 /**
  * Author: marc
  */
@@ -31,6 +35,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
+    private final Set<GrpcQueryDispatcherListener> dispatcherListenerSet = new CopyOnWriteArraySet<>();
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private final int processingThreads = 1;
@@ -40,6 +45,12 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        dispatcherListenerSet.forEach(GrpcFlowControlledDispatcherListener::cancel);
+        dispatcherListenerSet.clear();
     }
 
     @Override
@@ -89,6 +100,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                        queryProviderOutbound.getFlowControl()
                                                                                             .getClientId(),
                                                                        wrappedQueryProviderInboundObserver, processingThreads);
+                            dispatcherListenerSet.add(listener);
                         }
                         listener.addPermits(queryProviderOutbound.getFlowControl().getPermits());
                         break;
@@ -126,6 +138,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void cleanup() {
                 eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client));
                 if (listener != null) {
+                    dispatcherListenerSet.remove(listener);
                     listener.cancel();
                 }
             }

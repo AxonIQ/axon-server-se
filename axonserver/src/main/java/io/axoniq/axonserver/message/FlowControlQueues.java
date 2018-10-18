@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
@@ -34,7 +35,8 @@ public class FlowControlQueues<T> {
 
     public T take(String filterValue) throws InterruptedException {
         BlockingQueue<FilterNode> filterSegment = segments.computeIfAbsent(filterValue, f -> new PriorityBlockingQueue<>());
-        return filterSegment.take().value;
+        FilterNode message = filterSegment.poll(1, TimeUnit.SECONDS);
+        return message == null ? null : message.value;
     }
 
     public void put(String filterValue, T value)  {

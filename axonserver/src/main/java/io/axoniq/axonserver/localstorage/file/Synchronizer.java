@@ -132,6 +132,7 @@ public class Synchronizer {
         while( ! syncAndCloseFile.isEmpty()) {
             syncAndCloseFile();
         }
+        fsync.shutdown();
     }
 
 }

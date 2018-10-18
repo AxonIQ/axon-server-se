@@ -25,6 +25,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
@@ -75,11 +76,13 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.PreDestroy;
 
 /**
  * Handles requests from other axonserver cluster servers acting as message processors.
@@ -123,6 +126,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final int queryProcessingThreads = 1;
     @Value("${axoniq.axonserver.cluster.command-threads:1}")
     private final int commandProcessingThreads = 1;
+    private final Set<GrpcFlowControlledDispatcherListener> dispatchListeners = new CopyOnWriteArraySet<>();
 
 
     public MessagingClusterService(
@@ -165,6 +169,12 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 logger.warn("Failed to publish event: {}", ex.getMessage());
             }
         }));
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        dispatchListeners.forEach(GrpcFlowControlledDispatcherListener::cancel);
+        dispatchListeners.clear();
     }
 
     @Override
@@ -553,6 +563,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                              .getFlowControl()
                                                                                              .getNodeName(),
                                                                                      responseObserver, commandProcessingThreads);
+
+                    dispatchListeners.add(commandQueueListener);
                 }
                 commandQueueListener.addPermits(connectorCommand.getFlowControl().getPermits());
             }
@@ -565,6 +577,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                  responseObserver, queryProcessingThreads);
                 }
                 queryQueueListener.addPermits(connectorCommand.getFlowControl().getPermits());
+                dispatchListeners.add(queryQueueListener);
             }
         }
 
@@ -622,10 +635,12 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             }
             if (commandQueueListener != null) {
                 commandQueueListener.cancel();
+                dispatchListeners.remove(commandQueueListener);
                 commandQueueListener = null;
             }
             if (queryQueueListener != null) {
                 queryQueueListener.cancel();
+                dispatchListeners.remove(queryQueueListener);
                 queryQueueListener = null;
             }
             clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(null,

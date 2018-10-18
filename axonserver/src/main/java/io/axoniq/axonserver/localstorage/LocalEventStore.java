@@ -220,6 +220,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void stop(Runnable runnable) {
         running = false;
+        workersMap.forEach((k,workers) -> workers.cleanup());
         runnable.run();
     }
 

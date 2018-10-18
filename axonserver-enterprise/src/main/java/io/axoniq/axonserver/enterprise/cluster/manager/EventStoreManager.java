@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.nio.charset.Charset;
 import java.util.HashSet;
@@ -55,7 +56,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final LocalEventStore localEventStore;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final Map<String,String> masterPerContext = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("storage-manager-selector"));
     private volatile boolean running;
     private volatile ScheduledFuture<?> task;
 
@@ -110,6 +111,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         }
         lifecycleController.setCleanShutdown();
         running = true;
+    }
+
+    public void shutdown() {
+        scheduledExecutorService.shutdown();
     }
 
     @EventListener

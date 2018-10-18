@@ -2,6 +2,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -18,7 +19,14 @@ public class CleanUtils {
     private static final Method cleanerMethod;
     private static final Method cleanMethod;
     private static final Logger logger = LoggerFactory.getLogger(CleanUtils.class);
-    private static final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("fileCleaner") {
+        @Override
+        public Thread newThread(Runnable runnable) {
+            Thread thread = super.newThread(runnable);
+            thread.setDaemon(true);
+            return thread;
+        }
+    });
 
     static {
         ByteBuffer tempBuffer = ByteBuffer.allocateDirect(0);
@@ -53,7 +61,11 @@ public class CleanUtils {
             if (delay <= 0) {
                 doCleanup(buf);
             } else {
-                cleanupExecutor.schedule(() -> doCleanup(buf), delay, TimeUnit.SECONDS);
+                try {
+                    cleanupExecutor.schedule(() -> doCleanup(buf), delay, TimeUnit.SECONDS);
+                } catch( Exception ignore) {
+                    //may be as executor is shutdown
+                }
             }
         }
     }

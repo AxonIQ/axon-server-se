@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Controller;
 
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 import static java.util.stream.StreamSupport.stream;
 
@@ -44,7 +46,7 @@ public class AxonHubManager {
 
     private final Map<String, String> coordinatorPerContext = new ConcurrentHashMap<>();
 
-    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("coordinator-selector"));
 
     private volatile ScheduledFuture<?> task;
 
@@ -90,6 +92,11 @@ public class AxonHubManager {
     @PostConstruct
     public void init() {
         dynamicContexts.forEach(this::initContext);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        scheduledExecutorService.shutdown();
     }
 
     @EventListener

@@ -24,6 +24,7 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     private final FlowControlQueues<T> queues;
     private final String queueName;
     private Future<?>[] futures;
+    private volatile boolean running = true;
 
     public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, String queueName, StreamObserver<I> inboundStream, int threads) {
         this.queues = queues;
@@ -33,18 +34,19 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     }
 
     private void process() {
-
         try {
             getLogger().debug("Starting listener for {} ", queueName);
-            while (permitsLeft.get() > 0) {
+            while (running && permitsLeft.get() > 0) {
                 getLogger().debug("waiting for message for {} ", queueName);
-                if (send(queues.take(queueName))) {
+                T message = queues.take(queueName);
+                if (message != null && send(message)) {
                     long left = permitsLeft.decrementAndGet();
                     getLogger().debug("{} permits left", left);
                 }
             }
             getLogger().debug("Listener stopped as no more permits ({}) left for {} ", permitsLeft.get(), queueName);
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             getLogger().info("Processing of messages from {} interrupted", queueName, e);
         }
     }
@@ -62,7 +64,6 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
         long old = permitsLeft.getAndAdd(count);
         getLogger().debug("Adding {} permits, #permits was: {}", count, old);
         if (old <= 0) {
-            futures = new Future[4];
             IntStream.range(0, futures.length).forEach(i -> futures[i] = executorService.submit(this::process));
         }
     }
@@ -71,6 +72,12 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
         permitsLeft.set(0);
         getLogger().debug("cancel listener for {} ", queueName);
         IntStream.range(0, futures.length).forEach(i -> futures[i].cancel(true));
+        running = false;
+    }
+
+
+    public static void shutdown() {
+        executorService.shutdown();
     }
 
     protected abstract Logger getLogger();

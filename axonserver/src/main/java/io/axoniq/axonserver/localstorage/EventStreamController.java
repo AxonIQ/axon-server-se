@@ -18,7 +18,14 @@ import java.util.function.Consumer;
  * Author: marc
  */
 public class EventStreamController {
-    private static final Executor threadPool = Executors.newCachedThreadPool(new CustomizableThreadFactory("event-stream-"));
+    private static final Executor threadPool = Executors.newCachedThreadPool(new CustomizableThreadFactory("event-stream-"){
+        @Override
+        public Thread newThread(Runnable runnable) {
+            Thread thread = super.newThread(runnable);
+            thread.setDaemon(true);
+            return thread;
+        }
+    });
     private static final Logger logger = LoggerFactory.getLogger(EventStreamController.class);
     private final Consumer<EventWithToken> eventWithTokenConsumer;
     private final Consumer<Throwable> errorCallback;
@@ -133,4 +140,5 @@ public class EventStreamController {
         cancelListener();
         errorCallback.accept(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by server"));
     }
+
 }
