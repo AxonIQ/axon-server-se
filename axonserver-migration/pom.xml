@@ -4,7 +4,7 @@
     <parent>
 		<groupId>io.axoniq.axonserver</groupId>
 		<artifactId>axonserver-parent</artifactId>
-        <version>4.0-RC2-SNAPSHOT</version>
+        <version>4.0</version>
     </parent>
     <artifactId>axonserver-migration</artifactId>
     <name>AxonServer MigrationTool</name>
