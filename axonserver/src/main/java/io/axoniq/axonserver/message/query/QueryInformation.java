@@ -43,11 +43,12 @@ public class QueryInformation {
         try {
             responseConsumer.accept(queryResponse);
             remaining = remainingReplies.decrementAndGet();
+            if( queryResponse.hasErrorMessage()) completed(client);
             if (remaining <= 0) {
                 onAllReceived.accept(client);
             }
-        } catch( Throwable ignored) {
-
+        } catch( RuntimeException ignored) {
+            // ignore exception on sending response, caused by other party already gone
         }
         return remaining;
     }
@@ -66,6 +67,8 @@ public class QueryInformation {
         try {
             handlerNames.clear();
             onAllReceived.accept("Cancelled");
-        } catch (Throwable ignore) {}
+        } catch (RuntimeException ignore) {
+            // ignore exception on cancel
+        }
     }
 }
