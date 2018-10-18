@@ -182,7 +182,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void cleanup() {
-        synchronizer.shutdown();
+        synchronizer.shutdown(true);
         readBuffers.forEach((s, source) -> source.clean(5));
         if( next != null) next.cleanup();
     }
@@ -242,7 +242,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         if( token >= getLastToken()) {
             return;
         }
-        synchronizer.shutdown();
+        synchronizer.shutdown(false);
 
         for( long segment: getSegments()) {
             if( segment > token) {

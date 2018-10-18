@@ -124,7 +124,7 @@ public class Synchronizer {
         }
     }
 
-    public void shutdown() {
+    public void shutdown(boolean shutdown) {
         if( syncJob != null) syncJob.cancel(false);
         if( forceJob != null) forceJob.cancel(false);
         syncJob = null;
@@ -132,7 +132,7 @@ public class Synchronizer {
         while( ! syncAndCloseFile.isEmpty()) {
             syncAndCloseFile();
         }
-        fsync.shutdown();
+        if( shutdown) fsync.shutdown();
     }
 
 }

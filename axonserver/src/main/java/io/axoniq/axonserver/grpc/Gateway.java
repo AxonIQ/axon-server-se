@@ -44,7 +44,6 @@ public class Gateway implements SmartLifecycle {
 
     @Override
     public void stop(Runnable callback) {
-        GrpcFlowControlledDispatcherListener.shutdown();
         if(started) {
             try {
                 server.shutdown().awaitTermination(1, TimeUnit.SECONDS);

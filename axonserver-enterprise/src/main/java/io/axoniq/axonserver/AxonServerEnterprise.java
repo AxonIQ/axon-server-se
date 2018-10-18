@@ -1,5 +1,6 @@
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.licensing.LicenseConfiguration;
 import io.axoniq.axonserver.licensing.LicenseException;
 import io.axoniq.axonserver.rest.PluginImportSelector;
@@ -12,6 +13,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import javax.annotation.PreDestroy;
 
 /**
  * Author: marc
@@ -37,4 +40,9 @@ public class AxonServerEnterprise {
     }
 
 
+    @PreDestroy
+    public void clean() {
+        GrpcFlowControlledDispatcherListener.shutdown();
+
+    }
 }

@@ -3,6 +3,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -17,6 +18,7 @@ import java.util.stream.IntStream;
  * Author: marc
  */
 public abstract class GrpcFlowControlledDispatcherListener<I, T> {
+    private static final Logger LOG = LoggerFactory.getLogger(GrpcFlowControlledDispatcherListener.class);
     private static final ExecutorService executorService = Executors.newCachedThreadPool(new CustomizableThreadFactory("request-dispatcher-"));
 
     protected final StreamObserver<I> inboundStream;
@@ -64,14 +66,20 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
         long old = permitsLeft.getAndAdd(count);
         getLogger().debug("Adding {} permits, #permits was: {}", count, old);
         if (old <= 0) {
-            IntStream.range(0, futures.length).forEach(i -> futures[i] = executorService.submit(this::process));
+            IntStream.range(0, futures.length).forEach(i -> {
+                futures[i] = executorService.submit(this::process);
+            });
         }
     }
 
     public void cancel() {
         permitsLeft.set(0);
         getLogger().debug("cancel listener for {} ", queueName);
-        IntStream.range(0, futures.length).forEach(i -> futures[i].cancel(true));
+        IntStream.range(0, futures.length).forEach(i -> {
+            if( futures[i] != null) {
+                futures[i].cancel(true);
+            }
+        });
         running = false;
     }
 
