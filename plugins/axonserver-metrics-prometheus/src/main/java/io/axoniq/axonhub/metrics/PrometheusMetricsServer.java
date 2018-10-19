@@ -24,6 +24,7 @@ public class PrometheusMetricsServer implements SmartLifecycle {
         if( running) {
             running = false;
         }
+        runnable.run();
     }
 
     @Override

@@ -1,35 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>axonhub</artifactId>
-        <groupId>io.axoniq.axonhub</groupId>
-        <version>1.2-SNAPSHOT</version>
+        <groupId>io.axoniq.axonserver</groupId>
+        <artifactId>axonserver-parent</artifactId>
+        <version>4.0.1-SNAPSHOT</version>
+        <relativePath>../..</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>axonhub-metrics-graphite</artifactId>
+    <artifactId>axonserver-metrics-graphite</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>io.dropwizard</groupId>
-            <artifactId>dropwizard-metrics-graphite</artifactId>
-            <version>0.8.2</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.code.findbugs</groupId>
-                    <artifactId>jsr305</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-            <version>4.3.9.RELEASE</version>
-            <scope>provided</scope>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-graphite</artifactId>
         </dependency>
     </dependencies>
 
@@ -44,11 +32,25 @@
                     <shadedClassifierName>metrics</shadedClassifierName>
                     <artifactSet>
                         <includes>
-                            <include>io.dropwizard.metrics:metrics-graphite:*:*</include>
-                            <include>io.dropwizard:dropwizard-metrics-graphite:jar:*:*</include>
+                            <include>io.micrometer:*</include>
+                            <include>org.hdrhistogram:*</include>
+                            <include>org.latencyutils:*</include>
+                            <include>io.dropwizard.metrics:*</include>
                         </includes>
                     </artifactSet>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>package-lib</id>
+                        <configuration>
+                            <shadedClassifierName>metrics</shadedClassifierName>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
