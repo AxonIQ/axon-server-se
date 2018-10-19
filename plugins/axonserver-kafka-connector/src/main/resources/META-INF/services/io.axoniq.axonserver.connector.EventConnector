@@ -1,1 +1,1 @@
-net.axoniq.axonhub.connectors.kafka.KafkaEventConnector
+net.axoniq.axonserver.connectors.kafka.KafkaEventConnector

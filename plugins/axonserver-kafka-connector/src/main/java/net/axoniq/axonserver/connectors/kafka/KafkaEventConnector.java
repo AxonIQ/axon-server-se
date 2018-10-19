@@ -1,4 +1,4 @@
-package net.axoniq.axonhub.connectors.kafka;
+package net.axoniq.axonserver.connectors.kafka;
 
 import io.axoniq.axonserver.connector.Event;
 import io.axoniq.axonserver.connector.EventConnector;
@@ -16,6 +16,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -77,7 +78,7 @@ public class KafkaEventConnector implements EventConnector {
     @Configuration
     @EnableKafka
     public static class Config {
-        @Value("${axoniq.axonserver.kafka.bootstrapServers:172.17.0.4:9092}")
+            @Value("${axoniq.axonserver.kafka.bootstrapServers:172.17.0.4:9092}")
         private String bootstrapServers;
         @Value("${axoniq.axonserver.kafka.retries:1}")
         private int retries;
@@ -105,6 +106,7 @@ public class KafkaEventConnector implements EventConnector {
             props.put(ProducerConfig.BATCH_SIZE_CONFIG, batchSize);
             props.put(ProducerConfig.LINGER_MS_CONFIG, lingerMs);
             props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, bufferMemory);
+            props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
             props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
             props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
             return props;

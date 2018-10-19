@@ -15,14 +15,14 @@ i.a.a.m.PrometheusMetricsServer - Using Graphite integration
 
 AxonServer adds tags axonserver/servername to all metrics.
 
-
 Additional properties that can be configured:
 
+| Property| Type| Default| Description |
+| ----------------| --------| ------- |------ |
 | management.metrics.export.graphite.duration-units | java.util.concurrent.TimeUnit | milliseconds | Base time unit used to report durations. |
 | management.metrics.export.graphite.protocol | io.micrometer.graphite.GraphiteProtocol | pickled | Protocol to use while shipping data to Graphite. |
 | management.metrics.export.graphite.rate-units | java.util.concurrent.TimeUnit| seconds | Base time unit used to report rates. |
 | management.metrics.export.graphite.step | java.time.Duration | 1m | Step size (i.e. reporting frequency) to use. |
 | management.metrics.export.graphite.tags-as-prefix | [] | String[] | For the default naming convention, turn the specified tag keys into part of the\n metric prefix. |
+
     
-
-

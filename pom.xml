@@ -21,6 +21,8 @@
         <module>axonserver-cli</module>
         <module>plugins/axonserver-metrics-graphite</module>
         <module>plugins/axonserver-metrics-prometheus</module>
+        <module>plugins/axonserver-rabbitmq-connector</module>
+        <module>plugins/axonserver-kafka-connector</module>
     </modules>
 
     <properties>
