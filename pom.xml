@@ -23,6 +23,7 @@
         <module>plugins/axonserver-metrics-prometheus</module>
         <module>plugins/axonserver-rabbitmq-connector</module>
         <module>plugins/axonserver-kafka-connector</module>
+        <module>axonserver-cluster</module>
     </modules>
 
     <properties>
