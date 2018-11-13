@@ -43,7 +43,10 @@ message AppendEntriesRequest {
 message Entry {
     uint64 term = 1; // Term where entry created
     uint64 index = 2;
-    SerializedObject serializedObject = 3;
+    oneof data {
+        SerializedObject serializedObject = 3;
+        Config newConfiguration = 4;
+    }
 }
 
 message AppendEntriesResponse {
