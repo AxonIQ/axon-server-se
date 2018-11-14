@@ -3,7 +3,6 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.*;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 public interface RaftGroup {
@@ -16,6 +15,13 @@ public interface RaftGroup {
 
     LogEntryStore localLogEntryStore();
 
-    CompletableFuture<ElectionResult> startElection();
+    RaftConfiguration raftConfiguration();
 
+    RaftPeer peer(String hostName, int port);
+
+    RaftNode localNode();
+
+    default void connect() {
+        localNode().start();
+    }
 }
