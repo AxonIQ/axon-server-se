@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.*;
 
@@ -15,6 +16,8 @@ public interface RaftGroup {
     Registration onRequestVote(Function<RequestVoteRequest, RequestVoteResponse> handler);
 
     LogEntryStore localLogEntryStore();
+
+    ElectionStore localElectionStore();
 
     CompletableFuture<ElectionResult> startElection();
 
