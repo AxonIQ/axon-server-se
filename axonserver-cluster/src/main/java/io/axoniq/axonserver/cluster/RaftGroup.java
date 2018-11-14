@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.*;
 
@@ -16,6 +17,17 @@ public interface RaftGroup {
 
     LogEntryStore localLogEntryStore();
 
+    ElectionStore localElectionStore();
+
     CompletableFuture<ElectionResult> startElection();
 
+    RaftConfiguration raftConfiguration();
+
+    RaftPeer peer(String hostName, int port);
+
+    RaftNode localNode();
+
+    default void connect() {
+        localNode().start();
+    }
 }

@@ -2,7 +2,6 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -16,6 +15,7 @@ public class RaftNode {
     private final RaftGroup raftGroup;
     private final AtomicReference<MembershipState> state;
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
+    private final List<Registration> registrations = new CopyOnWriteArrayList<>();
 
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
@@ -30,13 +30,14 @@ public class RaftNode {
     public void start() {
         state.get().start();
 
-        raftGroup.onAppendEntries(state.get()::appendEntries);
-        raftGroup.onInstallSnapshot(state.get()::installSnapshot);
-        raftGroup.onRequestVote(state.get()::requestVote);
+        registrations.add(raftGroup.onAppendEntries(state.get()::appendEntries));
+        registrations.add(raftGroup.onInstallSnapshot(state.get()::installSnapshot));
+        registrations.add(raftGroup.onRequestVote(state.get()::requestVote));
     }
 
     public void stop() {
         state.get().stop();
+        registrations.forEach(Registration::cancel);
     }
 
     public boolean isLeader() {
@@ -49,14 +50,14 @@ public class RaftNode {
     }
 
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     public CompletableFuture<Void> addNode(Node node) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     public CompletableFuture<Void> removeNode(String nodeId) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 }

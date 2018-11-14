@@ -14,8 +14,14 @@ public interface LogEntryStore {
 
     void markCommitted(long committedIndex);
 
+    long commitIndex();
+
     long lastAppliedIndex();
 
     Entry getEntry(long index);
+
+    long lastLogTerm();
+
+    long lastLogIndex();
 
 }
