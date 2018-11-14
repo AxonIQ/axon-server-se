@@ -56,13 +56,13 @@ public class FollowerState implements MembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        rescheduleElection();
+        LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
+        ElectionStore electionStore = raftGroup.localElectionStore();
+        long lastAppliedIndex = logEntryStore.lastAppliedIndex();
         AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder()
                                                                              .setGroupId(request.getGroupId())
-                                                                             .setTerm(request.getCurrentTerm());
-        rescheduleElection();
-        ElectionStore electionStore = raftGroup.localElectionStore();
-        LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
-        long lastAppliedIndex = logEntryStore.lastAppliedIndex();
+                                                                             .setTerm(electionStore.currentTerm());
 
         //1. Reply false if term < currentTerm
         if (request.getCurrentTerm() < electionStore.currentTerm()) {
@@ -105,25 +105,43 @@ public class FollowerState implements MembershipState {
         }
 
         return responseBuilder.setSuccess(buildAppendEntrySuccess(lastAppliedIndex))
+                              .setTerm(electionStore.currentTerm())
                               .build();
-    }
-
-    private AppendEntryFailure buildAppendEntryFailure(long lastAppliedIndex) {
-        return AppendEntryFailure.newBuilder()
-                                 .setLastAppliedIndex(lastAppliedIndex)
-                                 // TODO: 11/14/2018 lastAppliedEventSequence???
-                                 .build();
-    }
-
-    private AppendEntrySuccess buildAppendEntrySuccess(long lastAppliedIndex) {
-        return AppendEntrySuccess.newBuilder()
-                                 .setLastLogIndex(lastAppliedIndex)
-                                 .build();
     }
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        throw new NotImplementedException();
+        Long millisFromLastHearingOfLeader = rescheduleElection();
+        ElectionStore electionStore = raftGroup.localElectionStore();
+        LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
+        String votedFor = electionStore.votedFor();
+
+        boolean voteGranted = true;
+        //1. Reply false if term < currentTerm
+        if (request.getTerm() < electionStore.currentTerm()) {
+            voteGranted = false;
+        }
+        //2. If votedFor is null or candidateId, and candidate's log is at least as up-to-date as receiver's log,
+        // grant vote
+        else if (!((votedFor == null || request.getCandidateId().equals(votedFor))
+                &&
+                (request.getLastLogTerm() >= logEntryStore.lastLogTerm()
+                        && request.getLastLogIndex() >= logEntryStore.lastLogIndex()))) {
+            voteGranted = false;
+        }
+        // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader,
+        // it does not update its term or grant its vote
+        else if (millisFromLastHearingOfLeader != null && millisFromLastHearingOfLeader < electionTimeoutMin) {
+            voteGranted = false;
+        } else {
+            electionStore.updateCurrentTerm(request.getTerm());
+        }
+
+        return RequestVoteResponse.newBuilder()
+                                  .setGroupId(request.getGroupId())
+                                  .setVoteGranted(voteGranted)
+                                  .setTerm(electionStore.currentTerm())
+                                  .build();
     }
 
     @Override
@@ -140,10 +158,13 @@ public class FollowerState implements MembershipState {
         scheduledExecutorService.shutdown();
     }
 
-    private void cancelCurrentElection() {
+    private Long cancelCurrentElection() {
+        Long millisLeft = null;
         if (scheduledElection != null) {
+            millisLeft = scheduledElection.getDelay(TimeUnit.MILLISECONDS);
             scheduledElection.cancel(true);
         }
+        return millisLeft;
     }
 
     private void scheduleNewElection() {
@@ -154,9 +175,23 @@ public class FollowerState implements MembershipState {
         }, ThreadLocalRandom.current().nextLong(electionTimeoutMin, electionTimeoutMax + 1), TimeUnit.MILLISECONDS);
     }
 
-    private void rescheduleElection() {
-        cancelCurrentElection();
+    private Long rescheduleElection() {
+        Long millisLeft = cancelCurrentElection();
         scheduleNewElection();
+        return millisLeft;
+    }
+
+    private AppendEntryFailure buildAppendEntryFailure(long lastAppliedIndex) {
+        return AppendEntryFailure.newBuilder()
+                                 .setLastAppliedIndex(lastAppliedIndex)
+                                 // TODO: 11/14/2018 lastAppliedEventSequence???
+                                 .build();
+    }
+
+    private AppendEntrySuccess buildAppendEntrySuccess(long lastAppliedIndex) {
+        return AppendEntrySuccess.newBuilder()
+                                 .setLastLogIndex(lastAppliedIndex)
+                                 .build();
     }
 
     public static class Builder {
