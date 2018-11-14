@@ -2,7 +2,6 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.IncorrectTermException;
 import io.axoniq.axonserver.grpc.cluster.*;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -34,20 +33,20 @@ public class FollowerState implements MembershipState {
             // TODO Build failed response
         }
         // TODO: Return success response
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     public synchronized void initialize() {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 }

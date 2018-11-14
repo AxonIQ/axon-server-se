@@ -21,4 +21,13 @@ public interface RaftGroup {
 
     CompletableFuture<ElectionResult> startElection();
 
+    RaftConfiguration raftConfiguration();
+
+    RaftPeer peer(String hostName, int port);
+
+    RaftNode localNode();
+
+    default void connect() {
+        localNode().start();
+    }
 }
