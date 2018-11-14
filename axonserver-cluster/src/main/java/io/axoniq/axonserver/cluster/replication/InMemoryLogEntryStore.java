@@ -55,11 +55,27 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public long commitIndex() {
+        return commitIndex.get();
+    }
+
+    @Override
     public long lastAppliedIndex() {
         return lastApplied.get();
     }
 
+    @Override
     public Entry getEntry(long index) {
         return entryMap.get(index);
+    }
+
+    @Override
+    public long lastLogTerm() {
+        return entryMap.lastEntry().getValue().getTerm();
+    }
+
+    @Override
+    public long lastLogIndex() {
+        return entryMap.lastKey();
     }
 }
