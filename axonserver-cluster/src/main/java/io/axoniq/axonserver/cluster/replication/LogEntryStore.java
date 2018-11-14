@@ -9,6 +9,8 @@ public interface LogEntryStore {
 
     void appendEntry(Entry... entry) throws IncorrectTermException, IOException;
 
+    boolean contains(long logIndex, long logTerm);
+
     void applyEntries(Consumer<Entry> consumer);
 
     void markCommitted(long committedIndex);
