@@ -15,4 +15,8 @@ public interface LogEntryStore {
 
     long lastAppliedIndex();
 
+    long lastLogTerm();
+
+    long lastLogIndex();
+
 }
