@@ -1,7 +1,11 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.cluster.replication.IncorrectTermException;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -26,9 +30,7 @@ public class FollowerState implements MembershipState {
         // TODO validate the request
         try {
             // TODO for each entry:
-            raftGroup.localLogEntryStore().appendEntry(request.getEntries(0));
-        } catch (IncorrectTermException e) {
-            // TODO Build failed response
+            raftGroup.localLogEntryStore().appendEntry(request.getEntriesList());
         } catch (IOException e) {
             // TODO Build failed response
         }

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.*;
 
@@ -71,6 +72,16 @@ public class StubClusterFactory {
 
         @Override
         public LogEntryStore localLogEntryStore() {
+            return null;
+        }
+
+        @Override
+        public ElectionStore localElectionStore() {
+            return null;
+        }
+
+        @Override
+        public CompletableFuture<ElectionResult> startElection() {
             return null;
         }
 
