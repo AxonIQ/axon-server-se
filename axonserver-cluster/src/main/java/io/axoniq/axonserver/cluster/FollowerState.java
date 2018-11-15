@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -19,6 +18,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static java.lang.Math.min;
 
@@ -41,6 +41,11 @@ public class FollowerState extends AbstractMembershipState {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    @Override
+    public void start() {
+        scheduleNewElection();
     }
 
     @Override
@@ -111,10 +116,6 @@ public class FollowerState extends AbstractMembershipState {
         throw new NotImplementedException();
     }
 
-    public synchronized void initialize() {
-        scheduleNewElection();
-    }
-
     private void cancelCurrentElectionTimeout() {
         if (scheduledElection != null) {
             scheduledElection.cancel(true);
@@ -143,7 +144,7 @@ public class FollowerState extends AbstractMembershipState {
     private AppendEntryFailure buildAppendEntryFailure(long lastAppliedIndex) {
         return AppendEntryFailure.newBuilder()
                                  .setLastAppliedIndex(lastAppliedIndex)
-                                 // TODO: 11/14/2018 lastAppliedEventSequence???
+                                 .setLastAppliedEventSequence(lastAppliedEventSequenceSupplier().get())
                                  .build();
     }
 
@@ -200,6 +201,13 @@ public class FollowerState extends AbstractMembershipState {
         @Override
         public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
             super.transitionHandler(transitionHandler);
+            return this;
+        }
+
+        @Override
+        public Builder lastAppliedEventSequenceSupplier(
+                Supplier<Long> lastAppliedEventSequenceSupplier) {
+            super.lastAppliedEventSequenceSupplier(lastAppliedEventSequenceSupplier);
             return this;
         }
 

@@ -21,7 +21,7 @@ public class IdleState implements MembershipState {
                                                    .transitionHandler(transitionHandler)
                                                    .build();
         transitionHandler.accept(followerState);
-        followerState.initialize();
+        followerState.start();
     }
 
     @Override

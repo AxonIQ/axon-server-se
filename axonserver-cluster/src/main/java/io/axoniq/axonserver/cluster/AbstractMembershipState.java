@@ -3,6 +3,7 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * @author Sara Pellegrini
@@ -12,11 +13,13 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
     private final Consumer<MembershipState> transitionHandler;
+    private final Supplier<Long> lastAppliedEventSequenceSupplier;
 
     protected AbstractMembershipState(Builder builder){
         builder.validate();
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
+        this.lastAppliedEventSequenceSupplier = builder.lastAppliedEventSequenceSupplier;
     }
 
     public static Builder builder(){
@@ -27,6 +30,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         private RaftGroup raftGroup;
         private Consumer<MembershipState> transitionHandler;
+        private Supplier<Long> lastAppliedEventSequenceSupplier = () -> -1L;
 
         public Builder raftGroup(RaftGroup raftGroup){
             this.raftGroup = raftGroup;
@@ -35,6 +39,11 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
             this.transitionHandler = transitionHandler;
+            return this;
+        }
+
+        public Builder lastAppliedEventSequenceSupplier(Supplier<Long> lastAppliedEventSequenceSupplier) {
+            this.lastAppliedEventSequenceSupplier = lastAppliedEventSequenceSupplier;
             return this;
         }
 
@@ -81,8 +90,13 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup;
     }
 
+
     protected Consumer<MembershipState> transitionHandler() {
         return transitionHandler;
+    }
+
+    protected Supplier<Long> lastAppliedEventSequenceSupplier() {
+        return lastAppliedEventSequenceSupplier;
     }
 
     protected void transition(MembershipState newState) {
