@@ -51,7 +51,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        newMessageReceived(request.getCurrentTerm());
+        newMessageReceived(request.getTerm());
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
         long lastAppliedIndex = logEntryStore.lastAppliedIndex();
         AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder()
@@ -59,7 +59,7 @@ public class FollowerState extends AbstractMembershipState {
                                                                              .setTerm(currentTerm());
 
         //1. Reply false if term < currentTerm
-        if (request.getCurrentTerm() < currentTerm()) {
+        if (request.getTerm() < currentTerm()) {
             return responseBuilder.setFailure(buildAppendEntryFailure(lastAppliedIndex))
                                   .build();
         }
@@ -107,7 +107,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        newMessageReceived(request.getCurrentTerm());
+        newMessageReceived(request.getTerm());
         throw new NotImplementedException();
     }
 

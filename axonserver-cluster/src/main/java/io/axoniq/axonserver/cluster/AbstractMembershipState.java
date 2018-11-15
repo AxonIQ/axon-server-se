@@ -81,6 +81,10 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup;
     }
 
+    protected Consumer<MembershipState> transitionHandler() {
+        return transitionHandler;
+    }
+
     protected void transition(MembershipState newState) {
         transitionHandler.accept(newState);
     }
