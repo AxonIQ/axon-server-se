@@ -85,6 +85,7 @@ public class CandidateState extends AbstractMembershipState {
                                         .setTerm(currentTerm())
                                         .setFailure(AppendEntryFailure.newBuilder()
                                                                       .setLastAppliedIndex(lastLogAppliedIndex())
+
 //                                                                      .setLastAppliedEventSequence() //TODO
                                                                       .build())
                                         .build();
