@@ -4,7 +4,9 @@ import io.axoniq.axonserver.grpc.cluster.*;
 
 public interface MembershipState {
 
-    void stop();
+    default void stop() {
+        // no op
+    }
 
     default void start() {
         // no op
