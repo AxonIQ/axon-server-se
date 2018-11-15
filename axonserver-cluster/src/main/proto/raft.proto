@@ -32,7 +32,7 @@ message RequestVoteResponse {
 
 message AppendEntriesRequest {
     string groupId = 1;
-    uint64 currentTerm = 2; // Leader's current term
+    uint64 term = 2; // Leader's term
     string leaderId = 3;
     uint64 prevLogTerm = 4;
     uint64 prevLogIndex = 5;
@@ -71,7 +71,7 @@ message AppendEntryFailure {
 
 message InstallSnapshotRequest {
     string groupId = 1;
-    uint64 currentTerm = 2; // Leader's current term
+    uint64 term = 2; // Leader's term
     string leaderId = 3;
     uint64 lastIncludedTerm= 4;
     uint64 lastIncludedIndex = 5;

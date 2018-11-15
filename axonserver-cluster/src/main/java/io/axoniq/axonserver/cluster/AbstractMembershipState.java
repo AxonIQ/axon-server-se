@@ -22,14 +22,14 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     public static class Builder {
 
-        private RaftGroup raftGroup;
+        protected RaftGroup raftGroup;
 
         public Builder raftGroup(RaftGroup raftGroup){
             this.raftGroup = raftGroup;
             return this;
         }
 
-        public void validate(){
+        protected void validate(){
             if (raftGroup == null){
                 throw new IllegalStateException("The RAFT group must be provided");
             }
@@ -66,6 +66,10 @@ public abstract class AbstractMembershipState implements MembershipState {
         raftGroup.localElectionStore().markVotedFor(candidateId);
     }
 
+    long lastLogAppliedIndex() {
+        return raftGroup.localLogEntryStore().lastAppliedIndex();
+    }
+
     long lastLogTerm() {
         return raftGroup.localLogEntryStore().lastLogTerm();
     }
@@ -76,6 +80,10 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     long currentTerm() {
         return raftGroup.localElectionStore().currentTerm();
+    }
+
+    String me() {
+        return raftGroup.localNode().nodeId();
     }
 
     void updateCurrentTerm(long term){

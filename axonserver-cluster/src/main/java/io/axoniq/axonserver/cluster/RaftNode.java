@@ -40,6 +40,10 @@ public class RaftNode {
         registrations.forEach(Registration::cancel);
     }
 
+    String nodeId() {
+        return nodeId;
+    }
+
     public boolean isLeader() {
         return state.get().isLeader();
     }
