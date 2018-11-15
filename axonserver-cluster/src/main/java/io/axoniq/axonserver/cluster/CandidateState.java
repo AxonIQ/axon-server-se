@@ -83,7 +83,6 @@ public class CandidateState extends AbstractMembershipState {
                                         .setTerm(currentTerm())
                                         .setFailure(AppendEntryFailure.newBuilder()
                                                                       .setLastAppliedIndex(lastLogAppliedIndex())
-
 //                                                                      .setLastAppliedEventSequence() //TODO
                                                                       .build())
                                         .build();
@@ -130,7 +129,7 @@ public class CandidateState extends AbstractMembershipState {
         markVotedFor(me());
         resetElectionTimeout();
         RequestVoteRequest request = RequestVoteRequest.newBuilder()
-                                                       //.setGroupId(groupId) //TODO
+//                                                       .setGroupId(groupId) //TODO
                                                        .setCandidateId(me())
                                                        .setTerm(currentTerm())
                                                        .setLastLogIndex(lastLogIndex())
