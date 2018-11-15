@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+
+import java.util.function.Consumer;
 
 /**
  * @author Sara Pellegrini
@@ -10,10 +11,12 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
+    private final Consumer<MembershipState> transitionHandler;
 
-    AbstractMembershipState(Builder builder){
+    protected AbstractMembershipState(Builder builder){
         builder.validate();
         this.raftGroup = builder.raftGroup;
+        this.transitionHandler = builder.transitionHandler;
     }
 
     public static Builder builder(){
@@ -22,10 +25,16 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     public static class Builder {
 
-        protected RaftGroup raftGroup;
+        private RaftGroup raftGroup;
+        private Consumer<MembershipState> transitionHandler;
 
         public Builder raftGroup(RaftGroup raftGroup){
             this.raftGroup = raftGroup;
+            return this;
+        }
+
+        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
+            this.transitionHandler = transitionHandler;
             return this;
         }
 
@@ -33,52 +42,34 @@ public abstract class AbstractMembershipState implements MembershipState {
             if (raftGroup == null){
                 throw new IllegalStateException("The RAFT group must be provided");
             }
+            if (transitionHandler == null) {
+                throw new IllegalStateException("The transitionHandler must be provided");
+            }
         }
 
     }
 
-    boolean voteGrantedFor(RequestVoteRequest request){
-        if (votedFor() != null && !votedFor().equals(request.getCandidateId())) {
-            return false;
-        }
-
-        if (request.getTerm() < currentTerm()) {
-            return false;
-        }
-
-        if (request.getLastLogTerm() < lastLogTerm()) {
-            return false;
-        }
-
-        if (request.getLastLogIndex() < lastLogIndex()) {
-            return false;
-        }
-
-        markVotedFor(request.getCandidateId());
-        return true;
-    }
-
-    String votedFor() {
+    protected String votedFor() {
         return raftGroup.localElectionStore().votedFor();
     }
 
-    void markVotedFor(String candidateId) {
+    protected void markVotedFor(String candidateId) {
         raftGroup.localElectionStore().markVotedFor(candidateId);
     }
 
-    long lastLogAppliedIndex() {
+    protected long lastLogAppliedIndex() {
         return raftGroup.localLogEntryStore().lastAppliedIndex();
     }
 
-    long lastLogTerm() {
+    protected long lastLogTerm() {
         return raftGroup.localLogEntryStore().lastLogTerm();
     }
 
-    long lastLogIndex() {
+    protected long lastLogIndex() {
         return raftGroup.localLogEntryStore().lastLogIndex();
     }
 
-    long currentTerm() {
+    protected long currentTerm() {
         return raftGroup.localElectionStore().currentTerm();
     }
 
@@ -86,7 +77,15 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup.localNode().nodeId();
     }
 
-    void updateCurrentTerm(long term){
+    protected RaftGroup raftGroup() {
+        return raftGroup;
+    }
+
+    protected void transition(MembershipState newState) {
+        transitionHandler.accept(newState);
+    }
+
+    protected void updateCurrentTerm(long term){
         if (term > currentTerm()){
             ElectionStore electionStore = raftGroup.localElectionStore();
             electionStore.updateCurrentTerm(term);
