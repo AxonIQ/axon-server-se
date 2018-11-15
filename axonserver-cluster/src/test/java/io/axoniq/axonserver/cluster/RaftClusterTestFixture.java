@@ -183,6 +183,11 @@ public class RaftClusterTestFixture {
                                                            .collect(Collectors.toList());
         }
 
+        @Override
+        public String groupId() {
+            return "default";
+        }
+
         private class StubNode implements RaftPeer {
 
             private final String nodeId;

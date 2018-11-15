@@ -18,14 +18,10 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import static java.lang.Math.min;
 
 public class FollowerState extends AbstractMembershipState {
-
-    private final long electionTimeoutMin;
-    private final long electionTimeoutMax;
 
     private final ScheduledExecutorService scheduledExecutorService;
 
@@ -35,8 +31,6 @@ public class FollowerState extends AbstractMembershipState {
     protected FollowerState(Builder builder) {
         super(builder);
         this.scheduledExecutorService = builder.scheduledExecutorService;
-        this.electionTimeoutMin = builder.electionTimeoutMin;
-        this.electionTimeoutMax = builder.electionTimeoutMax;
     }
 
     public static Builder builder() {
@@ -60,7 +54,7 @@ public class FollowerState extends AbstractMembershipState {
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
         long lastAppliedIndex = logEntryStore.lastAppliedIndex();
         AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder()
-                                                                             .setGroupId(request.getGroupId())
+                                                                             .setGroupId(groupId())
                                                                              .setTerm(currentTerm());
 
         //1. Reply false if term < currentTerm
@@ -104,7 +98,7 @@ public class FollowerState extends AbstractMembershipState {
         newMessageReceived(request.getTerm());
 
         return RequestVoteResponse.newBuilder()
-                                  .setGroupId(request.getGroupId())
+                                  .setGroupId(groupId())
                                   .setVoteGranted(voteGrantedFor(request, elapsedFromLastMessage))
                                   .setTerm(currentTerm())
                                   .build();
@@ -123,11 +117,16 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void scheduleNewElection() {
-        scheduledElection = scheduledExecutorService.schedule(() -> {
-            stop();
-//            transition(new CandidateState());
-            // TODO: make ThreadLocalRandom injectable
-        }, ThreadLocalRandom.current().nextLong(electionTimeoutMin, electionTimeoutMax + 1), TimeUnit.MILLISECONDS);
+        scheduledElection = scheduledExecutorService.schedule(
+                () -> changeState(CandidateState.builder()
+                                                .raftGroup(raftGroup())
+                                                .transitionHandler(transitionHandler())
+                                                .build()),
+                // TODO: make ThreadLocalRandom injectable
+                ThreadLocalRandom.current().nextLong(minElectionTimeout(),
+                                                     maxElectionTimeout()
+                                                             + 1),
+                TimeUnit.MILLISECONDS);
     }
 
     private void rescheduleElection() {
@@ -177,7 +176,7 @@ public class FollowerState extends AbstractMembershipState {
 
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
-        if (elapsedFromLastMessage < electionTimeoutMin) {
+        if (elapsedFromLastMessage < minElectionTimeout()) {
             return false;
         }
 
@@ -186,9 +185,6 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     public static class Builder extends AbstractMembershipState.Builder {
-
-        private long electionTimeoutMin = 150;
-        private long electionTimeoutMax = 300;
 
         private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
@@ -201,23 +197,6 @@ public class FollowerState extends AbstractMembershipState {
         @Override
         public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
             super.transitionHandler(transitionHandler);
-            return this;
-        }
-
-        @Override
-        public Builder lastAppliedEventSequenceSupplier(
-                Supplier<Long> lastAppliedEventSequenceSupplier) {
-            super.lastAppliedEventSequenceSupplier(lastAppliedEventSequenceSupplier);
-            return this;
-        }
-
-        public Builder electionTimeoutMin(long electionTimeoutMin) {
-            this.electionTimeoutMin = electionTimeoutMin;
-            return this;
-        }
-
-        public Builder electionTimeoutMax(long electionTimeoutMax) {
-            this.electionTimeoutMax = electionTimeoutMax;
             return this;
         }
 

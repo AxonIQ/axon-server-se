@@ -19,6 +19,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.stream.Collectors.toList;
@@ -35,19 +36,16 @@ public class CandidateState extends AbstractMembershipState {
 
     public static class Builder extends AbstractMembershipState.Builder {
 
-        private Consumer<MembershipState> transitionHandler;
-
-        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
-            this.transitionHandler = transitionHandler;
+        @Override
+        public Builder raftGroup(RaftGroup raftGroup) {
+            super.raftGroup(raftGroup);
             return this;
         }
 
-        protected void validate() {
-            super.validate();
-
-            if (transitionHandler == null) {
-                throw new IllegalStateException("The transitionHandler must be provided");
-            }
+        @Override
+        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
+            super.transitionHandler(transitionHandler);
+            return this;
         }
 
         public CandidateState build() {
@@ -77,7 +75,7 @@ public class CandidateState extends AbstractMembershipState {
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
             FollowerState followerState = followerState();
-            transition(followerState);
+            changeState(followerState);
             return followerState.appendEntries(request);
         } else {
             return AppendEntriesResponse.newBuilder()
@@ -96,7 +94,7 @@ public class CandidateState extends AbstractMembershipState {
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
             FollowerState followerState = followerState();
-            transition(followerState);
+            changeState(followerState);
             return followerState.requestVote(request);
         }
 
@@ -111,7 +109,7 @@ public class CandidateState extends AbstractMembershipState {
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
             FollowerState followerState = followerState();
-            transition(followerState);
+            changeState(followerState);
             return followerState.installSnapshot(request);
         }
         return InstallSnapshotResponse.newBuilder()
@@ -156,12 +154,12 @@ public class CandidateState extends AbstractMembershipState {
 
     private void onVoteResponse(String voter, RequestVoteResponse response) {
         if (response.getTerm() > currentTerm()) {
-            transition(followerState());
+            changeState(followerState());
             return;
         }
         this.receivedVotes.put(voter, response.getVoteGranted());
         if (electionWon()) {
-            transition(leaderState());
+            changeState(leaderState());
         }
     }
 
