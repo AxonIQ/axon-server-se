@@ -122,7 +122,7 @@ public class CandidateState extends AbstractMembershipState {
     private void resetElectionTimeout() {
         Optional.ofNullable(currentElectionTimeoutTask.get()).ifPresent(task -> task.cancel(true));
         long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout());
-        ScheduledFuture<?> newTimeoutTask = executorService.schedule(this::onElectionTimeout, timeout, MILLISECONDS);
+        ScheduledFuture<?> newTimeoutTask = executorService.schedule(this::onElectionTimeout, timeout + 1, MILLISECONDS);
         currentElectionTimeoutTask.set(newTimeoutTask);
     }
 
