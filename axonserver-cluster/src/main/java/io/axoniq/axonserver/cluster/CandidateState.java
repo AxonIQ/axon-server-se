@@ -5,14 +5,10 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -21,7 +17,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.stream.Collectors.toList;
 
 /**
  * @author Sara Pellegrini
@@ -31,7 +26,7 @@ public class CandidateState extends AbstractMembershipState {
 
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private final AtomicReference<ScheduledFuture<?>> currentElectionTimeoutTask = new AtomicReference<>();
-    private final Map<String, Boolean> receivedVotes = new ConcurrentHashMap<>();
+    private final AtomicReference<Election> currentElection = new AtomicReference<>();
 
     public static class Builder extends AbstractMembershipState.Builder {
 
@@ -74,17 +69,10 @@ public class CandidateState extends AbstractMembershipState {
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
             FollowerState followerState = followerState();
-            changeState(followerState);
+            changeStateTo(followerState);
             return followerState.appendEntries(request);
         } else {
-            return AppendEntriesResponse.newBuilder()
-                                        .setGroupId(request.getGroupId())
-                                        .setTerm(currentTerm())
-                                        .setFailure(AppendEntryFailure.newBuilder()
-                                                                      .setLastAppliedIndex(lastLogAppliedIndex())
-                                                                      .setLastAppliedEventSequence(lastAppliedEventSequence())
-                                                                      .build())
-                                        .build();
+            return appendEntriesFailure();
         }
     }
 
@@ -92,7 +80,7 @@ public class CandidateState extends AbstractMembershipState {
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
             FollowerState followerState = followerState();
-            changeState(followerState);
+            changeStateTo(followerState);
             return followerState.requestVote(request);
         }
 
@@ -107,7 +95,7 @@ public class CandidateState extends AbstractMembershipState {
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
             FollowerState followerState = followerState();
-            changeState(followerState);
+            changeStateTo(followerState);
             return followerState.installSnapshot(request);
         }
         return InstallSnapshotResponse.newBuilder()
@@ -119,16 +107,19 @@ public class CandidateState extends AbstractMembershipState {
     private void resetElectionTimeout() {
         Optional.ofNullable(currentElectionTimeoutTask.get()).ifPresent(task -> task.cancel(true));
         long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout());
-        ScheduledFuture<?> newTimeoutTask = executorService.schedule(this::onElectionTimeout, timeout + 1, MILLISECONDS);
+        ScheduledFuture<?> newTimeoutTask = executorService.schedule(this::onElectionTimeout,
+                                                                     timeout + 1,
+                                                                     MILLISECONDS);
         currentElectionTimeoutTask.set(newTimeoutTask);
     }
 
     private void onElectionTimeout() {
         updateCurrentTerm(currentTerm() + 1);
-        this.receivedVotes.clear();
-        this.receivedVotes.put(me(),true);
-        markVotedFor(me());
         resetElectionTimeout();
+        long raftGroupSize = raftGroup().raftConfiguration().groupMembers().size();
+        currentElection.set(new CandidateElection(raftGroupSize));
+        currentElection.get().onVoteReceived(me(), true);
+        markVotedFor(me());
         RequestVoteRequest request = RequestVoteRequest.newBuilder()
                                                        .setGroupId(groupId())
                                                        .setCandidateId(me())
@@ -139,48 +130,38 @@ public class CandidateState extends AbstractMembershipState {
         otherNodes().forEach(node -> requestVote(request, node));
     }
 
-    Iterable<RaftPeer> otherNodes() {
-        List<Node> nodes = raftGroup().raftConfiguration().groupMembers();
-        return nodes.stream()
-                    .map(Node::getNodeId)
-                    .filter(id -> !id.equals(me()))
-                    .map(raftGroup()::peer)
-                    .collect(toList());
-    }
-
     private void requestVote(RequestVoteRequest request, RaftPeer node) {
         node.requestVote(request).thenAccept(response -> onVoteResponse(node.nodeId(), response));
     }
 
     private void onVoteResponse(String voter, RequestVoteResponse response) {
         if (response.getTerm() > currentTerm()) {
-            changeState(followerState());
+            changeStateTo(followerState());
             return;
         }
-        this.receivedVotes.put(voter, response.getVoteGranted());
-        if (electionWon()) {
-            changeState(leaderState());
+        if (response.getTerm() < currentTerm()) {
+            return;
+        }
+
+        Election election = this.currentElection.get();
+        election.onVoteReceived(voter, response.getVoteGranted());
+        if (election.isWon()) {
+            changeStateTo(leaderState());
         }
     }
 
-    private boolean electionWon() {
-        long voteGranted = receivedVotes.values().stream().filter(granted -> granted).count();
-        return voteGranted >= minMajority();
-    }
 
-    private long minMajority() {
-        int size = raftGroup().raftConfiguration().groupMembers().size();
-        return (size / 2) + (size % 2 == 0 ? 0L : 1L);
-    }
-
-    private FollowerState followerState(){
+    private FollowerState followerState() {
         return FollowerState.builder()
                             .raftGroup(raftGroup())
                             .transitionHandler(transitionHandler())
                             .build();
     }
 
-    private LeaderState leaderState(){
-        return LeaderState.builder().build();
+    private LeaderState leaderState() {
+        return LeaderState.builder()
+                          .raftGroup(raftGroup())
+                          .transitionHandler(transitionHandler())
+                          .build();
     }
 }

@@ -8,6 +8,8 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import java.util.function.Consumer;
+
 /**
  * @author Sara Pellegrini
  * @since 4.0
@@ -15,6 +17,19 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 public class LeaderState extends AbstractMembershipState {
 
     protected static class Builder extends AbstractMembershipState.Builder {
+
+        @Override
+        public Builder raftGroup(RaftGroup raftGroup) {
+            super.raftGroup(raftGroup);
+            return this;
+        }
+
+        @Override
+        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
+            super.transitionHandler(transitionHandler);
+            return this;
+        }
+
 
         public LeaderState build(){
             return new LeaderState(this);

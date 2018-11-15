@@ -1,8 +1,15 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
+import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
+import java.util.List;
 import java.util.function.Consumer;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * @author Sara Pellegrini
@@ -56,7 +63,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         raftGroup.localElectionStore().markVotedFor(candidateId);
     }
 
-    protected long lastLogAppliedIndex() {
+    protected long lastAppliedIndex() {
         return raftGroup.localLogEntryStore().lastAppliedIndex();
     }
 
@@ -89,7 +96,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup.lastAppliedEventSequence();
     }
 
-    protected void changeState(MembershipState newState) {
+    protected void changeStateTo(MembershipState newState) {
         transitionHandler.accept(newState);
     }
 
@@ -111,5 +118,34 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     protected String groupId() {
         return raftGroup().raftConfiguration().groupId();
+    }
+
+    protected Iterable<RaftPeer> otherNodes() {
+        List<Node> nodes = raftGroup().raftConfiguration().groupMembers();
+        return nodes.stream()
+                    .map(Node::getNodeId)
+                    .filter(id -> !id.equals(me()))
+                    .map(raftGroup()::peer)
+                    .collect(toList());
+    }
+
+    protected AppendEntriesResponse appendEntriesFailure() {
+        AppendEntryFailure failure = AppendEntryFailure.newBuilder()
+                                                       .setLastAppliedIndex(lastAppliedIndex())
+                                                       .setLastAppliedEventSequence(lastAppliedEventSequence())
+                                                       .build();
+        return AppendEntriesResponse.newBuilder()
+                                    .setGroupId(groupId())
+                                    .setTerm(currentTerm())
+                                    .setFailure(failure)
+                                    .build();
+    }
+
+    protected RequestVoteResponse requestVoteResponse(boolean voteGranted) {
+        return RequestVoteResponse.newBuilder()
+                                  .setGroupId(groupId())
+                                  .setVoteGranted(voteGranted)
+                                  .setTerm(currentTerm())
+                                  .build();
     }
 }

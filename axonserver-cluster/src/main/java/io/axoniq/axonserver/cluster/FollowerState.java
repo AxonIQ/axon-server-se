@@ -3,7 +3,6 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
@@ -52,21 +51,15 @@ public class FollowerState extends AbstractMembershipState {
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         newMessageReceived(request.getTerm());
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
-        long lastAppliedIndex = logEntryStore.lastAppliedIndex();
-        AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder()
-                                                                             .setGroupId(groupId())
-                                                                             .setTerm(currentTerm());
 
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
-            return responseBuilder.setFailure(buildAppendEntryFailure(lastAppliedIndex))
-                                  .build();
+            return appendEntriesFailure();
         }
 
         //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
         if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
-            return responseBuilder.setFailure(buildAppendEntryFailure(lastAppliedIndex))
-                                  .build();
+            return appendEntriesFailure();
         }
 
         //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -74,11 +67,9 @@ public class FollowerState extends AbstractMembershipState {
         //4. Append any new entries not already in the log
         try {
             raftGroup().localLogEntryStore().appendEntry(request.getEntriesList());
-            lastAppliedIndex = logEntryStore.lastAppliedIndex();
         } catch (IOException e) {
             stop();
-            return responseBuilder.setFailure(buildAppendEntryFailure(lastAppliedIndex))
-                                  .build();
+            return appendEntriesFailure();
         }
 
         //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -87,9 +78,12 @@ public class FollowerState extends AbstractMembershipState {
                                             request.getEntries(request.getEntriesCount() - 1).getIndex()));
         }
 
-        return responseBuilder.setSuccess(buildAppendEntrySuccess(lastAppliedIndex))
-                              .setTerm(currentTerm())
-                              .build();
+        return AppendEntriesResponse.newBuilder()
+                                    .setGroupId(groupId())
+                                    .setTerm(currentTerm())
+                                    .setSuccess(buildAppendEntrySuccess(lastAppliedIndex()))
+                                    .setTerm(currentTerm())
+                                    .build();
     }
 
     @Override
@@ -97,11 +91,7 @@ public class FollowerState extends AbstractMembershipState {
         long elapsedFromLastMessage = System.currentTimeMillis() - lastMessageReceivedAt;
         newMessageReceived(request.getTerm());
 
-        return RequestVoteResponse.newBuilder()
-                                  .setGroupId(groupId())
-                                  .setVoteGranted(voteGrantedFor(request, elapsedFromLastMessage))
-                                  .setTerm(currentTerm())
-                                  .build();
+        return requestVoteResponse(voteGrantedFor(request, elapsedFromLastMessage));
     }
 
     @Override
@@ -118,10 +108,10 @@ public class FollowerState extends AbstractMembershipState {
 
     private void scheduleNewElection() {
         scheduledElection = scheduledExecutorService.schedule(
-                () -> changeState(CandidateState.builder()
-                                                .raftGroup(raftGroup())
-                                                .transitionHandler(transitionHandler())
-                                                .build()),
+                () -> changeStateTo(CandidateState.builder()
+                                                  .raftGroup(raftGroup())
+                                                  .transitionHandler(transitionHandler())
+                                                  .build()),
                 // TODO: make ThreadLocalRandom injectable
                 ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
                 TimeUnit.MILLISECONDS);
@@ -138,12 +128,6 @@ public class FollowerState extends AbstractMembershipState {
         rescheduleElection();
     }
 
-    private AppendEntryFailure buildAppendEntryFailure(long lastAppliedIndex) {
-        return AppendEntryFailure.newBuilder()
-                                 .setLastAppliedIndex(lastAppliedIndex)
-                                 .setLastAppliedEventSequence(lastAppliedEventSequence())
-                                 .build();
-    }
 
     private AppendEntrySuccess buildAppendEntrySuccess(long lastAppliedIndex) {
         return AppendEntrySuccess.newBuilder()
