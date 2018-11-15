@@ -3,7 +3,9 @@ package io.axoniq.axonserver.cluster.replication;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -15,8 +17,8 @@ import java.util.function.Consumer;
 public class InMemoryLogEntryStore implements LogEntryStore {
 
     private final NavigableMap<Long, Entry> entryMap = new ConcurrentSkipListMap<>();
-    private final AtomicLong lastApplied = new AtomicLong(-1);
-    private final AtomicLong commitIndex = new AtomicLong(-1);
+    private final AtomicLong lastApplied = new AtomicLong(0);
+    private final AtomicLong commitIndex = new AtomicLong(0);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
 
     @Override
@@ -72,11 +74,15 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public long lastLogTerm() {
-        return entryMap.lastEntry().getValue().getTerm();
+        return Optional.ofNullable(entryMap.lastEntry())
+                       .map(lastEntry -> lastEntry.getValue().getTerm())
+                       .orElse(0L);
     }
 
     @Override
     public long lastLogIndex() {
-        return entryMap.lastKey();
+        return Optional.ofNullable(entryMap.lastEntry())
+                       .map(Map.Entry::getKey)
+                       .orElse(0L);
     }
 }
