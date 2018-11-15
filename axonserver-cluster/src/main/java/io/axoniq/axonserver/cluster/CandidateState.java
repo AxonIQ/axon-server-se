@@ -125,6 +125,8 @@ public class CandidateState extends AbstractMembershipState {
 
     private void onElectionTimeout() {
         updateCurrentTerm(currentTerm() + 1);
+        this.receivedVotes.clear();
+        this.receivedVotes.put(me(),true);
         markVotedFor(me());
         resetElectionTimeout();
         RequestVoteRequest request = RequestVoteRequest.newBuilder()
