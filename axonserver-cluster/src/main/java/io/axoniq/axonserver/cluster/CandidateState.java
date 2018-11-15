@@ -19,7 +19,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.stream.Collectors.toList;
@@ -83,7 +82,7 @@ public class CandidateState extends AbstractMembershipState {
                                         .setTerm(currentTerm())
                                         .setFailure(AppendEntryFailure.newBuilder()
                                                                       .setLastAppliedIndex(lastLogAppliedIndex())
-//                                                                      .setLastAppliedEventSequence() //TODO
+                                                                      .setLastAppliedEventSequence(lastAppliedEventSequence())
                                                                       .build())
                                         .build();
         }
@@ -98,7 +97,7 @@ public class CandidateState extends AbstractMembershipState {
         }
 
         return RequestVoteResponse.newBuilder()
-                                  .setGroupId(request.getGroupId())
+                                  .setGroupId(groupId())
                                   .setTerm(currentTerm())
                                   .setVoteGranted(false)
                                   .build();
@@ -112,7 +111,7 @@ public class CandidateState extends AbstractMembershipState {
             return followerState.installSnapshot(request);
         }
         return InstallSnapshotResponse.newBuilder()
-                                      .setGroupId(request.getGroupId())
+                                      .setGroupId(groupId())
                                       .setTerm(currentTerm())
                                       .build();
     }
@@ -129,7 +128,7 @@ public class CandidateState extends AbstractMembershipState {
         markVotedFor(me());
         resetElectionTimeout();
         RequestVoteRequest request = RequestVoteRequest.newBuilder()
-//                                                       .setGroupId(groupId) //TODO
+                                                       .setGroupId(groupId())
                                                        .setCandidateId(me())
                                                        .setTerm(currentTerm())
                                                        .setLastLogIndex(lastLogIndex())
