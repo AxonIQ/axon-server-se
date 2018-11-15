@@ -3,7 +3,6 @@ package io.axoniq.axonserver.cluster.replication;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 import java.util.List;
-import java.util.Map;
 import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -18,7 +17,6 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     private final AtomicLong lastApplied= new AtomicLong(-1);
     private final AtomicLong commitIndex = new AtomicLong(-1);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
-    private static final long BATCH_SIZE = 100;
 
     @Override
     public void appendEntry(List<Entry> entries) {
@@ -32,19 +30,11 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     @Override
     public void applyEntries(Consumer<Entry> consumer) {
         if( applyRunning.compareAndSet(false, true)) {
-            NavigableMap<Long, Entry> toApply;
-            do {
-                toApply = entryMap.subMap(lastApplied.get(),
-                                                                    false,
-                                                                    Math.min(commitIndex.get(),
-                                                                             lastApplied.get() + BATCH_SIZE),
-                                                                    true);
-                Map.Entry<Long, Entry> entry;
-                while ((entry = toApply.pollFirstEntry()) != null) {
-                    consumer.accept(entry.getValue());
-                    lastApplied.incrementAndGet();
-                }
-            } while (! toApply.isEmpty());
+            while( lastApplied.get() < commitIndex.get()) {
+                Entry entry = entryMap.get(lastApplied.get());
+                consumer.accept(entry);
+                lastApplied.incrementAndGet();
+            }
             applyRunning.set(false);
         }
     }
