@@ -37,7 +37,10 @@ public class RaftNode {
     }
 
     public void start() {
-        updateState(FollowerState.builder().build());
+        updateState(FollowerState.builder()
+                                 .raftGroup(raftGroup)
+                                 .transitionHandler(this::updateState)
+                                 .build());
 
         registrations.add(raftGroup.onAppendEntries(this::appendEntries));
         registrations.add(raftGroup.onInstallSnapshot(this::installSnapshot));
