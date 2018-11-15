@@ -23,8 +23,10 @@ public class RaftNode {
         this.state = new AtomicReference<>(new IdleState(raftGroup, this::updateState));
     }
 
-    private void updateState(MembershipState membershipState) {
-        state.set(membershipState);
+    private void updateState(MembershipState newState) {
+        state.get().stop();
+        state.set(newState);
+        newState.start();
     }
 
     public void start() {

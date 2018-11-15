@@ -20,9 +20,17 @@ public interface RaftGroup {
 
     RaftConfiguration raftConfiguration();
 
-    RaftPeer peer(String hostName, int port);
+    RaftPeer peer(String nodeId);
 
     RaftNode localNode();
+
+    default long minElectionTimeout(){
+        return 150;
+    }
+
+    default long maxElectionTimeout(){
+        return 300;
+    }
 
     default void connect() {
         localNode().start();

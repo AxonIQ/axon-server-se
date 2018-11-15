@@ -93,4 +93,12 @@ public abstract class AbstractMembershipState implements MembershipState {
             electionStore.markVotedFor(null);
         }
     }
+
+    long maxElectionTimeout(){
+        return raftGroup.maxElectionTimeout();
+    }
+
+    long minElectionTimeout(){
+        return raftGroup.minElectionTimeout();
+    }
 }

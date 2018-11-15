@@ -165,8 +165,8 @@ public class RaftClusterTestFixture {
         }
 
         @Override
-        public RaftPeer peer(String hostName, int port) {
-            return new StubNode(hostName);
+        public RaftPeer peer(String nodeId) {
+            return new StubNode(nodeId);
         }
 
         @Override
