@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.*;
 
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public interface RaftGroup {
 
@@ -20,17 +21,13 @@ public interface RaftGroup {
 
     RaftConfiguration raftConfiguration();
 
+    default long lastAppliedEventSequence() {
+        return -1L;
+    }
+
     RaftPeer peer(String nodeId);
 
     RaftNode localNode();
-
-    default long minElectionTimeout(){
-        return 150;
-    }
-
-    default long maxElectionTimeout(){
-        return 300;
-    }
 
     default void connect() {
         localNode().start();

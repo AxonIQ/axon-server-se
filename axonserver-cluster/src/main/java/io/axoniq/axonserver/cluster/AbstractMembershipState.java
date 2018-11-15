@@ -3,7 +3,6 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
  * @author Sara Pellegrini
@@ -13,16 +12,14 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
     private final Consumer<MembershipState> transitionHandler;
-    private final Supplier<Long> lastAppliedEventSequenceSupplier;
 
-    protected AbstractMembershipState(Builder builder){
+    protected AbstractMembershipState(Builder builder) {
         builder.validate();
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
-        this.lastAppliedEventSequenceSupplier = builder.lastAppliedEventSequenceSupplier;
     }
 
-    public static Builder builder(){
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -30,9 +27,8 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         private RaftGroup raftGroup;
         private Consumer<MembershipState> transitionHandler;
-        private Supplier<Long> lastAppliedEventSequenceSupplier = () -> -1L;
 
-        public Builder raftGroup(RaftGroup raftGroup){
+        public Builder raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
             return this;
         }
@@ -42,20 +38,14 @@ public abstract class AbstractMembershipState implements MembershipState {
             return this;
         }
 
-        public Builder lastAppliedEventSequenceSupplier(Supplier<Long> lastAppliedEventSequenceSupplier) {
-            this.lastAppliedEventSequenceSupplier = lastAppliedEventSequenceSupplier;
-            return this;
-        }
-
-        protected void validate(){
-            if (raftGroup == null){
+        protected void validate() {
+            if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
             }
             if (transitionHandler == null) {
                 throw new IllegalStateException("The transitionHandler must be provided");
             }
         }
-
     }
 
     protected String votedFor() {
@@ -95,27 +85,31 @@ public abstract class AbstractMembershipState implements MembershipState {
         return transitionHandler;
     }
 
-    protected Long lastAppliedEventSequence() {
-        return lastAppliedEventSequenceSupplier.get();
+    protected long lastAppliedEventSequence() {
+        return raftGroup.lastAppliedEventSequence();
     }
 
-    protected void transition(MembershipState newState) {
+    protected void changeState(MembershipState newState) {
         transitionHandler.accept(newState);
     }
 
-    protected void updateCurrentTerm(long term){
-        if (term > currentTerm()){
+    protected void updateCurrentTerm(long term) {
+        if (term > currentTerm()) {
             ElectionStore electionStore = raftGroup.localElectionStore();
             electionStore.updateCurrentTerm(term);
             electionStore.markVotedFor(null);
         }
     }
 
-    long maxElectionTimeout(){
-        return raftGroup.maxElectionTimeout();
+    protected long maxElectionTimeout() {
+        return raftGroup.raftConfiguration().maxElectionTimeout();
     }
 
-    long minElectionTimeout(){
-        return raftGroup.minElectionTimeout();
+    protected long minElectionTimeout() {
+        return raftGroup.raftConfiguration().minElectionTimeout();
+    }
+
+    protected String groupId() {
+        return raftGroup().raftConfiguration().groupId();
     }
 }
