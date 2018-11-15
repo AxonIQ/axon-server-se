@@ -95,8 +95,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         return transitionHandler;
     }
 
-    protected Supplier<Long> lastAppliedEventSequenceSupplier() {
-        return lastAppliedEventSequenceSupplier;
+    protected Long lastAppliedEventSequence() {
+        return lastAppliedEventSequenceSupplier.get();
     }
 
     protected void transition(MembershipState newState) {

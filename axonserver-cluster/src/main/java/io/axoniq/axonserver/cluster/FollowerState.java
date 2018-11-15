@@ -49,7 +49,7 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     @Override
-    public synchronized void stop() {
+    public void stop() {
         cancelCurrentElectionTimeout();
         scheduledExecutorService.shutdown();
     }
@@ -144,7 +144,7 @@ public class FollowerState extends AbstractMembershipState {
     private AppendEntryFailure buildAppendEntryFailure(long lastAppliedIndex) {
         return AppendEntryFailure.newBuilder()
                                  .setLastAppliedIndex(lastAppliedIndex)
-                                 .setLastAppliedEventSequence(lastAppliedEventSequenceSupplier().get())
+                                 .setLastAppliedEventSequence(lastAppliedEventSequence())
                                  .build();
     }
 
