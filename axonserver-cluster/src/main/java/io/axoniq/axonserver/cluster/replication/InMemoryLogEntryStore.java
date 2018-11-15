@@ -13,18 +13,29 @@ import java.util.function.Consumer;
  * Author: marc
  */
 public class InMemoryLogEntryStore implements LogEntryStore {
+
     private final NavigableMap<Long, Entry> entryMap = new ConcurrentSkipListMap<>();
-    private final AtomicLong lastApplied= new AtomicLong(-1);
+    private final AtomicLong lastApplied = new AtomicLong(-1);
     private final AtomicLong commitIndex = new AtomicLong(-1);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
 
     @Override
     public void appendEntry(List<Entry> entries) {
-        if( entries.isEmpty()) return;
+        if (entries.isEmpty()) {
+            return;
+        }
 
         long firstIndex = entries.get(0).getIndex();
         entryMap.tailMap(firstIndex).clear();
         entries.forEach(entry -> entryMap.put(entry.getIndex(), entry));
+    }
+
+    @Override
+    public boolean contains(long logIndex, long logTerm) {
+        if (entryMap.containsKey(logIndex)) {
+            return entryMap.get(logIndex).getTerm() == logTerm;
+        }
+        return false;
     }
 
     @Override

@@ -16,7 +16,10 @@ public class IdleState implements MembershipState {
 
     @Override
     public void start() {
-        FollowerState followerState = new FollowerState(raftGroup, transitionHandler);
+        FollowerState followerState = FollowerState.builder()
+                                                   .raftGroup(raftGroup)
+                                                   .transitionHandler(transitionHandler)
+                                                   .build();
         transitionHandler.accept(followerState);
         followerState.initialize();
     }
