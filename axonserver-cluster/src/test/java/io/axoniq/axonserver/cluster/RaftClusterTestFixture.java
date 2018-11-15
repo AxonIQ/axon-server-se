@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
+import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.*;
@@ -127,7 +128,7 @@ public class RaftClusterTestFixture {
         public StubRaftGroup(String localName) {
             this.localName = localName;
             this.logEntryStore = new InMemoryLogEntryStore();
-            this.electionStore = null;
+            this.electionStore = new InMemoryElectionStore();
         }
 
         @Override
