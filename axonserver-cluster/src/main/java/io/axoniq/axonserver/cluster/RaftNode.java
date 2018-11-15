@@ -27,7 +27,7 @@ public class RaftNode {
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
-        updateState(new IdleState(raftGroup, this::updateState));
+        updateState(new IdleState());
     }
 
     private synchronized void updateState(MembershipState newState) {
@@ -61,7 +61,7 @@ public class RaftNode {
 
 
     public void stop() {
-        updateState(new IdleState(raftGroup, this::updateState));
+        updateState(new IdleState());
         registrations.forEach(Registration::cancel);
     }
 

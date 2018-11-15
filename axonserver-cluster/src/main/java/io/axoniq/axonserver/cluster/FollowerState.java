@@ -123,9 +123,7 @@ public class FollowerState extends AbstractMembershipState {
                                                 .transitionHandler(transitionHandler())
                                                 .build()),
                 // TODO: make ThreadLocalRandom injectable
-                ThreadLocalRandom.current().nextLong(minElectionTimeout(),
-                                                     maxElectionTimeout()
-                                                             + 1),
+                ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
                 TimeUnit.MILLISECONDS);
     }
 
