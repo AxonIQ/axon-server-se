@@ -14,15 +14,18 @@ import java.util.function.Consumer;
  * Author: marc
  */
 public class InMemoryLogEntryStore implements LogEntryStore {
+
     private final NavigableMap<Long, Entry> entryMap = new ConcurrentSkipListMap<>();
-    private final AtomicLong lastApplied= new AtomicLong(-1);
+    private final AtomicLong lastApplied = new AtomicLong(-1);
     private final AtomicLong commitIndex = new AtomicLong(-1);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
     private static final long BATCH_SIZE = 100;
 
     @Override
     public void appendEntry(List<Entry> entries) {
-        if( entries.isEmpty()) return;
+        if (entries.isEmpty()) {
+            return;
+        }
 
         long firstIndex = entries.get(0).getIndex();
         entryMap.tailMap(firstIndex).clear();
@@ -30,21 +33,29 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public boolean contains(long logIndex, long logTerm) {
+        if (entryMap.containsKey(logIndex)) {
+            return entryMap.get(logIndex).getTerm() == logTerm;
+        }
+        return false;
+    }
+
+    @Override
     public void applyEntries(Consumer<Entry> consumer) {
-        if( applyRunning.compareAndSet(false, true)) {
+        if (applyRunning.compareAndSet(false, true)) {
             NavigableMap<Long, Entry> toApply;
             do {
                 toApply = entryMap.subMap(lastApplied.get(),
-                                                                    false,
-                                                                    Math.min(commitIndex.get(),
-                                                                             lastApplied.get() + BATCH_SIZE),
-                                                                    true);
+                                          false,
+                                          Math.min(commitIndex.get(),
+                                                   lastApplied.get() + BATCH_SIZE),
+                                          true);
                 Map.Entry<Long, Entry> entry;
                 while ((entry = toApply.pollFirstEntry()) != null) {
                     consumer.accept(entry.getValue());
                     lastApplied.incrementAndGet();
                 }
-            } while (! toApply.isEmpty());
+            } while (!toApply.isEmpty());
             applyRunning.set(false);
         }
     }
