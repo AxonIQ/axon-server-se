@@ -134,6 +134,8 @@ public class FollowerState implements MembershipState {
         else if (millisFromLastHearingOfLeader != null && millisFromLastHearingOfLeader < electionTimeoutMin) {
             voteGranted = false;
         } else {
+            // TODO: 11/15/2018 check this lines
+            electionStore.markVotedFor(request.getCandidateId());
             electionStore.updateCurrentTerm(request.getTerm());
         }
 
@@ -154,11 +156,11 @@ public class FollowerState implements MembershipState {
     }
 
     private void onExit() {
-        cancelCurrentElection();
+        cancelCurrentElectionTimeout();
         scheduledExecutorService.shutdown();
     }
 
-    private Long cancelCurrentElection() {
+    private Long cancelCurrentElectionTimeout() {
         Long millisLeft = null;
         if (scheduledElection != null) {
             millisLeft = scheduledElection.getDelay(TimeUnit.MILLISECONDS);
@@ -176,7 +178,7 @@ public class FollowerState implements MembershipState {
     }
 
     private Long rescheduleElection() {
-        Long millisLeft = cancelCurrentElection();
+        Long millisLeft = cancelCurrentElectionTimeout();
         scheduleNewElection();
         return millisLeft;
     }
