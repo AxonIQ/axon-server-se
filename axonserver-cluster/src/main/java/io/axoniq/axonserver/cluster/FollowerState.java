@@ -25,7 +25,7 @@ public class FollowerState extends AbstractMembershipState {
     private final ScheduledExecutorService scheduledExecutorService;
 
     private ScheduledFuture<?> scheduledElection;
-    private Long lastMessageReceivedAt;
+    private long lastMessageReceivedAt;
 
     protected FollowerState(Builder builder) {
         super(builder);
@@ -38,6 +38,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        lastMessageReceivedAt = 0;
         scheduleNewElection();
     }
 
@@ -81,7 +82,7 @@ public class FollowerState extends AbstractMembershipState {
         return AppendEntriesResponse.newBuilder()
                                     .setGroupId(groupId())
                                     .setTerm(currentTerm())
-                                    .setSuccess(buildAppendEntrySuccess(lastAppliedIndex()))
+                                    .setSuccess(buildAppendEntrySuccess(lastLogIndex()))
                                     .setTerm(currentTerm())
                                     .build();
     }
@@ -129,9 +130,9 @@ public class FollowerState extends AbstractMembershipState {
     }
 
 
-    private AppendEntrySuccess buildAppendEntrySuccess(long lastAppliedIndex) {
+    private AppendEntrySuccess buildAppendEntrySuccess(long lastLogIndex) {
         return AppendEntrySuccess.newBuilder()
-                                 .setLastLogIndex(lastAppliedIndex)
+                                 .setLastLogIndex(lastLogIndex)
                                  .build();
     }
 
