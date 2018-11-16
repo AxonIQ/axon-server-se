@@ -3,6 +3,8 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
@@ -30,6 +32,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.stateFactory = builder.stateFactory;
         this.currentTimeSupplier = builder.currentTimeSupplier;
     }
+
+
 
     public static abstract class Builder<B extends Builder<B>> {
 
@@ -170,6 +174,14 @@ public abstract class AbstractMembershipState implements MembershipState {
                                     .setTerm(currentTerm())
                                     .setFailure(failure)
                                     .build();
+    }
+
+    protected InstallSnapshotResponse installSnapshotFailure() {
+        return InstallSnapshotResponse.newBuilder()
+                                      .setGroupId(groupId())
+                                      .setTerm(currentTerm())
+                                      .setFailure(InstallSnapshotFailure.newBuilder().build())
+                                      .build();
     }
 
     protected RequestVoteResponse requestVoteResponse(boolean voteGranted) {
