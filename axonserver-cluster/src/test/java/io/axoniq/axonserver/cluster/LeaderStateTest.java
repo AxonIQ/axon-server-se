@@ -38,6 +38,11 @@ public class LeaderStateTest {
                 public List<Node> groupMembers() {
                     return nodes;
                 }
+
+                @Override
+                public String groupId() {
+                    return "MyGroupId";
+                }
             };
 
             ElectionStore localElectionStore = new ElectionStore() {
@@ -94,7 +99,7 @@ public class LeaderStateTest {
             }
 
             @Override
-            public RaftPeer peer(String hostName, int port) {
+            public RaftPeer peer(String name) {
                 return null;
             }
 
@@ -108,7 +113,7 @@ public class LeaderStateTest {
                 return new DummyReplicationConnection(localLogEntryStore, matchIndexListener);
             }
         };
-        testSubject = new LeaderState(new AbstractMembershipState.Builder().raftGroup(raftGroup).transitionHandler(newState -> {}));
+        testSubject = new DefaultStateFactory(raftGroup, n -> {}).leaderState();
     }
 
     @Test

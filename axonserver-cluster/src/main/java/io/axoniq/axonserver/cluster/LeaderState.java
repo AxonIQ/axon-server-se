@@ -157,7 +157,7 @@ public class LeaderState extends AbstractMembershipState {
         private void sendHeartbeat(PeerInfo peer, TermIndex lastTermIndex, long commitIndex) {
             AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
                                                                  .setCommitIndex(commitIndex)
-                                                                 .setCurrentTerm(raftGroup().localElectionStore().currentTerm())
+                                                                 .setTerm(raftGroup().localElectionStore().currentTerm())
                                                                  .setPrevLogIndex(lastTermIndex.getIndex())
                                                                  .setPrevLogTerm(lastTermIndex.getTerm())
                                                                  .build();
