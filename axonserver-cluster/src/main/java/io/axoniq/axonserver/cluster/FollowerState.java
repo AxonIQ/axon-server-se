@@ -16,7 +16,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static java.lang.Math.min;
 
@@ -89,10 +88,19 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        long elapsedFromLastMessage = System.currentTimeMillis() - lastMessageReceivedAt;
-        newMessageReceived(request.getTerm());
+        long elapsedFromLastMessage = currentTimeMillis() - lastMessageReceivedAt;
 
-        return requestVoteResponse(voteGrantedFor(request, elapsedFromLastMessage));
+        lastMessageReceivedAt = currentTimeMillis();
+        rescheduleElection();
+
+        // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
+        // does not update its term or grant its vote
+        if (elapsedFromLastMessage < minElectionTimeout()) {
+            return requestVoteResponse(false);
+        }
+
+        updateCurrentTerm(request.getTerm());
+        return requestVoteResponse(voteGrantedFor(request));
     }
 
     @Override
@@ -121,7 +129,7 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void newMessageReceived(long term) {
-        lastMessageReceivedAt = System.currentTimeMillis();
+        lastMessageReceivedAt = currentTimeMillis();
         updateCurrentTerm(term);
         rescheduleElection();
     }
@@ -133,7 +141,7 @@ public class FollowerState extends AbstractMembershipState {
                                  .build();
     }
 
-    private boolean voteGrantedFor(RequestVoteRequest request, long elapsedFromLastMessage) {
+    private boolean voteGrantedFor(RequestVoteRequest request) {
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
             return false;
@@ -154,12 +162,6 @@ public class FollowerState extends AbstractMembershipState {
             return false;
         }
 
-        // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
-        // does not update its term or grant its vote
-        if (elapsedFromLastMessage < minElectionTimeout()) {
-            return false;
-        }
-
         markVotedFor(request.getCandidateId());
         return true;
     }
@@ -167,24 +169,6 @@ public class FollowerState extends AbstractMembershipState {
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
 
         private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-
-//        @Override
-//        public Builder raftGroup(RaftGroup raftGroup) {
-//            super.raftGroup(raftGroup);
-//            return this;
-//        }
-//
-//        @Override
-//        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
-//            super.transitionHandler(transitionHandler);
-//            return this;
-//        }
-//
-//        @Override
-//        public Builder stateFactory(MembershipStateFactory stateFactory) {
-//            super.stateFactory(stateFactory);
-//            return this;
-//        }
 
         public Builder scheduledExecutorService(ScheduledExecutorService scheduledExecutorService) {
             this.scheduledExecutorService = scheduledExecutorService;

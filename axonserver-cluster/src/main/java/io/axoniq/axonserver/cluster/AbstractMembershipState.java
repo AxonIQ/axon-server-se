@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.toList;
 
@@ -19,21 +20,23 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
     private final Consumer<MembershipState> transitionHandler;
-    private MembershipStateFactory stateFactory;
+    private final MembershipStateFactory stateFactory;
+    private final Supplier<Long> currentTimeSupplier;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
         this.stateFactory = builder.stateFactory;
+        this.currentTimeSupplier = builder.currentTimeSupplier;
     }
-
 
     public static abstract class Builder<B extends Builder<B>> {
 
         private RaftGroup raftGroup;
         private Consumer<MembershipState> transitionHandler;
         private MembershipStateFactory stateFactory;
+        private Supplier<Long> currentTimeSupplier = System::currentTimeMillis;
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -50,12 +53,20 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
+        public B currentTimeSupplier(Supplier<Long> currentTimeSupplier) {
+            this.currentTimeSupplier = currentTimeSupplier;
+            return self();
+        }
+
         protected void validate() {
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
             }
             if (transitionHandler == null) {
                 throw new IllegalStateException("The transitionHandler must be provided");
+            }
+            if (stateFactory == null) {
+                throw new IllegalStateException("The stateFactory must be provided");
             }
         }
 
@@ -143,6 +154,10 @@ public abstract class AbstractMembershipState implements MembershipState {
                     .filter(id -> !id.equals(me()))
                     .map(raftGroup()::peer)
                     .collect(toList());
+    }
+
+    protected long currentTimeMillis() {
+        return currentTimeSupplier.get();
     }
 
     protected AppendEntriesResponse appendEntriesFailure() {

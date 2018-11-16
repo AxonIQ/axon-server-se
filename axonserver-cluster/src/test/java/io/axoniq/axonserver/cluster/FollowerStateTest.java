@@ -34,6 +34,8 @@ public class FollowerStateTest {
 
         raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.groupId()).thenReturn("defaultGroup");
+        when(raftConfiguration.minElectionTimeout()).thenReturn(150L);
+        when(raftConfiguration.maxElectionTimeout()).thenReturn(300L);
 
         raftGroup = mock(RaftGroup.class);
         when(raftGroup.lastAppliedEventSequence()).thenReturn(2L);
@@ -44,6 +46,7 @@ public class FollowerStateTest {
         followerState = FollowerState.builder()
                                      .transitionHandler(transitionHandler)
                                      .raftGroup(raftGroup)
+                                     .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
                                      .build();
         followerState.start();
     }
@@ -65,19 +68,11 @@ public class FollowerStateTest {
     }
 
     @Test
-    public void testRequestVoteGrantedAfterAppend() {
-        followerState.appendEntries(AppendEntriesRequest.newBuilder()
-                                                        .setTerm(0L)
-                                                        .setCommitIndex(0L)
-                                                        .setPrevLogIndex(0L)
-                                                        .setPrevLogTerm(0L)
-                                                        .setLeaderId("node1")
-                                                        .setGroupId("defaultGroup")
-                                                        .addEntries(Entry.newBuilder()
-                                                                         .setIndex(1L)
-                                                                         .setTerm(0L)
-                                                                         .build())
-                                                        .build());
+    public void testRequestVoteGrantedAfterAppendAndAfterMinElectionTimeoutHasPassed() throws InterruptedException {
+        followerState.appendEntries(firstAppend());
+
+        // wait min election timeout to pass in order to have vote granted
+        Thread.sleep(200);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setGroupId("defaultGroup")
@@ -89,5 +84,56 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
+    }
+
+    @Test
+    public void testRequestVoteNotGrantedAfterAppendAndMinElectionTimeoutHasNotPassed() {
+        followerState.appendEntries(firstAppend());
+
+        RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setGroupId("defaultGroup")
+                                                                                   .setLastLogTerm(0L)
+                                                                                   .setLastLogIndex(1L)
+                                                                                   .setTerm(1)
+                                                                                   .build());
+
+        assertFalse(response.getVoteGranted());
+        assertEquals(0L, response.getTerm());
+        assertEquals("defaultGroup", response.getGroupId());
+    }
+
+    @Test
+    public void testRequestVoteNotGrantedAfterMinElectionTimeoutHasPassedAndLogIsNotUpToDate()
+            throws InterruptedException {
+        followerState.appendEntries(firstAppend());
+
+        // wait min election timeout to pass in order to have vote granted
+        Thread.sleep(200);
+
+        RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setGroupId("defaultGroup")
+                                                                                   .setLastLogTerm(0L)
+                                                                                   .setLastLogIndex(0L)
+                                                                                   .setTerm(1)
+                                                                                   .build());
+
+        assertFalse(response.getVoteGranted());
+        assertEquals(1L, response.getTerm());
+        assertEquals("defaultGroup", response.getGroupId());
+    }
+
+    private AppendEntriesRequest firstAppend() {
+        return AppendEntriesRequest.newBuilder()
+                                   .setTerm(0L)
+                                   .setCommitIndex(0L)
+                                   .setPrevLogIndex(0L)
+                                   .setPrevLogTerm(0L)
+                                   .setLeaderId("node1")
+                                   .setGroupId("defaultGroup")
+                                   .addEntries(Entry.newBuilder()
+                                                    .setIndex(1L)
+                                                    .setTerm(0L)
+                                                    .build())
+                                   .build();
     }
 }
