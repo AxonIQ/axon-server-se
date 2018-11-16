@@ -34,6 +34,9 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public boolean contains(long logIndex, long logTerm) {
+        if (logIndex == 0) {
+            return true;
+        }
         if (entryMap.containsKey(logIndex)) {
             return entryMap.get(logIndex).getTerm() == logTerm;
         }
