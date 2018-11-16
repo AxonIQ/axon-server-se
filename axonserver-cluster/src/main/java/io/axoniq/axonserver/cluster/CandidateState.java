@@ -27,19 +27,25 @@ public class CandidateState extends AbstractMembershipState {
     private final AtomicReference<ScheduledFuture<?>> currentElectionTimeoutTask = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
 
-    public static class Builder extends AbstractMembershipState.Builder {
+    public static class Builder extends AbstractMembershipState.Builder<Builder> {
 
-        @Override
-        public Builder raftGroup(RaftGroup raftGroup) {
-            super.raftGroup(raftGroup);
-            return this;
-        }
-
-        @Override
-        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
-            super.transitionHandler(transitionHandler);
-            return this;
-        }
+//        @Override
+//        public Builder raftGroup(RaftGroup raftGroup) {
+//            super.raftGroup(raftGroup);
+//            return this;
+//        }
+//
+//        @Override
+//        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
+//            super.transitionHandler(transitionHandler);
+//            return this;
+//        }
+//
+//        @Override
+//        public Builder stateFactory(MembershipStateFactory stateFactory) {
+//            super.stateFactory(stateFactory);
+//            return this;
+//        }
 
         public CandidateState build() {
             return new CandidateState(this);
@@ -67,7 +73,7 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
-            FollowerState followerState = followerState();
+            FollowerState followerState = stateFactory().followerState();
             changeStateTo(followerState);
             return followerState.appendEntries(request);
         } else {
@@ -78,22 +84,17 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
-            FollowerState followerState = followerState();
+            FollowerState followerState = stateFactory().followerState();
             changeStateTo(followerState);
             return followerState.requestVote(request);
         }
-
-        return RequestVoteResponse.newBuilder()
-                                  .setGroupId(groupId())
-                                  .setTerm(currentTerm())
-                                  .setVoteGranted(false)
-                                  .build();
+        return requestVoteResponse(false);
     }
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
-            FollowerState followerState = followerState();
+            FollowerState followerState = stateFactory().followerState();
             changeStateTo(followerState);
             return followerState.installSnapshot(request);
         }
@@ -133,7 +134,7 @@ public class CandidateState extends AbstractMembershipState {
 
     private void onVoteResponse(String voter, RequestVoteResponse response) {
         if (response.getTerm() > currentTerm()) {
-            changeStateTo(followerState());
+            changeStateTo(stateFactory().followerState());
             return;
         }
         if (response.getTerm() < currentTerm()) {
@@ -143,21 +144,8 @@ public class CandidateState extends AbstractMembershipState {
         Election election = this.currentElection.get();
         election.onVoteReceived(voter, response.getVoteGranted());
         if (election.isWon()) {
-            changeStateTo(leaderState());
+            changeStateTo(stateFactory().leaderState());
         }
     }
 
-    private FollowerState followerState() {
-        return FollowerState.builder()
-                            .raftGroup(raftGroup())
-                            .transitionHandler(transitionHandler())
-                            .build();
-    }
-
-    private LeaderState leaderState() {
-        return LeaderState.builder()
-                          .raftGroup(raftGroup())
-                          .transitionHandler(transitionHandler())
-                          .build();
-    }
 }

@@ -19,30 +19,35 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
     private final Consumer<MembershipState> transitionHandler;
+    private MembershipStateFactory stateFactory;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
+        this.stateFactory = builder.stateFactory;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
 
-    public static class Builder {
+    public static abstract class Builder<B extends Builder<B>> {
 
         private RaftGroup raftGroup;
         private Consumer<MembershipState> transitionHandler;
+        private MembershipStateFactory stateFactory;
 
-        public Builder raftGroup(RaftGroup raftGroup) {
+        public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
-            return this;
+            return self();
         }
 
-        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
+        public B transitionHandler(Consumer<MembershipState> transitionHandler) {
             this.transitionHandler = transitionHandler;
-            return this;
+            return self();
+        }
+
+        public B stateFactory(MembershipStateFactory stateFactory) {
+            this.stateFactory = stateFactory;
+            return self();
         }
 
         protected void validate() {
@@ -53,6 +58,13 @@ public abstract class AbstractMembershipState implements MembershipState {
                 throw new IllegalStateException("The transitionHandler must be provided");
             }
         }
+
+        @SuppressWarnings("unchecked")
+        final B self() {
+            return (B) this;
+        }
+
+        abstract MembershipState build();
     }
 
     protected String votedFor() {
@@ -90,6 +102,10 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     protected Consumer<MembershipState> transitionHandler() {
         return transitionHandler;
+    }
+
+    public MembershipStateFactory stateFactory() {
+        return stateFactory;
     }
 
     protected long lastAppliedEventSequence() {

@@ -20,6 +20,7 @@ public class RaftNode {
 
     private final String nodeId;
     private final RaftGroup raftGroup;
+    private final MembershipStateFactory stateFactory;
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
@@ -27,7 +28,8 @@ public class RaftNode {
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
-        updateState(new IdleState());
+        stateFactory = new DefaultStateFactory(raftGroup, this::updateState);
+        updateState(stateFactory.idleState());
     }
 
     private synchronized void updateState(MembershipState newState) {
@@ -37,11 +39,7 @@ public class RaftNode {
     }
 
     public void start() {
-        updateState(FollowerState.builder()
-                                 .raftGroup(raftGroup)
-                                 .transitionHandler(this::updateState)
-                                 .build());
-
+        updateState(stateFactory.followerState());
         registrations.add(raftGroup.onAppendEntries(this::appendEntries));
         registrations.add(raftGroup.onInstallSnapshot(this::installSnapshot));
         registrations.add(raftGroup.onRequestVote(this::requestVote));
@@ -61,7 +59,7 @@ public class RaftNode {
 
 
     public void stop() {
-        updateState(new IdleState());
+        updateState(stateFactory.idleState());
         registrations.forEach(Registration::cancel);
     }
 

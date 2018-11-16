@@ -108,10 +108,7 @@ public class FollowerState extends AbstractMembershipState {
 
     private void scheduleNewElection() {
         scheduledElection = scheduledExecutorService.schedule(
-                () -> changeStateTo(CandidateState.builder()
-                                                  .raftGroup(raftGroup())
-                                                  .transitionHandler(transitionHandler())
-                                                  .build()),
+                () -> changeStateTo(stateFactory().candidateState()),
                 // TODO: make ThreadLocalRandom injectable
                 ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
                 TimeUnit.MILLISECONDS);
@@ -166,21 +163,27 @@ public class FollowerState extends AbstractMembershipState {
         return true;
     }
 
-    public static class Builder extends AbstractMembershipState.Builder {
+    public static class Builder extends AbstractMembershipState.Builder<Builder> {
 
         private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-        @Override
-        public Builder raftGroup(RaftGroup raftGroup) {
-            super.raftGroup(raftGroup);
-            return this;
-        }
-
-        @Override
-        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
-            super.transitionHandler(transitionHandler);
-            return this;
-        }
+//        @Override
+//        public Builder raftGroup(RaftGroup raftGroup) {
+//            super.raftGroup(raftGroup);
+//            return this;
+//        }
+//
+//        @Override
+//        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
+//            super.transitionHandler(transitionHandler);
+//            return this;
+//        }
+//
+//        @Override
+//        public Builder stateFactory(MembershipStateFactory stateFactory) {
+//            super.stateFactory(stateFactory);
+//            return this;
+//        }
 
         public Builder scheduledExecutorService(ScheduledExecutorService scheduledExecutorService) {
             this.scheduledExecutorService = scheduledExecutorService;
