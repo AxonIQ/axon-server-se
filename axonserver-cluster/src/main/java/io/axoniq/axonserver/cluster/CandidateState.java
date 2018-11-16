@@ -53,7 +53,7 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
-            FollowerState followerState = stateFactory().followerState();
+            MembershipState followerState = stateFactory().followerState();
             changeStateTo(followerState);
             return followerState.appendEntries(request);
         } else {
@@ -64,7 +64,7 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
-            FollowerState followerState = stateFactory().followerState();
+            MembershipState followerState = stateFactory().followerState();
             changeStateTo(followerState);
             return followerState.requestVote(request);
         }
@@ -74,7 +74,7 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
-            FollowerState followerState = stateFactory().followerState();
+            MembershipState followerState = stateFactory().followerState();
             changeStateTo(followerState);
             return followerState.installSnapshot(request);
         }
