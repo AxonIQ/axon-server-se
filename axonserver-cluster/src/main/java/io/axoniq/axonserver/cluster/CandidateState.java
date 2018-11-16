@@ -47,11 +47,11 @@ public class CandidateState extends AbstractMembershipState {
 
     @Override
     public void stop() {
-        executorService.shutdown();
+        executorService.shutdownNow();
     }
 
     @Override
-    public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+    public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
             MembershipState followerState = stateFactory().followerState();
             changeStateTo(followerState);
@@ -62,7 +62,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     @Override
-    public RequestVoteResponse requestVote(RequestVoteRequest request) {
+    public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
             MembershipState followerState = stateFactory().followerState();
             changeStateTo(followerState);
@@ -72,7 +72,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     @Override
-    public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+    public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
             MembershipState followerState = stateFactory().followerState();
             changeStateTo(followerState);
@@ -92,7 +92,9 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void startElection() {
-        updateCurrentTerm(currentTerm() + 1);
+        synchronized (this){
+            updateCurrentTerm(currentTerm() + 1);
+        }
         resetElectionTimeout();
         long raftGroupSize = raftGroup().raftConfiguration().groupMembers().size();
         currentElection.set(new CandidateElection(raftGroupSize));
@@ -112,7 +114,7 @@ public class CandidateState extends AbstractMembershipState {
         node.requestVote(request).thenAccept(response -> onVoteResponse(node.nodeId(), response));
     }
 
-    private void onVoteResponse(String voter, RequestVoteResponse response) {
+    private synchronized void onVoteResponse(String voter, RequestVoteResponse response) {
         if (response.getTerm() > currentTerm()) {
             changeStateTo(stateFactory().followerState());
             return;
