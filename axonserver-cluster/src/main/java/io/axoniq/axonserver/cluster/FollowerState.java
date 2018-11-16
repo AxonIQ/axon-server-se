@@ -3,7 +3,6 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
@@ -12,31 +11,23 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
+import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Math.min;
 
 public class FollowerState extends AbstractMembershipState {
 
-    private final long electionTimeoutMin;
-    private final long electionTimeoutMax;
+    private final Scheduler scheduler;
 
-    private final ScheduledExecutorService scheduledExecutorService;
-
-    private ScheduledFuture<?> scheduledElection;
-    private Long lastMessageReceivedAt;
+    private AtomicReference<Registration> scheduledElection = new AtomicReference<>();
+    private long lastMessageReceivedAt;
 
     protected FollowerState(Builder builder) {
         super(builder);
-        this.scheduledExecutorService = builder.scheduledExecutorService;
-        this.electionTimeoutMin = builder.electionTimeoutMin;
-        this.electionTimeoutMax = builder.electionTimeoutMax;
+        this.scheduler = builder.scheduler;
     }
 
     public static Builder builder() {
@@ -45,34 +36,28 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        lastMessageReceivedAt = 0;
         scheduleNewElection();
     }
 
     @Override
-    public synchronized void stop() {
+    public void stop() {
         cancelCurrentElectionTimeout();
-        scheduledExecutorService.shutdown();
     }
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        newMessageReceived(request.getCurrentTerm());
+        newMessageReceived(request.getTerm());
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
-        long lastAppliedIndex = logEntryStore.lastAppliedIndex();
-        AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder()
-                                                                             .setGroupId(request.getGroupId())
-                                                                             .setTerm(currentTerm());
 
         //1. Reply false if term < currentTerm
-        if (request.getCurrentTerm() < currentTerm()) {
-            return responseBuilder.setFailure(buildAppendEntryFailure(lastAppliedIndex))
-                                  .build();
+        if (request.getTerm() < currentTerm()) {
+            return appendEntriesFailure();
         }
 
         //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
         if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
-            return responseBuilder.setFailure(buildAppendEntryFailure(lastAppliedIndex))
-                                  .build();
+            return appendEntriesFailure();
         }
 
         //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -80,11 +65,9 @@ public class FollowerState extends AbstractMembershipState {
         //4. Append any new entries not already in the log
         try {
             raftGroup().localLogEntryStore().appendEntry(request.getEntriesList());
-            lastAppliedIndex = logEntryStore.lastAppliedIndex();
         } catch (IOException e) {
             stop();
-            return responseBuilder.setFailure(buildAppendEntryFailure(lastAppliedIndex))
-                                  .build();
+            return appendEntriesFailure();
         }
 
         //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -93,41 +76,48 @@ public class FollowerState extends AbstractMembershipState {
                                             request.getEntries(request.getEntriesCount() - 1).getIndex()));
         }
 
-        return responseBuilder.setSuccess(buildAppendEntrySuccess(lastAppliedIndex))
-                              .setTerm(currentTerm())
-                              .build();
+        return AppendEntriesResponse.newBuilder()
+                                    .setGroupId(groupId())
+                                    .setTerm(currentTerm())
+                                    .setSuccess(buildAppendEntrySuccess(lastLogIndex()))
+                                    .setTerm(currentTerm())
+                                    .build();
     }
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        long elapsedFromLastMessage = System.currentTimeMillis() - lastMessageReceivedAt;
-        newMessageReceived(request.getTerm());
+        long elapsedFromLastMessage = currentTimeMillis() - lastMessageReceivedAt;
 
-        return RequestVoteResponse.newBuilder()
-                                  .setGroupId(request.getGroupId())
-                                  .setVoteGranted(voteGrantedFor(request, elapsedFromLastMessage))
-                                  .setTerm(currentTerm())
-                                  .build();
+        lastMessageReceivedAt = currentTimeMillis();
+        rescheduleElection();
+
+        // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
+        // does not update its term or grant its vote
+        if (elapsedFromLastMessage < minElectionTimeout()) {
+            return requestVoteResponse(false);
+        }
+
+        updateCurrentTerm(request.getTerm());
+        return requestVoteResponse(voteGrantedFor(request));
     }
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        newMessageReceived(request.getCurrentTerm());
+        newMessageReceived(request.getTerm());
         throw new NotImplementedException();
     }
 
     private void cancelCurrentElectionTimeout() {
-        if (scheduledElection != null) {
-            scheduledElection.cancel(true);
-        }
+        Optional.ofNullable(scheduledElection.get())
+                .ifPresent(Registration::cancel);
     }
 
     private void scheduleNewElection() {
-        scheduledElection = scheduledExecutorService.schedule(() -> {
-            stop();
-//            transition(new CandidateState());
-            // TODO: make ThreadLocalRandom injectable
-        }, ThreadLocalRandom.current().nextLong(electionTimeoutMin, electionTimeoutMax + 1), TimeUnit.MILLISECONDS);
+        scheduledElection.set(scheduler.schedule(
+                () -> changeStateTo(stateFactory().candidateState()),
+                // TODO: make ThreadLocalRandom injectable
+                ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
+                TimeUnit.MILLISECONDS));
     }
 
     private void rescheduleElection() {
@@ -136,25 +126,19 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void newMessageReceived(long term) {
-        lastMessageReceivedAt = System.currentTimeMillis();
+        lastMessageReceivedAt = currentTimeMillis();
         updateCurrentTerm(term);
         rescheduleElection();
     }
 
-    private AppendEntryFailure buildAppendEntryFailure(long lastAppliedIndex) {
-        return AppendEntryFailure.newBuilder()
-                                 .setLastAppliedIndex(lastAppliedIndex)
-                                 .setLastAppliedEventSequence(lastAppliedEventSequenceSupplier().get())
-                                 .build();
-    }
 
-    private AppendEntrySuccess buildAppendEntrySuccess(long lastAppliedIndex) {
+    private AppendEntrySuccess buildAppendEntrySuccess(long lastLogIndex) {
         return AppendEntrySuccess.newBuilder()
-                                 .setLastLogIndex(lastAppliedIndex)
+                                 .setLastLogIndex(lastLogIndex)
                                  .build();
     }
 
-    private boolean voteGrantedFor(RequestVoteRequest request, long elapsedFromLastMessage) {
+    private boolean voteGrantedFor(RequestVoteRequest request) {
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
             return false;
@@ -175,54 +159,16 @@ public class FollowerState extends AbstractMembershipState {
             return false;
         }
 
-        // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
-        // does not update its term or grant its vote
-        if (elapsedFromLastMessage < electionTimeoutMin) {
-            return false;
-        }
-
         markVotedFor(request.getCandidateId());
         return true;
     }
 
-    public static class Builder extends AbstractMembershipState.Builder {
+    public static class Builder extends AbstractMembershipState.Builder<Builder> {
 
-        private long electionTimeoutMin = 150;
-        private long electionTimeoutMax = 300;
+        private Scheduler scheduler = new DefaultScheduler();
 
-        private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-
-        @Override
-        public Builder raftGroup(RaftGroup raftGroup) {
-            super.raftGroup(raftGroup);
-            return this;
-        }
-
-        @Override
-        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
-            super.transitionHandler(transitionHandler);
-            return this;
-        }
-
-        @Override
-        public Builder lastAppliedEventSequenceSupplier(
-                Supplier<Long> lastAppliedEventSequenceSupplier) {
-            super.lastAppliedEventSequenceSupplier(lastAppliedEventSequenceSupplier);
-            return this;
-        }
-
-        public Builder electionTimeoutMin(long electionTimeoutMin) {
-            this.electionTimeoutMin = electionTimeoutMin;
-            return this;
-        }
-
-        public Builder electionTimeoutMax(long electionTimeoutMax) {
-            this.electionTimeoutMax = electionTimeoutMax;
-            return this;
-        }
-
-        public Builder scheduledExecutorService(ScheduledExecutorService scheduledExecutorService) {
-            this.scheduledExecutorService = scheduledExecutorService;
+        public Builder scheduledExecutorService(Scheduler scheduler) {
+            this.scheduler = scheduler;
             return this;
         }
 

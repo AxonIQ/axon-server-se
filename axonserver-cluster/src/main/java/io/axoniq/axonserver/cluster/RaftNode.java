@@ -1,9 +1,16 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
@@ -13,31 +20,51 @@ public class RaftNode {
 
     private final String nodeId;
     private final RaftGroup raftGroup;
-    private final AtomicReference<MembershipState> state;
+    private final MembershipStateFactory stateFactory;
+    private final AtomicReference<MembershipState> state = new AtomicReference<>();
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
 
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
-        this.state = new AtomicReference<>(new IdleState(raftGroup, this::updateState));
+        stateFactory = new DefaultStateFactory(raftGroup, this::updateState);
+        updateState(stateFactory.idleState());
     }
 
-    private void updateState(MembershipState membershipState) {
-        state.set(membershipState);
+    private synchronized void updateState(MembershipState newState) {
+        Optional.ofNullable(state.get()).ifPresent(MembershipState::stop);
+        state.set(newState);
+        newState.start();
     }
 
     public void start() {
-        state.get().start();
-
-        registrations.add(raftGroup.onAppendEntries(state.get()::appendEntries));
-        registrations.add(raftGroup.onInstallSnapshot(state.get()::installSnapshot));
-        registrations.add(raftGroup.onRequestVote(state.get()::requestVote));
+        updateState(stateFactory.followerState());
+        registrations.add(raftGroup.onAppendEntries(this::appendEntries));
+        registrations.add(raftGroup.onInstallSnapshot(this::installSnapshot));
+        registrations.add(raftGroup.onRequestVote(this::requestVote));
     }
 
+    private synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        return state.get().appendEntries(request);
+    }
+
+    private synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
+        return state.get().requestVote(request);
+    }
+
+    private synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+        return state.get().installSnapshot(request);
+    }
+
+
     public void stop() {
-        state.get().stop();
+        updateState(stateFactory.idleState());
         registrations.forEach(Registration::cancel);
+    }
+
+    String nodeId() {
+        return nodeId;
     }
 
     public boolean isLeader() {

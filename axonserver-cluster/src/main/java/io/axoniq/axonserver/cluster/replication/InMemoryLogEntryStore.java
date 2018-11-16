@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,6 +41,9 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public boolean contains(long logIndex, long logTerm) {
+        if (logIndex == 0) {
+            return true;
+        }
         if (entryMap.containsKey(logIndex)) {
             return entryMap.get(logIndex).getTerm() == logTerm;
         }
@@ -80,12 +84,16 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public long lastLogTerm() {
-        return entryMap.lastEntry().getValue().getTerm();
+        return Optional.ofNullable(entryMap.lastEntry())
+                       .map(lastEntry -> lastEntry.getValue().getTerm())
+                       .orElse(0L);
     }
 
     @Override
     public long lastLogIndex() {
-        return entryMap.lastKey();
+        return Optional.ofNullable(entryMap.lastEntry())
+                       .map(Map.Entry::getKey)
+                       .orElse(0L);
     }
 
     @Override

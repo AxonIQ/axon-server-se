@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -31,6 +32,15 @@ public class LeaderState extends AbstractMembershipState {
         }
     });
     private volatile Replicators replicators;
+    protected static class Builder extends AbstractMembershipState.Builder<Builder> {
+        public LeaderState build(){
+            return new LeaderState(this);
+        }
+    }
+
+    public static Builder builder(){
+        return new Builder();
+    }
 
     LeaderState(Builder builder) {
         super(builder);
@@ -49,19 +59,20 @@ public class LeaderState extends AbstractMembershipState {
         executor.submit(() -> replicators.start());
     }
 
+
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        return null;
+        throw new NotImplementedException();
     }
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        return null;
+        throw new NotImplementedException();
     }
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        return null;
+        throw new NotImplementedException();
     }
 
     @Override

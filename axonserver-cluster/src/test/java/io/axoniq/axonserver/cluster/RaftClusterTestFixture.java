@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
+import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.*;
@@ -128,7 +129,7 @@ public class RaftClusterTestFixture {
         public StubRaftGroup(String localName) {
             this.localName = localName;
             this.logEntryStore = new InMemoryLogEntryStore();
-            this.electionStore = null;
+            this.electionStore = new InMemoryElectionStore();
         }
 
         @Override
@@ -166,8 +167,8 @@ public class RaftClusterTestFixture {
         }
 
         @Override
-        public RaftPeer peer(String hostName, int port) {
-            return new StubNode(hostName);
+        public RaftPeer peer(String nodeId) {
+            return new StubNode(nodeId);
         }
 
         @Override
@@ -188,6 +189,11 @@ public class RaftClusterTestFixture {
         public ReplicationConnection createReplicationConnection(String nodeId, Consumer<Long> matchIndexUpdater) {
             // TODO
             return null;
+        }
+
+        @Override
+        public String groupId() {
+            return "default";
         }
 
         private class StubNode implements RaftPeer {

@@ -6,7 +6,9 @@ import java.util.concurrent.CompletableFuture;
 
 public interface MembershipState {
 
-    void stop();
+    default void stop() {
+        // no op
+    }
 
     default void start() {
         // no op

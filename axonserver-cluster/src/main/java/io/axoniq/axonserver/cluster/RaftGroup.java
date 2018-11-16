@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.cluster.*;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public interface RaftGroup {
 
@@ -21,7 +22,11 @@ public interface RaftGroup {
 
     RaftConfiguration raftConfiguration();
 
-    RaftPeer peer(String hostName, int port);
+    default long lastAppliedEventSequence() {
+        return -1L;
+    }
+
+    RaftPeer peer(String nodeId);
 
     RaftNode localNode();
 
