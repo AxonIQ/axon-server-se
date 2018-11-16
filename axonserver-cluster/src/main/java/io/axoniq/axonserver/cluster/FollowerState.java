@@ -168,24 +168,6 @@ public class FollowerState extends AbstractMembershipState {
 
         private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-//        @Override
-//        public Builder raftGroup(RaftGroup raftGroup) {
-//            super.raftGroup(raftGroup);
-//            return this;
-//        }
-//
-//        @Override
-//        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
-//            super.transitionHandler(transitionHandler);
-//            return this;
-//        }
-//
-//        @Override
-//        public Builder stateFactory(MembershipStateFactory stateFactory) {
-//            super.stateFactory(stateFactory);
-//            return this;
-//        }
-
         public Builder scheduledExecutorService(ScheduledExecutorService scheduledExecutorService) {
             this.scheduledExecutorService = scheduledExecutorService;
             return this;

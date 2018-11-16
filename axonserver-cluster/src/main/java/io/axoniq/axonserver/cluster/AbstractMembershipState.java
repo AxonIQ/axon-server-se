@@ -60,7 +60,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
 
         @SuppressWarnings("unchecked")
-        final B self() {
+        private final B self() {
             return (B) this;
         }
 
