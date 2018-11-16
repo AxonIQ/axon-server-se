@@ -20,7 +20,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class CandidateState extends AbstractMembershipState {
 
     private final Scheduler scheduler = new DefaultScheduler();
-    private final AtomicReference<Registration> currentElectionTimeoutTask = new AtomicReference<>();
+    private final AtomicReference<Registration> nextElection = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
@@ -45,8 +45,7 @@ public class CandidateState extends AbstractMembershipState {
 
     @Override
     public void stop() {
-        Optional.ofNullable(currentElectionTimeoutTask.get())
-                .ifPresent(Registration::cancel);
+        Optional.ofNullable(nextElection.get()).ifPresent(Registration::cancel);
     }
 
     @Override
@@ -77,36 +76,36 @@ public class CandidateState extends AbstractMembershipState {
             changeStateTo(followerState);
             return followerState.installSnapshot(request);
         }
-        return InstallSnapshotResponse.newBuilder()
-                                      .setGroupId(groupId())
-                                      .setTerm(currentTerm())
-                                      .build();
+        return installSnapshotFailure();
     }
 
     private void resetElectionTimeout() {
-        Optional.ofNullable(currentElectionTimeoutTask.get()).ifPresent(Registration::cancel);
         long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout());
         Registration newTask = scheduler.schedule(this::startElection, timeout + 1, MILLISECONDS);
-        currentElectionTimeoutTask.set(newTask);
+        nextElection.set(newTask);
     }
 
     private void startElection() {
         synchronized (this) {
             updateCurrentTerm(currentTerm() + 1);
+            markVotedFor(me());
         }
         resetElectionTimeout();
         long raftGroupSize = raftGroup().raftConfiguration().groupMembers().size();
         currentElection.set(new CandidateElection(raftGroupSize));
         currentElection.get().onVoteReceived(me(), true);
-        markVotedFor(me());
-        RequestVoteRequest request = RequestVoteRequest.newBuilder()
-                                                       .setGroupId(groupId())
-                                                       .setCandidateId(me())
-                                                       .setTerm(currentTerm())
-                                                       .setLastLogIndex(lastLogIndex())
-                                                       .setLastLogTerm(lastLogTerm())
-                                                       .build();
+        RequestVoteRequest request = requestVote();
         otherNodes().forEach(node -> requestVote(request, node));
+    }
+
+    private RequestVoteRequest requestVote() {
+        return RequestVoteRequest.newBuilder()
+                                 .setGroupId(groupId())
+                                 .setCandidateId(me())
+                                 .setTerm(currentTerm())
+                                 .setLastLogIndex(lastLogIndex())
+                                 .setLastLogTerm(lastLogTerm())
+                                 .build();
     }
 
     private void requestVote(RequestVoteRequest request, RaftPeer node) {
@@ -121,7 +120,6 @@ public class CandidateState extends AbstractMembershipState {
         if (response.getTerm() < currentTerm()) {
             return;
         }
-
         Election election = this.currentElection.get();
         election.onVoteReceived(voter, response.getVoteGranted());
         if (election.isWon()) {
