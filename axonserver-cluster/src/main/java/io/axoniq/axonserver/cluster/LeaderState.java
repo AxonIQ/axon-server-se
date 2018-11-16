@@ -17,29 +17,9 @@ import java.util.function.Consumer;
 public class LeaderState extends AbstractMembershipState {
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
-
-//        @Override
-//        public Builder raftGroup(RaftGroup raftGroup) {
-//            super.raftGroup(raftGroup);
-//            return this;
-//        }
-//
-//        @Override
-//        public Builder transitionHandler(Consumer<MembershipState> transitionHandler) {
-//            super.transitionHandler(transitionHandler);
-//            return this;
-//        }
-//
-//        @Override
-//        public Builder stateFactory(MembershipStateFactory stateFactory) {
-//            super.stateFactory(stateFactory);
-//            return this;
-//        }
-
         public LeaderState build(){
             return new LeaderState(this);
         }
-
     }
 
     private LeaderState(Builder builder) {

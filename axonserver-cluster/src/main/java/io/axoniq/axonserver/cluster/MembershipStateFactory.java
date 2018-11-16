@@ -6,12 +6,12 @@ package io.axoniq.axonserver.cluster;
  */
 public interface MembershipStateFactory {
 
-    IdleState idleState();
+    MembershipState idleState();
 
-    LeaderState leaderState();
+    MembershipState leaderState();
 
-    FollowerState followerState();
+    MembershipState followerState();
 
-    CandidateState candidateState();
+    MembershipState candidateState();
 
 }
