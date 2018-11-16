@@ -2,6 +2,8 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.*;
 
+import java.util.concurrent.CompletableFuture;
+
 public interface MembershipState {
 
     void stop();
@@ -18,5 +20,11 @@ public interface MembershipState {
 
     default boolean isLeader() {
         return false;
+    }
+
+    default CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
+        CompletableFuture<Void> cf = new CompletableFuture<>();
+        cf.completeExceptionally(new UnsupportedOperationException());
+        return cf;
     }
 }

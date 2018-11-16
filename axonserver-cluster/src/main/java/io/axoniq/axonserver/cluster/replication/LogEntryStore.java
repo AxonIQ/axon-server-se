@@ -1,9 +1,12 @@
 package io.axoniq.axonserver.cluster.replication;
 
+import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public interface LogEntryStore {
@@ -26,4 +29,9 @@ public interface LogEntryStore {
 
     long lastLogIndex();
 
+    CompletableFuture<Entry> createEntry(long currentTerm, String entryType, byte[] entryData);
+
+    TermIndex lastLog();
+
+    Iterator<Entry> createIterator(long index);
 }

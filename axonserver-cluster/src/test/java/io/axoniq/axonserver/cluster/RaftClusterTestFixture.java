@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -181,6 +182,12 @@ public class RaftClusterTestFixture {
                                                                           .setHost(sn)
                                                                           .setNodeId(sn).build())
                                                            .collect(Collectors.toList());
+        }
+
+        @Override
+        public ReplicationConnection createReplicationConnection(String nodeId, Consumer<Long> matchIndexUpdater) {
+            // TODO
+            return null;
         }
 
         private class StubNode implements RaftPeer {

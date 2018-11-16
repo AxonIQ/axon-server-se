@@ -50,7 +50,7 @@ public class RaftNode {
     }
 
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
-        throw new UnsupportedOperationException();
+        return state.get().appendEntry(entryType, entryData);
     }
 
     public CompletableFuture<Void> addNode(Node node) {
