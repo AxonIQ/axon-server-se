@@ -2,7 +2,6 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
@@ -57,7 +56,7 @@ public class CandidateState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        onElectionTimeout();
+        startElection();
     }
 
     @Override
@@ -107,13 +106,11 @@ public class CandidateState extends AbstractMembershipState {
     private void resetElectionTimeout() {
         Optional.ofNullable(currentElectionTimeoutTask.get()).ifPresent(task -> task.cancel(true));
         long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout());
-        ScheduledFuture<?> newTimeoutTask = executorService.schedule(this::onElectionTimeout,
-                                                                     timeout + 1,
-                                                                     MILLISECONDS);
-        currentElectionTimeoutTask.set(newTimeoutTask);
+        ScheduledFuture<?> newTask = executorService.schedule(this::startElection, timeout + 1, MILLISECONDS);
+        currentElectionTimeoutTask.set(newTask);
     }
 
-    private void onElectionTimeout() {
+    private void startElection() {
         updateCurrentTerm(currentTerm() + 1);
         resetElectionTimeout();
         long raftGroupSize = raftGroup().raftConfiguration().groupMembers().size();
@@ -149,7 +146,6 @@ public class CandidateState extends AbstractMembershipState {
             changeStateTo(leaderState());
         }
     }
-
 
     private FollowerState followerState() {
         return FollowerState.builder()
