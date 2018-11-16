@@ -11,24 +11,23 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
+import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Math.min;
 
 public class FollowerState extends AbstractMembershipState {
 
-    private final ScheduledExecutorService scheduledExecutorService;
+    private final Scheduler scheduler;
 
-    private ScheduledFuture<?> scheduledElection;
+    private AtomicReference<Registration> scheduledElection = new AtomicReference<>();
     private long lastMessageReceivedAt;
 
     protected FollowerState(Builder builder) {
         super(builder);
-        this.scheduledExecutorService = builder.scheduledExecutorService;
+        this.scheduler = builder.scheduler;
     }
 
     public static Builder builder() {
@@ -44,7 +43,6 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public void stop() {
         cancelCurrentElectionTimeout();
-        scheduledExecutorService.shutdown();
     }
 
     @Override
@@ -110,17 +108,16 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void cancelCurrentElectionTimeout() {
-        if (scheduledElection != null) {
-            scheduledElection.cancel(true);
-        }
+        Optional.ofNullable(scheduledElection.get())
+                .ifPresent(Registration::cancel);
     }
 
     private void scheduleNewElection() {
-        scheduledElection = scheduledExecutorService.schedule(
+        scheduledElection.set(scheduler.schedule(
                 () -> changeStateTo(stateFactory().candidateState()),
                 // TODO: make ThreadLocalRandom injectable
                 ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
-                TimeUnit.MILLISECONDS);
+                TimeUnit.MILLISECONDS));
     }
 
     private void rescheduleElection() {
@@ -168,10 +165,10 @@ public class FollowerState extends AbstractMembershipState {
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
 
-        private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        private Scheduler scheduler = new DefaultScheduler();
 
-        public Builder scheduledExecutorService(ScheduledExecutorService scheduledExecutorService) {
-            this.scheduledExecutorService = scheduledExecutorService;
+        public Builder scheduledExecutorService(Scheduler scheduler) {
+            this.scheduler = scheduler;
             return this;
         }
 

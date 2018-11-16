@@ -8,9 +8,6 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -22,11 +19,12 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class CandidateState extends AbstractMembershipState {
 
-    private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-    private final AtomicReference<ScheduledFuture<?>> currentElectionTimeoutTask = new AtomicReference<>();
+    private final Scheduler scheduler = new DefaultScheduler();
+    private final AtomicReference<Registration> currentElectionTimeoutTask = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
+
         public CandidateState build() {
             return new CandidateState(this);
         }
@@ -47,7 +45,8 @@ public class CandidateState extends AbstractMembershipState {
 
     @Override
     public void stop() {
-        executorService.shutdownNow();
+        Optional.ofNullable(currentElectionTimeoutTask.get())
+                .ifPresent(Registration::cancel);
     }
 
     @Override
@@ -85,14 +84,14 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void resetElectionTimeout() {
-        Optional.ofNullable(currentElectionTimeoutTask.get()).ifPresent(task -> task.cancel(true));
+        Optional.ofNullable(currentElectionTimeoutTask.get()).ifPresent(Registration::cancel);
         long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout());
-        ScheduledFuture<?> newTask = executorService.schedule(this::startElection, timeout + 1, MILLISECONDS);
+        Registration newTask = scheduler.schedule(this::startElection, timeout + 1, MILLISECONDS);
         currentElectionTimeoutTask.set(newTask);
     }
 
     private void startElection() {
-        synchronized (this){
+        synchronized (this) {
             updateCurrentTerm(currentTerm() + 1);
         }
         resetElectionTimeout();
@@ -129,5 +128,4 @@ public class CandidateState extends AbstractMembershipState {
             changeStateTo(stateFactory().leaderState());
         }
     }
-
 }
