@@ -21,9 +21,25 @@ public class DefaultScheduler implements Scheduler {
     }
 
     @Override
-    public Registration schedule(Runnable command, long delay, TimeUnit timeUnit) {
+    public ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit) {
         ScheduledFuture<?> schedule = scheduledExecutorService.schedule(command, delay, timeUnit);
-        return () -> schedule.cancel(true);
+        return new ScheduledRegistration() {
+            @Override
+            public long getDelay(TimeUnit unit) {
+                return schedule.getDelay(unit);
+            }
+
+            @Override
+            public long getElapsed(TimeUnit unit) {
+                long millisElapsed = timeUnit.toMillis(delay) - getDelay(TimeUnit.MILLISECONDS);
+                return unit.convert(millisElapsed, TimeUnit.MILLISECONDS);
+            }
+
+            @Override
+            public void cancel() {
+                schedule.cancel(true);
+            }
+        };
     }
 
     @Override

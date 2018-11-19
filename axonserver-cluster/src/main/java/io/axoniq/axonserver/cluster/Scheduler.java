@@ -7,7 +7,14 @@ import java.util.concurrent.TimeUnit;
  */
 public interface Scheduler {
 
-    Registration schedule(Runnable command, long delay, TimeUnit timeUnit);
+    ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit);
 
     void shutdownNow();
+
+    interface ScheduledRegistration extends Registration {
+
+        long getDelay(TimeUnit unit);
+
+        long getElapsed(TimeUnit unit);
+    }
 }
