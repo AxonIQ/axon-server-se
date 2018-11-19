@@ -167,7 +167,7 @@ public class FollowerState extends AbstractMembershipState {
 
         private Scheduler scheduler = new DefaultScheduler();
 
-        public Builder scheduledExecutorService(Scheduler scheduler) {
+        public Builder scheduler(Scheduler scheduler) {
             this.scheduler = scheduler;
             return this;
         }

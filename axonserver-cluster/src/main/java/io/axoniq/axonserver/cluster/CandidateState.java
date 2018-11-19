@@ -19,11 +19,18 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class CandidateState extends AbstractMembershipState {
 
-    private final Scheduler scheduler = new DefaultScheduler();
+    private final Scheduler scheduler;
     private final AtomicReference<Registration> nextElection = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
+
+        private Scheduler scheduler = new DefaultScheduler();
+
+        public Builder scheduler(Scheduler scheduler) {
+            this.scheduler = scheduler;
+            return this;
+        }
 
         public CandidateState build() {
             return new CandidateState(this);
@@ -32,6 +39,7 @@ public class CandidateState extends AbstractMembershipState {
 
     private CandidateState(Builder builder) {
         super(builder);
+        this.scheduler = builder.scheduler;
     }
 
     public static Builder builder() {
