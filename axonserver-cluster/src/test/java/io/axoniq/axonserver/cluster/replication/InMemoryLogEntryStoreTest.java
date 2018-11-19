@@ -24,32 +24,32 @@ public class InMemoryLogEntryStoreTest {
 
     @Test
     public void appendEntry() {
-        testSubject.appendEntry(asList(newEntry(1, 0), newEntry(1, 1), newEntry(1, 2)));
-        assertNotNull( testSubject.getEntry(0));
+        testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
         assertNotNull( testSubject.getEntry(1));
         assertNotNull( testSubject.getEntry(2));
+        assertNotNull( testSubject.getEntry(3));
     }
 
     @Test
     public void replaceEntries() {
-        testSubject.appendEntry(asList(newEntry(1, 0), newEntry(1, 1), newEntry(1, 2)));
-        testSubject.appendEntry(Collections.singletonList(newEntry(2, 1)));
-        assertNotNull( testSubject.getEntry(0));
-        assertEquals( 2, testSubject.getEntry(1).getTerm());
-        assertNull( testSubject.getEntry(2));
+        testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
+        testSubject.appendEntry(Collections.singletonList(newEntry(2, 2)));
+        assertNotNull( testSubject.getEntry(1));
+        assertEquals( 2, testSubject.getEntry(2).getTerm());
+        assertNull( testSubject.getEntry(3));
     }
 
     @Test
     public void applyEntry() {
         AtomicInteger entryCounter = new AtomicInteger();
-        testSubject.appendEntry(asList(newEntry(1, 0), newEntry(1, 1), newEntry(1, 2)));
+        testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
         testSubject.applyEntries(e -> entryCounter.incrementAndGet());
         assertEquals(0, entryCounter.get());
 
-        testSubject.markCommitted(1);
+        testSubject.markCommitted(2);
         testSubject.applyEntries(e -> entryCounter.incrementAndGet());
         assertEquals(2, entryCounter.get());
-        assertEquals( 1, testSubject.lastAppliedIndex());
+        assertEquals( 2, testSubject.lastAppliedIndex());
     }
 
     private static Entry newEntry(long term, long index) {

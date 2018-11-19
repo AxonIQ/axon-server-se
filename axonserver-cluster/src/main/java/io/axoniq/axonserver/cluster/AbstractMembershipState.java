@@ -11,8 +11,8 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
-import static java.util.stream.Collectors.toList;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author Sara Pellegrini
@@ -24,6 +24,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final Consumer<MembershipState> transitionHandler;
     private final MembershipStateFactory stateFactory;
     private final Supplier<Long> currentTimeSupplier;
+    private final List<RaftPeer> otherNodes;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
@@ -31,6 +32,11 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.transitionHandler = builder.transitionHandler;
         this.stateFactory = builder.stateFactory;
         this.currentTimeSupplier = builder.currentTimeSupplier;
+        this.otherNodes =  raftGroup.raftConfiguration().groupMembers().stream()
+                    .map(Node::getNodeId)
+                    .filter(id -> !id.equals(me()))
+                    .map(raftGroup::peer).collect(Collectors.toList());
+
     }
 
 
@@ -151,13 +157,16 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup().raftConfiguration().groupId();
     }
 
+    protected Stream<RaftPeer> otherNodesStream() {
+        return otherNodes.stream();
+    }
+
     protected Iterable<RaftPeer> otherNodes() {
-        List<Node> nodes = raftGroup().raftConfiguration().groupMembers();
-        return nodes.stream()
-                    .map(Node::getNodeId)
-                    .filter(id -> !id.equals(me()))
-                    .map(raftGroup()::peer)
-                    .collect(toList());
+        return otherNodes;
+    }
+
+    protected long otherNodesCount() {
+        return otherNodes.size();
     }
 
     protected long currentTimeMillis() {

@@ -13,10 +13,23 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class RaftNode {
+    private final ExecutorService executor = Executors.newCachedThreadPool(new ThreadFactory() {
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t= new Thread(r);
+            t.setName("Replication-" + raftGroup.raftConfiguration().groupId());
+            return t;
+        }
+    });
+
 
     private final String nodeId;
     private final RaftGroup raftGroup;
@@ -24,6 +37,8 @@ public class RaftNode {
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
+    private volatile Future<?> applyTask;
+    private volatile boolean running;
 
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
@@ -39,7 +54,9 @@ public class RaftNode {
     }
 
     public void start() {
+        running = true;
         updateState(stateFactory.followerState());
+        applyTask = executor.submit(() -> applyEntries());
         registrations.add(raftGroup.onAppendEntries(this::appendEntries));
         registrations.add(raftGroup.onInstallSnapshot(this::installSnapshot));
         registrations.add(raftGroup.onRequestVote(this::requestVote));
@@ -57,8 +74,10 @@ public class RaftNode {
         return state.get().installSnapshot(request);
     }
 
-
     public void stop() {
+        running = false;
+        applyTask.cancel(true);
+        applyTask = null;
         updateState(stateFactory.idleState());
         registrations.forEach(Registration::cancel);
     }
@@ -75,6 +94,33 @@ public class RaftNode {
         this.entryConsumer.add(entryConsumer);
         return () -> this.entryConsumer.remove(entryConsumer);
     }
+
+    private void applyEntries() {
+        while(running) {
+            int retries = 10;
+            while( retries > 0) {
+                int applied = raftGroup.localLogEntryStore().applyEntries(e -> applyEntryConsumers(e));
+                if( applied > 0 ) {
+                    retries = 0;
+                } else {
+                    retries--;
+                }
+
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    running = false;
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    private void applyEntryConsumers(Entry e) {
+        entryConsumer.forEach(consumer -> consumer.accept(e));
+        state.get().applied(e);
+    }
+
 
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
         return state.get().appendEntry(entryType, entryData);

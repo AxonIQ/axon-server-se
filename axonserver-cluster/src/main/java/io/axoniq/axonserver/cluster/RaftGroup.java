@@ -2,11 +2,14 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public interface RaftGroup {
 
@@ -33,6 +36,4 @@ public interface RaftGroup {
     default void connect() {
         localNode().start();
     }
-
-    ReplicationConnection createReplicationConnection(String nodeId, Consumer<Long> matchIndexListener);
 }

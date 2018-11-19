@@ -9,11 +9,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.concurrent.CompletableFuture;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 /**
@@ -26,6 +27,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     private final AtomicLong commitIndex = new AtomicLong(0);
     private final AtomicLong lastIndex = new AtomicLong(0);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
+    private Thread commitListenerThread;
 
     @Override
     public void appendEntry(List<Entry> entries) {
@@ -51,20 +53,35 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void applyEntries(Consumer<Entry> consumer) {
+    public int applyEntries(Consumer<Entry> consumer) {
+        int count = 0;
         if( applyRunning.compareAndSet(false, true)) {
             while( lastApplied.get() < commitIndex.get()) {
-                Entry entry = entryMap.get(lastApplied.get());
+                Entry entry = entryMap.get(lastApplied.get()+1);
                 consumer.accept(entry);
                 lastApplied.incrementAndGet();
+                count++;
             }
             applyRunning.set(false);
         }
+        return count;
     }
 
     @Override
     public void markCommitted(long committedIndex) {
-        commitIndex.set(committedIndex);
+        if( committedIndex > commitIndex.get()) {
+            commitIndex.set(committedIndex);
+            System.out.println( "Committed: " + committedIndex);
+            if( commitListenerThread != null) {
+                LockSupport.unpark(commitListenerThread);
+            }
+        }
+
+    }
+
+    @Override
+    public void registerCommitListener(Thread currentThread) {
+        commitListenerThread = currentThread;
     }
 
     @Override
@@ -105,6 +122,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public Iterator<Entry> createIterator(long index) {
+        System.out.println("Create iterator: " + index);
         if( ! entryMap.isEmpty() && index < entryMap.firstKey()) {
             throw new IllegalArgumentException("Index before start");
         }

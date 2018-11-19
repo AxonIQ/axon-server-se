@@ -4,11 +4,32 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
+import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
+import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -28,6 +49,10 @@ public class RaftClusterTestFixture {
             clusterGroups.put(hostName, new StubRaftGroup(hostName));
             clusterNodes.put(hostName, new RaftNode(hostName, raftGroup));
         }
+    }
+
+    public RaftGroup getGroup(String name) {
+        return clusterGroups.get(name);
     }
 
     public RaftNode getNode(String name) {
@@ -104,7 +129,7 @@ public class RaftClusterTestFixture {
     private <S, R> CompletableFuture<R> communicateRemote(S request, Function<S, R> replyBuilder, String origin, String destination) {
         CompletableFuture<R> result = new CompletableFuture<>();
         remoteCommunication.schedule(() -> {
-            if (communicationProblems.get(origin).contains(destination)) {
+            if (communicationProblems.containsKey(origin) && communicationProblems.get(origin).contains(destination)) {
                 result.completeExceptionally(new IOException("Mocking disconnected node"));
             } else {
                 result.complete(replyBuilder.apply(request));
@@ -168,7 +193,7 @@ public class RaftClusterTestFixture {
 
         @Override
         public RaftPeer peer(String nodeId) {
-            return new StubNode(nodeId);
+            return new StubNode(nodeId, logEntryStore);
         }
 
         @Override
@@ -185,11 +210,6 @@ public class RaftClusterTestFixture {
                                                            .collect(Collectors.toList());
         }
 
-        @Override
-        public ReplicationConnection createReplicationConnection(String nodeId, Consumer<Long> matchIndexUpdater) {
-            // TODO
-            return null;
-        }
 
         @Override
         public String groupId() {
@@ -198,20 +218,75 @@ public class RaftClusterTestFixture {
 
         private class StubNode implements RaftPeer {
 
+            private static final int MAX_ENTRIES_PER_BATCH = 3;
+            private static final int FLOW_BUFFER = 2;
+
             private final String nodeId;
+            private final LogEntryStore logEntryStore;
+            private final AtomicLong nextIndex = new AtomicLong(0);
+            private final AtomicLong matchIndex = new AtomicLong(0);
+            private final AtomicReference<Consumer<Long>> matchIndexListener = new AtomicReference<>();
+            private volatile Iterator<Entry> entryIterator;
 
-            public StubNode(String nodeId) {
+            public StubNode(String nodeId, LogEntryStore logEntryStore) {
                 this.nodeId = nodeId;
+                this.logEntryStore = logEntryStore;
             }
 
             @Override
-            public CompletableFuture<AppendEntriesResponse> appendEntries(AppendEntriesRequest request) {
-                return communicateRemote(request, appendEntriesHandler.get(), localName, nodeId);
+            public int sendNextEntries() {
+                int sent = 0;
+                try {
+                    if (entryIterator == null) {
+                        nextIndex.compareAndSet(0, logEntryStore.lastLogIndex()+1);
+                        entryIterator = logEntryStore.createIterator(nextIndex.get());
+                    }
+                    System.out.println("sending entries from " + nextIndex);
+                    while ((matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < FLOW_BUFFER) && sent < MAX_ENTRIES_PER_BATCH && entryIterator.hasNext()) {
+                        Entry entry = entryIterator.next();
+                        //
+                        send(AppendEntriesRequest.newBuilder()
+                                                 .setCommitIndex(logEntryStore.commitIndex())
+                                                 .addEntries(entry)
+                                                 .build());
+                        nextIndex.incrementAndGet();
+                        sent++;
+                    }
+                } catch( Exception ex) {
+                    ex.printStackTrace();
+                }
+                return sent;
             }
 
             @Override
-            public CompletableFuture<InstallSnapshotResponse> installSnapshot(InstallSnapshotRequest request) {
-                return communicateRemote(request, installSnapshotHandler.get(), localName, nodeId);
+            public void send(AppendEntriesRequest heartbeat) {
+                communicateRemote(heartbeat, this::reply, localName, nodeId).thenAccept(this::on);
+            }
+
+            private AppendEntriesResponse reply(AppendEntriesRequest request) {
+                if( request.getEntriesCount() == 0) {
+                    return AppendEntriesResponse.newBuilder().setFailure(AppendEntryFailure.newBuilder()
+                                                                                        .setLastAppliedIndex(0)
+                                                                                        .setLastAppliedEventSequence(0)
+                                                                                        .build()).build();
+                } else {
+                    return AppendEntriesResponse.newBuilder().setSuccess(AppendEntrySuccess.newBuilder()
+                                                                                        .setLastLogIndex(request.getEntries(request.getEntriesCount()-1).getIndex())
+                                                                                        .build()).build();
+
+                }
+            }
+
+            public void on(AppendEntriesResponse response) {
+                if( response.hasSuccess()) {
+                    if( response.getSuccess().getLastLogIndex() > matchIndex.get()) {
+                        matchIndex.set(response.getSuccess().getLastLogIndex());
+                        matchIndexListener.get().accept(matchIndex.get());
+                    }
+                } else {
+                    nextIndex.set(response.getFailure().getLastAppliedIndex()+1);
+                    entryIterator = logEntryStore.createIterator(nextIndex.get());
+                }
             }
 
             @Override
@@ -224,6 +299,17 @@ public class RaftClusterTestFixture {
                 return nodeId;
             }
 
+            @Override
+            public Registration registerMatchIndexListener(Consumer<Long> matchIndexListener) {
+                this.matchIndexListener.set(matchIndexListener);
+                this.nextIndex.set( logEntryStore.lastLogIndex() + 1);
+                return () -> this.matchIndexListener.set(null);
+            }
+
+            @Override
+            public long getMatchIndex() {
+                return matchIndex.get();
+            }
         }
 
     }

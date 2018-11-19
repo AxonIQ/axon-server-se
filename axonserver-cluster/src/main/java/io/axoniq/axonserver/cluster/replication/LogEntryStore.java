@@ -15,7 +15,7 @@ public interface LogEntryStore {
 
     boolean contains(long logIndex, long logTerm);
 
-    void applyEntries(Consumer<Entry> consumer);
+    int applyEntries(Consumer<Entry> consumer);
 
     void markCommitted(long committedIndex);
 
@@ -34,4 +34,6 @@ public interface LogEntryStore {
     TermIndex lastLog();
 
     Iterator<Entry> createIterator(long index);
+
+    void registerCommitListener(Thread currentThread);
 }

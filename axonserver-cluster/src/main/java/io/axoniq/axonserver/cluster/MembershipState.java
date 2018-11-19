@@ -29,4 +29,6 @@ public interface MembershipState {
         cf.completeExceptionally(new UnsupportedOperationException());
         return cf;
     }
+
+    default void applied(Entry e) {}
 }
