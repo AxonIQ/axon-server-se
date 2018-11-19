@@ -39,8 +39,6 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     }
 
-
-
     public static abstract class Builder<B extends Builder<B>> {
 
         private RaftGroup raftGroup;

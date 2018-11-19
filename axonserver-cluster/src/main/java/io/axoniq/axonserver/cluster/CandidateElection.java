@@ -17,7 +17,7 @@ public class CandidateElection implements Election{
     }
 
     @Override
-    public void onVoteReceived(String voter, boolean granted) {
+    public void registerVoteReceived(String voter, boolean granted) {
         votes.put(voter, granted);
     }
 

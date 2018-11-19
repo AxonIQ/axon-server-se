@@ -10,6 +10,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -19,11 +20,18 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class CandidateState extends AbstractMembershipState {
 
-    private final Scheduler scheduler = new DefaultScheduler();
+    private final Scheduler scheduler;
     private final AtomicReference<Registration> nextElection = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
+
+        private Scheduler scheduler = new DefaultScheduler();
+
+        public Builder scheduler(Scheduler scheduler) {
+            this.scheduler = scheduler;
+            return this;
+        }
 
         public CandidateState build() {
             return new CandidateState(this);
@@ -32,6 +40,7 @@ public class CandidateState extends AbstractMembershipState {
 
     private CandidateState(Builder builder) {
         super(builder);
+        this.scheduler = builder.scheduler;
     }
 
     public static Builder builder() {
@@ -51,20 +60,15 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
-            MembershipState followerState = stateFactory().followerState();
-            changeStateTo(followerState);
-            return followerState.appendEntries(request);
-        } else {
-            return appendEntriesFailure();
+            return handleAsFollower(follower -> follower.appendEntries(request));
         }
+        return appendEntriesFailure();
     }
 
     @Override
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
-            MembershipState followerState = stateFactory().followerState();
-            changeStateTo(followerState);
-            return followerState.requestVote(request);
+            return handleAsFollower(follower -> follower.requestVote(request));
         }
         return requestVoteResponse(false);
     }
@@ -72,16 +76,20 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
-            MembershipState followerState = stateFactory().followerState();
-            changeStateTo(followerState);
-            return followerState.installSnapshot(request);
+            return handleAsFollower(follower -> follower.installSnapshot(request));
         }
         return installSnapshotFailure();
     }
 
+    private <R> R handleAsFollower(Function<MembershipState, R> handler) {
+        MembershipState followerState = stateFactory().followerState();
+        changeStateTo(followerState);
+        return handler.apply(followerState);
+    }
+
     private void resetElectionTimeout() {
-        long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout());
-        Registration newTask = scheduler.schedule(this::startElection, timeout + 1, MILLISECONDS);
+        long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1);
+        Registration newTask = scheduler.schedule(this::startElection, timeout, MILLISECONDS);
         nextElection.set(newTask);
     }
 
@@ -93,9 +101,10 @@ public class CandidateState extends AbstractMembershipState {
         resetElectionTimeout();
         long raftGroupSize = raftGroup().raftConfiguration().groupMembers().size();
         currentElection.set(new CandidateElection(raftGroupSize));
-        currentElection.get().onVoteReceived(me(), true);
+        currentElection.get().registerVoteReceived(me(), true);
         RequestVoteRequest request = requestVote();
-        otherNodes().forEach(node -> requestVote(request, node));
+        Iterable<RaftPeer> raftPeers = otherNodes();
+        raftPeers.forEach(node -> requestVote(request, node));
     }
 
     private RequestVoteRequest requestVote() {
@@ -117,11 +126,15 @@ public class CandidateState extends AbstractMembershipState {
             changeStateTo(stateFactory().followerState());
             return;
         }
+
+        //The candidate can receive a response with lower term if the voter is receiving regular heartbeat from a leader.
+        //In this case, the voter recognizes any request of vote as disruptive, refuses the vote and does't update its term.
         if (response.getTerm() < currentTerm()) {
             return;
         }
+
         Election election = this.currentElection.get();
-        election.onVoteReceived(voter, response.getVoteGranted());
+        election.registerVoteReceived(voter, response.getVoteGranted());
         if (election.isWon()) {
             changeStateTo(stateFactory().leaderState());
         }

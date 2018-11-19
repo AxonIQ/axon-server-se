@@ -10,8 +10,6 @@ import org.junit.*;
 
 import java.util.function.Consumer;
 
-import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -26,6 +24,7 @@ public class FollowerStateTest {
     private Consumer<MembershipState> transitionHandler;
     private RaftConfiguration raftConfiguration;
     private RaftGroup raftGroup;
+    private FakeScheduler fakeScheduler;
     private FollowerState followerState;
 
     @Before
@@ -43,17 +42,23 @@ public class FollowerStateTest {
         when(raftGroup.localElectionStore()).thenReturn(new InMemoryElectionStore());
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
 
+        fakeScheduler = new FakeScheduler();
+
         followerState = FollowerState.builder()
                                      .transitionHandler(transitionHandler)
                                      .raftGroup(raftGroup)
+                                     .scheduler(fakeScheduler)
                                      .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
                                      .build();
         followerState.start();
     }
 
     @Test
-    public void testTransitionToCandidateState() throws InterruptedException {
-        assertWithin(2, SECONDS, () -> verify(transitionHandler).accept(any(CandidateState.class)));
+    public void testTransitionToCandidateState() {
+        long firstSchedule = fakeScheduler.nextSchedule().toEpochMilli();
+        long untilFirstSchedule = firstSchedule - fakeScheduler.getCurrentTime().toEpochMilli();
+        fakeScheduler.timeElapses(untilFirstSchedule + 1);
+        verify(transitionHandler).accept(any(CandidateState.class));
     }
 
     @Test
@@ -68,11 +73,11 @@ public class FollowerStateTest {
     }
 
     @Test
-    public void testRequestVoteGrantedAfterAppendAndAfterMinElectionTimeoutHasPassed() throws InterruptedException {
+    public void testRequestVoteGrantedAfterAppendAndAfterMinElectionTimeoutHasPassed() {
         followerState.appendEntries(firstAppend());
 
         // wait min election timeout to pass in order to have vote granted
-        Thread.sleep(200);
+        fakeScheduler.timeElapses(151);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setGroupId("defaultGroup")
@@ -103,12 +108,11 @@ public class FollowerStateTest {
     }
 
     @Test
-    public void testRequestVoteNotGrantedAfterMinElectionTimeoutHasPassedAndLogIsNotUpToDate()
-            throws InterruptedException {
+    public void testRequestVoteNotGrantedAfterMinElectionTimeoutHasPassedAndLogIsNotUpToDate() {
         followerState.appendEntries(firstAppend());
 
         // wait min election timeout to pass in order to have vote granted
-        Thread.sleep(200);
+        fakeScheduler.timeElapses(151);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setGroupId("defaultGroup")

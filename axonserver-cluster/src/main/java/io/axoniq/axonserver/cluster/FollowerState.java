@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.Scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -22,8 +23,8 @@ public class FollowerState extends AbstractMembershipState {
 
     private final Scheduler scheduler;
 
-    private AtomicReference<Registration> scheduledElection = new AtomicReference<>();
-    private long lastMessageReceivedAt;
+    private AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
+    private volatile boolean heardFromLeader;
 
     protected FollowerState(Builder builder) {
         super(builder);
@@ -36,8 +37,9 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        lastMessageReceivedAt = 0;
+        cancelCurrentElectionTimeout();
         scheduleNewElection();
+        heardFromLeader = false;
     }
 
     @Override
@@ -47,7 +49,8 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        newMessageReceived(request.getTerm());
+        updateCurrentTerm(request.getTerm());
+        rescheduleElection(request.getTerm());
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
 
         //1. Reply false if term < currentTerm
@@ -86,14 +89,11 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        long elapsedFromLastMessage = currentTimeMillis() - lastMessageReceivedAt;
-
-        lastMessageReceivedAt = currentTimeMillis();
-        rescheduleElection();
+        long elapsedFromLastMessage = scheduledElection.get().getElapsed(TimeUnit.MILLISECONDS);
 
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
-        if (elapsedFromLastMessage < minElectionTimeout()) {
+        if (heardFromLeader && elapsedFromLastMessage < minElectionTimeout()) {
             return requestVoteResponse(false);
         }
 
@@ -103,7 +103,6 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        newMessageReceived(request.getTerm());
         throw new NotImplementedException();
     }
 
@@ -115,22 +114,17 @@ public class FollowerState extends AbstractMembershipState {
     private void scheduleNewElection() {
         scheduledElection.set(scheduler.schedule(
                 () -> changeStateTo(stateFactory().candidateState()),
-                // TODO: make ThreadLocalRandom injectable
                 ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
                 TimeUnit.MILLISECONDS));
     }
 
-    private void rescheduleElection() {
-        cancelCurrentElectionTimeout();
-        scheduleNewElection();
+    private void rescheduleElection(long term) {
+        if (term >= currentTerm()) {
+            heardFromLeader = true;
+            cancelCurrentElectionTimeout();
+            scheduleNewElection();
+        }
     }
-
-    private void newMessageReceived(long term) {
-        lastMessageReceivedAt = currentTimeMillis();
-        updateCurrentTerm(term);
-        rescheduleElection();
-    }
-
 
     private AppendEntrySuccess buildAppendEntrySuccess(long lastLogIndex) {
         return AppendEntrySuccess.newBuilder()
@@ -167,7 +161,7 @@ public class FollowerState extends AbstractMembershipState {
 
         private Scheduler scheduler = new DefaultScheduler();
 
-        public Builder scheduledExecutorService(Scheduler scheduler) {
+        public Builder scheduler(Scheduler scheduler) {
             this.scheduler = scheduler;
             return this;
         }

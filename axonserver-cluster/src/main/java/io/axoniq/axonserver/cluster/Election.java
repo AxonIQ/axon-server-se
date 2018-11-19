@@ -6,7 +6,7 @@ package io.axoniq.axonserver.cluster;
  */
 public interface Election {
 
-    void onVoteReceived(String voter, boolean granted);
+    void registerVoteReceived(String voter, boolean granted);
 
     boolean isWon();
 
