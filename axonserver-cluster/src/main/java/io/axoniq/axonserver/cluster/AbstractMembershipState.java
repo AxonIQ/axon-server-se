@@ -33,8 +33,6 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.currentTimeSupplier = builder.currentTimeSupplier;
     }
 
-
-
     public static abstract class Builder<B extends Builder<B>> {
 
         private RaftGroup raftGroup;
