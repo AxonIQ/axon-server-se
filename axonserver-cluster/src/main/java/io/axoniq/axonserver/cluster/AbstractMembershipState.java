@@ -8,6 +8,9 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -23,6 +26,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final Consumer<MembershipState> transitionHandler;
     private final MembershipStateFactory stateFactory;
     private final Scheduler scheduler;
+    private final BiFunction<Long, Long, Long> randomValueSupplier;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
@@ -30,6 +34,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.transitionHandler = builder.transitionHandler;
         this.stateFactory = builder.stateFactory;
         this.scheduler = builder.scheduler;
+        this.randomValueSupplier = builder.randomValueSupplier;
     }
 
     protected <R> R handleAsFollower(Function<MembershipState, R> handler) {
@@ -43,7 +48,9 @@ public abstract class AbstractMembershipState implements MembershipState {
         private RaftGroup raftGroup;
         private Consumer<MembershipState> transitionHandler;
         private MembershipStateFactory stateFactory;
-        private Scheduler scheduler;
+        private Scheduler scheduler = new DefaultScheduler();
+        private BiFunction<Long, Long, Long> randomValueSupplier =
+                (min, max) -> ThreadLocalRandom.current().nextLong(min, max);
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -62,6 +69,11 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         public B scheduler(Scheduler scheduler) {
             this.scheduler = scheduler;
+            return self();
+        }
+
+        public B randomValueSupplier(BiFunction<Long, Long, Long> randomValueSupplier) {
+            this.randomValueSupplier = randomValueSupplier;
             return self();
         }
 
@@ -168,7 +180,9 @@ public abstract class AbstractMembershipState implements MembershipState {
         return otherNodesStream().count();
     }
 
-
+    protected long random(long min, long max) {
+        return randomValueSupplier.apply(min, max);
+    }
 
     protected AppendEntriesResponse appendEntriesFailure() {
         AppendEntryFailure failure = AppendEntryFailure.newBuilder()

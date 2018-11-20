@@ -13,7 +13,6 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -111,7 +110,7 @@ public class FollowerState extends AbstractMembershipState {
     private void scheduleNewElection() {
         scheduledElection.set(scheduler().schedule(
                 () -> changeStateTo(stateFactory().candidateState()),
-                ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
+                random(minElectionTimeout(), maxElectionTimeout() + 1),
                 TimeUnit.MILLISECONDS));
     }
 
@@ -155,6 +154,7 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
+
         public FollowerState build() {
             return new FollowerState(this);
         }
