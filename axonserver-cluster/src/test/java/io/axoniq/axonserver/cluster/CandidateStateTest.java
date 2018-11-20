@@ -57,7 +57,7 @@ public class CandidateStateTest {
                                        .raftGroup(raftGroup)
                                        .transitionHandler(transitionHandler)
                                        .stateFactory(new FakeStateFactory()).build();
-        candidateState.start();
+//        candidateState.start();
     }
 
     private void addClusterNode(String nodeId, RaftPeer peer){
@@ -73,6 +73,7 @@ public class CandidateStateTest {
 
     @Test
     public void requestVoteSameTerm() {
+        candidateState.start();
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(1).build();
         RequestVoteResponse response = candidateState.requestVote(request);
         assertFalse(response.getVoteGranted());
@@ -80,6 +81,7 @@ public class CandidateStateTest {
 
     @Test
     public void requestVoteGreaterTerm() {
+        candidateState.start();
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(10).build();
         RequestVoteResponse response = candidateState.requestVote(request);
         MembershipState membershipState = transitionHandler.lastTransition();
@@ -91,6 +93,7 @@ public class CandidateStateTest {
 
     @Test
     public void requestVoteLowerTerm() {
+        candidateState.start();
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(0).build();
         RequestVoteResponse response = candidateState.requestVote(request);
         assertFalse(response.getVoteGranted());
@@ -98,6 +101,7 @@ public class CandidateStateTest {
 
     @Test
     public void appendEntriesSameTerm() {
+        candidateState.start();
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder().setTerm(1).build();
         AppendEntriesResponse response = candidateState.appendEntries(request);
         MembershipState membershipState = transitionHandler.lastTransition();
@@ -109,6 +113,7 @@ public class CandidateStateTest {
 
     @Test
     public void appendEntriesGreaterTerm() {
+        candidateState.start();
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder().setTerm(10).build();
         AppendEntriesResponse response = candidateState.appendEntries(request);
         MembershipState membershipState = transitionHandler.lastTransition();
@@ -120,6 +125,7 @@ public class CandidateStateTest {
 
     @Test
     public void appendEntriesLowerTerm() {
+        candidateState.start();
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder().setTerm(0).build();
         AppendEntriesResponse response = candidateState.appendEntries(request);
         assertTrue(response.hasFailure());
@@ -127,6 +133,7 @@ public class CandidateStateTest {
 
     @Test
     public void installSnapshotSameTerm() {
+        candidateState.start();
         InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder().setTerm(1).build();
         InstallSnapshotResponse response = candidateState.installSnapshot(request);
         assertTrue(response.hasFailure());
@@ -134,6 +141,7 @@ public class CandidateStateTest {
 
     @Test
     public void installSnapshotGreaterTerm() {
+        candidateState.start();
         InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder().setTerm(10).build();
         InstallSnapshotResponse response = candidateState.installSnapshot(request);
         MembershipState membershipState = transitionHandler.lastTransition();
@@ -145,6 +153,7 @@ public class CandidateStateTest {
 
     @Test
     public void installSnapshotLowerTerm() {
+        candidateState.start();
         InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder().setTerm(0).build();
         InstallSnapshotResponse response = candidateState.installSnapshot(request);
         assertTrue(response.hasFailure());
@@ -152,8 +161,9 @@ public class CandidateStateTest {
 
     @Test
     public void electionWon() throws InterruptedException {
-        node1.setTerm(2);
+        node1.setTerm(1);
         node1.setVoteGranted(true);
+        candidateState.start();
         Thread.sleep(60);
         assertWithin(50, MILLISECONDS,() -> assertTrue(transitionHandler.lastTransition() instanceof FakeState));
         MembershipState membershipState = transitionHandler.lastTransition();

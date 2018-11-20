@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.Scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -16,13 +17,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Author: marc
  */
 public class LeaderState extends AbstractMembershipState {
+
+    private final AtomicReference<ScheduledRegistration> stepDown = new AtomicReference<>();
+    private final AtomicReference currentHeartbeatRound = new AtomicReference();
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newCachedThreadPool(r -> {
@@ -41,39 +50,49 @@ public class LeaderState extends AbstractMembershipState {
         return new Builder();
     }
 
-    LeaderState(Builder builder) {
+    private LeaderState(Builder builder) {
         super(builder);
     }
 
     @Override
-    public void stop() {
-        pendingEntries.forEach((idx, future) -> future.completeExceptionally(new IllegalStateException()));
-        pendingEntries.clear();
-        replicators.stop();
-        replicators = null;
-
-    }
-
-    @Override
     public void start() {
+        scheduleStepDown();
         replicators = new Replicators();
         executor.submit(() -> replicators.start());
     }
 
-
     @Override
-    public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        throw new NotImplementedException();
+    public void stop() {
+        cancelStepDown();
+        pendingEntries.forEach((idx, future) -> future.completeExceptionally(new IllegalStateException()));
+        pendingEntries.clear();
+        replicators.stop();
+        replicators = null;
     }
 
     @Override
-    public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        throw new NotImplementedException();
+    public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        if (request.getTerm() > currentTerm()) {
+            return handleAsFollower(follower -> follower.appendEntries(request));
+        }
+        return appendEntriesFailure();
     }
 
     @Override
-    public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        throw new NotImplementedException();
+    public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
+        long elapsedFromLastConfirmedHeartbeat = stepDown.get().getElapsed(MILLISECONDS);
+        if (elapsedFromLastConfirmedHeartbeat > minElectionTimeout()){
+            handleAsFollower(follower -> follower.requestVote(request));
+        }
+        return requestVoteResponse(false);
+    }
+
+    @Override
+    public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+        if (request.getTerm() > currentTerm()) {
+            return handleAsFollower(follower -> follower.installSnapshot(request));
+        }
+        return installSnapshotFailure();
     }
 
     @Override
@@ -84,6 +103,24 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
         return createEntry(currentTerm(), entryType, entryData);
+    }
+
+    private void scheduleStepDown() {
+        ScheduledRegistration newTask = scheduler().schedule(this::stepDown, maxElectionTimeout(), MILLISECONDS);
+        stepDown.set(newTask);
+    }
+
+    private void cancelStepDown(){
+        stepDown.get().cancel();
+    }
+
+    private void stepDown() {
+        changeStateTo(stateFactory().followerState());
+    }
+
+    private void resetStepDown(){
+        cancelStepDown();
+        scheduleStepDown();
     }
 
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {

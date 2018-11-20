@@ -20,19 +20,10 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class CandidateState extends AbstractMembershipState {
 
-    private final Scheduler scheduler;
     private final AtomicReference<Registration> nextElection = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
-
-        private Scheduler scheduler = new DefaultScheduler();
-
-        public Builder scheduler(Scheduler scheduler) {
-            this.scheduler = scheduler;
-            return this;
-        }
-
         public CandidateState build() {
             return new CandidateState(this);
         }
@@ -40,7 +31,6 @@ public class CandidateState extends AbstractMembershipState {
 
     private CandidateState(Builder builder) {
         super(builder);
-        this.scheduler = builder.scheduler;
     }
 
     public static Builder builder() {
@@ -81,15 +71,9 @@ public class CandidateState extends AbstractMembershipState {
         return installSnapshotFailure();
     }
 
-    private <R> R handleAsFollower(Function<MembershipState, R> handler) {
-        MembershipState followerState = stateFactory().followerState();
-        changeStateTo(followerState);
-        return handler.apply(followerState);
-    }
-
     private void resetElectionTimeout() {
         long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1);
-        Registration newTask = scheduler.schedule(this::startElection, timeout, MILLISECONDS);
+        Registration newTask = scheduler().schedule(this::startElection, timeout, MILLISECONDS);
         nextElection.set(newTask);
     }
 
@@ -126,13 +110,11 @@ public class CandidateState extends AbstractMembershipState {
             changeStateTo(stateFactory().followerState());
             return;
         }
-
         //The candidate can receive a response with lower term if the voter is receiving regular heartbeat from a leader.
         //In this case, the voter recognizes any request of vote as disruptive, refuses the vote and does't update its term.
         if (response.getTerm() < currentTerm()) {
             return;
         }
-
         Election election = this.currentElection.get();
         election.registerVoteReceived(voter, response.getVoteGranted());
         if (election.isWon()) {

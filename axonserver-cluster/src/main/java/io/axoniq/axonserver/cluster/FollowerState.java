@@ -21,14 +21,11 @@ import static java.lang.Math.min;
 
 public class FollowerState extends AbstractMembershipState {
 
-    private final Scheduler scheduler;
-
     private AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
 
     protected FollowerState(Builder builder) {
         super(builder);
-        this.scheduler = builder.scheduler;
     }
 
     public static Builder builder() {
@@ -112,7 +109,7 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void scheduleNewElection() {
-        scheduledElection.set(scheduler.schedule(
+        scheduledElection.set(scheduler().schedule(
                 () -> changeStateTo(stateFactory().candidateState()),
                 ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1),
                 TimeUnit.MILLISECONDS));
@@ -158,14 +155,6 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
-
-        private Scheduler scheduler = new DefaultScheduler();
-
-        public Builder scheduler(Scheduler scheduler) {
-            this.scheduler = scheduler;
-            return this;
-        }
-
         public FollowerState build() {
             return new FollowerState(this);
         }
