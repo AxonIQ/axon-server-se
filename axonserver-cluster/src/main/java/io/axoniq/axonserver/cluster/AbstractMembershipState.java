@@ -8,9 +8,8 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
-import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -23,20 +22,20 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final RaftGroup raftGroup;
     private final Consumer<MembershipState> transitionHandler;
     private final MembershipStateFactory stateFactory;
-    private final Supplier<Long> currentTimeSupplier;
-    private final List<RaftPeer> otherNodes;
+    private final Scheduler scheduler;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
         this.stateFactory = builder.stateFactory;
-        this.currentTimeSupplier = builder.currentTimeSupplier;
-        this.otherNodes =  raftGroup.raftConfiguration().groupMembers().stream()
-                    .map(Node::getNodeId)
-                    .filter(id -> !id.equals(me()))
-                    .map(raftGroup::peer).collect(Collectors.toList());
+        this.scheduler = builder.scheduler;
+    }
 
+    protected <R> R handleAsFollower(Function<MembershipState, R> handler) {
+        MembershipState followerState = stateFactory().followerState();
+        changeStateTo(followerState);
+        return handler.apply(followerState);
     }
 
     public static abstract class Builder<B extends Builder<B>> {
@@ -44,7 +43,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         private RaftGroup raftGroup;
         private Consumer<MembershipState> transitionHandler;
         private MembershipStateFactory stateFactory;
-        private Supplier<Long> currentTimeSupplier = System::currentTimeMillis;
+        private Scheduler scheduler;
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -61,8 +60,8 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B currentTimeSupplier(Supplier<Long> currentTimeSupplier) {
-            this.currentTimeSupplier = currentTimeSupplier;
+        public B scheduler(Scheduler scheduler) {
+            this.scheduler = scheduler;
             return self();
         }
 
@@ -118,9 +117,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup;
     }
 
-
-    protected Consumer<MembershipState> transitionHandler() {
-        return transitionHandler;
+    public Scheduler scheduler() {
+        return scheduler;
     }
 
     public MembershipStateFactory stateFactory() {
@@ -156,20 +154,21 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected Stream<RaftPeer> otherNodesStream() {
-        return otherNodes.stream();
+        return raftGroup.raftConfiguration().groupMembers().stream()
+                        .map(Node::getNodeId)
+                        .filter(id -> !id.equals(me()))
+                        .map(raftGroup::peer);
     }
 
     protected Iterable<RaftPeer> otherNodes() {
-        return otherNodes;
+        return otherNodesStream().collect(Collectors.toList());
     }
 
     protected long otherNodesCount() {
-        return otherNodes.size();
+        return otherNodesStream().count();
     }
 
-    protected long currentTimeMillis() {
-        return currentTimeSupplier.get();
-    }
+
 
     protected AppendEntriesResponse appendEntriesFailure() {
         AppendEntryFailure failure = AppendEntryFailure.newBuilder()
