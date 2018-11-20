@@ -9,6 +9,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
+
+import static org.mockito.Mockito.mock;
 
 /**
  * Author: marc
@@ -22,9 +25,17 @@ public class LeaderStateTest {
 
     @Before
     public void setup() {
+        Consumer<MembershipState> transitionHandler = mock(Consumer.class);
+
         fixture = new RaftClusterTestFixture("node1", "node2");
         raftGroup =fixture.getGroup("node1");
-        testSubject = new DefaultStateFactory(raftGroup, n -> {}).leaderState();
+        Scheduler fakeScheduler = new FakeScheduler();
+        testSubject = LeaderState.builder()
+                .transitionHandler(transitionHandler)
+                .raftGroup(raftGroup)
+                .scheduler(fakeScheduler)
+                .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
+                .build();
         Executors.newCachedThreadPool().submit(() -> applyEntries(raftGroup.localLogEntryStore()));
     }
 

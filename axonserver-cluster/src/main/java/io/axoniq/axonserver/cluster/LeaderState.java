@@ -13,10 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
@@ -183,7 +180,7 @@ public class LeaderState extends AbstractMembershipState {
                             runsWithoutChanges = 0;
                         }
                     }
-                    LockSupport.parkNanos(1000);
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(5));
             }
         }
 
@@ -266,14 +263,17 @@ public class LeaderState extends AbstractMembershipState {
 
         private void send(AppendEntriesRequest heartbeat) {
             raftPeer.appendEntries(heartbeat).whenComplete((r,t)-> {
+                System.out.println(r);
                 if( r != null) {
-                    if( r.hasFailure()) {
-                        nextIndex.set(r.getFailure().getLastAppliedIndex());
+                    if (r.hasFailure()) {
+                        nextIndex.set(r.getFailure().getLastAppliedIndex() + 1);
                         entryIterator = null;
+                    } else {
+                        if (r.getSuccess().getLastLogIndex() > matchIndex.get()) {
+                            matchIndex.set(r.getSuccess().getLastLogIndex());
+                            matchIndexCallback.accept(matchIndex.get());
+                        }
                     }
-                } else {
-                    matchIndex.set(Math.max(r.getSuccess().getLastLogIndex(), matchIndex.get()));
-                    matchIndexCallback.accept(matchIndex.get());
                 }
             });
         }
