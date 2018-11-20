@@ -1,13 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.*;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -32,10 +25,21 @@ public class FakeRaftPeer implements RaftPeer {
     @Override
     public CompletableFuture<AppendEntriesResponse> appendEntries(AppendEntriesRequest request) {
         CompletableFuture<AppendEntriesResponse> result = new CompletableFuture<>();
-        AppendEntriesResponse response = AppendEntriesResponse.newBuilder()
+        AppendEntriesResponse response;
+        if( request.getEntriesCount() > 0) {
+            response = AppendEntriesResponse.newBuilder()
+                    .setTerm(term)
+                    .setSuccess(AppendEntrySuccess.newBuilder()
+                            .setLastLogIndex(request.getEntries(request.getEntriesCount()-1).getIndex())
+                            .build())
+                    .build();
+
+        } else {
+            response = AppendEntriesResponse.newBuilder()
                                                               .setTerm(term)
                                                               .setFailure(AppendEntryFailure.newBuilder().build())
                                                               .build();
+        }
         executorService.schedule(() -> result.complete(response), 10, TimeUnit.MILLISECONDS);
         return result;
     }

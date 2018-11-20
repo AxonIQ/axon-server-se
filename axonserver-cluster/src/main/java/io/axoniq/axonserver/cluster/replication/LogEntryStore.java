@@ -33,7 +33,7 @@ public interface LogEntryStore {
 
     TermIndex lastLog();
 
-    Iterator<Entry> createIterator(long index);
+    EntryIterator createIterator(long index);
 
     void registerCommitListener(Thread currentThread);
 }

@@ -121,25 +121,12 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public Iterator<Entry> createIterator(long index) {
+    public EntryIterator createIterator(long index) {
         System.out.println("Create iterator: " + index);
         if( ! entryMap.isEmpty() && index < entryMap.firstKey()) {
             throw new IllegalArgumentException("Index before start");
         }
-        return new Iterator<Entry>() {
-            private volatile long start = index;
-            @Override
-            public boolean hasNext() {
-                return !entryMap.isEmpty() && entryMap.containsKey(start);
-            }
-
-            @Override
-            public Entry next() {
-                Entry entry = entryMap.get(start);
-                start++;
-                return entry;
-            }
-        };
+        return new EntryIterator(this, index);
     }
 
     @Override

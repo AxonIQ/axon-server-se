@@ -55,7 +55,7 @@ public class LeaderStateTest {
         testSubject.appendEntry("Test", "Hello".getBytes());
         CompletableFuture<Void> done =  testSubject.appendEntry("Test", "Hello".getBytes());
 
-        done.get(5, TimeUnit.MINUTES);
+        done.get(5, TimeUnit.SECONDS);
         testSubject.stop();
     }
 }

@@ -62,15 +62,15 @@ public class RaftNode {
         registrations.add(raftGroup.onRequestVote(this::requestVote));
     }
 
-    private synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+    public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         return state.get().appendEntries(request);
     }
 
-    private synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
+    public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         return state.get().requestVote(request);
     }
 
-    private synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+    public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         return state.get().installSnapshot(request);
     }
 
@@ -132,5 +132,9 @@ public class RaftNode {
 
     public CompletableFuture<Void> removeNode(String nodeId) {
         throw new UnsupportedOperationException();
+    }
+
+    public String groupId() {
+        return raftGroup.raftConfiguration().groupId();
     }
 }

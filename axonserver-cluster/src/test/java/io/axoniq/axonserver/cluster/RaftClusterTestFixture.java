@@ -193,7 +193,7 @@ public class RaftClusterTestFixture {
 
         @Override
         public RaftPeer peer(String nodeId) {
-            return new StubNode(nodeId, logEntryStore);
+            return new FakeRaftPeer(nodeId);
         }
 
         @Override
@@ -204,112 +204,16 @@ public class RaftClusterTestFixture {
         @Override
         public List<Node> groupMembers() {
             return RaftClusterTestFixture.this.clusterNodes.keySet().stream()
-                                                           .map(sn -> Node.newBuilder()
-                                                                          .setHost(sn)
-                                                                          .setNodeId(sn).build())
-                                                           .collect(Collectors.toList());
+                    .map(sn -> Node.newBuilder()
+                            .setHost(sn)
+                            .setNodeId(sn).build())
+                    .collect(Collectors.toList());
         }
 
 
         @Override
         public String groupId() {
             return "default";
-        }
-
-        private class StubNode implements RaftPeer {
-
-            private static final int MAX_ENTRIES_PER_BATCH = 3;
-            private static final int FLOW_BUFFER = 2;
-
-            private final String nodeId;
-            private final LogEntryStore logEntryStore;
-            private final AtomicLong nextIndex = new AtomicLong(0);
-            private final AtomicLong matchIndex = new AtomicLong(0);
-            private final AtomicReference<Consumer<Long>> matchIndexListener = new AtomicReference<>();
-            private volatile Iterator<Entry> entryIterator;
-
-            public StubNode(String nodeId, LogEntryStore logEntryStore) {
-                this.nodeId = nodeId;
-                this.logEntryStore = logEntryStore;
-            }
-
-            @Override
-            public int sendNextEntries() {
-                int sent = 0;
-                try {
-                    if (entryIterator == null) {
-                        nextIndex.compareAndSet(0, logEntryStore.lastLogIndex()+1);
-                        entryIterator = logEntryStore.createIterator(nextIndex.get());
-                    }
-                    System.out.println("sending entries from " + nextIndex);
-                    while ((matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < FLOW_BUFFER) && sent < MAX_ENTRIES_PER_BATCH && entryIterator.hasNext()) {
-                        Entry entry = entryIterator.next();
-                        //
-                        send(AppendEntriesRequest.newBuilder()
-                                                 .setCommitIndex(logEntryStore.commitIndex())
-                                                 .addEntries(entry)
-                                                 .build());
-                        nextIndex.incrementAndGet();
-                        sent++;
-                    }
-                } catch( Exception ex) {
-                    ex.printStackTrace();
-                }
-                return sent;
-            }
-
-            @Override
-            public void send(AppendEntriesRequest heartbeat) {
-                communicateRemote(heartbeat, this::reply, localName, nodeId).thenAccept(this::on);
-            }
-
-            private AppendEntriesResponse reply(AppendEntriesRequest request) {
-                if( request.getEntriesCount() == 0) {
-                    return AppendEntriesResponse.newBuilder().setFailure(AppendEntryFailure.newBuilder()
-                                                                                        .setLastAppliedIndex(0)
-                                                                                        .setLastAppliedEventSequence(0)
-                                                                                        .build()).build();
-                } else {
-                    return AppendEntriesResponse.newBuilder().setSuccess(AppendEntrySuccess.newBuilder()
-                                                                                        .setLastLogIndex(request.getEntries(request.getEntriesCount()-1).getIndex())
-                                                                                        .build()).build();
-
-                }
-            }
-
-            public void on(AppendEntriesResponse response) {
-                if( response.hasSuccess()) {
-                    if( response.getSuccess().getLastLogIndex() > matchIndex.get()) {
-                        matchIndex.set(response.getSuccess().getLastLogIndex());
-                        matchIndexListener.get().accept(matchIndex.get());
-                    }
-                } else {
-                    nextIndex.set(response.getFailure().getLastAppliedIndex()+1);
-                    entryIterator = logEntryStore.createIterator(nextIndex.get());
-                }
-            }
-
-            @Override
-            public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
-                return communicateRemote(request, requestVoteHandler.get(), localName, nodeId);
-            }
-
-            @Override
-            public String nodeId() {
-                return nodeId;
-            }
-
-            @Override
-            public Registration registerMatchIndexListener(Consumer<Long> matchIndexListener) {
-                this.matchIndexListener.set(matchIndexListener);
-                this.nextIndex.set( logEntryStore.lastLogIndex() + 1);
-                return () -> this.matchIndexListener.set(null);
-            }
-
-            @Override
-            public long getMatchIndex() {
-                return matchIndex.get();
-            }
         }
 
     }
