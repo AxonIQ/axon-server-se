@@ -3,6 +3,7 @@ package io.axoniq.axonserver.cluster.replication;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import org.junit.*;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,7 +24,7 @@ public class InMemoryLogEntryStoreTest {
     }
 
     @Test
-    public void appendEntry() {
+    public void appendEntry() throws IOException {
         testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
         assertNotNull( testSubject.getEntry(1));
         assertNotNull( testSubject.getEntry(2));
@@ -31,7 +32,7 @@ public class InMemoryLogEntryStoreTest {
     }
 
     @Test
-    public void replaceEntries() {
+    public void replaceEntries() throws IOException {
         testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
         testSubject.appendEntry(Collections.singletonList(newEntry(2, 2)));
         assertNotNull( testSubject.getEntry(1));
@@ -40,7 +41,7 @@ public class InMemoryLogEntryStoreTest {
     }
 
     @Test
-    public void applyEntry() {
+    public void applyEntry() throws IOException {
         AtomicInteger entryCounter = new AtomicInteger();
         testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
         testSubject.applyEntries(e -> entryCounter.incrementAndGet());

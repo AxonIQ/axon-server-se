@@ -32,14 +32,4 @@ public class FakeRaftConfiguration implements RaftConfiguration {
     public String groupId() {
         return groupId;
     }
-
-    @Override
-    public long minElectionTimeout() {
-        return 50;
-    }
-
-    @Override
-    public long maxElectionTimeout() {
-        return 50;
-    }
 }

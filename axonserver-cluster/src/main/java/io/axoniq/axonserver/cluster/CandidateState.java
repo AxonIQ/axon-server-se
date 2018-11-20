@@ -72,7 +72,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void resetElectionTimeout() {
-        long timeout = ThreadLocalRandom.current().nextLong(minElectionTimeout(), maxElectionTimeout() + 1);
+        long timeout = random(minElectionTimeout(), maxElectionTimeout() + 1);
         Registration newTask = scheduler().schedule(this::startElection, timeout, MILLISECONDS);
         nextElection.set(newTask);
     }
@@ -83,8 +83,7 @@ public class CandidateState extends AbstractMembershipState {
             markVotedFor(me());
         }
         resetElectionTimeout();
-        long raftGroupSize = raftGroup().raftConfiguration().groupMembers().size();
-        currentElection.set(new CandidateElection(raftGroupSize));
+        currentElection.set(new CandidateElection(clusterSize()));
         currentElection.get().registerVoteReceived(me(), true);
         RequestVoteRequest request = requestVote();
         Iterable<RaftPeer> raftPeers = otherNodes();

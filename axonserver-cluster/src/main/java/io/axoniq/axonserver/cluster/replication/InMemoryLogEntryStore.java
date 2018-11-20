@@ -5,7 +5,7 @@ import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 
-import java.util.Iterator;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -30,7 +30,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     private Thread commitListenerThread;
 
     @Override
-    public void appendEntry(List<Entry> entries) {
+    public void appendEntry(List<Entry> entries) throws IOException {
         if (entries.isEmpty()) {
             return;
         }
