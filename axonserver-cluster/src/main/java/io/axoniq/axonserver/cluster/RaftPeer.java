@@ -3,7 +3,6 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.grpc.cluster.*;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 public interface RaftPeer {
 

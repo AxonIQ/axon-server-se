@@ -43,6 +43,10 @@ public abstract class AbstractMembershipState implements MembershipState {
         return handler.apply(followerState);
     }
 
+    protected int clusterSize() {
+        return raftGroup().raftConfiguration().groupMembers().size();
+    }
+
     public static abstract class Builder<B extends Builder<B>> {
 
         private RaftGroup raftGroup;
