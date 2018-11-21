@@ -9,6 +9,8 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
@@ -20,6 +22,7 @@ import static java.lang.Math.min;
 
 public class FollowerState extends AbstractMembershipState {
 
+    private static final Logger logger = LoggerFactory.getLogger(FollowerState.class);
     private AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
 
@@ -90,11 +93,14 @@ public class FollowerState extends AbstractMembershipState {
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
         if (heardFromLeader && elapsedFromLastMessage < minElectionTimeout()) {
+            logger.debug("Request for vote received from {}. {} voted rejected", request.getCandidateId(), me());
             return requestVoteResponse(false);
         }
 
         updateCurrentTerm(request.getTerm());
-        return requestVoteResponse(voteGrantedFor(request));
+        boolean voteGranted = voteGrantedFor(request);
+        logger.debug("Request for vote received from {}. {} voted {}", request.getCandidateId(), me(), voteGranted);
+        return requestVoteResponse(voteGranted);
     }
 
     @Override

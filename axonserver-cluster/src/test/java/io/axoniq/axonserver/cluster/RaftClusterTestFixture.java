@@ -4,49 +4,32 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
-import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
-import io.axoniq.axonserver.grpc.cluster.Entry;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.*;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import static java.util.Arrays.asList;
 
 public class RaftClusterTestFixture {
 
     private final ScheduledExecutorService remoteCommunication = new ScheduledThreadPoolExecutor(2);
+
     private Map<String, StubRaftGroup> clusterGroups = new ConcurrentHashMap<>();
     private Map<String, RaftNode> clusterNodes = new ConcurrentHashMap<>();
     private Map<String, Set<String>> communicationProblems = new ConcurrentHashMap<>();
+    private Map<String, Map<String, Supplier<Integer>>> communicationDelay = new ConcurrentHashMap<>();
+    private Supplier<Integer> defaultDelay = () -> ThreadLocalRandom.current().nextInt(10, 20);
 
     public RaftClusterTestFixture(String... hostNames) {
         for (int i = 0; i < hostNames.length; i++) {
             String hostName = hostNames[i];
             StubRaftGroup raftGroup = new StubRaftGroup(hostName);
-            clusterGroups.put(hostName, new StubRaftGroup(hostName));
+            clusterGroups.put(hostName, raftGroup);
             clusterNodes.put(hostName, new RaftNode(hostName, raftGroup));
         }
     }
@@ -61,6 +44,11 @@ public class RaftClusterTestFixture {
 
     public void startNodes() {
         clusterNodes.values().forEach(RaftNode::start);
+    }
+
+    public Set<String> leaders() {
+        return clusterNodes.values().stream().filter(RaftNode::isLeader)
+                           .map(RaftNode::nodeId).collect(Collectors.toSet());
     }
 
     /**
@@ -102,14 +90,15 @@ public class RaftClusterTestFixture {
      *
      * @param partition The nodes in the one half of the partitioned network
      */
-    public void createNetworkPartition(Set<String> partition) {
+    public void createNetworkPartition(String... partition) {
+        Set<String> onePartition = new HashSet<>(asList(partition));
         Set<String> otherPartition = new HashSet<>(clusterNodes.keySet());
-        otherPartition.removeAll(partition);
+        otherPartition.removeAll(onePartition);
         clusterNodes.keySet().forEach(node -> {
-            if (partition.contains(node)) {
+            if (onePartition.contains(node)) {
                 communicationProblems(node).addAll(otherPartition);
             } else {
-                communicationProblems(node).addAll(partition);
+                communicationProblems(node).addAll(onePartition);
             }
         });
     }
@@ -132,14 +121,24 @@ public class RaftClusterTestFixture {
             if (communicationProblems.containsKey(origin) && communicationProblems.get(origin).contains(destination)) {
                 result.completeExceptionally(new IOException("Mocking disconnected node"));
             } else {
-                result.complete(replyBuilder.apply(request));
+                remoteCommunication.schedule(() -> result.complete(replyBuilder.apply(request)),
+                                             communicationDelay(destination, origin), TimeUnit.MILLISECONDS);
             }
-        }, (long) ThreadLocalRandom.current().nextInt(10, 20), TimeUnit.MILLISECONDS);
+        }, communicationDelay(origin, destination), TimeUnit.MILLISECONDS);
         return result;
     }
 
-    private long communicationDelay(String from, String to) {
-        return ThreadLocalRandom.current().nextInt(10, 20);
+    private int communicationDelay(String from, String to) {
+        return communicationDelay.computeIfAbsent(from, k -> new ConcurrentHashMap<>()).computeIfAbsent(to, k-> defaultDelay).get();
+    }
+
+    public void setCommunicationDelay(String from, String to, int minDelay, int maxDelay) {
+        communicationDelay.computeIfAbsent(from, k -> new ConcurrentHashMap<>()).put(to, () -> ThreadLocalRandom.current().nextInt(minDelay, maxDelay));
+    }
+
+    public void setCommunicationDelay(int minDelay, int maxDelay) {
+        defaultDelay = () -> ThreadLocalRandom.current().nextInt(minDelay, maxDelay);
+        communicationDelay.forEach((k, v) -> v.replaceAll((t, y) -> defaultDelay));
     }
 
     private class StubRaftGroup implements RaftGroup, RaftConfiguration {
@@ -147,9 +146,6 @@ public class RaftClusterTestFixture {
         private final String localName;
         private final LogEntryStore logEntryStore;
         private final ElectionStore electionStore;
-        private AtomicReference<Function<AppendEntriesRequest, AppendEntriesResponse>> appendEntriesHandler = new AtomicReference<>();
-        private AtomicReference<Function<InstallSnapshotRequest, InstallSnapshotResponse>> installSnapshotHandler = new AtomicReference<>();
-        private AtomicReference<Function<RequestVoteRequest, RequestVoteResponse>> requestVoteHandler = new AtomicReference<>();
 
         public StubRaftGroup(String localName) {
             this.localName = localName;
@@ -157,24 +153,6 @@ public class RaftClusterTestFixture {
             this.electionStore = new InMemoryElectionStore();
         }
 
-        @Override
-        public Registration onAppendEntries(Function<AppendEntriesRequest, AppendEntriesResponse> handler) {
-            appendEntriesHandler.set(handler);
-            return () -> appendEntriesHandler.compareAndSet(handler, null);
-        }
-
-        @Override
-        public Registration onInstallSnapshot(Function<InstallSnapshotRequest, InstallSnapshotResponse> handler) {
-            installSnapshotHandler.set(handler);
-            return () -> installSnapshotHandler.compareAndSet(handler, null);
-
-        }
-
-        @Override
-        public Registration onRequestVote(Function<RequestVoteRequest, RequestVoteResponse> handler) {
-            requestVoteHandler.set(handler);
-            return () -> requestVoteHandler.compareAndSet(handler, null);
-        }
 
         @Override
         public LogEntryStore localLogEntryStore() {
@@ -193,7 +171,7 @@ public class RaftClusterTestFixture {
 
         @Override
         public RaftPeer peer(String nodeId) {
-            return new FakeRaftPeer(nodeId);
+            return new StubNode(nodeId);
         }
 
         @Override
@@ -204,16 +182,48 @@ public class RaftClusterTestFixture {
         @Override
         public List<Node> groupMembers() {
             return RaftClusterTestFixture.this.clusterNodes.keySet().stream()
-                    .map(sn -> Node.newBuilder()
-                            .setHost(sn)
-                            .setNodeId(sn).build())
-                    .collect(Collectors.toList());
+                                                           .map(sn -> Node.newBuilder()
+                                                                          .setHost(sn)
+                                                                          .setNodeId(sn).build())
+                                                           .collect(Collectors.toList());
         }
 
 
         @Override
         public String groupId() {
             return "default";
+        }
+
+        private class StubNode implements RaftPeer {
+
+            private final String nodeId;
+            private final StubRaftGroup remote;
+
+            public StubNode(String nodeId) {
+                this.remote = clusterGroups.get(nodeId);
+                this.nodeId = nodeId;
+            }
+
+            @Override
+            public CompletableFuture<AppendEntriesResponse> appendEntries(AppendEntriesRequest request) {
+                return communicateRemote(request, remote.localNode()::appendEntries, localName, nodeId);
+            }
+
+            @Override
+            public CompletableFuture<InstallSnapshotResponse> installSnapshot(InstallSnapshotRequest request) {
+                return communicateRemote(request, remote.localNode()::installSnapshot, localName, nodeId);
+            }
+
+            @Override
+            public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
+                return communicateRemote(request, remote.localNode()::requestVote, localName, nodeId);
+            }
+
+            @Override
+            public String nodeId() {
+                return nodeId;
+            }
+
         }
 
     }
