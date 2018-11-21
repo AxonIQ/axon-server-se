@@ -9,6 +9,8 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
@@ -19,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.lang.Math.min;
 
 public class FollowerState extends AbstractMembershipState {
+    private static final Logger logger = LoggerFactory.getLogger(FollowerState.class);
 
     private AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
@@ -45,17 +48,20 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        logger.debug("{}: received {}", me(), request);
         updateCurrentTerm(request.getTerm());
         rescheduleElection(request.getTerm());
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
 
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
+            logger.warn("{}: term before current term {}", me(), currentTerm());
             return appendEntriesFailure();
         }
 
         //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
         if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
+            logger.warn("{}: previous term/index missing", me());
             return appendEntriesFailure();
         }
 
@@ -65,16 +71,22 @@ public class FollowerState extends AbstractMembershipState {
         try {
             raftGroup().localLogEntryStore().appendEntry(request.getEntriesList());
         } catch (IOException e) {
+            logger.warn("{}: append failed", me(), e);
             stop();
             return appendEntriesFailure();
         }
 
         //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
         if (request.getCommitIndex() > logEntryStore.commitIndex()) {
-            logEntryStore.markCommitted(min(request.getCommitIndex(),
-                                            request.getEntries(request.getEntriesCount() - 1).getIndex()));
+            if( request.getEntriesCount() == 0) {
+                logEntryStore.markCommitted(request.getCommitIndex());
+            } else {
+                logEntryStore.markCommitted(min(request.getCommitIndex(),
+                                                request.getEntries(request.getEntriesCount() - 1).getIndex()));
+            }
         }
 
+        logger.debug("{}: stored", me(), lastLogIndex());
         return AppendEntriesResponse.newBuilder()
                                     .setGroupId(groupId())
                                     .setTerm(currentTerm())

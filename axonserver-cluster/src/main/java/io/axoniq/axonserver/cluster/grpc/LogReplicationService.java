@@ -1,5 +1,6 @@
-package io.axoniq.axonserver.cluster;
+package io.axoniq.axonserver.cluster.grpc;
 
+import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.grpc.cluster.*;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicationServiceImplBase {
     private final static Logger logger = LoggerFactory.getLogger(LogReplicationService.class);
 
-    private final Map<String,RaftNode> nodePerGroup = new ConcurrentHashMap<>();
+    private final Map<String, RaftNode> nodePerGroup = new ConcurrentHashMap<>();
 
     public void addRaftNode(RaftNode raftNode) {
         nodePerGroup.put(raftNode.groupId(), raftNode);
@@ -24,9 +25,13 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             public void onNext(AppendEntriesRequest appendEntriesRequest) {
                 RaftNode target = nodePerGroup.get(appendEntriesRequest.getGroupId());
                 AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
-                responseObserver.onNext(response);
-                if( response.hasFailure()) {
-                    responseObserver.onCompleted();
+                try {
+                    responseObserver.onNext(response);
+                    if (response.hasFailure()) {
+                        responseObserver.onCompleted();
+                    }
+                } catch( Exception ex) {
+                    // ignore
                 }
             }
 

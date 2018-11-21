@@ -1,11 +1,11 @@
-package io.axoniq.axonserver.cluster;
+package io.axoniq.axonserver.cluster.grpc;
 
+import io.axoniq.axonserver.cluster.RaftServerConfiguration;
 import io.grpc.Server;
 import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -46,6 +46,7 @@ public class RaftServer {
         }
         String sslMessage = "no SSL";
         serverBuilder.addService(logReplicationService);
+        serverBuilder.addService(leaderElectionService);
 
         if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);
@@ -53,7 +54,6 @@ public class RaftServer {
         }
 
         serverBuilder.directExecutor();
-
 
         server = serverBuilder.build();
         try {

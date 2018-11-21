@@ -4,8 +4,9 @@ import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -21,7 +22,7 @@ import java.util.function.Consumer;
  * Author: marc
  */
 public class InMemoryLogEntryStore implements LogEntryStore {
-
+    private final Logger logger = LoggerFactory.getLogger(InMemoryLogEntryStore.class);
     private final NavigableMap<Long, Entry> entryMap = new ConcurrentSkipListMap<>();
     private final AtomicLong lastApplied = new AtomicLong(0);
     private final AtomicLong commitIndex = new AtomicLong(0);
@@ -30,7 +31,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     private Thread commitListenerThread;
 
     @Override
-    public void appendEntry(List<Entry> entries) throws IOException {
+    public void appendEntry(List<Entry> entries) {
         if (entries.isEmpty()) {
             return;
         }
@@ -71,12 +72,11 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     public void markCommitted(long committedIndex) {
         if( committedIndex > commitIndex.get()) {
             commitIndex.set(committedIndex);
-            System.out.println( "Committed: " + committedIndex);
+            logger.debug( "Committed: {}", committedIndex);
             if( commitListenerThread != null) {
                 LockSupport.unpark(commitListenerThread);
             }
         }
-
     }
 
     @Override
@@ -122,7 +122,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public EntryIterator createIterator(long index) {
-        System.out.println("Create iterator: " + index);
+        logger.debug("Create iterator: {}", index);
         if( ! entryMap.isEmpty() && index < entryMap.firstKey()) {
             throw new IllegalArgumentException("Index before start");
         }

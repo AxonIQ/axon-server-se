@@ -57,8 +57,9 @@
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
-            <artifactId>jul-to-slf4j</artifactId>
+            <artifactId>slf4j-simple</artifactId>
             <version>1.7.25</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

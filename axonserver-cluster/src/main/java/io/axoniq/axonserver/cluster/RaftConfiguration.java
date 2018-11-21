@@ -18,5 +18,8 @@ public interface RaftConfiguration {
 
     String groupId();
 
-    // TODO: Methods for membership changes
+    default long heartbeatTimeout() {
+        return 50;
+    }
+
 }

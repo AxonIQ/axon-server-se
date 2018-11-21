@@ -21,25 +21,22 @@ public class EntryIterator implements Iterator<Entry> {
 
     @Override
     public boolean hasNext() {
-        return currentIndex.get() < logEntryStore.lastLogIndex();
+        if( lastEntry == null) {
+            lastEntry = logEntryStore.getEntry(currentIndex.get()-1);
+        }
+        return currentIndex.get() <= logEntryStore.lastLogIndex();
     }
 
     @Override
     public Entry next() {
         if( currentIndex.get() > logEntryStore.lastLogIndex()) throw new NoSuchElementException();
         lastEntry = currentEntry;
-        currentEntry = logEntryStore.getEntry(currentIndex.incrementAndGet());
+        currentEntry = logEntryStore.getEntry(currentIndex.getAndIncrement());
         return currentEntry;
     }
 
     public TermIndex previous() {
-        if( currentIndex.get() == 1) {
-            return null;
-        }
-        if( lastEntry == null) {
-            lastEntry = logEntryStore.getEntry(currentIndex.get() - 1);
-        }
-
+        if( lastEntry == null) return null;
         return new TermIndex(lastEntry.getTerm(), lastEntry.getIndex());
     }
 }

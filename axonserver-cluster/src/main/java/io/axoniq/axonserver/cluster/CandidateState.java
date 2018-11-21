@@ -8,9 +8,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -115,9 +113,12 @@ public class CandidateState extends AbstractMembershipState {
             return;
         }
         Election election = this.currentElection.get();
-        election.registerVoteReceived(voter, response.getVoteGranted());
-        if (election.isWon()) {
-            changeStateTo(stateFactory().leaderState());
+        if( election != null) {
+            election.registerVoteReceived(voter, response.getVoteGranted());
+            if (election.isWon()) {
+                this.currentElection.set(null);
+                changeStateTo(stateFactory().leaderState());
+            }
         }
     }
 }

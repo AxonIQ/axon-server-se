@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * @author Sara Pellegrini
@@ -17,14 +18,15 @@ public class FakeRaftPeer implements RaftPeer {
     private final String nodeId;
     private long term;
     private boolean voteGranted;
+    private Consumer<AppendEntriesResponse> appendEntriesResponseConsumer;
+    private Consumer<InstallSnapshotResponse> installSnapshotResponseConsumer;
 
     public FakeRaftPeer(String nodeId) {
         this.nodeId = nodeId;
     }
 
     @Override
-    public CompletableFuture<AppendEntriesResponse> appendEntries(AppendEntriesRequest request) {
-        CompletableFuture<AppendEntriesResponse> result = new CompletableFuture<>();
+    public void appendEntries(AppendEntriesRequest request) {
         AppendEntriesResponse response;
         if( request.getEntriesCount() > 0) {
             response = AppendEntriesResponse.newBuilder()
@@ -40,19 +42,28 @@ public class FakeRaftPeer implements RaftPeer {
                                                               .setFailure(AppendEntryFailure.newBuilder().build())
                                                               .build();
         }
-        executorService.schedule(() -> result.complete(response), 10, TimeUnit.MILLISECONDS);
-        return result;
+        executorService.schedule(() -> appendEntriesResponseConsumer.accept(response), 10, TimeUnit.MILLISECONDS);
     }
 
     @Override
-    public CompletableFuture<InstallSnapshotResponse> installSnapshot(InstallSnapshotRequest request) {
-        CompletableFuture<InstallSnapshotResponse> result = new CompletableFuture<>();
+    public void installSnapshot(InstallSnapshotRequest request) {
         InstallSnapshotResponse response = InstallSnapshotResponse.newBuilder()
                                                                   .setTerm(term)
                                                                   .setFailure(InstallSnapshotFailure.newBuilder().build())
                                                                   .build();
-        executorService.schedule(() -> result.complete(response), 10, TimeUnit.MILLISECONDS);
-        return result;
+        executorService.schedule(() -> installSnapshotResponseConsumer.accept(response), 10, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public Registration registerAppendEntriesResponseListener(Consumer<AppendEntriesResponse> listener) {
+        appendEntriesResponseConsumer = listener;
+        return () -> appendEntriesResponseConsumer = null;
+    }
+
+    @Override
+    public Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener) {
+        installSnapshotResponseConsumer = listener;
+        return () -> installSnapshotResponseConsumer = null;
     }
 
     @Override

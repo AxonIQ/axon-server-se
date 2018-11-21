@@ -8,6 +8,8 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +19,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 public class RaftNode {
@@ -39,6 +43,7 @@ public class RaftNode {
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
     private volatile Future<?> applyTask;
     private volatile boolean running;
+    private static final Logger logger = LoggerFactory.getLogger(RaftNode.class);
 
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
@@ -96,6 +101,7 @@ public class RaftNode {
     }
 
     private void applyEntries() {
+        raftGroup.localLogEntryStore().registerCommitListener(Thread.currentThread());
         while(running) {
             int retries = 10;
             while( retries > 0) {
@@ -106,23 +112,20 @@ public class RaftNode {
                     retries--;
                 }
 
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    running = false;
-                    Thread.currentThread().interrupt();
-                }
+                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(5));
             }
         }
     }
 
     private void applyEntryConsumers(Entry e) {
+        logger.debug("{}: apply {}", nodeId, e.getIndex());
         entryConsumer.forEach(consumer -> consumer.accept(e));
         state.get().applied(e);
     }
 
 
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
+        logger.debug("{}: append entry {}", nodeId, entryType);
         return state.get().appendEntry(entryType, entryData);
     }
 
