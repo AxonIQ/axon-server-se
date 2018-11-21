@@ -9,6 +9,7 @@ import io.axoniq.axonserver.grpc.cluster.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -205,18 +206,28 @@ public class RaftClusterTestFixture {
             }
 
             @Override
-            public CompletableFuture<AppendEntriesResponse> appendEntries(AppendEntriesRequest request) {
-                return communicateRemote(request, remote.localNode()::appendEntries, localName, nodeId);
-            }
-
-            @Override
-            public CompletableFuture<InstallSnapshotResponse> installSnapshot(InstallSnapshotRequest request) {
-                return communicateRemote(request, remote.localNode()::installSnapshot, localName, nodeId);
-            }
-
-            @Override
             public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
                 return communicateRemote(request, remote.localNode()::requestVote, localName, nodeId);
+            }
+
+            @Override
+            public void appendEntries(AppendEntriesRequest request) {
+
+            }
+
+            @Override
+            public void installSnapshot(InstallSnapshotRequest request) {
+
+            }
+
+            @Override
+            public Registration registerAppendEntriesResponseListener(Consumer<AppendEntriesResponse> listener) {
+                return null;
+            }
+
+            @Override
+            public Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener) {
+                return null;
             }
 
             @Override

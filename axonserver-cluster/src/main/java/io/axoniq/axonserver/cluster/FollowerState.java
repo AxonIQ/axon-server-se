@@ -23,7 +23,6 @@ import static java.lang.Math.min;
 public class FollowerState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(FollowerState.class);
 
-    private static final Logger logger = LoggerFactory.getLogger(FollowerState.class);
     private AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
 

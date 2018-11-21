@@ -5,18 +5,11 @@ import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.cluster.RaftServerConfiguration;
-import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
 
 import java.util.ArrayList;
@@ -29,7 +22,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.stream.IntStream;
 
 /**
@@ -90,7 +82,7 @@ public class RaftServerTest {
                 Thread.sleep(5);
             }
 
-            CompletableFuture<Void>[] futures = new CompletableFuture[50000];
+            CompletableFuture<Void>[] futures = new CompletableFuture[50];
             AtomicInteger successCount = new AtomicInteger();
             final RaftNode fleader  = leader;
             long before = System.currentTimeMillis();
@@ -121,21 +113,6 @@ public class RaftServerTest {
             nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(node)));
         }
 
-
-        @Override
-        public Registration onAppendEntries(Function<AppendEntriesRequest, AppendEntriesResponse> handler) {
-            return () -> {};
-        }
-
-        @Override
-        public Registration onInstallSnapshot(Function<InstallSnapshotRequest, InstallSnapshotResponse> handler) {
-            return () -> {};
-        }
-
-        @Override
-        public Registration onRequestVote(Function<RequestVoteRequest, RequestVoteResponse> handler) {
-            return () -> {};
-        }
 
         @Override
         public LogEntryStore localLogEntryStore() {

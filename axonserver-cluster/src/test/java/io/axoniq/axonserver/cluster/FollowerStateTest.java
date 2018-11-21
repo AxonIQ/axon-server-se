@@ -53,6 +53,9 @@ public class FollowerStateTest {
         when(raftGroup.localLogEntryStore()).thenReturn(logEntryStore);
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
+        RaftNode localNode = mock(RaftNode.class);
+        when(localNode.nodeId()).thenReturn("mockNode");
+        when(raftGroup.localNode()).thenReturn(localNode);
 
         fakeScheduler = new FakeScheduler();
 

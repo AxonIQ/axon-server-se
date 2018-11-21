@@ -7,6 +7,7 @@ import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -31,7 +32,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     private Thread commitListenerThread;
 
     @Override
-    public void appendEntry(List<Entry> entries) {
+    public void appendEntry(List<Entry> entries) throws IOException {
         if (entries.isEmpty()) {
             return;
         }
