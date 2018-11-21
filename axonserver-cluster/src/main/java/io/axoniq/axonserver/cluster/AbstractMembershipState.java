@@ -1,14 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.*;
 
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -52,7 +46,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         private RaftGroup raftGroup;
         private Consumer<MembershipState> transitionHandler;
         private MembershipStateFactory stateFactory;
-        private Scheduler scheduler = new DefaultScheduler();
+        private Scheduler scheduler;
         private BiFunction<Long, Long, Long> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextLong(min, max);
 
@@ -82,6 +76,9 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
 
         protected void validate() {
+            if (scheduler == null) {
+                scheduler = new DefaultScheduler();
+            }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
             }

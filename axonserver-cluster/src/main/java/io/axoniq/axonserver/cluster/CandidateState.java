@@ -1,11 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -18,14 +15,9 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class CandidateState extends AbstractMembershipState {
 
+    private static final Logger logger = LoggerFactory.getLogger(CandidateState.class);
     private final AtomicReference<Registration> nextElection = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
-
-    public static class Builder extends AbstractMembershipState.Builder<Builder> {
-        public CandidateState build() {
-            return new CandidateState(this);
-        }
-    }
 
     private CandidateState(Builder builder) {
         super(builder);
@@ -56,8 +48,11 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
-            return handleAsFollower(follower -> follower.requestVote(request));
+            RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request));
+            logger.debug("Request for vote received from {}. {} voted {}", request.getCandidateId(), me(), vote.getVoteGranted());
+            return vote;
         }
+        logger.debug("Request for vote received from {}. {} voted rejected", request.getCandidateId(), me());
         return requestVoteResponse(false);
     }
 
@@ -76,6 +71,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void startElection() {
+        logger.debug("Starting election from {}", me());
         synchronized (this) {
             updateCurrentTerm(currentTerm() + 1);
             markVotedFor(me());
@@ -119,6 +115,12 @@ public class CandidateState extends AbstractMembershipState {
                 this.currentElection.set(null);
                 changeStateTo(stateFactory().leaderState());
             }
+        }
+    }
+
+    public static class Builder extends AbstractMembershipState.Builder<Builder> {
+        public CandidateState build() {
+            return new CandidateState(this);
         }
     }
 }

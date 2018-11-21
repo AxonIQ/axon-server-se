@@ -1,24 +1,14 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.Entry;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
@@ -34,6 +24,7 @@ public class RaftNode {
         }
     });
 
+    private static final Logger logger = LoggerFactory.getLogger(RaftNode.class);
 
     private final String nodeId;
     private final RaftGroup raftGroup;
@@ -53,6 +44,7 @@ public class RaftNode {
     }
 
     private synchronized void updateState(MembershipState newState) {
+        logger.info("Updating state of {} to {}", nodeId, newState.getClass().getSimpleName());
         Optional.ofNullable(state.get()).ifPresent(MembershipState::stop);
         state.set(newState);
         newState.start();
@@ -62,9 +54,6 @@ public class RaftNode {
         running = true;
         updateState(stateFactory.followerState());
         applyTask = executor.submit(() -> applyEntries());
-        registrations.add(raftGroup.onAppendEntries(this::appendEntries));
-        registrations.add(raftGroup.onInstallSnapshot(this::installSnapshot));
-        registrations.add(raftGroup.onRequestVote(this::requestVote));
     }
 
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
