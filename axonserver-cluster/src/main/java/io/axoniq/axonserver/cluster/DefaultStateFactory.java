@@ -11,11 +11,13 @@ public class DefaultStateFactory implements MembershipStateFactory {
     private final RaftGroup raftGroup;
 
     private final Consumer<MembershipState> transitionHandler;
+    private final Scheduler scheduler;
 
     public DefaultStateFactory(RaftGroup raftGroup,
                                Consumer<MembershipState> transitionHandler) {
         this.raftGroup = raftGroup;
         this.transitionHandler = transitionHandler;
+        this.scheduler = new DefaultScheduler();
     }
 
     @Override
@@ -27,6 +29,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     public LeaderState leaderState() {
         return LeaderState.builder()
                           .raftGroup(raftGroup)
+                          .scheduler(scheduler)
                           .transitionHandler(transitionHandler)
                           .stateFactory(this)
                           .build();
@@ -36,6 +39,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     public FollowerState followerState() {
         return FollowerState.builder()
                             .raftGroup(raftGroup)
+                            .scheduler(scheduler)
                             .transitionHandler(transitionHandler)
                             .stateFactory(this)
                             .build();
@@ -45,6 +49,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     public CandidateState candidateState() {
         return CandidateState.builder()
                              .raftGroup(raftGroup)
+                             .scheduler(scheduler)
                              .transitionHandler(transitionHandler)
                              .stateFactory(this)
                              .build();
