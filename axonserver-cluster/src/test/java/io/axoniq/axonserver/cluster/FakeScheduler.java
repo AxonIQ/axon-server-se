@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
+import static java.lang.Integer.compare;
+
 /**
  * @author Milan Savic
  */
@@ -24,7 +26,8 @@ public class FakeScheduler implements Scheduler {
 
         @Override
         public int compareTo(ScheduledTask other) {
-            return scheduledTime.compareTo(other.scheduledTime);
+            int compareTime = scheduledTime.compareTo(other.scheduledTime);
+            return compareTime != 0 ? compareTime : compare(command.hashCode(), other.command.hashCode());
         }
     }
 
@@ -64,6 +67,13 @@ public class FakeScheduler implements Scheduler {
             @Override
             public void cancel() {
                 tasks.remove(task);
+            }
+
+            @Override
+            public String toString() {
+                return "ScheduledRegistration: " + this.hashCode() +
+                        " Delay: " + getDelay(TimeUnit.MILLISECONDS) +
+                        " Elapsed: " + getElapsed(TimeUnit.MILLISECONDS);
             }
         };
     }

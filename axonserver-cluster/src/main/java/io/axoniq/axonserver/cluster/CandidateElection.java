@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * @author Sara Pellegrini
@@ -9,11 +10,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CandidateElection implements Election{
 
-    private final long votersSize;
+    private final Supplier<Integer> minMajority;
     private final Map<String, Boolean> votes = new ConcurrentHashMap<>();
 
-    public CandidateElection(long votersSize) {
-        this.votersSize = votersSize;
+    public CandidateElection(Supplier<Integer> votersSize) {
+        this.minMajority = new MinMajority(votersSize);
     }
 
     @Override
@@ -24,10 +25,6 @@ public class CandidateElection implements Election{
     @Override
     public boolean isWon() {
         long voteGranted = votes.values().stream().filter(granted -> granted).count();
-        return voteGranted >= minMajority();
-    }
-
-    private long minMajority() {
-        return (votersSize / 2) + (votersSize % 2 == 0 ? 0L : 1L);
+        return voteGranted >= minMajority.get();
     }
 }
