@@ -4,11 +4,27 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -199,6 +215,8 @@ public class RaftClusterTestFixture {
 
             private final String nodeId;
             private final StubRaftGroup remote;
+            private Consumer<AppendEntriesResponse> appendEntriesResponseListener;
+            private Consumer<InstallSnapshotResponse> installSnapshotResponseListener;
 
             public StubNode(String nodeId) {
                 this.remote = clusterGroups.get(nodeId);
@@ -212,22 +230,33 @@ public class RaftClusterTestFixture {
 
             @Override
             public void appendEntries(AppendEntriesRequest request) {
+                communicateRemote(request, r->{
+                    AppendEntriesResponse response = remote.localNode().appendEntries(r);
+                    appendEntriesResponseListener.accept(response);
+                    return null;
+                }, localName, nodeId);
 
             }
 
             @Override
             public void installSnapshot(InstallSnapshotRequest request) {
-
+                communicateRemote(request, r->{
+                    InstallSnapshotResponse response = remote.localNode().installSnapshot(r);
+                    installSnapshotResponseListener.accept(response);
+                    return null;
+                }, localName, nodeId);
             }
 
             @Override
             public Registration registerAppendEntriesResponseListener(Consumer<AppendEntriesResponse> listener) {
-                return null;
+                appendEntriesResponseListener = listener;
+                return () -> appendEntriesResponseListener = null;
             }
 
             @Override
             public Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener) {
-                return null;
+                installSnapshotResponseListener = listener;
+                return () -> installSnapshotResponseListener = null;
             }
 
             @Override
