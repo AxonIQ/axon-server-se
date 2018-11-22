@@ -58,6 +58,7 @@ public class FollowerState extends AbstractMembershipState {
             return appendEntriesFailure();
         }
 
+        heardFromLeader = true;
         rescheduleElection(request.getTerm());
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
 
@@ -110,6 +111,10 @@ public class FollowerState extends AbstractMembershipState {
 
         updateCurrentTerm(request.getTerm());
         boolean voteGranted = voteGrantedFor(request);
+        if (voteGranted){
+            rescheduleElection(request.getTerm());
+        }
+
         logger.debug("Request for vote received from {}. {} voted {}", request.getCandidateId(), me(), voteGranted);
         return requestVoteResponse(voteGranted);
     }
@@ -133,7 +138,6 @@ public class FollowerState extends AbstractMembershipState {
 
     private void rescheduleElection(long term) {
         if (term >= currentTerm()) {
-            heardFromLeader = true;
             cancelCurrentElectionTimeout();
             scheduleNewElection();
         }

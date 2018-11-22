@@ -49,7 +49,7 @@ public class CandidateState extends AbstractMembershipState {
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request));
-            logger.debug("Request for vote received from {}. {} voted {}", request.getCandidateId(), me(), vote ==null? false : vote.getVoteGranted());
+            logger.debug("Request for vote received from {}. {} voted {}", request.getCandidateId(), me(), vote == null ? false : vote.getVoteGranted());
             return vote;
         }
         logger.debug("Request for vote received from {}. {} voted rejected", request.getCandidateId(), me());
