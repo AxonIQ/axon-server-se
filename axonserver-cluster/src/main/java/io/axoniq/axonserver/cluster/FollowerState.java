@@ -50,14 +50,16 @@ public class FollowerState extends AbstractMembershipState {
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.debug("{}: received {}", me(), request);
         updateCurrentTerm(request.getTerm());
-        rescheduleElection(request.getTerm());
-        LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
+
 
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
             logger.warn("{}: term before current term {}", me(), currentTerm());
             return appendEntriesFailure();
         }
+
+        rescheduleElection(request.getTerm());
+        LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
 
         //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
         if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
@@ -69,7 +71,7 @@ public class FollowerState extends AbstractMembershipState {
         // and all that follow it
         //4. Append any new entries not already in the log
         try {
-            raftGroup().localLogEntryStore().appendEntry(request.getEntriesList());
+            logEntryStore.appendEntry(request.getEntriesList());
         } catch (IOException e) {
             logger.warn("{}: append failed", me(), e);
             stop();
