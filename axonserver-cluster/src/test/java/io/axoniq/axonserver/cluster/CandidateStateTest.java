@@ -24,19 +24,15 @@ import static org.mockito.Mockito.*;
  */
 public class CandidateStateTest {
 
-    private static final long MIN_ELECTION_TIMEOUT = 150L;
-    private static final long MAX_ELECTION_TIMEOUT = 300L;
-
     private long electionTimeout = 160L;
     private RaftGroup raftGroup;
     private FakeRaftConfiguration raftConfiguration;
-    private ElectionStore electionStore;
     private FakeScheduler fakeScheduler;
     private FakeTransitionHandler transitionHandler;
     private CandidateState candidateState;
-    private FakeRaftPeer node0 = new FakeRaftPeer("node0");
-    private FakeRaftPeer node1 = new FakeRaftPeer("node1");
-    private FakeRaftPeer node2 = new FakeRaftPeer("node2");
+    private FakeRaftPeer node0;
+    private FakeRaftPeer node1;
+    private FakeRaftPeer node2;
 
     @Before
     public void setUp() throws Exception {
@@ -44,7 +40,7 @@ public class CandidateStateTest {
         RaftNode localNode = mock(RaftNode.class);
         when(localNode.nodeId()).thenReturn("node0");
 
-        electionStore = new InMemoryElectionStore();
+        ElectionStore electionStore = new InMemoryElectionStore();
         electionStore.updateCurrentTerm(0);
 
         raftGroup = mock(RaftGroup.class);
@@ -54,12 +50,15 @@ public class CandidateStateTest {
         when(raftGroup.localNode()).thenReturn(localNode);
 
         transitionHandler = new FakeTransitionHandler();
-
+        fakeScheduler = new FakeScheduler();
+        node0 = new FakeRaftPeer(fakeScheduler, "node0");
+        node1 = new FakeRaftPeer(fakeScheduler, "node1");
+        node2 = new FakeRaftPeer(fakeScheduler, "node2");
         addClusterNode("node0", node0);
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
 
-        fakeScheduler = new FakeScheduler();
+
         candidateState = CandidateState.builder()
                                        .raftGroup(raftGroup)
                                        .transitionHandler(transitionHandler)
@@ -173,7 +172,8 @@ public class CandidateStateTest {
         node1.setTerm(1);
         node1.setVoteGranted(true);
         candidateState.start();
-        assertWithin(50, MILLISECONDS,() -> assertTrue(transitionHandler.lastTransition() instanceof FakeState));
+        fakeScheduler.timeElapses(30);
+        assertTrue(transitionHandler.lastTransition() instanceof FakeState);
         MembershipState membershipState = transitionHandler.lastTransition();
         FakeState fakeState = (FakeState) membershipState;
         assertEquals("leader", fakeState.name());
@@ -182,16 +182,12 @@ public class CandidateStateTest {
     @Test
     public void electionRescheduled() throws InterruptedException{
         candidateState.start();
-        node1.setTerm(2);
         node2.setTerm(2);
-        Thread.sleep(50);
-        fakeScheduler.timeElapses(electionTimeout+1);
-        Thread.sleep(50);
-        node1.setTerm(3);
-        node2.setTerm(3);
+        node1.setTerm(2);
         node1.setVoteGranted(true);
         fakeScheduler.timeElapses(electionTimeout+1);
-        assertWithin(50, MILLISECONDS,() -> assertTrue(transitionHandler.lastTransition() instanceof FakeState));
+        fakeScheduler.timeElapses(30);
+        assertTrue(transitionHandler.lastTransition() instanceof FakeState);
         MembershipState membershipState = transitionHandler.lastTransition();
         FakeState fakeState = (FakeState) membershipState;
         assertEquals("leader", fakeState.name());

@@ -3,8 +3,6 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.grpc.cluster.*;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -14,14 +12,15 @@ import java.util.function.Consumer;
  */
 public class FakeRaftPeer implements RaftPeer {
 
-    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
+    private final Scheduler scheduler;
     private final String nodeId;
     private long term;
     private boolean voteGranted;
     private Consumer<AppendEntriesResponse> appendEntriesResponseConsumer;
     private Consumer<InstallSnapshotResponse> installSnapshotResponseConsumer;
 
-    public FakeRaftPeer(String nodeId) {
+    public FakeRaftPeer(Scheduler scheduler, String nodeId) {
+        this.scheduler = scheduler;
         this.nodeId = nodeId;
     }
 
@@ -42,7 +41,7 @@ public class FakeRaftPeer implements RaftPeer {
                                                               .setFailure(AppendEntryFailure.newBuilder().build())
                                                               .build();
         }
-        executorService.schedule(() -> appendEntriesResponseConsumer.accept(response), 10, TimeUnit.MILLISECONDS);
+        scheduler.schedule(() -> appendEntriesResponseConsumer.accept(response), 10, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -51,7 +50,7 @@ public class FakeRaftPeer implements RaftPeer {
                                                                   .setTerm(term)
                                                                   .setFailure(InstallSnapshotFailure.newBuilder().build())
                                                                   .build();
-        executorService.schedule(() -> installSnapshotResponseConsumer.accept(response), 10, TimeUnit.MILLISECONDS);
+        scheduler.schedule(() -> installSnapshotResponseConsumer.accept(response), 10, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -73,7 +72,7 @@ public class FakeRaftPeer implements RaftPeer {
                                                           .setTerm(term)
                                                           .setVoteGranted(voteGranted)
                                                           .build();
-        executorService.schedule(() -> result.complete(response), 10, TimeUnit.MILLISECONDS);
+        scheduler.schedule(() -> result.complete(response), 10, TimeUnit.MILLISECONDS);
         return result;
     }
 

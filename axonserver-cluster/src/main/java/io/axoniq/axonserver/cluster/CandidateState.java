@@ -77,7 +77,7 @@ public class CandidateState extends AbstractMembershipState {
             markVotedFor(me());
         }
         resetElectionTimeout();
-        currentElection.set(new CandidateElection(clusterSize()));
+        currentElection.set(new CandidateElection(this::clusterSize));
         currentElection.get().registerVoteReceived(me(), true);
         RequestVoteRequest request = requestVote();
         Iterable<RaftPeer> raftPeers = otherNodes();
