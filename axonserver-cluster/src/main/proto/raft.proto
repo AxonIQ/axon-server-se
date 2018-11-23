@@ -76,9 +76,9 @@ message InstallSnapshotRequest {
     uint64 lastIncludedTerm= 4;
     uint64 lastIncludedIndex = 5;
     Config lastConfig = 6;
-    uint32 segmentIndex = 7;
+    uint32 offset = 7; // starts from 0
     bool done = 8;
-    repeated SerializedObject serializedObject = 9;
+    repeated SerializedObject data = 9;
 }
 
 message SerializedObject {
@@ -97,7 +97,7 @@ message InstallSnapshotResponse {
 }
 
 message InstallSnapshotSuccess {
-    uint32 lastReceivedSegmentIndex = 3;
+    uint32 lastReceivedOffset = 3;
 }
 
 message InstallSnapshotFailure {

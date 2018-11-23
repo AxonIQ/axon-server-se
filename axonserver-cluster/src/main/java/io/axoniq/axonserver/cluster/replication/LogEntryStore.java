@@ -36,4 +36,6 @@ public interface LogEntryStore {
     EntryIterator createIterator(long index);
 
     void registerCommitListener(Thread currentThread);
+
+    void clear(long logIndex, long logTerm);
 }
