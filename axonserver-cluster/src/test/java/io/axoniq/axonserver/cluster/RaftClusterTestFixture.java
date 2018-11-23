@@ -4,27 +4,13 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -34,13 +20,14 @@ import static java.util.Arrays.asList;
 
 public class RaftClusterTestFixture {
 
-    private final ScheduledExecutorService remoteCommunication = new ScheduledThreadPoolExecutor(2);
+    private static final Logger logger = LoggerFactory.getLogger(RaftClusterTestFixture.class);
+    private final ScheduledExecutorService remoteCommunication = new ScheduledThreadPoolExecutor(1, new ThreadPoolExecutor.CallerRunsPolicy());
 
     private Map<String, StubRaftGroup> clusterGroups = new ConcurrentHashMap<>();
     private Map<String, RaftNode> clusterNodes = new ConcurrentHashMap<>();
     private Map<String, Set<String>> communicationProblems = new ConcurrentHashMap<>();
     private Map<String, Map<String, Supplier<Integer>>> communicationDelay = new ConcurrentHashMap<>();
-    private Supplier<Integer> defaultDelay = () -> ThreadLocalRandom.current().nextInt(10, 20);
+    private Supplier<Integer> defaultDelay = () -> ThreadLocalRandom.current().nextInt(1, 5);
 
     public RaftClusterTestFixture(String... hostNames) {
         for (int i = 0; i < hostNames.length; i++) {
@@ -134,14 +121,23 @@ public class RaftClusterTestFixture {
 
     private <S, R> CompletableFuture<R> communicateRemote(S request, Function<S, R> replyBuilder, String origin, String destination) {
         CompletableFuture<R> result = new CompletableFuture<>();
-        remoteCommunication.schedule(() -> {
-            if (communicationProblems.containsKey(origin) && communicationProblems.get(origin).contains(destination)) {
-                result.completeExceptionally(new IOException("Mocking disconnected node"));
-            } else {
-                remoteCommunication.schedule(() -> result.complete(replyBuilder.apply(request)),
-                                             communicationDelay(destination, origin), TimeUnit.MILLISECONDS);
-            }
-        }, communicationDelay(origin, destination), TimeUnit.MILLISECONDS);
+        if (!remoteCommunication.isShutdown()) {
+            int delay = communicationDelay(destination, origin);
+            logger.debug("Sending {} from {} to {} in {}ms", request.getClass().getSimpleName(), origin, destination, delay);
+            remoteCommunication.schedule(() -> {
+                if (communicationProblems.containsKey(origin) && communicationProblems.get(origin).contains(destination)) {
+                    logger.debug("{} from {} to {} was blocked due to simulated communication issues", request.getClass().getSimpleName(), origin, destination);
+                    result.completeExceptionally(new IOException("Mocking disconnected node"));
+                } else {
+                    if (!remoteCommunication.isShutdown()) {
+                        logger.debug("{} from {} arrived at {}", request.getClass().getSimpleName(), origin, destination);
+                        R reply = replyBuilder.apply(request);
+                        remoteCommunication.schedule(() -> result.complete(reply),
+                                                     delay, TimeUnit.MILLISECONDS);
+                    }
+                }
+            }, delay, TimeUnit.MILLISECONDS);
+        }
         return result;
     }
 
