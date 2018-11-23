@@ -49,10 +49,10 @@ public class CandidateState extends AbstractMembershipState {
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request));
-            logger.debug("Request for vote received from {}. {} voted {}", request.getCandidateId(), me(), vote == null ? false : vote.getVoteGranted());
+            logger.debug("Request for vote received from {} in term {}. {} voted {}", request.getCandidateId(), request.getTerm(), me(), vote != null && vote.getVoteGranted());
             return vote;
         }
-        logger.debug("Request for vote received from {}. {} voted rejected", request.getCandidateId(), me());
+        logger.debug("Request for vote received from {} in term {}. {} voted rejected", request.getCandidateId(), request.getTerm(), me());
         return requestVoteResponse(false);
     }
 
@@ -109,7 +109,7 @@ public class CandidateState extends AbstractMembershipState {
             return;
         }
         Election election = this.currentElection.get();
-        if( election != null) {
+        if (election != null) {
             election.registerVoteReceived(voter, response.getVoteGranted());
             if (election.isWon()) {
                 this.currentElection.set(null);

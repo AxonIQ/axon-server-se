@@ -8,11 +8,11 @@ import org.junit.runners.Parameterized;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 
 import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class RaftClusterIntegrationTest {
@@ -25,8 +25,8 @@ public class RaftClusterIntegrationTest {
     }
 
     @Parameterized.Parameters(name = "{0} nodes")
-    public static Collection<Object> data() {
-        return Arrays.asList(new Object[]{3, 5, 7, 9});
+    public static Collection<?> data() {
+        return Arrays.asList(3, 5, 7, 9);
     }
 
     @Before
@@ -60,6 +60,20 @@ public class RaftClusterIntegrationTest {
     }
 
     @Test
+    public void testFollowersRejectCommands() throws Exception {
+        fixture.startNodes();
+
+        assertWithin(5, SECONDS, () -> {
+            long leaderCount = fixture.leaders().size();
+            assertEquals(1, leaderCount);
+        });
+
+        RaftNode follower = fixture.nodes().stream().filter(n -> !n.isLeader()).findFirst().orElseThrow(() -> new AssertionError("Expected at least one follower node"));
+        CompletableFuture<Void> result = follower.appendEntry("mock", "Mock".getBytes());
+        assertTrue(result.thenApply(r -> false).exceptionally(e -> true).get());
+    }
+
+    @Test
     public void testClusterRestartsElectionAfterNetworkPartition() throws InterruptedException {
         fixture.startNodes();
 
@@ -90,20 +104,19 @@ public class RaftClusterIntegrationTest {
         fixture.createNetworkPartition(firstLeader);
 
         assertWithin(5, SECONDS, () -> {
-            long leaderCount = fixture.leaders().size();
+            long leaderCount = fixture.leaders().stream().filter(n -> !firstLeader.equals(n)).count();
             assertEquals(1, leaderCount);
         });
 
         fixture.clearNetworkProblems();
 
-        assertWithin(1, SECONDS, () -> assertFalse(fixture.getNode(firstLeader).isLeader()));
+        assertWithin(5, SECONDS, () -> assertFalse(fixture.getNode(firstLeader).isLeader()));
     }
 
     @Test
     public void testLeaderStepsDownAfterReconnection_SlowNetworkToNode2() throws InterruptedException {
-        fixture.setCommunicationDelay(50, 100);
-        fixture.setCommunicationDelay("node1", "node2", 100, 200);
-        fixture.setCommunicationDelay("node3", "node2", 100, 200);
+        fixture.setCommunicationDelay("node1", "node2", 50, 100);
+        fixture.setCommunicationDelay("node3", "node2", 50, 100);
         fixture.startNodes();
 
         assertWithin(5, SECONDS, () -> {
@@ -115,7 +128,7 @@ public class RaftClusterIntegrationTest {
         fixture.createNetworkPartition(firstLeader);
 
         assertWithin(5, SECONDS, () -> {
-            long leaderCount = fixture.leaders().size();
+            long leaderCount = fixture.leaders().stream().filter(n -> !firstLeader.equals(n)).count();
             assertEquals(1, leaderCount);
         });
 

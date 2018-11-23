@@ -1,25 +1,12 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.Entry;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
@@ -53,8 +40,8 @@ public class RaftNode {
     }
 
     private synchronized void updateState(MembershipState newState) {
-        logger.info("Updating state of {} to {}", nodeId, newState.getClass().getSimpleName());
         Optional.ofNullable(state.get()).ifPresent(MembershipState::stop);
+        logger.debug("Updating state of {} from {} to {}", nodeId, state.get(), newState);
         state.set(newState);
         newState.start();
     }
