@@ -104,9 +104,9 @@ public class GrpcRaftPeer implements RaftPeer {
         public void onNext(AppendEntriesRequest request) {
             logger.trace("{} Send {}", node.getNodeId(), request);
             requestStreamRef.compareAndSet(null, initStreamObserver());
-            synchronized (requestStreamRef.get()) {
+//            synchronized (requestStreamRef.get()) {
                 requestStreamRef.get().onNext(request);
-            }
+//            }
         }
 
         private StreamObserver<AppendEntriesRequest> initStreamObserver() {

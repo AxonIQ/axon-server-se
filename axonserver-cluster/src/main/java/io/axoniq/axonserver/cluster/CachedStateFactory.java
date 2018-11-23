@@ -21,10 +21,10 @@ public class CachedStateFactory implements MembershipStateFactory {
     }
 
     @Override
-    public MembershipState idleState() {
+    public MembershipState idleState(String nodeId) {
         MembershipState state = idle.get();
         if (state == null){
-            state = delegate.idleState();
+            state = delegate.idleState(nodeId);
             idle.set(state);
         }
         return state;

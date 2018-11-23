@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.TemporalAccessor;
 import java.util.NavigableSet;
@@ -32,14 +33,14 @@ public class FakeScheduler implements Scheduler {
     }
 
     private NavigableSet<ScheduledTask> tasks = new TreeSet<>();
-    private Instant currentTime;
+    private FakeClock clock;
 
     public FakeScheduler() {
         this(Instant.now());
     }
 
-    public FakeScheduler(TemporalAccessor currentTime) {
-        this.currentTime = Instant.from(currentTime);
+    public FakeScheduler(Instant currentTime) {
+        clock = new FakeClock(currentTime);
     }
 
     public Registration schedule(Runnable command, long delayInMillis) {
@@ -47,14 +48,19 @@ public class FakeScheduler implements Scheduler {
     }
 
     @Override
+    public Clock clock() {
+        return clock;
+    }
+
+    @Override
     public synchronized ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit) {
-        Instant triggerTime = currentTime.plusMillis(timeUnit.toMillis(delay));
+        Instant triggerTime = clock.instant().plusMillis(timeUnit.toMillis(delay));
         ScheduledTask task = new ScheduledTask(command, triggerTime);
         tasks.add(task);
         return new ScheduledRegistration() {
             @Override
             public long getDelay(TimeUnit unit) {
-                long millisLeft = triggerTime.minusMillis(currentTime.toEpochMilli()).toEpochMilli();
+                long millisLeft = triggerTime.minusMillis(clock.instant().toEpochMilli()).toEpochMilli();
                 return unit.convert(millisLeft, TimeUnit.MILLISECONDS);
             }
 
@@ -90,7 +96,7 @@ public class FakeScheduler implements Scheduler {
     }
 
     public synchronized Instant getCurrentTime() {
-        return currentTime;
+        return clock.instant();
     }
 
     public void timeElapses(long delayInMillis) {
@@ -98,8 +104,8 @@ public class FakeScheduler implements Scheduler {
     }
 
     public synchronized void timeElapses(long delay, TimeUnit timeUnit) {
-        currentTime = currentTime.plusMillis(timeUnit.toMillis(delay));
-        while (!tasks.isEmpty() && !tasks.first().scheduledTime.isAfter(currentTime)) {
+        clock.plusMillis(timeUnit.toMillis(delay));
+        while (!tasks.isEmpty() && !tasks.first().scheduledTime.isAfter(clock.instant())) {
             tasks.pollFirst().command.run();
         }
     }

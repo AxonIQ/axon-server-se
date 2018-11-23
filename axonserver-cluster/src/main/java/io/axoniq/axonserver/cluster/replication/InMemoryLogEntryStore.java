@@ -38,7 +38,10 @@ public class InMemoryLogEntryStore implements LogEntryStore {
         }
 
         long firstIndex = entries.get(0).getIndex();
-        entryMap.tailMap(firstIndex).clear();
+        if( entryMap.containsKey(firstIndex)) {
+            logger.warn("Clear from {}", firstIndex);
+            entryMap.tailMap(firstIndex).clear();
+        }
         entries.forEach(entry -> entryMap.put(entry.getIndex(), entry));
         lastIndex.set(entryMap.lastEntry().getKey());
     }

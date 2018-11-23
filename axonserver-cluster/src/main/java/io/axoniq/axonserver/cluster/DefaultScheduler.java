@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import java.time.Clock;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -11,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 public class DefaultScheduler implements Scheduler {
 
     private final ScheduledExecutorService scheduledExecutorService;
+    private final Clock clock = Clock.systemUTC();
 
     public DefaultScheduler() {
         this(Executors.newSingleThreadScheduledExecutor());
@@ -18,6 +20,11 @@ public class DefaultScheduler implements Scheduler {
 
     public DefaultScheduler(ScheduledExecutorService scheduledExecutorService) {
         this.scheduledExecutorService = scheduledExecutorService;
+    }
+
+    @Override
+    public Clock clock() {
+        return clock;
     }
 
     @Override

@@ -14,8 +14,10 @@ import org.slf4j.LoggerFactory;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Math.min;
@@ -23,11 +25,14 @@ import static java.lang.Math.min;
 public class FollowerState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(FollowerState.class);
 
-    private AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
+    private final AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
+    private final AtomicLong lastMessageTimestamp = new AtomicLong();
+    private final Clock clock;
 
     protected FollowerState(Builder builder) {
         super(builder);
+        clock = scheduler().clock();
     }
 
     public static Builder builder() {
@@ -37,6 +42,7 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public void start() {
         cancelCurrentElectionTimeout();
+        lastMessageTimestamp.set(0L);
         scheduleNewElection();
         heardFromLeader = false;
     }
@@ -48,54 +54,66 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        logger.trace("{}: received {}", me(), request);
-        updateCurrentTerm(request.getTerm());
-
-
-        //1. Reply false if term < currentTerm
-        if (request.getTerm() < currentTerm()) {
-            logger.warn("{}: term before current term {}", me(), currentTerm());
-            return appendEntriesFailure();
-        }
-
-        heardFromLeader = true;
-        rescheduleElection(request.getTerm());
-        LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
-
-        //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
-        if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
-            logger.warn("{}: previous term/index missing", me());
-            return appendEntriesFailure();
-        }
-
-        //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
-        // and all that follow it
-        //4. Append any new entries not already in the log
+        lastMessageTimestamp.set(clock.millis());
         try {
-            logEntryStore.appendEntry(request.getEntriesList());
-        } catch (IOException e) {
-            logger.warn("{}: append failed", me(), e);
-            stop();
+            logger.trace("{}: received {}", me(), request);
+            updateCurrentTerm(request.getTerm());
+
+            //1. Reply false if term < currentTerm
+            if (request.getTerm() < currentTerm()) {
+                logger.debug("{}: term before current term {}", me(), currentTerm());
+                return appendEntriesFailure();
+            }
+
+            heardFromLeader = true;
+            //rescheduleElection(request.getTerm());
+            LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
+            if( logger.isTraceEnabled() && request.getPrevLogIndex() == 0) {
+                logger.trace("{} Received heartbeat, commitindex: {}", me(), request.getCommitIndex());
+            }
+
+            //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
+            if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
+                logger.warn("{}: previous term/index missing {}/{} last log {}",
+                            me(),
+                            request.getPrevLogTerm(),
+                            request.getPrevLogIndex(),
+                            logEntryStore.lastLogIndex());
+                return appendEntriesFailure();
+            }
+
+            //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
+            // and all that follow it
+            //4. Append any new entries not already in the log
+            try {
+                logEntryStore.appendEntry(request.getEntriesList());
+            } catch (IOException e) {
+                logger.warn("{}: append failed", me(), e);
+                stop();
+                return appendEntriesFailure();
+            }
+
+            //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+            if (request.getCommitIndex() > logEntryStore.commitIndex()) {
+                if (request.getEntriesCount() == 0) {
+                    logEntryStore.markCommitted(request.getCommitIndex());
+                } else {
+                    logEntryStore.markCommitted(min(request.getCommitIndex(),
+                                                    request.getEntries(request.getEntriesCount() - 1).getIndex()));
+                }
+            }
+
+            logger.trace("{}: stored {}", me(), lastLogIndex());
+            return AppendEntriesResponse.newBuilder()
+                                        .setGroupId(groupId())
+                                        .setTerm(currentTerm())
+                                        .setSuccess(buildAppendEntrySuccess(lastLogIndex()))
+                                        .setTerm(currentTerm())
+                                        .build();
+        } catch( Exception ex) {
+            logger.error("{}: failed to append events", me(), ex);
             return appendEntriesFailure();
         }
-
-        //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-        if (request.getCommitIndex() > logEntryStore.commitIndex()) {
-            if( request.getEntriesCount() == 0) {
-                logEntryStore.markCommitted(request.getCommitIndex());
-            } else {
-                logEntryStore.markCommitted(min(request.getCommitIndex(),
-                                                request.getEntries(request.getEntriesCount() - 1).getIndex()));
-            }
-        }
-
-        logger.trace("{}: stored {}", me(), lastLogIndex());
-        return AppendEntriesResponse.newBuilder()
-                                    .setGroupId(groupId())
-                                    .setTerm(currentTerm())
-                                    .setSuccess(buildAppendEntrySuccess(lastLogIndex()))
-                                    .setTerm(currentTerm())
-                                    .build();
     }
 
     @Override
@@ -104,7 +122,7 @@ public class FollowerState extends AbstractMembershipState {
 
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
-        if (heardFromLeader && elapsedFromLastMessage < minElectionTimeout()) {
+        if (heardFromLeader && clock.millis() - lastMessageTimestamp.get() < minElectionTimeout()) {
             logger.debug("Request for vote received from {}. {} voted rejected", request.getCandidateId(), me());
             return requestVoteResponse(false);
         }
@@ -130,10 +148,23 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void scheduleNewElection() {
-        scheduledElection.set(scheduler().schedule(
-                () -> changeStateTo(stateFactory().candidateState()),
-                random(minElectionTimeout(), maxElectionTimeout() + 1),
-                TimeUnit.MILLISECONDS));
+            scheduledElection.set(scheduler().schedule(
+                    this::checkMessageReceived,
+                    minElectionTimeout(),
+                    TimeUnit.MILLISECONDS));
+    }
+
+    private void checkMessageReceived() {
+        long now = clock.millis();
+        if( lastMessageTimestamp.get() + maxElectionTimeout() < now) {
+            if (lastMessageTimestamp.get() > 0) {
+                logger.info("Rescheduling election as last received message {}ms old",
+                            (now - lastMessageTimestamp.get()));
+            }
+            changeStateTo(stateFactory().candidateState());
+        } else {
+            scheduleNewElection();
+        }
     }
 
     private void rescheduleElection(long term) {

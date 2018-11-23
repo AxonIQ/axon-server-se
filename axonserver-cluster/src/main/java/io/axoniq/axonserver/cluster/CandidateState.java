@@ -29,7 +29,7 @@ public class CandidateState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        resetElectionTimeout();
+        startElection();
     }
 
     @Override

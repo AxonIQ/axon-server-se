@@ -21,14 +21,17 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
     @Override
     public StreamObserver<AppendEntriesRequest> appendEntries(StreamObserver<AppendEntriesResponse> responseObserver) {
         return new StreamObserver<AppendEntriesRequest>() {
+            volatile  boolean running = true;
             @Override
             public void onNext(AppendEntriesRequest appendEntriesRequest) {
+                if( ! running) return;
                 RaftNode target = nodePerGroup.get(appendEntriesRequest.getGroupId());
                 try {
                     AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
                     responseObserver.onNext(response);
                     if (response.hasFailure()) {
                         responseObserver.onCompleted();
+                        running = false;
                     }
                 } catch( Exception ex) {
                     // ignore
@@ -37,7 +40,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Failure on appendEntries connection", throwable);
+                logger.warn("Failure on appendEntries on leader connection- {}", throwable.getMessage());
 
             }
 

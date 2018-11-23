@@ -22,7 +22,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
 import static junit.framework.TestCase.assertNotNull;
@@ -34,8 +33,8 @@ public class RaftServerTest {
 
     Map<String, RaftNode> clusterNodes = new HashMap<>();
     List<Node> nodes = Arrays.asList(node("node1", "localhost", 7777),
-                                     node("node2", "localhost", 7778),
-                                     node("node3", "localhost", 7779),
+//                                     node("node2", "localhost", 7778),
+//                                     node("node3", "localhost", 7779),
                                      node("node4", "localhost", 7780),
                                      node("node5", "localhost", 7781));
 
@@ -87,16 +86,19 @@ public class RaftServerTest {
             RaftNode leader = clusterNodes.values().stream().filter(n -> n.isLeader()).findFirst().orElse(null);
 
 
-            CompletableFuture<Void>[] futures = new CompletableFuture[50000];
+            CompletableFuture<Void>[] futures = new CompletableFuture[200000];
             AtomicInteger successCount = new AtomicInteger();
-            long before = System.currentTimeMillis();
-            IntStream.range(0, futures.length).forEach(i -> futures[i] = leader.appendEntry("Test", "Test".getBytes()).thenAccept(v-> {
-                successCount.incrementAndGet();
-            }));
-            CompletableFuture.allOf(futures).get(1, TimeUnit.MINUTES);
-            long after = System.currentTimeMillis();
-            Thread.sleep(TimeUnit.SECONDS.toMillis(3));
-            System.out.println( "Applied on leader within " + (after-before) + "ms.");
+                long before = System.currentTimeMillis();
+                for (int i = 0; i < futures.length; i++) {
+                    futures[i] = leader.appendEntry("Test", "Test".getBytes()).exceptionally(e -> null)
+                                       .thenAccept(v -> {
+                                           successCount.incrementAndGet();
+                                       });
+                }
+                CompletableFuture.allOf(futures).get(60, TimeUnit.SECONDS);
+                long after = System.currentTimeMillis();
+                System.out.println("Applied on leader within " + (after - before) + "ms.");
+                Thread.sleep(TimeUnit.SECONDS.toMillis(3));
         } finally {
             clusterNodes.forEach((id, node) -> node.stop());
             raftServers.forEach(r -> r.stop(() -> {}));
@@ -158,11 +160,11 @@ public class RaftServerTest {
 //            return 1000;
 //        }
 //
-        @Override
-        public int maxElectionTimeout() {
-            return 3000;
-        }
-//
+//        @Override
+//        public int maxElectionTimeout() {
+//            return 3000;
+//        }
+////
 //        @Override
 //        public int heartbeatTimeout() {
 //            return 100;
