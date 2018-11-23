@@ -7,11 +7,11 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotSuccess;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.time.Clock;
@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.lang.Math.min;
 
 public class FollowerState extends AbstractMembershipState {
+
     private static final Logger logger = LoggerFactory.getLogger(FollowerState.class);
 
     private final AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
@@ -141,7 +142,34 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        throw new NotImplementedException();
+        logger.debug("{}: received {}", me(), request);
+        updateCurrentTerm(request.getTerm());
+
+        // Reply immediately if term < currentTerm
+        if (request.getTerm() < currentTerm()) {
+            logger.warn("{}: term before current term {}", me(), currentTerm());
+            return installSnapshotFailure();
+        }
+
+        rescheduleElection(request.getTerm());
+
+        if (request.hasLastConfig()) {
+            logger.debug("{}: applying config {}", me(), request.getLastConfig());
+            raftGroup().raftConfiguration().update(request.getLastConfig().getNodesList());
+        }
+
+        if (request.getOffset() == 0) {
+            // first segment
+            raftGroup().localLogEntryStore().clear(request.getLastIncludedIndex(), request.getLastIncludedTerm());
+        }
+
+        snapshotManager().applySnapshotData(request.getDataList());
+
+        return InstallSnapshotResponse.newBuilder()
+                                      .setTerm(currentTerm())
+                                      .setGroupId(groupId())
+                                      .setSuccess(buildInstallSnapshotSuccess(request.getOffset()))
+                                      .build();
     }
 
     private void cancelCurrentElectionTimeout() {
@@ -176,6 +204,12 @@ public class FollowerState extends AbstractMembershipState {
         return AppendEntrySuccess.newBuilder()
                                  .setLastLogIndex(lastLogIndex)
                                  .build();
+    }
+
+    private InstallSnapshotSuccess buildInstallSnapshotSuccess(int offset) {
+        return InstallSnapshotSuccess.newBuilder()
+                                     .setLastReceivedOffset(offset)
+                                     .build();
     }
 
     private boolean voteGrantedFor(RequestVoteRequest request) {

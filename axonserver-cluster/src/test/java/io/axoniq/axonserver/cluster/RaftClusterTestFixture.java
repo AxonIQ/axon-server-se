@@ -30,12 +30,10 @@ public class RaftClusterTestFixture {
     private Supplier<Integer> defaultDelay = () -> ThreadLocalRandom.current().nextInt(1, 5);
 
     public RaftClusterTestFixture(String... hostNames) {
-        for (int i = 0; i < hostNames.length; i++) {
-            String hostName = hostNames[i];
-            StubRaftGroup raftGroup = new StubRaftGroup(hostName);
-            clusterGroups.put(hostName, raftGroup);
-            clusterNodes.put(hostName, new RaftNode(hostName, raftGroup));
+        for (String hostName : hostNames) {
+            spawnNew(hostName);
         }
+        clusterGroups.forEach((id, group) -> group.update(clusterNodes));
     }
 
     public RaftGroup getGroup(String name) {
@@ -55,6 +53,14 @@ public class RaftClusterTestFixture {
                            .map(RaftNode::nodeId).collect(Collectors.toSet());
     }
 
+    public RaftNode spawnNew(String hostName) {
+        StubRaftGroup raftGroup = new StubRaftGroup(hostName);
+        clusterGroups.put(hostName, raftGroup);
+        RaftNode raftNode = new RaftNode(hostName, raftGroup);
+        clusterNodes.put(hostName, raftNode);
+        return raftNode;
+    }
+
     /**
      * Simulate communication problems for the given {@code host} by blocking all communication from and to
      * it.
@@ -63,8 +69,9 @@ public class RaftClusterTestFixture {
      */
     public void disconnect(String host) {
         clusterNodes.keySet().forEach(dest -> {
-            if (!host.equals(dest))
+            if (!host.equals(dest)) {
                 communicationProblems(host).add(dest);
+            }
             communicationProblems(dest).add(host);
         });
     }
@@ -156,6 +163,7 @@ public class RaftClusterTestFixture {
 
     private class StubRaftGroup implements RaftGroup, RaftConfiguration {
 
+        private final Map<String, RaftNode> nodes = new ConcurrentHashMap<>();
         private final String localName;
         private final LogEntryStore logEntryStore;
         private final ElectionStore electionStore;
@@ -189,22 +197,35 @@ public class RaftClusterTestFixture {
 
         @Override
         public RaftNode localNode() {
-            return clusterNodes.get(this.localName);
+            return nodes.get(this.localName);
         }
 
         @Override
         public List<Node> groupMembers() {
-            return RaftClusterTestFixture.this.clusterNodes.keySet().stream()
-                                                           .map(sn -> Node.newBuilder()
-                                                                          .setHost(sn)
-                                                                          .setNodeId(sn).build())
-                                                           .collect(Collectors.toList());
+            return nodes.keySet().stream()
+                        .map(sn -> Node.newBuilder()
+                                       .setHost(sn)
+                                       .setNodeId(sn).build())
+                        .collect(Collectors.toList());
         }
 
 
         @Override
         public String groupId() {
             return "default";
+        }
+
+        @Override
+        public void update(List<Node> nodes) {
+            this.nodes.clear();
+            nodes.stream()
+                 .map(Node::getHost)
+                 .forEach(host -> this.nodes.put(host, new RaftNode(host, this)));
+        }
+
+        private void update(Map<String, RaftNode> nodes) {
+            this.nodes.clear();
+            this.nodes.putAll(nodes);
         }
 
         private class StubNode implements RaftPeer {

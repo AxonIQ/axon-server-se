@@ -9,6 +9,7 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 
@@ -117,9 +118,13 @@ public class RaftServerTest {
             this.localNode = localNode;
             logEntryStore = new InMemoryLogEntryStore();
             electionStore = new InMemoryElectionStore();
-            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(node)));
+            initializePeers(nodes);
         }
 
+        private void initializePeers(List<Node> nodes) {
+            raftPeerMap.clear();
+            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(node)));
+        }
 
         @Override
         public LogEntryStore localLogEntryStore() {
@@ -170,5 +175,10 @@ public class RaftServerTest {
 //        public int heartbeatTimeout() {
 //            return 100;
 //        }
+
+        @Override
+        public void update(List<Node> nodes) {
+            initializePeers(nodes);
+        }
     }
 }

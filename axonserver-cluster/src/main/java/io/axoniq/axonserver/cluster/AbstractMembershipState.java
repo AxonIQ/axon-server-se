@@ -21,6 +21,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final MembershipStateFactory stateFactory;
     private final Scheduler scheduler;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
+    private final SnapshotManager snapshotManager;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
@@ -29,6 +30,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.stateFactory = builder.stateFactory;
         this.scheduler = builder.scheduler;
         this.randomValueSupplier = builder.randomValueSupplier;
+        this.snapshotManager = builder.snapshotManager;
     }
 
     protected <R> R handleAsFollower(Function<MembershipState, R> handler) {
@@ -49,6 +51,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         private Scheduler scheduler;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
+        private SnapshotManager snapshotManager;
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -75,6 +78,11 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
+        public B snapshotManager(SnapshotManager snapshotManager) {
+            this.snapshotManager = snapshotManager;
+            return self();
+        }
+
         protected void validate() {
             if (scheduler == null) {
                 scheduler = new DefaultScheduler();
@@ -88,6 +96,7 @@ public abstract class AbstractMembershipState implements MembershipState {
             if (stateFactory == null) {
                 throw new IllegalStateException("The stateFactory must be provided");
             }
+            // TODO: 11/22/2018 require snapshotManager
         }
 
         @SuppressWarnings("unchecked")
@@ -136,6 +145,10 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     public MembershipStateFactory stateFactory() {
         return stateFactory;
+    }
+
+    protected SnapshotManager snapshotManager() {
+        return snapshotManager;
     }
 
     protected long lastAppliedEventSequence() {

@@ -22,4 +22,5 @@ public interface RaftConfiguration {
         return 50;
     }
 
+    void update(List<Node> nodes);
 }
