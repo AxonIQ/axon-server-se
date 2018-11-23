@@ -48,7 +48,7 @@ public class RaftNode {
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
-        stateFactory = new DefaultStateFactory(raftGroup, this::updateState);
+        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState));
         updateState(stateFactory.idleState());
     }
 
