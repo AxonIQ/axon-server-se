@@ -89,7 +89,7 @@ public class FollowerState extends AbstractMembershipState {
             }
         }
 
-        logger.debug("{}: stored", me(), lastLogIndex());
+        logger.debug("{}: stored {}", me(), lastLogIndex());
         return AppendEntriesResponse.newBuilder()
                                     .setGroupId(groupId())
                                     .setTerm(currentTerm())
