@@ -9,7 +9,7 @@
         </layout>
     </appender>
 
-    <logger name="io.axoniq" level="info"
+    <logger name="io.axoniq" level="debug"
             additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>

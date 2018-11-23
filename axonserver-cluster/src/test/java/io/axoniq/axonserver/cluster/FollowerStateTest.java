@@ -114,7 +114,7 @@ public class FollowerStateTest {
     public void testRequestVoteNotGrantedAfterAppendAndMinElectionTimeoutHasNotPassed() {
         followerState.appendEntries(firstAppend());
 
-        fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT - 1);
+        fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT-1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setGroupId("defaultGroup")

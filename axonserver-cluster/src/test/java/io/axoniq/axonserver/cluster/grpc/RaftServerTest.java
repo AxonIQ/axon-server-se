@@ -86,7 +86,8 @@ public class RaftServerTest {
             RaftNode leader = clusterNodes.values().stream().filter(n -> n.isLeader()).findFirst().orElse(null);
 
 
-            CompletableFuture<Void>[] futures = new CompletableFuture[200000];
+            CompletableFuture<Void>[] futures = new CompletableFuture[250000];
+            Thread.currentThread().setPriority(5);
             AtomicInteger successCount = new AtomicInteger();
                 long before = System.currentTimeMillis();
                 for (int i = 0; i < futures.length; i++) {
@@ -162,7 +163,7 @@ public class RaftServerTest {
 //
 //        @Override
 //        public int maxElectionTimeout() {
-//            return 3000;
+//            return 1000;
 //        }
 ////
 //        @Override

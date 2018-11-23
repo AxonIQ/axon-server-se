@@ -76,7 +76,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     public void markCommitted(long committedIndex) {
         if( committedIndex > commitIndex.get()) {
             commitIndex.set(committedIndex);
-            logger.debug( "Committed: {}", committedIndex);
+            logger.trace( "Committed: {}", committedIndex);
             if( commitListenerThread != null) {
                 LockSupport.unpark(commitListenerThread);
             }

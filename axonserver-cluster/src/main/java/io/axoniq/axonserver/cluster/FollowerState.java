@@ -27,7 +27,8 @@ public class FollowerState extends AbstractMembershipState {
 
     private final AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
-    private final AtomicLong lastMessageTimestamp = new AtomicLong();
+    private final AtomicLong nextTimeout = new AtomicLong();
+    private final AtomicLong lastMessage = new AtomicLong();
     private final Clock clock;
 
     protected FollowerState(Builder builder) {
@@ -42,7 +43,7 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public void start() {
         cancelCurrentElectionTimeout();
-        lastMessageTimestamp.set(0L);
+        nextTimeout.set(clock.millis() + random(minElectionTimeout(), maxElectionTimeout()));
         scheduleNewElection();
         heardFromLeader = false;
     }
@@ -54,14 +55,15 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        lastMessageTimestamp.set(clock.millis());
+        lastMessage.set(clock.millis());
+        nextTimeout.set(lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout()));
         try {
             logger.trace("{}: received {}", me(), request);
             updateCurrentTerm(request.getTerm());
 
             //1. Reply false if term < currentTerm
             if (request.getTerm() < currentTerm()) {
-                logger.debug("{}: term before current term {}", me(), currentTerm());
+                logger.warn("{}: term before current term {}", me(), currentTerm());
                 return appendEntriesFailure();
             }
 
@@ -122,7 +124,7 @@ public class FollowerState extends AbstractMembershipState {
 
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
-        if (heardFromLeader && clock.millis() - lastMessageTimestamp.get() < minElectionTimeout()) {
+        if (heardFromLeader && clock.millis() - lastMessage.get() < minElectionTimeout()) {
             logger.debug("Request for vote received from {}. {} voted rejected", request.getCandidateId(), me());
             return requestVoteResponse(false);
         }
@@ -150,17 +152,13 @@ public class FollowerState extends AbstractMembershipState {
     private void scheduleNewElection() {
             scheduledElection.set(scheduler().schedule(
                     this::checkMessageReceived,
-                    minElectionTimeout(),
+                    minElectionTimeout()/10,
                     TimeUnit.MILLISECONDS));
     }
 
     private void checkMessageReceived() {
         long now = clock.millis();
-        if( lastMessageTimestamp.get() + maxElectionTimeout() < now) {
-            if (lastMessageTimestamp.get() > 0) {
-                logger.info("Rescheduling election as last received message {}ms old",
-                            (now - lastMessageTimestamp.get()));
-            }
+        if( nextTimeout.get() < now) {
             changeStateTo(stateFactory().candidateState());
         } else {
             scheduleNewElection();

@@ -103,7 +103,7 @@ public class RaftNode {
     }
 
     private void applyEntryConsumers(Entry e) {
-        logger.debug("{}: apply {}", nodeId, e.getIndex());
+        logger.trace("{}: apply {}", nodeId, e.getIndex());
         entryConsumer.forEach(consumer -> consumer.accept(e));
         state.get().applied(e);
     }
