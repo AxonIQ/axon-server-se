@@ -88,10 +88,6 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
-        long elapsedFromLastConfirmedHeartbeat = stepDown.get().getElapsed(MILLISECONDS);
-//        if (elapsedFromLastConfirmedHeartbeat > minElectionTimeout()){
-//            handleAsFollower(follower -> follower.requestVote(request));
-//        }
         return requestVoteResponse(false);
     }
 
@@ -134,11 +130,6 @@ public class LeaderState extends AbstractMembershipState {
             stepDown.set(newTask);
         }
 
-    }
-
-    private void resetStepDown(){
-        cancelStepDown();
-        scheduleStepDown();
     }
 
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {
