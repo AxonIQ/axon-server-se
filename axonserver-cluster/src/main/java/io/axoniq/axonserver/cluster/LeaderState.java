@@ -130,11 +130,6 @@ public class LeaderState extends AbstractMembershipState {
 
     }
 
-    private void resetStepDown(){
-        cancelStepDown();
-        scheduleStepDown();
-    }
-
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {
         CompletableFuture<Void> appendEntryDone = new CompletableFuture<>();
         CompletableFuture<Entry> entryFuture = raftGroup().localLogEntryStore().createEntry(currentTerm, entryType, entryData);
