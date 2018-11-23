@@ -102,7 +102,7 @@ public class GrpcRaftPeer implements RaftPeer {
         private final AtomicReference<StreamObserver<AppendEntriesRequest>> requestStreamRef = new AtomicReference<>();
 
         public void onNext(AppendEntriesRequest request) {
-            logger.debug("{} Send {}", node.getNodeId(), request);
+            logger.trace("{} Send {}", node.getNodeId(), request);
             requestStreamRef.compareAndSet(null, initStreamObserver());
             synchronized (requestStreamRef.get()) {
                 requestStreamRef.get().onNext(request);
@@ -119,7 +119,7 @@ public class GrpcRaftPeer implements RaftPeer {
                         requestStreamRef.get().onCompleted();
                         requestStreamRef.set(null);
                     }
-                    logger.debug("{}: Received {}", node.getNodeId(), appendEntriesResponse);
+                    logger.trace("{}: Received {}", node.getNodeId(), appendEntriesResponse);
                     if( appendEntriesResponseListener.get() != null) {
                         appendEntriesResponseListener.get().accept(appendEntriesResponse);
                     }

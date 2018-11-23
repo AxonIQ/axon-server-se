@@ -134,14 +134,19 @@ public class RaftClusterTestFixture {
 
     private <S, R> CompletableFuture<R> communicateRemote(S request, Function<S, R> replyBuilder, String origin, String destination) {
         CompletableFuture<R> result = new CompletableFuture<>();
-        remoteCommunication.schedule(() -> {
-            if (communicationProblems.containsKey(origin) && communicationProblems.get(origin).contains(destination)) {
-                result.completeExceptionally(new IOException("Mocking disconnected node"));
-            } else {
-                remoteCommunication.schedule(() -> result.complete(replyBuilder.apply(request)),
-                                             communicationDelay(destination, origin), TimeUnit.MILLISECONDS);
-            }
-        }, communicationDelay(origin, destination), TimeUnit.MILLISECONDS);
+        try {
+            remoteCommunication.schedule(() -> {
+                if (communicationProblems.containsKey(origin) && communicationProblems.get(origin)
+                                                                                      .contains(destination)) {
+                    result.completeExceptionally(new IOException("Mocking disconnected node"));
+                } else {
+                    remoteCommunication.schedule(() -> result.complete(replyBuilder.apply(request)),
+                                                 communicationDelay(destination, origin), TimeUnit.MILLISECONDS);
+                }
+            }, communicationDelay(origin, destination), TimeUnit.MILLISECONDS);
+        } catch (Exception ex) {
+            result.completeExceptionally(ex);
+        }
         return result;
     }
 

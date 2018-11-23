@@ -16,7 +16,7 @@ public class FakeStateFactory implements MembershipStateFactory {
     private FakeState lastStateCreated;
 
     @Override
-    public MembershipState idleState() {
+    public MembershipState idleState(String nodeId) {
         return new FakeState("idle");
     }
 

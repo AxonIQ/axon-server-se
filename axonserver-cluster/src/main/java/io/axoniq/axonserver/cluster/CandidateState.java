@@ -29,7 +29,7 @@ public class CandidateState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        startElection();
+        resetElectionTimeout();
     }
 
     @Override
@@ -65,7 +65,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void resetElectionTimeout() {
-        long timeout = random(minElectionTimeout(), maxElectionTimeout() + 1);
+        int timeout = random(minElectionTimeout(), maxElectionTimeout() + 1);
         Registration newTask = scheduler().schedule(this::startElection, timeout, MILLISECONDS);
         nextElection.set(newTask);
     }

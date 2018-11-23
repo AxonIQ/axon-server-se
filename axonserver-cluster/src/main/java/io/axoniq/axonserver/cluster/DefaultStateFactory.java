@@ -21,8 +21,8 @@ public class DefaultStateFactory implements MembershipStateFactory {
     }
 
     @Override
-    public IdleState idleState() {
-        return new IdleState();
+    public IdleState idleState(String nodeId) {
+        return new IdleState(nodeId);
     }
 
     @Override

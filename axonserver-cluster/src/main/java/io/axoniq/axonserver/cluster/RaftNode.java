@@ -49,7 +49,7 @@ public class RaftNode {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
         stateFactory = new DefaultStateFactory(raftGroup, this::updateState);
-        updateState(stateFactory.idleState());
+        updateState(stateFactory.idleState(nodeId));
     }
 
     private synchronized void updateState(MembershipState newState) {
@@ -81,7 +81,7 @@ public class RaftNode {
         running = false;
         applyTask.cancel(true);
         applyTask = null;
-        updateState(stateFactory.idleState());
+        updateState(stateFactory.idleState(nodeId));
         registrations.forEach(Registration::cancel);
     }
 
@@ -123,7 +123,7 @@ public class RaftNode {
 
 
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
-        logger.debug("{}: append entry {}", nodeId, entryType);
+        logger.trace("{}: append entry {}", nodeId, entryType);
         return state.get().appendEntry(entryType, entryData);
     }
 

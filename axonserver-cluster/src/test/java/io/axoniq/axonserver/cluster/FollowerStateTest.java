@@ -25,11 +25,11 @@ import static org.mockito.Mockito.*;
  */
 public class FollowerStateTest {
 
-    private static final long MIN_ELECTION_TIMEOUT = 150L;
-    private static final long MAX_ELECTION_TIMEOUT = 300L;
+    private static final int MIN_ELECTION_TIMEOUT = 150;
+    private static final int MAX_ELECTION_TIMEOUT = 300;
     private static final long LAST_APPLIED_EVENT_SEQUENCE = 2L;
 
-    private long electionTimeout = 160L;
+    private int electionTimeout = 160;
     private Consumer<MembershipState> transitionHandler;
     private FakeScheduler fakeScheduler;
     private FollowerState followerState;

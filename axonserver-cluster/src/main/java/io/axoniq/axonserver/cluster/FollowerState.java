@@ -48,7 +48,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        logger.debug("{}: received {}", me(), request);
+        logger.trace("{}: received {}", me(), request);
         updateCurrentTerm(request.getTerm());
         rescheduleElection(request.getTerm());
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
@@ -86,7 +86,7 @@ public class FollowerState extends AbstractMembershipState {
             }
         }
 
-        logger.debug("{}: stored", me(), lastLogIndex());
+        logger.trace("{}: stored {}", me(), lastLogIndex());
         return AppendEntriesResponse.newBuilder()
                                     .setGroupId(groupId())
                                     .setTerm(currentTerm())

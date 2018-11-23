@@ -13,8 +13,6 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
 
-import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -24,7 +22,7 @@ import static org.mockito.Mockito.*;
  */
 public class CandidateStateTest {
 
-    private long electionTimeout = 160L;
+    private int electionTimeout = 160;
     private RaftGroup raftGroup;
     private FakeRaftConfiguration raftConfiguration;
     private FakeScheduler fakeScheduler;

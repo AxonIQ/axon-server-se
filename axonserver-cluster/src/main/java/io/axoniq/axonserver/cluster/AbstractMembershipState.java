@@ -20,7 +20,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final Consumer<MembershipState> transitionHandler;
     private final MembershipStateFactory stateFactory;
     private final Scheduler scheduler;
-    private final BiFunction<Long, Long, Long> randomValueSupplier;
+    private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
@@ -47,8 +47,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         private Consumer<MembershipState> transitionHandler;
         private MembershipStateFactory stateFactory;
         private Scheduler scheduler;
-        private BiFunction<Long, Long, Long> randomValueSupplier =
-                (min, max) -> ThreadLocalRandom.current().nextLong(min, max);
+        private BiFunction<Integer, Integer, Integer> randomValueSupplier =
+                (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -70,7 +70,7 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B randomValueSupplier(BiFunction<Long, Long, Long> randomValueSupplier) {
+        public B randomValueSupplier(BiFunction<Integer, Integer, Integer> randomValueSupplier) {
             this.randomValueSupplier = randomValueSupplier;
             return self();
         }
@@ -154,11 +154,11 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
     }
 
-    protected long maxElectionTimeout() {
+    protected int maxElectionTimeout() {
         return raftGroup.raftConfiguration().maxElectionTimeout();
     }
 
-    protected long minElectionTimeout() {
+    protected int minElectionTimeout() {
         return raftGroup.raftConfiguration().minElectionTimeout();
     }
 
@@ -181,7 +181,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         return otherNodesStream().count();
     }
 
-    protected long random(long min, long max) {
+    protected int random(int min, int max) {
         return randomValueSupplier.apply(min, max);
     }
 

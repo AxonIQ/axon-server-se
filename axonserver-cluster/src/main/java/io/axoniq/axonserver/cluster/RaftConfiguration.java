@@ -8,17 +8,17 @@ public interface RaftConfiguration {
 
     List<Node> groupMembers();
 
-    default long minElectionTimeout(){
+    default int minElectionTimeout(){
         return 150;
     }
 
-    default long maxElectionTimeout(){
+    default int maxElectionTimeout(){
         return 300;
     }
 
     String groupId();
 
-    default long heartbeatTimeout() {
+    default int heartbeatTimeout() {
         return 50;
     }
 
