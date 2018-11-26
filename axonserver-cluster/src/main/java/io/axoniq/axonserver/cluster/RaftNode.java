@@ -16,7 +16,7 @@ public class RaftNode {
         @Override
         public Thread newThread(Runnable r) {
             Thread t= new Thread(r);
-            t.setName("Replication-" + raftGroup.raftConfiguration().groupId());
+            t.setName("Apply-" + raftGroup.raftConfiguration().groupId());
             return t;
         }
     });
@@ -88,7 +88,7 @@ public class RaftNode {
     private void applyEntries() {
         raftGroup.localLogEntryStore().registerCommitListener(Thread.currentThread());
         while(running) {
-            int retries = 10;
+            int retries = 1;
             while( retries > 0) {
                 int applied = raftGroup.localLogEntryStore().applyEntries(e -> applyEntryConsumers(e));
                 if( applied > 0 ) {
@@ -97,7 +97,7 @@ public class RaftNode {
                     retries--;
                 }
 
-                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(5));
+                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
             }
         }
     }

@@ -4,7 +4,6 @@ import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -15,7 +14,7 @@ public interface LogEntryStore {
 
     boolean contains(long logIndex, long logTerm);
 
-    int applyEntries(Consumer<Entry> consumer);
+    int applyEntries( Consumer<Entry> consumer);
 
     void markCommitted(long committedIndex);
 

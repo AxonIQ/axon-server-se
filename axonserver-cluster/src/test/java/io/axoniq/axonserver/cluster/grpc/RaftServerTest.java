@@ -9,7 +9,6 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 
@@ -87,7 +86,7 @@ public class RaftServerTest {
             RaftNode leader = clusterNodes.values().stream().filter(n -> n.isLeader()).findFirst().orElse(null);
 
 
-            CompletableFuture<Void>[] futures = new CompletableFuture[250000];
+            CompletableFuture<Void>[] futures = new CompletableFuture[2500];
             Thread.currentThread().setPriority(5);
             AtomicInteger successCount = new AtomicInteger();
                 long before = System.currentTimeMillis();
@@ -168,7 +167,7 @@ public class RaftServerTest {
 //
 //        @Override
 //        public int maxElectionTimeout() {
-//            return 1000;
+//            return 3000;
 //        }
 ////
 //        @Override
