@@ -264,12 +264,13 @@ public class LeaderState extends AbstractMembershipState {
         private final AtomicLong nextIndex = new AtomicLong(0);
         private final AtomicLong matchIndex = new AtomicLong(0);
         private volatile long lastMessageSent = 0L;
-        private volatile long lastMessageReceived = 0L;
+        private volatile long lastMessageReceived;
         private boolean replyReceived = false;
 
         public ReplicatorPeer(RaftPeer raftPeer, Consumer<Long> matchIndexCallback) {
             this.raftPeer = raftPeer;
             this.matchIndexCallback = matchIndexCallback;
+            lastMessageReceived = clock.millis();
         }
 
         private boolean canSend() {
@@ -315,11 +316,12 @@ public class LeaderState extends AbstractMembershipState {
                         lastMessageSent = clock.millis();
                     }
                 }
-            } catch( Throwable ex) {
+            } catch( RuntimeException ex) {
                 logger.warn("{}: Sending nextEntries to {} failed", me(), raftPeer.nodeId(), ex);
             }
             return sent;
         }
+
         private void sendHeartbeat( long commitIndex) {
             AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
                     .setCommitIndex(commitIndex)
@@ -345,10 +347,10 @@ public class LeaderState extends AbstractMembershipState {
             replyReceived = true;
             logger.trace("{}: Received response from {}: {}", me(), raftPeer.nodeId(), appendEntriesResponse);
             if (appendEntriesResponse.hasFailure()) {
-                logger.warn("{}: Received failed response from {}: {}", me(), raftPeer.nodeId(), appendEntriesResponse);
+                logger.debug("{}: Received failed response from {}: {}", me(), raftPeer.nodeId(), appendEntriesResponse);
                 if( currentTerm()  < appendEntriesResponse.getTerm()) {
-                    logger.warn("Replica has higher term: {}", appendEntriesResponse.getTerm());
-                    //updateCurrentTerm(appendEntriesResponse.getTerm());
+                    logger.debug("Replica has higher term: {}", appendEntriesResponse.getTerm());
+                    updateCurrentTerm(appendEntriesResponse.getTerm());
                     changeStateTo(stateFactory().followerState());
                     return;
                 }

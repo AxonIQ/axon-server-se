@@ -1,17 +1,27 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.election.ElectionStore;
+import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
+import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.mockito.Mockito.mock;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Author: marc
@@ -19,55 +29,111 @@ import static org.mockito.Mockito.mock;
 public class LeaderStateTest {
 
     private LeaderState testSubject;
-    private RaftGroup raftGroup;
-    private boolean running = true;
-    private RaftClusterTestFixture fixture;
+    AtomicReference<RaftNode> nodeRef = new AtomicReference<>();
+    FakeScheduler fakeScheduler = new FakeScheduler();
+    AtomicReference<MembershipState> stateRef = new AtomicReference<>();
 
     @Before
     public void setup() {
-        Consumer<MembershipState> transitionHandler = mock(Consumer.class);
+        Consumer<MembershipState> transitionHandler = (state) -> stateRef.set(state);
 
-        fixture = new RaftClusterTestFixture("node1", "node2");
-        raftGroup =fixture.getGroup("node1");
-        Scheduler fakeScheduler = new FakeScheduler();
+        RaftConfiguration raftConfiguration = new RaftConfiguration() {
+            private List<Node> groupMembers = Arrays.asList(Node.newBuilder().setNodeId("test").build(),
+                                                            Node.newBuilder().setNodeId("Other").build());
+            @Override
+            public List<Node> groupMembers() {
+                return groupMembers;
+            }
+
+            @Override
+            public String groupId() {
+                return "MyGroup";
+            }
+
+            @Override
+            public void update(List<Node> nodes) {
+
+            }
+        };
+        LogEntryStore logEntryStore = new InMemoryLogEntryStore();
+        AtomicReference<RaftNode> nodeRef = new AtomicReference<>();
+
+        ElectionStore electionStore = new InMemoryElectionStore();
+
+        RaftGroup raftGroup = new RaftGroup() {
+            @Override
+            public LogEntryStore localLogEntryStore() {
+                return logEntryStore;
+            }
+
+            @Override
+            public ElectionStore localElectionStore() {
+                return electionStore;
+            }
+
+            @Override
+            public RaftConfiguration raftConfiguration() {
+                return raftConfiguration;
+            }
+
+            @Override
+            public RaftPeer peer(String nodeId) {
+                return new RaftPeer() {
+                    @Override
+                    public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
+                        return null;
+                    }
+
+                    @Override
+                    public void appendEntries(AppendEntriesRequest request) {
+
+                    }
+
+                    @Override
+                    public void installSnapshot(InstallSnapshotRequest request) {
+
+                    }
+
+                    @Override
+                    public Registration registerAppendEntriesResponseListener(
+                            Consumer<AppendEntriesResponse> listener) {
+                        return null;
+                    }
+
+                    @Override
+                    public Registration registerInstallSnapshotResponseListener(
+                            Consumer<InstallSnapshotResponse> listener) {
+                        return null;
+                    }
+
+                    @Override
+                    public String nodeId() {
+                        return nodeId;
+                    }
+                };
+            }
+
+            @Override
+            public RaftNode localNode() {
+                return nodeRef.get();
+            }
+        };
+
+        nodeRef.set(new RaftNode("test", raftGroup));
+
         testSubject = LeaderState.builder()
                 .transitionHandler(transitionHandler)
                 .raftGroup(raftGroup)
                 .scheduler(fakeScheduler)
                 .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
                 .build();
-        Executors.newCachedThreadPool().submit(() -> applyEntries(raftGroup.localLogEntryStore()));
-    }
-
-    private void applyEntries(LogEntryStore entryStore) {
-        entryStore.registerCommitListener(Thread.currentThread());
-        while(running) {
-            int retries = 10;
-            while( retries > 0) {
-                int applied = raftGroup.localLogEntryStore().applyEntries(e -> this.testSubject.applied(e));
-                if( applied > 0 ) {
-                    retries = 0;
-                } else {
-                    retries--;
-                }
-                LockSupport.parkNanos(1000);
-            }
-        }
     }
 
     @Test
-    @Ignore
     public void startAndStop() throws InterruptedException, TimeoutException, ExecutionException {
-        testSubject.appendEntry("Test", "Hello".getBytes());
-        testSubject.appendEntry("Test", "Hello".getBytes());
         testSubject.start();
-        testSubject.appendEntry("Test", "Hello".getBytes());
-        testSubject.appendEntry("Test", "Hello".getBytes());
-        testSubject.appendEntry("Test", "Hello".getBytes());
-        testSubject.appendEntry("Test", "Hello".getBytes());
-        CompletableFuture<Void> done =  testSubject.appendEntry("Test", "Hello".getBytes());
-
-        done.get(2, TimeUnit.SECONDS);
-        testSubject.stop();
+        Thread.sleep(10);
+        fakeScheduler.timeElapses(500);
+        assertTrue(stateRef.get() instanceof FollowerState);
     }
 }
