@@ -165,9 +165,7 @@ public class LeaderState extends AbstractMembershipState {
 
         void stop() {
             logger.info("{}: Stop replication thread", me());
-            replicatorPeerMap.forEach((peer,replicator) -> {
-                logger.info("{}: MatchIndex = {}, NextIndex = {}", peer, replicator.matchIndex, replicator.nextIndex);
-            });
+            replicatorPeerMap.forEach((peer,replicator) -> logger.info("{}: MatchIndex = {}, NextIndex = {}", peer, replicator.matchIndex, replicator.nextIndex));
 
             running = false;
             notifySenders(null);
@@ -248,7 +246,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         private long lastMessageTimeFromMajority() {
-            logger.trace("Last messages received: {}", replicatorPeerMap.values().stream().map(peer -> peer.lastMessageSent).collect(
+            logger.trace("Last messages received: {}", replicatorPeerMap.values().stream().map(peer -> peer.lastMessageReceived).collect(
                     Collectors.toList()));
             return replicatorPeerMap.values().stream().map(r -> r.lastMessageReceived)
                                     .sorted()
@@ -265,7 +263,6 @@ public class LeaderState extends AbstractMembershipState {
         private final AtomicLong matchIndex = new AtomicLong(0);
         private volatile long lastMessageSent = 0L;
         private volatile long lastMessageReceived;
-        private boolean replyReceived = false;
 
         public ReplicatorPeer(RaftPeer raftPeer, Consumer<Long> matchIndexCallback) {
             this.raftPeer = raftPeer;
@@ -344,7 +341,6 @@ public class LeaderState extends AbstractMembershipState {
 
         public void handleResponse(AppendEntriesResponse appendEntriesResponse) {
             lastMessageReceived = clock.millis();
-            replyReceived = true;
             logger.trace("{}: Received response from {}: {}", me(), raftPeer.nodeId(), appendEntriesResponse);
             if (appendEntriesResponse.hasFailure()) {
                 logger.debug("{}: Received failed response from {}: {}", me(), raftPeer.nodeId(), appendEntriesResponse);
