@@ -6,9 +6,13 @@ import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.junit.*;
 
 import java.io.IOException;
@@ -35,6 +39,8 @@ public class FollowerStateTest {
     private FollowerState followerState;
     private LogEntryStore logEntryStore;
     private ElectionStore electionStore;
+    private RaftConfiguration raftConfiguration;
+    private SnapshotManager snapshotManager;
 
     @Before
     public void setup() {
@@ -43,7 +49,7 @@ public class FollowerStateTest {
         logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
 
-        RaftConfiguration raftConfiguration = mock(RaftConfiguration.class);
+        raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.groupId()).thenReturn("defaultGroup");
         when(raftConfiguration.minElectionTimeout()).thenReturn(MIN_ELECTION_TIMEOUT);
         when(raftConfiguration.maxElectionTimeout()).thenReturn(MAX_ELECTION_TIMEOUT);
@@ -59,11 +65,14 @@ public class FollowerStateTest {
 
         fakeScheduler = new FakeScheduler();
 
+        snapshotManager = mock(SnapshotManager.class);
+
         followerState = spy(FollowerState.builder()
                                          .transitionHandler(transitionHandler)
                                          .raftGroup(raftGroup)
                                          .scheduler(fakeScheduler)
                                          .randomValueSupplier((min, max) -> electionTimeout)
+                                         .snapshotManager(snapshotManager)
                                          .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
                                          .build());
         followerState.start();
@@ -114,7 +123,7 @@ public class FollowerStateTest {
     public void testRequestVoteNotGrantedAfterAppendAndMinElectionTimeoutHasNotPassed() {
         followerState.appendEntries(firstAppend());
 
-        fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT-1);
+        fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT - 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setGroupId("defaultGroup")
@@ -251,6 +260,48 @@ public class FollowerStateTest {
         assertEquals(0L, response.getTerm());
         assertEquals(2L, response.getSuccess().getLastLogIndex());
         assertEquals(1L, logEntryStore.commitIndex());
+    }
+
+    @Test
+    public void testInstallSnapshotFailWhenTermIsOld() {
+        when(electionStore.currentTerm()).thenReturn(1L);
+
+        InstallSnapshotResponse response = followerState
+                .installSnapshot(InstallSnapshotRequest.newBuilder()
+                                                       .setLeaderId("node1")
+                                                       .setGroupId("defaultGroup")
+                                                       .setTerm(0L)
+                                                       .build());
+
+        assertEquals("defaultGroup", response.getGroupId());
+        assertEquals(1L, response.getTerm());
+        assertTrue(response.hasFailure());
+    }
+
+    @Test
+    public void testSuccessfulInstallSnapshot() {
+        InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder()
+                                                               .setLeaderId("node1")
+                                                               .setGroupId("defaultGroup")
+                                                               .setTerm(0L)
+                                                               .setOffset(0)
+                                                               .setLastIncludedIndex(2L)
+                                                               .setLastIncludedTerm(0L)
+                                                               .setLastConfig(Config.newBuilder().build())
+                                                               .addData(SerializedObject.newBuilder().build())
+                                                               .build();
+
+        InstallSnapshotResponse response = followerState.installSnapshot(request);
+
+        assertEquals("defaultGroup", response.getGroupId());
+        assertEquals(0L, response.getTerm());
+        assertTrue(response.hasSuccess());
+        verify(logEntryStore).clear(2L, 0L);
+        verify(raftConfiguration).update(request.getLastConfig().getNodesList());
+        verify(snapshotManager).applySnapshotData(request.getDataList());
+
+        fakeScheduler.timeElapses(electionTimeout + 1);
+        verify(transitionHandler).accept(any(CandidateState.class));
     }
 
     private AppendEntriesRequest firstAppend() {
