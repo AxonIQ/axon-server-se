@@ -29,7 +29,12 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     private final AtomicLong commitIndex = new AtomicLong(0);
     private final AtomicLong lastIndex = new AtomicLong(0);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
+    private final String name;
     private Thread commitListenerThread;
+
+    public InMemoryLogEntryStore(String name) {
+        this.name = name;
+    }
 
     @Override
     public void appendEntry(List<Entry> entries) throws IOException {
@@ -39,7 +44,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
         long firstIndex = entries.get(0).getIndex();
         if( entryMap.containsKey(firstIndex)) {
-            logger.warn("Clear from {}", firstIndex);
+            logger.warn("{}: Clear from {}", name, firstIndex);
             entryMap.tailMap(firstIndex).clear();
         }
         entries.forEach(entry -> entryMap.put(entry.getIndex(), entry));
@@ -76,7 +81,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     public void markCommitted(long committedIndex) {
         if( committedIndex > commitIndex.get()) {
             commitIndex.set(committedIndex);
-            logger.trace( "Committed: {}", committedIndex);
+            logger.trace( "{}: Committed: {}", name, committedIndex);
             if( commitListenerThread != null) {
                 LockSupport.unpark(commitListenerThread);
             }
@@ -139,7 +144,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public EntryIterator createIterator(long index) {
-        logger.debug("Create iterator: {}", index);
+        logger.debug("{}: Create iterator: {}", name, index);
         if( ! entryMap.isEmpty() && index < entryMap.firstKey()) {
             throw new IllegalArgumentException("Index before start");
         }

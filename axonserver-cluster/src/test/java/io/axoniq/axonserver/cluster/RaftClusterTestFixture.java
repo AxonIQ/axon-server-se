@@ -170,7 +170,7 @@ public class RaftClusterTestFixture {
 
         public StubRaftGroup(String localName) {
             this.localName = localName;
-            this.logEntryStore = new InMemoryLogEntryStore();
+            this.logEntryStore = new InMemoryLogEntryStore(localName);
             this.electionStore = new InMemoryElectionStore();
         }
 

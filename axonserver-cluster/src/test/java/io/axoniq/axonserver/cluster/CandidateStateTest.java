@@ -42,7 +42,7 @@ public class CandidateStateTest {
         electionStore.updateCurrentTerm(0);
 
         raftGroup = mock(RaftGroup.class);
-        when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore());
+        when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore("Test"));
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
         when(raftGroup.localNode()).thenReturn(localNode);

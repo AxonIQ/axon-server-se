@@ -45,8 +45,8 @@ public class RaftServerTest {
     public void setUp() throws Exception {
 
         nodes.forEach(node -> {
-            RaftGroup raftGroup = new GrpcRaftGroup(nodes, node.getNodeId());
-            clusterNodes.put(node.getNodeId(), new RaftNode(node.getNodeId(), raftGroup));
+            GrpcRaftGroup raftGroup = new GrpcRaftGroup(nodes, node.getNodeId());
+            clusterNodes.put(node.getNodeId(), raftGroup.localNode());
         });
 
         nodes.forEach(node -> {
@@ -73,17 +73,17 @@ public class RaftServerTest {
 
     @Test
     public void start() throws InterruptedException, TimeoutException, ExecutionException {
-        raftServers.forEach(r -> r.start());
+        raftServers.forEach(RaftServer::start);
         clusterNodes.forEach((id, node) -> node.start());
 
         try {
 
             assertWithin(5, TimeUnit.SECONDS, () -> {
-                RaftNode leader = clusterNodes.values().stream().filter(n -> n.isLeader()).findFirst().orElse(null);
+                RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
                 assertNotNull(leader);
             });
 
-            RaftNode leader = clusterNodes.values().stream().filter(n -> n.isLeader()).findFirst().orElse(null);
+            RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
 
 
             CompletableFuture<Void>[] futures = new CompletableFuture[2500];
@@ -110,14 +110,15 @@ public class RaftServerTest {
 
         final LogEntryStore logEntryStore;
         final ElectionStore electionStore;
+        final RaftNode localNode;
         final Map<String,RaftPeer> raftPeerMap = new HashMap<>();
-        private final String localNode;
 
         private GrpcRaftGroup(List<Node> nodes, String localNode) {
-            this.localNode = localNode;
-            logEntryStore = new InMemoryLogEntryStore();
+            this.localNode = new RaftNode(localNode, this);
+            logEntryStore = new InMemoryLogEntryStore(localNode);
             electionStore = new InMemoryElectionStore();
             initializePeers(nodes);
+
         }
 
         private void initializePeers(List<Node> nodes) {
@@ -147,7 +148,7 @@ public class RaftServerTest {
 
         @Override
         public RaftNode localNode() {
-            return clusterNodes.get(localNode);
+            return localNode;
         }
 
         @Override

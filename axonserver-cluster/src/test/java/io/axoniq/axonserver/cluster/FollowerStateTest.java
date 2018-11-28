@@ -40,7 +40,7 @@ public class FollowerStateTest {
     public void setup() {
         transitionHandler = mock(Consumer.class);
 
-        logEntryStore = spy(new InMemoryLogEntryStore());
+        logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
 
         RaftConfiguration raftConfiguration = mock(RaftConfiguration.class);

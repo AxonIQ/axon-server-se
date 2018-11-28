@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.Scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -40,11 +41,7 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicReference<ScheduledRegistration> stepDown = new AtomicReference<>();
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
-    private final ExecutorService executor = Executors.newCachedThreadPool(r -> {
-        Thread t= new Thread(r);
-        t.setName("Replication-" + LeaderState.this.raftGroup().raftConfiguration().groupId());
-        return t;
-    });
+    private final ExecutorService executor = Executors.newCachedThreadPool(new AxonThreadFactory("Replicator-"));
     private volatile Replicators replicators;
     private final Clock clock;
 
@@ -360,6 +357,9 @@ public class LeaderState extends AbstractMembershipState {
                     matchIndex.set(appendEntriesResponse.getSuccess().getLastLogIndex());
                     matchIndexCallback.accept(matchIndex.get());
                 } else {
+                    if( appendEntriesResponse.getSuccess().getLastLogIndex() > 2500) {
+                        logger.debug("{}: {}", raftPeer.nodeId(), appendEntriesResponse);
+                    }
                     if( appendEntriesResponse.getSuccess().getLastLogIndex() == 0 ) {
                         nextIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex() + 1);
                         logger.warn("{}: create entry iterator as empty replica for {} at {}", me(), raftPeer.nodeId(), nextIndex);

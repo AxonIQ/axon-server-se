@@ -20,7 +20,7 @@ public class InMemoryLogEntryStoreTest {
 
     @Before
     public void setUp() throws Exception {
-        testSubject = new InMemoryLogEntryStore();
+        testSubject = new InMemoryLogEntryStore("Test");
     }
 
     @Test

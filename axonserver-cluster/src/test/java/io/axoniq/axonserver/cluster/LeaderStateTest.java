@@ -55,7 +55,7 @@ public class LeaderStateTest {
 
             }
         };
-        LogEntryStore logEntryStore = new InMemoryLogEntryStore();
+        LogEntryStore logEntryStore = new InMemoryLogEntryStore("Test");
         AtomicReference<RaftNode> nodeRef = new AtomicReference<>();
 
         ElectionStore electionStore = new InMemoryElectionStore();
