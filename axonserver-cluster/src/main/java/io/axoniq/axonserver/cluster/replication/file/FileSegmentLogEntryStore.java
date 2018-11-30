@@ -5,15 +5,17 @@ import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.cluster.replication.InMemoryEntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 
 /**
  * File format is:
@@ -32,9 +34,13 @@ import java.util.function.Consumer;
  * Author: marc
  */
 public class FileSegmentLogEntryStore implements LogEntryStore {
+    private final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);
+    private final String name;
+
     private final PrimaryEventStore primaryEventStore;
 
-    public FileSegmentLogEntryStore(PrimaryEventStore primaryEventStore) {
+    public FileSegmentLogEntryStore(String name, PrimaryEventStore primaryEventStore) {
+        this.name = name;
         this.primaryEventStore = primaryEventStore;
     }
 
@@ -68,16 +74,6 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
         return completableFuture;
     }
 
-    private void registerEntry(WritePosition writePosition, Runnable onComplete) {
-    }
-
-    private void write(WritePosition writePosition, long currentTerm, int dataType, byte[] data) {
-    }
-
-    private WritePosition claim(int serializedSize) {
-        return null;
-    }
-
     @Override
     public void appendEntry(List<Entry> entries) throws IOException {
         entries.forEach(e -> {
@@ -86,9 +82,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
             if( existingEntry != null ) {
                 if( existingEntry.getTerm() != e.getTerm() ) {
                     deleteFrom(e.getIndex());
+                } else {
+                    skip = true;
                 }
-            } else {
-                skip = true;
             }
 
             if( !skip) {
@@ -124,63 +120,42 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
 
     @Override
     public boolean contains(long logIndex, long logTerm) {
+        if( logIndex == 0) return true;
         Entry existingEntry = getEntry(logIndex);
         return existingEntry != null && existingEntry.getTerm() == logTerm;
     }
-
-    @Override
-    public int applyEntries(Consumer<Entry> consumer) {
-        return 0;
-    }
-
-    @Override
-    public void markCommitted(long committedIndex) {
-
-    }
-
-    @Override
-    public long commitIndex() {
-        return 0;
-    }
-
-    @Override
-    public long lastAppliedIndex() {
-        return 0;
-    }
-
     @Override
     public Entry getEntry(long index) {
+        if( index == 0) return null;
         return primaryEventStore.getEntry(index);
-    }
-
-    @Override
-    public long lastLogTerm() {
-        return 0;
-    }
-
-    @Override
-    public long lastLogIndex() {
-        return 0;
     }
 
 
     @Override
     public TermIndex lastLog() {
-        return null;
+        Entry entry = getEntry(primaryEventStore.getLastToken());
+
+        return entry == null ? new TermIndex(0, 0) : new TermIndex(entry.getTerm(), entry.getIndex());
+    }
+
+    @Override
+    public long lastLogIndex() {
+        return primaryEventStore.getLastToken();
     }
 
     @Override
     public EntryIterator createIterator(long index) {
-        return null;
-    }
-
-    @Override
-    public void registerCommitListener(Thread currentThread) {
-
+        if( index < primaryEventStore.getFirstToken()) throw new IllegalArgumentException("Read before start");
+        return new InMemoryEntryIterator(this, index);
     }
 
     @Override
     public void clear(long logIndex, long logTerm) {
+        Entry entry = getEntry(logIndex);
+        if( entry == null && entry.getTerm() != logTerm) {
+            // TODO: implement clear
+            // primaryEventStore.clear();
+        }
 
     }
 }

@@ -41,6 +41,7 @@ public class FollowerStateTest {
     private ElectionStore electionStore;
     private RaftConfiguration raftConfiguration;
     private SnapshotManager snapshotManager;
+    private LogEntryProcessor logEntryProcessor;
 
     @Before
     public void setup() {
@@ -48,6 +49,7 @@ public class FollowerStateTest {
 
         logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
+        logEntryProcessor = spy( new LogEntryProcessor());
 
         raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.groupId()).thenReturn("defaultGroup");
@@ -58,6 +60,7 @@ public class FollowerStateTest {
         when(raftGroup.lastAppliedEventSequence()).thenReturn(LAST_APPLIED_EVENT_SEQUENCE);
         when(raftGroup.localLogEntryStore()).thenReturn(logEntryStore);
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
+        when(raftGroup.logEntryProcessor()).thenReturn(logEntryProcessor);
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
         RaftNode localNode = mock(RaftNode.class);
         when(localNode.nodeId()).thenReturn("mockNode");
@@ -221,7 +224,7 @@ public class FollowerStateTest {
         assertEquals(LAST_APPLIED_EVENT_SEQUENCE, response.getFailure().getLastAppliedEventSequence());
         assertEquals(0L, response.getFailure().getLastAppliedIndex());
         verify(logEntryStore, times(0)).appendEntry(any());
-        assertEquals(0L, logEntryStore.commitIndex());
+        assertEquals(0L, logEntryProcessor.commitIndex());
     }
 
     @Test
@@ -234,7 +237,7 @@ public class FollowerStateTest {
         assertEquals(0L, response.getTerm());
         assertEquals(LAST_APPLIED_EVENT_SEQUENCE, response.getFailure().getLastAppliedEventSequence());
         assertEquals(0L, response.getFailure().getLastAppliedIndex());
-        assertEquals(0L, logEntryStore.commitIndex());
+        assertEquals(0L, logEntryProcessor.commitIndex());
         verify(followerState).stop();
     }
 
@@ -259,7 +262,7 @@ public class FollowerStateTest {
         assertEquals("defaultGroup", response.getGroupId());
         assertEquals(0L, response.getTerm());
         assertEquals(2L, response.getSuccess().getLastLogIndex());
-        assertEquals(1L, logEntryStore.commitIndex());
+        assertEquals(1L, logEntryProcessor.commitIndex());
     }
 
     @Test

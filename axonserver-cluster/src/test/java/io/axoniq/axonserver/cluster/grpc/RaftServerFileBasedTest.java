@@ -8,8 +8,9 @@ import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.cluster.RaftServerConfiguration;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
-import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.cluster.replication.file.FileSegmentLogEntryStore;
+import io.axoniq.axonserver.cluster.replication.file.PrimaryEventStoreFactory;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 
@@ -30,7 +31,7 @@ import static junit.framework.TestCase.assertNotNull;
 /**
  * Author: marc
  */
-public class RaftServerTest {
+public class RaftServerFileBasedTest {
 
     Map<String, RaftNode> clusterNodes = new HashMap<>();
     List<Node> nodes = Arrays.asList(node("node1", "localhost", 7777),
@@ -73,6 +74,7 @@ public class RaftServerTest {
     }
 
     @Test
+    @Ignore("test only manual")
     public void start() throws InterruptedException, TimeoutException, ExecutionException {
         raftServers.forEach(RaftServer::start);
         clusterNodes.forEach((id, node) -> node.start());
@@ -85,10 +87,9 @@ public class RaftServerTest {
             });
 
             RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
+            Thread.sleep(100);
 
-
-            CompletableFuture<Void>[] futures = new CompletableFuture[2500];
-            Thread.currentThread().setPriority(5);
+            CompletableFuture<Void>[] futures = new CompletableFuture[5000];
             AtomicInteger successCount = new AtomicInteger();
                 long before = System.currentTimeMillis();
                 for (int i = 0; i < futures.length; i++) {
@@ -97,7 +98,7 @@ public class RaftServerTest {
                                            successCount.incrementAndGet();
                                        });
                 }
-                CompletableFuture.allOf(futures).get(60, TimeUnit.SECONDS);
+                CompletableFuture.allOf(futures).get(10, TimeUnit.SECONDS);
                 long after = System.currentTimeMillis();
                 System.out.println("Applied on leader within " + (after - before) + "ms.");
                 Thread.sleep(TimeUnit.SECONDS.toMillis(3));
@@ -117,9 +118,11 @@ public class RaftServerTest {
 
         private GrpcRaftGroup(List<Node> nodes, String localNode) {
             this.localNode = new RaftNode(localNode, this);
-            logEntryStore = new InMemoryLogEntryStore(localNode);
-            logEntryProcessor = new LogEntryProcessor();
+
+            logEntryStore = new FileSegmentLogEntryStore(localNode, PrimaryEventStoreFactory.create(localNode));
+
             electionStore = new InMemoryElectionStore();
+            logEntryProcessor = new LogEntryProcessor();
             initializePeers(nodes);
 
         }
@@ -176,12 +179,12 @@ public class RaftServerTest {
 //
 //        @Override
 //        public int maxElectionTimeout() {
-//            return 3000;
+//            return 15000;
 //        }
-////
+//////
 //        @Override
 //        public int heartbeatTimeout() {
-//            return 100;
+//            return 500;
 //        }
 
         @Override

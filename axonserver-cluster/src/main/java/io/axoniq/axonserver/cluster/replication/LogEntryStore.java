@@ -6,7 +6,6 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 public interface LogEntryStore {
 
@@ -14,19 +13,7 @@ public interface LogEntryStore {
 
     boolean contains(long logIndex, long logTerm);
 
-    int applyEntries( Consumer<Entry> consumer);
-
-    void markCommitted(long committedIndex);
-
-    long commitIndex();
-
-    long lastAppliedIndex();
-
     Entry getEntry(long index);
-
-    long lastLogTerm();
-
-    long lastLogIndex();
 
     CompletableFuture<Entry> createEntry(long currentTerm, String entryType, byte[] entryData);
 
@@ -34,7 +21,7 @@ public interface LogEntryStore {
 
     EntryIterator createIterator(long index);
 
-    void registerCommitListener(Thread currentThread);
-
     void clear(long logIndex, long logTerm);
+
+    long lastLogIndex();
 }

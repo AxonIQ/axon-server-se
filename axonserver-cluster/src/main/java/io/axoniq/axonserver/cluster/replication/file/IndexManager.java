@@ -89,6 +89,14 @@ public class IndexManager {
     }
 
     public boolean remove(long segment) {
+        Index index = indexMap.remove(segment);
+        if( index != null) {
+            try {
+                index.db.close();
+            } catch( Exception ex) {
+                // No action
+            }
+        }
         return true;
     }
 

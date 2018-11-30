@@ -167,11 +167,13 @@ public class RaftClusterTestFixture {
         private final String localName;
         private final LogEntryStore logEntryStore;
         private final ElectionStore electionStore;
+        private final LogEntryProcessor logEntryProcessor;
 
         public StubRaftGroup(String localName) {
             this.localName = localName;
             this.logEntryStore = new InMemoryLogEntryStore(localName);
             this.electionStore = new InMemoryElectionStore();
+            logEntryProcessor = new LogEntryProcessor();
         }
 
 
@@ -183,6 +185,11 @@ public class RaftClusterTestFixture {
         @Override
         public ElectionStore localElectionStore() {
             return electionStore;
+        }
+
+        @Override
+        public LogEntryProcessor logEntryProcessor() {
+            return logEntryProcessor;
         }
 
         @Override

@@ -12,6 +12,10 @@ public class TermIndex {
         this.index = index;
     }
 
+    public TermIndex() {
+        this(0,0);
+    }
+
     public long getTerm() {
         return term;
     }

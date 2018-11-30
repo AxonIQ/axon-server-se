@@ -32,10 +32,18 @@ public class ByteBufferEntrySource implements EntrySource {
         this.main = false;
     }
 
+    public ByteBufferEntrySource(ByteBuffer duplicate, EventTransformer eventTransformer, int startPosition) {
+        this(duplicate, eventTransformer);
+        buffer.position(startPosition);
+    }
+
     public Entry readEvent(long index) {
         try {
             int size = buffer.getInt();
-            if( size ==0 || size ==-1) return null;
+            if( size ==0 || size ==-1) {
+                System.out.println(index + ": Position: " + buffer.position());
+                return null;
+            }
 
             buffer.get(); // version
             long term = buffer.getLong();
@@ -65,10 +73,13 @@ public class ByteBufferEntrySource implements EntrySource {
     public ByteBufferEntrySource duplicate() {
         return new ByteBufferEntrySource(buffer.duplicate(), eventTransformer);
     }
+    public ByteBufferEntrySource duplicate(int startPosition) {
+        return new ByteBufferEntrySource(buffer.duplicate(), eventTransformer, startPosition);
+    }
 
     @Override
-    public SegmentEntryIterator createEventIterator(long segment, long startToken, boolean validating) {
-        return new SegmentEntryIterator(duplicate(), segment, startToken, validating);
+    public SegmentEntryIterator createEventIterator(long segment, long startIndex, int startPosition, boolean validating) {
+        return new SegmentEntryIterator(duplicate(startPosition), startIndex);
     }
 
     @Override

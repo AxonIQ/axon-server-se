@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Author: marc
  */
-public class MultiSegmentIterator extends EntryIterator {
+public class MultiSegmentIterator implements EntryIterator {
 
     private final PrimaryEventStore primaryEventStore;
     private final AtomicLong nextIndex = new AtomicLong();
@@ -20,7 +20,6 @@ public class MultiSegmentIterator extends EntryIterator {
 
     public MultiSegmentIterator(PrimaryEventStore primaryEventStore,
                                 long nextIndex) {
-        super(null, nextIndex);
         this.nextIndex.set(nextIndex);
         this.primaryEventStore = primaryEventStore;
         iterator = primaryEventStore.getIterator(nextIndex);
@@ -34,12 +33,15 @@ public class MultiSegmentIterator extends EntryIterator {
             previous = next;
             next = iterator.next();
             nextIndex.incrementAndGet();
-        } else {
-            iterator.close();
+            return true;
+        }
+
+        iterator.close();
+        if( primaryEventStore.getSegmentFor(nextIndex.get()) == nextIndex.get() ) {
             iterator = primaryEventStore.getIterator(nextIndex.get());
             return hasNext();
         }
-        return next != null;
+        return false;
     }
 
     @Override
@@ -60,4 +62,13 @@ public class MultiSegmentIterator extends EntryIterator {
         return new TermIndex(previous.getTerm(), previous.getIndex());
     }
 
+    @Override
+    public void close() {
+        if( iterator != null) iterator.close();
+    }
+
+    @Override
+    public long nextIndex() {
+        return nextIndex.get();
+    }
 }

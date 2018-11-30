@@ -24,9 +24,13 @@ public class LeaderElectionService extends LeaderElectionServiceGrpc.LeaderElect
     public void requestVote(RequestVoteRequest request, StreamObserver<RequestVoteResponse> responseObserver) {
         RaftNode node = nodePerGroup.get(request.getGroupId());
         if( node != null) {
-            RequestVoteResponse response = node.requestVote(request);
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
+            try {
+                RequestVoteResponse response = node.requestVote(request);
+                responseObserver.onNext(response);
+                responseObserver.onCompleted();
+            } catch (IllegalStateException illegalState) {
+                responseObserver.onError(illegalState);
+            }
         } else {
             responseObserver.onError(new MissingNodeForGroupException(request.getGroupId()));
         }

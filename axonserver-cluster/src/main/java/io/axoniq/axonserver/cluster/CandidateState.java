@@ -85,12 +85,13 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private RequestVoteRequest requestVote() {
+        TermIndex lastLog = lastLog();
         return RequestVoteRequest.newBuilder()
                                  .setGroupId(groupId())
                                  .setCandidateId(me())
                                  .setTerm(currentTerm())
-                                 .setLastLogIndex(lastLogIndex())
-                                 .setLastLogTerm(lastLogTerm())
+                                 .setLastLogIndex(lastLog.getIndex())
+                                 .setLastLogTerm(lastLog.getTerm())
                                  .build();
     }
 

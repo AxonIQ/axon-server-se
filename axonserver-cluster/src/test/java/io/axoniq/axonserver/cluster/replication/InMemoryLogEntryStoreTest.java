@@ -1,16 +1,13 @@
 package io.axoniq.axonserver.cluster.replication;
 
-import io.axoniq.axonserver.grpc.cluster.Entry;
 import org.junit.*;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.axoniq.axonserver.cluster.TestUtils.newEntry;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 /**
  * Author: marc
@@ -40,23 +37,4 @@ public class InMemoryLogEntryStoreTest {
         assertNull( testSubject.getEntry(3));
     }
 
-    @Test
-    public void applyEntry() throws IOException {
-        AtomicInteger entryCounter = new AtomicInteger();
-        testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
-        testSubject.applyEntries(e -> entryCounter.incrementAndGet());
-        assertEquals(0, entryCounter.get());
-
-        testSubject.markCommitted(2);
-        testSubject.applyEntries(e -> entryCounter.incrementAndGet());
-        assertEquals(2, entryCounter.get());
-        assertEquals( 2, testSubject.lastAppliedIndex());
-    }
-
-    private static Entry newEntry(long term, long index) {
-        return Entry.newBuilder()
-                    .setTerm(term)
-                    .setIndex(index)
-                    .build();
-    }
 }

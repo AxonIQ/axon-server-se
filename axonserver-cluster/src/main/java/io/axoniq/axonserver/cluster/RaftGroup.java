@@ -11,6 +11,8 @@ public interface RaftGroup {
 
     RaftConfiguration raftConfiguration();
 
+    LogEntryProcessor logEntryProcessor();
+
     default long lastAppliedEventSequence() {
         return -1L;
     }

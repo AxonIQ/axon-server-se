@@ -11,13 +11,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.LockSupport;
-import java.util.function.Consumer;
 
 /**
  * Author: marc
@@ -25,12 +21,8 @@ import java.util.function.Consumer;
 public class InMemoryLogEntryStore implements LogEntryStore {
     private final Logger logger = LoggerFactory.getLogger(InMemoryLogEntryStore.class);
     private final NavigableMap<Long, Entry> entryMap = new ConcurrentSkipListMap<>();
-    private final AtomicLong lastApplied = new AtomicLong(0);
-    private final AtomicLong commitIndex = new AtomicLong(0);
     private final AtomicLong lastIndex = new AtomicLong(0);
-    private final AtomicBoolean applyRunning = new AtomicBoolean(false);
     private final String name;
-    private Thread commitListenerThread;
 
     public InMemoryLogEntryStore(String name) {
         this.name = name;
@@ -63,37 +55,6 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public int applyEntries(Consumer<Entry> consumer) {
-        int count = 0;
-        if( applyRunning.compareAndSet(false, true)) {
-            while( lastApplied.get() < commitIndex.get()) {
-                Entry entry = entryMap.get(lastApplied.get()+1);
-                consumer.accept(entry);
-                lastApplied.incrementAndGet();
-                count++;
-            }
-            applyRunning.set(false);
-        }
-        return count;
-    }
-
-    @Override
-    public void markCommitted(long committedIndex) {
-        if( committedIndex > commitIndex.get()) {
-            commitIndex.set(committedIndex);
-            logger.trace( "{}: Committed: {}", name, committedIndex);
-            if( commitListenerThread != null) {
-                LockSupport.unpark(commitListenerThread);
-            }
-        }
-    }
-
-    @Override
-    public void registerCommitListener(Thread currentThread) {
-        commitListenerThread = currentThread;
-    }
-
-    @Override
     public void clear(long logIndex, long logTerm) {
         if (!contains(logIndex, logTerm)) {
             // If existing log entry has same index and term as snapshot's last included entry, retain log entries
@@ -107,32 +68,8 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public long commitIndex() {
-        return commitIndex.get();
-    }
-
-    @Override
-    public long lastAppliedIndex() {
-        return lastApplied.get();
-    }
-
-    @Override
     public Entry getEntry(long index) {
         return entryMap.get(index);
-    }
-
-    @Override
-    public long lastLogTerm() {
-        return Optional.ofNullable(entryMap.lastEntry())
-                       .map(lastEntry -> lastEntry.getValue().getTerm())
-                       .orElse(0L);
-    }
-
-    @Override
-    public long lastLogIndex() {
-        return Optional.ofNullable(entryMap.lastEntry())
-                       .map(Map.Entry::getKey)
-                       .orElse(0L);
     }
 
     @Override
@@ -143,12 +80,17 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public long lastLogIndex() {
+        return entryMap.isEmpty() ? 0 : entryMap.lastKey();
+    }
+
+    @Override
     public EntryIterator createIterator(long index) {
         logger.debug("{}: Create iterator: {}", name, index);
         if( ! entryMap.isEmpty() && index < entryMap.firstKey()) {
             throw new IllegalArgumentException("Index before start");
         }
-        return new EntryIterator(this, index);
+        return new InMemoryEntryIterator(this, index);
     }
 
     @Override

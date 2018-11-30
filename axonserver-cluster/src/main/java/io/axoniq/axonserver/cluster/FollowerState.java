@@ -59,7 +59,6 @@ public class FollowerState extends AbstractMembershipState {
         lastMessage.set(clock.millis());
         nextTimeout.set(lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout()));
         try {
-            logger.trace("{}: received {}", me(), request);
             updateCurrentTerm(request.getTerm());
 
             //1. Reply false if term < currentTerm
@@ -71,6 +70,7 @@ public class FollowerState extends AbstractMembershipState {
             heardFromLeader = true;
             //rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
+            LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
             if( logger.isTraceEnabled() && request.getPrevLogIndex() == 0) {
                 logger.trace("{} Received heartbeat, commitindex: {}", me(), request.getCommitIndex());
             }
@@ -89,7 +89,11 @@ public class FollowerState extends AbstractMembershipState {
             // and all that follow it
             //4. Append any new entries not already in the log
             try {
+                if( request.getEntriesCount() > 0) {
+                    logger.trace("{}: received {}", me(), request.getEntries(0).getIndex());
+                }
                 logEntryStore.appendEntry(request.getEntriesList());
+                logger.trace("{}: stored {}", me(), lastLogIndex());
             } catch (IOException e) {
                 logger.warn("{}: append failed", me(), e);
                 stop();
@@ -97,20 +101,25 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-            if (request.getCommitIndex() > logEntryStore.commitIndex()) {
+            if (request.getCommitIndex() > logEntryProcessor.commitIndex()) {
                 if (request.getEntriesCount() == 0) {
-                    logEntryStore.markCommitted(request.getCommitIndex());
+                    logEntryProcessor.markCommitted(request.getCommitIndex());
                 } else {
-                    logEntryStore.markCommitted(min(request.getCommitIndex(),
+                    logEntryProcessor.markCommitted(min(request.getCommitIndex(),
                                                     request.getEntries(request.getEntriesCount() - 1).getIndex()));
                 }
             }
 
-            logger.trace("{}: stored {}", me(), lastLogIndex());
+            long last = lastLogIndex();
+            if( request.getEntriesCount() == 0 && request.getPrevLogIndex()  > 0 && request.getPrevLogIndex() < last) {
+                // this follower has more data than leader, sets matchIndex on leader to last common
+                last = request.getPrevLogIndex();
+                logger.trace("Updated last to {}", last);
+            }
             return AppendEntriesResponse.newBuilder()
                                         .setGroupId(groupId())
                                         .setTerm(currentTerm())
-                                        .setSuccess(buildAppendEntrySuccess(lastLogIndex()))
+                                        .setSuccess(buildAppendEntrySuccess(last))
                                         .setTerm(currentTerm())
                                         .build();
         } catch( Exception ex) {
@@ -225,11 +234,12 @@ public class FollowerState extends AbstractMembershipState {
             return false;
         }
 
-        if (request.getLastLogTerm() < lastLogTerm()) {
+        TermIndex lastLog = lastLog();
+        if (request.getLastLogTerm() < lastLog.getTerm()) {
             return false;
         }
 
-        if (request.getLastLogIndex() < lastLogIndex()) {
+        if (request.getLastLogIndex() < lastLog.getIndex()) {
             return false;
         }
 

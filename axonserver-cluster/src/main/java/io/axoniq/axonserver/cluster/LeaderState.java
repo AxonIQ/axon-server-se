@@ -35,7 +35,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class LeaderState extends AbstractMembershipState {
     private static final long FLOW_BUFFER = 100;
-    private static final long MAX_ENTRIES_PER_BATCH = 100;
+    private static final long MAX_ENTRIES_PER_BATCH = 10;
 
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
     private final AtomicReference<ScheduledRegistration> stepDown = new AtomicReference<>();
@@ -79,6 +79,7 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() > currentTerm()) {
+            logger.info("{}: received higher term from {}", me(), request.getLeaderId());
             return handleAsFollower(follower -> follower.appendEntries(request));
         }
         return appendEntriesFailure();
@@ -163,6 +164,7 @@ public class LeaderState extends AbstractMembershipState {
         void stop() {
             logger.info("{}: Stop replication thread", me());
             replicatorPeerMap.forEach((peer,replicator) -> logger.info("{}: MatchIndex = {}, NextIndex = {}", peer, replicator.matchIndex, replicator.nextIndex));
+            logger.info("{}: last applied: {}", me(), raftGroup().logEntryProcessor().lastAppliedIndex());
 
             running = false;
             notifySenders(null);
@@ -173,6 +175,7 @@ public class LeaderState extends AbstractMembershipState {
         void start() {
             workingThread = Thread.currentThread();
             try {
+
                 otherNodesStream().forEach(raftPeer -> {
 
                     ReplicatorPeer replicatorPeer = new ReplicatorPeer(raftPeer,
@@ -182,8 +185,9 @@ public class LeaderState extends AbstractMembershipState {
                     registrations.add(raftPeer.registerInstallSnapshotResponseListener(replicatorPeer::handleResponse));
                 });
 
-                long commitIndex = raftGroup().localLogEntryStore().commitIndex();
-                replicatorPeerMap.forEach((nodeId, peer) -> peer.sendHeartbeat( commitIndex));
+                long commitIndex = raftGroup().logEntryProcessor().commitIndex();
+                TermIndex lastTermIndex = raftGroup().localLogEntryStore().lastLog();
+                replicatorPeerMap.forEach((nodeId, peer) -> peer.sendHeartbeat( lastTermIndex, commitIndex));
                 logger.info("{}: Start replication thread for {} peers", me(), replicatorPeerMap.size());
 
                 while (running) {
@@ -211,7 +215,7 @@ public class LeaderState extends AbstractMembershipState {
 
         private void updateMatchIndex(long matchIndex) {
             logger.trace("Updated matchIndex: {}", matchIndex);
-            long nextCommitCandidate = raftGroup().localLogEntryStore().commitIndex() + 1;
+            long nextCommitCandidate = raftGroup().logEntryProcessor().commitIndex() + 1;
             boolean updateCommit = false;
             if( matchIndex < nextCommitCandidate) return;
             for( long index = nextCommitCandidate ; index  <= matchIndex; index++) {
@@ -223,7 +227,7 @@ public class LeaderState extends AbstractMembershipState {
 
             if( updateCommit &&
                     raftGroup().localLogEntryStore().getEntry(nextCommitCandidate).getTerm() == raftGroup().localElectionStore().currentTerm()) {
-                raftGroup().localLogEntryStore().markCommitted(nextCommitCandidate);
+                raftGroup().logEntryProcessor().markCommitted(nextCommitCandidate);
             }
 
         }
@@ -238,7 +242,7 @@ public class LeaderState extends AbstractMembershipState {
                 LockSupport.unpark(workingThread);
 
             if( entry != null && otherNodesCount() == 0) {
-                raftGroup().localLogEntryStore().markCommitted(entry.getIndex());
+                raftGroup().logEntryProcessor().markCommitted(entry.getIndex());
             }
         }
 
@@ -268,7 +272,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         private boolean canSend() {
-            return nextIndex.get() - matchIndex.get() < FLOW_BUFFER;
+            return matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < FLOW_BUFFER;
         }
 
         public int sendNextEntries() {
@@ -276,35 +280,40 @@ public class LeaderState extends AbstractMembershipState {
             try {
                 if (entryIterator == null) {
                     nextIndex.compareAndSet(0, raftGroup().localLogEntryStore().lastLogIndex()+1);
-                    logger.info("{}: create entry iterator for {} at {}", me(), raftPeer.nodeId(), nextIndex);
+                    logger.debug("{}: create entry iterator for {} at {}", me(), raftPeer.nodeId(), nextIndex);
                     entryIterator = raftGroup().localLogEntryStore().createIterator(nextIndex.get());
                 }
 
-                logger.trace("{} Has entries for {}: {}", me(), raftPeer.nodeId(), entryIterator.hasNext());
                 if( !canSend()) {
-                    logger.trace("{}: nextIndex: {}, matchIndex: {}", raftPeer.nodeId(), nextIndex, matchIndex);
+                    logger.trace("{}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
+                                me(),
+                                raftPeer.nodeId(),
+                                nextIndex,
+                                matchIndex,
+                                raftGroup().localLogEntryStore().lastLogIndex());
                 }
                 while (canSend()
                         &&  sent < MAX_ENTRIES_PER_BATCH && entryIterator.hasNext()) {
                     Entry entry = entryIterator.next();
                     //
                     TermIndex previous = entryIterator.previous();
+                    logger.trace("{}: Send request {} to {}: {}", me(), sent, raftPeer.nodeId(), entry.getIndex());
                     send(AppendEntriesRequest.newBuilder()
                                              .setGroupId(groupId())
                                              .setPrevLogIndex(previous == null ? 0 : previous.getIndex())
                                              .setPrevLogTerm(previous == null ? 0 : previous.getTerm())
                                              .setTerm(currentTerm())
                                              .setLeaderId(me())
-                            .setCommitIndex(raftGroup().localLogEntryStore().commitIndex())
+                            .setCommitIndex(raftGroup().logEntryProcessor().commitIndex())
                             .addEntries(entry)
                             .build());
-                    nextIndex.incrementAndGet();
+                    nextIndex.set(entry.getIndex()+1);
                     sent++;
                 }
 
                 long now = clock.millis();
                 if( sent == 0 && now - lastMessageSent > raftGroup().raftConfiguration().heartbeatTimeout()) {
-                    sendHeartbeat( raftGroup().localLogEntryStore().commitIndex());
+                    sendHeartbeat( raftGroup().localLogEntryStore().lastLog(), raftGroup().logEntryProcessor().commitIndex());
                 } else {
                     if( sent > 0) {
                         lastMessageSent = clock.millis();
@@ -316,12 +325,15 @@ public class LeaderState extends AbstractMembershipState {
             return sent;
         }
 
-        private void sendHeartbeat( long commitIndex) {
+        private void sendHeartbeat( TermIndex lastTermIndex, long commitIndex) {
             AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
                     .setCommitIndex(commitIndex)
                     .setLeaderId(me())
                     .setGroupId(raftGroup().raftConfiguration().groupId())
                     .setTerm(raftGroup().localElectionStore().currentTerm())
+                    .setPrevLogTerm(lastTermIndex.getTerm())
+
+                                                                 .setPrevLogIndex(lastTermIndex.getIndex())
                     .build();
             send(heartbeat);
             lastMessageSent = clock.millis();
@@ -340,32 +352,21 @@ public class LeaderState extends AbstractMembershipState {
             lastMessageReceived = clock.millis();
             logger.trace("{}: Received response from {}: {}", me(), raftPeer.nodeId(), appendEntriesResponse);
             if (appendEntriesResponse.hasFailure()) {
-                logger.debug("{}: Received failed response from {}: {}", me(), raftPeer.nodeId(), appendEntriesResponse);
                 if( currentTerm()  < appendEntriesResponse.getTerm()) {
-                    logger.debug("Replica has higher term: {}", appendEntriesResponse.getTerm());
+                    logger.info("Replica has higher term: {}", appendEntriesResponse.getTerm());
                     updateCurrentTerm(appendEntriesResponse.getTerm());
                     changeStateTo(stateFactory().followerState());
                     return;
                 }
-                logger.warn("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}", me(), raftPeer.nodeId(), nextIndex,
+                logger.debug("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}", me(), raftPeer.nodeId(), nextIndex,
                             appendEntriesResponse.getFailure().getLastAppliedIndex());
                 matchIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex());
                 nextIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex() + 1);
-                entryIterator =  raftGroup().localLogEntryStore().createIterator(nextIndex.get());;
+                entryIterator =  raftGroup().localLogEntryStore().createIterator(nextIndex.get());
             } else {
-                if (appendEntriesResponse.getSuccess().getLastLogIndex() > Math.min(matchIndex.get(), nextIndex.get()-1)) {
-                    matchIndex.set(appendEntriesResponse.getSuccess().getLastLogIndex());
-                    matchIndexCallback.accept(matchIndex.get());
-                } else {
-                    if( appendEntriesResponse.getSuccess().getLastLogIndex() > 2500) {
-                        logger.debug("{}: {}", raftPeer.nodeId(), appendEntriesResponse);
-                    }
-                    if( appendEntriesResponse.getSuccess().getLastLogIndex() == 0 ) {
-                        nextIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex() + 1);
-                        logger.warn("{}: create entry iterator as empty replica for {} at {}", me(), raftPeer.nodeId(), nextIndex);
-                        entryIterator =  raftGroup().localLogEntryStore().createIterator(nextIndex.get());;
-                    }
-                }
+                matchIndex.set(appendEntriesResponse.getSuccess().getLastLogIndex());
+                matchIndexCallback.accept(matchIndex.get());
+
             }
         }
 

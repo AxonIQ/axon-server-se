@@ -116,11 +116,11 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected long lastAppliedIndex() {
-        return raftGroup.localLogEntryStore().lastAppliedIndex();
+        return raftGroup.logEntryProcessor().lastAppliedIndex();
     }
 
-    protected long lastLogTerm() {
-        return raftGroup.localLogEntryStore().lastLogTerm();
+    protected TermIndex lastLog() {
+        return raftGroup.localLogEntryStore().lastLog();
     }
 
     protected long lastLogIndex() {

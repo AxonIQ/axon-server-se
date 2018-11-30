@@ -19,13 +19,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 public class RaftNode {
-    private final ExecutorService executor = Executors.newCachedThreadPool(new AxonThreadFactory("Apply-"));
+    private final ExecutorService executor = Executors.newCachedThreadPool(new AxonThreadFactory("Apply"));
 
     private static final Logger logger = LoggerFactory.getLogger(RaftNode.class);
 
@@ -36,7 +34,6 @@ public class RaftNode {
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
     private volatile Future<?> applyTask;
-    private volatile boolean running;
 
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
@@ -53,9 +50,8 @@ public class RaftNode {
     }
 
     public void start() {
-        running = true;
         updateState(stateFactory.followerState());
-        applyTask = executor.submit(() -> applyEntries());
+        applyTask = executor.submit(() -> raftGroup.logEntryProcessor().start(raftGroup.localLogEntryStore()::createIterator, this::applyEntryConsumers));
     }
 
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
@@ -71,7 +67,7 @@ public class RaftNode {
     }
 
     public void stop() {
-        running = false;
+        raftGroup.logEntryProcessor().stop();
         applyTask.cancel(true);
         applyTask = null;
         updateState(stateFactory.idleState(nodeId));
@@ -89,23 +85,6 @@ public class RaftNode {
     public Runnable registerEntryConsumer(Consumer<Entry> entryConsumer) {
         this.entryConsumer.add(entryConsumer);
         return () -> this.entryConsumer.remove(entryConsumer);
-    }
-
-    private void applyEntries() {
-        raftGroup.localLogEntryStore().registerCommitListener(Thread.currentThread());
-        while(running) {
-            int retries = 1;
-            while( retries > 0) {
-                int applied = raftGroup.localLogEntryStore().applyEntries(e -> applyEntryConsumers(e));
-                if( applied > 0 ) {
-                    retries = 0;
-                } else {
-                    retries--;
-                }
-
-                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
-            }
-        }
     }
 
     private void applyEntryConsumers(Entry e) {

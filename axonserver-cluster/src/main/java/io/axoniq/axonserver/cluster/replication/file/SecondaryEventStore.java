@@ -49,7 +49,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
     protected void recreateIndex(long segment) {
         ByteBufferEntrySource buffer = get(segment, true);
-        try (SegmentEntryIterator iterator = buffer.createEventIterator(segment, segment, false)) {
+        try (SegmentEntryIterator iterator = buffer.createEventIterator(segment, segment, 5, false)) {
             Map<Long, Integer> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {
                 Entry event = iterator.next();
@@ -139,6 +139,10 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         return null;
     }
 
+    @Override
+    protected int getPosition(long segment, long nextIndex) {
+        return indexManager.getIndex(segment).getPosition(nextIndex);
+    }
 
     private void removeSegment(long segment) {
         if( segments.remove(segment)) {

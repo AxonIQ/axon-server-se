@@ -27,27 +27,29 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                 if( ! running) return;
                 RaftNode target = nodePerGroup.get(appendEntriesRequest.getGroupId());
                 try {
-                    AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
-                    responseObserver.onNext(response);
-                    if (response.hasFailure()) {
-                        responseObserver.onCompleted();
-                        running = false;
+                    synchronized (target) {
+                        AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
+                        responseObserver.onNext(response);
+                        if (response.hasFailure()) {
+                            responseObserver.onCompleted();
+                            running = false;
+                        }
                     }
-                } catch( Exception ex) {
-                    // ignore
+                } catch( RuntimeException ex) {
+                    logger.warn("Failed to process request {}", appendEntriesRequest, ex);
+                    responseObserver.onError(ex);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Failure on appendEntries on leader connection- {}", throwable.getMessage());
+                logger.trace("Failure on appendEntries on leader connection- {}", throwable.getMessage());
 
             }
 
             @Override
             public void onCompleted() {
                 logger.debug("Connection completed by peer");
-
             }
         };
     }

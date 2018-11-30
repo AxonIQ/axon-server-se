@@ -64,7 +64,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     public SegmentEntryIterator getIterator(long nextIndex) {
         if( nextIndex > lastToken.get()) return null;
-        logger.debug("Create iterator at: " + nextIndex);
+        logger.trace("Create iterator at: " + nextIndex);
         return super.getIterator(nextIndex);
     }
 
@@ -88,12 +88,18 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return null;
     }
 
+    @Override
+    protected int getPosition(long segment, long nextIndex) {
+        return positionsPerSegmentMap.get(segment).get(nextIndex);
+    }
+
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir) {
         long first = getFirstFile(lastInitialized, storageDir);
         WritableEntrySource buffer = getOrOpenDatafile(first);
+        indexManager.remove(first);
         FileUtils.delete(storageProperties.indexFile(getType(), first));
         long sequence = first;
-        try (SegmentEntryIterator iterator = buffer.createEventIterator(first, first, false)) {
+        try (SegmentEntryIterator iterator = buffer.createEventIterator(first, first, 5, false)) {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
             while (sequence < nextToken && iterator.hasNext()) {
@@ -289,15 +295,20 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     private WritableEntrySource getOrOpenDatafile(long segment)  {
         File file= storageProperties.logFile(getType(), segment);
         long size = storageProperties.getSegmentSize();
-        if( file.exists()) {
+        boolean exists = file.exists();
+        if( exists) {
             size = file.length();
         }
         logger.debug("Open file: {}", file);
         try(FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
-            buffer.put(VERSION);
-            buffer.putInt(storageProperties.getFlags());
+            if(!exists) {
+                buffer.put(VERSION);
+                buffer.putInt(storageProperties.getFlags());
+            } else {
+                buffer.position(5);
+            }
             WritableEntrySource writableEventSource = new WritableEntrySource(buffer, eventTransformer);
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;

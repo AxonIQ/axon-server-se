@@ -14,5 +14,5 @@ public interface EntrySource extends AutoCloseable {
         // no-action
     }
 
-    SegmentEntryIterator createEventIterator(long segment, long startToken, boolean validating);
+    SegmentEntryIterator createEventIterator(long segment, long startIndex, int startPosition, boolean validating);
 }
