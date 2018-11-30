@@ -21,7 +21,7 @@ public class LogEntryProcessorTest {
     private LogEntryProcessor testSubject;
 
     public void setup() {
-        testSubject = new LogEntryProcessor();
+        testSubject = new LogEntryProcessor(new InMemoryProcessorStore());
 
     }
 

@@ -173,7 +173,7 @@ public class RaftClusterTestFixture {
             this.localName = localName;
             this.logEntryStore = new InMemoryLogEntryStore(localName);
             this.electionStore = new InMemoryElectionStore();
-            logEntryProcessor = new LogEntryProcessor();
+            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
         }
 
 

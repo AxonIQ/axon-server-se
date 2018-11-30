@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster.grpc;
 
+import io.axoniq.axonserver.cluster.InMemoryProcessorStore;
 import io.axoniq.axonserver.cluster.LogEntryProcessor;
 import io.axoniq.axonserver.cluster.RaftConfiguration;
 import io.axoniq.axonserver.cluster.RaftGroup;
@@ -122,7 +123,7 @@ public class RaftServerFileBasedTest {
             logEntryStore = new FileSegmentLogEntryStore(localNode, PrimaryEventStoreFactory.create(localNode));
 
             electionStore = new InMemoryElectionStore();
-            logEntryProcessor = new LogEntryProcessor();
+            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
             initializePeers(nodes);
 
         }

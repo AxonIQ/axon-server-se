@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster.grpc;
 
+import io.axoniq.axonserver.cluster.InMemoryProcessorStore;
 import io.axoniq.axonserver.cluster.LogEntryProcessor;
 import io.axoniq.axonserver.cluster.RaftConfiguration;
 import io.axoniq.axonserver.cluster.RaftGroup;
@@ -118,7 +119,7 @@ public class RaftServerTest {
         private GrpcRaftGroup(List<Node> nodes, String localNode) {
             this.localNode = new RaftNode(localNode, this);
             logEntryStore = new InMemoryLogEntryStore(localNode);
-            logEntryProcessor = new LogEntryProcessor();
+            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
             electionStore = new InMemoryElectionStore();
             initializePeers(nodes);
 

@@ -2,12 +2,9 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.grpc.cluster.Entry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -16,13 +13,14 @@ import java.util.function.Function;
  * Author: marc
  */
 public class LogEntryProcessor {
-    private final Logger logger = LoggerFactory.getLogger(LogEntryProcessor.class);
-
-    private final AtomicLong lastApplied = new AtomicLong(0);
-    private final AtomicLong commitIndex = new AtomicLong(0);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
+    private final ProcessorStore processorStore;
     private volatile Thread commitListenerThread;
     private volatile boolean running;
+
+    public LogEntryProcessor(ProcessorStore processorStore) {
+        this.processorStore = processorStore;
+    }
 
 
     public void start(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
@@ -46,15 +44,15 @@ public class LogEntryProcessor {
     public int applyEntries(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
         int count = 0;
         if( applyRunning.compareAndSet(false, true)) {
-            if( lastApplied.get() < commitIndex.get()) {
-                try(EntryIterator iterator = entryIteratorSupplier.apply(lastApplied.get() + 1)) {
+            if( processorStore.lastApplied() < processorStore.commitIndex()) {
+                try(EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastApplied() + 1)) {
                     boolean beforeCommit = true;
                     while (beforeCommit && iterator.hasNext()) {
                         Entry entry = iterator.next();
-                        beforeCommit = entry.getIndex() <= commitIndex.get();
+                        beforeCommit = entry.getIndex() <= processorStore.commitIndex();
                         if (beforeCommit) {
                             consumer.accept(entry);
-                            lastApplied.incrementAndGet();
+                            processorStore.updateLastApplied(entry.getIndex());
                             count++;
                         }
                     }
@@ -66,8 +64,8 @@ public class LogEntryProcessor {
     }
 
     public void markCommitted(long committedIndex) {
-        if( committedIndex > commitIndex.get()) {
-            commitIndex.set(committedIndex);
+        if( committedIndex > processorStore.commitIndex()) {
+            processorStore.updateCommitIndex(committedIndex);
             if( commitListenerThread != null) {
                 LockSupport.unpark(commitListenerThread);
             }
@@ -75,15 +73,11 @@ public class LogEntryProcessor {
     }
 
     public long commitIndex() {
-        return commitIndex.get();
+        return processorStore.commitIndex();
     }
 
     public long lastAppliedIndex() {
-        return lastApplied.get();
-    }
-
-    public void registerCommitListener(Thread currentThread) {
-        this.commitListenerThread = currentThread;
+        return processorStore.lastApplied();
     }
 
     public void stop() {
