@@ -31,4 +31,8 @@ public interface MembershipState {
     }
 
     default void applied(Entry e) {}
+
+    default String getLeader() {
+        return null;
+    }
 }

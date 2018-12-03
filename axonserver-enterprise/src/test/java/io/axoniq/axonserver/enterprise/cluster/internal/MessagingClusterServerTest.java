@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.TestSystemInfoProvider;
+import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
+import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.features.FeatureChecker;
@@ -28,6 +30,10 @@ public class MessagingClusterServerTest {
     @Mock
     private DataSynchronizationMaster dataSynchronizationMaster;
     private FeatureChecker limits;
+    @Mock
+    private LogReplicationService logReplicationService;
+    @Mock
+    private LeaderElectionService leaderElectionService;
 
     @Before
     public void setUp() {
@@ -39,7 +45,10 @@ public class MessagingClusterServerTest {
                 return true;
             }
         };
-        testSubject = new MessagingClusterServer(configuration, clusterService, dataSynchronizationMaster, internalEventStore, limits);
+        testSubject = new MessagingClusterServer(configuration, clusterService, internalEventStore,
+                                                 logReplicationService,
+                                                 leaderElectionService,
+                                                 limits);
     }
 
     @Test(expected = RuntimeException.class)

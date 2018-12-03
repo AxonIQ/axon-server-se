@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
+import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
@@ -26,20 +28,23 @@ public class MessagingClusterServer implements SmartLifecycle{
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final MessagingClusterService messagingClusterService;
-    private final DataSynchronizationMaster dataSynchronizerMaster;
     private final InternalEventStoreService internalEventStoreService;
+    private final LogReplicationService logReplicationService;
+    private final LeaderElectionService leaderElectionService;
     private final FeatureChecker limits;
     private Server server;
 
     public MessagingClusterServer(MessagingPlatformConfiguration messagingPlatformConfiguration,
                                   MessagingClusterService messagingClusterService,
-                                  DataSynchronizationMaster dataSynchronizerMaster,
                                   InternalEventStoreService internalEventStoreService,
+                                  LogReplicationService logReplicationService,
+                                  LeaderElectionService leaderElectionService,
                                   FeatureChecker limits) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.messagingClusterService = messagingClusterService;
-        this.dataSynchronizerMaster = dataSynchronizerMaster;
         this.internalEventStoreService = internalEventStoreService;
+        this.logReplicationService = logReplicationService;
+        this.leaderElectionService = leaderElectionService;
         this.limits = limits;
     }
 
@@ -54,7 +59,7 @@ public class MessagingClusterServer implements SmartLifecycle{
         try {
             server.shutdown().awaitTermination(1, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
-            logger.debug("Interrupted during shutdown of gRPC Messaging Cluster Server", e);
+            logger.debug("Interrupted during shutdown of internal AxonServer", e);
             Thread.currentThread().interrupt();
         }
         started = false;
@@ -84,12 +89,14 @@ public class MessagingClusterServer implements SmartLifecycle{
             sslMessage = "SSL enabled";
         }
         serverBuilder.addService(messagingClusterService);
-        serverBuilder.addService(dataSynchronizerMaster);
+        serverBuilder.addService(leaderElectionService);
+        serverBuilder.addService(logReplicationService);
         serverBuilder.addService(internalEventStoreService);
 
         if( messagingPlatformConfiguration.getAccesscontrol() != null && messagingPlatformConfiguration.getAccesscontrol().isEnabled()) {
             serverBuilder.addService(ServerInterceptors.intercept(messagingClusterService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
-            serverBuilder.addService(ServerInterceptors.intercept(dataSynchronizerMaster, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
+            serverBuilder.addService(ServerInterceptors.intercept(leaderElectionService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
+            serverBuilder.addService(ServerInterceptors.intercept(logReplicationService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
             serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration),
                                                                   new ContextInterceptor()));
         }

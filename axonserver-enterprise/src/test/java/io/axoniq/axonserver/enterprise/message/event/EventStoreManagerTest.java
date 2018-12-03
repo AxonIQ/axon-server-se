@@ -2,18 +2,11 @@ package io.axoniq.axonserver.enterprise.message.event;
 
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.cluster.TestMessagingClusterService;
-import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
-import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
-import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.AssertUtils;
-import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -48,44 +41,8 @@ public class EventStoreManagerTest {
 
     @Before
     public void setup() {
-        StubFactory stubFactory =  new StubFactory() {
-            @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode node) {
-                return new TestMessagingClusterService() {
-                    @Override
-                    public void requestLeader(NodeContextInfo nodeContextInfo,
-                                              StreamObserver<Confirmation> confirmationStreamObserver) {
-                        if( node.getName().equals("node2") || node.getName().equals("node3")) {
-                            confirmationStreamObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
-                            confirmationStreamObserver.onCompleted();
-                            return;
-                        }
-                        if( node.getName().equals("node4") || node.getName().equals("node5")) {
-                            confirmationStreamObserver.onNext(Confirmation.newBuilder().setSuccess(false).build());
-                            confirmationStreamObserver.onCompleted();
-                            return;
-                        }
-
-                        confirmationStreamObserver.onError(new RuntimeException("Failed to check node: " + node.getName()));
-                    }
-                };
-            }
-
-            @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
-                return null;
-            }
-
-            @Override
-            public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-                return null;
-            }
-        };
         testSubject = new EventStoreManager( messagingPlatformConfiguration,
-                                            stubFactory, lifecycleController, localEventStore, applicationEventPublisher, () -> contexts.iterator(), false, "me", true, 10, n->new ClusterNode());
+                                             lifecycleController, localEventStore, () -> contexts.iterator(), c-> "me", false, "me", n->new ClusterNode());
     }
 
     private Context createContext(String name, String... nodes) {

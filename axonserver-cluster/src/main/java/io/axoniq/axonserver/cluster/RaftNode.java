@@ -110,4 +110,8 @@ public class RaftNode {
     public String groupId() {
         return raftGroup.raftConfiguration().groupId();
     }
+
+    public String getLeader() {
+        return state.get().getLeader();
+    }
 }

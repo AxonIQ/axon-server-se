@@ -1,9 +1,15 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -80,8 +86,13 @@ public class CandidateState extends AbstractMembershipState {
         currentElection.set(new CandidateElection(this::clusterSize));
         currentElection.get().registerVoteReceived(me(), true);
         RequestVoteRequest request = requestVote();
-        Iterable<RaftPeer> raftPeers = otherNodes();
-        raftPeers.forEach(node -> requestVote(request, node));
+        Collection<RaftPeer> raftPeers = otherNodes();
+        if( raftPeers.isEmpty()) {
+            currentElection.set(null);
+            changeStateTo(stateFactory().leaderState());
+        } else {
+            raftPeers.forEach(node -> requestVote(request, node));
+        }
     }
 
     private RequestVoteRequest requestVote() {

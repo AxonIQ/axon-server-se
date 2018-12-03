@@ -118,6 +118,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private void stepDown() {
+        if( otherNodes().isEmpty()) return;
         long now = clock.millis();
         long lastReceived = replicators.lastMessageTimeFromMajority();
         if( now - lastReceived > maxElectionTimeout()) {
@@ -153,6 +154,11 @@ public class LeaderState extends AbstractMembershipState {
         if( pendingEntry != null) {
             pendingEntry.complete(null);
         }
+    }
+
+    @Override
+    public String getLeader() {
+        return me();
     }
 
     private class Replicators {

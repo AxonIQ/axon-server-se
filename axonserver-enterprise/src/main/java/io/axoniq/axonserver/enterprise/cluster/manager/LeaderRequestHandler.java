@@ -32,7 +32,7 @@ public class LeaderRequestHandler {
         this.nodeName = clusterConfiguration.getName();
         if( eventStoreManager.isPresent()) {
             this.currentMasterProvider = eventStoreManager.get()::getMaster;
-            this.nrOfMasterContextsProvider = eventStoreManager.get()::getNrOrMasterContexts;
+            this.nrOfMasterContextsProvider = c -> 0;
         } else {
             this.currentMasterProvider = context -> nodeName;
             this.nrOfMasterContextsProvider = context -> 0;

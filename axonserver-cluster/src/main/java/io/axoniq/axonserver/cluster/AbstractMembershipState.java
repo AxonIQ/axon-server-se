@@ -1,8 +1,14 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
+import java.util.Collection;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -186,7 +192,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                         .map(raftGroup::peer);
     }
 
-    protected Iterable<RaftPeer> otherNodes() {
+    protected Collection<RaftPeer> otherNodes() {
         return otherNodesStream().collect(Collectors.toList());
     }
 

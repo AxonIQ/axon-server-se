@@ -5,13 +5,12 @@ import io.axoniq.axonserver.config.AxonServerFreeConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
-import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
-import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -24,7 +23,6 @@ import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
@@ -41,10 +39,9 @@ public class AxonServerEnterpriseConfiguration {
     public EventStoreManager eventStoreManager(
             ContextController contextController,
             MessagingPlatformConfiguration messagingPlatformConfiguration,
-            StubFactory stubfactory, ClusterController clusterController,
-            LifecycleController lifecycleController, LocalEventStore localEventStore,
-            ApplicationEventPublisher applicationEventPublisher) {
-        return new EventStoreManager(contextController, messagingPlatformConfiguration, stubfactory, clusterController, lifecycleController, localEventStore, applicationEventPublisher);
+            ClusterController clusterController, GrpcRaftController raftController,
+            LifecycleController lifecycleController, LocalEventStore localEventStore) {
+        return new EventStoreManager(contextController, messagingPlatformConfiguration, clusterController, lifecycleController, raftController, localEventStore);
     }
 
     @Bean
@@ -76,8 +73,8 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
     @Conditional(ClusteringAllowed.class)
-    public StorageTransactionManagerFactory storageTransactionManagerFactory(ReplicationManager replicationManager) {
-        return new ClusterTransactionManagerFactory(replicationManager);
+    public StorageTransactionManagerFactory storageTransactionManagerFactory(GrpcRaftController raftController) {
+        return new ClusterTransactionManagerFactory(raftController);
     }
 
 }

@@ -317,4 +317,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
+    public void setNext(SegmentBasedEventStore secondaryEventStore) {
+        next = secondaryEventStore;
+    }
 }

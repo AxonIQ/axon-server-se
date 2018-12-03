@@ -59,6 +59,9 @@ public class ClusterControllerTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Mock
+    private GrpcRaftController raftController;
+
     @Before
     public void setUp()  {
         Context context = new Context(Topology.DEFAULT_CONTEXT);
@@ -107,7 +110,7 @@ public class ClusterControllerTest {
         };
 
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
-                                            stubFactory,
+                                                stubFactory,
                                             nodeSelectionStrategy, eventPublisher, limits);
     }
 

@@ -1,5 +1,7 @@
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
+import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.licensing.LicenseConfiguration;
 import io.axoniq.axonserver.licensing.LicenseException;
@@ -9,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -39,6 +42,15 @@ public class AxonServerEnterprise {
         SpringApplication.run(AxonServerEnterprise.class, args);
     }
 
+    @Bean
+    public LogReplicationService logReplicationService() {
+        return new LogReplicationService();
+    }
+
+    @Bean
+    public LeaderElectionService leaderElectionService() {
+        return new LeaderElectionService();
+    }
 
     @PreDestroy
     public void clean() {

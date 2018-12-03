@@ -28,6 +28,7 @@ public class FollowerState extends AbstractMembershipState {
 
     private final AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
+    private volatile String leader;
     private final AtomicLong nextTimeout = new AtomicLong();
     private final AtomicLong lastMessage = new AtomicLong();
     private final Clock clock;
@@ -68,6 +69,7 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             heardFromLeader = true;
+            leader = request.getLeaderId();
             //rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
             LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
@@ -179,6 +181,11 @@ public class FollowerState extends AbstractMembershipState {
                                       .setGroupId(groupId())
                                       .setSuccess(buildInstallSnapshotSuccess(request.getOffset()))
                                       .build();
+    }
+
+    @Override
+    public String getLeader() {
+        return leader;
     }
 
     private void cancelCurrentElectionTimeout() {

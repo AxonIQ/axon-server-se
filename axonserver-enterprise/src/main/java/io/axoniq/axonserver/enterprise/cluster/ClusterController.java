@@ -59,6 +59,7 @@ public class ClusterController implements SmartLifecycle {
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String,ClusterNode> nodeMap = new ConcurrentHashMap<>();
+
     private volatile boolean running;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -121,6 +122,7 @@ public class ClusterController implements SmartLifecycle {
     @Transactional
     public void start() {
         checkCurrentNodeSaved();
+
         if (Feature.CLUSTERING.enabled(limits)) {
             logger.debug("Start cluster controller");
 
@@ -465,5 +467,4 @@ public class ClusterController implements SmartLifecycle {
     public boolean disconnectedNodes() {
         return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
     }
-
 }

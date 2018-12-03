@@ -5,7 +5,6 @@ import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.jpa.Safepoint;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
 import java.util.Optional;
@@ -31,7 +30,7 @@ public class SafepointSynchronizer {
         this.dataSynchronizationMaster = dataSynchronizationMaster;
     }
 
-    @Scheduled(fixedRateString = "${axoniq.axonserver.safepoint-synchronization-rate:5000}")
+    //@Scheduled(fixedRateString = "${axoniq.axonserver.safepoint-synchronization-rate:5000}")
     public void synchronize() {
         if( eventStoreManager == null) return;
         eventStoreManager.masterFor().forEach(this::synchronizeContext);
