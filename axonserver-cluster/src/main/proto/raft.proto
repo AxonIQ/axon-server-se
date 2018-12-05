@@ -111,4 +111,29 @@ message Node {
     string nodeId = 1;
     string host = 2;
     uint32 port = 3;
+    bool voting = 4;
+}
+
+message ConfigChangeResult {
+    oneof result {
+        NotLeader not_leader= 1;
+        ConfigChangeSuccess success = 2;
+        ConfigChangeFailure failure = 3;
+    }
+}
+
+message NotLeader {
+    string leaderId = 1;
+}
+
+message ConfigChangeSuccess {
+}
+
+message ConfigChangeFailure {
+    ErrorMessage error = 1;
+}
+
+message ErrorMessage {
+    string code = 1;
+    string message = 2;
 }
