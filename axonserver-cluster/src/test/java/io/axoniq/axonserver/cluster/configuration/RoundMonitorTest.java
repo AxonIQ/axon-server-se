@@ -7,6 +7,7 @@ import org.junit.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -20,84 +21,40 @@ public class RoundMonitorTest {
     private RoundUpdateAlgorithm roundMonitor;
 
     @Test
-    public void testSuccess() throws InterruptedException {
+    public void testSuccess() throws ExecutionException, InterruptedException {
         AtomicLong lastIndex = new AtomicLong();
         AtomicLong currentTime = new AtomicLong();
-        AtomicLong matchIndex = new AtomicLong();
-        List<Consumer<Long>> matchIndexListener = new LinkedList<>();
-        roundMonitor = new RoundUpdateAlgorithm(3,
-                                                300,
-                                                lastIndex::get,
-                                                currentTime::get,
-                                                (node, consumer) -> {
-                                            matchIndexListener.add(consumer);
-                                            consumer.accept(matchIndex.get());
-                                            return () -> matchIndexListener.remove(consumer);
-                                        });
-
-        lastIndex.set(10L);
-        currentTime.set(1000L);
+        roundMonitor = new RoundUpdateAlgorithm(3, 300, lastIndex::get, currentTime::get,
+                                                (node, target) -> {
+                                                    lastIndex.addAndGet(10L);
+                                                    currentTime.addAndGet(100L);
+                                                    return CompletableFuture.completedFuture(null);
+                                                });
         Node node = Node.newBuilder().build();
-        CompletableFuture<Void> monitoring = CompletableFuture.runAsync(() -> roundMonitor.accept(node));
-        Thread.sleep(100);
-        lastIndex.set(20L);
-        currentTime.set(2000L);
-        matchIndex.set(10L);
-        matchIndexListener.forEach(consumer -> consumer.accept(10L));
-        Thread.sleep(100);
-        assertFalse(monitoring.isDone());
-        lastIndex.set(30L);
-        currentTime.set(2100L);
-        matchIndex.set(20L);
-        matchIndexListener.forEach(consumer -> consumer.accept(20L));
-        Thread.sleep(100);
-        assertTrue(monitoring.isDone());
-        assertFalse(monitoring.isCompletedExceptionally());
+        CompletableFuture<Void> serverUpdated = roundMonitor.apply(node);
+        serverUpdated.get();
+        assertTrue(serverUpdated.isDone());
     }
 
-    @Test(expected = ServerTooSlowException.class)
-    public void testFailure() throws Throwable {
+    @Test
+    public void testFailure(){
+
         AtomicLong lastIndex = new AtomicLong();
         AtomicLong currentTime = new AtomicLong();
-        AtomicLong matchIndex = new AtomicLong();
-        List<Consumer<Long>> matchIndexListener = new LinkedList<>();
-        roundMonitor = new RoundUpdateAlgorithm(3,
-                                                300,
-                                                lastIndex::get,
-                                                currentTime::get,
-                                                (node, consumer) -> {
-                                            matchIndexListener.add(consumer);
-                                            consumer.accept(matchIndex.get());
-                                            return () -> matchIndexListener.remove(consumer);
-                                        });
-
-        lastIndex.set(10L);
-        currentTime.set(1000L);
+        roundMonitor = new RoundUpdateAlgorithm(3, 300, lastIndex::get, currentTime::get,
+                                                (node, target) -> {
+                                                    lastIndex.addAndGet(10L);
+                                                    currentTime.addAndGet(1000L);
+                                                    return CompletableFuture.completedFuture(null);
+                                                });
         Node node = Node.newBuilder().build();
-        CompletableFuture<Void> monitoring = CompletableFuture.runAsync(() -> roundMonitor.accept(node));
-        Thread.sleep(100);
-        lastIndex.set(20L);
-        currentTime.set(2000L);
-        matchIndex.set(10L);
-        matchIndexListener.forEach(consumer -> consumer.accept(10L));
-        Thread.sleep(100);
-        assertFalse(monitoring.isDone());
-        lastIndex.set(30L);
-        currentTime.set(3000L);
-        matchIndex.set(20L);
-        matchIndexListener.forEach(consumer -> consumer.accept(20L));
-        Thread.sleep(100);
-        assertFalse(monitoring.isDone());
-        lastIndex.set(40L);
-        currentTime.set(4000L);
-        matchIndex.set(30L);
-        matchIndexListener.forEach(consumer -> consumer.accept(30L));
-        Thread.sleep(100);
-        assertTrue(monitoring.isCompletedExceptionally());
+        CompletableFuture<Void> serverUpdated = roundMonitor.apply(node);
         try {
-            monitoring.get();
-        } catch (Exception e) {
-            throw e.getCause();
+            serverUpdated.get();
+        } catch (Exception e){
+            assertTrue(serverUpdated.isCompletedExceptionally());
+            assertTrue(e.getCause() instanceof ServerTooSlowException);
         }
+
     }
 }
