@@ -32,14 +32,7 @@ public class LeaderConfiguration implements ClusterConfiguration {
 
     private final Function<Throwable, ErrorMessage> errorMapping;
 
-    public LeaderConfiguration(RaftGroup raftGroup, Supplier<Long> timeSupplier,
-                               BiFunction<Node, Long, CompletableFuture<Void>> matchIndexCaughtUp) {
-        this(raftGroup.raftConfiguration(), new RoundUpdateAlgorithm(raftGroup, timeSupplier, matchIndexCaughtUp));
-    }
 
-    public LeaderConfiguration(RaftConfiguration configuration, Function<Node, CompletableFuture<Void>> updateNode) {
-        this(configuration::accept, updateNode, new RaftErrorMapping());
-    }
 
     public LeaderConfiguration(Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> configuration,
                                Function<Node, CompletableFuture<Void>> updateNode,
