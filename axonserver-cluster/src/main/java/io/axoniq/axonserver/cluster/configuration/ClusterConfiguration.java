@@ -17,12 +17,6 @@ public interface ClusterConfiguration {
         throw new UnsupportedOperationException();
     }
 
-    default CompletableFuture<ConfigChangeResult> updateServer(Node node){
-        CompletableFuture result = new CompletableFuture();
-        result.completeExceptionally(new UnsupportedOperationException());
-        throw new UnsupportedOperationException();
-    }
-
     default CompletableFuture<ConfigChangeResult> removeServer(String nodeId){
         CompletableFuture result = new CompletableFuture();
         result.completeExceptionally(new UnsupportedOperationException());

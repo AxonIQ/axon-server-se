@@ -25,11 +25,6 @@ public class FollowerConfiguration implements ClusterConfiguration {
     }
 
     @Override
-    public CompletableFuture<ConfigChangeResult> updateServer(Node node) {
-        return leaderId();
-    }
-
-    @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         return leaderId();
     }
