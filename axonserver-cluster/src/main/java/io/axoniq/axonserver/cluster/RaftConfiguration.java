@@ -6,21 +6,27 @@ import java.util.List;
 
 public interface RaftConfiguration {
 
+    String groupId();
+
     List<Node> groupMembers();
 
-    default int minElectionTimeout(){
+    void update(List<Node> newConf);
+
+
+
+    default int minElectionTimeout() {
         return 150;
     }
 
-    default int maxElectionTimeout(){
+    default int maxElectionTimeout() {
         return 300;
     }
 
-    String groupId();
+    default int maxReplicationRound() {
+        return 10;
+    }
 
     default int heartbeatTimeout() {
         return 50;
     }
-
-    void update(List<Node> nodes);
 }

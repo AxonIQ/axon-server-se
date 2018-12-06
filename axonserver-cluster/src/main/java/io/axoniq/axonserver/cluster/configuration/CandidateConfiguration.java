@@ -22,11 +22,6 @@ public class CandidateConfiguration implements ClusterConfiguration {
     }
 
     @Override
-    public CompletableFuture<ConfigChangeResult> updateServer(Node node) {
-        return notLeader();
-    }
-
-    @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         return notLeader();
     }

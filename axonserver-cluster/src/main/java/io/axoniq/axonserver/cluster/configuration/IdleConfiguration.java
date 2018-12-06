@@ -18,11 +18,6 @@ public class IdleConfiguration implements ClusterConfiguration {
     }
 
     @Override
-    public CompletableFuture<ConfigChangeResult> updateServer(Node node) {
-        return serverNotReady();
-    }
-
-    @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         return serverNotReady();
     }
