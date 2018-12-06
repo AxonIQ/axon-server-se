@@ -4,9 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
-import io.axoniq.axonserver.grpc.internal.ModelVersion;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import org.springframework.context.ApplicationEvent;
 
 import java.util.List;
 
@@ -20,39 +18,14 @@ public class ClusterEvents {
     public static class AxonServerInstanceConnected extends TopologyEvents.TopologyBaseEvent {
 
         private final RemoteConnection remoteConnection;
-        private final List<ModelVersion> modelVersionsList;
-        private final List<ContextRole> contextsList;
-        private final List<io.axoniq.axonserver.grpc.internal.NodeInfo> nodesList;
 
-        public AxonServerInstanceConnected(RemoteConnection remoteConnection,
-                                           List<ModelVersion> modelVersionsList,
-                                           List<ContextRole> contextsList,
-                                           List<NodeInfo> nodesList){
+        public AxonServerInstanceConnected(RemoteConnection remoteConnection){
             super(false);
             this.remoteConnection = remoteConnection;
-            this.modelVersionsList = modelVersionsList;
-            this.contextsList = contextsList;
-            this.nodesList = nodesList;
         }
 
         public RemoteConnection getRemoteConnection() {
             return remoteConnection;
-        }
-
-        public long getModelVersion(String name) {
-            return modelVersionsList.stream()
-                                    .filter(mv -> mv.getName().equals(name))
-                                    .findFirst()
-                                    .map(ModelVersion::getValue)
-                                    .orElse(0L);
-        }
-
-        public List<ContextRole> getContextsList() {
-            return contextsList;
-        }
-
-        public List<io.axoniq.axonserver.grpc.internal.NodeInfo> getNodesList() {
-            return nodesList;
         }
     }
 

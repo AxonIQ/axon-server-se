@@ -37,7 +37,7 @@ public class EventStoreManagerTest {
     @Mock
     private LifecycleController lifecycleController;
 
-    private List<Context> contexts = new ArrayList<>();
+    private List<String> contexts = new ArrayList<>();
 
     @Before
     public void setup() {
@@ -64,7 +64,7 @@ public class EventStoreManagerTest {
     @Test
     public void becomeMasterWith3Nodes() throws InterruptedException {
         Context defaultContext = createContext("default", "node2", "node3");
-        contexts.add(defaultContext);
+        contexts.add("default");
         testSubject.start();
         AssertUtils.assertWithin(5, TimeUnit.SECONDS, () -> Assert.assertTrue(testSubject.getEventStore("default") instanceof LocalEventStore));
     }
@@ -72,7 +72,7 @@ public class EventStoreManagerTest {
     @Test
     public void becomeMasterWith3NodesOneWithError() throws InterruptedException {
         Context defaultContext = createContext("default", "node2", "node7");
-        contexts.add(defaultContext);
+        contexts.add("default");
 
         testSubject.start();
         AssertUtils.assertWithin(5, TimeUnit.SECONDS, () -> Assert.assertTrue(testSubject.getEventStore("default") instanceof LocalEventStore));
@@ -81,7 +81,7 @@ public class EventStoreManagerTest {
     @Test
     public void becomeMasterWith2Nodes() throws InterruptedException {
         Context defaultContext = createContext("default", "node2");
-        contexts.add(defaultContext);
+        contexts.add("default");
 
         testSubject.start();
         AssertUtils.assertWithin(5, TimeUnit.SECONDS, () -> Assert.assertTrue(testSubject.getEventStore("default") instanceof LocalEventStore));
@@ -90,7 +90,7 @@ public class EventStoreManagerTest {
     @Test
     public void noMasterWithNotRespondingNodes() throws InterruptedException {
         Context defaultContext = createContext("default", "node6", "node7");
-        contexts.add(defaultContext);
+        contexts.add("default");
 
         testSubject.start();
         Thread.sleep(2000);
@@ -100,7 +100,7 @@ public class EventStoreManagerTest {
     @Test
     public void noMasterWithOneNegativeResponse() throws InterruptedException {
         Context defaultContext = createContext("default", "node2", "node4");
-        contexts.add(defaultContext);
+        contexts.add("default");
 
         testSubject.start();
         Thread.sleep(2000);

@@ -5,7 +5,7 @@ package io.axoniq.axonserver.cluster.replication.file;
  */
 public class PrimaryEventStoreFactory {
     public static PrimaryEventStore create(String path) {
-        GroupContext context= new GroupContext("default", "storage");
+        String context= "default";
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         StorageProperties storageOptions = new StorageProperties();
         storageOptions.setSegmentSize(1024*1024);

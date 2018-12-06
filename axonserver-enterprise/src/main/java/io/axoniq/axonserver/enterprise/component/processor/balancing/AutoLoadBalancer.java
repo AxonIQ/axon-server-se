@@ -4,7 +4,6 @@ import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdated;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.UpdatedLoadBalance;
-import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -34,8 +33,8 @@ public class AutoLoadBalancer {
     private final Map<String, String> componentMap = new HashMap<>();
 
     @Autowired
-    public AutoLoadBalancer(UpdatedLoadBalance balancer, AxonHubManager manager) {
-        this(balancer::balance, manager::isCoordinatorFor);
+    public AutoLoadBalancer(UpdatedLoadBalance balancer) {
+        this(balancer::balance, context -> false);
     }
 
     AutoLoadBalancer(Consumer<TrackingEventProcessor> balancer,

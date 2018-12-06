@@ -1,11 +1,9 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
-import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.stub.StreamObserver;
 
@@ -43,10 +41,6 @@ public class TestMessagingClusterService implements MessagingClusterServiceInter
                         break;
                     case FLOW_CONTROL:
                         break;
-                    case DELETE_NODE:
-                        break;
-                    case REQUEST_APPLICATIONS:
-                        break;
                     case REQUEST_NOT_SET:
                         break;
                 }
@@ -71,9 +65,4 @@ public class TestMessagingClusterService implements MessagingClusterServiceInter
 
     }
 
-    @Override
-    public void requestLeader(NodeContextInfo nodeContextInfo,
-                              StreamObserver<Confirmation> confirmationStreamObserver) {
-
-    }
 }

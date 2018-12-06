@@ -12,27 +12,17 @@ import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseRec
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.TopologyEvents.QueryHandlerDisconnected;
-import io.axoniq.axonserver.UserSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.coordinator.RequestToBeCoordinatorReceived;
-import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorConfirmation;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorStepDown;
-import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.grpc.internal.Action;
-import io.axoniq.axonserver.grpc.internal.Applications;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
@@ -41,32 +31,19 @@ import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.Group;
 import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.ModelVersion;
-import io.axoniq.axonserver.grpc.internal.NodeContext;
-import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
-import io.axoniq.axonserver.grpc.internal.Users;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.topology.EventStoreLocator;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserController;
 import io.grpc.stub.StreamObserver;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.net.InetAddress;
@@ -74,14 +51,12 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.PreDestroy;
 
 /**
@@ -107,11 +82,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
     private final ClusterController clusterController;
-    private final UserController userController;
-    private final ApplicationController applicationController;
-    private final ApplicationModelController applicationModelController;
-    private final ContextController contextController;
-    private final EventStoreLocator eventStoreManager;
+    private final GrpcRaftController grpcRaftController;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<String, ConnectorReceivingStreamObserver> connections = new ConcurrentHashMap<>();
     private final Map<RequestCase, Collection<BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>>>> handlers
@@ -133,20 +104,12 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             CommandDispatcher commandDispatcher,
             QueryDispatcher queryDispatcher,
             ClusterController clusterController,
-            UserController userController,
-            ApplicationController applicationController,
-            ApplicationModelController applicationModelController,
-            ContextController contextController,
-            EventStoreLocator eventStoreManager,
+            GrpcRaftController grpcRaftController,
             ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.clusterController = clusterController;
-        this.userController = userController;
-        this.applicationController = applicationController;
-        this.applicationModelController = applicationModelController;
-        this.contextController = contextController;
-        this.eventStoreManager = eventStoreManager;
+        this.grpcRaftController = grpcRaftController;
         this.eventPublisher = eventPublisher;
     }
 
@@ -156,20 +119,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         return new ConnectorReceivingStreamObserver(responseObserver);
     }
 
-    @Override
-    public void requestLeader(NodeContextInfo request, StreamObserver<Confirmation> responseObserver) {
-        logger.debug("Received request leader {}", request);
-
-        eventPublisher.publishEvent(new RequestLeaderEvent(request, result -> {
-            try {
-                logger.debug("Accept leader: {}", result);
-                responseObserver.onNext(Confirmation.newBuilder().setSuccess(result).build());
-                responseObserver.onCompleted();
-            } catch (Exception ex) {
-                logger.warn("Failed to publish event: {}", ex.getMessage());
-            }
-        }));
-    }
 
     @PreDestroy
     public void shutdown() {
@@ -177,47 +126,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         dispatchListeners.clear();
     }
 
-    @Override
-    public void requestToBeCoordinator(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        eventPublisher.publishEvent(new RequestToBeCoordinatorReceived(request, result -> {
-            try {
-                responseObserver.onNext(Confirmation.newBuilder().setSuccess(result).build());
-                responseObserver.onCompleted();
-            } catch (Exception ex) {
-                logger.warn("Failed to publish event: {}", ex.getMessage());
-            }
-        }));
-    }
-
-    @EventListener
-    public void on(ApplicationSynchronizationEvents.ApplicationReceived event) {
-        if( event.isProxied()) return;
-
-        connections.forEach((name, responseObserver) -> {
-            try {
-                responseObserver.publish(ConnectorResponse.newBuilder()
-                                                         .setApplication(event.getApplication())
-                                                         .build());
-            } catch (Exception ex) {
-                logger.debug("Error sending application to {} - {}", name, ex.getMessage());
-            }
-        });
-    }
-
-    @EventListener
-    public void on(UserSynchronizationEvents.UserReceived event) {
-        if( event.isProxied()) return;
-
-        connections.forEach((name, responseObserver) -> {
-            try {
-                responseObserver.publish(ConnectorResponse.newBuilder()
-                                                         .setUser(event.getUser())
-                                                         .build());
-            } catch (Exception ex) {
-                logger.debug("Error sending application to {} - {}", name, ex.getMessage());
-            }
-        });
-    }
 
     public void sendToAll(ConnectorResponse response, Function<String, String> errorMessage){
         connections.forEach((name, responseObserver) -> {
@@ -230,7 +138,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     }
 
     public void onConnectorCommand(RequestCase requestCase, BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>> consumer){
-        this.handlers.computeIfAbsent(requestCase, (rc) -> new CopyOnWriteArraySet<>()).add(consumer);
+        this.handlers.computeIfAbsent(requestCase, rc -> new CopyOnWriteArraySet<>()).add(consumer);
     }
 
 
@@ -239,10 +147,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
         try {
             checkConnection(request.getInternalHostName());
-            checkMasterForAllStorageContexts(request.getContextsList());
-            clusterController.addConnection(request, true);
-            clusterController.nodes().forEach(clusterNode -> responseObserver
-                    .onNext(clusterNode.toNodeInfo()));
+            grpcRaftController.join(request);
             responseObserver.onCompleted();
         } catch (Exception mpe) {
             logger.warn("Join request failed", mpe);
@@ -250,14 +155,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
     }
 
-    private void checkMasterForAllStorageContexts(List<ContextRole> contextsList) {
-        for (ContextRole contextRole : contextsList) {
-            if( contextRole.getStorage() && eventStoreManager.getMaster(contextRole.getName()) == null && clusterController.disconnectedNodes()) {
-                throw new MessagingPlatformException(ErrorCode.CANNOT_JOIN, "Cannot join context " + contextRole.getName()
-                        + " for storage as it does not have an active master and not all AxonServer nodes are connected");
-            }
-        }
-    }
 
     private void checkConnection(String internalHostName)  {
         int retries  = connectionCheckRetries;
@@ -306,45 +203,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                          messagingServerName,
                                          connectorCommand.getConnect());
 
-                            ConnectResponse.Builder connectResponseBuilder = ConnectResponse.newBuilder()
-                                                                                            .addAllModelVersions(
-                                                                                                    applicationModelController
-                                                                                                            .getModelVersions()
-                                                                                                            .stream()
-                                                                                                            .map(m -> ModelVersion
-                                                                                                                    .newBuilder()
-                                                                                                                    .setName(
-                                                                                                                            m.getApplicationName())
-                                                                                                                    .setValue(
-                                                                                                                            m.getVersion())
-                                                                                                                    .build())
-                                                                                                            .collect(
-                                                                                                                    Collectors
-                                                                                                                            .toList())
-                                                                                            )
-                                                                                            .addAllContexts(
-                                                                                                    clusterController
-                                                                                                            .getMyContexts()
-                                                                                                            .stream()
-                                                                                                            .map(c -> ContextRole
-                                                                                                                    .newBuilder()
-                                                                                                                    .setName(
-                                                                                                                            c.getContext()
-                                                                                                                             .getName())
-                                                                                                                    .setMessaging(
-                                                                                                                            c.isMessaging())
-                                                                                                                    .setStorage(
-                                                                                                                            c.isStorage())
-                                                                                                                    .build()
-                                                                                                            ).collect(
-                                                                                                            Collectors
-                                                                                                                    .toList()));
-
-                            clusterController.nodes()
-                                             .filter(c -> !c.getName().equals(messagingServerName))
-                                             .forEach(c -> connectResponseBuilder.addNodes(c.toNodeInfo()));
                             responseObserver.onNext(ConnectorResponse.newBuilder()
-                                                                     .setConnectResponse(connectResponseBuilder)
+                                                                     .setConnectResponse(ConnectResponse.newBuilder())
                                                                      .build());
                             connections.put(messagingServerName, this);
                         } catch( MessagingPlatformException mpe) {
@@ -443,38 +303,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         logger.debug("FLOW_CONTROL {}", connectorCommand.getFlowControl());
                         handleFlowControl(connectorCommand);
                         break;
-                    case DELETE_NODE:
-                        clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
-                        break;
-                    case REQUEST_APPLICATIONS:
-                        Applications.Builder applicationsBuilder = Applications.newBuilder()
-                                                                               .setVersion(applicationModelController
-                                                                                                   .getModelVersion(
-                                                                                                           Application.class));
-                        applicationController.getApplications().forEach(app ->
-                                                                                applicationsBuilder.addApplication(
-                                                                                        ProtoConverter
-                                                                                                .createApplication(
-                                                                                                        app,
-                                                                                                        Action.MERGE)));
-                        responseObserver.onNext(ConnectorResponse.newBuilder().setApplications(applicationsBuilder)
-                                                                 .build());
-                        break;
-                    case REQUEST_USERS:
-                        Users.Builder usersBuilder = Users.newBuilder().setVersion(applicationModelController
-                                                                                           .getModelVersion(User.class));
-                        userController.getUsers().forEach(user ->
-                                                                  usersBuilder.addUser(ProtoConverter.createUser(
-                                                                          user,
-                                                                          Action.MERGE))
-                        );
-                        responseObserver.onNext(ConnectorResponse.newBuilder().setUsers(usersBuilder).build());
-                        break;
-                    case DB_STATUS:
-                        break;
-                    case CONTEXT:
-                        contextController.update(connectorCommand.getContext()).forEach(eventPublisher::publishEvent);
-                        break;
                     case METRICS:
                         eventPublisher.publishEvent(new MetricsEvents.MetricsChanged(connectorCommand
                                                                                              .getMetrics()));
@@ -511,13 +339,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                 new PauseEventProcessorRequest(pauseProcessor.getClient(),
                                                                pauseProcessor.getProcessorName(), true));
                         break;
-                    case COORDINATOR_CONFIRMATION:
-                        NodeContext msg = connectorCommand.getCoordinatorConfirmation();
-                        Object event = (msg.getNodeName().isEmpty()) ?
-                                new CoordinatorStepDown(msg.getContext(), true) :
-                                new CoordinatorConfirmation(msg.getNodeName(), msg.getContext(), true);
-                        eventPublisher.publishEvent(event);
-                        break;
                     case RELEASE_SEGMENT:
                         ClientEventProcessorSegment releaseSegment = connectorCommand.getReleaseSegment();
                         eventPublisher.publishEvent(new ReleaseSegmentRequest(releaseSegment.getClient(),
@@ -535,20 +356,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             SubscriptionQueryResponse response = connectorCommand.getSubscriptionQueryResponse();
                             eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response));
                             break;
-                    case MASTER_CONFIRMATION:
-                        logger.info("{}: Received master confirmation {}", messagingServerName, connectorCommand.getMasterConfirmation());
-                        if(StringUtils.isBlank(connectorCommand.getMasterConfirmation().getNodeName())) {
-                            eventPublisher.publishEvent(new ClusterEvents.MasterStepDown(connectorCommand.getMasterConfirmation()
-                                                                                                         .getContext(),
-                                                                                         true));
-
-                        } else {
-                            eventPublisher.publishEvent(new ClusterEvents.MasterConfirmation(connectorCommand.getMasterConfirmation()
-                                                                                                             .getContext(),
-                                                                                             connectorCommand.getMasterConfirmation()
-                                                                                               .getNodeName(), true));
-                        }
-                        break;
                     default:
                         break;
                 }

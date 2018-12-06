@@ -1,9 +1,5 @@
 package io.axoniq.axonserver.component.processor.balancing.jpa;
 
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents;
-import io.axoniq.axonserver.grpc.LoadBalancingStrategyProtoConverter;
-import io.axoniq.axonserver.grpc.internal.Action;
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
@@ -39,25 +35,8 @@ public class LoadBalanceStrategyController {
 
     public void save(LoadBalancingStrategy strategy){
         repository.save(strategy);
-        sync(strategy.name(), Action.MERGE);
     }
 
-    private void sync(String strategyName, Action action) {
-        applicationController.incrementModelVersion(LoadBalancingStrategy.class);
-        LoadBalanceStrategy loadBalanceStrategy = null;
-        switch (action){
-            case MERGE:
-                LoadBalancingStrategy strategy = repository.findByName(strategyName);
-                loadBalanceStrategy = new LoadBalancingStrategyProtoConverter().unmap(strategy);
-                loadBalanceStrategy = LoadBalanceStrategy.newBuilder(loadBalanceStrategy).setAction(action).build();
-                break;
-            case DELETE:
-                loadBalanceStrategy = LoadBalanceStrategy.newBuilder().setName(strategyName)
-                                                         .setAction(Action.DELETE).build();
-                break;
-        }
-        eventPublisher.publishEvent(new LoadBalancingSynchronizationEvents.LoadBalancingStrategyReceived(loadBalanceStrategy, false));
-    }
 
     public Iterable<LoadBalancingStrategy> findAll() {
         return repository.findAll(new Sort("id"));
@@ -74,17 +53,14 @@ public class LoadBalanceStrategyController {
         }
 
         repository.deleteByName(strategyName);
-        sync(strategyName, Action.DELETE);
     }
 
     public void updateFactoryBean(String strategyName, String factoryBean) {
         repository.updateFactoryBean(strategyName, factoryBean);
-        sync(strategyName, Action.MERGE);
     }
 
     public void updateLabel(String strategyName, String label) {
         repository.updateLabel(strategyName, label);
-        sync(strategyName, Action.MERGE);
     }
 
     public LoadBalancingStrategy findByName(String strategy) {

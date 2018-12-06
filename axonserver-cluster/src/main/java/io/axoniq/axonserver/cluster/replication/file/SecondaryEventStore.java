@@ -32,7 +32,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     private final EventTransformerFactory eventTransformerFactory;
 
 
-    public SecondaryEventStore(GroupContext context, IndexManager indexManager,
+    public SecondaryEventStore(String context, IndexManager indexManager,
                                EventTransformerFactory eventTransformerFactory,
                                StorageProperties storageProperties) {
         super(context, indexManager, storageProperties);

@@ -30,7 +30,7 @@ public class PrimaryEventStoreTest {
 
     @Before
     public void setup() {
-        GroupContext context= new GroupContext("default", "storage");
+        String context= "default";
         EventTransformerFactory eventTransformerFactory = (version, flags, storageProperties) -> new EventTransformer() {
             @Override
             public byte[] readEvent(byte[] bytes) {

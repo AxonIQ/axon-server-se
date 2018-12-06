@@ -7,7 +7,6 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
@@ -37,11 +36,10 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
-            ContextController contextController,
             MessagingPlatformConfiguration messagingPlatformConfiguration,
             ClusterController clusterController, GrpcRaftController raftController,
             LifecycleController lifecycleController, LocalEventStore localEventStore) {
-        return new EventStoreManager(contextController, messagingPlatformConfiguration, clusterController, lifecycleController, raftController, localEventStore);
+        return new EventStoreManager(messagingPlatformConfiguration, clusterController, lifecycleController, raftController, localEventStore);
     }
 
     @Bean

@@ -42,7 +42,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     private final Map<Long, ByteBufferEntrySource> readBuffers = new ConcurrentHashMap<>();
     private EventTransformer eventTransformer;
 
-    public PrimaryEventStore(GroupContext context, IndexManager indexCreator, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+    public PrimaryEventStore(String context, IndexManager indexCreator, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
         super(context, indexCreator, storageProperties);
         this.eventTransformerFactory = eventTransformerFactory;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);

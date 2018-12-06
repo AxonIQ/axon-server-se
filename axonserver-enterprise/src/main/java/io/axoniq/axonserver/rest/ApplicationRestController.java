@@ -1,12 +1,9 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.grpc.ProtoConverter;
-import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.axonserver.rest.json.ApplicationJSON;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationNotFoundException;
@@ -66,9 +63,6 @@ public class ApplicationRestController {
         checkEdition();
         checkRoles(application);
         ApplicationWithToken result = applicationController.updateJson(application.toApplication());
-        eventPublisher.publishEvent(new ApplicationSynchronizationEvents.ApplicationReceived(
-                ProtoConverter.createApplication(result.getApplication(), Action.MERGE),
-                 false));
         return result.getTokenString();
     }
 
@@ -96,12 +90,6 @@ public class ApplicationRestController {
         checkEdition();
         try {
             applicationController.delete(name);
-            eventPublisher.publishEvent(new ApplicationSynchronizationEvents.ApplicationReceived(
-                    io.axoniq.axonserver.grpc.internal.Application.newBuilder()
-                                                               .setName(name)
-                    .setAction(Action.DELETE)
-                    .build(), false));
-
         } catch(ApplicationNotFoundException notFoundException) {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_APPLICATION, notFound(name));
         }
@@ -112,9 +100,6 @@ public class ApplicationRestController {
         checkEdition();
         try {
             ApplicationWithToken result = applicationController.updateToken(name);
-            eventPublisher.publishEvent(new ApplicationSynchronizationEvents.ApplicationReceived(
-                    ProtoConverter.createApplication(result.getApplication(), Action.MERGE),
-                    false));
             return result.getTokenString();
         } catch(ApplicationNotFoundException notFoundException) {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_APPLICATION, notFound(name));

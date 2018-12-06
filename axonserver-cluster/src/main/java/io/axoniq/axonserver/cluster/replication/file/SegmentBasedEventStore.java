@@ -29,11 +29,11 @@ public abstract class SegmentBasedEventStore {
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;
     protected volatile SegmentBasedEventStore next;
-    private final GroupContext type;
+    private final String type;
 
-    public SegmentBasedEventStore(GroupContext eventTypeContext, IndexManager indexManager, StorageProperties storageProperties) {
+    public SegmentBasedEventStore(String eventTypeContext, IndexManager indexManager, StorageProperties storageProperties) {
         this.type = eventTypeContext;
-        this.context = eventTypeContext.getContext();
+        this.context = eventTypeContext;
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
     }
@@ -83,7 +83,7 @@ public abstract class SegmentBasedEventStore {
     }
 
     protected ValidationResult validateSegment(long segment) {
-        logger.debug("{}: Validating {} segment: {}", type.getContext(), type.getGroupId(), segment);
+        logger.debug("{}: Validating segment: {}", type, segment);
         Iterator<Entry> iterator = getEntries(segment, segment, true);
         try {
             Entry last = null;
@@ -96,7 +96,7 @@ public abstract class SegmentBasedEventStore {
         }
     }
 
-    public GroupContext getType() {
+    public String getType() {
         return type;
     }
 

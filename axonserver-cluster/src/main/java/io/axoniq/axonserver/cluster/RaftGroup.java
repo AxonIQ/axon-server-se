@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.grpc.cluster.Node;
 
 public interface RaftGroup {
 
@@ -24,4 +25,8 @@ public interface RaftGroup {
     default void connect() {
         localNode().start();
     }
+
+    default void registerNode(Node node) {}
+
+    default void unregisterNode(String nodeID) {}
 }

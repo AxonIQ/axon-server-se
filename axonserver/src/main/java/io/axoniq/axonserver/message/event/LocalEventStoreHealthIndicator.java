@@ -22,12 +22,12 @@ public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
 
     @Override
     protected void doHealthCheck(Health.Builder builder) throws Exception {
-        clusterController.getMyStorageContextNames().forEach(context -> {
-            builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastToken(context));
-            builder.withDetail(String.format("%s.lastSnapshot", context), localEventStore.getLastSnapshot(context));
-            builder.withDetail(String.format("%s.waitingEventTransactions", context), localEventStore.getWaitingEventTransactions(context));
-            builder.withDetail(String.format("%s.waitingSnapshotTransactions", context), localEventStore.getWaitingSnapshotTransactions(context));
-            localEventStore.health(builder);
-        });
+//        clusterController.getMyStorageContextNames().forEach(context -> {
+//            builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastToken(context));
+//            builder.withDetail(String.format("%s.lastSnapshot", context), localEventStore.getLastSnapshot(context));
+//            builder.withDetail(String.format("%s.waitingEventTransactions", context), localEventStore.getWaitingEventTransactions(context));
+//            builder.withDetail(String.format("%s.waitingSnapshotTransactions", context), localEventStore.getWaitingSnapshotTransactions(context));
+//            localEventStore.health(builder);
+//        });
     }
 }

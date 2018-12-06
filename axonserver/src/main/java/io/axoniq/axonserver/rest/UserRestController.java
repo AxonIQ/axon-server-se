@@ -1,11 +1,8 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.UserSynchronizationEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.ProtoConverter;
-import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.platform.role.Role;
 import io.axoniq.platform.role.RoleController;
 import io.axoniq.platform.user.User;
@@ -58,9 +55,7 @@ public class UserRestController {
                 if( ! validRoles.contains(role)) throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE, role + ": Role unknown");
             }
         }
-        User updatedUser = userController.updateUser(userJson.userName, userJson.password, userJson.roles);
-        eventPublisher.publishEvent(new UserSynchronizationEvents.UserReceived(ProtoConverter.createUser(updatedUser,
-                                                                                                         Action.MERGE), false));
+        userController.updateUser(userJson.userName, userJson.password, userJson.roles);
     }
 
     @GetMapping("public/users")
@@ -77,8 +72,6 @@ public class UserRestController {
     public void dropUser(@PathVariable("name") String name) {
         try {
             userController.deleteUser(name);
-            eventPublisher.publishEvent(new UserSynchronizationEvents.UserReceived(ProtoConverter.createUser(name,
-                                                                                                             Action.DELETE), false));
         } catch (Exception exception) {
             logger.info("Delete user {} failed - {}", name, exception.getMessage());
             throw new MessagingPlatformException(ErrorCode.OTHER, exception.getMessage());

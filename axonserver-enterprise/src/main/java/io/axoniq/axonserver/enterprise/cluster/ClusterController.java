@@ -3,10 +3,8 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
-import io.axoniq.axonserver.enterprise.context.NodeRoles;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
@@ -94,7 +92,7 @@ public class ClusterController implements SmartLifecycle {
                 entityManager.remove(node);
                 entityManager.flush();
             }
-            remoteConnection.sendDelete(messagingPlatformConfiguration.getName());
+            //remoteConnection.sendDelete(messagingPlatformConfiguration.getName());
             logger.warn("Send delete node: {} to {}:{}",
                         messagingPlatformConfiguration.getName(),
                         remoteConnection.getClusterNode().getInternalHostName(),
@@ -232,14 +230,6 @@ public class ClusterController implements SmartLifecycle {
         return remoteConnections.values();
     }
 
-    @EventListener
-    @Transactional
-    public void on(ClusterEvents.AxonServerInstanceConnected axonHubInstanceConnected) {
-        if (axonHubInstanceConnected.getNodesList() != null) {
-            axonHubInstanceConnected.getNodesList().forEach(nodeInfo -> addConnection(nodeInfo, false));
-        }
-    }
-
     @Transactional
     public synchronized void addConnection(NodeInfo nodeInfo, boolean updateContexts) {
         checkLimit(nodeInfo.getNodeName());
@@ -292,7 +282,6 @@ public class ClusterController implements SmartLifecycle {
         }
         if( updateContexts) {
             for (ContextRole context : nodeInfo.getContextsList()) {
-                mergeContext(existing, context.getName(), context.getStorage(), context.getMessaging());
             }
         }
         return existing;
@@ -392,7 +381,6 @@ public class ClusterController implements SmartLifecycle {
     @Transactional
     public void sendDeleteNode(String name) {
         deleteNode(name);
-        remoteConnections.values().forEach(remoteConnection -> remoteConnection.sendDelete(name));
     }
 
     public void publish(ConnectorCommand connectorCommand) {
@@ -438,8 +426,6 @@ public class ClusterController implements SmartLifecycle {
             mergeContext(clusterNode, contextRoleJSON.getName(), contextRoleJSON.isStorage(), contextRoleJSON.isMessaging());
             if( contextRoleJSON.isStorage()) {
                 if( ! oldStorageContexts.remove(contextRoleJSON.getName()) ) {
-                    applicationEventPublisher.publishEvent(new ContextEvents.NodeRolesUpdated(contextRoleJSON.getName(),
-                                                                                              new NodeRoles(getName(),contextRoleJSON.isMessaging(), contextRoleJSON.isStorage()), false));
                 }
             }
             oldContexts.remove(contextRoleJSON.getName());
@@ -454,10 +440,6 @@ public class ClusterController implements SmartLifecycle {
         entityManager.flush();
     }
 
-    @EventListener
-    public void on(ContextEvents.BaseContextEvent contextEvent) {
-        nodeMap.clear();
-    }
 
     public void publishTo(String nodeName, ConnectorCommand connectorCommand) {
         if( remoteConnections.containsKey(nodeName))

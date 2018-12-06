@@ -35,4 +35,16 @@ public interface MembershipState {
     default String getLeader() {
         return null;
     }
+
+    default CompletableFuture<Void> registerNode(Node node) {
+        CompletableFuture<Void> cf = new CompletableFuture<>();
+        cf.completeExceptionally(new UnsupportedOperationException());
+        return cf;
+    }
+
+    default CompletableFuture<Void> unregisterNode(String nodeId) {
+        CompletableFuture<Void> cf = new CompletableFuture<>();
+        cf.completeExceptionally(new UnsupportedOperationException());
+        return cf;
+    }
 }

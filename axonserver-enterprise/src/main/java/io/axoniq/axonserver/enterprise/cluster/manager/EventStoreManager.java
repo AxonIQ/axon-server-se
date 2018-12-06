@@ -5,10 +5,7 @@ import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
-import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
@@ -17,13 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.context.event.EventListener;
 
 import java.nio.charset.Charset;
 import java.util.function.Function;
 import java.util.stream.Stream;
-
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * Author: marc
@@ -35,7 +29,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final LocalEventStore localEventStore;
     private volatile boolean running;
 
-    private final Iterable<Context> dynamicContexts;
+    private final Iterable<String> dynamicContexts;
     private final Function<String, String> masterProvider;
     private final boolean needsValidation;
     private final String nodeName;
@@ -44,7 +38,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     public EventStoreManager(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              LifecycleController lifecycleController,
                              LocalEventStore localEventStore,
-                             Iterable<Context> dynamicContexts,
+                             Iterable<String> dynamicContexts,
                              Function<String, String> masterProvider,
                              boolean needsValidation, String nodeName,
                              Function<String, ClusterNode> clusterNodeSupplier) {
@@ -59,16 +53,15 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     @Autowired
-    public EventStoreManager(ContextController contextController,
-                             MessagingPlatformConfiguration messagingPlatformConfiguration,
+    public EventStoreManager(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              ClusterController clusterController,
                              LifecycleController lifecycleController,
                              GrpcRaftController raftController,
                              LocalEventStore localEventStore) {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
-             () -> contextController.getContexts().iterator(),
+             () -> raftController.getContexts().iterator(),
              raftController::getStorageMaster,
-             lifecycleController.isCleanShutdown(), clusterController.getName(), clusterController::getNode);
+             lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
 
 
@@ -84,17 +77,16 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
 
-    @EventListener
-    public void on(ContextEvents.ContextCreated contextCreated) {
-        Context context = context(contextCreated.getName());
-        initContext(context, false);
-    }
-
-    @EventListener
-    public void on(ContextEvents.ContextDeleted contextDeleted) {
-        localEventStore.cleanupContext(contextDeleted.getName());
-    }
-
+//    @EventListener
+//    public void on(ContextEvents.ContextCreated contextCreated) {
+//        initContext(contextCreated.getName(), false);
+//    }
+//
+//    @EventListener
+//    public void on(ContextEvents.ContextDeleted contextDeleted) {
+//        localEventStore.cleanupContext(contextDeleted.getName());
+//    }
+//
     @Override
     public void stop() {
         stop(() -> {});
@@ -106,10 +98,9 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         return running;
     }
 
-    private void initContext(Context context, boolean validating) {
-        if (!context.isStorageMember(nodeName)) return;
-        logger.debug("Init context: {}", context.getName());
-        localEventStore.initContext(context.getName(), validating);
+    private void initContext(String context, boolean validating) {
+        logger.debug("Init context: {}", context);
+        localEventStore.initContext(context, validating);
     }
 
     public static int hash(String context, String node){
@@ -135,12 +126,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     public Stream<String> masterFor() {
-        return contextsStream().filter(context -> nodeName.equals(isMaster(context.getName()))).map(Context::getName);
+        return Stream.empty();
     }
 
     public EventStore getEventStore(String context) {
-//        logger.debug("Get master for: {}  = {} local {}", context, masterPerContext.get(context),
-//                     nodeName.equals(masterPerContext.get(context)));
         if( isMaster( context)) {
             return localEventStore;
         }
@@ -162,12 +151,5 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         return master != null && master.equals(nodeName);
     }
 
-    private Stream<Context> contextsStream() {
-        return stream(dynamicContexts.spliterator(), false);
-    }
 
-    private Context context(String context) {
-        return contextsStream().filter(c -> context.equals(c.getName())).findFirst()
-                               .orElseThrow(() -> new IllegalArgumentException(context + " context doesn't exist"));
-    }
 }

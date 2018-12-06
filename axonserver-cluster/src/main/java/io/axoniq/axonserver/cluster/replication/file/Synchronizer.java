@@ -28,7 +28,7 @@ public class Synchronizer {
     private final SortedMap<WritePosition, StorageCallback> writePositions = new ConcurrentSkipListMap<>();
 
     private final ScheduledExecutorService fsync;
-    private final GroupContext context;
+    private final String context;
     private final StorageProperties storageProperties;
     private final Consumer<WritePosition> completeSegmentCallback;
     private volatile WritePosition current;
@@ -36,7 +36,7 @@ public class Synchronizer {
     private volatile ScheduledFuture<?> forceJob;
     private volatile ScheduledFuture<?> syncJob;
 
-    public Synchronizer(GroupContext context, StorageProperties storageProperties, Consumer<WritePosition> completeSegmentCallback) {
+    public Synchronizer(String context, StorageProperties storageProperties, Consumer<WritePosition> completeSegmentCallback) {
         this.context = context;
         this.storageProperties = storageProperties;
         this.completeSegmentCallback = completeSegmentCallback;

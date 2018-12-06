@@ -100,11 +100,11 @@ public class RaftNode {
     }
 
     public CompletableFuture<Void> addNode(Node node) {
-        throw new UnsupportedOperationException();
+        return state.get().registerNode(node);
     }
 
     public CompletableFuture<Void> removeNode(String nodeId) {
-        throw new UnsupportedOperationException();
+        return state.get().unregisterNode(nodeId);
     }
 
     public String groupId() {

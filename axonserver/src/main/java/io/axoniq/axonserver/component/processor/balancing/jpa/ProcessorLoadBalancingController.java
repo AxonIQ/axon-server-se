@@ -1,8 +1,5 @@
 package io.axoniq.axonserver.component.processor.balancing.jpa;
 
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents;
-import io.axoniq.axonserver.grpc.ProcessorLoadBalancingProtoConverter;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Controller;
@@ -32,14 +29,8 @@ public class ProcessorLoadBalancingController {
 
     public void save(ProcessorLoadBalancing processorLoadBalancing){
         repository.save(processorLoadBalancing);
-        sync(processorLoadBalancing);
     }
 
-    private void sync(ProcessorLoadBalancing loadBalancing){
-        applicationController.incrementModelVersion(ProcessorLoadBalancing.class);
-        ProcessorLBStrategy processorLBStrategy = new ProcessorLoadBalancingProtoConverter().unmap(loadBalancing);
-        eventPublisher.publishEvent(new LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived(processorLBStrategy, false));
-    }
 
     List<ProcessorLoadBalancing> findByStrategy(String strategyName) {
         return repository.findByStrategy(strategyName);

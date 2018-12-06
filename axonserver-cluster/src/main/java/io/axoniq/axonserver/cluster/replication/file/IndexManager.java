@@ -23,10 +23,10 @@ public class IndexManager {
     private static final String INDEX_MAP = "indexMap";
     private final StorageProperties storageProperties;
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
-    private final GroupContext context;
+    private final String context;
 
     public IndexManager(StorageProperties storageProperties,
-                        GroupContext context) {
+                        String context) {
         this.storageProperties = storageProperties;
         this.context = context;
     }

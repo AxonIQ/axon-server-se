@@ -110,19 +110,19 @@ public class StorageProperties {
         this.indexSuffix = indexSuffix;
     }
 
-    public String getStorage(GroupContext context) {
-        return logStorageFolder + File.separator + context.getContext() + File.separator + context.getGroupId();
+    public String getStorage(String context) {
+        return logStorageFolder + File.separator + context;
     }
 
-    public File logFile(GroupContext context, Long segment) {
+    public File logFile(String context, Long segment) {
         return new File(String.format(FILENAME_PATTERN, getStorage(context), segment, logSuffix));
     }
 
-    public File indexFile(GroupContext context, Long segment) {
+    public File indexFile(String context, Long segment) {
         return new File(String.format(FILENAME_PATTERN, getStorage(context), segment, indexSuffix));
     }
 
-    public File indexTempFile(GroupContext context, Long segment) {
+    public File indexTempFile(String context, Long segment) {
         return new File(String.format(FILENAME_PATTERN, getStorage(context), segment, indexSuffix + ".temp"));
     }
 

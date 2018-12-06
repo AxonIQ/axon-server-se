@@ -11,7 +11,6 @@ import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.topology.Topology;
@@ -102,11 +101,6 @@ public class ClusterControllerTest {
                 return new TestMessagingClusterService();
             }
 
-            @Override
-            public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-                return null;
-            }
         };
 
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,

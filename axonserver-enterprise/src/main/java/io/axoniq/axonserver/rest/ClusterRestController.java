@@ -2,12 +2,14 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.internal.ClusterJoinRequester;
+import io.axoniq.axonserver.enterprise.cluster.RaftServiceFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.validation.Valid;
@@ -31,14 +32,15 @@ import javax.validation.constraints.NotNull;
 public class ClusterRestController {
 
     private final ClusterController clusterController;
-    private final ClusterJoinRequester clusterJoinRequester;
+    private final RaftServiceFactory raftServiceFactory;
     private final FeatureChecker limits;
 
 
-    public ClusterRestController(ClusterController clusterController, ClusterJoinRequester clusterJoinRequester,
+    public ClusterRestController(ClusterController clusterController,
+                                 RaftServiceFactory raftServiceFactory,
                                  FeatureChecker limits) {
         this.clusterController = clusterController;
-        this.clusterJoinRequester = clusterJoinRequester;
+        this.raftServiceFactory = raftServiceFactory;
         this.limits = limits;
     }
 
@@ -56,12 +58,12 @@ public class ClusterRestController {
             clusterController.setMyContexts(jsonClusterNode.contexts);
         }
         try {
-            clusterJoinRequester.addNode(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Request interrupted");
-        } catch (ExecutionException e) {
-            handleExecutionException(e.getCause());
+            NodeInfo nodeInfo = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo())
+                                        .addAllContexts(jsonClusterNode.contexts.stream().map(c -> ContextRole.newBuilder().setName(c.getName()).build()).collect(Collectors.toList()))
+                                        .build();
+            raftServiceFactory.getRaftConfigService(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).joinCluster(nodeInfo);
+        } catch (Throwable e) {
+            handleExecutionException(e);
         }
     }
 

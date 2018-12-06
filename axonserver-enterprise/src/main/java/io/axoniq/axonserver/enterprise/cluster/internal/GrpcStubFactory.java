@@ -2,13 +2,9 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.DataSynchronizerGrpc;
 import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
@@ -42,12 +38,6 @@ public class GrpcStubFactory implements StubFactory {
                 stub.join(request, responseObserver);
             }
 
-            @Override
-            public void requestLeader(NodeContextInfo nodeContextInfo,
-                                      StreamObserver<Confirmation> confirmationStreamObserver) {
-                stub.requestLeader(nodeContextInfo, confirmationStreamObserver);
-            }
-
         };
     }
 
@@ -56,14 +46,5 @@ public class GrpcStubFactory implements StubFactory {
             MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
         ManagedChannel managedChannel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, host, port);
         return messagingClusterServiceStub(messagingPlatformConfiguration, managedChannel);
-    }
-
-    @Override
-    public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-            MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-        ManagedChannel managedChannel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, clusterNode);
-        DataSynchronizerGrpc.DataSynchronizerStub stub = DataSynchronizerGrpc.newStub(managedChannel)
-                .withInterceptors(new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken()));
-        return stub::openConnection;
     }
 }

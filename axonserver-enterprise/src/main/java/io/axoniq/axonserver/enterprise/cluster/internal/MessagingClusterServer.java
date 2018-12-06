@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.ContextInterceptor;
@@ -31,6 +32,7 @@ public class MessagingClusterServer implements SmartLifecycle{
     private final InternalEventStoreService internalEventStoreService;
     private final LogReplicationService logReplicationService;
     private final LeaderElectionService leaderElectionService;
+    private final GrpcRaftGroupService grpcRaftGroupService;
     private final FeatureChecker limits;
     private Server server;
 
@@ -39,12 +41,14 @@ public class MessagingClusterServer implements SmartLifecycle{
                                   InternalEventStoreService internalEventStoreService,
                                   LogReplicationService logReplicationService,
                                   LeaderElectionService leaderElectionService,
+                                  GrpcRaftGroupService grpcRaftGroupService,
                                   FeatureChecker limits) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.messagingClusterService = messagingClusterService;
         this.internalEventStoreService = internalEventStoreService;
         this.logReplicationService = logReplicationService;
         this.leaderElectionService = leaderElectionService;
+        this.grpcRaftGroupService = grpcRaftGroupService;
         this.limits = limits;
     }
 
@@ -92,6 +96,7 @@ public class MessagingClusterServer implements SmartLifecycle{
         serverBuilder.addService(leaderElectionService);
         serverBuilder.addService(logReplicationService);
         serverBuilder.addService(internalEventStoreService);
+        serverBuilder.addService(grpcRaftGroupService);
 
         if( messagingPlatformConfiguration.getAccesscontrol() != null && messagingPlatformConfiguration.getAccesscontrol().isEnabled()) {
             serverBuilder.addService(ServerInterceptors.intercept(messagingClusterService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
@@ -99,6 +104,7 @@ public class MessagingClusterServer implements SmartLifecycle{
             serverBuilder.addService(ServerInterceptors.intercept(logReplicationService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
             serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration),
                                                                   new ContextInterceptor()));
+            serverBuilder.addService(ServerInterceptors.intercept(grpcRaftGroupService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
         }
         if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);

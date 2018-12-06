@@ -1,16 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.LoadBalancingStrategiesReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.LoadBalancingStrategyReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
-import io.axoniq.axonserver.UserSynchronizationEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -27,8 +21,6 @@ import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
-import io.axoniq.axonserver.grpc.internal.GetApplicationsRequest;
-import io.axoniq.axonserver.grpc.internal.GetUsersRequest;
 import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -151,10 +143,7 @@ public class RemoteConnection  {
 
                                         applicationEventPublisher
                                                 .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
-                                                        RemoteConnection.this,
-                                                        connectorResponse.getConnectResponse().getModelVersionsList(),
-                                                        connectorResponse.getConnectResponse().getContextsList(),
-                                                        connectorResponse.getConnectResponse().getNodesList()));
+                                                        RemoteConnection.this));
                                     } catch (Exception ex) {
                                         logger.warn("Failed to process request {}",
                                                     connectorResponse.getConnectResponse(),
@@ -162,44 +151,6 @@ public class RemoteConnection  {
                                     }
                                     break;
 
-                                case APPLICATION:
-                                    applicationEventPublisher
-                                            .publishEvent(new ApplicationSynchronizationEvents.ApplicationReceived(
-                                                    connectorResponse.getApplication(),
-                                                    true));
-                                    break;
-
-                                case USER:
-                                    applicationEventPublisher.publishEvent(new UserSynchronizationEvents.UserReceived(
-                                            connectorResponse.getUser(), true));
-                                    break;
-
-                                case APPLICATIONS:
-                                    applicationEventPublisher
-                                            .publishEvent(new ApplicationSynchronizationEvents.ApplicationsReceived(
-                                                    connectorResponse.getApplications()));
-                                    break;
-
-                                case USERS:
-                                    applicationEventPublisher.publishEvent(new UserSynchronizationEvents.UsersReceived(
-                                            connectorResponse.getUsers()));
-                                    break;
-                                case PROCESSOR_STRATEGY:
-                                    applicationEventPublisher.publishEvent(new ProcessorLoadBalancingStrategyReceived(
-                                      connectorResponse.getProcessorStrategy(), true));
-                                    break;
-                                case PROCESSORS_STRATEGIES:
-                                    applicationEventPublisher.publishEvent(new ProcessorsLoadBalanceStrategyReceived(
-                                            connectorResponse.getProcessorsStrategies()));
-                                    break;
-                                case LOAD_BALANCING_STRATEGY:
-                                    applicationEventPublisher.publishEvent(new LoadBalancingStrategyReceived(
-                                            connectorResponse.getLoadBalancingStrategy(), true));
-                                    break;
-                                case LOAD_BALANCING_STRATEGIES:
-                                    applicationEventPublisher.publishEvent(new LoadBalancingStrategiesReceived(
-                                            connectorResponse.getLoadBalancingStrategies()));
-                                    break;
                                 case SUBSCRIPTION_QUERY_REQUEST:
                                     ClientSubscriptionQueryRequest request = connectorResponse.getSubscriptionQueryRequest();
                                     UpdateHandler handler = new ProxyUpdateHandler(requestStreamObserver::onNext);
@@ -261,8 +212,6 @@ public class RemoteConnection  {
                                     .addAllContexts(me.getContexts().stream().map(context ->
                                                                                  ContextRole.newBuilder()
                                                                                             .setName(context.getContext().getName())
-                                                                                            .setMessaging(context.isMessaging())
-                                                                                            .setStorage(context.isStorage())
                                                                                             .build()).collect(Collectors.toList()))
                         .build())
                 .build());
@@ -369,23 +318,6 @@ public class RemoteConnection  {
                     ).build());
     }
 
-    public void requestApplications() {
-        publish(ConnectorCommand.newBuilder()
-                    .setRequestApplications(GetApplicationsRequest.newBuilder())
-                    .build());
-    }
-
-    public void sendDelete(String name) {
-        publish(ConnectorCommand.newBuilder()
-                    .setDeleteNode(NodeInfo.newBuilder().setNodeName(name))
-                    .build());
-    }
-
-    public void requestUsers() {
-        publish(ConnectorCommand.newBuilder()
-                                                         .setRequestUsers(GetUsersRequest.newBuilder().build())
-                                                         .build());
-    }
 
     public void clientStatus(String context, String componentName, String client, boolean clientConnected) {
         publish(ConnectorCommand.newBuilder()
