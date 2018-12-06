@@ -1,10 +1,7 @@
 package io.axoniq.axonserver.cluster.configuration;
 
-import io.axoniq.axonserver.cluster.RaftConfiguration;
-import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.configuration.operation.AddServer;
 import io.axoniq.axonserver.cluster.configuration.operation.RemoveServer;
-import io.axoniq.axonserver.cluster.exception.RaftErrorMapping;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeFailure;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeSuccess;
@@ -13,9 +10,7 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import static com.google.common.base.Preconditions.checkArgument;
