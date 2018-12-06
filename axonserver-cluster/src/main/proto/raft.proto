@@ -111,7 +111,6 @@ message Node {
     string nodeId = 1;
     string host = 2;
     uint32 port = 3;
-    bool voting = 4;
 }
 
 message ConfigChangeResult {
