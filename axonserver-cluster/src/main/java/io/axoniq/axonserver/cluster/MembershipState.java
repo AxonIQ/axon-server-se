@@ -1,10 +1,17 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.util.concurrent.CompletableFuture;
 
-public interface MembershipState {
+public interface MembershipState extends ClusterConfiguration{
 
     default void stop() {
         // no op

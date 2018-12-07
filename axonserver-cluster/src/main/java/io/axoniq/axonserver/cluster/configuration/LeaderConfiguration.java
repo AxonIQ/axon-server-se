@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster.configuration;
 
 import io.axoniq.axonserver.cluster.configuration.operation.AddServer;
 import io.axoniq.axonserver.cluster.configuration.operation.RemoveServer;
+import io.axoniq.axonserver.cluster.exception.RaftErrorMapping;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeFailure;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeSuccess;
@@ -27,7 +28,11 @@ public class LeaderConfiguration implements ClusterConfiguration {
 
     private final Function<Throwable, ErrorMessage> errorMapping;
 
-
+    public LeaderConfiguration(
+            Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> configuration,
+            Function<Node, CompletableFuture<Void>> updateNode) {
+        this(configuration, updateNode, new RaftErrorMapping());
+    }
 
     public LeaderConfiguration(Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> configuration,
                                Function<Node, CompletableFuture<Void>> updateNode,
