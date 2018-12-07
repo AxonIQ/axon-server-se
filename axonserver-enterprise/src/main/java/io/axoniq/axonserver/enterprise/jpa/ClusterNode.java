@@ -97,12 +97,12 @@ public class ClusterNode implements Serializable, AxonServerNode {
 
     @Override
     public Collection<String> getMessagingContextNames() {
-        return contexts.stream().filter(ContextClusterNode::isMessaging).map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
+        return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
 
     @Override
     public Collection<String> getStorageContextNames() {
-        return contexts.stream().filter(ContextClusterNode::isStorage).map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
+        return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
 
     public void setInternalHostName(String internalHostName) {
@@ -114,11 +114,11 @@ public class ClusterNode implements Serializable, AxonServerNode {
     }
 
     public Set<Context> getStorageContexts() {
-        return contexts.stream().filter(ContextClusterNode::isStorage).map(ContextClusterNode::getContext).collect(Collectors.toSet());
+        return contexts.stream().map(ContextClusterNode::getContext).collect(Collectors.toSet());
     }
 
     public Set<Context> getMessagingContexts() {
-        return contexts.stream().filter(ContextClusterNode::isMessaging).map(ContextClusterNode::getContext).collect(Collectors.toSet());
+        return contexts.stream().map(ContextClusterNode::getContext).collect(Collectors.toSet());
     }
 
     public void setName(String name) {

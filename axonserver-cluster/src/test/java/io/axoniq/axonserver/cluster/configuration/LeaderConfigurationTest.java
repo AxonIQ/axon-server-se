@@ -3,17 +3,13 @@ package io.axoniq.axonserver.cluster.configuration;
 import io.axoniq.axonserver.cluster.exception.RaftErrorMapping;
 import io.axoniq.axonserver.cluster.exception.ServerTooSlowException;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
-import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.ErrorMessage;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.junit.Assert.assertEquals;

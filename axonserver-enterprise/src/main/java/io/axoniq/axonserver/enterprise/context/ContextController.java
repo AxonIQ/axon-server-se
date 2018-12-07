@@ -1,10 +1,20 @@
 package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -34,5 +44,59 @@ public class ContextController {
 
     public Context getContext(String contextName){
         return entityManager.find(Context.class, contextName);
+    }
+
+    @Transactional
+    public void updateContext(ContextConfiguration contextConfiguration) {
+        Context context = entityManager.find(Context.class, contextConfiguration.getContext());
+
+        if( context == null) {
+            context = new Context(contextConfiguration.getContext());
+            entityManager.persist(context);
+        }
+        Set<String> currentNodes = context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).collect(Collectors.toSet());
+        Set<String> newNodes = contextConfiguration.getNodesList().stream().map(n -> n.getNodeName()).collect(Collectors.toSet());
+
+        Map<String, ClusterNode> clusterInfoMap = new HashMap<>();
+        for (NodeInfo nodeInfo : contextConfiguration.getNodesList()) {
+            ClusterNode clusterNode = clusterController.getNode(nodeInfo.getNodeName());
+            if( clusterNode == null) {
+                clusterNode = clusterController.addConnection(nodeInfo, false);
+            }
+            clusterInfoMap.put(nodeInfo.getNodeName(), clusterNode);
+        }
+
+        Context finalContext = context;
+        currentNodes.forEach(node -> {
+            if( !newNodes.contains(node)) {
+                ClusterNode clusterNode = clusterController.getNode(node);
+                if( clusterNode !=null) {
+                    clusterNode.removeContext(finalContext.getName());
+                }
+            }
+            });
+        newNodes.forEach(node -> {
+            if( !currentNodes.contains(node)) {
+                clusterInfoMap.get(node).addContext(finalContext, false, false);
+            }
+        });
+
+    }
+
+    public List<Node> getNodes(List<String> nodes) {
+        return nodes.stream().map(clusterController::getNode)
+                    .map(clusterNode -> Node.newBuilder()
+                                            .setNodeId(clusterNode.getName())
+                                            .setHost(clusterNode.getInternalHostName())
+                                            .setPort(clusterNode.getGrpcInternalPort())
+                                            .build())
+                    .collect(Collectors.toList());
+
+    }
+
+    public List<NodeInfo> getNodeInfos(List<String> nodes) {
+        return nodes.stream().map(clusterController::getNode)
+                    .map(clusterNode -> clusterNode.toNodeInfo())
+                    .collect(Collectors.toList());
     }
 }

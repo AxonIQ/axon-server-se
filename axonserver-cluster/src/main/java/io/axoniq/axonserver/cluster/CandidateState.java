@@ -77,21 +77,25 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void startElection() {
-        synchronized (this) {
-            updateCurrentTerm(currentTerm() + 1);
-            markVotedFor(me());
-        }
-        logger.debug("Starting election from {} in term {}", me(), currentTerm());
-        resetElectionTimeout();
-        currentElection.set(new CandidateElection(this::clusterSize));
-        currentElection.get().registerVoteReceived(me(), true);
-        RequestVoteRequest request = requestVote();
-        Collection<RaftPeer> raftPeers = otherNodes();
-        if( raftPeers.isEmpty()) {
-            currentElection.set(null);
-            changeStateTo(stateFactory().leaderState());
-        } else {
-            raftPeers.forEach(node -> requestVote(request, node));
+        try {
+            synchronized (this) {
+                updateCurrentTerm(currentTerm() + 1);
+                markVotedFor(me());
+            }
+            logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
+            resetElectionTimeout();
+            currentElection.set(new CandidateElection(this::clusterSize));
+            currentElection.get().registerVoteReceived(me(), true);
+            RequestVoteRequest request = requestVote();
+            Collection<RaftPeer> raftPeers = otherNodes();
+            if (raftPeers.isEmpty() && !raftGroup().raftConfiguration().groupMembers().isEmpty()) {
+                currentElection.set(null);
+                changeStateTo(stateFactory().leaderState());
+            } else {
+                raftPeers.forEach(node -> requestVote(request, node));
+            }
+        } catch (Exception ex) {
+            logger.warn("Failed to start election", ex);
         }
     }
 

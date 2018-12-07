@@ -6,23 +6,18 @@ import io.axoniq.axonserver.grpc.cluster.LeaderElectionServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class LeaderElectionService extends LeaderElectionServiceGrpc.LeaderElectionServiceImplBase {
-    private static final Logger logger = LoggerFactory.getLogger(LeaderElectionService.class);
-    private final Map<String, RaftNode> nodePerGroup = new ConcurrentHashMap<>();
+    private final RaftGroupManager raftGroupManager;
 
-    public void addRaftNode(RaftNode raftNode) {
-        nodePerGroup.put(raftNode.groupId(), raftNode);
+    public LeaderElectionService(RaftGroupManager raftGroupManager) {
+        this.raftGroupManager = raftGroupManager;
     }
+
 
     @Override
     public void requestVote(RequestVoteRequest request, StreamObserver<RequestVoteResponse> responseObserver) {
-        RaftNode node = nodePerGroup.get(request.getGroupId());
+        RaftNode node = raftGroupManager.raftNode(request.getGroupId());
         if( node != null) {
             try {
                 RequestVoteResponse response = node.requestVote(request);

@@ -42,11 +42,11 @@ public class RaftServerFileBasedTest {
                                      node("node5", "localhost", 7781));
 
     List<RaftServer> raftServers = new ArrayList<>();
+    private RaftGroupManager raftGroupManager;
 
 
     @Before
     public void setUp() throws Exception {
-
         nodes.forEach(node -> {
             GrpcRaftGroup raftGroup = new GrpcRaftGroup(nodes, node.getNodeId());
             clusterNodes.put(node.getNodeId(), raftGroup.localNode());
@@ -54,11 +54,10 @@ public class RaftServerFileBasedTest {
 
         nodes.forEach(node -> {
             RaftNode raftNode = clusterNodes.get(node.getNodeId());
-            LeaderElectionService leaderElectionService = new LeaderElectionService();
-            leaderElectionService.addRaftNode(raftNode);
+            raftGroupManager = new FakeRaftGroupManager(raftNode);
+            LeaderElectionService leaderElectionService = new LeaderElectionService(raftGroupManager);
 
-            LogReplicationService logReplicationService = new LogReplicationService();
-            logReplicationService.addRaftNode(raftNode);
+            LogReplicationService logReplicationService = new LogReplicationService(raftGroupManager);
 
 
             RaftServerConfiguration configuration = new RaftServerConfiguration();

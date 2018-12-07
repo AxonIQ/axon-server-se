@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
 import io.axoniq.axonserver.features.FeatureChecker;
 import org.junit.*;
@@ -35,6 +36,8 @@ public class MessagingClusterServerTest {
     private LeaderElectionService leaderElectionService;
     @Mock
     private GrpcRaftGroupService grpcRaftGroupService;
+    @Mock
+    private GrpcRaftConfigService grpcRaftConfigService;
 
     @Before
     public void setUp() {
@@ -46,10 +49,12 @@ public class MessagingClusterServerTest {
                 return true;
             }
         };
+
         testSubject = new MessagingClusterServer(configuration, clusterService, internalEventStore,
                                                  logReplicationService,
                                                  leaderElectionService,
                                                  grpcRaftGroupService,
+                                                 grpcRaftConfigService,
                                                  limits);
     }
 

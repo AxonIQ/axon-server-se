@@ -149,4 +149,9 @@ public class GrpcRaftPeer implements RaftPeer {
     static ManagedChannel getManagedChannel(Node node) {
         return channelMap.computeIfAbsent(node.getNodeId(), n -> NettyChannelBuilder.forAddress(node.getHost(), node.getPort()).usePlaintext().directExecutor().build());
     }
+
+    @Override
+    public Node toNode() {
+        return node;
+    }
 }

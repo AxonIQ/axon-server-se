@@ -231,7 +231,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     @Transactional
-    public synchronized void addConnection(NodeInfo nodeInfo, boolean updateContexts) {
+    public synchronized ClusterNode addConnection(NodeInfo nodeInfo, boolean updateContexts) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same node name");
@@ -246,6 +246,7 @@ public class ClusterController implements SmartLifecycle {
             nodeListeners.forEach(listener -> listener
                     .accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node)));
         }
+        return node;
     }
 
     private void checkLimit(String nodeName) {

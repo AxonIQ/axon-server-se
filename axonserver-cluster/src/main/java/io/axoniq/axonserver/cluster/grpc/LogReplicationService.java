@@ -6,17 +6,14 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicationServiceImplBase {
     private final static Logger logger = LoggerFactory.getLogger(LogReplicationService.class);
+    private final RaftGroupManager raftGroupManager;
 
-    private final Map<String, RaftNode> nodePerGroup = new ConcurrentHashMap<>();
-
-    public void addRaftNode(RaftNode raftNode) {
-        nodePerGroup.put(raftNode.groupId(), raftNode);
+    public LogReplicationService(RaftGroupManager raftGroupManager) {
+        this.raftGroupManager = raftGroupManager;
     }
+
 
     @Override
     public StreamObserver<AppendEntriesRequest> appendEntries(StreamObserver<AppendEntriesResponse> responseObserver) {
@@ -25,7 +22,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             @Override
             public void onNext(AppendEntriesRequest appendEntriesRequest) {
                 if( ! running) return;
-                RaftNode target = nodePerGroup.get(appendEntriesRequest.getGroupId());
+                RaftNode target = raftGroupManager.raftNode(appendEntriesRequest.getGroupId());
                 try {
                     synchronized (target) {
                         AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);

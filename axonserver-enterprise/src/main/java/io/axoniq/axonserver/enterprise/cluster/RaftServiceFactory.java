@@ -34,4 +34,13 @@ public class RaftServiceFactory {
     public RaftConfigServiceGrpc.RaftConfigServiceBlockingStub getRaftConfigService(String host, int port) {
         return RaftConfigServiceGrpc.newBlockingStub(ManagedChannelHelper.createManagedChannel(configuration, host, port));
     }
+
+    public RaftGroupServiceGrpc.RaftGroupServiceStub getRaftGroupService(String host, int port) {
+        return RaftGroupServiceGrpc.newStub(ManagedChannelHelper.createManagedChannel(configuration, host, port));
+    }
+
+    public RaftGroupServiceGrpc.RaftGroupServiceStub getRaftGroupService(String nodeId) {
+        ClusterNode node = clusterController.getNode(nodeId);
+        return RaftGroupServiceGrpc.newStub(ManagedChannelHelper.createManagedChannel(configuration, node));
+    }
 }

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.websocket;
 
-import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,5 +15,6 @@ public class WebsocketApplicationContext {
     public WebsocketApplicationContext(SimpMessagingTemplate websocket) {
         this.websocket = websocket;
     }
+
 
 }

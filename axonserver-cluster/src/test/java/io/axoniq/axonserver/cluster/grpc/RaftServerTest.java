@@ -53,12 +53,9 @@ public class RaftServerTest {
 
         nodes.forEach(node -> {
             RaftNode raftNode = clusterNodes.get(node.getNodeId());
-            LeaderElectionService leaderElectionService = new LeaderElectionService();
-            leaderElectionService.addRaftNode(raftNode);
-
-            LogReplicationService logReplicationService = new LogReplicationService();
-            logReplicationService.addRaftNode(raftNode);
-
+            FakeRaftGroupManager raftGroupManager = new FakeRaftGroupManager(raftNode);
+            LeaderElectionService leaderElectionService = new LeaderElectionService(raftGroupManager);
+            LogReplicationService logReplicationService = new LogReplicationService(raftGroupManager);
 
             RaftServerConfiguration configuration = new RaftServerConfiguration();
             configuration.setInternalPort(node.getPort());

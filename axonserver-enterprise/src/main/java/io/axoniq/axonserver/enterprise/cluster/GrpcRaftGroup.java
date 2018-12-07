@@ -59,7 +59,7 @@ public class GrpcRaftGroup implements RaftGroup {
             public List<Node> groupMembers() {
                 return peers.values()
                             .stream()
-                            .map(p -> Node.newBuilder().setNodeId(p.nodeId()).build())
+                            .map(p -> p.toNode())
                             .collect(Collectors.toList());
             }
 
@@ -129,5 +129,9 @@ public class GrpcRaftGroup implements RaftGroup {
     @Override
     public void unregisterNode(String nodeID) {
         peers.remove(nodeID);
+    }
+
+    public void syncStore() {
+        raftStateController.sync();
     }
 }

@@ -7,6 +7,7 @@ import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.replication.InMemoryEntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.slf4j.Logger;
@@ -64,6 +65,32 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                                                     .setTerm(currentTerm)
                                                     .setIndex(index)
                                                     .setSerializedObject(serializedObject)
+                                                    .build());
+                }
+            });
+        } catch( Exception ex) {
+            completableFuture.completeExceptionally(ex);
+        }
+
+        return completableFuture;
+    }
+
+    @Override
+    public CompletableFuture<Entry> createEntry(long currentTerm, Config config) {
+        CompletableFuture<Entry> completableFuture = new CompletableFuture<>();
+        try {
+            CompletableFuture<Long> writeCompleted = primaryEventStore.write(currentTerm,
+                                                                             Entry.DataCase.NEWCONFIGURATION.getNumber(),
+                                                                             config.toByteArray());
+
+            writeCompleted.whenComplete((index, throwable ) -> {
+                if( throwable != null) {
+                    completableFuture.completeExceptionally(throwable);
+                } else {
+                    completableFuture.complete(Entry.newBuilder()
+                                                    .setTerm(currentTerm)
+                                                    .setIndex(index)
+                                                    .setNewConfiguration(config)
                                                     .build());
                 }
             });

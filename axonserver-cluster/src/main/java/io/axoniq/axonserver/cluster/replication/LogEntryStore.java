@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster.replication;
 
 import io.axoniq.axonserver.cluster.TermIndex;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 import java.io.IOException;
@@ -17,6 +18,8 @@ public interface LogEntryStore {
 
     CompletableFuture<Entry> createEntry(long currentTerm, String entryType, byte[] entryData);
 
+    CompletableFuture<Entry> createEntry(long currentTerm, Config config);
+
     TermIndex lastLog();
 
     EntryIterator createIterator(long index);
@@ -24,4 +27,5 @@ public interface LogEntryStore {
     void clear(long logIndex, long logTerm);
 
     long lastLogIndex();
+
 }

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster.replication;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.cluster.TermIndex;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.slf4j.Logger;
@@ -105,5 +106,18 @@ public class InMemoryLogEntryStore implements LogEntryStore {
                            .build();
         entryMap.put(index, entry);
         return CompletableFuture.completedFuture(entry);
+    }
+
+    @Override
+    public CompletableFuture<Entry> createEntry(long currentTerm, Config config) {
+        long index = lastIndex.incrementAndGet();
+        Entry entry = Entry.newBuilder()
+                           .setIndex(index)
+                           .setTerm(currentTerm)
+                           .setNewConfiguration(config)
+                           .build();
+        entryMap.put(index, entry);
+        return CompletableFuture.completedFuture(entry);
+
     }
 }

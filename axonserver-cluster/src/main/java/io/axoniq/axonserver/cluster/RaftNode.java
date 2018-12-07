@@ -44,7 +44,7 @@ public class RaftNode {
 
     private synchronized void updateState(MembershipState newState) {
         Optional.ofNullable(state.get()).ifPresent(MembershipState::stop);
-        logger.debug("Updating state of {} from {} to {}", nodeId, state.get(), newState);
+        logger.info("{}: Updating state of {} from {} to {}", groupId(), nodeId, state.get(), newState);
         state.set(newState);
         newState.start();
     }

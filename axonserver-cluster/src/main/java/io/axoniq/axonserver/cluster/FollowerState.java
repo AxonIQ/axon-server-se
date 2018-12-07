@@ -64,7 +64,7 @@ public class FollowerState extends AbstractMembershipState {
 
             //1. Reply false if term < currentTerm
             if (request.getTerm() < currentTerm()) {
-                logger.warn("{}: term before current term {}", me(), currentTerm());
+                logger.warn("{}: term before current term {}", groupId(), currentTerm());
                 return appendEntriesFailure();
             }
 
@@ -80,7 +80,7 @@ public class FollowerState extends AbstractMembershipState {
             //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
             if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
                 logger.warn("{}: previous term/index missing {}/{} last log {}",
-                            me(),
+                            groupId(),
                             request.getPrevLogTerm(),
                             request.getPrevLogIndex(),
                             logEntryStore.lastLogIndex());
@@ -92,12 +92,12 @@ public class FollowerState extends AbstractMembershipState {
             //4. Append any new entries not already in the log
             try {
                 if( request.getEntriesCount() > 0) {
-                    logger.trace("{}: received {}", me(), request.getEntries(0).getIndex());
+                    logger.trace("{}: received {}", groupId(), request.getEntries(0).getIndex());
                 }
                 logEntryStore.appendEntry(request.getEntriesList());
-                logger.trace("{}: stored {}", me(), lastLogIndex());
+                logger.trace("{}: stored {}", groupId(), lastLogIndex());
             } catch (IOException e) {
-                logger.warn("{}: append failed", me(), e);
+                logger.warn("{}: append failed", groupId(), e);
                 stop();
                 return appendEntriesFailure();
             }
@@ -137,7 +137,7 @@ public class FollowerState extends AbstractMembershipState {
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
         if (heardFromLeader && clock.millis() - lastMessage.get() < minElectionTimeout()) {
-            logger.debug("Request for vote received from {}. {} voted rejected", request.getCandidateId(), me());
+            logger.debug("{}: Request for vote received from {}. {} voted rejected", groupId(), request.getCandidateId(), me());
             return requestVoteResponse(false);
         }
 
@@ -147,7 +147,7 @@ public class FollowerState extends AbstractMembershipState {
             rescheduleElection(request.getTerm());
         }
 
-        logger.debug("Request for vote received from {}. {} voted {}", request.getCandidateId(), me(), voteGranted);
+        logger.debug("{}: Request for vote received from {}. {} voted {}", groupId(), request.getCandidateId(), me(), voteGranted);
         return requestVoteResponse(voteGranted);
     }
 
@@ -158,14 +158,14 @@ public class FollowerState extends AbstractMembershipState {
 
         // Reply immediately if term < currentTerm
         if (request.getTerm() < currentTerm()) {
-            logger.warn("{}: term before current term {}", me(), currentTerm());
+            logger.warn("{}: term before current term {}", groupId(), currentTerm());
             return installSnapshotFailure();
         }
 
         rescheduleElection(request.getTerm());
 
         if (request.hasLastConfig()) {
-            logger.debug("{}: applying config {}", me(), request.getLastConfig());
+            logger.debug("{}: applying config {}", groupId(), request.getLastConfig());
             raftGroup().raftConfiguration().update(request.getLastConfig().getNodesList());
         }
 

@@ -8,7 +8,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,7 +58,6 @@ public class ClusterRestController {
         }
         try {
             NodeInfo nodeInfo = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo())
-                                        .addAllContexts(jsonClusterNode.contexts.stream().map(c -> ContextRole.newBuilder().setName(c.getName()).build()).collect(Collectors.toList()))
                                         .build();
             raftServiceFactory.getRaftConfigService(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).joinCluster(nodeInfo);
         } catch (Throwable e) {

@@ -2,6 +2,7 @@ package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.licensing.LicenseConfiguration;
 import io.axoniq.axonserver.licensing.LicenseException;
@@ -43,13 +44,13 @@ public class AxonServerEnterprise {
     }
 
     @Bean
-    public LogReplicationService logReplicationService() {
-        return new LogReplicationService();
+    public LogReplicationService logReplicationService(GrpcRaftController grpcRaftController) {
+        return new LogReplicationService(grpcRaftController);
     }
 
     @Bean
-    public LeaderElectionService leaderElectionService() {
-        return new LeaderElectionService();
+    public LeaderElectionService leaderElectionService(GrpcRaftController grpcRaftController) {
+        return new LeaderElectionService(grpcRaftController);
     }
 
     @PreDestroy
