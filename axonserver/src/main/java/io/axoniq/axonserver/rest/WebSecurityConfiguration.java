@@ -5,7 +5,8 @@ import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationRole;
+import io.axoniq.platform.application.jpa.ApplicationContext;
+import io.axoniq.platform.application.jpa.ApplicationContextRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +26,7 @@ import org.springframework.web.filter.GenericFilterBean;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.FilterChain;
@@ -171,8 +173,11 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     if (token != null) {
                         Application application = accessController.getApplication(token);
                         if (application != null) {
-                            Set<String> roles = application.getRoles().stream()
-                                                           .map(ApplicationRole::getRole)
+                            Set<String> roles = application.getContexts()
+                                                           .stream()
+                                                           .map(ApplicationContext::getRoles)
+                                                           .flatMap(List::stream)
+                                                           .map(ApplicationContextRole::getRole)
                                                            .collect(Collectors.toSet());
                             SecurityContextHolder.getContext().setAuthentication(
                                     new AuthenticationToken(true,

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
@@ -12,11 +13,14 @@ import org.junit.rules.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Author: marc
@@ -44,38 +48,48 @@ public class PrimaryEventStoreTest {
         testSubject.init(false);
     }
 
+    @Test
+    public void transactionsIterator() throws InterruptedException {
+        setupEvents(1000, 1000);
+        Iterator<TransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0);
+
+        long counter = 0;
+        while(transactionWithTokenIterator.hasNext()) {
+            counter++;
+            transactionWithTokenIterator.next();
+        }
+
+        assertEquals(1000, counter);
+    }
 
     @Test
     public void rollbackDeleteSegments() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(100);
-        // setup with 10,000 events
-        IntStream.range(0, 100).forEach(j -> {
-            String aggId = UUID.randomUUID().toString();
-            List<Event> newEvents = new ArrayList<>();
-            IntStream.range(0, 100).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
-            });
-                PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
-                testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
-        });
-
-        latch.await(5, TimeUnit.SECONDS);
+        setupEvents(100, 100);
         Thread.sleep(1500);
         testSubject.rollback(9899);
-        Assert.assertEquals(9899, testSubject.getLastToken());
+        assertEquals(9899, testSubject.getLastToken());
 
         testSubject.rollback(859);
-        Assert.assertEquals(899, testSubject.getLastToken());
+        assertEquals(899, testSubject.getLastToken());
     }
 
     @Test
     public void rollbackAndRead() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(5);
-        IntStream.range(0, 5).forEach(j -> {
+        setupEvents(5, 3);
+        Thread.sleep(1500);
+        testSubject.rollback(2);
+        assertEquals(2, testSubject.getLastToken());
+
+        testSubject.initSegments(Long.MAX_VALUE);
+        assertEquals(2, testSubject.getLastToken());
+    }
+
+    private void setupEvents(int numOfTransactions, int numOfEvents) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(numOfTransactions);
+        IntStream.range(0, numOfTransactions).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
             List<Event> newEvents = new ArrayList<>();
-            IntStream.range(0, 3).forEach(i -> {
+            IntStream.range(0, numOfEvents).forEach(i -> {
                 newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
                                    .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
             });
@@ -84,12 +98,6 @@ public class PrimaryEventStoreTest {
         });
 
         latch.await(5, TimeUnit.SECONDS);
-        Thread.sleep(1500);
-        testSubject.rollback(2);
-        Assert.assertEquals(2, testSubject.getLastToken());
-
-        testSubject.initSegments(Long.MAX_VALUE);
-        Assert.assertEquals(2, testSubject.getLastToken());
     }
 
 }

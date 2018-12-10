@@ -1,7 +1,8 @@
 package io.axoniq.platform.application;
 
 import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationRole;
+import io.axoniq.platform.application.jpa.ApplicationContext;
+import io.axoniq.platform.application.jpa.ApplicationContextRole;
 import io.axoniq.platform.application.jpa.PathMapping;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -42,7 +44,12 @@ public class AccessControllerTest {
 
         when(pathMappingRepository.findById("path1")).thenReturn(Optional.of(mapping));
         List<Application> applications = new ArrayList<>();
-        applications.add(new Application("Test", "TEST", "12345678", hasher.hash("1234567890"), new ApplicationRole("READ", "default", null)));
+        applications.add(new Application("Test",
+                                         "TEST",
+                                         "12345678",
+                                         hasher.hash("1234567890"),
+                                         new ApplicationContext("default",
+                                                                singletonList(new ApplicationContextRole("READ")))));
         when(applicationRepository.findAll()).thenReturn(applications);
 
         testSubject = new AccessControllerDB(applicationRepository, pathMappingRepository, hasher);

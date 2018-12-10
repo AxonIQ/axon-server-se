@@ -338,6 +338,16 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
+    public Iterator<TransactionWithToken> transactionIterator(long token) {
+        return new TransactionWithTokenIterator(token);
+    }
+
+    @Override
+    public Iterator<TransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+        return new TransactionWithTokenIterator(firstToken, limitToken);
+    }
+
+    @Override
     public void streamTransactions(long token, Predicate<TransactionWithToken> onEvent)  {
         logger.debug("{}: Start streaming {} transactions at {}", context, type.getEventType(), token);
 
@@ -505,4 +515,47 @@ public abstract class SegmentBasedEventStore implements EventStore {
      * @return sorted set of positions, ordered by sequenceNumber (ascending), or empty set if not found
      */
     protected abstract SortedSet<PositionInfo> getPositions(long segment, String aggregateId);
+
+    private class TransactionWithTokenIterator implements Iterator<TransactionWithToken> {
+
+        private long currentToken;
+        private final Long limitToken;
+        private long currentSegment;
+        private TransactionIterator currentTransactionIterator;
+
+        TransactionWithTokenIterator(long token) {
+            this(token, null);
+        }
+
+        TransactionWithTokenIterator(long token, Long limitToken) {
+            this.currentToken = token;
+            this.limitToken = limitToken;
+            this.currentSegment = getSegmentFor(token);
+            this.currentTransactionIterator = getTransactions(currentSegment, currentToken);
+        }
+
+        @Override
+        public boolean hasNext() {
+            return currentTransactionIterator.hasNext();
+        }
+
+        @Override
+        public TransactionWithToken next() {
+            TransactionWithToken next = currentTransactionIterator.next();
+            currentToken += next.getEventsCount();
+            checkPointers();
+            return next;
+        }
+
+        private void checkPointers() {
+            if (limitToken != null && currentToken >= limitToken) {
+                // we are done
+                currentTransactionIterator.close();
+            } else if (!currentTransactionIterator.hasNext()) {
+                currentSegment = getSegmentFor(currentToken);
+                currentTransactionIterator.close();
+                currentTransactionIterator = getTransactions(currentSegment, currentToken);
+            }
+        }
+    }
 }

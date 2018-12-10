@@ -67,9 +67,21 @@ public class ApplicationRestController {
     }
 
     private void checkRoles(ApplicationJSON application) {
-        Set<String> validRoles = roleController.listApplicationRoles().stream().map(Role::name).collect(Collectors.toSet());
-        for (ApplicationJSON.ApplicationRoleJSON role : application.getRoles()) {
-            if( ! validRoles.contains(role.getRole())) throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE, role.getRole() + ": Role unknown");
+        Set<String> validRoles = roleController.listApplicationRoles()
+                                               .stream()
+                                               .map(Role::name)
+                                               .collect(Collectors.toSet());
+        List<String> roles = application.getRoles()
+                                        .stream()
+                                        .map(ApplicationJSON.ApplicationRoleJSON::getRoles)
+                                        .flatMap(List::stream)
+                                        .distinct()
+                                        .collect(Collectors.toList());
+        for (String role : roles) {
+            if (!validRoles.contains(role)) {
+                throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE,
+                                                     role + ": Role unknown");
+            }
         }
     }
 

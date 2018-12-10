@@ -28,6 +28,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }
+        readTransaction();
     }
 
     private void forwardTo(long firstSequence) throws IOException {
@@ -91,19 +92,25 @@ public class InputStreamTransactionIterator implements TransactionIterator {
 
     @Override
     public boolean hasNext() {
-        boolean hasNext = readTransaction();
-        if( ! hasNext) close();
-        return hasNext;
+        return next != null;
     }
 
     @Override
     public TransactionWithToken next() {
-        if( next == null) throw new NoSuchElementException();
-        return next;
+        if (next == null) {
+            throw new NoSuchElementException();
+        }
+        TransactionWithToken rv = next;
+        if (!readTransaction()) {
+            next = null;
+            close();
+        }
+        return rv;
     }
 
     @Override
     public void close() {
+        next = null;
         eventSource.close();
     }
 }
