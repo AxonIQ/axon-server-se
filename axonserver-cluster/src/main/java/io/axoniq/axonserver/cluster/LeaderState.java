@@ -381,12 +381,12 @@ public class LeaderState extends AbstractMembershipState {
                                                                  .setPrevLogIndex(lastTermIndex.getIndex())
                     .build();
             send(heartbeat);
-            lastMessageSent = clock.millis();
         }
 
         private void send(AppendEntriesRequest request) {
             logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
             raftPeer.appendEntries(request);
+            lastMessageSent = clock.millis();
         }
 
         public long getMatchIndex() {

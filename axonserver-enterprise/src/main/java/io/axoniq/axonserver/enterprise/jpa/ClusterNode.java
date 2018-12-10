@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
@@ -167,6 +168,14 @@ public class ClusterNode implements Serializable, AxonServerNode {
                                                                                .build()).collect(
                                Collectors.toList()))
                 .build();
+    }
+
+    public Node toNode() {
+        return Node.newBuilder()
+                   .setNodeId(name)
+                   .setHost(internalHostName)
+                   .setPort(grpcInternalPort)
+                   .build();
     }
 
     public Set<String> getContextNames() {

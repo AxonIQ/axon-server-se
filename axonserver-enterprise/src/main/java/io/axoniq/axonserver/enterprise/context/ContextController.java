@@ -25,7 +25,6 @@ import javax.persistence.EntityManager;
 public class ContextController {
     private final EntityManager entityManager;
     private final ClusterController clusterController;
-    private final ApplicationEventPublisher eventPublisher;
 
     public ContextController(
             EntityManager entityManager,
@@ -33,7 +32,6 @@ public class ContextController {
             ApplicationEventPublisher eventPublisher) {
         this.entityManager = entityManager;
         this.clusterController = clusterController;
-        this.eventPublisher = eventPublisher;
     }
 
     public Stream<Context> getContexts() {
@@ -55,7 +53,7 @@ public class ContextController {
             entityManager.persist(context);
         }
         Set<String> currentNodes = context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).collect(Collectors.toSet());
-        Set<String> newNodes = contextConfiguration.getNodesList().stream().map(n -> n.getNodeName()).collect(Collectors.toSet());
+        Set<String> newNodes = contextConfiguration.getNodesList().stream().map(NodeInfo::getNodeName).collect(Collectors.toSet());
 
         Map<String, ClusterNode> clusterInfoMap = new HashMap<>();
         for (NodeInfo nodeInfo : contextConfiguration.getNodesList()) {
@@ -85,18 +83,24 @@ public class ContextController {
 
     public List<Node> getNodes(List<String> nodes) {
         return nodes.stream().map(clusterController::getNode)
-                    .map(clusterNode -> Node.newBuilder()
-                                            .setNodeId(clusterNode.getName())
-                                            .setHost(clusterNode.getInternalHostName())
-                                            .setPort(clusterNode.getGrpcInternalPort())
-                                            .build())
+                    .map(ClusterNode::toNode)
                     .collect(Collectors.toList());
 
     }
 
+    public Iterable<String> getNodes() {
+        return entityManager.createQuery("select n.name from ClusterNode n", String.class).getResultList();
+    }
     public List<NodeInfo> getNodeInfos(List<String> nodes) {
         return nodes.stream().map(clusterController::getNode)
-                    .map(clusterNode -> clusterNode.toNodeInfo())
+                    .map(ClusterNode::toNodeInfo)
                     .collect(Collectors.toList());
     }
+
+    public ClusterNode getNode(String node) {
+        return clusterController.getNode(node);
+    }
+
+
+
 }

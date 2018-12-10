@@ -59,7 +59,7 @@ public class ClusterRestController {
         try {
             NodeInfo nodeInfo = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo())
                                         .build();
-            raftServiceFactory.getRaftConfigService(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).joinCluster(nodeInfo);
+            raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).joinCluster(nodeInfo);
         } catch (Throwable e) {
             handleExecutionException(e);
         }

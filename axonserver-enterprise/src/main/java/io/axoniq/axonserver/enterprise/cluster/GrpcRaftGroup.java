@@ -72,6 +72,16 @@ public class GrpcRaftGroup implements RaftGroup {
             public void update(List<Node> nodes) {
 
             }
+
+            @Override
+            public int minElectionTimeout() {
+                return 250;
+            }
+
+            @Override
+            public int maxElectionTimeout() {
+                return 500;
+            }
         };
 
         nodes.forEach(node -> {

@@ -3,12 +3,16 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextNames;
+import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.User;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
+
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -23,29 +27,41 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void initCluster(ContextNames request, StreamObserver<Confirmation> responseObserver) {
-        super.initCluster(request, responseObserver);
+        raftController.localRaftConfigService().init(request.getContextsList());
+        responseObserver.onNext(Confirmation.newBuilder().build());
+        responseObserver.onCompleted();
     }
 
     @Override
     public void joinCluster(NodeInfo request, StreamObserver<Confirmation> responseObserver) {
-        raftController.join(request);
+        raftController.localRaftConfigService().join(request);
         responseObserver.onNext(Confirmation.newBuilder().build());
         responseObserver.onCompleted();
     }
 
     @Override
     public void createContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        super.createContext(request, responseObserver);
+        raftController.localRaftConfigService().addContext(request.getName(),
+                                                           request.getMembersList()
+                                                                  .stream()
+                                                                  .map(ContextMember::getNodeId)
+                                                                  .collect(Collectors.toList()));
+        responseObserver.onNext(Confirmation.newBuilder().build());
+        responseObserver.onCompleted();
     }
 
     @Override
-    public void addNodeToContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        super.addNodeToContext(request, responseObserver);
+    public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
+        raftController.localRaftConfigService().addNodeToContext(request.getContext(), request.getNode());
+        responseObserver.onNext(Confirmation.newBuilder().build());
+        responseObserver.onCompleted();
     }
 
     @Override
-    public void deleteNodeFromContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        super.deleteNodeFromContext(request, responseObserver);
+    public void deleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
+        raftController.localRaftConfigService().deleteNodeFromContext(request.getContext(), request.getNode());
+        responseObserver.onNext(Confirmation.newBuilder().build());
+        responseObserver.onCompleted();
     }
 
     @Override

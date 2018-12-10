@@ -13,7 +13,6 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.rest.ClusterRestController;
 import io.axoniq.axonserver.topology.Topology;
@@ -240,7 +239,7 @@ public class ClusterController implements SmartLifecycle {
                 && nodeInfo.getGrpcInternalPort() == messagingPlatformConfiguration.getInternalPort()) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same hostname and internal port");
         }
-        ClusterNode node = merge(nodeInfo, updateContexts);
+        ClusterNode node = merge(nodeInfo);
         if (!remoteConnections.containsKey(node.getName())) {
             startRemoteConnection(node, false);
             nodeListeners.forEach(listener -> listener
@@ -259,7 +258,7 @@ public class ClusterController implements SmartLifecycle {
         }
     }
 
-    private ClusterNode merge(NodeInfo nodeInfo, boolean updateContexts) {
+    private ClusterNode merge(NodeInfo nodeInfo) {
         ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
         if (existing == null) {
             existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
@@ -280,10 +279,6 @@ public class ClusterController implements SmartLifecycle {
             existing.setHostName(nodeInfo.getHostName());
             existing.setHttpPort(nodeInfo.getHttpPort());
             existing.setInternalHostName(nodeInfo.getInternalHostName());
-        }
-        if( updateContexts) {
-            for (ContextRole context : nodeInfo.getContextsList()) {
-            }
         }
         return existing;
     }
@@ -449,5 +444,9 @@ public class ClusterController implements SmartLifecycle {
 
     public boolean disconnectedNodes() {
         return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
+    }
+
+    public void addNode(NodeInfo nodeInfo) {
+        nodeMap.put( nodeInfo.getNodeName(), ClusterNode.from(nodeInfo));
     }
 }

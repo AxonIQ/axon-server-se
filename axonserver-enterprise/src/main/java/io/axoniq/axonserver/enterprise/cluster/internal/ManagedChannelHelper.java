@@ -37,7 +37,7 @@ public class ManagedChannelHelper {
         return channel;
     }
 
-    public static ManagedChannel createManagedChannel(MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
+    public static ManagedChannel createManagedChannel(MessagingPlatformConfiguration messagingPlatformConfiguration,  String host, int port) {
         ManagedChannel channel = null;
         try {
             NettyChannelBuilder builder = NettyChannelBuilder.forAddress(host, port);

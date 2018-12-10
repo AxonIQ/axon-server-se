@@ -226,6 +226,15 @@ message ContextConfiguration {
     repeated NodeInfo nodes = 2;
 }
 
+
+message ContextName {
+    string context = 1;
+}
+
+message NodeContext {
+    string node = 1;
+    string context = 2;
+}
 /**
  * Services on config leader
  */
@@ -236,9 +245,11 @@ service RaftConfigService {
 
     rpc CreateContext(Context) returns (Confirmation) {}
 
-    rpc AddNodeToContext(Context) returns (Confirmation) {}
+    rpc AddNodeToContext(NodeContext) returns (Confirmation) {}
 
-    rpc DeleteNodeFromContext(Context) returns (Confirmation) {}
+    rpc DeleteNodeFromContext(NodeContext) returns (Confirmation) {}
+
+    rpc DeleteContext(ContextName) returns (Confirmation) {}
 
     rpc AddApplication(Application) returns (Confirmation) {}
 
@@ -261,14 +272,16 @@ service RaftGroupService {
 
     rpc InitContext(Context) returns (Confirmation) {}
 
-    rpc AddNodeToContext(Context) returns (Confirmation) {}
+    rpc AddServer(Context) returns (Confirmation) {}
 
-    rpc DeleteNodeFromContext(Context) returns (Confirmation) {}
+    rpc RemoveServer(Context) returns (Confirmation) {}
 
-    rpc UpdateApplicationInContext(Application) returns (Confirmation) {}
+    rpc AddAppAuthorization(Application) returns (Confirmation) {}
 
-    rpc DeleteApplicationFromContext(Application) returns (Confirmation) {}
+    rpc EditAppAuthorization(Application) returns (Confirmation) {}
 
-    rpc GetStatus(Context) returns (Context) {}
+    rpc DeleteAppAuthorization(Application) returns (Confirmation) {}
+
+    rpc GetStatus(Context) returns (stream Context) {}
 }
 

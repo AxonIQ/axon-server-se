@@ -30,7 +30,7 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     @Override
     public void markVotedFor(String candidate) {
         raftState.setVotedFor(candidate);
-        sync();
+        //sync();
     }
 
     @Override
@@ -41,7 +41,7 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     @Override
     public void updateCurrentTerm(long term) {
         raftState.setCurrentTerm(term);
-        sync();
+        //sync();
     }
 
     @Override
