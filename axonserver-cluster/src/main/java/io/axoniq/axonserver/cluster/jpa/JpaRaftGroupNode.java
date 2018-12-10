@@ -28,6 +28,9 @@ public class JpaRaftGroupNode {
         this.port = node.getPort();
     }
 
+    public JpaRaftGroupNode() {
+    }
+
     public String getGroupId() {
         return groupId;
     }
