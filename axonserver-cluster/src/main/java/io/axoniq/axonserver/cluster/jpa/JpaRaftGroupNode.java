@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.cluster.jpa;
 
+import io.axoniq.axonserver.grpc.cluster.Node;
+
 import java.io.Serializable;
 import java.util.Objects;
 import javax.persistence.Entity;
@@ -18,6 +20,16 @@ public class JpaRaftGroupNode {
     private String nodeId;
     private String host;
     private int port;
+
+    public JpaRaftGroupNode(String groupId, Node node) {
+        this.groupId = groupId;
+        this.nodeId = node.getNodeId();
+        this.host = node.getHost();
+        this.port = node.getPort();
+    }
+
+    public JpaRaftGroupNode() {
+    }
 
     public String getGroupId() {
         return groupId;

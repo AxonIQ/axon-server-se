@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.boot.actuate.health.Health;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -54,8 +55,16 @@ public interface EventStore {
 
     EventTypeContext getType();
 
+    /**
+     * @deprecated use {@link #transactionIterator(long)} instead
+     */
+    @Deprecated
     void streamTransactions(long firstToken,
                             Predicate<TransactionWithToken> transactionConsumer);
+
+    Iterator<TransactionWithToken> transactionIterator(long firstToken);
+
+    Iterator<TransactionWithToken> transactionIterator(long firstToken, long limitToken);
 
     void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer);
 

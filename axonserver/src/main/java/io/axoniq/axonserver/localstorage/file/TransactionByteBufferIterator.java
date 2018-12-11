@@ -26,6 +26,7 @@ public class TransactionByteBufferIterator implements TransactionIterator {
         this.currentSequenceNumber = segment;
         this.validating = validating;
         forwardTo(token);
+        readTransaction();
     }
 
     private void forwardTo(long firstSequence) {
@@ -88,17 +89,24 @@ public class TransactionByteBufferIterator implements TransactionIterator {
 
     @Override
     public boolean hasNext() {
-        return readTransaction();
+        return next != null;
     }
 
     @Override
     public TransactionWithToken next() {
-        if( next == null) throw new NoSuchElementException();
-        return next;
+        if (next == null) {
+            throw new NoSuchElementException();
+        }
+        TransactionWithToken rv = next;
+        if (!readTransaction()) {
+            next = null;
+        }
+        return rv;
     }
 
     @Override
     public void close() {
+        next = null;
         eventSource.close();
     }
 

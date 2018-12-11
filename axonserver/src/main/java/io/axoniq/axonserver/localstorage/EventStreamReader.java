@@ -4,6 +4,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import org.springframework.boot.actuate.health.Health;
 
+import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -25,7 +26,19 @@ public class EventStreamReader {
         return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage);
     }
 
-    public CompletableFuture<Void>  streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
+    public Iterator<TransactionWithToken> transactionIterator(long firstToken) {
+        return datafileManagerChain.transactionIterator(firstToken);
+    }
+
+    public Iterator<TransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+        return datafileManagerChain.transactionIterator(firstToken, limitToken);
+    }
+
+    @Deprecated
+    /**
+     * @deprecated use {@link #transactionIterator(long)} instead
+     */
+    public CompletableFuture<Void> streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
         return CompletableFuture.runAsync(() -> datafileManagerChain.streamTransactions(firstToken, transactionConsumer));
     }
 

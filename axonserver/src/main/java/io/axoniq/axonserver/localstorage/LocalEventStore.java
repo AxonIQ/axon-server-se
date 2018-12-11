@@ -29,9 +29,12 @@ import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -252,10 +255,35 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotWriteStorage.getLastToken();
     }
 
-    public CompletableFuture<Void> streamEventTransactions(String context, long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
-        return workersMap.get(context).eventStreamReader.streamTransactions( firstToken, transactionConsumer);
+    public Iterator<TransactionWithToken> eventTransactionsIterator(String context, long fromToken, long toToken) {
+        return workersMap.get(context).eventStreamReader.transactionIterator(fromToken, toToken);
     }
 
+    public Iterator<TransactionWithToken> snapshotTransactionsIterator(String context, long fromToken, long toToken) {
+        return workersMap.get(context).snapshotStreamReader.transactionIterator(fromToken, toToken);
+    }
+
+    public Iterator<TransactionWithToken> eventTransactionsIterator(String context, long firstToken) {
+        return workersMap.get(context).eventStreamReader.transactionIterator(firstToken);
+    }
+
+    public Iterator<TransactionWithToken> snapshotTransactionsIterator(String context, long firstToken) {
+        return workersMap.get(context).snapshotStreamReader.transactionIterator(firstToken);
+    }
+
+    /**
+     * @deprecated use {@link #eventTransactionsIterator(String, long)} or {@link #eventTransactionsIterator(String, long, long)}
+     */
+    @Deprecated
+    public CompletableFuture<Void> streamEventTransactions(String context, long firstToken,
+                                                           Predicate<TransactionWithToken> transactionConsumer) {
+        return workersMap.get(context).eventStreamReader.streamTransactions(firstToken, transactionConsumer);
+    }
+
+    /**
+     * @deprecated use {@link #snapshotTransactionsIterator(String, long)} or {@link #snapshotTransactionsIterator(String, long, long)}
+     */
+    @Deprecated
     public CompletableFuture<Void> streamSnapshotTransactions(String context, long firstToken,
                                                               Predicate<TransactionWithToken> transactionConsumer) {
         return workersMap.get(context).snapshotStreamReader.streamTransactions(firstToken, transactionConsumer);

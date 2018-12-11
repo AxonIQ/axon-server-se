@@ -1,14 +1,11 @@
 package io.axoniq.platform.application;
 
 import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationModelVersion;
-import io.axoniq.platform.application.jpa.ApplicationRole;
+import io.axoniq.platform.application.jpa.ApplicationContext;
 import org.springframework.stereotype.Controller;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -69,12 +66,12 @@ public class ApplicationController {
             application.setTokenPrefix(token.substring(0, Math.min(PREFIX_LENGTH, token.length())));
             existingApplication = new Application(application.getName(), application.getDescription(), application.getTokenPrefix(), hasher.hash(token));
         } else {
-            existingApplication.getRoles().clear();
+            existingApplication.getContexts().clear();
             existingApplication.setDescription(application.getDescription());
 
         }
         final Application finalApplication = existingApplication;
-        application.getRoles().forEach(role -> finalApplication.getRoles().add(new ApplicationRole(role.getRole(), role.getContext(), role.getEndDate())));
+        application.getContexts().forEach(role -> finalApplication.getContexts().add(new ApplicationContext(role.getContext(), role.getRoles())));
         applicationRepository.save(finalApplication);
         updateListeners.forEach((key, listener) -> listener.accept(finalApplication));
         applicationModelController.incrementModelVersion(Application.class);
@@ -101,12 +98,12 @@ public class ApplicationController {
         if( application == null) {
             application = new Application(updatedApplication.getName(), updatedApplication.getDescription(), updatedApplication.getTokenPrefix(), updatedApplication.getHashedToken());
         } else {
-            if( synchronizeRoles) application.getRoles().clear();
+            if( synchronizeRoles) application.getContexts().clear();
             application.setHashedToken(updatedApplication.getHashedToken());
             application.setDescription(updatedApplication.getDescription());
         }
         final Application finalApplication = application;
-        if( synchronizeRoles) updatedApplication.getRoles().forEach(role -> finalApplication.getRoles().add(new ApplicationRole(role.getRole(), role.getContext(), role.getEndDate())));
+        if( synchronizeRoles) updatedApplication.getContexts().forEach(role -> finalApplication.getContexts().add(new ApplicationContext(role.getContext(), role.getRoles())));
         applicationRepository.save(application);
         applicationModelController.incrementModelVersion(Application.class);
     }

@@ -1,9 +1,15 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.configuration.CandidateConfiguration;
+import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
+import io.axoniq.axonserver.cluster.election.MajorityElection;
+import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
@@ -11,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -24,6 +31,7 @@ public class CandidateState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(CandidateState.class);
     private final AtomicReference<Registration> nextElection = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
+    private final ClusterConfiguration clusterConfiguration = new CandidateConfiguration();
 
     private CandidateState(Builder builder) {
         super(builder);
@@ -70,6 +78,16 @@ public class CandidateState extends AbstractMembershipState {
         return installSnapshotFailure();
     }
 
+    @Override
+    public CompletableFuture<ConfigChangeResult> addServer(Node node) {
+        return clusterConfiguration.addServer(node);
+    }
+
+    @Override
+    public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
+        return clusterConfiguration.removeServer(nodeId);
+    }
+
     private void resetElectionTimeout() {
         int timeout = random(minElectionTimeout(), maxElectionTimeout() + 1);
         Registration newTask = scheduler().schedule(this::startElection, timeout, MILLISECONDS);
@@ -84,7 +102,7 @@ public class CandidateState extends AbstractMembershipState {
             }
             logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
             resetElectionTimeout();
-            currentElection.set(new CandidateElection(this::clusterSize));
+            currentElection.set(new MajorityElection(this::clusterSize));
             currentElection.get().registerVoteReceived(me(), true);
             RequestVoteRequest request = requestVote();
             Collection<RaftPeer> raftPeers = otherNodes();

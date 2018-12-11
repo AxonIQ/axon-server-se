@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.cluster;
+package io.axoniq.axonserver.cluster.election;
 
 /**
  * @author Sara Pellegrini

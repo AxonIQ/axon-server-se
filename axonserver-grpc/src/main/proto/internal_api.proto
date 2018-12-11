@@ -195,8 +195,9 @@ message ContextMember {
 message Application {
     string name = 1;
     string description = 2;
-    string token = 3;
-    repeated ApplicationContextRole roles_per_context = 4;
+    string token_prefix = 3;
+    string token = 4;
+    repeated ApplicationContextRole roles_per_context = 5;
 }
 
 message ApplicationContextRole {
@@ -204,10 +205,18 @@ message ApplicationContextRole {
     repeated string roles = 2;
 }
 
+message Applications {
+    repeated Application applications = 1;
+}
+
 message User {
     string name = 1;
     string password = 2;
     repeated string roles = 3;
+}
+
+message Users {
+    repeated User users = 1;
 }
 
 message ContextNames {
@@ -235,6 +244,19 @@ message NodeContext {
     string node = 1;
     string context = 2;
 }
+message LoadBalanceStrategy {
+    string name = 1;
+    string factoryBean = 2;
+    string label = 3;
+}
+
+message ProcessorLBStrategy {
+    string component = 1;
+    string processor = 2;
+    string context = 3;
+    string strategy = 4;
+}
+
 /**
  * Services on config leader
  */

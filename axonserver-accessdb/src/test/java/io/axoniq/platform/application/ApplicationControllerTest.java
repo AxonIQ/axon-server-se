@@ -1,7 +1,8 @@
 package io.axoniq.platform.application;
 
 import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationRole;
+import io.axoniq.platform.application.jpa.ApplicationContext;
+import io.axoniq.platform.application.jpa.ApplicationContextRole;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,8 +15,10 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
@@ -53,7 +56,7 @@ public class ApplicationControllerTest {
         testSubject.registerUpdateListener("sample", app -> updateListenerCalled.set(true));
         long modelVersion = versionRepository.getModelVersion(Application.class);
         assertNotEquals( "Token already returned", testSubject.updateJson(new Application("Test1", "TEST1", null,
-                null, new ApplicationRole("READ", "default", null))).getTokenString());
+                null, new ApplicationContext("default", Collections.singletonList(new ApplicationContextRole("READ"))))).getTokenString());
         assertEquals(modelVersion+1, versionRepository.getModelVersion(Application.class));
         assertTrue(updateListenerCalled.get());
     }
@@ -61,7 +64,7 @@ public class ApplicationControllerTest {
     @Test
     public void updateExisting() {
         assertEquals("Token already returned", testSubject.updateJson(new Application("Test", "TEST1", null,
-                null, new ApplicationRole("READ", "default", null))).getTokenString());
+                null, new ApplicationContext("default", Collections.singletonList(new ApplicationContextRole("READ"))))).getTokenString());
     }
 
 

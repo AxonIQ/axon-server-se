@@ -19,6 +19,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -60,6 +61,16 @@ public abstract class JdbcAbstractStore implements EventStore {
     @Override
     public EventTypeContext getType() {
         return eventTypeContext;
+    }
+
+    @Override
+    public Iterator<TransactionWithToken> transactionIterator(long firstToken) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Iterator<TransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

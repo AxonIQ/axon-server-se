@@ -1,9 +1,10 @@
 package io.axoniq.platform.application;
 
 import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationRole;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.axoniq.platform.application.jpa.ApplicationContext;
+import io.axoniq.platform.application.jpa.ApplicationContextRole;
+import org.junit.*;
+import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -14,9 +15,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Calendar;
-import java.util.Date;
-
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
 /**
@@ -36,14 +36,21 @@ public class ApplicationRepositoryTest {
     @Test
     public void testHasRole() {
         assertNotNull(applicationRepository);
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DAY_OF_YEAR, 7);
-        Date endDate1 = cal.getTime();
-        cal.add(Calendar.DAY_OF_YEAR, 7);
-        Date endDate2 = cal.getTime();
 
-        applicationRepository.save(new Application("TestApp", "Description", "1235-567","1235-5678", new ApplicationRole("READ", "test", endDate1), new ApplicationRole("WRITE", "test", endDate1)));
-        applicationRepository.save(new Application("TestApp2", "Description", "1235-567","1235-5679", new ApplicationRole("WRITE", "test", endDate2)));
+        applicationRepository.save(new Application("TestApp",
+                                                   "Description",
+                                                   "1235-567",
+                                                   "1235-5678",
+                                                   new ApplicationContext("test",
+                                                                          asList(new ApplicationContextRole("READ"),
+                                                                                 new ApplicationContextRole("WRITE")))));
+        applicationRepository.save(new Application("TestApp2",
+                                                   "Description",
+                                                   "1235-567",
+                                                   "1235-5679",
+                                                   new ApplicationContext("test",
+                                                                          singletonList(new ApplicationContextRole(
+                                                                                  "WRITE")))));
         Application app1 = applicationRepository.findFirstByName("TestApp");
         assertNotNull(app1);
         assertTrue(app1.hasRoleForContext("READ", "test"));
@@ -55,7 +62,7 @@ public class ApplicationRepositoryTest {
 
     @Test(expected = DataIntegrityViolationException.class)
     public void testDuplicateName() {
-        applicationRepository.save(new Application("TestApp3", "Description",  "1234-567", "1234-5678"));
+        applicationRepository.save(new Application("TestApp3", "Description", "1234-567", "1234-5678"));
         applicationRepository.save(new Application("TestApp3", "Description", "1234-567", "1234-5679"));
     }
 
@@ -64,6 +71,4 @@ public class ApplicationRepositoryTest {
         applicationRepository.save(new Application("TestApp4", "Description", "1236-567", "1236-5678"));
         applicationRepository.save(new Application("TestApp5", "Description", "1236-567", "1236-5678"));
     }
-
-
 }
