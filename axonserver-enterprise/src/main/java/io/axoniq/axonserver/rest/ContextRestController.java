@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.cluster.RaftServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -31,15 +31,15 @@ import javax.validation.Valid;
 @RequestMapping("/v1")
 public class ContextRestController {
 
-    private final GrpcRaftController grpcRaftController;
+    private final RaftServiceFactory raftServiceFactory;
     private final ContextController contextController;
     private final FeatureChecker limits;
 
-    public ContextRestController( GrpcRaftController grpcRaftController,
+    public ContextRestController( RaftServiceFactory raftServiceFactory,
                                   ContextController contextController,
                                   ApplicationEventPublisher applicationEventPublisher,
                                   FeatureChecker limits) {
-        this.grpcRaftController = grpcRaftController;
+        this.raftServiceFactory = raftServiceFactory;
         this.contextController = contextController;
         this.limits = limits;
     }
@@ -56,25 +56,25 @@ public class ContextRestController {
 
     @DeleteMapping( path = "context/{name}")
     public void deleteContext(@PathVariable("name")  String name) {
-        // grpcRaftController.deleteContext(name);
+        raftServiceFactory.getRaftConfigService().deleteContext(name);
     }
 
     @PostMapping(path = "context/{context}/{node}")
     public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
                                 @RequestParam(name="messaging", defaultValue = "true") boolean messaging
                                  ) {
-        grpcRaftController.addNodeToContext(name, node);
+        raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
     }
 
     @DeleteMapping(path = "context/{context}/{node}")
     public void deleteNodeFromContext(@PathVariable("context") String name, @PathVariable("node") String node){
-        grpcRaftController.deleteNodeFromContext(name, node);
+        raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
     }
 
     @PostMapping(path ="context")
     public void addContext(@RequestBody @Valid ContextJSON contextJson) throws Exception {
         if(!Feature.MULTI_CONTEXT.enabled(limits)) throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "License does not allow creating contexts");
-        grpcRaftController.addContext(contextJson.getContext(), contextJson.getNodes());
+        raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
     }
 
     @GetMapping(path = "context/init")
@@ -83,7 +83,7 @@ public class ContextRestController {
         if( contexts.isEmpty()) {
             contexts.add("default");
         }
-        grpcRaftController.init(contexts);
+        raftServiceFactory.getLocalRaftConfigService().init(contexts);
     }
 
 }

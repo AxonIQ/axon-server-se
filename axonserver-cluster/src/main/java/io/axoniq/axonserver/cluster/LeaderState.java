@@ -381,12 +381,12 @@ public class LeaderState extends AbstractMembershipState {
                                                                  .setPrevLogIndex(lastTermIndex.getIndex())
                     .build();
             send(heartbeat);
-            lastMessageSent = clock.millis();
         }
 
         private void send(AppendEntriesRequest request) {
             logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
             raftPeer.appendEntries(request);
+            lastMessageSent = clock.millis();
         }
 
         public long getMatchIndex() {
@@ -403,7 +403,7 @@ public class LeaderState extends AbstractMembershipState {
                     changeStateTo(stateFactory().followerState());
                     return;
                 }
-                logger.debug("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}", groupId(), raftPeer.nodeId(), nextIndex,
+                logger.info("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}", groupId(), raftPeer.nodeId(), nextIndex,
                             appendEntriesResponse.getFailure().getLastAppliedIndex());
                 matchIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex());
                 nextIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex() + 1);

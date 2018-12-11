@@ -1,11 +1,15 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.grpc.internal.Application;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -21,36 +25,47 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     @Override
     public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
         try {
-            controller.initRaftGroup(request.getName());
+            controller.localRaftGroupService().initContext(request.getName(), request.getMembersList()
+                    .stream()
+            .map(contextMember -> Node.newBuilder().setNodeId(contextMember.getNodeId()).setHost(contextMember.getHost()).setPort(contextMember.getPort()).build()).collect(
+                            Collectors.toList()));
             responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
             responseObserver.onCompleted();
-        } catch (Throwable t) {
+        } catch (RuntimeException t) {
             responseObserver.onError(t);
         }
     }
 
     @Override
-    public void addNodeToContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        super.addNodeToContext(request, responseObserver);
+    public void addServer(Context request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = controller.localRaftGroupService().addNodeToContext(request.getName(), toNode(request.getMembers(0)));
+        confirm(responseObserver, completable);
+    }
+
+    private void confirm(StreamObserver<Confirmation> responseObserver, CompletableFuture<Void> completable) {
+        completable.whenComplete((r, t) -> {
+            if (t != null) {
+                responseObserver.onError(t);
+            } else {
+                responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+                responseObserver.onCompleted();
+            }
+        });
     }
 
     @Override
-    public void deleteNodeFromContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        super.deleteNodeFromContext(request, responseObserver);
+    public void removeServer(Context request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = controller.localRaftGroupService().deleteNode(request.getName(), request.getMembers(0).getNodeId());
+        confirm(responseObserver, completable);
     }
 
-    @Override
-    public void updateApplicationInContext(Application request, StreamObserver<Confirmation> responseObserver) {
-        super.updateApplicationInContext(request, responseObserver);
-    }
-
-    @Override
-    public void deleteApplicationFromContext(Application request, StreamObserver<Confirmation> responseObserver) {
-        super.deleteApplicationFromContext(request, responseObserver);
+    private Node toNode(ContextMember member) {
+        return Node.newBuilder().setPort(member.getPort()).setHost(member.getHost()).setNodeId(member.getNodeId()).build();
     }
 
     @Override
     public void getStatus(Context request, StreamObserver<Context> responseObserver) {
-        super.getStatus(request, responseObserver);
+        controller.localRaftGroupService().getStatus(responseObserver::onNext);
+        responseObserver.onCompleted();
     }
 }

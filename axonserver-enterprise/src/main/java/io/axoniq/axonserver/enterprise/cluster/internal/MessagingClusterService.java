@@ -147,7 +147,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
         try {
             checkConnection(request.getInternalHostName());
-            grpcRaftController.join(request);
+            //TODO: remove? grpcRaftController.join(request);
             responseObserver.onCompleted();
         } catch (Exception mpe) {
             logger.warn("Join request failed", mpe);

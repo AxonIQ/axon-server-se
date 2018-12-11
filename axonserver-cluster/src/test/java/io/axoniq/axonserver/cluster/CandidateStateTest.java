@@ -45,6 +45,8 @@ public class CandidateStateTest {
         when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore("Test"));
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
+        LogEntryProcessor logEntryProcessor = mock(LogEntryProcessor.class);
+        when(raftGroup.logEntryProcessor()).thenReturn(logEntryProcessor);
         when(raftGroup.localNode()).thenReturn(localNode);
 
         transitionHandler = new FakeTransitionHandler();

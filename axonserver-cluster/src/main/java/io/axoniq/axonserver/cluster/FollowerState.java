@@ -211,6 +211,7 @@ public class FollowerState extends AbstractMembershipState {
     private void checkMessageReceived() {
         long now = clock.millis();
         if( nextTimeout.get() < now) {
+            logger.warn("{}: Timeout in follower state: {}", groupId(), (now-nextTimeout.get()));
             changeStateTo(stateFactory().candidateState());
         } else {
             scheduleNewElection();
