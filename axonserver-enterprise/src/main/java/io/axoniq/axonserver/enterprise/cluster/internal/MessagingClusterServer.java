@@ -13,6 +13,7 @@ import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,7 @@ public class MessagingClusterServer implements SmartLifecycle{
     private final GrpcRaftGroupService grpcRaftGroupService;
     private final GrpcRaftConfigService grpcRaftConfigService;
     private final FeatureChecker limits;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private Server server;
 
     public MessagingClusterServer(MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -45,7 +47,8 @@ public class MessagingClusterServer implements SmartLifecycle{
                                   LeaderElectionService leaderElectionService,
                                   GrpcRaftGroupService grpcRaftGroupService,
                                   GrpcRaftConfigService grpcRaftConfigService,
-                                  FeatureChecker limits) {
+                                  FeatureChecker limits,
+                                  ApplicationEventPublisher applicationEventPublisher) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.messagingClusterService = messagingClusterService;
         this.internalEventStoreService = internalEventStoreService;
@@ -54,6 +57,7 @@ public class MessagingClusterServer implements SmartLifecycle{
         this.grpcRaftGroupService = grpcRaftGroupService;
         this.grpcRaftConfigService = grpcRaftConfigService;
         this.limits = limits;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
 
@@ -124,11 +128,11 @@ public class MessagingClusterServer implements SmartLifecycle{
         try {
             server.start();
 
-            logger.info("gRPC Messaging Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
-
+            logger.info("AxonServer replication server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
+            applicationEventPublisher.publishEvent(new ReplicationServerStarted());
             started = true;
         } catch (IOException e) {
-            logger.error("Starting gRPC Messaging Cluster Server gateway failed - {}", e.getMessage(), e);
+            logger.error("Starting AxonServer replication server failed - {}", e.getMessage(), e);
         }
     }
 

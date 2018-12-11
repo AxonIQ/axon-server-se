@@ -30,7 +30,6 @@ public class GrpcRaftStatusManager {
         this.contextController = contextController;
         this.raftServiceFactory = raftServiceFactory;
         this.eventPublisher = eventPublisher;
-        raftServiceFactory.setContextLeaderProvider(leaderMap::get);
     }
 
     @Scheduled(fixedDelay = 5000)

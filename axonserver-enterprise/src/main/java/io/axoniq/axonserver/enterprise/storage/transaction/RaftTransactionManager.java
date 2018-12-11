@@ -9,7 +9,9 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Author: marc
@@ -18,6 +20,8 @@ public class RaftTransactionManager implements StorageTransactionManager {
     private final EventStore datafileManagerChain;
     private final GrpcRaftController clusterController;
     private final AtomicLong token = new AtomicLong();
+    private final AtomicBoolean allocating = new AtomicBoolean();
+    private final AtomicLong waitingTransactions = new AtomicLong();
 
 
     public RaftTransactionManager(EventStore datafileManagerChain,
@@ -28,16 +32,27 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
     @Override
     public CompletableFuture<Long> store(List<Event> eventList) {
+        waitingTransactions.incrementAndGet();
         token.compareAndSet(0, datafileManagerChain.getLastToken()+1);
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         RaftNode node = clusterController.getStorageRaftNode(datafileManagerChain.getType().getContext());
-
-        // The following 2 lines must be run by one thread at a time
-        TransactionWithToken transactionWithToken = TransactionWithToken.newBuilder().setToken(token.getAndAdd(eventList.size())).addAllEvents(eventList).build();
-        CompletableFuture<Void> appendEntryResult = node.appendEntry(
-                "Append." + datafileManagerChain.getType().getEventType(), transactionWithToken.toByteArray());
+        // Ensure that only one thread is generating transaction token and log entry index at the same time
+        while( !allocating.compareAndSet(false, true)) {
+            LockSupport.parkNanos(1000);
+        }
+        CompletableFuture<Void> appendEntryResult;
+        TransactionWithToken transactionWithToken;
+        try {
+            transactionWithToken = TransactionWithToken.newBuilder().setToken(token.getAndAdd(
+                    eventList.size())).addAllEvents(eventList).build();
+            appendEntryResult = node.appendEntry(
+                    "Append." + datafileManagerChain.getType().getEventType(), transactionWithToken.toByteArray());
+        } finally {
+            allocating.set(false);
+        }
         //
         appendEntryResult.whenComplete((r, cause) -> {
+            waitingTransactions.decrementAndGet();
             if( cause == null) {
                 completableFuture.complete(transactionWithToken.getToken());
             } else {
@@ -60,7 +75,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
     @Override
     public long waitingTransactions() {
-        return 0;
+        return waitingTransactions.get();
     }
 
     @Override

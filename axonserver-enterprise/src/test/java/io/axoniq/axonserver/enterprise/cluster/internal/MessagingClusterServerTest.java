@@ -12,10 +12,12 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.runners.*;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Author: marc
@@ -55,7 +57,7 @@ public class MessagingClusterServerTest {
                                                  leaderElectionService,
                                                  grpcRaftGroupService,
                                                  grpcRaftConfigService,
-                                                 limits);
+                                                 limits, mock(ApplicationEventPublisher.class));
     }
 
     @Test(expected = RuntimeException.class)

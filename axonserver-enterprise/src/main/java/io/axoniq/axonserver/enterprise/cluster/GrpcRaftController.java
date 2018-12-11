@@ -9,6 +9,7 @@ import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.cluster.Config;
@@ -59,6 +60,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     private LocalEventStore localEventStore;
     private final Map<String,RaftGroup> raftGroupMap = new ConcurrentHashMap<>();
     private boolean running;
+    private volatile boolean replicationServerStarted;
     private final ContextController contextController;
     private final JpaRaftGroupNodeRepository raftGroupNodeRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -87,6 +89,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         localEventStore = applicationContext.getBean(LocalEventStore.class);
         raftServiceFactory.setLocalRaftGroupService(localRaftGroupService);
         raftServiceFactory.setLocalRaftConfigService(localRaftConfigService);
+        raftServiceFactory.setContextLeaderProvider(this::getStorageMaster);
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.findByNodeId(messagingPlatformConfiguration.getName());
         groups.forEach(context -> createRaftGroup(context.getGroupId(), messagingPlatformConfiguration.getName()));
         running = true;
@@ -130,26 +133,42 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         }
         raftGroup.localNode().registerEntryConsumer(entry -> processNewConfiguration(groupId, entry));
 
-        raftGroup.localNode().start();
         raftGroupMap.put(groupId, raftGroup);
+        if( replicationServerStarted) raftGroup.localNode().start();
         return raftGroup;
+    }
+
+    @EventListener
+    public void on(ReplicationServerStarted replicationServerStarted) {
+        this.replicationServerStarted = true;
+        raftGroupMap.forEach((k,raftGroup) -> raftGroup.localNode().start());
     }
 
     private void processEventEntry(String groupId, Entry e) {
 
             if (e.hasSerializedObject()) {
-                logger.warn("{}: received type: {}", groupId, e.getSerializedObject().getType());
+                logger.debug("{}: received type: {}", groupId, e.getSerializedObject().getType());
                 if (e.getSerializedObject().getType().equals("Append.EVENT")) {
                     TransactionWithToken transactionWithToken = null;
                     try {
                         transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
-                        System.out.println(transactionWithToken.getToken());
                         if (transactionWithToken.getToken() > localEventStore.getLastToken(groupId)) {
                             localEventStore.syncEvents(groupId, transactionWithToken);
                         }
                     } catch (InvalidProtocolBufferException e1) {
                         e1.printStackTrace();
                     }
+                } else if (e.getSerializedObject().getType().equals("Append.EVENT")) {
+                    TransactionWithToken transactionWithToken = null;
+                    try {
+                        transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
+                        if (transactionWithToken.getToken() > localEventStore.getLastToken(groupId)) {
+                            localEventStore.syncSnapshots(groupId, transactionWithToken);
+                        }
+                    } catch (InvalidProtocolBufferException e1) {
+                        e1.printStackTrace();
+                    }
+
                 }
             }
 

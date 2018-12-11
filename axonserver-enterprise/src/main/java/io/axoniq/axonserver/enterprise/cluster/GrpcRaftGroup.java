@@ -40,7 +40,7 @@ public class GrpcRaftGroup implements RaftGroup {
     public GrpcRaftGroup(String nodeId, Set<JpaRaftGroupNode> nodes, String groupId, JpaRaftStateRepository raftStateRepository) {
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         StorageProperties storageOptions = new StorageProperties();
-        storageOptions.setSegmentSize(1024*1024);
+        storageOptions.setSegmentSize(16*1024*1024);
         storageOptions.setLogStorageFolder("log");
 
 
@@ -75,12 +75,17 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public int minElectionTimeout() {
-                return 250;
+                return 1000;
             }
 
             @Override
             public int maxElectionTimeout() {
-                return 500;
+                return 2500;
+            }
+
+            @Override
+            public int heartbeatTimeout() {
+                return 250;
             }
         };
 
