@@ -10,7 +10,7 @@ import reactor.core.publisher.Flux;
 /**
  * @author Milan Savic
  */
-public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataProvider, SnapshotDataConsumer {
+public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataProvider {
 
     private static final String SNAPSHOT_TYPE = "snapshotsTransaction";
 
@@ -24,7 +24,7 @@ public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataPro
 
     @Override
     public int order() {
-        return 40;
+        return 50;
     }
 
     @Override

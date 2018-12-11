@@ -15,7 +15,7 @@ import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaApplication;
 /**
  * @author Milan Savic
  */
-public class ApplicationSnapshotDataProvider implements SnapshotDataProvider, SnapshotDataConsumer {
+public class ApplicationSnapshotDataProvider implements SnapshotDataProvider {
 
     private final String context;
     private final EntityManager entityManager;
@@ -33,8 +33,8 @@ public class ApplicationSnapshotDataProvider implements SnapshotDataProvider, Sn
     @Override
     public Flux<SerializedObject> provide(long from, long to) {
         List<Application> applications = entityManager.createQuery("select app from io.axoniq.platform.application.jpa.Application app " +
-                                                                           "left join io.axoniq.platform.application.jpa.ApplicationContext app_role " +
-                                                                           "where app_role.context = :context",
+                                                                           "left join app.contexts app_context " +
+                                                                           "where app_context.context = :context",
                                                                    Application.class)
                                                       .setParameter("context", context)
                                                       .getResultList();

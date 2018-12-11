@@ -5,6 +5,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Milan Savic
@@ -13,5 +14,11 @@ public interface SnapshotManager {
 
     Flux<SerializedObject> streamSnapshotChunks(long fromEventSequence, long toEventSequence);
 
-    Mono<Void> applySnapshotData(List<SerializedObject> serializedObjects);
+    default Mono<Void> applySnapshotData(List<SerializedObject> serializedObjects) {
+        return Mono.when(serializedObjects.stream()
+                                          .map(this::applySnapshotData)
+                                          .collect(Collectors.toList()));
+    }
+
+    Mono<Void> applySnapshotData(SerializedObject serializedObject);
 }
