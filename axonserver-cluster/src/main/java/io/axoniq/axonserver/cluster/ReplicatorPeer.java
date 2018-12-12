@@ -148,12 +148,11 @@ class ReplicatorPeer {
                                     raftPeer.nodeId(),
                                     nextIndex,
                                     appendEntriesResponse.getFailure().getLastAppliedIndex());
-            matchIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex());
+            setMatchIndex(appendEntriesResponse.getFailure().getLastAppliedIndex());
             nextIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex() + 1);
             entryIterator = raftGroup.localLogEntryStore().createIterator(nextIndex.get());
         } else {
-            matchIndex.set(appendEntriesResponse.getSuccess().getLastLogIndex());
-            matchIndexCallback.accept(matchIndex.get());
+            setMatchIndex(appendEntriesResponse.getSuccess().getLastLogIndex());
         }
     }
 
@@ -175,5 +174,12 @@ class ReplicatorPeer {
 
     private String me() {
         return raftGroup.localNode().nodeId();
+    }
+
+    private void setMatchIndex(long newMatchIndex) {
+        long oldValue = matchIndex.getAndUpdate(old -> (old < newMatchIndex) ? newMatchIndex : old);
+        if (oldValue < matchIndex.get()) {
+            matchIndexCallback.accept(matchIndex.get());
+        }
     }
 }
