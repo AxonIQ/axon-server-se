@@ -309,7 +309,7 @@ public class LeaderState extends AbstractMembershipState {
             }
             return replicatorPeerMap.values().stream().map(ReplicatorPeer::lastMessageReceived)
                                     .sorted()
-                                    .skip((int)Math.floor(otherNodesCount() / 2f)).findFirst().map(AtomicLong::get).orElse(0L);
+                                    .skip((int)Math.floor(otherNodesCount() / 2f)).findFirst().orElse(0L);
         }
 
         public void addNode(Node node) {

@@ -13,6 +13,7 @@ import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
@@ -257,7 +258,7 @@ public class SnapshotIntegrationTest {
                                    .setPayload(SerializedObject.newBuilder().build())
                                    .build());
             });
-            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(newEvents);
+            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(new TransactionInformation(0), newEvents);
             eventStore.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 

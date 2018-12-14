@@ -29,6 +29,7 @@ class ReplicatorPeer {
     private final AtomicLong matchIndex = new AtomicLong(0);
     private volatile long lastMessageSent = 0L;
     private volatile long lastMessageReceived;
+    private volatile boolean running;
     private final Clock clock;
     private final RaftGroup raftGroup;
     private final Runnable transitToFollower;
@@ -55,8 +56,12 @@ class ReplicatorPeer {
         this.transitToFollower = transitToFollower;
     }
 
+    public void stop() {
+        running = false;
+    }
+
     private boolean canSend() {
-        return matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < FLOW_BUFFER;
+        return running && matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < FLOW_BUFFER;
     }
 
     public int sendNextEntries() {
@@ -126,7 +131,7 @@ class ReplicatorPeer {
     private void send(AppendEntriesRequest request) {
         logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
         raftPeer.appendEntries(request);
-        lastMessageSent = clock.millis();
+        lastMessageSent = Math.max(lastMessageSent,clock.millis());
     }
 
     public long getMatchIndex() {
@@ -134,7 +139,7 @@ class ReplicatorPeer {
     }
 
     public void handleResponse(AppendEntriesResponse appendEntriesResponse) {
-        lastMessageReceived = clock.millis();
+        lastMessageReceived =  Math.max(lastMessageReceived, clock.millis());
         logger.trace("{}: Received response from {}: {}", groupId(), raftPeer.nodeId(), appendEntriesResponse);
         if (appendEntriesResponse.hasFailure()) {
             if (currentTerm() < appendEntriesResponse.getTerm()) {
