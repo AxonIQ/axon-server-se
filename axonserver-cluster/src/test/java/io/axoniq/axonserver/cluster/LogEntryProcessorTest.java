@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.junit.*;
@@ -21,7 +22,7 @@ public class LogEntryProcessorTest {
     private LogEntryProcessor testSubject;
 
     public void setup() {
-        testSubject = new LogEntryProcessor(new InMemoryProcessorStore());
+        testSubject = new LogEntryProcessor(new InMemoryProcessorStore(), new InMemoryLogEntryStore("test"));
 
     }
 
@@ -49,10 +50,6 @@ public class LogEntryProcessorTest {
                 return null;
             }
 
-            @Override
-            public long nextIndex() {
-                return 0;
-            }
         };
         testSubject.applyEntries(entryIteratorFunction, e -> entryCounter.incrementAndGet());
         assertEquals(0, entryCounter.get());

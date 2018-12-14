@@ -107,7 +107,21 @@ public class EventDispatcher implements AxonServerClientService {
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                     NO_EVENT_STORE_CONFIGURED + context));
-            return null;
+            return new StreamObserver<Event>() {
+                @Override
+                public void onNext(Event event) {
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+
+                }
+
+                @Override
+                public void onCompleted() {
+
+                }
+            };
         }
         StreamObserver<Event> appendEventConnection = eventStore.createAppendEventConnection(context,
                                                                                                          responseObserver);
@@ -126,7 +140,7 @@ public class EventDispatcher implements AxonServerClientService {
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Error on connection from client: {}", throwable.getMessage());
+                logger.warn("Error on connection from client: {}", throwable.getMessage(), throwable);
                 unitsOfWork.forEach(UnitOfWork::rollback);
                 appendEventConnection.onError(throwable);
             }

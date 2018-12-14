@@ -47,7 +47,7 @@ public interface EventStore {
 
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<Event> eventConsumer);
 
-    PreparedTransaction prepareTransaction(List<Event> eventList);
+    PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> eventList);
 
     default boolean replicated() {
         return false;
@@ -81,4 +81,13 @@ public interface EventStore {
 
     default void rollback(long token) {
     }
+
+    default void stepDown() {
+
+    }
+
+    default long lastIndex() {
+        return 0;
+    }
+
 }

@@ -3,6 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
@@ -17,6 +18,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     private long currentSequenceNumber;
     private final boolean validating;
     private TransactionWithToken next;
+    private TransactionInformation currentTransaction;
 
     public InputStreamTransactionIterator(InputStreamEventSource eventSource, long segment, long start, boolean validating) {
         this.eventSource = eventSource;
@@ -38,7 +40,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             if (size == -1 || size == 0) {
                 return;
             }
-            reader.readByte(); // version
+            processVersion(reader);
             short nrOfMessages = reader.readShort();
 
             if (firstSequence >= currentSequenceNumber + nrOfMessages) {
@@ -50,6 +52,11 @@ public class InputStreamTransactionIterator implements TransactionIterator {
                                                              + currentSequenceNumber + ", nrOfMessages=" + nrOfMessages);
             }
         }
+    }
+
+    private void processVersion(PositionKeepingDataInputStream reader) throws IOException {
+        byte version = reader.readByte();
+        currentTransaction = new TransactionInformation(version, reader);
     }
 
     private void addEvent(TransactionWithToken.Builder transactionWithTokenBuilder) {
@@ -67,9 +74,10 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             if (size == -1 || size == 0) {
                 return false;
             }
-            reader.readByte(); // version
-            TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder().setToken(
-                    currentSequenceNumber);
+            processVersion(reader);
+            TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder()
+                                                                                           .setToken(currentSequenceNumber)
+                                                                                           .setIndex(currentTransaction.getIndex());
 
             short nrOfMessages = reader.readShort();
             for (int idx = 0; idx < nrOfMessages; idx++) {
@@ -112,5 +120,10 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     public void close() {
         next = null;
         eventSource.close();
+    }
+
+    @Override
+    public TransactionInformation currentTransaction() {
+        return currentTransaction;
     }
 }

@@ -87,6 +87,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 if( throwable != null) {
                     completableFuture.completeExceptionally(throwable);
                 } else {
+                    logger.info("{}: written {}", name, index);
                     completableFuture.complete(Entry.newBuilder()
                                                     .setTerm(currentTerm)
                                                     .setIndex(index)
@@ -108,8 +109,10 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
             boolean skip = false;
             if( existingEntry != null ) {
                 if( existingEntry.getTerm() != e.getTerm() ) {
+                    logger.warn("{}: Clear from {}", name, e.getIndex());
                     deleteFrom(e.getIndex());
                 } else {
+                    logger.warn("{}: Skip {}", name, e.getIndex());
                     skip = true;
                 }
             }

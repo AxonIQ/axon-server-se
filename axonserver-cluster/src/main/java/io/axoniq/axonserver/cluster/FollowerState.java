@@ -52,21 +52,19 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        cancelCurrentElectionTimeout();
+        cancelElectionTimeoutChecker();
         nextTimeout.set(clock.millis() + random(minElectionTimeout(), maxElectionTimeout()));
-        scheduleNewElection();
+        scheduleElectionTimeoutChecker();
         heardFromLeader = false;
     }
 
     @Override
     public void stop() {
-        cancelCurrentElectionTimeout();
+        cancelElectionTimeoutChecker();
     }
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        lastMessage.set(clock.millis());
-        nextTimeout.set(lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout()));
         try {
             updateCurrentTerm(request.getTerm());
 
@@ -78,7 +76,7 @@ public class FollowerState extends AbstractMembershipState {
 
             heardFromLeader = true;
             leader = request.getLeaderId();
-            //rescheduleElection(request.getTerm());
+            rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
             LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
             if( logger.isTraceEnabled() && request.getPrevLogIndex() == 0) {
@@ -140,8 +138,6 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        long elapsedFromLastMessage = scheduledElection.get().getElapsed(TimeUnit.MILLISECONDS);
-
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
         if (heardFromLeader && clock.millis() - lastMessage.get() < minElectionTimeout()) {
@@ -196,12 +192,12 @@ public class FollowerState extends AbstractMembershipState {
         return leader;
     }
 
-    private void cancelCurrentElectionTimeout() {
+    private void cancelElectionTimeoutChecker() {
         Optional.ofNullable(scheduledElection.get())
                 .ifPresent(Registration::cancel);
     }
 
-    private void scheduleNewElection() {
+    private void scheduleElectionTimeoutChecker() {
             scheduledElection.set(scheduler().schedule(
                     this::checkMessageReceived,
                     minElectionTimeout()/10,
@@ -214,14 +210,14 @@ public class FollowerState extends AbstractMembershipState {
             logger.warn("{}: Timeout in follower state: {}", groupId(), (now-nextTimeout.get()));
             changeStateTo(stateFactory().candidateState());
         } else {
-            scheduleNewElection();
+            scheduleElectionTimeoutChecker();
         }
     }
 
     private void rescheduleElection(long term) {
         if (term >= currentTerm()) {
-            cancelCurrentElectionTimeout();
-            scheduleNewElection();
+            lastMessage.set(clock.millis());
+            nextTimeout.updateAndGet(old -> Math.max(old,lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout())));
         }
     }
 

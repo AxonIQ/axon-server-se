@@ -109,6 +109,13 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-grpc</artifactId>
+            <version>4.0.1-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -5,6 +5,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
@@ -24,7 +25,7 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     private final EventStore datafileManagerChain;
     private final ReplicationManager replicationManager;
 
-    private final Map<Long, TransactionInformation> activeTransactions = new ConcurrentHashMap<>();
+    private final Map<Long, ActiveTransactionInformation> activeTransactions = new ConcurrentHashMap<>();
     private final EventTypeContext type;
 
     public ClusterTransactionManager(
@@ -39,9 +40,9 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     @Override
     public CompletableFuture<Long> store(List<Event> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
-        PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
+        PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(new TransactionInformation(0), eventList);
         activeTransactions.put( preparedTransaction.getToken(),
-                                new TransactionInformation( completableFuture, replicationManager.getQuorum(type.getContext())));
+                                new ActiveTransactionInformation( completableFuture, replicationManager.getQuorum(type.getContext())));
         try {
             replicationManager.publish(type, eventList, preparedTransaction.getToken());
             datafileManagerChain.store(preparedTransaction).whenComplete((firstToken, cause) -> {
@@ -60,7 +61,7 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     }
 
     private void replicationCompleted(long token) {
-        TransactionInformation transactionInformation = activeTransactions.get(token);
+        ActiveTransactionInformation transactionInformation = activeTransactions.get(token);
         if (transactionInformation != null && transactionInformation.completed()) {
             transactionInformation.storageCallback.complete(token);
             activeTransactions.remove(token);
@@ -94,12 +95,17 @@ public class ClusterTransactionManager implements StorageTransactionManager {
         activeTransactions.clear();
     }
 
-    private class TransactionInformation {
+    @Override
+    public long getLastIndex() {
+        return datafileManagerChain.lastIndex();
+    }
+
+    private class ActiveTransactionInformation {
 
         private final CompletableFuture<Long> storageCallback;
         private final AtomicInteger quorum;
 
-        public TransactionInformation(CompletableFuture<Long> storageCallback, int quorum) {
+        public ActiveTransactionInformation(CompletableFuture<Long> storageCallback, int quorum) {
             this.storageCallback = storageCallback;
             this.quorum = new AtomicInteger(quorum);
         }

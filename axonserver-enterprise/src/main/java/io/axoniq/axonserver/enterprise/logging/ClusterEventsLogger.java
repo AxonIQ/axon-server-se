@@ -25,17 +25,17 @@ public class ClusterEventsLogger {
 
     @EventListener
     public void on(ClusterEvents.MasterConfirmation event) {
-        logger.info("MasterConfirmation: context {}, master = {}", event.getContext(), event.getNode());
+        logger.info("{}: Leader for is now {}", event.getContext(), event.getNode());
     }
 
     @EventListener
     public void on(ClusterEvents.BecomeMaster event) {
-        logger.info("BecomeMaster: context {}, master = {}", event.getContext(), event.getNode());
+        logger.info("{}: Leader", event.getContext());
     }
 
     @EventListener
     public void on(ClusterEvents.MasterStepDown event) {
-        logger.info("MasterStepDown: context {}", event.getContextName());
+        logger.info("{}: No longer leader", event.getContextName());
     }
 
     @EventListener

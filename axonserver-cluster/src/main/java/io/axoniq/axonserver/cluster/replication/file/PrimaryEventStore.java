@@ -73,6 +73,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     public Entry getEntry(long index) {
+        if( index > lastToken.get()) return null;
         long segment = getSegmentFor(index);
         ByteBufferEntrySource entrySource = readBuffers.get(segment);
         if( entrySource != null) {
@@ -146,7 +147,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 @Override
                 public boolean onCompleted(long firstToken) {
-                    if( execute.getAndSet(false)) {
+                    if (execute.getAndSet(false)) {
+                        positionsPerSegmentMap.get(writePosition.segment).put(writePosition.sequence, writePosition.position);
                         completableFuture.complete(firstToken);
                         lastToken.set(firstToken);
                         return true;
@@ -262,7 +264,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         Checksum checksum = new Checksum();
         int eventsPosition = writeBuffer.position();
         writeBuffer.put(bytes);
-        positionsPerSegmentMap.get(writePosition.segment).put(writePosition.sequence, writePosition.position);
         writeBuffer.putInt(checksum.update(writeBuffer, eventsPosition, writeBuffer.position() - eventsPosition).get());
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(bytes.length);

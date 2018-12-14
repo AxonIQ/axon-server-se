@@ -3,6 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.io.IOException;
 
@@ -32,7 +33,7 @@ public class InputStreamEventIterator extends EventIterator {
             if (size == -1 || size == 0) {
                 return;
             }
-            reader.readByte(); // version
+            processVersion(reader);
             short nrOfMessages = reader.readShort();
 
             if (firstSequence >= currentSequenceNumber + nrOfMessages) {
@@ -71,7 +72,7 @@ public class InputStreamEventIterator extends EventIterator {
             if (size == -1 || size == 0) {
                 return false;
             }
-            reader.readByte(); // version
+            processVersion(reader);
             short nrOfMessages = reader.readShort();
             for (int idx = 0; idx < nrOfMessages; idx++) {
                 addEvent();
@@ -88,6 +89,12 @@ public class InputStreamEventIterator extends EventIterator {
     @Override
     public void close() {
         eventSource.close();
+    }
+
+    private void processVersion(PositionKeepingDataInputStream reader) throws IOException {
+        byte version = reader.readByte();
+        transactionInformation = new TransactionInformation(version, reader);
+
     }
 
 

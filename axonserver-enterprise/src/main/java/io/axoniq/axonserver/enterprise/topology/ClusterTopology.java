@@ -1,7 +1,9 @@
 package io.axoniq.axonserver.enterprise.topology;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 
@@ -14,9 +16,11 @@ import java.util.stream.Stream;
  */
 public class ClusterTopology implements Topology {
     private final ClusterController clusterController;
+    private final GrpcRaftController raftController;
 
-    public ClusterTopology(ClusterController clusterController) {
+    public ClusterTopology(ClusterController clusterController, GrpcRaftController raftController) {
         this.clusterController = clusterController;
+        this.raftController = raftController;
     }
 
     @Override
@@ -61,6 +65,6 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Iterable<String> getMyStorageContextNames() {
-        return clusterController.getMyStorageContexts();
+        return raftController.getMyStorageContexts();
     }
 }

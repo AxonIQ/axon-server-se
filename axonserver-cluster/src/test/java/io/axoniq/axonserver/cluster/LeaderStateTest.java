@@ -59,7 +59,7 @@ public class LeaderStateTest {
         AtomicReference<RaftNode> nodeRef = new AtomicReference<>();
 
         ElectionStore electionStore = new InMemoryElectionStore();
-        LogEntryProcessor logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
+        LogEntryProcessor logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore(), logEntryStore);
 
         RaftGroup raftGroup = new RaftGroup() {
             @Override

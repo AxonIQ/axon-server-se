@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -121,7 +122,7 @@ public class MessagingClusterServer implements SmartLifecycle{
             serverBuilder.keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
         }
 
-        serverBuilder.directExecutor();
+        serverBuilder.executor(Executors.newCachedThreadPool());
 
 
         server = serverBuilder.build();

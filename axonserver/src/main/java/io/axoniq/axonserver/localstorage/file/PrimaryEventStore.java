@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
@@ -40,11 +41,13 @@ import java.util.stream.Stream;
  */
 public class PrimaryEventStore extends SegmentBasedEventStore {
     private static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
+    private static final int MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK = 10;
 
     private final EventTransformerFactory eventTransformerFactory;
     private final Synchronizer synchronizer;
     private final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     private final AtomicLong lastToken = new AtomicLong(-1);
+    private final AtomicLong lastIndex = new AtomicLong(-1);
     private final ConcurrentNavigableMap<Long, Map<String, SortedSet<PositionInfo>>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
     private final Map<String, AtomicLong> sequenceNumbersPerAggregate = new ConcurrentHashMap<>();
     private final Map<Long, ByteBufferEventSource> readBuffers = new ConcurrentHashMap<>();
@@ -86,6 +89,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                                                                 k -> new AtomicLong()).set(event.getEvent()
                                                                                                 .getAggregateSequenceNumber());
                 }
+                lastIndex.updateAndGet(last -> Math.max(last, iterator.getTransactionInformation().getIndex()));
                 sequence++;
             }
             List<EventInformation> pendingEvents = iterator.pendingEvents();
@@ -131,13 +135,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                      .orElse(0L);
     }
 
-
     @Override
-    public FilePreparedTransaction prepareTransaction(List<Event> origEventList) {
+    public FilePreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> origEventList) {
         List<ProcessedEvent>eventList = eventTransformer.transform(origEventList);
         int eventSize = eventBlockSize(eventList);
         WritePosition writePosition = claim(eventSize, eventList.size());
-        return new FilePreparedTransaction(writePosition, eventSize, eventList);
+        return new FilePreparedTransaction(writePosition, eventSize, eventList, transactionInformation);
     }
 
     @Override
@@ -156,6 +159,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     if( execute.getAndSet(false)) {
                         completableFuture.complete(firstToken);
                         lastToken.set(firstToken + eventList.size() -1);
+                        lastIndex.updateAndGet(last -> Math.max(last, preparedTransaction.getTransactionInformation().getIndex()));
                         return true;
                     }
                     return false;
@@ -166,7 +170,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     completableFuture.completeExceptionally(cause);
                 }
             });
-            write(writePosition, eventSize, eventList);
+            write(writePosition, eventSize, preparedTransaction.getTransactionInformation(), eventList);
             synchronizer.notifyWritePositions();
         } catch (RuntimeException cause) {
             completableFuture.completeExceptionally(cause);
@@ -221,7 +225,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         for( Map.Entry<String,MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
             AtomicLong current = sequenceNumbersPerAggregate.computeIfAbsent(entry.getKey(),
                                                                              id -> new AtomicLong(
-                                                                                     getLastSequenceNumber(id, 10).orElse(-1L)));
+                                                                                     getLastSequenceNumber(id, MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK).orElse(-1L)));
 
             if( ! current.compareAndSet(entry.getValue().getMin() - 1, entry.getValue().getMax())) {
                 oldSequenceNumberPerAggregate.forEach((aggregateId, sequenceNumber) -> sequenceNumbersPerAggregate.put(aggregateId, new AtomicLong(sequenceNumber)));
@@ -235,6 +239,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
         return next!= null ? next.getBackupFilenames(lastSegmentBackedUp): Stream.empty();
+    }
+
+    @Override
+    public void stepDown() {
+        sequenceNumbersPerAggregate.clear();
     }
 
     @Override
@@ -286,11 +295,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList) {
+    private void write(WritePosition writePosition, int eventSize, TransactionInformation transactionInformation, List<ProcessedEvent> eventList) {
         ByteBuffer writeBuffer = writePosition.buffer.duplicate().getBuffer();
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(0);
         writeBuffer.put(VERSION);
+        transactionInformation.writeTo(writeBuffer);
         writeBuffer.putShort((short) eventList.size());
         Checksum checksum = new Checksum();
         int eventsPosition = writeBuffer.position();
@@ -361,7 +371,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return size;
     }
 
-
+    @Override
+    public long lastIndex() {
+        return lastIndex.get();
+    }
 
     private class MinMaxPair {
 

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 
@@ -13,8 +14,8 @@ public class FilePreparedTransaction extends PreparedTransaction {
     private final WritePosition writePosition;
     private final int eventSize;
 
-    public FilePreparedTransaction(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList) {
-        super( writePosition.sequence, eventList);
+    public FilePreparedTransaction(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList, TransactionInformation transactionInformation) {
+        super( writePosition.sequence, eventList, transactionInformation);
         this.writePosition = writePosition;
         this.eventSize = eventSize;
     }

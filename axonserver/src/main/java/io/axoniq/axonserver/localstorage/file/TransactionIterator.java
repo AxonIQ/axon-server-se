@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.util.Iterator;
 
@@ -13,4 +14,6 @@ public interface TransactionIterator extends Iterator<TransactionWithToken>, Aut
     default void close() {
         // Default no action, defined here to avoid IOException
     }
+
+    TransactionInformation currentTransaction();
 }

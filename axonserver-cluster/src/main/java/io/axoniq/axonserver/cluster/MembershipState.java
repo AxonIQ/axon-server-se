@@ -55,4 +55,8 @@ public interface MembershipState extends ClusterConfiguration{
         cf.completeExceptionally(new UnsupportedOperationException());
         return cf;
     }
+
+    default void forceStepDown() {
+
+    }
 }

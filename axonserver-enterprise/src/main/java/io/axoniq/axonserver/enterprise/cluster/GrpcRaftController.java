@@ -1,8 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.LifecycleController;
+import io.axoniq.axonserver.cluster.LeaderState;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
+import io.axoniq.axonserver.cluster.StateChanged;
 import io.axoniq.axonserver.cluster.grpc.RaftGroupManager;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
@@ -22,6 +25,7 @@ import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.State;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -64,6 +68,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     private final ContextController contextController;
     private final JpaRaftGroupNodeRepository raftGroupNodeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final LifecycleController lifecycleController;
     private final LocalRaftGroupService localRaftGroupService;
     private ApplicationContext applicationContext;
     private final Map<String, String> leaderMap = new ConcurrentHashMap<>();
@@ -73,13 +78,15 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
                               ContextController contextController,
                               JpaRaftGroupNodeRepository raftGroupNodeRepository,
-                              ApplicationEventPublisher eventPublisher) {
+                              ApplicationEventPublisher eventPublisher,
+                              LifecycleController lifecycleController) {
         this.raftStateRepository = raftStateRepository;
         this.raftServiceFactory = raftServiceFactory;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.contextController = contextController;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
         this.eventPublisher = eventPublisher;
+        this.lifecycleController = lifecycleController;
         this.localRaftGroupService = new LocalRaftGroupService();
         this.localRaftConfigService = new LocalRaftConfigService();
     }
@@ -91,7 +98,13 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         raftServiceFactory.setLocalRaftConfigService(localRaftConfigService);
         raftServiceFactory.setContextLeaderProvider(this::getStorageMaster);
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.findByNodeId(messagingPlatformConfiguration.getName());
-        groups.forEach(context -> createRaftGroup(context.getGroupId(), messagingPlatformConfiguration.getName()));
+        groups.forEach(context -> {
+            try {
+                createRaftGroup(context.getGroupId(), messagingPlatformConfiguration.getName());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
         running = true;
     }
 
@@ -132,16 +145,32 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
             localEventStore.initContext(groupId, false);
         }
         raftGroup.localNode().registerEntryConsumer(entry -> processNewConfiguration(groupId, entry));
+        raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(), stateChanged));
 
         raftGroupMap.put(groupId, raftGroup);
-        if( replicationServerStarted) raftGroup.localNode().start();
+        if( replicationServerStarted) {
+            raftGroup.localNode().start();
+        }
         return raftGroup;
+    }
+
+    private void stateChanged(RaftNode node, StateChanged stateChanged) {
+        if( stateChanged.getFrom().equals(LeaderState.class.getSimpleName())
+                && !stateChanged.getTo().equals(LeaderState.class.getSimpleName())) {
+            eventPublisher.publishEvent(new ClusterEvents.MasterStepDown(stateChanged.getGroupId(), false));
+        }
+        if( stateChanged.getTo().equals(LeaderState.class.getSimpleName())
+                && !stateChanged.getFrom().equals(LeaderState.class.getSimpleName())) {
+            eventPublisher.publishEvent(new ClusterEvents.BecomeMaster(stateChanged.getGroupId(), () -> node.unappliedEntries()));
+        }
     }
 
     @EventListener
     public void on(ReplicationServerStarted replicationServerStarted) {
         this.replicationServerStarted = true;
-        raftGroupMap.forEach((k,raftGroup) -> raftGroup.localNode().start());
+        raftGroupMap.forEach((k,raftGroup) -> {
+            raftGroup.localNode().start();
+        });
     }
 
     private void processEventEntry(String groupId, Entry e) {
@@ -152,21 +181,34 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                     TransactionWithToken transactionWithToken = null;
                     try {
                         transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
-                        if (transactionWithToken.getToken() > localEventStore.getLastToken(groupId)) {
-                            localEventStore.syncEvents(groupId, transactionWithToken);
+                        if( logger.isTraceEnabled()) {
+                            logger.warn("Index {}: Received Event with index: {} and {} events",
+                                         e.getIndex(),
+                                         transactionWithToken.getIndex(),
+                                         transactionWithToken.getEventsCount()
+                            );
+                        }
+                        if (transactionWithToken.getIndex() > localEventStore.getLastEventIndex(groupId)) {
+                            localEventStore.syncEvents(groupId, new TransactionInformation(transactionWithToken.getIndex()), transactionWithToken);
+                        } else {
+                                logger.warn("Index {}: event already applied",
+                                             e.getIndex());
                         }
                     } catch (InvalidProtocolBufferException e1) {
-                        e1.printStackTrace();
+                        throw new RuntimeException("Error processing entry: " + e.getIndex(), e1);
                     }
-                } else if (e.getSerializedObject().getType().equals("Append.EVENT")) {
+                } else if (e.getSerializedObject().getType().equals("Append.SNAPSHOT")) {
                     TransactionWithToken transactionWithToken = null;
                     try {
                         transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
-                        if (transactionWithToken.getToken() > localEventStore.getLastToken(groupId)) {
-                            localEventStore.syncSnapshots(groupId, transactionWithToken);
+                        if (transactionWithToken.getIndex() > localEventStore.getLastSnapshotIndex(groupId)) {
+                            localEventStore.syncSnapshots(groupId, new TransactionInformation(transactionWithToken.getIndex()), transactionWithToken);
+                        } else {
+                            logger.warn("Index {}: snapshot already applied",
+                                        e.getIndex());
                         }
                     } catch (InvalidProtocolBufferException e1) {
-                        e1.printStackTrace();
+                        throw new RuntimeException("Error processing entry: " + e.getIndex(), e1);
                     }
 
                 }
@@ -298,6 +340,10 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         return localRaftConfigService;
     }
 
+    public Iterable<String> getMyStorageContexts() {
+        return raftGroupMap.keySet().stream().filter(groupId -> !groupId.equals(ADMIN_GROUP)).collect(Collectors.toList());
+    }
+
     private class LocalRaftGroupService implements RaftGroupService {
 
         @Override
@@ -351,6 +397,15 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
 
 
         }
+
+        @Override
+        public void stepdown(String name) {
+            RaftGroup raftGroup = raftGroupMap.get(name);
+            if( raftGroup != null && raftGroup.localNode().isLeader()) {
+                raftGroup.localNode().stepdown();
+            }
+        }
+
     }
 
     private class LocalRaftConfigService implements RaftConfigService {
@@ -378,6 +433,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         public void deleteContext(String context) {
 
         }
+
 
         @Override
         public void deleteNodeFromContext(String context, String node) {

@@ -19,4 +19,7 @@ public interface RaftGroupService {
     CompletableFuture<Void> initContext(String context, List<Node> nodes);
 
     CompletableFuture<Void> deleteNode(String context, String node);
+
+    default void stepdown(String groupId) {
+    }
 }

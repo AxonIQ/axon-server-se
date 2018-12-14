@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
@@ -50,8 +51,8 @@ public abstract class SegmentBasedEventStore implements EventStore {
     static final int VERSION_BYTES = 1;
     static final int FILE_OPTIONS_BYTES = 4;
     static final int TX_CHECKSUM_BYTES = 4;
-    static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
-    static final byte VERSION = 1;
+    static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + TransactionInformation.TRANSACTION_INFO_BYTES + NUMBER_OF_EVENTS_BYTES;
+    static final byte VERSION = 2;
     protected final String context;
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;
@@ -515,6 +516,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
      * @return sorted set of positions, ordered by sequenceNumber (ascending), or empty set if not found
      */
     protected abstract SortedSet<PositionInfo> getPositions(long segment, String aggregateId);
+
 
     private class TransactionWithTokenIterator implements Iterator<TransactionWithToken> {
 

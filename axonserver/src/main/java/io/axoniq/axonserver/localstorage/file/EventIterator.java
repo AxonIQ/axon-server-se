@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -13,6 +14,7 @@ import java.util.NoSuchElementException;
 public abstract class EventIterator implements Iterator<EventInformation>, AutoCloseable {
     protected long currentSequenceNumber;
     protected final List<EventInformation> eventsInTransaction = new LinkedList<>();
+    protected TransactionInformation transactionInformation;
 
     public void close() {
 
@@ -51,5 +53,9 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
             }
         }
         return null;
+    }
+
+    public TransactionInformation getTransactionInformation() {
+        return transactionInformation;
     }
 }

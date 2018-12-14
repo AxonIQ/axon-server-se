@@ -21,6 +21,4 @@ public interface EntryIterator extends Iterator<Entry>, AutoCloseable {
     @Override
     default void close() {
     }
-
-    long nextIndex();
 }

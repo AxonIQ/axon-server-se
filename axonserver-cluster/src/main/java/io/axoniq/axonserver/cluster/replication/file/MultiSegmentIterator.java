@@ -67,8 +67,4 @@ public class MultiSegmentIterator implements EntryIterator {
         if( iterator != null) iterator.close();
     }
 
-    @Override
-    public long nextIndex() {
-        return nextIndex.get();
-    }
 }

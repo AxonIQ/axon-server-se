@@ -5,6 +5,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.file.ByteBufferEventSource;
 import io.axoniq.axonserver.localstorage.file.EventByteBufferIterator;
 import io.axoniq.axonserver.localstorage.file.EventSource;
@@ -137,7 +138,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(List<Event> eventList) {
+    public PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> eventList) {
         throw new UnsupportedOperationException();
     }
 

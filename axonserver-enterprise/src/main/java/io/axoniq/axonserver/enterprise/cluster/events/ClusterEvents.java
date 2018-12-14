@@ -2,11 +2,10 @@ package io.axoniq.axonserver.enterprise.cluster.events;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 
-import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Author: marc
@@ -111,20 +110,20 @@ public class ClusterEvents {
     public static class BecomeMaster extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
-        private final String node;
+        private final Supplier<EntryIterator> unappliedEntries;
 
-        public BecomeMaster(String context, String node, boolean forwarded) {
-            super(forwarded);
+        public BecomeMaster(String context, Supplier<EntryIterator> unappliedEntries) {
+            super(false);
             this.context = context;
-            this.node = node;
+            this.unappliedEntries = unappliedEntries;
         }
 
         public String getContext() {
             return context;
         }
 
-        public String getNode() {
-            return node;
+        public Supplier<EntryIterator> getUnappliedEntries() {
+            return unappliedEntries;
         }
     }
 

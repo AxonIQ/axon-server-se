@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -34,6 +35,7 @@ public class RaftNode {
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
     private volatile Future<?> applyTask;
+    private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
 
     public RaftNode(String nodeId, RaftGroup raftGroup) {
         this.nodeId = nodeId;
@@ -45,6 +47,16 @@ public class RaftNode {
     private synchronized void updateState(MembershipState newState) {
         Optional.ofNullable(state.get()).ifPresent(MembershipState::stop);
         logger.info("{}: Updating state of {} from {} to {}", groupId(), nodeId, state.get(), newState);
+        stateChangeListeners.forEach(stateChangeListeners -> {
+            try {
+                stateChangeListeners.accept(new StateChanged(state.get().getClass().getSimpleName(),
+                                                             newState.getClass().getSimpleName(),
+                                                             groupId()));
+            } catch (Exception ex) {
+                logger.warn("{}: Failed to handle event", groupId(), ex);
+                throw new RuntimeException("Transition to " + newState.getClass().getSimpleName() + " failed", ex);
+            }
+        });
         state.set(newState);
         newState.start();
     }
@@ -54,7 +66,11 @@ public class RaftNode {
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor().start(raftGroup.localLogEntryStore()::createIterator, this::applyEntryConsumers));
     }
 
-    public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+    public void registerStateChangeListener(Consumer<StateChanged> stateChangedConsumer) {
+        stateChangeListeners.add(stateChangedConsumer);
+    }
+    
+    public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         return state.get().appendEntries(request);
     }
 
@@ -89,7 +105,12 @@ public class RaftNode {
 
     private void applyEntryConsumers(Entry e) {
         logger.trace("{}: apply {}", nodeId, e.getIndex());
-        entryConsumer.forEach(consumer -> consumer.accept(e));
+        entryConsumer.forEach(consumer -> {try{
+            consumer.accept(e);
+        } catch( Exception ex) {
+            logger.warn("}: Error while applying entry {}", groupId(), e.getIndex());
+        }
+        });
         state.get().applied(e);
     }
 
@@ -114,4 +135,13 @@ public class RaftNode {
     public String getLeader() {
         return state.get().getLeader();
     }
+
+    public void stepdown() {
+        state.get().forceStepDown();
+    }
+
+    public EntryIterator unappliedEntries() {
+        return raftGroup.localLogEntryStore().createIterator(raftGroup.logEntryProcessor().lastAppliedIndex()+1);
+    }
+
 }

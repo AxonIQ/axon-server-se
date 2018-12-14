@@ -3,6 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -31,7 +32,8 @@ public class EventByteBufferIterator extends EventIterator {
                 if (size == -1 || size == 0) {
                     return;
                 }
-                reader.get(); // version
+                byte version = reader.get(); // version
+                transactionInformation = new TransactionInformation(version, reader);
                 short nrOfMessages = reader.getShort();
 
                 if (firstSequence >= currentSequenceNumber + nrOfMessages) {
@@ -74,7 +76,8 @@ public class EventByteBufferIterator extends EventIterator {
                 reader.position(reader.position()-4);
                 return false;
             }
-            reader.get(); // version
+            byte version = reader.get(); // version
+        transactionInformation = new TransactionInformation(version, reader);
             short nrOfMessages = reader.getShort();
             for( int idx = 0; idx < nrOfMessages ; idx++) {
                 addEvent();

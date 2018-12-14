@@ -33,12 +33,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -84,7 +83,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage) {
-        return workersMap.get(context).snapshotWriteStorage.store(eventMessage);
+        return workersMap.get(context).snapshotWriteStorage.store( eventMessage);
     }
 
     @Override
@@ -126,10 +125,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                     StreamObserver<InputStream> responseStreamObserver) {
         MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
                 .marshaller(Event.getDefaultInstance());
+        AtomicInteger counter = new AtomicInteger();
         workersMap.get(context).aggregateReader.readEvents( request.getAggregateId(),
                                                             request.getAllowSnapshots(),
                                                             request.getInitialSequence(),
-                                                            event -> responseStreamObserver.onNext(marshaller.stream(event)));
+                                                            event -> {
+                                                                responseStreamObserver.onNext(marshaller.stream(event));
+                                                                counter.incrementAndGet();
+                                                            });
+        if( counter.get() == 0) {
+            logger.error("Aggregate not found: {}", request);
+        }
         responseStreamObserver.onCompleted();
     }
 
@@ -289,15 +295,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotStreamReader.streamTransactions(firstToken, transactionConsumer);
     }
 
-    public long syncEvents(String context, TransactionWithToken value) {
+    public long syncEvents(String context, TransactionInformation transactionInformation, TransactionWithToken value) {
         SyncStorage writeStorage = workersMap.get(context).eventSyncStorage;
-        writeStorage.sync(value.getEventsList());
+        writeStorage.sync(transactionInformation, value.getEventsList());
         return value.getToken() + value.getEventsCount();
     }
 
-    public long syncSnapshots(String context, TransactionWithToken value) {
+    public long syncSnapshots(String context, TransactionInformation transactionInformation, TransactionWithToken value) {
         SyncStorage writeStorage = workersMap.get(context).snapshotSyncStorage;
-        writeStorage.sync(value.getEventsList());
+        writeStorage.sync(transactionInformation, value.getEventsList());
         return value.getToken() + value.getEventsCount();
     }
 
@@ -306,28 +312,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
     public long getWaitingSnapshotTransactions(String context) {
         return workersMap.get(context).snapshotWriteStorage.waitingTransactions();
-    }
-
-    public long getLastCommittedToken(String context) {
-        return workersMap.get(context).eventWriteStorage.getLastCommittedToken();
-    }
-    public long getLastCommittedSnapshot(String context) {
-        return workersMap.get(context).snapshotWriteStorage.getLastCommittedToken();
-    }
-
-    public void rollbackEvents(String context, long token) {
-        Workers workers = workersMap.get(context);
-        if( workers != null) {
-            logger.debug("{}: Rollback events to {}, last token {}", context, token, getLastToken(context));
-            workers.eventWriteStorage.rollback(token);
-        }
-    }
-    public void rollbackSnapshots(String context, long token) {
-        Workers workers = workersMap.get(context);
-        if( workers != null) {
-            logger.debug("{}: Rollback snapshots to {}, last token {}", context, token, getLastSnapshot(context));
-            workers.snapshotWriteStorage.rollback(token);
-        }
     }
 
     public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp) {
@@ -349,6 +333,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private boolean isClientException(Throwable exception) {
         return exception instanceof MessagingPlatformException
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
+    }
+
+    public long getLastEventIndex(String context) {
+        return workersMap.get(context).eventWriteStorage.getLastIndex();
+    }
+
+    public long getLastSnapshotIndex(String context) {
+        return workersMap.get(context).snapshotWriteStorage.getLastIndex();
     }
 
 

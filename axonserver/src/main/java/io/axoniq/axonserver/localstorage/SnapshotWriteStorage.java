@@ -20,7 +20,7 @@ public class SnapshotWriteStorage {
         this.storageTransactionManager = storageTransactionManager;
     }
 
-    public CompletableFuture<Confirmation> store(Event eventMessage) {
+    public CompletableFuture<Confirmation> store( Event eventMessage) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
         storageTransactionManager.store(Collections.singletonList(eventMessage))
                                  .whenComplete((firstToken, cause) ->  {
@@ -49,5 +49,9 @@ public class SnapshotWriteStorage {
 
     public void rollback(long token) {
         storageTransactionManager.rollback(token);
+    }
+
+    public long getLastIndex() {
+        return storageTransactionManager.getLastIndex();
     }
 }

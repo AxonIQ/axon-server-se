@@ -72,6 +72,9 @@ public class EventWriteStorage {
     public long getLastToken() {
         return storageTransactionManager.getLastToken();
     }
+    public long getLastIndex() {
+        return storageTransactionManager.getLastIndex();
+    }
 
     public long getLastCommittedToken() {
         lastCommitted.compareAndSet(-1L, getLastToken());

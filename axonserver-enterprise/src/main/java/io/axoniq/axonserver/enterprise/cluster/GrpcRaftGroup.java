@@ -37,7 +37,8 @@ public class GrpcRaftGroup implements RaftGroup {
     private final LogEntryProcessor logEntryProcessor;
     private final Map<String, RaftPeer> peers  = new ConcurrentHashMap<>();
 
-    public GrpcRaftGroup(String nodeId, Set<JpaRaftGroupNode> nodes, String groupId, JpaRaftStateRepository raftStateRepository) {
+    public GrpcRaftGroup(String nodeId, Set<JpaRaftGroupNode> nodes, String groupId,
+                         JpaRaftStateRepository raftStateRepository) {
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         StorageProperties storageOptions = new StorageProperties();
         storageOptions.setSegmentSize(16*1024*1024);
@@ -99,7 +100,7 @@ public class GrpcRaftGroup implements RaftGroup {
         });
 
         localNode = new RaftNode(nodeId, this);
-        logEntryProcessor = new LogEntryProcessor(raftStateController);
+        logEntryProcessor = new LogEntryProcessor(raftStateController, localLogEntryStore);
         raftStateController.init();
 
     }

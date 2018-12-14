@@ -3,6 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
@@ -62,7 +63,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(List<Event> eventList) {
+    public PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> eventList) {
         throw new UnsupportedOperationException();
     }
 

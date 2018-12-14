@@ -58,6 +58,10 @@ public class ContextRestController {
     public void deleteContext(@PathVariable("name")  String name) {
         raftServiceFactory.getRaftConfigService().deleteContext(name);
     }
+    @GetMapping( path = "context/{name}/stepdown")
+    public void stepdown(@PathVariable("name")  String name) {
+        raftServiceFactory.getRaftGroupService(name).stepdown(name);
+    }
 
     @PostMapping(path = "context/{context}/{node}")
     public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,

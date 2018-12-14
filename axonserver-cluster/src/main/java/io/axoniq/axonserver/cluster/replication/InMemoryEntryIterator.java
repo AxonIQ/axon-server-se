@@ -16,13 +16,11 @@ public class InMemoryEntryIterator implements EntryIterator {
     public InMemoryEntryIterator(LogEntryStore logEntryStore, long start) {
         this.logEntryStore = logEntryStore;
         this.currentIndex.set(start);
+        lastEntry = logEntryStore.getEntry(start-1);
     }
 
     @Override
     public boolean hasNext() {
-        if( lastEntry == null) {
-            lastEntry = logEntryStore.getEntry(currentIndex.get()-1);
-        }
         return currentIndex.get() <= logEntryStore.lastLogIndex();
     }
 
@@ -40,8 +38,4 @@ public class InMemoryEntryIterator implements EntryIterator {
         return new TermIndex(lastEntry.getTerm(), lastEntry.getIndex());
     }
 
-    @Override
-    public long nextIndex() {
-        return currentIndex.get();
-    }
 }

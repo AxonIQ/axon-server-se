@@ -50,8 +50,8 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @Conditional(ClusteringAllowed.class)
-    public Topology topology(ClusterController clusterController) {
-        return new ClusterTopology(clusterController);
+    public Topology topology(ClusterController clusterController, GrpcRaftController grpcRaftController) {
+        return new ClusterTopology(clusterController, grpcRaftController);
     }
 
     @Bean

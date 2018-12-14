@@ -3,6 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -16,6 +17,7 @@ public class TransactionByteBufferIterator implements TransactionIterator {
     private final ByteBuffer reader;
     private final ByteBufferEventSource eventSource;
     private long currentSequenceNumber;
+    private TransactionInformation currentTransaction;
     private final boolean validating;
     private TransactionWithToken next;
 
@@ -37,7 +39,8 @@ public class TransactionByteBufferIterator implements TransactionIterator {
             if (size == -1 || size == 0) {
                 return;
             }
-            reader.get(); // version
+            byte version = reader.get();
+            currentTransaction = new TransactionInformation(version, reader);
             short nrOfMessages = reader.getShort();
 
             if (firstSequence >= currentSequenceNumber + nrOfMessages) {
@@ -66,9 +69,11 @@ public class TransactionByteBufferIterator implements TransactionIterator {
             reader.position(reader.position()-4);
             return false;
         }
-        reader.get(); // version
-        TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder().setToken(
-                currentSequenceNumber);
+        byte version = reader.get();
+        currentTransaction = new TransactionInformation(version, reader);
+        TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder()
+                                                                                       .setToken(currentSequenceNumber)
+                                                                                       .setIndex(currentTransaction.getIndex());
 
         short nrOfMessages = reader.getShort();
         int position = reader.position();
@@ -110,4 +115,8 @@ public class TransactionByteBufferIterator implements TransactionIterator {
         eventSource.close();
     }
 
+    @Override
+    public TransactionInformation currentTransaction() {
+        return currentTransaction;
+    }
 }

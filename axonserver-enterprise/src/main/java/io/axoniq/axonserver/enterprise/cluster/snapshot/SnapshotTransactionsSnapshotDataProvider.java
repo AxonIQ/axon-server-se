@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import reactor.core.publisher.Flux;
 
 /**
@@ -45,7 +46,7 @@ public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataPro
     public void consume(SerializedObject serializedObject) {
         try {
             TransactionWithToken transactionWithToken = TransactionWithToken.parseFrom(serializedObject.getData());
-            localEventStore.syncSnapshots(context, transactionWithToken);
+            localEventStore.syncSnapshots(context, new TransactionInformation(0), transactionWithToken);
         } catch (InvalidProtocolBufferException e) {
             throw new SnapshotDeserializationException("Unable to deserialize events transaction.", e);
         }

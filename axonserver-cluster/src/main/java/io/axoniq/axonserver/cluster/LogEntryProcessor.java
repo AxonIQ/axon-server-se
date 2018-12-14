@@ -1,7 +1,10 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,13 +16,16 @@ import java.util.function.Function;
  * Author: marc
  */
 public class LogEntryProcessor {
+    private static final Logger logger = LoggerFactory.getLogger(LogEntryProcessor.class);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
     private final ProcessorStore processorStore;
+    private final LogEntryStore logEntryStore;
     private volatile Thread commitListenerThread;
     private volatile boolean running;
 
-    public LogEntryProcessor(ProcessorStore processorStore) {
+    public LogEntryProcessor(ProcessorStore processorStore, LogEntryStore logEntryStore) {
         this.processorStore = processorStore;
+        this.logEntryStore = logEntryStore;
     }
 
 
@@ -35,9 +41,8 @@ public class LogEntryProcessor {
                 } else {
                     retries--;
                 }
-
-                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
             }
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(100));
         }
     }
 
@@ -45,11 +50,12 @@ public class LogEntryProcessor {
         int count = 0;
         if( applyRunning.compareAndSet(false, true)) {
             if( processorStore.lastApplied() < processorStore.commitIndex()) {
+                logger.trace("Start to apply entries at: {}", processorStore.lastApplied());
                 try(EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastApplied() + 1)) {
                     boolean beforeCommit = true;
                     while (beforeCommit && iterator.hasNext()) {
                         Entry entry = iterator.next();
-                        beforeCommit = entry.getIndex() <= processorStore.commitIndex();
+                        beforeCommit = entry.getIndex() <= processorStore.commitIndex() && entry.getIndex() <= logEntryStore.lastLogIndex();
                         if (beforeCommit) {
                             consumer.accept(entry);
                             processorStore.updateLastApplied(entry.getIndex());

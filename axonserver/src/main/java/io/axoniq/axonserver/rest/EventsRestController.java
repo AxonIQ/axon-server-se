@@ -131,7 +131,7 @@ public class EventsRestController {
                                                                         .writeValueAsString(new JsonEvent(Event.parseFrom(
                                                                                 event)))));
                     } catch (Exception e) {
-                        logger.debug("Exception on sending event - {}", e.getMessage(), e);
+                        logger.warn("Exception on sending event - {}", e.getMessage(), e);
                     }
                 }
 

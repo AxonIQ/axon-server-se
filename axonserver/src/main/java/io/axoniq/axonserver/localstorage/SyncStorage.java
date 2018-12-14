@@ -20,15 +20,16 @@ public class SyncStorage {
         this.datafileManagerChain = datafileManagerChain;
     }
 
-    public void sync(List<Event> eventList) {
-        PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
-        try {
-            datafileManagerChain.store(preparedTransaction).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e);
-        } catch (ExecutionException e) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e.getCause());
-        }
+    public void sync(TransactionInformation transactionInformation, List<Event> eventList) {
+            PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(transactionInformation,
+                                                                                              eventList);
+            try {
+                datafileManagerChain.store(preparedTransaction).get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e);
+            } catch (ExecutionException e) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e.getCause());
+            }
     }
 }

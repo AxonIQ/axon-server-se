@@ -50,7 +50,7 @@ public class FollowerStateTest {
 
         logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
-        logEntryProcessor = spy( new LogEntryProcessor(new InMemoryProcessorStore()));
+        logEntryProcessor = spy( new LogEntryProcessor(new InMemoryProcessorStore(), logEntryStore));
 
         raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.groupId()).thenReturn("defaultGroup");

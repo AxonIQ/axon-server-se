@@ -67,4 +67,10 @@ public class PositionKeepingDataInputStream {
         reader.skipBytes(messageSize);
         position += messageSize;
     }
+
+    public long readLong() throws IOException {
+        long l = reader.readLong();
+        position += 8;
+        return l;
+    }
 }

@@ -5,6 +5,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
@@ -93,7 +94,8 @@ public class PrimaryEventStoreTest {
                 newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
                                    .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
             });
-            PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
+            TransactionInformation transactionInformation = new TransactionInformation(j);
+            PreparedTransaction preparedTransaction = testSubject.prepareTransaction(transactionInformation, newEvents);
             testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 
