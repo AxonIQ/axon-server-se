@@ -116,7 +116,7 @@ public class RaftServerTest {
         private GrpcRaftGroup(List<Node> nodes, String localNode) {
             this.localNode = new RaftNode(localNode, this);
             logEntryStore = new InMemoryLogEntryStore(localNode);
-            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore(), logEntryStore);
+            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
             electionStore = new InMemoryElectionStore();
             initializePeers(nodes);
 

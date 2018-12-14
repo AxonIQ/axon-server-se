@@ -122,7 +122,7 @@ public class RaftServerFileBasedTest {
             logEntryStore = new FileSegmentLogEntryStore(localNode, PrimaryEventStoreFactory.create(localNode));
 
             electionStore = new InMemoryElectionStore();
-            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore(), logEntryStore);
+            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
             initializePeers(nodes);
 
         }

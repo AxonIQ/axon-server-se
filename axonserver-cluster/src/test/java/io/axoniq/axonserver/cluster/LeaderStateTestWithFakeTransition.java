@@ -40,6 +40,7 @@ public class LeaderStateTestWithFakeTransition {
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
         when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore("Test"));
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
+        when(raftGroup.logEntryProcessor()).thenReturn(mock(LogEntryProcessor.class));
         when(raftGroup.localNode()).thenReturn(localNode);
         transitionHandler = new FakeTransitionHandler();
         scheduler = new FakeScheduler();

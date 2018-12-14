@@ -2,7 +2,6 @@ package io.axoniq.axonserver.cluster;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
-import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.junit.*;
@@ -21,8 +20,9 @@ import static org.junit.Assert.*;
 public class LogEntryProcessorTest {
     private LogEntryProcessor testSubject;
 
+    @Before
     public void setup() {
-        testSubject = new LogEntryProcessor(new InMemoryProcessorStore(), new InMemoryLogEntryStore("test"));
+        testSubject = new LogEntryProcessor(new InMemoryProcessorStore());
 
     }
 
@@ -33,7 +33,7 @@ public class LogEntryProcessorTest {
 
         AtomicInteger entryCounter = new AtomicInteger();
         Function<Long, EntryIterator> entryIteratorFunction = (seq) -> new EntryIterator() {
-            List<Entry> entryList = new ArrayList(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
+            List<Entry> entryList = new ArrayList<>(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
 
             @Override
             public boolean hasNext() {

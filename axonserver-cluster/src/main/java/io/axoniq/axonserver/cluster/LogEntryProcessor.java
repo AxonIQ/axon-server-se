@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
-import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,13 +18,11 @@ public class LogEntryProcessor {
     private static final Logger logger = LoggerFactory.getLogger(LogEntryProcessor.class);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
     private final ProcessorStore processorStore;
-    private final LogEntryStore logEntryStore;
     private volatile Thread commitListenerThread;
     private volatile boolean running;
 
-    public LogEntryProcessor(ProcessorStore processorStore, LogEntryStore logEntryStore) {
+    public LogEntryProcessor(ProcessorStore processorStore) {
         this.processorStore = processorStore;
-        this.logEntryStore = logEntryStore;
     }
 
 
@@ -55,7 +52,7 @@ public class LogEntryProcessor {
                     boolean beforeCommit = true;
                     while (beforeCommit && iterator.hasNext()) {
                         Entry entry = iterator.next();
-                        beforeCommit = entry.getIndex() <= processorStore.commitIndex() && entry.getIndex() <= logEntryStore.lastLogIndex();
+                        beforeCommit = entry.getIndex() <= processorStore.commitIndex();
                         if (beforeCommit) {
                             consumer.accept(entry);
                             processorStore.updateLastApplied(entry.getIndex());

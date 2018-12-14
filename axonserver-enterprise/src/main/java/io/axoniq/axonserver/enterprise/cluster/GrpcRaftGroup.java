@@ -100,7 +100,7 @@ public class GrpcRaftGroup implements RaftGroup {
         });
 
         localNode = new RaftNode(nodeId, this);
-        logEntryProcessor = new LogEntryProcessor(raftStateController, localLogEntryStore);
+        logEntryProcessor = new LogEntryProcessor(raftStateController);
         raftStateController.init();
 
     }
