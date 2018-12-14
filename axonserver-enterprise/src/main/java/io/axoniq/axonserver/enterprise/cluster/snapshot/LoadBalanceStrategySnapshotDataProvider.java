@@ -14,7 +14,7 @@ import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaLoadBalancingStr
 /**
  * @author Milan Savic
  */
-public class LoadBalanceStrategySnapshotDataProvider implements SnapshotDataProvider, SnapshotDataConsumer {
+public class LoadBalanceStrategySnapshotDataProvider implements SnapshotDataProvider {
 
     private final LoadBalanceStrategyRepository loadBalanceStrategyRepository;
 

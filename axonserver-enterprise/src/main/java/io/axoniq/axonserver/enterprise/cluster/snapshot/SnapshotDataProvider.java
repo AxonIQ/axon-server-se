@@ -8,9 +8,13 @@ import reactor.core.publisher.Flux;
  */
 public interface SnapshotDataProvider {
 
-    Flux<SerializedObject> provide(long from, long to);
-
     default int order() {
         return 0;
     }
+
+    Flux<SerializedObject> provide(long from, long to);
+
+    boolean canConsume(String type);
+
+    void consume(SerializedObject serializedObject);
 }

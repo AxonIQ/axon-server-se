@@ -11,7 +11,7 @@ import reactor.core.publisher.Flux;
 /**
  * @author Milan Savic
  */
-public class EventTransactionsSnapshotDataProvider implements SnapshotDataProvider, SnapshotDataConsumer {
+public class EventTransactionsSnapshotDataProvider implements SnapshotDataProvider {
 
     private static final String SNAPSHOT_TYPE = "eventsTransaction";
 

@@ -14,12 +14,9 @@ import java.util.List;
 public class AxonServerSnapshotManager implements SnapshotManager {
 
     private final List<SnapshotDataProvider> snapshotDataProviders;
-    private final List<SnapshotDataConsumer> snapshotDataConsumers;
 
-    public AxonServerSnapshotManager(List<SnapshotDataProvider> snapshotDataProviders,
-                                     List<SnapshotDataConsumer> snapshotDataConsumers) {
+    public AxonServerSnapshotManager(List<SnapshotDataProvider> snapshotDataProviders) {
         this.snapshotDataProviders = snapshotDataProviders;
-        this.snapshotDataConsumers = snapshotDataConsumers;
     }
 
     @Override
@@ -27,21 +24,18 @@ public class AxonServerSnapshotManager implements SnapshotManager {
         snapshotDataProviders.sort(Comparator.comparingInt(SnapshotDataProvider::order));
 
         Flux<SerializedObject> stream = Flux.empty();
-        snapshotDataProviders.forEach(snapshotDataProvider -> stream
-                .concatWith(snapshotDataProvider.provide(fromEventSequence, toEventSequence)));
-
+        for (SnapshotDataProvider snapshotDataProvider : snapshotDataProviders) {
+            stream = stream.concatWith(snapshotDataProvider.provide(fromEventSequence, toEventSequence));
+        }
         return stream;
     }
 
     @Override
-    public Mono<Void> applySnapshotData(List<SerializedObject> serializedObjects) {
-        return Mono.fromRunnable(() -> {
-            serializedObjects.forEach(serializedObject -> {
-                snapshotDataConsumers.stream()
-                                     .filter(snapshotDataConsumer -> snapshotDataConsumer
-                                             .canConsume(serializedObject.getType()))
-                                     .forEach(snapshotDataConsumer -> snapshotDataConsumer.consume(serializedObject));
-            });
-        });
+    public Mono<Void> applySnapshotData(SerializedObject serializedObject) {
+        return Mono.fromRunnable(
+                () -> snapshotDataProviders
+                        .stream()
+                        .filter(snapshotDataConsumer -> snapshotDataConsumer.canConsume(serializedObject.getType()))
+                        .forEach(snapshotDataConsumer -> snapshotDataConsumer.consume(serializedObject)));
     }
 }

@@ -13,13 +13,11 @@ import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaUser;
 /**
  * @author Milan Savic
  */
-public class UserSnapshotDataProvider implements SnapshotDataProvider, SnapshotDataConsumer {
+public class UserSnapshotDataProvider implements SnapshotDataProvider {
 
-    private final String context;
     private final UserRepository userRepository;
 
-    public UserSnapshotDataProvider(String context, UserRepository userRepository) {
-        this.context = context;
+    public UserSnapshotDataProvider(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 

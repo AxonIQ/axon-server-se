@@ -19,7 +19,7 @@ public class LoadBalancingStrategy implements Printable {
 
     @Id
     @GeneratedValue
-    private String id;
+    private Long id;
 
     @Column(unique = true)
     private String name;
