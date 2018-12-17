@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster.configuration;
 
+import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.configuration.operation.AddServer;
 import io.axoniq.axonserver.cluster.configuration.operation.RemoveServer;
 import io.axoniq.axonserver.cluster.exception.RaftErrorMapping;
@@ -12,6 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -22,22 +24,29 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class LeaderConfiguration implements ClusterConfiguration {
 
-    private final Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> configuration;
-
     private final Function<Node, CompletableFuture<Void>> updateNode;
+
+    private final Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig;
 
     private final Function<Throwable, ErrorMessage> errorMapping;
 
-    public LeaderConfiguration(
-            Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> configuration,
-            Function<Node, CompletableFuture<Void>> updateNode) {
-        this(configuration, updateNode, new RaftErrorMapping());
+    public LeaderConfiguration(RaftGroup raftGroup,
+                               Supplier<Long> currentTime,
+                               Function<Node, NodeReplicator> replicatorFactory,
+                               Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig) {
+        this(commitConfig, new UpdatePendingMember(raftGroup, currentTime, replicatorFactory));
     }
 
-    public LeaderConfiguration(Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> configuration,
+    public LeaderConfiguration(
+            Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig,
+            Function<Node, CompletableFuture<Void>> updateNode) {
+        this(commitConfig, updateNode, new RaftErrorMapping());
+    }
+
+    public LeaderConfiguration(Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig,
                                Function<Node, CompletableFuture<Void>> updateNode,
                                Function<Throwable, ErrorMessage> errorMapping) {
-        this.configuration = configuration;
+        this.commitConfig = commitConfig;
         this.updateNode = updateNode;
         this.errorMapping = errorMapping;
     }
@@ -46,7 +55,7 @@ public class LeaderConfiguration implements ClusterConfiguration {
     public CompletableFuture<ConfigChangeResult> addServer(Node node) {
         checkValidityOf(node);
         return updateNode.apply(node)
-                         .thenCompose(success -> configuration.apply(new AddServer(node)))
+                         .thenCompose(success -> commitConfig.apply(new AddServer(node)))
                          .thenApply(success -> success())
                          .exceptionally(this::failure);
     }
@@ -61,9 +70,9 @@ public class LeaderConfiguration implements ClusterConfiguration {
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         checkArgument(nodeId != null, "nodeId cannot be null");
         checkArgument(!nodeId.isEmpty(), "nodeId cannot be empty");
-        return configuration.apply(new RemoveServer(nodeId))
-                .thenApply(success -> success())
-                .exceptionally(this::failure);
+        return commitConfig.apply(new RemoveServer(nodeId))
+                           .thenApply(success -> success())
+                           .exceptionally(this::failure);
     }
 
     private ConfigChangeResult success() {
@@ -79,4 +88,6 @@ public class LeaderConfiguration implements ClusterConfiguration {
                 .setFailure(ConfigChangeFailure.newBuilder().setError(errorMapping.apply(error.getCause())))
                 .build();
     }
+
+
 }
