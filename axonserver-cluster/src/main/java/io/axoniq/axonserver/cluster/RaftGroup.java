@@ -20,6 +20,8 @@ public interface RaftGroup {
 
     RaftPeer peer(String nodeId);
 
+    RaftPeer peer(Node node);
+
     RaftNode localNode();
 
     default void connect() {

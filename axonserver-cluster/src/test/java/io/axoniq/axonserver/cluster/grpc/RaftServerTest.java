@@ -153,6 +153,11 @@ public class RaftServerTest {
         }
 
         @Override
+        public RaftPeer peer(Node node) {
+            return new GrpcRaftPeer(node);
+        }
+
+        @Override
         public RaftNode localNode() {
             return localNode;
         }
