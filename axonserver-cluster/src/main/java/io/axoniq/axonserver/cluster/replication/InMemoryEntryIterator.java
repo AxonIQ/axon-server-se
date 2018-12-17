@@ -6,6 +6,8 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static java.lang.Math.max;
+
 public class InMemoryEntryIterator implements EntryIterator {
 
     private final LogEntryStore logEntryStore;
@@ -15,7 +17,7 @@ public class InMemoryEntryIterator implements EntryIterator {
 
     public InMemoryEntryIterator(LogEntryStore logEntryStore, long start) {
         this.logEntryStore = logEntryStore;
-        this.currentIndex.set(start);
+        this.currentIndex.set(max(start,1));
         lastEntry = logEntryStore.getEntry(start-1);
     }
 

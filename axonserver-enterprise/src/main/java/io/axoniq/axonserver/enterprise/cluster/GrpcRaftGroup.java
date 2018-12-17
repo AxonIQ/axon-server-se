@@ -23,7 +23,9 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -128,6 +130,11 @@ public class GrpcRaftGroup implements RaftGroup {
     @Override
     public RaftPeer peer(String nodeId) {
         return peers.get(nodeId);
+    }
+
+    @Override
+    public RaftPeer peer(Node node) {
+        return new GrpcRaftPeer(node);
     }
 
     @Override

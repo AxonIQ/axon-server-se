@@ -5,6 +5,8 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
@@ -18,6 +20,7 @@ public class LogEntryProcessor {
     private static final Logger logger = LoggerFactory.getLogger(LogEntryProcessor.class);
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
     private final ProcessorStore processorStore;
+    private final List<Consumer<Entry>> logAppliedListeners = new CopyOnWriteArrayList<>();
     private volatile Thread commitListenerThread;
     private volatile boolean running;
 
@@ -57,6 +60,7 @@ public class LogEntryProcessor {
                             consumer.accept(entry);
                             processorStore.updateLastApplied(entry.getIndex());
                             count++;
+                            logAppliedListeners.forEach(listener -> listener.accept(entry));
                         }
                     }
                 }
@@ -85,5 +89,10 @@ public class LogEntryProcessor {
 
     public void stop() {
         running = false;
+    }
+
+    public Registration registerLogAppliedListener(Consumer<Entry> listener){
+        this.logAppliedListeners.add(listener);
+        return () -> this.logAppliedListeners.remove(listener);
     }
 }
