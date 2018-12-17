@@ -16,6 +16,7 @@ import java.io.IOException;
 public class LogEntryFileTest {
 
     @Test
+    @Ignore("Manual test only")
     public void readLogFile() throws IOException {
         try (DataInputStream dataInputStream = new DataInputStream(new FileInputStream(
                                                               "D:\\test\\loadtest\\axonhub\\log\\default\\00000000000001.log"))) {
@@ -56,6 +57,7 @@ public class LogEntryFileTest {
 
 
     @Test
+    @Ignore("Manual test only")
     public void readEventsFile() throws IOException {
         try (DataInputStream dataInputStream = new DataInputStream(new FileInputStream(
                 "D:\\test\\loadtest\\axonhub2\\data\\default\\00000000000000.events"))) {
