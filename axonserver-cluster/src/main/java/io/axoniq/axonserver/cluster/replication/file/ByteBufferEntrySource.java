@@ -41,7 +41,6 @@ public class ByteBufferEntrySource implements EntrySource {
         try {
             int size = buffer.getInt();
             if( size ==0 || size ==-1) {
-                System.out.println(index + ": Position: " + buffer.position());
                 return null;
             }
 

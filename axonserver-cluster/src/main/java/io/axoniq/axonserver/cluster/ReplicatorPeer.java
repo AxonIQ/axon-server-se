@@ -54,6 +54,7 @@ class ReplicatorPeer {
         lastMessageReceived = clock.millis();
         this.raftGroup = raftGroup;
         this.transitToFollower = transitToFollower;
+        running = true;
     }
 
     public void stop() {

@@ -52,7 +52,7 @@ public class AxonServers implements Iterable<AxonServer> {
 
                                      @Override
                                      public List<Storage> storage() {
-                                         return node.getContextNames().stream().map(contextName -> new Storage() {
+                                         return node.getStorageContextNames().stream().map(contextName -> new Storage() {
                                              @Override
                                              public String context() {
                                                  return contextName;

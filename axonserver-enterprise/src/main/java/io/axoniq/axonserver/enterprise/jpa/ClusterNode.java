@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -100,20 +101,18 @@ public class ClusterNode implements Serializable, AxonServerNode {
         return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
 
+    public Collection<String> getStorageContextNames() {
+        return contexts.stream().map(ccn -> ccn.getContext().getName())
+                       .filter(name -> !name.equals(GrpcRaftController.ADMIN_GROUP))
+                       .collect(Collectors.toSet());
+    }
+
     public void setInternalHostName(String internalHostName) {
         this.internalHostName = internalHostName;
     }
 
     public void setGrpcInternalPort(Integer grpcInternalPort) {
         this.grpcInternalPort = grpcInternalPort;
-    }
-
-    public Set<Context> getStorageContexts() {
-        return contexts.stream().map(ContextClusterNode::getContext).collect(Collectors.toSet());
-    }
-
-    public Set<Context> getMessagingContexts() {
-        return contexts.stream().map(ContextClusterNode::getContext).collect(Collectors.toSet());
     }
 
     public void setName(String name) {
@@ -178,10 +177,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
         contexts.clear();
     }
 
-    public boolean hasContext(String context) {
-        return contexts.stream().anyMatch(c -> c.getContext().getName().equals(context));
-    }
-
     public void remove(ContextClusterNode ccn) {
         contexts.remove(ccn);
     }
@@ -199,7 +194,4 @@ public class ClusterNode implements Serializable, AxonServerNode {
         contextClusterNode.ifPresent(ContextClusterNode::preDelete);
     }
 
-    public boolean hasStorageContext(String context) {
-        return contexts.stream().anyMatch(c -> c.isStorage() && c.getContext().getName().equals(context));
-    }
 }
