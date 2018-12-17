@@ -23,7 +23,7 @@ public class FileSegmentLogEntryStoreTest {
     public static TemporaryFolder tempFolder = new TemporaryFolder();
 
     private FileSegmentLogEntryStore testSubject;
-    private PrimaryEventStore primary;
+    private PrimaryLogEntryStore primary;
 
     @Before
     public void setUp() throws Exception {

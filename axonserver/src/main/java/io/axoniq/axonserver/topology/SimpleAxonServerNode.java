@@ -51,12 +51,7 @@ public class SimpleAxonServerNode implements AxonServerNode {
     }
 
     @Override
-    public Collection<String> getMessagingContextNames() {
-        return Collections.singleton(Topology.DEFAULT_CONTEXT);
-    }
-
-    @Override
-    public Collection<String> getStorageContextNames() {
+    public Collection<String> getContextNames() {
         return Collections.singleton(Topology.DEFAULT_CONTEXT);
     }
 }

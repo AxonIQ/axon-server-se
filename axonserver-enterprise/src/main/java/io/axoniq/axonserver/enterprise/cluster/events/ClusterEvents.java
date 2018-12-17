@@ -11,6 +11,8 @@ import java.util.function.Supplier;
  * Author: marc
  */
 public class ClusterEvents {
+    private ClusterEvents() {
+    }
 
 
     @KeepNames
@@ -47,11 +49,11 @@ public class ClusterEvents {
      * Author: marc
      */
     @KeepNames
-    public static class MasterStepDown extends TopologyEvents.TopologyBaseEvent {
+    public static class LeaderStepDown extends TopologyEvents.TopologyBaseEvent {
 
         private final String contextName;
 
-        public MasterStepDown(String contextName, boolean forwarded) {
+        public LeaderStepDown(String contextName, boolean forwarded) {
             super(forwarded);
             this.contextName = contextName;
         }
@@ -65,30 +67,12 @@ public class ClusterEvents {
      * Author: marc
      */
     @KeepNames
-    public static class MasterDisconnected extends TopologyEvents.TopologyBaseEvent{
-
-        private final String contextName;
-
-        public MasterDisconnected(String contextName, boolean forwarded) {
-            super(forwarded);
-            this.contextName = contextName;
-        }
-
-        public String getContextName() {
-            return contextName;
-        }
-    }
-
-    /**
-     * Author: marc
-     */
-    @KeepNames
-    public static class MasterConfirmation extends TopologyEvents.TopologyBaseEvent {
+    public static class LeaderConfirmation extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
         private final String node;
 
-        public MasterConfirmation(String context, String node, boolean forwarded) {
+        public LeaderConfirmation(String context, String node, boolean forwarded) {
             super(forwarded);
             this.context = context;
             this.node = node;
@@ -107,12 +91,12 @@ public class ClusterEvents {
      * Author: marc
      */
     @KeepNames
-    public static class BecomeMaster extends TopologyEvents.TopologyBaseEvent {
+    public static class BecomeLeader extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
         private final Supplier<EntryIterator> unappliedEntries;
 
-        public BecomeMaster(String context, Supplier<EntryIterator> unappliedEntries) {
+        public BecomeLeader(String context, Supplier<EntryIterator> unappliedEntries) {
             super(false);
             this.context = context;
             this.unappliedEntries = unappliedEntries;
@@ -128,63 +112,6 @@ public class ClusterEvents {
     }
 
     @KeepNames
-    public static class CoordinatorStepDown extends TopologyEvents.TopologyBaseEvent {
-
-        private final String context;
-
-        public CoordinatorStepDown(String context, boolean forwarded) {
-            super(forwarded);
-            this.context = context;
-        }
-
-        public String context() {
-            return context;
-        }
-
-    }
-
-    @KeepNames
-    public static class CoordinatorConfirmation extends TopologyEvents.TopologyBaseEvent {
-
-        private final String node;
-        private final String context;
-
-        public CoordinatorConfirmation(String node, String context, boolean forwarded) {
-            super(forwarded);
-            this.node = node;
-            this.context = context;
-        }
-
-        public String node() {
-            return node;
-        }
-
-        public String context() {
-            return context;
-        }
-    }
-
-    @KeepNames
-    public static class BecomeCoordinator extends TopologyEvents.TopologyBaseEvent {
-
-        private final String node;
-        private final String context;
-
-        public BecomeCoordinator(String node, String context, boolean forwarded) {
-            super(forwarded);
-            this.node = node;
-            this.context = context;
-        }
-
-        public String node() {
-            return node;
-        }
-
-        public String context() {
-            return context;
-        }
-    }
-
     public static class AxonServerNodeDeleted extends TopologyEvents.TopologyBaseEvent {
         private final String node;
 

@@ -86,7 +86,7 @@ public class PublicRestController {
 
     @GetMapping(path="mycontexts")
     public Iterable<String> getMyContextList() {
-        return clusterController.getMyMessagingContextsNames();
+        return clusterController.getMyContextNames();
     }
 
 

@@ -38,7 +38,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
         this.clusterController = clusterController;
     }
 
-    public void on(ClusterEvents.BecomeMaster becomeMaster) {
+    public void on(ClusterEvents.BecomeLeader becomeMaster) {
         waitingTransactions.set(0);
         token.set(datafileManagerChain.lastIndex());
         if( datafileManagerChain.getType().equals(EventType.EVENT)) {
@@ -72,7 +72,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
         return entry.hasSerializedObject() && entry.getSerializedObject().getType().equals("Append." + datafileManagerChain.getType().getEventType());
     }
 
-    public void on(ClusterEvents.MasterStepDown masterStepDown) {
+    public void on(ClusterEvents.LeaderStepDown masterStepDown) {
         token.set(-1);
         logger.error("Step down");
         datafileManagerChain.stepDown();
@@ -94,7 +94,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
             CompletableFuture<Void> appendEntryResult;
             TransactionWithToken transactionWithToken;
             try {
-                RaftNode node = clusterController.getStorageRaftNode(datafileManagerChain.getType().getContext());
+                RaftNode node = clusterController.getRaftNode(datafileManagerChain.getType().getContext());
                 if( node == null || !node.isLeader()) {
                     completableFuture.completeExceptionally(new RuntimeException("No longer leader"));
                     return completableFuture;

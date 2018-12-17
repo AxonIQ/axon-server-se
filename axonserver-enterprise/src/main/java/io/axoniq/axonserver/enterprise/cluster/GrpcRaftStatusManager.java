@@ -44,7 +44,7 @@ public class GrpcRaftStatusManager {
                 if( ! cm.getNodeId().equals(leaderMap.get(context.getName())) ) {
                     leaderMap.put(context.getName(), cm.getNodeId());
                     logger.warn("{}: Leader {}", context.getName(), cm.getNodeId());
-                    eventPublisher.publishEvent(new ClusterEvents.MasterConfirmation(context.getName(), cm.getNodeId(), true));
+                    eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context.getName(), cm.getNodeId(), true));
                 }
             }
         });

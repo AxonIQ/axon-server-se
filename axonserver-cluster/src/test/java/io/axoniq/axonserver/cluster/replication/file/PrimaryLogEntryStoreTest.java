@@ -22,18 +22,18 @@ import static junit.framework.TestCase.*;
 /**
  * Author: marc
  */
-public class PrimaryEventStoreTest {
+public class PrimaryLogEntryStoreTest {
 
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
-    private PrimaryEventStore testSubject;
+    private PrimaryLogEntryStore testSubject;
 
     @Before
     public void setup() {
         String context= "default";
-        EventTransformerFactory eventTransformerFactory = (version, flags, storageProperties) -> new EventTransformer() {
+        LogEntryTransformerFactory eventTransformerFactory = (version, flags, storageProperties) -> new LogEntryTransformer() {
             @Override
-            public byte[] readEvent(byte[] bytes) {
+            public byte[] readLogEntry(byte[] bytes) {
                 return reverse(bytes);
             }
 
@@ -48,8 +48,8 @@ public class PrimaryEventStoreTest {
 
 
         IndexManager indexManager = new IndexManager(storageOptions, context);
-        testSubject = new PrimaryEventStore(context, indexManager, eventTransformerFactory, storageOptions);
-        testSubject.next = new SecondaryEventStore(context, indexManager, eventTransformerFactory, storageOptions);
+        testSubject = new PrimaryLogEntryStore(context, indexManager, eventTransformerFactory, storageOptions);
+        testSubject.next = new SecondaryLogEntryStore(context, indexManager, eventTransformerFactory, storageOptions);
         testSubject.initSegments(Long.MAX_VALUE);
     }
 

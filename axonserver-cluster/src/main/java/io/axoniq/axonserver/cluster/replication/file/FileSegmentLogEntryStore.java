@@ -38,9 +38,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     private final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);
     private final String name;
 
-    private final PrimaryEventStore primaryEventStore;
+    private final PrimaryLogEntryStore primaryEventStore;
 
-    public FileSegmentLogEntryStore(String name, PrimaryEventStore primaryEventStore) {
+    public FileSegmentLogEntryStore(String name, PrimaryLogEntryStore primaryEventStore) {
         this.name = name;
         this.primaryEventStore = primaryEventStore;
     }

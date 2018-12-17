@@ -1,23 +1,29 @@
 package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
+import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
+import org.mockito.stubbing.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.persistence.EntityManager;
@@ -46,29 +52,32 @@ public class ContextControllerTest {
     @Mock
     private ClusterController clusterController;
 
+    @MockBean
+    private LogReplicationService logReplicationService;
+    @MockBean
+    private GrpcRaftController raftController;
+
+    private List<NodeInfo> initialNodes = new ArrayList<>();
 
     @Before
     public void setUp()  {
         Context defaultContext = new Context(Topology.DEFAULT_CONTEXT);
-        FeatureChecker limits = new FeatureChecker() {
-            @Override
-            public boolean isEnterprise() {
-                return true;
-            }
+        entityManager.persist(defaultContext);
+        ClusterNode node1 = new ClusterNode("node1", "node1", "node1", 8124, 8224, 8024);
 
-            @Override
-            public int getMaxContexts() {
-                return 3;
-            }
-        };
-        ClusterNode node1 = new ClusterNode("node1", null, null, null, null, null);
-        ClusterNode node2 = new ClusterNode("node2", null, null, null, null, null);
+        ClusterNode node2 = new ClusterNode("node2", "node2", "node2", 8124, 8224, 8024);
         node1.addContext(defaultContext, true, true);
         node2.addContext(defaultContext, true, true);
+        initialNodes.add(node1.toNodeInfo());
+        initialNodes.add(node2.toNodeInfo());
         entityManager.persist(node1);
         entityManager.persist(node2);
         entityManager.flush();
         testSubject = new ContextController(entityManager, clusterController, eventPublisher);
+        when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
+            String name = invocationOnMock.getArgument(0).toString();
+            return entityManager.find(ClusterNode.class, name);
+        });
     }
 
     @Test
@@ -80,11 +89,18 @@ public class ContextControllerTest {
 
     @Test
     public void addNodeToContext() {
-        ClusterNode node3 = new ClusterNode("node3", null, null, null, null, null);
+        ClusterNode node3 = new ClusterNode("node3", "node3", "node3", 8124, 8224, 8024);
         entityManager.persist(node3);
-        //testSubject.updateNodeRoles(Topology.DEFAULT_CONTEXT, "node3", true, true, false);
+        entityManager.flush();
+
+        List<NodeInfo> nodes = new ArrayList<>(initialNodes);
+        nodes.add(node3.toNodeInfo());
+
+        testSubject.updateContext(ContextConfiguration.newBuilder().setContext(Topology.DEFAULT_CONTEXT).addAllNodes(nodes).build());
+
+        entityManager.flush();
         Context defaultContext = entityManager.find(Context.class, Topology.DEFAULT_CONTEXT);
-        assertEquals(3, defaultContext.getStorageNodes().size());
+        assertEquals(3, defaultContext.getNodes().size());
     }
 
     @Test
@@ -95,22 +111,23 @@ public class ContextControllerTest {
 
         entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList().forEach(n -> n.addContext(test1, true, true));
         // when delete context test1
-        //testSubject.deleteContext("test1", false);
+        testSubject.deleteContext("test1");
         // expect nodes 1 and node 2 no longer contain context text1
         entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList().forEach(n -> assertFalse(n.getContextNames().contains("test1")));
     }
 
     @Test
     public void deleteNodeFromContext() {
-        //testSubject.deleteNodeFromContext(Topology.DEFAULT_CONTEXT, "node1", false);
+        List<NodeInfo> nodes = initialNodes.stream().filter(n -> !n.getNodeName().equals("node1")).collect(Collectors.toList());
+
+        testSubject.updateContext(ContextConfiguration.newBuilder().setContext(Topology.DEFAULT_CONTEXT).addAllNodes(nodes).build());
         ClusterNode node1 = entityManager.find(ClusterNode.class, "node1");
         assertEquals(0, node1.getContextNames().size());
     }
 
     @Test
     public void addContext() {
-        //testSubject.addContext("test1", Collections.singletonList(new NodeRoles("node1", false, false)), false);
-
+        testSubject.updateContext(ContextConfiguration.newBuilder().setContext("test1").addNodes(initialNodes.get(0)).build());
         ClusterNode node1 = entityManager.find(ClusterNode.class, "node1");
         assertEquals(2, node1.getContextNames().size());
     }

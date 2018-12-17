@@ -11,7 +11,7 @@ import java.nio.MappedByteBuffer;
  */
 public class WritableEntrySource extends ByteBufferEntrySource {
     private static final Logger logger = LoggerFactory.getLogger(WritableEntrySource.class);
-    public WritableEntrySource(ByteBuffer buffer, EventTransformer eventTransformer) {
+    public WritableEntrySource(ByteBuffer buffer, LogEntryTransformer eventTransformer) {
         super(buffer, eventTransformer);
     }
 

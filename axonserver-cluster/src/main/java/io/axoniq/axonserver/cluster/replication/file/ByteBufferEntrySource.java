@@ -14,11 +14,11 @@ import java.nio.ByteBuffer;
 public class ByteBufferEntrySource implements EntrySource {
 
 
-    private final EventTransformer eventTransformer;
+    private final LogEntryTransformer eventTransformer;
     private final ByteBuffer buffer;
     private final boolean main;
 
-    public ByteBufferEntrySource(ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+    public ByteBufferEntrySource(ByteBuffer buffer, LogEntryTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
         byte version = buffer.get();
         int flags = buffer.getInt();
         this.eventTransformer = eventTransformerFactory.get(version, flags, storageProperties);
@@ -26,13 +26,13 @@ public class ByteBufferEntrySource implements EntrySource {
         this.main = true;
     }
 
-    public ByteBufferEntrySource(ByteBuffer buffer, EventTransformer eventTransformer) {
+    public ByteBufferEntrySource(ByteBuffer buffer, LogEntryTransformer eventTransformer) {
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.main = false;
     }
 
-    public ByteBufferEntrySource(ByteBuffer duplicate, EventTransformer eventTransformer, int startPosition) {
+    public ByteBufferEntrySource(ByteBuffer duplicate, LogEntryTransformer eventTransformer, int startPosition) {
         this(duplicate, eventTransformer);
         buffer.position(startPosition);
     }
@@ -51,7 +51,7 @@ public class ByteBufferEntrySource implements EntrySource {
             Entry.DataCase dataCase = Entry.DataCase.forNumber(type);
             byte[] bytes = new byte[size];
             buffer.get(bytes);
-            bytes = eventTransformer.readEvent(bytes);
+            bytes = eventTransformer.readLogEntry(bytes);
             Entry.Builder builder = Entry.newBuilder().setTerm(term).setIndex(index);
             switch (dataCase) {
                 case SERIALIZEDOBJECT:
@@ -78,7 +78,7 @@ public class ByteBufferEntrySource implements EntrySource {
     }
 
     @Override
-    public SegmentEntryIterator createEventIterator(long segment, long startIndex, int startPosition, boolean validating) {
+    public SegmentEntryIterator createLogEntryIterator(long segment, long startIndex, int startPosition, boolean validating) {
         return new SegmentEntryIterator(duplicate(startPosition), startIndex);
     }
 
@@ -87,7 +87,7 @@ public class ByteBufferEntrySource implements EntrySource {
         CleanUtils.cleanDirectBuffer(buffer, main, 60);
     }
 
-    public Entry readEvent(int position, long index) {
+    public Entry readLogEntry(int position, long index) {
         buffer.position(position);
         return readEvent(index);
     }

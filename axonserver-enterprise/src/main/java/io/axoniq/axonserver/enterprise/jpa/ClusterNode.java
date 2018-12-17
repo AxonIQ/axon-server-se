@@ -96,13 +96,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
         return name;
     }
 
-    @Override
-    public Collection<String> getMessagingContextNames() {
-        return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
-    }
-
-    @Override
-    public Collection<String> getStorageContextNames() {
+    public Collection<String> getContextNames() {
         return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
 
@@ -176,12 +170,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
                    .setHost(internalHostName)
                    .setPort(grpcInternalPort)
                    .build();
-    }
-
-    public Set<String> getContextNames() {
-        return contexts.stream()
-                       .map(ccn -> ccn.getContext().getName())
-                       .collect(Collectors.toSet());
     }
 
     @PreRemove

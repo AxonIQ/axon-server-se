@@ -25,16 +25,16 @@ import java.util.concurrent.TimeUnit;
 /**
  * Author: marc
  */
-public class SecondaryEventStore extends SegmentBasedEventStore {
+public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     private final ScheduledExecutorService scheduledExecutorService;
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final ConcurrentSkipListMap<Long, WeakReference<ByteBufferEntrySource>> lruMap = new ConcurrentSkipListMap<>();
-    private final EventTransformerFactory eventTransformerFactory;
+    private final LogEntryTransformerFactory eventTransformerFactory;
 
 
-    public SecondaryEventStore(String context, IndexManager indexManager,
-                               EventTransformerFactory eventTransformerFactory,
-                               StorageProperties storageProperties) {
+    public SecondaryLogEntryStore(String context, IndexManager indexManager,
+                                  LogEntryTransformerFactory eventTransformerFactory,
+                                  StorageProperties storageProperties) {
         super(context, indexManager, storageProperties);
         scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new AxonThreadFactory(context + "-file-cleanup-"));
         this.eventTransformerFactory = eventTransformerFactory;
@@ -49,7 +49,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
     protected void recreateIndex(long segment) {
         ByteBufferEntrySource buffer = get(segment, true);
-        try (SegmentEntryIterator iterator = buffer.createEventIterator(segment, segment, 5, false)) {
+        try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(segment, segment, 5, false)) {
             Map<Long, Integer> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {
                 Entry event = iterator.next();
@@ -133,7 +133,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
             Integer position = indexManager.getIndex(segment).getPosition(index);
             EntrySource eventSource = getEventSource(segment).orElse(null);
             if( eventSource != null && position != null) {
-                return eventSource.readEvent(position, index);
+                return eventSource.readLogEntry(position, index);
             }
         }
         return null;

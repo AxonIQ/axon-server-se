@@ -39,31 +39,11 @@ public class Context implements Serializable {
         this.name = name;
     }
 
-    public Set<ClusterNode> getStorageNodes() {
-        return nodes.stream().filter(ContextClusterNode::isStorage).map(ContextClusterNode::getClusterNode).collect(Collectors.toSet());
-    }
-    public Set<ClusterNode> getMessagingNodes() {
-        return nodes.stream().filter(ContextClusterNode::isMessaging).map(ContextClusterNode::getClusterNode).collect(Collectors.toSet());
+    public Set<ClusterNode> getNodes() {
+        return nodes.stream().map(ContextClusterNode::getClusterNode).collect(Collectors.toSet());
     }
 
-    public boolean isMessagingMember(String nodeName) {
-        return nodes.stream().anyMatch(n -> n.getClusterNode().getName().equals(nodeName));
-    }
-
-    public boolean isStorageMember(String nodeName) {
-        return nodes.stream().filter(ContextClusterNode::isStorage).anyMatch(n -> n.getClusterNode().getName().equals(nodeName));
-    }
-
-
-    public ContextClusterNode getMember(String node) {
-        return nodes.stream().filter(n -> n.getClusterNode().getName().equals(node)).findFirst().orElse(null);
-    }
-
-    public Collection<String> getStorageNodeNames() {
-        return nodes.stream().filter(ContextClusterNode::isStorage).map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
-    }
-
-    public Collection<String> getMessagingNodeNames() {
+    public Collection<String> getNodeNames() {
         return nodes.stream().filter(ContextClusterNode::isMessaging).map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
     }
 

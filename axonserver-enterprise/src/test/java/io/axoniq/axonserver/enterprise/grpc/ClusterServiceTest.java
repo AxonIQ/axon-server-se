@@ -6,21 +6,20 @@ import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.licensing.Limits;
-import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.runners.*;
-import org.mockito.stubbing.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
+
+import static org.mockito.ArgumentMatchers.any;
 
 /**
  * Author: marc
@@ -46,8 +45,8 @@ public class ClusterServiceTest {
         nodes.add(new ClusterNode("name1", "hostName1", "internalHostName1", 1, 1, 1));
         nodes.add(new ClusterNode("name2", "hostName2", "internalHostName2", 2, 2, 2));
 
-        Mockito.when(clusterController.findNodeForClient(Matchers.any(), Matchers.any(), Matchers.any())).thenReturn(nodes.get(0));
-        Mockito.when(clusterController.messagingNodes()).then((Answer<Stream<? extends AxonServerNode>>) invocationOnMock -> nodes.stream().skip(1));
+        Mockito.when(clusterController.findNodeForClient(any(), any(), any())).thenReturn(nodes.get(0));
+//        Mockito.when(clusterController.nodes()).then((Answer<Stream<? extends AxonServerNode>>) invocationOnMock -> nodes.stream().skip(1));
         configuration = new MessagingPlatformConfiguration(null);
 
         testSubject = new PlatformService(clusterController, () -> Topology.DEFAULT_CONTEXT, eventPublisher);

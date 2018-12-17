@@ -11,12 +11,12 @@ import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateController;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.cluster.replication.file.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.cluster.replication.file.EventTransformerFactory;
+import io.axoniq.axonserver.cluster.replication.file.DefaultLogEntryTransformerFactory;
+import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.FileSegmentLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.IndexManager;
-import io.axoniq.axonserver.cluster.replication.file.PrimaryEventStore;
-import io.axoniq.axonserver.cluster.replication.file.SecondaryEventStore;
+import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
+import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.StorageProperties;
 import io.axoniq.axonserver.grpc.cluster.Node;
 
@@ -39,18 +39,18 @@ public class GrpcRaftGroup implements RaftGroup {
 
     public GrpcRaftGroup(String nodeId, Set<JpaRaftGroupNode> nodes, String groupId,
                          JpaRaftStateRepository raftStateRepository) {
-        EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
+        LogEntryTransformerFactory eventTransformerFactory = new DefaultLogEntryTransformerFactory();
         StorageProperties storageOptions = new StorageProperties();
         storageOptions.setSegmentSize(16*1024*1024);
         storageOptions.setLogStorageFolder("log");
 
 
         IndexManager indexManager = new IndexManager(storageOptions, groupId);
-        PrimaryEventStore primary = new PrimaryEventStore(groupId,
-                                                          indexManager,
-                                                          eventTransformerFactory,
-                                                          storageOptions);
-        primary.setNext(new SecondaryEventStore(groupId, indexManager, eventTransformerFactory, storageOptions));
+        PrimaryLogEntryStore primary = new PrimaryLogEntryStore(groupId,
+                                                                indexManager,
+                                                                eventTransformerFactory,
+                                                                storageOptions);
+        primary.setNext(new SecondaryLogEntryStore(groupId, indexManager, eventTransformerFactory, storageOptions));
         primary.initSegments(Long.MAX_VALUE);
 
         localLogEntryStore = new FileSegmentLogEntryStore(groupId, primary);

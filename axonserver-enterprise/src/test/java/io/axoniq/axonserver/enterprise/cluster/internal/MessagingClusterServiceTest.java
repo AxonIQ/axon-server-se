@@ -3,8 +3,6 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
-import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.Group;
@@ -17,20 +15,14 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.platform.user.UserController;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
-
-import java.util.stream.Stream;
+import org.mockito.junit.*;
 
 import static io.axoniq.axonserver.grpc.internal.ConnectorResponse.ResponseCase.CONNECT_RESPONSE;
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /**
  * Author: marc
@@ -39,27 +31,13 @@ import static org.mockito.Mockito.*;
 public class MessagingClusterServiceTest {
     private MessagingClusterService messagingClusterService;
     @Mock
-    private ApplicationController applicationController;
-    @Mock
     private CommandDispatcher commandDispatcher;
     @Mock
     private QueryDispatcher queryDispatcher;
     @Mock
     private ClusterController clusterController;
 
-    @Mock
-    private UserController userController;
-
     private FakeApplicationEventPublisher eventPublisher;
-
-    @Mock
-    private ContextController contextController;
-
-    @Mock
-    private ApplicationModelController applicationModelController;
-
-    @Mock
-    private EventStoreManager eventStoreManager;
 
     @Mock
     private GrpcRaftController grpcRaftController;
@@ -69,7 +47,6 @@ public class MessagingClusterServiceTest {
         this.eventPublisher = new FakeApplicationEventPublisher();
         messagingClusterService = new MessagingClusterService(
                 commandDispatcher, queryDispatcher, clusterController, grpcRaftController, eventPublisher);
-        when(clusterController.nodes()).thenReturn(Stream.empty());
     }
 
     @Test

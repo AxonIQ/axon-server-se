@@ -75,7 +75,7 @@ public class ContextController {
             });
         newNodes.forEach(node -> {
             if( !currentNodes.contains(node)) {
-                clusterInfoMap.get(node).addContext(finalContext, false, false);
+                clusterInfoMap.computeIfAbsent(node, this::getNode).addContext(finalContext, false, false);
             }
         });
 
@@ -102,5 +102,8 @@ public class ContextController {
     }
 
 
-
+    public void deleteContext(String context) {
+        Context contextJpa = entityManager.find(Context.class, context);
+        if( contextJpa != null) entityManager.remove(contextJpa);
+    }
 }

@@ -8,6 +8,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,13 +54,13 @@ public class ClusterRestController {
             throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER, "This node is already a member of a cluster");
         }
 
+        NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
         if( jsonClusterNode.contexts != null && ! jsonClusterNode.contexts.isEmpty()) {
-            clusterController.setMyContexts(jsonClusterNode.contexts);
+            jsonClusterNode.contexts.forEach(context -> nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context.getName()).build()));
         }
         try {
-            NodeInfo nodeInfo = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo())
-                                        .build();
-            raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).joinCluster(nodeInfo);
+            raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort)
+                              .joinCluster(nodeInfoBuilder.build());
         } catch (Throwable e) {
             handleExecutionException(e);
         }

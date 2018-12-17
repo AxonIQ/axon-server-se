@@ -21,17 +21,17 @@ import java.util.stream.Stream;
 /**
  * Author: marc
  */
-public abstract class SegmentBasedEventStore {
-    protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
+public abstract class SegmentBasedLogEntryStore {
+    protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedLogEntryStore.class);
 
     static final byte VERSION = 0;
     protected final String context;
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;
-    protected volatile SegmentBasedEventStore next;
+    protected volatile SegmentBasedLogEntryStore next;
     private final String type;
 
-    public SegmentBasedEventStore(String eventTypeContext, IndexManager indexManager, StorageProperties storageProperties) {
+    public SegmentBasedLogEntryStore(String eventTypeContext, IndexManager indexManager, StorageProperties storageProperties) {
         this.type = eventTypeContext;
         this.context = eventTypeContext;
         this.indexManager = indexManager;
@@ -41,8 +41,8 @@ public abstract class SegmentBasedEventStore {
 
     public abstract void handover(Long segment, Runnable callback);
 
-    public void next(SegmentBasedEventStore datafileManager) {
-        SegmentBasedEventStore last = this;
+    public void next(SegmentBasedLogEntryStore datafileManager) {
+        SegmentBasedLogEntryStore last = this;
         while(last.next != null) {
             last = last.next;
         }
@@ -110,7 +110,7 @@ public abstract class SegmentBasedEventStore {
     }
 
     protected SegmentEntryIterator createIterator(EntrySource eventSource, long segment, long startIndex, int startPosition, boolean validating) {
-        return eventSource.createEventIterator(segment, startIndex, startPosition, validating);
+        return eventSource.createLogEntryIterator(segment, startIndex, startPosition, validating);
     }
 
     public long getSegmentFor(long token) {
@@ -165,7 +165,7 @@ public abstract class SegmentBasedEventStore {
 //    @Override
 //    public void health(Health.Builder builder) {
 //        String storage = storageProperties.getStorage(context);
-//        SegmentBasedEventStore n = next;
+//        SegmentBasedLogEntryStore n = next;
 //        Path path = Paths.get(storage);
 //        try {
 //            FileStore store = Files.getFileStore(path);
@@ -202,7 +202,7 @@ public abstract class SegmentBasedEventStore {
         long segment = getSegmentFor(nextIndex);
         Optional<EntrySource> eventSource = getEventSource(segment);
         if( eventSource.isPresent()) {
-            return eventSource.get().createEventIterator(segment, nextIndex, getPosition(segment, nextIndex), false);
+            return eventSource.get().createLogEntryIterator(segment, nextIndex, getPosition(segment, nextIndex), false);
         }
         if( next != null) {
             return next.getIterator(nextIndex);

@@ -20,10 +20,9 @@ public interface Topology {
         return true;
     }
 
-    default Stream<? extends AxonServerNode> messagingNodes() {
+    default Stream<? extends AxonServerNode> nodes() {
         return Stream.of(getMe());
     }
-
 
     default List<AxonServerNode> getRemoteConnections() {
         return new ArrayList<>();
@@ -31,15 +30,11 @@ public interface Topology {
 
     AxonServerNode getMe();
 
-    default Iterable<String> getMyMessagingContextsNames() {
-        return getMe().getMessagingContextNames();
-    }
-
     default AxonServerNode findNodeForClient(String clientName, String componentName, String context) {
         return getMe();
     }
 
-    default Iterable<String> getMyStorageContextNames() {
-        return getMe().getStorageContextNames();
+    default Iterable<String> getMyContextNames() {
+        return getMe().getContextNames();
     }
 }

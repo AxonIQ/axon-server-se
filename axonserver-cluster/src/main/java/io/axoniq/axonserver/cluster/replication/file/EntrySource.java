@@ -8,11 +8,11 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
  */
 public interface EntrySource extends AutoCloseable {
 
-    Entry readEvent(int position, long index);
+    Entry readLogEntry(int position, long index);
 
     default void close()  {
         // no-action
     }
 
-    SegmentEntryIterator createEventIterator(long segment, long startIndex, int startPosition, boolean validating);
+    SegmentEntryIterator createLogEntryIterator(long segment, long startIndex, int startPosition, boolean validating);
 }

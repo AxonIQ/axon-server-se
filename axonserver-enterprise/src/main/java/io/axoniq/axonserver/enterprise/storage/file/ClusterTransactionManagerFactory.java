@@ -35,14 +35,14 @@ public class ClusterTransactionManagerFactory implements StorageTransactionManag
     }
 
     @EventListener
-    public void on(ClusterEvents.BecomeMaster becomeMaster) {
+    public void on(ClusterEvents.BecomeLeader becomeMaster) {
         if( transactionManagersPerContext.containsKey(becomeMaster.getContext())) {
             transactionManagersPerContext.get(becomeMaster.getContext()).forEach(tm -> tm.on(becomeMaster));
         }
     }
 
     @EventListener
-    public void on(ClusterEvents.MasterStepDown masterStepDown) {
+    public void on(ClusterEvents.LeaderStepDown masterStepDown) {
         if( transactionManagersPerContext.containsKey(masterStepDown.getContextName())) {
             transactionManagersPerContext.get(masterStepDown.getContextName()).forEach(tm -> tm.on(masterStepDown));
         }

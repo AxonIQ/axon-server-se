@@ -76,12 +76,7 @@ public class ExtendedClusterNode implements AxonServerNode {
     }
 
     @Override
-    public Collection<String> getMessagingContextNames() {
-        return delegate.getMessagingContextNames();
-    }
-
-    @Override
-    public Collection<String> getStorageContextNames() {
-        return delegate.getStorageContextNames();
+    public Collection<String> getContextNames() {
+        return delegate.getContextNames();
     }
 }

@@ -14,7 +14,6 @@ import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.rest.ClusterRestController;
 import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -132,10 +130,6 @@ public class ClusterController implements SmartLifecycle {
                                                      TimeUnit.MILLISECONDS);
         }
         running = true;
-    }
-
-    public boolean isClustered() {
-        return Feature.CLUSTERING.enabled(limits) && messagingPlatformConfiguration.getCluster().isEnabled();
     }
 
     private void checkCurrentNodeSaved() {
@@ -283,15 +277,6 @@ public class ClusterController implements SmartLifecycle {
         return existing;
     }
 
-    private void mergeContext(ClusterNode existing, String context, boolean storage, boolean messaging) {
-        Context contextObj = entityManager.find(Context.class,  context);
-        if (contextObj == null) {
-            contextObj = new Context(context);
-            entityManager.persist(contextObj);
-        }
-        existing.addContext(contextObj, storage, messaging);
-    }
-
     private ClusterNode findFirstByInternalHostNameAndGrpcInternalPort(String internalHostName, int grpcInternalPort) {
         List<ClusterNode> clusterNodes = entityManager.createNamedQuery("ClusterNode.findByInternalHostNameAndPort", ClusterNode.class)
                                                       .setParameter("internalHostName",
@@ -326,7 +311,7 @@ public class ClusterController implements SmartLifecycle {
         }
 
         List<String> activeNodes = new ArrayList<>();
-        Collection<String> nodesInContext = context1.getMessagingNodeNames();
+        Collection<String> nodesInContext = context1.getNodeNames();
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
             activeNodes.add(messagingPlatformConfiguration.getName());
         }
@@ -356,7 +341,7 @@ public class ClusterController implements SmartLifecycle {
             return false;
         }
         List<String> activeNodes = new ArrayList<>();
-        Collection<String> nodesInContext = context1.getMessagingNodeNames();
+        Collection<String> nodesInContext = context1.getNodeNames();
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
             activeNodes.add(messagingPlatformConfiguration.getName());
         }
@@ -383,22 +368,6 @@ public class ClusterController implements SmartLifecycle {
         activeConnections().forEach(remoteConnection -> remoteConnection.publish(connectorCommand));
     }
 
-    public Set<String> getMyContextsNames() {
-        return getMe().getContextNames();
-    }
-
-    public Set<ContextClusterNode> getMyContexts() {
-        return getMe().getContexts();
-    }
-
-    public Set<String> getMyStorageContexts() {
-        return getMe().getStorageContexts().stream().map(Context::getName).collect(Collectors.toSet());
-    }
-
-    public Set<String> getMyMessagingContexts() {
-        return getMe().getMessagingContexts().stream().map(Context::getName).collect(Collectors.toSet());
-    }
-
     public void closeConnection(String nodeName) {
         if (remoteConnections.containsKey(nodeName)) {
             remoteConnections.get(nodeName).close();
@@ -413,40 +382,4 @@ public class ClusterController implements SmartLifecycle {
         return nodeMap.computeIfAbsent(name, n -> entityManager.find(ClusterNode.class, n));
     }
 
-    @Transactional
-    public void setMyContexts(List<ClusterRestController.ContextRoleJSON> contexts) {
-        ClusterNode clusterNode = getMe();
-        Set<String> oldStorageContexts = getMyStorageContexts();
-        Set<String> oldContexts = getMyContextsNames();
-        for(ClusterRestController.ContextRoleJSON contextRoleJSON : contexts) {
-            mergeContext(clusterNode, contextRoleJSON.getName(), contextRoleJSON.isStorage(), contextRoleJSON.isMessaging());
-            if( contextRoleJSON.isStorage()) {
-                if( ! oldStorageContexts.remove(contextRoleJSON.getName()) ) {
-                }
-            }
-            oldContexts.remove(contextRoleJSON.getName());
-        }
-
-        logger.debug("Leaving storage contexts: {}", oldStorageContexts);
-        oldStorageContexts.forEach(context -> applicationEventPublisher.publishEvent(
-                new ClusterEvents.MasterStepDown(context, true)));
-
-
-        oldContexts.forEach(clusterNode::removeContext);
-        entityManager.flush();
-    }
-
-
-    public void publishTo(String nodeName, ConnectorCommand connectorCommand) {
-        if( remoteConnections.containsKey(nodeName))
-            remoteConnections.get(nodeName).publish(connectorCommand);
-    }
-
-    public boolean disconnectedNodes() {
-        return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
-    }
-
-    public void addNode(NodeInfo nodeInfo) {
-        nodeMap.put( nodeInfo.getNodeName(), ClusterNode.from(nodeInfo));
-    }
 }

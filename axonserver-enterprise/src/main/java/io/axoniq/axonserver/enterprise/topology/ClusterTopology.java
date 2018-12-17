@@ -3,7 +3,6 @@ package io.axoniq.axonserver.enterprise.topology;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 
@@ -39,7 +38,7 @@ public class ClusterTopology implements Topology {
     }
 
     @Override
-    public Stream<? extends AxonServerNode> messagingNodes() {
+    public Stream<? extends AxonServerNode> nodes() {
         return clusterController.nodes();
     }
 
@@ -54,17 +53,12 @@ public class ClusterTopology implements Topology {
     }
 
     @Override
-    public Iterable<String> getMyMessagingContextsNames() {
-        return clusterController.getMyMessagingContexts();
-    }
-
-    @Override
     public AxonServerNode findNodeForClient(String clientName, String componentName, String context) {
         return clusterController.findNodeForClient(clientName, componentName, context);
     }
 
     @Override
-    public Iterable<String> getMyStorageContextNames() {
-        return raftController.getMyStorageContexts();
+    public Iterable<String> getMyContextNames() {
+        return raftController.getMyContexts();
     }
 }

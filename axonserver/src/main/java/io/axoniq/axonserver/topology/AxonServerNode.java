@@ -19,7 +19,5 @@ public interface AxonServerNode {
 
     String getName();
 
-    Collection<String> getMessagingContextNames();
-
-    Collection<String> getStorageContextNames();
+    Collection<String> getContextNames();
 }

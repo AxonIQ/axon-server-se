@@ -40,7 +40,7 @@ public class Synchronizer {
         this.context = context;
         this.storageProperties = storageProperties;
         this.completeSegmentCallback = completeSegmentCallback;
-        fsync = Executors.newSingleThreadScheduledExecutor(new AxonThreadFactory(context + "-synchronizer-"));
+        fsync = Executors.newSingleThreadScheduledExecutor(new AxonThreadFactory(context + "-logsynchronizer"));
     }
 
     public void notifyWritePositions() {

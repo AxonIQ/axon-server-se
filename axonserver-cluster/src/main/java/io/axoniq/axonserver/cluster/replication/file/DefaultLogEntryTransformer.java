@@ -3,10 +3,10 @@ package io.axoniq.axonserver.cluster.replication.file;
 /**
  * Author: marc
  */
-public class DefaultEventTransformer implements EventTransformer {
+public class DefaultLogEntryTransformer implements LogEntryTransformer {
 
     @Override
-    public byte[] readEvent(byte[] bytes) {
+    public byte[] readLogEntry(byte[] bytes) {
         return bytes;
     }
 

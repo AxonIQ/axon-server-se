@@ -3,9 +3,9 @@ package io.axoniq.axonserver.cluster.replication.file;
 /**
  * Author: marc
  */
-public interface EventTransformer {
+public interface LogEntryTransformer {
 
-    byte[] readEvent(byte[] bytes);
+    byte[] readLogEntry(byte[] bytes);
 
     byte[] transform(byte[] bytes);
 }

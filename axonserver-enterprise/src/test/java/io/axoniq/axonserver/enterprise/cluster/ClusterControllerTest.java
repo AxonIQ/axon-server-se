@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.TestSystemInfoProvider;
+import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -22,6 +23,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -58,12 +60,15 @@ public class ClusterControllerTest {
     @Autowired
     private EntityManager entityManager;
 
-    @Mock
+    @MockBean
+    private LogReplicationService logReplicationService;
+    @MockBean
     private GrpcRaftController raftController;
 
     @Before
     public void setUp()  {
         Context context = new Context(Topology.DEFAULT_CONTEXT);
+        entityManager.persist(context);
         FeatureChecker limits = new FeatureChecker() {
             @Override
             public boolean isEnterprise() {
@@ -102,6 +107,8 @@ public class ClusterControllerTest {
             }
 
         };
+
+        when(raftController.isAutoStartup()).thenReturn(false);
 
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
                                                 stubFactory,

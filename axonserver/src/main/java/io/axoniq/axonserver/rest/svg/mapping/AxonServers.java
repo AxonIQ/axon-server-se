@@ -30,7 +30,7 @@ public class AxonServers implements Iterable<AxonServer> {
     @Override
     @Nonnull
     public Iterator<AxonServer> iterator() {
-        return  clusterController.messagingNodes()
+        return  clusterController.nodes()
                                  .sorted(Comparator.comparing(AxonServerNode::getName))
                                  .map(node -> (AxonServer) new AxonServer() {
 
@@ -46,13 +46,13 @@ public class AxonServers implements Iterable<AxonServer> {
 
                                      @Override
                                      public List<String> contexts() {
-                                         return node.getMessagingContextNames().stream().sorted().collect(
+                                         return node.getContextNames().stream().sorted().collect(
                                                  Collectors.toList());
                                      }
 
                                      @Override
                                      public List<Storage> storage() {
-                                         return node.getStorageContextNames().stream().map(contextName -> new Storage() {
+                                         return node.getContextNames().stream().map(contextName -> new Storage() {
                                              @Override
                                              public String context() {
                                                  return contextName;
@@ -62,7 +62,7 @@ public class AxonServers implements Iterable<AxonServer> {
                                              public boolean master() {
                                                  return eventStoreManager.isMaster(node.getName(), contextName);
                                              }
-                                         } ).sorted(Comparator.comparing(a -> a.context())).collect(Collectors.toList());
+                                         } ).sorted(Comparator.comparing(Storage::context)).collect(Collectors.toList());
                                      }
                                  }).iterator();
     }

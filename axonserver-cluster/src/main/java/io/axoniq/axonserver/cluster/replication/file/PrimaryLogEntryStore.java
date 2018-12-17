@@ -29,20 +29,20 @@ import java.util.stream.Stream;
 /**
  * Author: marc
  */
-public class PrimaryEventStore extends SegmentBasedEventStore {
-    private static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
+public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
+    private static final Logger logger = LoggerFactory.getLogger(PrimaryLogEntryStore.class);
     private static final int HEADER_BYTES = 4 + 1 + 8 + 4;
     private static final int TX_CHECKSUM_BYTES = 4;
 
-    private final EventTransformerFactory eventTransformerFactory;
+    private final LogEntryTransformerFactory eventTransformerFactory;
     private final Synchronizer synchronizer;
     private final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     private final AtomicLong lastToken = new AtomicLong(0);
     private final ConcurrentNavigableMap<Long, Map<Long, Integer>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
     private final Map<Long, ByteBufferEntrySource> readBuffers = new ConcurrentHashMap<>();
-    private EventTransformer eventTransformer;
+    private LogEntryTransformer eventTransformer;
 
-    public PrimaryEventStore(String context, IndexManager indexCreator, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+    public PrimaryLogEntryStore(String context, IndexManager indexCreator, LogEntryTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
         super(context, indexCreator, storageProperties);
         this.eventTransformerFactory = eventTransformerFactory;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
@@ -81,7 +81,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             if( position == null) {
                 return null;
             }
-            return entrySource.duplicate().readEvent(position, index);
+            return entrySource.duplicate().readLogEntry(position, index);
         }
         if( next != null) {
             return next.getEntry(index);
@@ -100,7 +100,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         indexManager.remove(first);
         FileUtils.delete(storageProperties.indexFile(getType(), first));
         long sequence = first;
-        try (SegmentEntryIterator iterator = buffer.createEventIterator(first, first, 5, false)) {
+        try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(first, first, 5, false)) {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
             while (sequence < nextToken && iterator.hasNext()) {
@@ -318,7 +318,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    public void setNext(SegmentBasedEventStore secondaryEventStore) {
+    public void setNext(SegmentBasedLogEntryStore secondaryEventStore) {
         next = secondaryEventStore;
     }
 }

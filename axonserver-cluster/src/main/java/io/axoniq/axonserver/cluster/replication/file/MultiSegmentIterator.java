@@ -11,14 +11,14 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class MultiSegmentIterator implements EntryIterator {
 
-    private final PrimaryEventStore primaryEventStore;
+    private final PrimaryLogEntryStore primaryEventStore;
     private final AtomicLong nextIndex = new AtomicLong();
 
     private volatile Entry previous;
     private volatile Entry next;
     private volatile SegmentEntryIterator iterator;
 
-    public MultiSegmentIterator(PrimaryEventStore primaryEventStore,
+    public MultiSegmentIterator(PrimaryLogEntryStore primaryEventStore,
                                 long nextIndex) {
         this.nextIndex.set(nextIndex);
         this.primaryEventStore = primaryEventStore;
