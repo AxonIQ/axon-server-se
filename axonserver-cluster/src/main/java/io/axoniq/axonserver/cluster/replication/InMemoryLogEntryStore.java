@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster.replication;
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -12,15 +13,20 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * Author: marc
  */
 public class InMemoryLogEntryStore implements LogEntryStore {
     private final Logger logger = LoggerFactory.getLogger(InMemoryLogEntryStore.class);
+    private final List<Consumer<Entry>> appendListeners = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final NavigableMap<Long, Entry> entryMap = new ConcurrentSkipListMap<>();
     private final AtomicLong lastIndex = new AtomicLong(0);
     private final String name;
@@ -38,9 +44,14 @@ public class InMemoryLogEntryStore implements LogEntryStore {
         long firstIndex = entries.get(0).getIndex();
         if( entryMap.containsKey(firstIndex)) {
             logger.warn("{}: Clear from {}", name, firstIndex);
-            entryMap.tailMap(firstIndex).clear();
+            SortedMap<Long, Entry> tail = entryMap.tailMap(firstIndex);
+            tail.values().forEach(entry -> rollbackListeners.forEach(listener -> listener.accept(entry)));
+            tail.clear();
         }
-        entries.forEach(entry -> entryMap.put(entry.getIndex(), entry));
+        entries.forEach(entry -> {
+            entryMap.put(entry.getIndex(), entry);
+            appendListeners.forEach(listener -> listener.accept(entry));
+        });
         lastIndex.set(entryMap.lastEntry().getKey());
     }
 
@@ -83,6 +94,18 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     @Override
     public long lastLogIndex() {
         return entryMap.isEmpty() ? 0 : entryMap.lastKey();
+    }
+
+    @Override
+    public Registration registerLogAppendListener(Consumer<Entry> listener) {
+        appendListeners.add(listener);
+        return () -> appendListeners.remove(listener);
+    }
+
+    @Override
+    public Registration registerLogRollbackListener(Consumer<Entry> listener) {
+        rollbackListeners.add(listener);
+        return () -> rollbackListeners.remove(listener);
     }
 
     @Override
