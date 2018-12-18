@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public interface LogEntryStore {
@@ -31,6 +32,8 @@ public interface LogEntryStore {
     }
 
     void clear(long logIndex, long logTerm);
+
+    void clearOlderThan(long time, TimeUnit timeUnit);
 
     long lastLogIndex();
 

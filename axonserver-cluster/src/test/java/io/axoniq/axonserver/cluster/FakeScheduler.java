@@ -6,6 +6,7 @@ import java.time.temporal.TemporalAccessor;
 import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.Integer.compare;
@@ -82,6 +83,13 @@ public class FakeScheduler implements Scheduler {
                         " Elapsed: " + getElapsed(TimeUnit.MILLISECONDS);
             }
         };
+    }
+
+    @Override
+    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
+                                                     TimeUnit timeUnit) {
+        // TODO: 12/18/2018  
+        throw new UnsupportedOperationException();
     }
 
     @Override

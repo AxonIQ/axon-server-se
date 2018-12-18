@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -206,5 +207,10 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
             // primaryEventStore.clear();
         }
 
+    }
+
+    @Override
+    public void clearOlderThan(long time, TimeUnit timeUnit) {
+        primaryEventStore.clearOlderThan(time, timeUnit);
     }
 }

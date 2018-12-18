@@ -20,10 +20,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class RaftNode {
+
     private final ExecutorService executor = Executors.newCachedThreadPool(new AxonThreadFactory("Apply"));
 
     private static final Logger logger = LoggerFactory.getLogger(RaftNode.class);
@@ -36,12 +38,26 @@ public class RaftNode {
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
     private volatile Future<?> applyTask;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
+    private final Scheduler scheduler;
 
     public RaftNode(String nodeId, RaftGroup raftGroup) {
+        this(nodeId, raftGroup, new DefaultScheduler());
+    }
+
+    public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState));
+        this.scheduler = scheduler;
         updateState(stateFactory.idleState(nodeId));
+        scheduleLogCleaning();
+    }
+
+    private void scheduleLogCleaning() {
+        scheduler.scheduleWithFixedDelay(() -> raftGroup.localLogEntryStore().clearOlderThan(1, TimeUnit.HOURS),
+                                         0,
+                                         1,
+                                         TimeUnit.HOURS);
     }
 
     private synchronized void updateState(MembershipState newState) {
@@ -63,13 +79,15 @@ public class RaftNode {
 
     public void start() {
         updateState(stateFactory.followerState());
-        applyTask = executor.submit(() -> raftGroup.logEntryProcessor().start(raftGroup.localLogEntryStore()::createIterator, this::applyEntryConsumers));
+        applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
+                                                   .start(raftGroup.localLogEntryStore()::createIterator,
+                                                          this::applyEntryConsumers));
     }
 
     public void registerStateChangeListener(Consumer<StateChanged> stateChangedConsumer) {
         stateChangeListeners.add(stateChangedConsumer);
     }
-    
+
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         return state.get().appendEntries(request);
     }
@@ -105,11 +123,12 @@ public class RaftNode {
 
     private void applyEntryConsumers(Entry e) {
         logger.trace("{}: apply {}", nodeId, e.getIndex());
-        entryConsumer.forEach(consumer -> {try{
-            consumer.accept(e);
-        } catch( Exception ex) {
-            logger.warn("}: Error while applying entry {}", groupId(), e.getIndex());
-        }
+        entryConsumer.forEach(consumer -> {
+            try {
+                consumer.accept(e);
+            } catch (Exception ex) {
+                logger.warn("}: Error while applying entry {}", groupId(), e.getIndex());
+            }
         });
         state.get().applied(e);
     }
@@ -141,7 +160,6 @@ public class RaftNode {
     }
 
     public EntryIterator unappliedEntries() {
-        return raftGroup.localLogEntryStore().createIterator(raftGroup.logEntryProcessor().lastAppliedIndex()+1);
+        return raftGroup.localLogEntryStore().createIterator(raftGroup.logEntryProcessor().lastAppliedIndex() + 1);
     }
-
 }

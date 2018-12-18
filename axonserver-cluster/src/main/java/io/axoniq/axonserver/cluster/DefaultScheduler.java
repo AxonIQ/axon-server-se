@@ -27,6 +27,11 @@ public class DefaultScheduler implements Scheduler {
         return clock;
     }
 
+    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
+                                                     TimeUnit timeUnit) {
+        return scheduledExecutorService.scheduleWithFixedDelay(command, initialDelay, delay, timeUnit);
+    }
+
     @Override
     public ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit) {
         ScheduledFuture<?> schedule = scheduledExecutorService.schedule(command, delay, timeUnit);

@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -126,12 +128,11 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getLogSuffix());
 
         return Arrays.stream(eventFiles)
-                     .map(name -> Long.valueOf(name.substring(0, name.indexOf('.'))))
+                     .map(name -> getSegment(name))
                      .filter(segment -> segment < lastInitialized)
                      .max(Long::compareTo)
                      .orElse(1L);
     }
-
 
     private PreparedTransaction prepareTransaction(byte[] bytes) {
         byte[] transformed = eventTransformer.transform(bytes);
@@ -320,5 +321,21 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     public void setNext(SegmentBasedLogEntryStore secondaryEventStore) {
         next = secondaryEventStore;
+    }
+
+    public void clearOlderThan(long time, TimeUnit timeUnit) {
+        File storageDir  = new File(storageProperties.getStorage(getType()));
+        String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
+        long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
+        Arrays.stream(logFiles)
+              .filter(name -> !readBuffers.containsKey(getSegment(name))) // filter out opened files
+              .map(File::new)
+              .filter(f -> f.lastModified() <= filter) // filter out files older than <time>
+              .forEach(FileUtils::delete);
+    }
+
+    @NotNull
+    private Long getSegment(String segmentName) {
+        return Long.valueOf(segmentName.substring(0, segmentName.indexOf('.')));
     }
 }
