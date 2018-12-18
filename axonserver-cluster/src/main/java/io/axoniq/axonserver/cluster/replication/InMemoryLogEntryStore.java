@@ -17,6 +17,7 @@ import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -77,6 +78,11 @@ public class InMemoryLogEntryStore implements LogEntryStore {
             // Otherwise, discard the log
             entryMap.clear();
         }
+    }
+
+    @Override
+    public void clearOlderThan(long time, TimeUnit timeUnit) {
+
     }
 
     @Override
