@@ -2,6 +2,7 @@ package io.axoniq.platform.application;
 
 import io.axoniq.platform.application.jpa.Application;
 import io.axoniq.platform.application.jpa.ApplicationContext;
+import io.axoniq.platform.util.StringUtils;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
@@ -65,13 +66,14 @@ public class ApplicationController {
             token = getOrDefault(application.getHashedToken(), UUID.randomUUID().toString());
             application.setTokenPrefix(token.substring(0, Math.min(PREFIX_LENGTH, token.length())));
             existingApplication = new Application(application.getName(), application.getDescription(), application.getTokenPrefix(), hasher.hash(token));
+            existingApplication = applicationRepository.save(existingApplication);
         } else {
             existingApplication.getContexts().clear();
             existingApplication.setDescription(application.getDescription());
 
         }
         final Application finalApplication = existingApplication;
-        application.getContexts().forEach(role -> finalApplication.getContexts().add(new ApplicationContext(role.getContext(), role.getRoles())));
+        application.getContexts().forEach(role -> finalApplication.addContext(new ApplicationContext(role.getContext(), role.getRoles())));
         applicationRepository.save(finalApplication);
         updateListeners.forEach((key, listener) -> listener.accept(finalApplication));
         applicationModelController.incrementModelVersion(Application.class);
@@ -91,7 +93,6 @@ public class ApplicationController {
     /**
      * Updates application with given application.
      * @param updatedApplication update application
-     * @param synchronizeRoles flag to indicate that the roles should also be synchronized
      */
     public void synchronize(Application updatedApplication, boolean synchronizeRoles) {
         Application application = applicationRepository.findFirstByName(updatedApplication.getName());
@@ -103,7 +104,7 @@ public class ApplicationController {
             application.setDescription(updatedApplication.getDescription());
         }
         final Application finalApplication = application;
-        if( synchronizeRoles) updatedApplication.getContexts().forEach(role -> finalApplication.getContexts().add(new ApplicationContext(role.getContext(), role.getRoles())));
+        if( synchronizeRoles) updatedApplication.getContexts().forEach(role -> finalApplication.addContext(new ApplicationContext(role.getContext(), role.getRoles())));
         applicationRepository.save(application);
         applicationModelController.incrementModelVersion(Application.class);
     }
@@ -145,4 +146,22 @@ public class ApplicationController {
         applicationRepository.deleteAll();
     }
 
+    public void mergeContext(Application update, String context) {
+        Application application = applicationRepository.findFirstByName(update.getName());
+        if (application == null) {
+            applicationRepository.save(update);
+            return;
+        }
+
+        application.setDescription(update.getDescription());
+        if( !org.springframework.util.StringUtils.isEmpty(update.getTokenPrefix() )) {
+            application.setHashedToken(update.getHashedToken());
+        }
+        if(!org.springframework.util.StringUtils.isEmpty(update.getTokenPrefix() )) {
+            application.setTokenPrefix(update.getTokenPrefix());
+        }
+
+        application.removeContext(context);
+        update.getContexts().forEach(application::addContext);
+    }
 }

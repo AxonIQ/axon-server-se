@@ -258,6 +258,26 @@ message ProcessorLBStrategy {
     string strategy = 4;
 }
 
+message ContextApplication {
+    string context = 1;
+    Application application = 2;
+}
+
+message ContextUser {
+    string context = 1;
+    User user = 2;
+}
+
+message ContextLoadBalanceStrategy {
+    string context = 1;
+    LoadBalanceStrategy loadBalanceStrategy = 2;
+}
+
+message ContextProcessorLBStrategy {
+    string context = 1;
+    ProcessorLBStrategy processorLBStrategy = 2;
+}
+
 /**
  * Services on config leader
  */
@@ -274,18 +294,21 @@ service RaftConfigService {
 
     rpc DeleteContext(ContextName) returns (Confirmation) {}
 
-    rpc AddApplication(Application) returns (Confirmation) {}
-
     rpc UpdateApplication(Application) returns (Confirmation) {}
 
     rpc DeleteApplication(Application) returns (Confirmation) {}
-
-    rpc AddUser(User) returns (Confirmation) {}
 
     rpc UpdateUser(User) returns (Confirmation) {}
 
     rpc DeleteUser(User) returns (Confirmation) {}
 
+    rpc UpdateLoadBalanceStrategy(LoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc DeleteLoadBalanceStrategy(LoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc UpdateProcessorLBStrategy(ProcessorLBStrategy) returns (Confirmation) {}
+
+    rpc DeleteProcessorLBStrategy(ProcessorLBStrategy) returns (Confirmation) {}
 }
 
 /**
@@ -299,11 +322,21 @@ service RaftGroupService {
 
     rpc RemoveServer(Context) returns (Confirmation) {}
 
-    rpc AddAppAuthorization(Application) returns (Confirmation) {}
+    rpc MergeAppAuthorization(ContextApplication) returns (Confirmation) {}
 
-    rpc EditAppAuthorization(Application) returns (Confirmation) {}
+    rpc DeleteAppAuthorization(ContextApplication) returns (Confirmation) {}
 
-    rpc DeleteAppAuthorization(Application) returns (Confirmation) {}
+    rpc MergeUserAuthorization(ContextUser) returns (Confirmation) {}
+
+    rpc DeleteUserAuthorization(ContextUser) returns (Confirmation) {}
+
+    rpc MergeLoadBalanceStrategy(ContextLoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc DeleteLoadBalanceStrategy(ContextLoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc MergeProcessorLBStrategy(ContextProcessorLBStrategy) returns (Confirmation) {}
+
+    rpc DeleteProcessorLBStrategy(ContextProcessorLBStrategy) returns (Confirmation) {}
 
     rpc GetStatus(Context) returns (stream Context) {}
 }

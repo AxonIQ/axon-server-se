@@ -34,15 +34,15 @@ import static java.util.stream.Collectors.toMap;
 @RequestMapping("v1")
 public class LoadBalancingRestController {
 
-    private final ProcessorLoadBalancingController processorController;
+    private final ProcessorLoadBalancingControllerFacade processorController;
 
-    private final LoadBalanceStrategyController strategyController;
+    private final LoadBalanceStrategyControllerFacade strategyController;
 
     private final Map<String, Factory> factories;
 
     public LoadBalancingRestController(
-            ProcessorLoadBalancingController processorController,
-            LoadBalanceStrategyController strategyController,
+            ProcessorLoadBalancingControllerFacade processorController,
+            LoadBalanceStrategyControllerFacade strategyController,
             Map<String, Factory> factoryMap) {
         this.processorController = processorController;
         this.strategyController = strategyController;
