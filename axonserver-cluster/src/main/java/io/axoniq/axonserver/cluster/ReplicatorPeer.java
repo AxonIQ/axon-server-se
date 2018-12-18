@@ -51,12 +51,13 @@ class ReplicatorPeer {
         private int offset;
         private volatile int lastReceivedOffset;
         private volatile boolean done = false;
+        private volatile long lastAppliedIndex;
 
         @Override
         public void start() {
             offset = 0;
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
-            long lastAppliedIndex = lastAppliedIndex();
+            lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = currentTerm();
             snapshotManager.streamSnapshotChunks(nextIndex(), lastAppliedIndex)
                            .buffer(SNAPSHOT_CHUNKS_BUFFER_SIZE)
@@ -76,7 +77,7 @@ class ReplicatorPeer {
                                                                  .setLastIncludedTerm(lastIncludedTerm)
                                                                  .setLastIncludedIndex(lastAppliedIndex)
                                                                  .setOffset(offset)
-                                                                 .setDone(false)
+                                                                 .setDone(done)
                                                                  .addAllData(serializedObjects);
                                    if (firstChunk()) {
                                        requestBuilder.setLastConfig(raftGroup.raftConfiguration().config());
@@ -94,6 +95,7 @@ class ReplicatorPeer {
 
                                @Override
                                public void onComplete() {
+                                   done = true;
                                    send(InstallSnapshotRequest.newBuilder()
                                                               .setGroupId(groupId())
                                                               .setTerm(currentTerm())
@@ -101,7 +103,7 @@ class ReplicatorPeer {
                                                               .setLastIncludedTerm(lastIncludedTerm)
                                                               .setLastIncludedIndex(lastAppliedIndex)
                                                               .setOffset(offset)
-                                                              .setDone(true)
+                                                              .setDone(done)
                                                               .build());
                                }
                            });
@@ -141,6 +143,9 @@ class ReplicatorPeer {
             lastMessageReceived = Math.max(lastMessageReceived, clock.millis());
             if (installSnapshotResponse.hasSuccess()) {
                 lastReceivedOffset = installSnapshotResponse.getSuccess().getLastReceivedOffset();
+                if (done) {
+                    setMatchIndex(lastAppliedIndex);
+                }
             } else {
                 if (currentTerm() < installSnapshotResponse.getTerm()) {
                     logger.info("{}: Install snapshot - Replica has higher term: {}",
@@ -148,7 +153,6 @@ class ReplicatorPeer {
                                 installSnapshotResponse.getTerm());
                     updateCurrentTerm(installSnapshotResponse.getTerm());
                     transitToFollower.run();
-                    return;
                 }
             }
         }
@@ -156,10 +160,6 @@ class ReplicatorPeer {
         private boolean canSend() {
             return running && offset - lastReceivedOffset < FLOW_BUFFER;
         }
-    }
-
-    private long lastAppliedIndex() {
-        return raftGroup.logEntryProcessor().lastAppliedIndex();
     }
 
     private class AppendEntryState implements ReplicatorPeerState {
@@ -274,13 +274,6 @@ class ReplicatorPeer {
             lastMessageSent = Math.max(lastMessageSent, clock.millis());
         }
 
-        private void setMatchIndex(long newMatchIndex) {
-            long oldValue = matchIndex.getAndUpdate(old -> (old < newMatchIndex) ? newMatchIndex : old);
-            if (oldValue < matchIndex.get()) {
-                matchIndexCallback.accept(matchIndex.get());
-            }
-        }
-
         private void updateEntryIterator() {
             try {
                 entryIterator = raftGroup.localLogEntryStore().createIterator(nextIndex());
@@ -385,5 +378,16 @@ class ReplicatorPeer {
 
     private String me() {
         return raftGroup.localNode().nodeId();
+    }
+
+    private long lastAppliedIndex() {
+        return raftGroup.logEntryProcessor().lastAppliedIndex();
+    }
+
+    private void setMatchIndex(long newMatchIndex) {
+        long oldValue = matchIndex.getAndUpdate(old -> (old < newMatchIndex) ? newMatchIndex : old);
+        if (oldValue < matchIndex.get()) {
+            matchIndexCallback.accept(matchIndex.get());
+        }
     }
 }
