@@ -3,7 +3,9 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
@@ -16,16 +18,16 @@ import java.util.stream.Collectors;
  */
 @Service
 public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase {
-    private final GrpcRaftController controller;
+    private final LocalRaftGroupService localRaftGroupService;
 
-    public GrpcRaftGroupService(GrpcRaftController controller) {
-        this.controller = controller;
+    public GrpcRaftGroupService(LocalRaftGroupService localRaftGroupService) {
+        this.localRaftGroupService = localRaftGroupService;
     }
 
     @Override
     public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
         try {
-            controller.localRaftGroupService().initContext(request.getName(), request.getMembersList()
+            localRaftGroupService.initContext(request.getName(), request.getMembersList()
                     .stream()
             .map(contextMember -> Node.newBuilder().setNodeId(contextMember.getNodeId()).setHost(contextMember.getHost()).setPort(contextMember.getPort()).build()).collect(
                             Collectors.toList()));
@@ -38,7 +40,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void addServer(Context request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = controller.localRaftGroupService().addNodeToContext(request.getName(), toNode(request.getMembers(0)));
+        CompletableFuture<Void> completable = localRaftGroupService.addNodeToContext(request.getName(), toNode(request.getMembers(0)));
         confirm(responseObserver, completable);
     }
 
@@ -55,8 +57,21 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void removeServer(Context request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = controller.localRaftGroupService().deleteNode(request.getName(), request.getMembers(0).getNodeId());
+        CompletableFuture<Void> completable = localRaftGroupService.deleteNode(request.getName(), request.getMembers(0).getNodeId());
         confirm(responseObserver, completable);
+    }
+
+
+    @Override
+    public void mergeAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request.getContext(), request.getApplication());
+        confirm(responseObserver, completable);
+        super.mergeAppAuthorization(request, responseObserver);
+    }
+
+    @Override
+    public void mergeUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+        super.mergeUserAuthorization(request, responseObserver);
     }
 
     private Node toNode(ContextMember member) {
@@ -65,7 +80,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void getStatus(Context request, StreamObserver<Context> responseObserver) {
-        controller.localRaftGroupService().getStatus(responseObserver::onNext);
+        localRaftGroupService.getStatus(responseObserver::onNext);
         responseObserver.onCompleted();
     }
 }

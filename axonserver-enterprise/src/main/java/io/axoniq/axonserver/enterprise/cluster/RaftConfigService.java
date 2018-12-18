@@ -1,8 +1,13 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
+import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
+import io.axoniq.axonserver.grpc.internal.User;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Author: marc
@@ -20,4 +25,18 @@ public interface RaftConfigService {
     void join(NodeInfo nodeInfo);
 
     void init(List<String> contexts);
+
+    CompletableFuture<Void> updateApplication(Application application);
+
+    CompletableFuture<Void> updateUser(User request);
+
+    CompletableFuture<Void> updateLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy);
+
+    CompletableFuture<Void> deleteLoadBalancingStrategy(LoadBalanceStrategy build);
+
+    CompletableFuture<Void> updateProcessorLoadBalancing(ProcessorLBStrategy processorLBStrategy);
+
+    CompletableFuture<Void> deleteUser(User request);
+
+    CompletableFuture<Void> deleteApplication(Application request);
 }

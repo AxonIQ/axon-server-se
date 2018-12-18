@@ -1,12 +1,15 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.cluster.RaftServiceFactory;
+import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
-import org.springframework.context.ApplicationEventPublisher;
+import io.axoniq.axonserver.rest.json.RestResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,15 +34,17 @@ import javax.validation.Valid;
 @RequestMapping("/v1")
 public class ContextRestController {
 
-    private final RaftServiceFactory raftServiceFactory;
+    private final RaftConfigServiceFactory raftServiceFactory;
+    private final RaftGroupServiceFactory raftGroupServiceFactory;
     private final ContextController contextController;
     private final FeatureChecker limits;
 
-    public ContextRestController( RaftServiceFactory raftServiceFactory,
-                                  ContextController contextController,
-                                  ApplicationEventPublisher applicationEventPublisher,
-                                  FeatureChecker limits) {
+    public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
+                                 RaftGroupServiceFactory raftGroupServiceFactory,
+                                 ContextController contextController,
+                                 FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
+        this.raftGroupServiceFactory = raftGroupServiceFactory;
         this.contextController = contextController;
         this.limits = limits;
     }
@@ -60,7 +65,7 @@ public class ContextRestController {
     }
     @GetMapping( path = "context/{name}/stepdown")
     public void stepdown(@PathVariable("name")  String name) {
-        raftServiceFactory.getRaftGroupService(name).stepdown(name);
+        raftGroupServiceFactory.getRaftGroupService(name).stepDown(name);
     }
 
     @PostMapping(path = "context/{context}/{node}")
@@ -82,12 +87,17 @@ public class ContextRestController {
     }
 
     @GetMapping(path = "context/init")
-    public void init(@RequestParam(name="context", required = false) List<String> contexts) {
+    public ResponseEntity<RestResponse> init(@RequestParam(name="context", required = false) List<String> contexts) {
         if( contexts == null) contexts = new ArrayList<>();
         if( contexts.isEmpty()) {
             contexts.add("default");
         }
-        raftServiceFactory.getLocalRaftConfigService().init(contexts);
+        try {
+            raftServiceFactory.getLocalRaftConfigService().init(contexts);
+            return ResponseEntity.ok(new RestResponse(true, null));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new RestResponse(false, ex.getMessage()));
+        }
     }
 
 }

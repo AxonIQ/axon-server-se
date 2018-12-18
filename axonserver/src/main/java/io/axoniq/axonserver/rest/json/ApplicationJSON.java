@@ -7,7 +7,10 @@ import io.axoniq.platform.application.jpa.ApplicationContextRole;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static io.axoniq.platform.util.StringUtils.getOrDefault;
 
 /**
  * Author: marc
@@ -69,6 +72,18 @@ public class ApplicationJSON {
                                     .toArray(ApplicationContext[]::new));
     }
 
+    public io.axoniq.axonserver.grpc.internal.Application asProto() {
+        return io.axoniq.axonserver.grpc.internal.Application.newBuilder()
+                                                             .setName(name)
+                                                             .setDescription(getOrDefault(description, ""))
+                                                             .setToken(getOrDefault(token, UUID.randomUUID().toString()))
+                                                             .addAllRolesPerContext(
+                                                                     roles.stream().map(ApplicationRoleJSON::asApplicationContextRole).collect(
+                                                                             Collectors.toList())
+                                                             )
+                .build();
+    }
+
     @KeepNames
     public static class ApplicationRoleJSON {
 
@@ -108,6 +123,13 @@ public class ApplicationJSON {
             return new ApplicationContext(context, roles.stream()
                                                         .map(ApplicationContextRole::new)
                                                         .collect(Collectors.toList()));
+        }
+
+        public io.axoniq.axonserver.grpc.internal.ApplicationContextRole asApplicationContextRole() {
+            return io.axoniq.axonserver.grpc.internal.ApplicationContextRole.newBuilder()
+                                                                            .setContext(context)
+                                                                            .addAllRoles(roles)
+                                                                            .build();
         }
     }
 }

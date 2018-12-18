@@ -2,7 +2,6 @@ package io.axoniq.cli;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * Author: marc
@@ -28,6 +27,7 @@ public class CommandDispatcher {
         executorMap.put("delete-user", DeleteUser::run);
         executorMap.put("users", ListUsers::run);
         executorMap.put("metrics", Metrics::run);
+        executorMap.put("init-cluster", InitNode::run);
     }
 
     public static void main(String[] args)  {

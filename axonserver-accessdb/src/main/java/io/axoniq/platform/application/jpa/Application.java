@@ -1,6 +1,7 @@
 package io.axoniq.platform.application.jpa;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import javax.persistence.CascadeType;
@@ -33,7 +34,7 @@ public class Application {
     @Column(unique = true)
     private String hashedToken;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, mappedBy = "application")
     private Set<ApplicationContext> contexts = new HashSet<>();
 
     public Application() {
@@ -51,6 +52,7 @@ public class Application {
         this.tokenPrefix = tokenPrefix;
         this.hashedToken = hashedToken;
         this.contexts.addAll(contexts);
+        this.contexts.forEach(c -> c.setApplication(this));
     }
 
     public Application(String name) {
@@ -93,5 +95,20 @@ public class Application {
 
     public void setTokenPrefix(String tokenPrefix) {
         this.tokenPrefix = tokenPrefix;
+    }
+
+    public void addContext(ApplicationContext applicationContext) {
+        contexts.add(applicationContext);
+        applicationContext.setApplication(this);
+    }
+
+    public void removeContext(String context) {
+        for(Iterator<ApplicationContext> contextIterator = contexts.iterator(); contextIterator.hasNext(); ) {
+            ApplicationContext applicationContext = contextIterator.next();
+            if( applicationContext.getContext().equals(context)) {
+                contextIterator.remove();
+                applicationContext.setApplication(null);
+            }
+        }
     }
 }
