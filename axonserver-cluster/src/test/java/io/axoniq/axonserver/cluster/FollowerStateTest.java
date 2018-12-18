@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.junit.*;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -70,6 +71,7 @@ public class FollowerStateTest {
         fakeScheduler = new FakeScheduler();
 
         snapshotManager = mock(SnapshotManager.class);
+        when(snapshotManager.applySnapshotData(anyList())).thenReturn(Mono.empty());
 
         followerState = spy(FollowerState.builder()
                                          .transitionHandler(transitionHandler)
