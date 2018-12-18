@@ -203,6 +203,11 @@ public class RaftClusterTestFixture {
         }
 
         @Override
+        public RaftPeer peer(Node node) {
+            return new StubNode(node.getNodeId());
+        }
+
+        @Override
         public RaftNode localNode() {
             return nodes.get(this.localName);
         }

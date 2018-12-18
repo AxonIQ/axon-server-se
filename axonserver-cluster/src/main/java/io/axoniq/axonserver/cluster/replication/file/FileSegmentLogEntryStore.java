@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster.replication.file;
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
@@ -16,7 +17,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 
 /**
  * File format is:
@@ -36,6 +39,8 @@ import java.util.concurrent.ExecutionException;
  */
 public class FileSegmentLogEntryStore implements LogEntryStore {
     private final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);
+    private final List<Consumer<Entry>> appendListeners = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final String name;
 
     private final PrimaryLogEntryStore primaryEventStore;
@@ -132,6 +137,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 if( writeCompleted != null) {
                     try {
                         writeCompleted.get();
+                        appendListeners.forEach(listener -> listener.accept(e));
                     } catch (InterruptedException e1) {
                         Thread.currentThread().interrupt();
                         throw new LogException(ErrorCode.INTERRUPTED, e1.getMessage());
@@ -145,6 +151,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     private void deleteFrom(long index) {
+        primaryEventStore.getEntryIterator(index).forEachRemaining(e -> rollbackListeners.forEach(l -> l.accept(e)));
         primaryEventStore.rollback(index-1);
     }
 
@@ -171,6 +178,18 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     @Override
     public long lastLogIndex() {
         return primaryEventStore.getLastToken();
+    }
+
+    @Override
+    public Registration registerLogAppendListener(Consumer<Entry> listener) {
+        appendListeners.add(listener);
+        return () -> appendListeners.remove(listener);
+    }
+
+    @Override
+    public Registration registerLogRollbackListener(Consumer<Entry> listener) {
+        rollbackListeners.add(listener);
+        return () -> rollbackListeners.remove(listener);
     }
 
     @Override

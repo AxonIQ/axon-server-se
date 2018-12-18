@@ -21,7 +21,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Author: marc
@@ -117,6 +117,11 @@ public class LeaderStateTest {
                         return nodeId;
                     }
                 };
+            }
+
+            @Override
+            public RaftPeer peer(Node node) {
+                return peer(node.getNodeId());
             }
 
             @Override
