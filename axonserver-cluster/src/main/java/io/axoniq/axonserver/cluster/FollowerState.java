@@ -178,7 +178,8 @@ public class FollowerState extends AbstractMembershipState {
             raftGroup().localLogEntryStore().clear(request.getLastIncludedIndex(), request.getLastIncludedTerm());
         }
 
-        snapshotManager().applySnapshotData(request.getDataList());
+        snapshotManager().applySnapshotData(request.getDataList())
+                         .block();
 
         return InstallSnapshotResponse.newBuilder()
                                       .setTerm(currentTerm())
