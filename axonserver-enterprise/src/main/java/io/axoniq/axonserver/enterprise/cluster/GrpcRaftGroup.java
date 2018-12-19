@@ -5,9 +5,12 @@ import io.axoniq.axonserver.cluster.RaftConfiguration;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.RaftPeer;
+import io.axoniq.axonserver.cluster.configuration.MembersStore;
+import io.axoniq.axonserver.cluster.configuration.store.JpaMembersStore;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.grpc.GrpcRaftPeer;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
+import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateController;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
@@ -20,6 +23,7 @@ import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.grpc.cluster.Node;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,10 +39,10 @@ public class GrpcRaftGroup implements RaftGroup {
     private final RaftConfiguration raftConfiguration;
     private final RaftNode localNode;
     private final LogEntryProcessor logEntryProcessor;
-    private final Map<String, RaftPeer> peers  = new ConcurrentHashMap<>();
 
-    public GrpcRaftGroup(String nodeId, Set<JpaRaftGroupNode> nodes, String groupId,
-                         JpaRaftStateRepository raftStateRepository, RaftProperties storageOptions) {
+    public GrpcRaftGroup(String localNodeId, String groupId,
+                         JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
+                         RaftProperties storageOptions) {
         LogEntryTransformerFactory eventTransformerFactory = new DefaultLogEntryTransformerFactory();
         IndexManager indexManager = new IndexManager(storageOptions, groupId);
         PrimaryLogEntryStore primary = new PrimaryLogEntryStore(groupId,
@@ -48,25 +52,16 @@ public class GrpcRaftGroup implements RaftGroup {
         primary.setNext(new SecondaryLogEntryStore(groupId, indexManager, eventTransformerFactory, storageOptions));
         primary.initSegments(Long.MAX_VALUE);
 
-        nodes.forEach(node -> {
-            GrpcRaftPeer raftPeer = new GrpcRaftPeer(Node.newBuilder()
-                                                         .setNodeId(node.getNodeId())
-                                                         .setPort(node.getPort())
-                                                         .setHost(node.getHost())
-                                                         .build());
-            peers.put(node.getNodeId(), raftPeer);
-        });
-
 
         localLogEntryStore = new FileSegmentLogEntryStore(groupId, primary);
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
         raftConfiguration = new RaftConfiguration() {
+
+            private final MembersStore membersStore = new JpaMembersStore(this::groupId, nodeRepository);
+
             @Override
             public List<Node> groupMembers() {
-                return peers.values()
-                            .stream()
-                            .map(p -> p.toNode())
-                            .collect(Collectors.toList());
+                return membersStore.get();
             }
 
             @Override
@@ -76,7 +71,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public void update(List<Node> nodes) {
-
+                membersStore.set(nodes);
             }
 
             @Override
@@ -95,7 +90,7 @@ public class GrpcRaftGroup implements RaftGroup {
             }
         };
 
-        localNode = new RaftNode(nodeId, this);
+        localNode = new RaftNode(localNodeId, this);
         logEntryProcessor = new LogEntryProcessor(raftStateController);
         raftStateController.init();
 
@@ -123,7 +118,13 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public RaftPeer peer(String nodeId) {
-        return peers.get(nodeId);
+        List<Node> nodes = raftConfiguration.groupMembers();
+        for (Node node : nodes) {
+            if (node.getNodeId().equals(nodeId)){
+                return new GrpcRaftPeer(node);
+            }
+        }
+        throw new IllegalArgumentException(nodeId + " is not member of this group");
     }
 
     @Override
@@ -134,18 +135,6 @@ public class GrpcRaftGroup implements RaftGroup {
     @Override
     public RaftNode localNode() {
         return localNode;
-    }
-
-    @Override
-    public void registerNode(Node node) {
-        if( ! peers.containsKey(node.getNodeId())) {
-            peers.put(node.getNodeId(), new GrpcRaftPeer(node));
-        }
-    }
-
-    @Override
-    public void unregisterNode(String nodeID) {
-        peers.remove(nodeID);
     }
 
     public void syncStore() {

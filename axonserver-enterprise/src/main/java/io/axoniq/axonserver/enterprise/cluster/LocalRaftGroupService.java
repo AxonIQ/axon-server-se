@@ -37,7 +37,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> addNodeToContext(String context, Node node) {
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        return raftNode.addNode(node);
+        return raftNode.addNode(node).thenApply(c -> null);
     }
 
     @Override
@@ -48,7 +48,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> deleteNode(String context, String node) {
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        return raftNode.removeNode(node);
+        return raftNode.removeNode(node).thenApply(c -> null);
     }
 
     @Override
