@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
+import java.util.List;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -29,6 +31,8 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final Scheduler scheduler;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
     private final SnapshotManager snapshotManager;
+    private final CurrentConfiguration currentConfiguration;
+    private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
@@ -38,6 +42,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.scheduler = builder.scheduler;
         this.randomValueSupplier = builder.randomValueSupplier;
         this.snapshotManager = builder.snapshotManager;
+        this.currentConfiguration = builder.currentConfiguration;
+        this.registerConfigurationListener = builder.registerConfigurationListener;
     }
 
     protected <R> R handleAsFollower(Function<MembershipState, R> handler) {
@@ -47,7 +53,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected int clusterSize() {
-        return raftGroup().raftConfiguration().groupMembers().size();
+        return currentConfiguration.size();
     }
 
     public static abstract class Builder<B extends Builder<B>> {
@@ -59,6 +65,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
         private SnapshotManager snapshotManager;
+        private CurrentConfiguration currentConfiguration;
+        private Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -90,6 +98,16 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
+        public B currentConfiguration(CurrentConfiguration currentConfiguration) {
+            this.currentConfiguration = currentConfiguration;
+            return self();
+        }
+
+        public B registerConfigurationListenerFn(Function<Consumer<List<Node>>, Registration> registerConfigurationListener) {
+            this.registerConfigurationListener = registerConfigurationListener;
+            return self();
+        }
+
         protected void validate() {
             if (scheduler == null) {
                 scheduler = new DefaultScheduler();
@@ -102,6 +120,17 @@ public abstract class AbstractMembershipState implements MembershipState {
             }
             if (stateFactory == null) {
                 throw new IllegalStateException("The stateFactory must be provided");
+            }
+            if (currentConfiguration == null) {
+                CachedCurrentConfiguration currentConfiguration = new CachedCurrentConfiguration(raftGroup);
+                this.currentConfiguration = currentConfiguration;
+                if (registerConfigurationListener == null){
+                    this.registerConfigurationListener = currentConfiguration::registerChangeListener;
+                }
+            }
+
+            if (registerConfigurationListener == null) {
+                throw new IllegalStateException("The registerConfigurationListener function must be provided");
             }
             // TODO: 11/22/2018 require snapshotManager
         }
@@ -187,10 +216,10 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected Stream<RaftPeer> otherNodesStream() {
-        return raftGroup.raftConfiguration().groupMembers().stream()
-                        .map(Node::getNodeId)
-                        .filter(id -> !id.equals(me()))
-                        .map(raftGroup::peer);
+        return currentConfiguration.groupMembers().stream()
+                                   .map(Node::getNodeId)
+                                   .filter(id -> !id.equals(me()))
+                                   .map(raftGroup::peer);
     }
 
     protected Collection<RaftPeer> otherNodes() {
@@ -231,5 +260,13 @@ public abstract class AbstractMembershipState implements MembershipState {
                                   .setVoteGranted(voteGranted)
                                   .setTerm(currentTerm())
                                   .build();
+    }
+
+    protected CurrentConfiguration currentConfiguration(){
+        return this.currentConfiguration;
+    }
+
+    protected Registration registerConfigurationListener(Consumer<List<Node>> newConfigurationListener){
+        return registerConfigurationListener.apply(newConfigurationListener);
     }
 }

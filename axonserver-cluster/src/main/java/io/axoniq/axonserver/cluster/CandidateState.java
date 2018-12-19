@@ -106,7 +106,7 @@ public class CandidateState extends AbstractMembershipState {
             currentElection.get().registerVoteReceived(me(), true);
             RequestVoteRequest request = requestVote();
             Collection<RaftPeer> raftPeers = otherNodes();
-            if (raftPeers.isEmpty() && !raftGroup().raftConfiguration().groupMembers().isEmpty()) {
+            if (raftPeers.isEmpty() && !currentConfiguration().isEmpty()) {
                 currentElection.set(null);
                 changeStateTo(stateFactory().leaderState());
             } else {
