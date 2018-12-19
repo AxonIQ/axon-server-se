@@ -34,7 +34,7 @@ public class CandidateStateTest {
 
     @Before
     public void setUp() throws Exception {
-        raftConfiguration = new FakeRaftConfiguration("defaultGroup");
+        raftConfiguration = new FakeRaftConfiguration("defaultGroup", "node0");
         RaftNode localNode = mock(RaftNode.class);
         when(localNode.nodeId()).thenReturn("node0");
 

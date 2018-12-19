@@ -67,11 +67,13 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 if( throwable != null) {
                     completableFuture.completeExceptionally(throwable);
                 } else {
-                    completableFuture.complete(Entry.newBuilder()
-                                                    .setTerm(currentTerm)
-                                                    .setIndex(index)
-                                                    .setSerializedObject(serializedObject)
-                                                    .build());
+                    Entry entry = Entry.newBuilder()
+                                       .setTerm(currentTerm)
+                                       .setIndex(index)
+                                       .setSerializedObject(serializedObject)
+                                       .build();
+                    completableFuture.complete(entry);
+                    appendListeners.forEach(listener -> listener.accept(entry));
                 }
             });
         } catch( Exception ex) {
@@ -94,11 +96,13 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                     completableFuture.completeExceptionally(throwable);
                 } else {
                     logger.info("{}: written {}", name, index);
-                    completableFuture.complete(Entry.newBuilder()
-                                                    .setTerm(currentTerm)
-                                                    .setIndex(index)
-                                                    .setNewConfiguration(config)
-                                                    .build());
+                    Entry entry = Entry.newBuilder()
+                                       .setTerm(currentTerm)
+                                       .setIndex(index)
+                                       .setNewConfiguration(config)
+                                       .build();
+                    completableFuture.complete(entry);
+                    appendListeners.forEach(listener -> listener.accept(entry));
                 }
             });
         } catch( Exception ex) {

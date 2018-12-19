@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
-import java.util.List;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -12,6 +11,7 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -215,19 +215,24 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup().raftConfiguration().groupId();
     }
 
-    protected Stream<RaftPeer> otherNodesStream() {
-        return currentConfiguration.groupMembers().stream()
-                                   .map(Node::getNodeId)
-                                   .filter(id -> !id.equals(me()))
-                                   .map(raftGroup::peer);
+    protected Stream<Node> nodesStream(){
+        return currentConfiguration.groupMembers().stream();
     }
 
-    protected Collection<RaftPeer> otherNodes() {
-        return otherNodesStream().collect(Collectors.toList());
+    protected Stream<String> otherNodesId(){
+        return nodesStream().map(Node::getNodeId).filter(id -> !id.equals(me()));
+    }
+
+    protected Stream<RaftPeer> otherPeersStream() {
+        return otherNodesId().map(raftGroup::peer);
+    }
+
+    protected Collection<RaftPeer> otherPeers() {
+        return otherPeersStream().collect(Collectors.toList());
     }
 
     protected long otherNodesCount() {
-        return otherNodesStream().count();
+        return otherNodesId().count();
     }
 
     protected int random(int min, int max) {

@@ -41,13 +41,13 @@ public class DefaultCurrentConfiguration implements CurrentConfiguration {
     }
 
     @Override
-    public boolean isCommitted() {
+    public boolean isUncommitted() {
         for (Entry uncommittedEntry : uncommittedEntries) {
             if (uncommittedEntry.hasNewConfiguration()) {
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
 }

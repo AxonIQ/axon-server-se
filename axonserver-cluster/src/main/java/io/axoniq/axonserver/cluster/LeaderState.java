@@ -1,10 +1,15 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.Scheduler.ScheduledRegistration;
+import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
+import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
+import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
+import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Config;
+import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
@@ -15,16 +20,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,8 +47,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * Author: marc
  */
 public class LeaderState extends AbstractMembershipState {
-    private static final long FLOW_BUFFER = 1000;
-    private static final long MAX_ENTRIES_PER_BATCH = 100;
+
+    private final ClusterConfiguration clusterConfiguration;
 
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
     private final AtomicReference<ScheduledRegistration> stepDown = new AtomicReference<>();
@@ -51,7 +64,7 @@ public class LeaderState extends AbstractMembershipState {
         }
     }
 
-    public static Builder builder(){
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -59,6 +72,41 @@ public class LeaderState extends AbstractMembershipState {
         super(builder);
         executor = Executors.newCachedThreadPool(new AxonThreadFactory("Replicator-" + groupId()));
         clock = scheduler().clock();
+        clusterConfiguration = new LeaderConfiguration(raftGroup(),
+                                                       clock::millis,
+                                                       this::replicator,
+                                                       this::appendConfigurationChange);
+    }
+
+    private CompletableFuture<Void> appendConfigurationChange(UnaryOperator<List<Node>> changeOperation) {
+        CompletableFuture<Entry> entry = accept(changeOperation);
+        return waitCommitted(entry);
+    }
+
+    protected synchronized CompletableFuture<Entry> accept(UnaryOperator<List<Node>> configChange) {
+        if (currentConfiguration().isUncommitted()) {
+            String message = "Exists an uncommitted configuration, cannot accept a new change.";
+            CompletableFuture<Entry> future = new CompletableFuture<>();
+            future.completeExceptionally(new UncommittedConfigException(message));
+            return future;
+        }
+        Collection<Node> newConfig = configChange.apply(currentConfiguration().groupMembers());
+        Config config = Config.newBuilder().addAllNodes(newConfig).build();
+        return raftGroup().localLogEntryStore().createEntry(currentTerm(), config);
+    }
+
+    private NodeReplicator replicator(Node node) {
+        return matchIndexCallback -> replicators.addNonVotingNode(node, matchIndexCallback);
+    }
+
+    @Override
+    public CompletableFuture<ConfigChangeResult> addServer(Node node) {
+        return clusterConfiguration.addServer(node);
+    }
+
+    @Override
+    public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
+        return clusterConfiguration.removeServer(nodeId);
     }
 
     @Override
@@ -73,7 +121,8 @@ public class LeaderState extends AbstractMembershipState {
         replicators.stop();
         replicators = null;
         cancelStepDown();
-        pendingEntries.forEach((index, completableFuture) -> completableFuture.completeExceptionally(new IllegalStateException()));
+        pendingEntries.forEach((index, completableFuture) -> completableFuture
+                .completeExceptionally(new IllegalStateException()));
         pendingEntries.clear();
     }
 
@@ -114,7 +163,7 @@ public class LeaderState extends AbstractMembershipState {
         stepDown.set(newTask);
     }
 
-    private void cancelStepDown(){
+    private void cancelStepDown() {
         stepDown.get().cancel();
     }
 
@@ -124,27 +173,38 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private void checkStepdown() {
-        if( otherNodes().isEmpty()) return;
+        if (otherPeers().isEmpty()) {
+            return;
+        }
         long now = clock.millis();
         long lastReceived = replicators.lastMessageTimeFromMajority();
         if( now - lastReceived > maxElectionTimeout()) {
             logger.info("{}: StepDown as no messages received for {}ms", groupId(), (now-lastReceived));
             changeStateTo(stateFactory().followerState());
         } else {
-            logger.trace("{}: Reschedule checkStepdown after {}ms", groupId(), maxElectionTimeout() - (now-lastReceived));
-            ScheduledRegistration newTask = scheduler().schedule(this::checkStepdown, maxElectionTimeout() - (now-lastReceived), MILLISECONDS);
+            logger.trace("{}: Reschedule checkStepdown after {}ms",
+                         groupId(),
+                         maxElectionTimeout() - (now - lastReceived));
+            ScheduledRegistration newTask = scheduler().schedule(this::checkStepdown,
+                                                                 maxElectionTimeout() - (now - lastReceived),
+                                                                 MILLISECONDS);
             stepDown.set(newTask);
         }
-
     }
 
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {
+        CompletableFuture<Entry> entryFuture = raftGroup().localLogEntryStore().createEntry(currentTerm,
+                                                                                            entryType,
+                                                                                            entryData);
+        return waitCommitted(entryFuture);
+    }
+
+    private CompletableFuture<Void> waitCommitted(CompletableFuture<Entry> entryFuture) {
         CompletableFuture<Void> appendEntryDone = new CompletableFuture<>();
         if( replicators == null) {
             appendEntryDone.completeExceptionally(new RuntimeException("Step down in progress"));
             return appendEntryDone;
         }
-        CompletableFuture<Entry> entryFuture = raftGroup().localLogEntryStore().createEntry(currentTerm, entryType, entryData);
         entryFuture.whenComplete((e, failure) -> {
             if( failure != null) {
                 appendEntryDone.completeExceptionally(failure);
@@ -182,63 +242,41 @@ public class LeaderState extends AbstractMembershipState {
         return me();
     }
 
-    @Override
-    public CompletableFuture<Void> registerNode(Node node) {
-        raftGroup().registerNode(node);
-        replicators.addNode(node);
-        return CompletableFuture.completedFuture(null);
-    }
-
-    @Override
-    public CompletableFuture<Void> unregisterNode(String nodeId) {
-        raftGroup().unregisterNode(nodeId);
-        replicators.removeNode(nodeId);
-        return CompletableFuture.completedFuture(null);
-    }
-
-    private void appendConfiguration() {
-        Config config = Config.newBuilder().addAllNodes(raftGroup().raftConfiguration().groupMembers()).build();
-        raftGroup().localLogEntryStore().createEntry(currentTerm(),config);
-    }
-
     private class Replicators {
+
         private volatile boolean running = true;
         private volatile Thread workingThread;
+        private final Set<String> nonVotingReplica = new CopyOnWriteArraySet<>();
+        private final List<Registration> registrations = new ArrayList<>();
         private final Map<String, ReplicatorPeer> replicatorPeerMap = new ConcurrentHashMap<>();
 
         void stop() {
             logger.info("{}: Stop replication thread", groupId());
-            replicatorPeerMap.forEach((peer,replicator) -> {
+            replicatorPeerMap.forEach((peer, replicator) -> {
                 replicator.stop();
-                logger.info("{}: MatchIndex = {}, NextIndex = {}", peer, replicator.matchIndex(), replicator.nextIndex());
+                logger.info("{}: MatchIndex = {}, NextIndex = {}",
+                            peer,
+                            replicator.matchIndex(),
+                            replicator.nextIndex());
             });
             logger.info("{}: last applied: {}", groupId(), raftGroup().logEntryProcessor().lastAppliedIndex());
 
             running = false;
             notifySenders(null);
-            replicatorPeerMap.forEach((nodeId, peer) -> peer.stop());
+            registrations.forEach(Registration::cancel);
             workingThread = null;
         }
 
         void start() {
+            registrations.add(registerConfigurationListener(this::updateNodes));
             workingThread = Thread.currentThread();
             try {
 
-                otherNodesStream().forEach(raftPeer -> {
-
-                    ReplicatorPeer replicatorPeer = new ReplicatorPeer(raftPeer,
-                                                                       this::updateMatchIndex,
-                                                                       clock,
-                                                                       raftGroup(),
-                                                                       () -> changeStateTo(stateFactory().followerState()),
-                                                                       snapshotManager());
-                    replicatorPeer.start();
-                    replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
-                });
+                otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateMatchIndex)));
 
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
 
-                int parkTime = raftGroup().raftConfiguration().heartbeatTimeout()/2;
+                int parkTime = raftGroup().raftConfiguration().heartbeatTimeout() / 2;
                 while (running) {
                     int runsWithoutChanges = 0;
                     while (running && runsWithoutChanges < 3) {
@@ -260,8 +298,6 @@ public class LeaderState extends AbstractMembershipState {
             }
         }
 
-
-
         private void updateMatchIndex(long matchIndex) {
             logger.trace("Updated matchIndex: {}", matchIndex);
             long nextCommitCandidate = raftGroup().logEntryProcessor().commitIndex() + 1;
@@ -276,7 +312,6 @@ public class LeaderState extends AbstractMembershipState {
                     raftGroup().localLogEntryStore().getEntry(nextCommitCandidate).getTerm() == raftGroup().localElectionStore().currentTerm()) {
                 raftGroup().logEntryProcessor().markCommitted(nextCommitCandidate);
             }
-
         }
 
         private boolean matchedByMajority(long nextCommitCandidate) {
@@ -302,24 +337,59 @@ public class LeaderState extends AbstractMembershipState {
                                     .skip((int)Math.floor(otherNodesCount() / 2f)).findFirst().orElse(0L);
         }
 
+        public void updateNodes(List<Node> nodes) {
+            Set<String> toRemove = new HashSet<>(replicatorPeerMap.keySet());
+            for (Node node : nodes) {
+                toRemove.remove(node.getNodeId());
+                if (!replicatorPeerMap.containsKey(node.getNodeId())) {
+                    addNode(node);
+                }
+            }
+            toRemove.removeAll(nonVotingReplica);
+            toRemove.forEach(this::removeNode);
+        }
+
         public void addNode(Node node) {
             if( ! node.getNodeId().equals(me())) {
                 RaftPeer raftPeer = raftGroup().peer(node.getNodeId());
-                ReplicatorPeer replicatorPeer = new ReplicatorPeer(raftPeer,
-                                                                   this::updateMatchIndex,
-                                                                   clock,
-                                                                   raftGroup(),
-                                                                   () -> changeStateTo(stateFactory().followerState()),
-                                                                   snapshotManager());
-                replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
-                replicatorPeer.start();
+                registrations.add(registerPeer(raftPeer, this::updateMatchIndex));
             }
-            appendConfiguration();
         }
 
         public void removeNode(String nodeId) {
-            replicatorPeerMap.remove(nodeId);
-            appendConfiguration();
+            ReplicatorPeer removed = replicatorPeerMap.remove(nodeId);
+            if (removed != null) {
+                removed.stop();
+            }
+        }
+
+        Disposable addNonVotingNode(Node node, Consumer<Long> matchIndexCallback) {
+            if (replicatorPeerMap.containsKey(node.getNodeId())) {
+                throw new IllegalArgumentException("Replicators already contain the node " + node.getNodeId());
+            }
+            Registration registration = registerPeer(raftGroup().peer(node), matchIndexCallback);
+            nonVotingReplica.add(node.getNodeId());
+            return () -> {
+                registration.cancel();
+                nonVotingReplica.remove(node.getNodeId());
+            };
+        }
+
+        private Registration registerPeer(RaftPeer raftPeer, Consumer<Long> matchIndexCallback) {
+            ReplicatorPeer replicatorPeer = new ReplicatorPeer(raftPeer,
+                                                               matchIndexCallback,
+                                                               clock,
+                                                               raftGroup(),
+                                                               () -> changeStateTo(stateFactory().followerState()),
+                                                               snapshotManager());
+            replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
+            replicatorPeer.start();
+            return () -> {
+                ReplicatorPeer removed = replicatorPeerMap.remove(raftPeer.nodeId());
+                if (removed != null) {
+                    removed.stop();
+                }
+            };
         }
     }
 }

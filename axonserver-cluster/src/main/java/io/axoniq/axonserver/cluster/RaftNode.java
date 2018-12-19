@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
@@ -47,6 +48,7 @@ public class RaftNode {
     public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
+        this.registerEntryConsumer(this::updateConfig);
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState));
         this.scheduler = scheduler;
         updateState(stateFactory.idleState(nodeId));
@@ -58,6 +60,12 @@ public class RaftNode {
                                          0,
                                          1,
                                          TimeUnit.HOURS);
+    }
+
+    private void updateConfig(Entry entry){
+        if (entry.hasNewConfiguration()){
+            raftGroup.raftConfiguration().update(entry.getNewConfiguration().getNodesList());
+        }
     }
 
     private synchronized void updateState(MembershipState newState) {
@@ -139,12 +147,12 @@ public class RaftNode {
         return state.get().appendEntry(entryType, entryData);
     }
 
-    public CompletableFuture<Void> addNode(Node node) {
-        return state.get().registerNode(node);
+    public CompletableFuture<ConfigChangeResult> addNode(Node node) {
+        return state.get().addServer(node);
     }
 
-    public CompletableFuture<Void> removeNode(String nodeId) {
-        return state.get().unregisterNode(nodeId);
+    public CompletableFuture<ConfigChangeResult> removeNode(String nodeId) {
+        return state.get().removeServer(nodeId);
     }
 
     public String groupId() {

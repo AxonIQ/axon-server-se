@@ -46,7 +46,7 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
     }
 
     @Override
-    public boolean isCommitted() {
+    public boolean isUncommitted() {
         if (cachedNodes.get() == null){
             update();
         }
@@ -56,7 +56,7 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
     private void update(){
         List<Node> newConfig = currentConfiguration.groupMembers();
         List<Node> oldConfig = cachedNodes.getAndSet(newConfig);
-        cachedIsCommitted.set(currentConfiguration.isCommitted());
+        cachedIsUncommitted.set(currentConfiguration.isUncommitted());
         if (!newConfig.equals(oldConfig)){
             listeners.forEach(listener -> listener.accept(newConfig));
         }

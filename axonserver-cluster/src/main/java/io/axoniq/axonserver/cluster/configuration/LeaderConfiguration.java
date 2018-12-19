@@ -26,27 +26,27 @@ public class LeaderConfiguration implements ClusterConfiguration {
 
     private final Function<Node, CompletableFuture<Void>> updateNode;
 
-    private final Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig;
+    private final Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange;
 
     private final Function<Throwable, ErrorMessage> errorMapping;
 
     public LeaderConfiguration(RaftGroup raftGroup,
                                Supplier<Long> currentTime,
                                Function<Node, NodeReplicator> replicatorFactory,
-                               Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig) {
-        this(commitConfig, new UpdatePendingMember(raftGroup, currentTime, replicatorFactory));
+                               Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange) {
+        this(appendConfigurationChange, new UpdatePendingMember(raftGroup, currentTime, replicatorFactory));
     }
 
     public LeaderConfiguration(
-            Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig,
+            Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange,
             Function<Node, CompletableFuture<Void>> updateNode) {
-        this(commitConfig, updateNode, new RaftErrorMapping());
+        this(appendConfigurationChange, updateNode, new RaftErrorMapping());
     }
 
-    public LeaderConfiguration(Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> commitConfig,
+    public LeaderConfiguration(Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange,
                                Function<Node, CompletableFuture<Void>> updateNode,
                                Function<Throwable, ErrorMessage> errorMapping) {
-        this.commitConfig = commitConfig;
+        this.appendConfigurationChange = appendConfigurationChange;
         this.updateNode = updateNode;
         this.errorMapping = errorMapping;
     }
@@ -55,7 +55,7 @@ public class LeaderConfiguration implements ClusterConfiguration {
     public CompletableFuture<ConfigChangeResult> addServer(Node node) {
         checkValidityOf(node);
         return updateNode.apply(node)
-                         .thenCompose(success -> commitConfig.apply(new AddServer(node)))
+                         .thenCompose(success -> appendConfigurationChange.apply(new AddServer(node)))
                          .thenApply(success -> success())
                          .exceptionally(this::failure);
     }
@@ -70,9 +70,9 @@ public class LeaderConfiguration implements ClusterConfiguration {
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         checkArgument(nodeId != null, "nodeId cannot be null");
         checkArgument(!nodeId.isEmpty(), "nodeId cannot be empty");
-        return commitConfig.apply(new RemoveServer(nodeId))
-                           .thenApply(success -> success())
-                           .exceptionally(this::failure);
+        return appendConfigurationChange.apply(new RemoveServer(nodeId))
+                                        .thenApply(success -> success())
+                                        .exceptionally(this::failure);
     }
 
     private ConfigChangeResult success() {

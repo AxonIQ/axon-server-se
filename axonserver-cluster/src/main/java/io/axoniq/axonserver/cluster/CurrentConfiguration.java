@@ -12,7 +12,7 @@ public interface CurrentConfiguration {
 
     List<Node> groupMembers();
 
-    boolean isCommitted();
+    boolean isUncommitted();
 
     default boolean isEmpty(){
         return groupMembers().isEmpty();

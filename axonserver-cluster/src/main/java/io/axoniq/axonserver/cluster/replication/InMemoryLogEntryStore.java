@@ -134,6 +134,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
                                                                 .setType(entryType))
                            .build();
         entryMap.put(index, entry);
+        appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
     }
 
@@ -146,6 +147,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
                            .setNewConfiguration(config)
                            .build();
         entryMap.put(index, entry);
+        appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
 
     }

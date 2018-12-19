@@ -31,7 +31,7 @@ public class LeaderStateTestWithFakeTransition {
 
     @Before
     public void setUp() throws Exception {
-        raftConfiguration = new FakeRaftConfiguration("defaultGroup");
+        raftConfiguration = new FakeRaftConfiguration("defaultGroup", "node0");
         ElectionStore electionStore = new InMemoryElectionStore();
         electionStore.updateCurrentTerm(1);
         RaftNode localNode = mock(RaftNode.class);
