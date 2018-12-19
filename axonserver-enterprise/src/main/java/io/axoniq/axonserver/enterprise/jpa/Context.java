@@ -44,7 +44,7 @@ public class Context implements Serializable {
     }
 
     public Collection<String> getNodeNames() {
-        return nodes.stream().filter(ContextClusterNode::isMessaging).map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
+        return nodes.stream().map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
     }
 
     @Override

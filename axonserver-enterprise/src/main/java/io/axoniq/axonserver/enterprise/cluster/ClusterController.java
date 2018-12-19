@@ -268,6 +268,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
+        // TODO: Use JpaMembersStore
         Context context1 = entityManager.find(Context.class, context);
         if (context1 == null) {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,

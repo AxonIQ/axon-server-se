@@ -289,10 +289,6 @@ public class LeaderState extends AbstractMembershipState {
         void notifySenders(Entry entry) {
             if( workingThread != null)
                 LockSupport.unpark(workingThread);
-
-            if( entry != null && otherNodesCount() == 0) {
-                raftGroup().logEntryProcessor().markCommitted(entry.getIndex());
-            }
         }
 
         private long lastMessageTimeFromMajority() {
