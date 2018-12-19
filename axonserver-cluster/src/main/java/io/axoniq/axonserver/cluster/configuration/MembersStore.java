@@ -2,7 +2,7 @@ package io.axoniq.axonserver.cluster.configuration;
 
 import io.axoniq.axonserver.grpc.cluster.Node;
 
-import java.util.Collection;
+import java.util.List;
 
 /**
  * @author Sara Pellegrini
@@ -10,8 +10,8 @@ import java.util.Collection;
  */
 public interface MembersStore {
 
-    Collection<Node> get();
+    List<Node> get();
 
-    void set(Collection<Node> nodes);
+    void set(List<Node> nodes);
 
 }
