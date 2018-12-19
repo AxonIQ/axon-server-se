@@ -3,6 +3,8 @@ package io.axoniq.platform.application.jpa;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 
 /**
  * @author Milan Savic
@@ -15,6 +17,10 @@ public class ApplicationContextRole {
     private Long id;
 
     private String role;
+
+    @ManyToOne
+    @JoinColumn(name="application_context_id")
+    private ApplicationContext applicationContext;
 
     public ApplicationContextRole() {
         // empty entity constructor
@@ -30,5 +36,13 @@ public class ApplicationContextRole {
 
     public String getRole() {
         return role;
+    }
+
+    public ApplicationContext getApplicationContext() {
+        return applicationContext;
+    }
+
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
     }
 }

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Node;
 
 import java.util.List;
@@ -12,7 +13,11 @@ public interface RaftConfiguration {
 
     void update(List<Node> newConf);
 
-
+    default Config config() {
+        return Config.newBuilder()
+                     .addAllNodes(groupMembers())
+                     .build();
+    }
 
     default int minElectionTimeout() {
         return 150;

@@ -156,10 +156,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
                 .setInternalHostName(internalHostName)
                 .setHttpPort(httpPort)
                 .setVersion(1)
-                       .addAllContexts(contexts.stream().map(ccn -> ContextRole.newBuilder()
-                                                                               .setName(ccn.getContext().getName())
-                                                                               .build()).collect(
-                               Collectors.toList()))
                 .build();
     }
 

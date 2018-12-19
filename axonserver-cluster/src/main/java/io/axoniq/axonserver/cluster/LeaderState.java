@@ -15,8 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.concurrent.CompletableFuture;
@@ -206,7 +204,6 @@ public class LeaderState extends AbstractMembershipState {
     private class Replicators {
         private volatile boolean running = true;
         private volatile Thread workingThread;
-        private final List<Registration> registrations = new ArrayList<>();
         private final Map<String, ReplicatorPeer> replicatorPeerMap = new ConcurrentHashMap<>();
 
         void stop() {
@@ -219,7 +216,7 @@ public class LeaderState extends AbstractMembershipState {
 
             running = false;
             notifySenders(null);
-            registrations.forEach(Registration::cancel);
+            replicatorPeerMap.forEach((nodeId, peer) -> peer.stop());
             workingThread = null;
         }
 
@@ -233,15 +230,12 @@ public class LeaderState extends AbstractMembershipState {
                                                                        this::updateMatchIndex,
                                                                        clock,
                                                                        raftGroup(),
-                                                                       () -> changeStateTo(stateFactory().followerState()));
+                                                                       () -> changeStateTo(stateFactory().followerState()),
+                                                                       snapshotManager());
+                    replicatorPeer.start();
                     replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
-                    registrations.add(raftPeer.registerAppendEntriesResponseListener(replicatorPeer::handleResponse));
-                    registrations.add(raftPeer.registerInstallSnapshotResponseListener(replicatorPeer::handleResponse));
                 });
 
-                long commitIndex = raftGroup().logEntryProcessor().commitIndex();
-                TermIndex lastTermIndex = raftGroup().localLogEntryStore().lastLog();
-                replicatorPeerMap.forEach((nodeId, peer) -> peer.sendHeartbeat( lastTermIndex, commitIndex));
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
 
                 int parkTime = raftGroup().raftConfiguration().heartbeatTimeout()/2;
@@ -250,7 +244,7 @@ public class LeaderState extends AbstractMembershipState {
                     while (running && runsWithoutChanges < 3) {
                         int sent = 0;
                         for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
-                            sent += raftPeer.sendNextEntries();
+                            sent += raftPeer.sendNextMessage();
                         }
                         if (sent == 0) {
                             runsWithoutChanges++;
@@ -319,10 +313,10 @@ public class LeaderState extends AbstractMembershipState {
                                                                    this::updateMatchIndex,
                                                                    clock,
                                                                    raftGroup(),
-                                                                   () -> changeStateTo(stateFactory().followerState()));
+                                                                   () -> changeStateTo(stateFactory().followerState()),
+                                                                   snapshotManager());
                 replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
-                registrations.add(raftPeer.registerAppendEntriesResponseListener(replicatorPeer::handleResponse));
-                registrations.add(raftPeer.registerInstallSnapshotResponseListener(replicatorPeer::handleResponse));
+                replicatorPeer.start();
             }
             appendConfiguration();
         }

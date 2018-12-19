@@ -2,7 +2,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.RaftServiceFactory;
+import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -32,12 +32,12 @@ import javax.validation.constraints.NotNull;
 public class ClusterRestController {
 
     private final ClusterController clusterController;
-    private final RaftServiceFactory raftServiceFactory;
+    private final RaftConfigServiceFactory raftServiceFactory;
     private final FeatureChecker limits;
 
 
     public ClusterRestController(ClusterController clusterController,
-                                 RaftServiceFactory raftServiceFactory,
+                                 RaftConfigServiceFactory raftServiceFactory,
                                  FeatureChecker limits) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
@@ -55,8 +55,8 @@ public class ClusterRestController {
         }
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
-        if( jsonClusterNode.contexts != null && ! jsonClusterNode.contexts.isEmpty()) {
-            jsonClusterNode.contexts.forEach(context -> nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context.getName()).build()));
+        if( jsonClusterNode.getContexts() != null && ! jsonClusterNode.getContexts().isEmpty()) {
+            jsonClusterNode.getContexts().forEach(c -> nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(c.getName()).build()));
         }
         try {
             raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort)

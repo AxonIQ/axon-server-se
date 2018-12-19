@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
@@ -10,7 +11,6 @@ import io.axoniq.platform.application.ApplicationNotFoundException;
 import io.axoniq.platform.application.ApplicationWithToken;
 import io.axoniq.platform.role.Role;
 import io.axoniq.platform.role.RoleController;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -40,16 +42,17 @@ public class ApplicationRestController {
     private final ApplicationController applicationController;
     private final RoleController roleController;
     private final FeatureChecker limits;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RaftConfigServiceFactory raftServiceFactory;
 
 
     public ApplicationRestController(ApplicationController applicationController,
                                      RoleController roleController, FeatureChecker limits,
-                                     ApplicationEventPublisher eventPublisher) {
+                                     RaftConfigServiceFactory raftServiceFactory
+                                     ) {
         this.applicationController = applicationController;
         this.roleController = roleController;
         this.limits = limits;
-        this.eventPublisher = eventPublisher;
+        this.raftServiceFactory = raftServiceFactory;
     }
 
     @GetMapping("public/applications")
@@ -59,11 +62,19 @@ public class ApplicationRestController {
     }
 
     @PostMapping("applications")
-    public String updateJson(@RequestBody ApplicationJSON application) {
+    public String updateJson(@RequestBody ApplicationJSON application) throws ExecutionException, InterruptedException {
         checkEdition();
         checkRoles(application);
-        ApplicationWithToken result = applicationController.updateJson(application.toApplication());
-        return result.getTokenString();
+        if( application.getToken() == null ) {
+            try{
+                applicationController.get(application.getName());
+            } catch (ApplicationNotFoundException notFound) {
+                application.setToken(UUID.randomUUID().toString());
+            }
+        }
+
+        raftServiceFactory.getRaftConfigService().updateApplication(application.asProto()).get();
+        return application.getToken();
     }
 
     private void checkRoles(ApplicationJSON application) {

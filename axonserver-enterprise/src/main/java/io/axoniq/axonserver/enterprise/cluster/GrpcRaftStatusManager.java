@@ -21,11 +21,11 @@ public class GrpcRaftStatusManager {
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftStatusManager.class);
     private final Map<String, String> leaderMap = new ConcurrentHashMap<>();
     private final ContextController contextController;
-    private final RaftServiceFactory raftServiceFactory;
+    private final RaftGroupServiceFactory raftServiceFactory;
     private final ApplicationEventPublisher eventPublisher;
 
     public GrpcRaftStatusManager(ContextController contextController,
-                                 RaftServiceFactory raftServiceFactory,
+                                 RaftGroupServiceFactory raftServiceFactory,
                                  ApplicationEventPublisher eventPublisher) {
         this.contextController = contextController;
         this.raftServiceFactory = raftServiceFactory;

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import java.time.Clock;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -9,6 +10,8 @@ import java.util.concurrent.TimeUnit;
 public interface Scheduler {
 
     ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit);
+
+    ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit timeUnit);
 
     void shutdownNow();
 

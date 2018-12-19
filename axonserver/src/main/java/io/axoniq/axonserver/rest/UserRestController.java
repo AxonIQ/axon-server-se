@@ -35,11 +35,11 @@ import javax.validation.Valid;
 public class UserRestController {
 
     private final Logger logger = LoggerFactory.getLogger(UserRestController.class);
-    private final UserController userController;
+    private final UserControllerFacade userController;
     private final RoleController roleController;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserRestController(UserController userController,
+    public UserRestController(UserControllerFacade userController,
                               RoleController roleController,
                               ApplicationEventPublisher eventPublisher) {
         this.userController = userController;
