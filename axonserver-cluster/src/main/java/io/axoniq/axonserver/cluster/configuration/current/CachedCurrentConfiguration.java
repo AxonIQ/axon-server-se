@@ -22,7 +22,7 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
 
     private final AtomicReference<List<Node>> cachedNodes = new AtomicReference<>();
 
-    private final AtomicBoolean cachedIsCommitted = new AtomicBoolean();
+    private final AtomicBoolean cachedIsUncommitted = new AtomicBoolean();
 
     private final List<Consumer<List<Node>>> listeners = new CopyOnWriteArrayList<>();
 
@@ -50,7 +50,7 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
         if (cachedNodes.get() == null){
             update();
         }
-        return cachedIsCommitted.get();
+        return cachedIsUncommitted.get();
     }
 
     private void update(){
