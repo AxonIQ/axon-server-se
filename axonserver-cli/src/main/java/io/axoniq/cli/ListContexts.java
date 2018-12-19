@@ -18,12 +18,27 @@ public class ListContexts extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            ContextNode[] contexts = getJSON(httpclient, url, ContextNode[].class, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
-            System.out.printf("%-20s %-60s\n", "Name", "Members");
+            if( jsonOutput(commandLine)) {
+                System.out.println(getJSON(httpclient,
+                                           url,
+                                           String.class,
+                                           200,
+                                           commandLine.getOptionValue(CommandOptions.TOKEN.getOpt())));
+            } else {
+                ContextNode[] contexts = getJSON(httpclient,
+                                                 url,
+                                                 ContextNode[].class,
+                                                 200,
+                                                 commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+                System.out.printf("%-20s %-20s %-60s\n", "Name", "Leader", "Members");
 
-            for( ContextNode context : contexts) {
-                System.out.printf("%-20s %-60s\n", context.getContext(),
-                        context.getNodes() == null? "" : context.getNodes().stream().map(Object::toString).collect(Collectors.joining(",")));
+                for (ContextNode context : contexts) {
+                    System.out.printf("%-20s %-20s %-60s\n", context.getContext(),
+                                      context.getLeader(),
+                                      context.getNodes() == null ? "" : context.getNodes().stream()
+                                                                               .map(Object::toString)
+                                                                               .collect(Collectors.joining(",")));
+                }
             }
         }
 

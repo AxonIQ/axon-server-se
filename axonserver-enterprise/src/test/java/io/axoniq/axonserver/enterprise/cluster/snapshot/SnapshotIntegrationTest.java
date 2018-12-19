@@ -20,7 +20,9 @@ import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationRepository;
+import io.axoniq.platform.application.ShaHasher;
 import io.axoniq.platform.application.jpa.Application;
 import io.axoniq.platform.application.jpa.ApplicationContext;
 import io.axoniq.platform.application.jpa.ApplicationContextRole;
@@ -33,7 +35,6 @@ import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -67,8 +68,6 @@ public class SnapshotIntegrationTest {
 
     private static final String CONTEXT = "junit";
 
-    @Autowired
-    private TestEntityManager testEntityManager;
     @Autowired
     private ApplicationRepository applicationRepository;
     @Autowired
@@ -214,8 +213,9 @@ public class SnapshotIntegrationTest {
                 new EventTransactionsSnapshotDataProvider(CONTEXT, localEventStore);
         SnapshotTransactionsSnapshotDataProvider snapshotTransactionsSnapshotDataProvider =
                 new SnapshotTransactionsSnapshotDataProvider(CONTEXT, localEventStore);
+        ApplicationController applicationController = new ApplicationController(applicationRepository, new ShaHasher());
         ApplicationSnapshotDataProvider applicationSnapshotDataProvider =
-                new ApplicationSnapshotDataProvider(CONTEXT, testEntityManager.getEntityManager());
+                new ApplicationSnapshotDataProvider(CONTEXT, applicationController);
         UserSnapshotDataProvider userSnapshotDataProvider = new UserSnapshotDataProvider(userRepository);
         LoadBalanceStrategySnapshotDataProvider loadBalanceStrategySnapshotDataProvider =
                 new LoadBalanceStrategySnapshotDataProvider(loadBalanceStrategyRepository);

@@ -1,7 +1,11 @@
 package io.axoniq.cli.json;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -15,7 +19,7 @@ public class Application {
 
     private String token;
 
-    private Set<ApplicationRole> roles = new HashSet<>();
+    private Set<ApplicationContext> roles = new HashSet<>();
 
     public Application() {
     }
@@ -25,7 +29,17 @@ public class Application {
         this.description = description;
         this.token = token;
         if( roles != null) {
-            Arrays.stream(roles).forEach(r -> this.roles.add(new ApplicationRole(r, null)));
+            Map<String, List<String>> rolesPerContext = new HashMap<>();
+            Arrays.stream(roles).forEach(r -> {
+                if( r.contains("@")) {
+                    String[] roleAndContext = r.split("@", 2);
+                    rolesPerContext.computeIfAbsent(roleAndContext[1], c -> new ArrayList<>()).add(roleAndContext[0]);
+                } else {
+                    rolesPerContext.computeIfAbsent("default", c -> new ArrayList<>()).add(r);
+                }
+            });
+
+            rolesPerContext.forEach((context,roleList) -> this.roles.add(new ApplicationContext(context, roleList)));
         }
     }
 
@@ -37,11 +51,11 @@ public class Application {
         this.description = description;
     }
 
-    public Set<ApplicationRole> getRoles() {
+    public Set<ApplicationContext> getRoles() {
         return roles;
     }
 
-    public void setRoles(Set<ApplicationRole> roles) {
+    public void setRoles(Set<ApplicationContext> roles) {
         this.roles = roles;
     }
 

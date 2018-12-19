@@ -13,4 +13,6 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     Application findFirstByName(String name);
 
     List<Application> findAllByTokenPrefix(String prefix);
+
+    List<Application> findAllByContextsContext(String prefix);
 }

@@ -2,7 +2,6 @@ package io.axoniq.platform.application;
 
 import io.axoniq.platform.application.jpa.Application;
 import io.axoniq.platform.application.jpa.ApplicationContext;
-import io.axoniq.platform.util.StringUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,15 +21,13 @@ public class ApplicationController {
     public static final int PREFIX_LENGTH = 8;
 
     private final ApplicationRepository applicationRepository;
-    private final ApplicationModelController applicationModelController;
     private final Hasher hasher;
     private final Map<String, Consumer<Application>> updateListeners = new ConcurrentHashMap<>();
     private final Map<String, Consumer<Application>> deleteListeners = new ConcurrentHashMap<>();
 
 
-    public ApplicationController(ApplicationRepository applicationRepository, ApplicationModelController applicationModelController, Hasher hasher) {
+    public ApplicationController(ApplicationRepository applicationRepository, Hasher hasher) {
         this.applicationRepository = applicationRepository;
-        this.applicationModelController = applicationModelController;
         this.hasher = hasher;
     }
 
@@ -48,7 +45,6 @@ public class ApplicationController {
         existingApplication.setHashedToken(hasher.hash(token));
         existingApplication.setTokenPrefix(token.substring(0, PREFIX_LENGTH));
         updateListeners.forEach((key, listener) -> listener.accept(existingApplication));
-        applicationModelController.incrementModelVersion(Application.class);
         return new ApplicationWithToken(token, existingApplication);
     }
 
@@ -77,7 +73,6 @@ public class ApplicationController {
         application.getContexts().forEach(role -> finalApplication.addContext(new ApplicationContext(role.getContext(), role.getRoles())));
         applicationRepository.save(finalApplication);
         updateListeners.forEach((key, listener) -> listener.accept(finalApplication));
-        applicationModelController.incrementModelVersion(Application.class);
         return new ApplicationWithToken(token, finalApplication);
     }
 
@@ -87,6 +82,7 @@ public class ApplicationController {
      * Does not activate listeners
      * @param updatedApplication
      */
+    @Transactional
     public void synchronize(Application updatedApplication) {
         synchronize(updatedApplication, true);
     }
@@ -183,5 +179,9 @@ public class ApplicationController {
             }
             applicationRepository.flush();
         }
+    }
+
+    public List<Application> getApplicationsForContext(String context) {
+        return applicationRepository.findAllByContextsContext(context);
     }
 }

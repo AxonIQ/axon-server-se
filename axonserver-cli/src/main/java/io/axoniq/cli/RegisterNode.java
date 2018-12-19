@@ -7,8 +7,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 
 import static io.axoniq.cli.CommandOptions.INTERNALHOST;
 import static io.axoniq.cli.CommandOptions.INTERNALPORT;
@@ -33,17 +33,11 @@ public class RegisterNode extends AxonIQCliCommand {
         ClusterNode clusterNode = new ClusterNode(commandLine.getOptionValue(INTERNALHOST.getOpt().charAt(0)),
                 port.intValue());
 
-        Map<String, ClusterNode.ContextRoleJSON> contextMap = new HashMap<>();
         if( commandLine.hasOption(CommandOptions.CONTEXTS.getOpt())) {
-            String[] contexts = commandLine.getOptionValues(CommandOptions.CONTEXTS.getOpt());
-            for (String context : contexts) {
-                contextMap.put(context, new ClusterNode.ContextRoleJSON(context, true, false));
+            List<String> contexts = new ArrayList<>(Arrays.asList(commandLine.getOptionValues(CommandOptions.CONTEXTS.getOpt())));
+            if(! contexts.isEmpty()) {
+                clusterNode.setContexts(contexts);
             }
-        }
-
-
-        if(! contextMap.isEmpty()) {
-            clusterNode.setContexts(new ArrayList<>(contextMap.values()));
         }
 
 

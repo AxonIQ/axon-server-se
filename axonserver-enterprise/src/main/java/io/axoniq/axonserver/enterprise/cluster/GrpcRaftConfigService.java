@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
@@ -31,97 +32,81 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void initCluster(ContextNames request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.init(request.getContextsList());
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.init(request.getContextsList()));
     }
 
     @Override
     public void joinCluster(NodeInfo request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.join(request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.join(request));
     }
 
     @Override
     public void createContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.addContext(request.getName(),
-                                                           request.getMembersList()
-                                                                  .stream()
-                                                                  .map(ContextMember::getNodeId)
-                                                                  .collect(Collectors.toList()));
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.addContext(request.getName(),
+                                                                      request.getMembersList()
+                                                                             .stream()
+                                                                             .map(ContextMember::getNodeId)
+                                                                             .collect(Collectors.toList())));
+    }
+
+    private void wrap(StreamObserver<Confirmation> responseObserver, Runnable action) {
+        try {
+            action.run();
+            responseObserver.onNext(Confirmation.newBuilder().build());
+            responseObserver.onCompleted();
+        } catch (Exception ex) {
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
+        }
     }
 
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.addNodeToContext(request.getContext(), request.getNode());
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()->localRaftConfigService.addNodeToContext(request.getContext(), request.getNode()));
     }
 
     @Override
     public void deleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNode());
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()->localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNode()));
     }
 
     @Override
     public void updateApplication(Application request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.updateApplication( request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.updateApplication( request));
     }
 
     @Override
     public void updateUser(User request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.updateUser( request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.updateUser( request));
     }
 
     @Override
     public void deleteUser(User request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.deleteUser(request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.deleteUser(request));
     }
 
     @Override
     public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.deleteContext(request.getContext());
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.deleteContext(request.getContext()));
     }
 
     @Override
     public void deleteApplication(Application request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.deleteApplication(request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.deleteApplication(request));
     }
 
     @Override
     public void updateLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.updateLoadBalancingStrategy(request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.updateLoadBalancingStrategy(request));
     }
 
     @Override
     public void deleteLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.deleteLoadBalancingStrategy(request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.deleteLoadBalancingStrategy(request));
     }
 
     @Override
     public void updateProcessorLBStrategy(ProcessorLBStrategy request, StreamObserver<Confirmation> responseObserver) {
-        localRaftConfigService.updateProcessorLoadBalancing(request);
-        responseObserver.onNext(Confirmation.newBuilder().build());
-        responseObserver.onCompleted();
+        wrap(responseObserver, ()-> localRaftConfigService.updateProcessorLoadBalancing(request));
     }
 
 }

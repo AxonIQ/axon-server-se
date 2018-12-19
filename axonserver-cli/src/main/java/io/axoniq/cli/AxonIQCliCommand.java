@@ -1,6 +1,5 @@
 package io.axoniq.cli;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
@@ -36,7 +35,7 @@ import javax.net.ssl.SSLContext;
  */
 public class AxonIQCliCommand {
     protected static CommandLine processCommandLine(String name, String[] args, Option... options) {
-        Options cliOptions = new Options().addOption(CommandOptions.ADDRESS);
+        Options cliOptions = new Options().addOption(CommandOptions.ADDRESS).addOption(CommandOptions.OUTPUT);
         for (Option option : options) {
             cliOptions.addOption(option);
         }
@@ -96,6 +95,10 @@ public class AxonIQCliCommand {
             throw new CommandExecutionException(response.getStatusLine().getStatusCode(), url, response.getStatusLine().toString() + " - " + responseBody(response));
         }
 
+        if( resultClass.equals(String.class)) {
+            return (T) responseBody(response);
+        }
+
         try (InputStream is = response.getEntity().getContent()) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             return objectMapper.readValue(reader, resultClass);
@@ -118,7 +121,6 @@ public class AxonIQCliCommand {
         }
         httpGet.addHeader("Accept", "application/json");
 
-        ObjectMapper objectMapper = new ObjectMapper();
 
         CloseableHttpResponse response = httpclient.execute(httpGet);
         if (response.getStatusLine().getStatusCode() != expectedStatusCode) {
@@ -127,6 +129,7 @@ public class AxonIQCliCommand {
 
         try (InputStream is = response.getEntity().getContent()) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(reader, typeReference);
         }
     }
@@ -167,5 +170,14 @@ public class AxonIQCliCommand {
                 return reader.readLine();
             }
     }
+
+    public static String option(CommandLine commandLine, Option option) {
+        return commandLine.getOptionValue(option.getOpt());
+    }
+
+    public static boolean jsonOutput(CommandLine commandLine) {
+        return "json".equals(option(commandLine, CommandOptions.OUTPUT));
+    }
+
 
 }

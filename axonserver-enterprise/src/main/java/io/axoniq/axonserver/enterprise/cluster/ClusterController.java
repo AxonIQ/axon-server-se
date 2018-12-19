@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -31,6 +33,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -45,6 +48,7 @@ public class ClusterController implements SmartLifecycle {
     private final EntityManager entityManager;
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
+    private final RaftGroupRepositoryManager raftGroupRepositoryManager;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -58,6 +62,7 @@ public class ClusterController implements SmartLifecycle {
                              EntityManager entityManager,
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
+                             RaftGroupRepositoryManager raftGroupRepositoryManager,
                              ApplicationEventPublisher applicationEventPublisher,
                              FeatureChecker limits
     ) {
@@ -65,6 +70,7 @@ public class ClusterController implements SmartLifecycle {
         this.entityManager = entityManager;
         this.stubFactory = stubFactory;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
+        this.raftGroupRepositoryManager = raftGroupRepositoryManager;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
@@ -268,18 +274,18 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
-        // TODO: Use JpaMembersStore
-        Context context1 = entityManager.find(Context.class, context);
-        if (context1 == null) {
+        Set<JpaRaftGroupNode> nodes = raftGroupRepositoryManager
+                .findByGroupId(context);
+        if (nodes.isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
-                                                 "No AxonHub servers found for context: " + context);
+                                                 "No AxonServers found for context: " + context);
         }
         if (clientName == null || clientName.isEmpty()) {
             return getMe();
         }
 
         List<String> activeNodes = new ArrayList<>();
-        Collection<String> nodesInContext = context1.getNodeNames();
+        Collection<String> nodesInContext = nodes.stream().map(JpaRaftGroupNode::getNodeId).collect(Collectors.toSet());
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
             activeNodes.add(messagingPlatformConfiguration.getName());
         }

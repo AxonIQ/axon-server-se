@@ -11,7 +11,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown=true)
 public class ContextNode {
     private String context;
-    private String master;
+    private String leader;
     private List<String> nodes = new ArrayList<>();
 
 
@@ -39,11 +39,11 @@ public class ContextNode {
         this.nodes = nodes;
     }
 
-    public String getMaster() {
-        return master;
+    public String getLeader() {
+        return leader;
     }
 
-    public void setMaster(String master) {
-        this.master = master;
+    public void setLeader(String leader) {
+        this.leader = leader;
     }
 }

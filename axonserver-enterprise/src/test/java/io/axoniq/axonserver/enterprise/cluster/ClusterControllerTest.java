@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
+import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -12,6 +13,7 @@ import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.topology.Topology;
@@ -29,6 +31,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -110,9 +113,12 @@ public class ClusterControllerTest {
 
         when(raftController.isAutoStartup()).thenReturn(false);
 
+        RaftGroupRepositoryManager mockRaftGroupRepositoryManager = mock(RaftGroupRepositoryManager.class);
+        when( mockRaftGroupRepositoryManager.findByGroupId(anyString())).thenReturn(Collections.singleton(new JpaRaftGroupNode("default",
+                                                                                                                               Node.newBuilder().setNodeId("MyName").build())));
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
-                                                stubFactory,
-                                            nodeSelectionStrategy, eventPublisher, limits);
+                                            stubFactory, nodeSelectionStrategy, mockRaftGroupRepositoryManager,
+                                            eventPublisher, limits);
     }
 
     @Test

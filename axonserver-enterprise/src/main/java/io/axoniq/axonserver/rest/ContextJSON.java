@@ -11,6 +11,7 @@ import java.util.List;
 @KeepNames
 public class ContextJSON {
     private String context;
+    private String leader;
     private List<String> nodes = new ArrayList<>();
 
     public ContextJSON() {
@@ -34,5 +35,13 @@ public class ContextJSON {
 
     public void setContext(String context) {
         this.context = context;
+    }
+
+    public String getLeader() {
+        return leader;
+    }
+
+    public void setLeader(String leader) {
+        this.leader = leader;
     }
 }

@@ -19,7 +19,7 @@ public class ClusterNode {
     private boolean connected;
     private boolean master;
 
-    private List<ContextRoleJSON> contexts;
+    private List<String> contexts;
 
     public ClusterNode(String internalHostName, Integer internalGrpcPort) {
         this.internalHostName = internalHostName;
@@ -93,51 +93,11 @@ public class ClusterNode {
         this.master = master;
     }
 
-    public List<ContextRoleJSON> getContexts() {
+    public List<String> getContexts() {
         return contexts;
     }
 
-    public void setContexts(List<ContextRoleJSON> contexts) {
+    public void setContexts(List<String> contexts) {
         this.contexts = contexts;
     }
-
-    public static class ContextRoleJSON {
-        private String name;
-        private boolean storage;
-        private boolean messaging;
-
-        public ContextRoleJSON() {
-        }
-
-        public ContextRoleJSON(String name, boolean storage, boolean messaging) {
-            this.name = name;
-            this.storage = storage;
-            this.messaging = messaging;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public boolean isStorage() {
-            return storage;
-        }
-
-        public void setStorage(boolean storage) {
-            this.storage = storage;
-        }
-
-        public boolean isMessaging() {
-            return messaging;
-        }
-
-        public void setMessaging(boolean messaging) {
-            this.messaging = messaging;
-        }
-    }
-
 }

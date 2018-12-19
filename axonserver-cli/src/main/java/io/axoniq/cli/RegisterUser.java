@@ -14,7 +14,7 @@ public class RegisterUser extends AxonIQCliCommand {
         // check args
         CommandLine commandLine = processCommandLine(args[0], args, CommandOptions.USERNAME,
                 CommandOptions.PASSWORD,
-                CommandOptions.ROLES,
+                CommandOptions.USER_ROLES,
                 CommandOptions.TOKEN);
         String url = createUrl(commandLine, "/v1/users");
 
@@ -24,7 +24,7 @@ public class RegisterUser extends AxonIQCliCommand {
         }
 
         User user= new User(commandLine.getOptionValue(CommandOptions.USERNAME.getOpt()),
-                password, commandLine.getOptionValues(CommandOptions.ROLES.getOpt()));
+                password, commandLine.getOptionValues(CommandOptions.USER_ROLES.getOpt()));
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {

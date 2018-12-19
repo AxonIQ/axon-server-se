@@ -12,6 +12,8 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -126,6 +128,10 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     }
 
     public RaftNode getRaftNode(String context) {
+        if( ! raftGroupMap.containsKey(context)) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, messagingPlatformConfiguration.getName() + ": Not a member of " + context);
+
+        }
         return raftGroupMap.get(context).localNode();
     }
 

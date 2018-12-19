@@ -8,6 +8,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -56,19 +57,20 @@ public class ClusterRestController {
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
         if( jsonClusterNode.getContexts() != null && ! jsonClusterNode.getContexts().isEmpty()) {
-            jsonClusterNode.getContexts().forEach(c -> nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(c.getName()).build()));
+            jsonClusterNode.getContexts().forEach(c -> nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(c).build()));
         }
         try {
             raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort)
                               .joinCluster(nodeInfoBuilder.build());
         } catch (Throwable e) {
-            handleExecutionException(e);
+            throw GrpcExceptionBuilder.parse(e);
         }
     }
 
     private void handleExecutionException(Throwable cause) {
-        if( cause instanceof RuntimeException) throw (RuntimeException)cause;
-        throw new MessagingPlatformException(ErrorCode.OTHER, cause.getMessage(), cause);
+        throw GrpcExceptionBuilder.parse(cause);
+//        if( cause instanceof RuntimeException) throw (RuntimeException)cause;
+//        throw new MessagingPlatformException(ErrorCode.OTHER, cause.getMessage(), cause);
     }
 
     @DeleteMapping( path = "{name}")
@@ -180,7 +182,7 @@ public class ClusterRestController {
         @NotNull(message = "missing required field: internalGrpcPort")
         private Integer internalGrpcPort;
 
-        private List<ContextRoleJSON> contexts;
+        private List<String> contexts;
 
         public String getInternalHostName() {
             return internalHostName;
@@ -198,43 +200,12 @@ public class ClusterRestController {
             this.internalGrpcPort = internalGrpcPort;
         }
 
-        public List<ContextRoleJSON> getContexts() {
+        public List<String> getContexts() {
             return contexts;
         }
 
-        public void setContexts(List<ContextRoleJSON> contexts) {
+        public void setContexts(List<String> contexts) {
             this.contexts = contexts;
-        }
-    }
-
-    @KeepNames
-    public static class ContextRoleJSON {
-        private String name;
-        private boolean storage;
-        private boolean messaging;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public boolean isStorage() {
-            return storage;
-        }
-
-        public void setStorage(boolean storage) {
-            this.storage = storage;
-        }
-
-        public boolean isMessaging() {
-            return messaging;
-        }
-
-        public void setMessaging(boolean messaging) {
-            this.messaging = messaging;
         }
     }
 }

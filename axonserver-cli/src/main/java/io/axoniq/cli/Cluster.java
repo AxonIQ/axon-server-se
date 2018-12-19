@@ -19,11 +19,33 @@ public class Cluster extends AxonIQCliCommand {
         String url = createUrl(commandLine, "/v1/public");
 
         try (CloseableHttpClient httpclient  = createClient(commandLine)) {
-            ClusterNode[] nodes = getJSON(httpclient, url, ClusterNode[].class, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
-            System.out.printf("%-40s %-40s %10s %10s %s\n", "Name", "Hostname", "gRPC Port", "HTTP Port", "Connected");
-            Arrays.stream(nodes).sorted(Comparator.comparing(ClusterNode::getName)).forEach(node -> {
-                System.out.printf("%-40s %-40s %10d %10d %s\n", node.getName(), node.getHostName(), node.getGrpcPort(), node.getHttpPort(), node.isConnected() ? "*" : "");
-            });
+            if( jsonOutput(commandLine)) {
+                System.out.println(getJSON(httpclient,
+                                           url,
+                                           String.class,
+                                           200,
+                                           option(commandLine, CommandOptions.TOKEN)));
+            } else {
+                ClusterNode[] nodes = getJSON(httpclient,
+                                              url,
+                                              ClusterNode[].class,
+                                              200,
+                                              option(commandLine, CommandOptions.TOKEN));
+                System.out.printf("%-40s %-40s %10s %10s %s\n",
+                                  "Name",
+                                  "Hostname",
+                                  "gRPC Port",
+                                  "HTTP Port",
+                                  "Connected");
+                Arrays.stream(nodes).sorted(Comparator.comparing(ClusterNode::getName)).forEach(node -> {
+                    System.out.printf("%-40s %-40s %10d %10d %s\n",
+                                      node.getName(),
+                                      node.getHostName(),
+                                      node.getGrpcPort(),
+                                      node.getHttpPort(),
+                                      node.isConnected() ? "*" : "");
+                });
+            }
 
         } catch (Exception e) {
             System.err.println(e.getMessage());

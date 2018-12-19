@@ -17,11 +17,23 @@ public class ListUsers extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            User[] users = getJSON(httpclient, url, User[].class, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
-            System.out.printf("%-60s\n", "Name");
+            if( jsonOutput(commandLine)) {
+                System.out.println(getJSON(httpclient,
+                                           url,
+                                           String.class,
+                                           200,
+                                           option(commandLine, CommandOptions.TOKEN)));
+            } else {
+                User[] users = getJSON(httpclient,
+                                       url,
+                                       User[].class,
+                                       200,
+                                       option(commandLine, CommandOptions.TOKEN));
+                System.out.printf("%-60s\n", "Name");
 
-            for( User user : users) {
-                System.out.printf("%-60s\n", user.getUserName());
+                for (User user : users) {
+                    System.out.printf("%-60s\n", user.getUserName());
+                }
             }
         }
 

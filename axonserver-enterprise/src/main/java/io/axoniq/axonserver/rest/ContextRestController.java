@@ -2,6 +2,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
+import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -36,15 +37,18 @@ public class ContextRestController {
 
     private final RaftConfigServiceFactory raftServiceFactory;
     private final RaftGroupServiceFactory raftGroupServiceFactory;
+    private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
     private final FeatureChecker limits;
 
     public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
                                  RaftGroupServiceFactory raftGroupServiceFactory,
+                                 RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
         this.raftGroupServiceFactory = raftGroupServiceFactory;
+        this.raftLeaderProvider = raftLeaderProvider;
         this.contextController = contextController;
         this.limits = limits;
     }
@@ -53,6 +57,7 @@ public class ContextRestController {
     public List<ContextJSON> getContexts() {
         return contextController.getContexts().map(context ->  {
             ContextJSON json = new ContextJSON(context.getName());
+            json.setLeader(raftLeaderProvider.getLeader(context.getName()));
             json.setNodes(context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).sorted().collect(Collectors.toList()));
             return json;
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());
@@ -69,9 +74,7 @@ public class ContextRestController {
     }
 
     @PostMapping(path = "context/{context}/{node}")
-    public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node, @RequestParam(name="storage", defaultValue = "true") boolean storage,
-                                @RequestParam(name="messaging", defaultValue = "true") boolean messaging
-                                 ) {
+    public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node) {
         raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
     }
 
@@ -81,8 +84,11 @@ public class ContextRestController {
     }
 
     @PostMapping(path ="context")
-    public void addContext(@RequestBody @Valid ContextJSON contextJson) throws Exception {
+    public void addContext(@RequestBody @Valid ContextJSON contextJson) {
         if(!Feature.MULTI_CONTEXT.enabled(limits)) throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "License does not allow creating contexts");
+        if( contextJson.getNodes() == null || contextJson.getNodes().isEmpty()) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "Add at least one node for context");
+        }
         raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
     }
 
