@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.component.processor.balancing.jpa;
 
-import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,25 +16,30 @@ public class LoadBalanceStrategyController {
 
     private final ProcessorLoadBalancingController processorLoadBalancingController;
 
-    private final ApplicationModelController applicationController;
-
     private final LoadBalanceStrategyRepository repository;
 
     private final ApplicationEventPublisher eventPublisher;
 
     public LoadBalanceStrategyController(
             ProcessorLoadBalancingController processorLoadBalancingController,
-            ApplicationModelController applicationController,
             LoadBalanceStrategyRepository repository,
             ApplicationEventPublisher eventPublisher) {
         this.processorLoadBalancingController = processorLoadBalancingController;
-        this.applicationController = applicationController;
         this.repository = repository;
         this.eventPublisher = eventPublisher;
     }
 
+    @Transactional
     public void save(LoadBalancingStrategy strategy){
-        repository.save(strategy);
+        synchronized (repository) {
+            LoadBalancingStrategy existing = repository.findByName(strategy.name());
+            if( existing != null) {
+                repository.updateFactoryBean(strategy.name(), strategy.factoryBean());
+                repository.updateLabel(strategy.name(), strategy.label());
+            } else {
+                repository.saveAndFlush(strategy);
+            }
+        }
     }
 
 
@@ -42,6 +47,7 @@ public class LoadBalanceStrategyController {
         return repository.findAll(new Sort("id"));
     }
 
+    @Transactional
     public void delete(String strategyName) {
         if ("default".equals(strategyName)){
             throw new IllegalArgumentException("Cannot delete default load balancing strategy.");
@@ -52,7 +58,10 @@ public class LoadBalanceStrategyController {
             throw new IllegalStateException("Impossible to delete " + strategyName + " because is currently used.");
         }
 
-        repository.deleteByName(strategyName);
+        synchronized (repository) {
+            repository.deleteByName(strategyName);
+            repository.flush();
+        }
     }
 
     public void updateFactoryBean(String strategyName, String factoryBean) {

@@ -127,7 +127,7 @@ public class RaftNode {
             try {
                 consumer.accept(e);
             } catch (Exception ex) {
-                logger.warn("}: Error while applying entry {}", groupId(), e.getIndex());
+                logger.warn("{}: Error while applying entry {}: {}", groupId(), e.getIndex(), e, ex);
             }
         });
         state.get().applied(e);

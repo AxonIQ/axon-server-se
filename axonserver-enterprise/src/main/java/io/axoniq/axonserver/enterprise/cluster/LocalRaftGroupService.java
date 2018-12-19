@@ -18,6 +18,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.enterprise.logconsumer.DeleteApplicationConsumer.DELETE_APPLICATION;
+import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStrategyConsumer.DELETE_LOAD_BALANCING_STRATEGY;
+import static io.axoniq.axonserver.enterprise.logconsumer.DeleteUserConsumer.DELETE_USER;
+
 /**
  * Author: marc
  */
@@ -117,18 +121,21 @@ public class LocalRaftGroupService implements RaftGroupService {
 
     @Override
     public CompletableFuture<Void> deleteApplication(String context, Application application) {
-        return null;
+        RaftNode raftNode = grpcRaftController.getRaftNode(context);
+        return raftNode.appendEntry(DELETE_APPLICATION, application.toByteArray());
     }
 
     @Override
     public CompletableFuture<Void> deleteUser(String context, User request) {
-        return null;
+        RaftNode raftNode = grpcRaftController.getRaftNode(context);
+        return raftNode.appendEntry(DELETE_USER, request.toByteArray());
     }
 
     @Override
     public CompletableFuture<Void> deleteLoadBalancingStrategy(String context,
                                                                LoadBalanceStrategy loadBalancingStrategy) {
-        return null;
+        RaftNode raftNode = grpcRaftController.getRaftNode(context);
+        return raftNode.appendEntry(DELETE_LOAD_BALANCING_STRATEGY, loadBalancingStrategy.toByteArray());
     }
 
     @Override

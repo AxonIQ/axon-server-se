@@ -31,8 +31,10 @@ public class RaftGroupServiceFactory {
 
     public RaftGroupService getRaftGroupService(String groupId) {
         if( raftLeaderProvider.isLeader(groupId)) return localRaftGroupService;
+        String leader = raftLeaderProvider.getLeader(groupId);
+        if( leader == null) throw new RuntimeException("No leader for " + groupId);
 
-        ClusterNode node = clusterController.getNode(raftLeaderProvider.getLeader(groupId));
+        ClusterNode node = clusterController.getNode(leader);
         return new RemoteRaftGroupService(RaftGroupServiceGrpc.newStub(ManagedChannelHelper
                 .createManagedChannel(configuration, node)));
     }

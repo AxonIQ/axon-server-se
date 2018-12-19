@@ -4,6 +4,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.rest.UserControllerFacade;
 import io.axoniq.platform.user.User;
 import io.axoniq.platform.user.UserController;
+import io.axoniq.platform.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +28,8 @@ public class RaftUserControllerFacade implements UserControllerFacade {
         try {
             raftServiceFactory.getRaftConfigService().updateUser(io.axoniq.axonserver.grpc.internal.User.newBuilder()
                                                                                                         .setName(userName)
-                                                                                                        .setPassword(password)
+                                                                                                        .setPassword(
+                                                                                                                StringUtils.getOrDefault(password,""))
                                                                                                         .addAllRoles(Arrays.asList(roles))
                                                                                                         .build()).get();
         } catch (InterruptedException e) {
@@ -45,6 +47,15 @@ public class RaftUserControllerFacade implements UserControllerFacade {
 
     @Override
     public void deleteUser(String name) {
-
+        try {
+            raftServiceFactory.getRaftConfigService().deleteUser(io.axoniq.axonserver.grpc.internal.User.newBuilder()
+                                                                                                        .setName(name)
+                                                                                                        .build()).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
     }
 }

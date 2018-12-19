@@ -7,14 +7,12 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -135,21 +132,7 @@ public class ClusterController implements SmartLifecycle {
     private void checkCurrentNodeSaved() {
         ClusterNode existingClusterNode = entityManager.find(ClusterNode.class,
                                                              messagingPlatformConfiguration.getName());
-        if (existingClusterNode != null) {
-            existingClusterNode.setGrpcInternalPort(messagingPlatformConfiguration.getInternalPort());
-            existingClusterNode.setGrpcPort(messagingPlatformConfiguration.getPort());
-            existingClusterNode.setHostName(messagingPlatformConfiguration.getFullyQualifiedHostname());
-            existingClusterNode.setHttpPort(messagingPlatformConfiguration.getHttpPort());
-            existingClusterNode.setInternalHostName(messagingPlatformConfiguration.getFullyQualifiedInternalHostname());
-        } else {
-
-            List<ClusterNode> clusterNodes = entityManager.createNamedQuery("ClusterNode.findByInternalHostNameAndPort", ClusterNode.class)
-                                                          .setParameter("internalHostName",
-                                                                        messagingPlatformConfiguration
-                                                                                .getFullyQualifiedInternalHostname())
-                                                          .setParameter("internalPort",
-                                                                        messagingPlatformConfiguration
-                                                                                .getInternalPort()).getResultList();
+        if (existingClusterNode == null) {
 
             ClusterNode clusterNode = new ClusterNode(messagingPlatformConfiguration.getName(),
                                                       messagingPlatformConfiguration.getFullyQualifiedHostname(),
@@ -158,22 +141,6 @@ public class ClusterController implements SmartLifecycle {
                                                       messagingPlatformConfiguration.getPort(),
                                                       messagingPlatformConfiguration.getInternalPort(),
                                                       messagingPlatformConfiguration.getHttpPort());
-            if (!clusterNodes.isEmpty()) {
-                Set<ContextClusterNode> contextNames = clusterNodes.get(0).getContexts();
-                entityManager.remove(clusterNodes.get(0));
-                entityManager.flush();
-
-
-                contextNames.forEach(contextName -> {
-                    ContextClusterNode contextClusterNode = new ContextClusterNode(contextName.getContext(),
-                                                                                   clusterNode);
-                    contextClusterNode.setMessaging(contextName.isMessaging());
-                    contextClusterNode.setStorage(contextName.isStorage());
-                    clusterNode.addContext(contextClusterNode);
-                });
-            } else {
-                clusterNode.addContext(entityManager.find(Context.class, Topology.DEFAULT_CONTEXT), true, true);
-            }
             entityManager.persist(clusterNode);
         }
     }

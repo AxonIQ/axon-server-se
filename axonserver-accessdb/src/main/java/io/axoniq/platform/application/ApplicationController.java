@@ -4,6 +4,7 @@ import io.axoniq.platform.application.jpa.Application;
 import io.axoniq.platform.application.jpa.ApplicationContext;
 import io.axoniq.platform.util.StringUtils;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -94,19 +95,26 @@ public class ApplicationController {
      * Updates application with given application.
      * @param updatedApplication update application
      */
+    @Transactional
     public void synchronize(Application updatedApplication, boolean synchronizeRoles) {
-        Application application = applicationRepository.findFirstByName(updatedApplication.getName());
-        if( application == null) {
-            application = new Application(updatedApplication.getName(), updatedApplication.getDescription(), updatedApplication.getTokenPrefix(), updatedApplication.getHashedToken());
-        } else {
-            if( synchronizeRoles) application.getContexts().clear();
-            application.setHashedToken(updatedApplication.getHashedToken());
-            application.setDescription(updatedApplication.getDescription());
+        synchronized (applicationRepository) {
+            Application application = applicationRepository.findFirstByName(updatedApplication.getName());
+            if (application == null) {
+                application = new Application(updatedApplication.getName(),
+                                              updatedApplication.getDescription(),
+                                              updatedApplication.getTokenPrefix(),
+                                              updatedApplication.getHashedToken());
+            } else {
+                if (synchronizeRoles) application.getContexts().clear();
+                application.setHashedToken(updatedApplication.getHashedToken());
+                application.setDescription(updatedApplication.getDescription());
+            }
+            final Application finalApplication = application;
+            if (synchronizeRoles) updatedApplication.getContexts().forEach(role -> finalApplication
+                    .addContext(new ApplicationContext(role.getContext(), role.getRoles())));
+            applicationRepository.save(application);
+            applicationRepository.flush();
         }
-        final Application finalApplication = application;
-        if( synchronizeRoles) updatedApplication.getContexts().forEach(role -> finalApplication.addContext(new ApplicationContext(role.getContext(), role.getRoles())));
-        applicationRepository.save(application);
-        applicationModelController.incrementModelVersion(Application.class);
     }
 
     public Application get(String name) {
@@ -117,14 +125,17 @@ public class ApplicationController {
         return application;
     }
 
+    @Transactional
     public void delete( String name) {
-        Application application = applicationRepository.findFirstByName(name);
-        if (application == null) {
-            throw new ApplicationNotFoundException(name);
+        synchronized (applicationRepository) {
+            Application application = applicationRepository.findFirstByName(name);
+            if (application == null) {
+                return;
+            }
+            applicationRepository.delete(application);
+            deleteListeners.forEach((key, deleteListener) -> deleteListener.accept(application));
+            applicationRepository.flush();
         }
-        applicationRepository.delete(application);
-        deleteListeners.forEach((key, deleteListener) -> deleteListener.accept(application));
-        applicationModelController.incrementModelVersion(Application.class);
     }
 
     public void registerUpdateListener(String name, Consumer<Application> updateListener) {
@@ -146,22 +157,31 @@ public class ApplicationController {
         applicationRepository.deleteAll();
     }
 
+    @Transactional
     public void mergeContext(Application update, String context) {
-        Application application = applicationRepository.findFirstByName(update.getName());
-        if (application == null) {
-            applicationRepository.save(update);
-            return;
-        }
+        synchronized(applicationRepository) {
+            Application application = applicationRepository.findFirstByName(update.getName());
+            if (application == null) {
+                if (update.getContexts().isEmpty()) return;
 
-        application.setDescription(update.getDescription());
-        if( !org.springframework.util.StringUtils.isEmpty(update.getTokenPrefix() )) {
-            application.setHashedToken(update.getHashedToken());
-        }
-        if(!org.springframework.util.StringUtils.isEmpty(update.getTokenPrefix() )) {
-            application.setTokenPrefix(update.getTokenPrefix());
-        }
+                applicationRepository.save(update);
+                return;
+            }
 
-        application.removeContext(context);
-        update.getContexts().forEach(application::addContext);
+            application.setDescription(update.getDescription());
+            if (!org.springframework.util.StringUtils.isEmpty(update.getTokenPrefix())) {
+                application.setHashedToken(update.getHashedToken());
+            }
+            if (!org.springframework.util.StringUtils.isEmpty(update.getTokenPrefix())) {
+                application.setTokenPrefix(update.getTokenPrefix());
+            }
+
+            application.removeContext(context);
+            update.getContexts().forEach(application::addContext);
+            if( application.getContexts().isEmpty()) {
+                applicationRepository.delete(application);
+            }
+            applicationRepository.flush();
+        }
     }
 }

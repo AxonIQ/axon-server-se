@@ -12,10 +12,10 @@ import java.util.List;
 public class ContextNode {
     private String context;
     private String master;
-    private List<NodeRoles> nodes = new ArrayList<>();
+    private List<String> nodes = new ArrayList<>();
 
 
-    public ContextNode(String context, List<NodeRoles> nodes) {
+    public ContextNode(String context, List<String> nodes) {
         this.context = context;
         this.nodes = nodes;
     }
@@ -31,11 +31,11 @@ public class ContextNode {
         this.context = context;
     }
 
-    public List<NodeRoles> getNodes() {
+    public List<String> getNodes() {
         return nodes;
     }
 
-    public void setNodes(List<NodeRoles> nodes) {
+    public void setNodes(List<String> nodes) {
         this.nodes = nodes;
     }
 

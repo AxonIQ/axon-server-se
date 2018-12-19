@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -30,10 +31,15 @@ public class UserController {
         this.userRepository = userRepository;
     }
 
+    @Transactional
     public void deleteUser(String username) {
-        userRepository.deleteById(username);
+        synchronized (userRepository) {
+            userRepository.findById(username).ifPresent(u -> {
+                userRepository.delete(u);
+                userRepository.flush();
+            });
+        }
         deleteListeners.forEach((k,v)-> v.accept(username));
-        applicationModelController.incrementModelVersion(User.class);
     }
 
     public List<User> getUsers() {
@@ -54,11 +60,16 @@ public class UserController {
     }
 
 
+    @Transactional
     public User syncUser(String username, String password, String[] roles) {
-       if( password == null) {
-            password = userRepository.findById(username).map(User::getPassword).orElse(null);
+        synchronized (userRepository) {
+            if (password == null) {
+                password = userRepository.findById(username).map(User::getPassword).orElse(null);
+            }
+            User user = userRepository.save(new User(username, password, roles));
+            userRepository.flush();
+            return user;
         }
-        return userRepository.save(new User(username, password, roles));
     }
 
     public User updateUser(String username, String password, String[] roles) {
@@ -73,7 +84,8 @@ public class UserController {
     }
 
     public void syncUser(User jpaUser) {
-        userRepository.save(jpaUser);
-        applicationModelController.incrementModelVersion(User.class);
+        synchronized (userRepository) {
+            userRepository.save(jpaUser);
+        }
     }
 }

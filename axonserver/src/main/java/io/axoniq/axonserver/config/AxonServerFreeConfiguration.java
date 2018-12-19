@@ -143,7 +143,7 @@ public class AxonServerFreeConfiguration {
 
             @Override
             public void updateLabel(String strategyName, String label) {
-                controller.updateFactoryBean(strategyName, label);
+                controller.updateLabel(strategyName, label);
 
             }
 

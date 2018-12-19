@@ -5,6 +5,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.rest.json.ApplicationJSON;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationNotFoundException;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -109,10 +111,10 @@ public class ApplicationRestController {
     }
 
     @DeleteMapping("applications/{name}")
-    public void delete(@PathVariable("name") String name) {
+    public CompletableFuture<Void> delete(@PathVariable("name") String name) {
         checkEdition();
         try {
-            applicationController.delete(name);
+            return raftServiceFactory.getRaftConfigService().deleteApplication(Application.newBuilder().setName(name).build());
         } catch(ApplicationNotFoundException notFoundException) {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_APPLICATION, notFound(name));
         }

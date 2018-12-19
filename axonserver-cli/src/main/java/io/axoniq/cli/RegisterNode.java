@@ -19,8 +19,7 @@ import static io.axoniq.cli.CommandOptions.INTERNALPORT;
 public class RegisterNode extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {
         // check args
-        CommandLine commandLine = processCommandLine(args[0], args, INTERNALHOST, CommandOptions.INTERNALPORT, CommandOptions.STORAGE_NODE,
-                                                     CommandOptions.MESSAGING_NODE, CommandOptions.TOKEN);
+        CommandLine commandLine = processCommandLine(args[0], args, INTERNALHOST, CommandOptions.INTERNALPORT, CommandOptions.CONTEXTS, CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/cluster");
         Number port = null;
@@ -35,21 +34,13 @@ public class RegisterNode extends AxonIQCliCommand {
                 port.intValue());
 
         Map<String, ClusterNode.ContextRoleJSON> contextMap = new HashMap<>();
-        String storage = commandLine.getOptionValue(CommandOptions.STORAGE_NODE.getOpt());
-        if( storage != null) {
-            String[] storageContexts = storage.split(",");
-            for (String storageContext : storageContexts) {
-                contextMap.put(storageContext, new ClusterNode.ContextRoleJSON(storageContext, true, false));
+        if( commandLine.hasOption(CommandOptions.CONTEXTS.getOpt())) {
+            String[] contexts = commandLine.getOptionValues(CommandOptions.CONTEXTS.getOpt());
+            for (String context : contexts) {
+                contextMap.put(context, new ClusterNode.ContextRoleJSON(context, true, false));
             }
         }
-        String messaging = commandLine.getOptionValue(CommandOptions.MESSAGING_NODE.getOpt());
-        if( messaging != null) {
-            String[] messagingContexts = messaging.split(",");
-            for (String messagingContext : messagingContexts) {
-                contextMap.computeIfAbsent(messagingContext,  m-> new ClusterNode.ContextRoleJSON(messagingContext, false, true))
-                          .setMessaging(true);
-            }
-        }
+
 
         if(! contextMap.isEmpty()) {
             clusterNode.setContexts(new ArrayList<>(contextMap.values()));

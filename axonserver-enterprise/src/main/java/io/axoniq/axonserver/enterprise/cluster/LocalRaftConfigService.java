@@ -23,6 +23,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.axoniq.axonserver.enterprise.logconsumer.DeleteApplicationConsumer.DELETE_APPLICATION;
+import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStrategyConsumer.DELETE_LOAD_BALANCING_STRATEGY;
+import static io.axoniq.axonserver.enterprise.logconsumer.DeleteUserConsumer.DELETE_USER;
+
 /**
  * Author: marc
  */
@@ -280,6 +284,7 @@ class LocalRaftConfigService implements RaftConfigService {
                               logger.warn("_admin: Failed to set processor load balancing strategies", throwable);
                               result.completeExceptionally(throwable);
                           } else {
+                              result.complete(null);
                               raftGroupServiceFactory.getRaftGroupService(processorLBStrategy.getContext())
                                                                    .updateProcessorLoadBalancing(processorLBStrategy.getContext(),
                                                                                                  processorLBStrategy);
@@ -299,16 +304,78 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public  CompletableFuture<Void> deleteUser(User request) {
-        return CompletableFuture.completedFuture(null);
+        RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        config.appendEntry(DELETE_USER, request.toByteArray())
+              .whenComplete(
+                      (done, throwable) -> {
+                          if (throwable != null) {
+                              logger.warn("_admin: Failed to delete user", throwable);
+                              result.completeExceptionally(throwable);
+                          } else {
+                              result.complete(null);
+                              contextController.getContexts()
+                                               .filter(c -> !GrpcRaftController.ADMIN_GROUP.equals(c.getName()))
+                                               .forEach(c -> {
+                                                   raftGroupServiceFactory.getRaftGroupService(c.getName())
+                                                                          .deleteUser(c.getName(), request);
+                                               });
+                          }
+                      }
+              );
+        return result;
     }
 
     @Override
     public  CompletableFuture<Void> deleteApplication(Application request) {
-        return CompletableFuture.completedFuture(null);
+        RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        config.appendEntry(DELETE_APPLICATION, request.toByteArray())
+              .whenComplete(
+                      (done, throwable) -> {
+                          if (throwable != null) {
+                              logger.warn("_admin: Failed to delete application", throwable);
+                              result.completeExceptionally(throwable);
+                          } else {
+                              result.complete(null);
+                              contextController.getContexts()
+                                               .filter(c -> !GrpcRaftController.ADMIN_GROUP.equals(c.getName()))
+                                               .forEach(c -> {
+                                                   raftGroupServiceFactory.getRaftGroupService(c.getName())
+                                                                          .deleteApplication(c.getName(), request);
+                                               });
+                          }
+                      }
+              );
+        return result;
     }
 
     @Override
     public CompletableFuture<Void> deleteLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy) {
-        return CompletableFuture.completedFuture(null);
+        RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        config.appendEntry(DELETE_LOAD_BALANCING_STRATEGY, loadBalancingStrategy.toByteArray())
+              .whenComplete(
+                      (done, throwable) -> {
+                          if (throwable != null) {
+                              logger.warn("_admin: Failed to delete application", throwable);
+                              result.completeExceptionally(throwable);
+                          } else {
+                              result.complete(null);
+                              contextController.getContexts()
+                                               .filter(c -> !GrpcRaftController.ADMIN_GROUP.equals(c.getName()))
+                                               .forEach(c -> {
+                                                   try {
+                                                       raftGroupServiceFactory.getRaftGroupService(c.getName())
+                                                                              .deleteLoadBalancingStrategy(c.getName(),
+                                                                                                           loadBalancingStrategy);
+                                                   } catch (Exception ex) {
+                                                       logger.warn("{}: Failed to delete load balancing strategy {}", c, loadBalancingStrategy.getName());
+                                                   }
+                                               });
+                          }
+                      }
+              );
+        return result;
     }
 }

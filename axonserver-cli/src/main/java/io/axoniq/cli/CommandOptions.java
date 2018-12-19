@@ -21,8 +21,6 @@ public class CommandOptions {
     public static final Option USERNAME = Option.builder("u").longOpt("username").required().desc("Username").hasArg().build();
     public static final Option PASSWORD = Option.builder("p").longOpt("password").desc("[Optional] Password for the user").hasArg().build();
     public static final Option SET_TOKEN = Option.builder("T").longOpt("token").desc("use this token for the app").hasArg().build();
-    public static final Option STORAGE_NODE = Option.builder("s").longOpt("storage").desc("storage node for contexts").hasArg().build();
-    public static final Option MESSAGING_NODE = Option.builder("m").longOpt("messaging").desc("messaging node for contexts").hasArg().build();
-    public static final Option STORAGE_CONTEXT= Option.builder("s").longOpt("storage").desc("storage nodes for context").hasArg().build();
-    public static final Option MESSAGING_CONTEXT = Option.builder("m").longOpt("messaging").desc("messagings node for context").hasArg().build();
+    public static final Option CONTEXTS = Option.builder("c").longOpt("contexts").desc("contexts to connect to").hasArgs().valueSeparator(',').build();
+    public static final Option NO_CONTEXT = Option.builder("e").longOpt("nocontexts").desc("do not connect to contexts").build();
 }

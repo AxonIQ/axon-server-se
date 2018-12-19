@@ -4,7 +4,9 @@ import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
+import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
@@ -66,16 +68,49 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     public void mergeAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request.getContext(), request.getApplication());
         confirm(responseObserver, completable);
-        super.mergeAppAuthorization(request, responseObserver);
     }
 
     @Override
     public void mergeUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
-        super.mergeUserAuthorization(request, responseObserver);
+        CompletableFuture<Void> completable = localRaftGroupService.updateUser(request.getContext(), request.getUser());
+        confirm(responseObserver, completable);
     }
 
     private Node toNode(ContextMember member) {
         return Node.newBuilder().setPort(member.getPort()).setHost(member.getHost()).setNodeId(member.getNodeId()).build();
+    }
+
+    @Override
+    public void deleteAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request.getContext(), request.getApplication());
+        confirm(responseObserver, completable);
+    }
+
+    @Override
+    public void deleteUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteUser(request.getContext(), request.getUser());
+        confirm(responseObserver, completable);
+    }
+
+    @Override
+    public void mergeLoadBalanceStrategy(ContextLoadBalanceStrategy request,
+                                         StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.updateLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
+        confirm(responseObserver, completable);
+    }
+
+    @Override
+    public void deleteLoadBalanceStrategy(ContextLoadBalanceStrategy request,
+                                          StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
+        confirm(responseObserver, completable);
+    }
+
+    @Override
+    public void mergeProcessorLBStrategy(ContextProcessorLBStrategy request,
+                                         StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.updateProcessorLoadBalancing(request.getContext(), request.getProcessorLBStrategy());
+        confirm(responseObserver, completable);
     }
 
     @Override
