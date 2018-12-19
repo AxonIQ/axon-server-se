@@ -11,6 +11,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
+import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -44,16 +45,19 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     private boolean running;
     private volatile boolean replicationServerStarted;
     private final RaftGroupRepositoryManager raftGroupNodeRepository;
+    private final RaftProperties raftProperties;
     private final ApplicationEventPublisher eventPublisher;
     private ApplicationContext applicationContext;
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
                               RaftGroupRepositoryManager raftGroupNodeRepository,
+                              RaftProperties raftProperties,
                               ApplicationEventPublisher eventPublisher) {
         this.raftStateRepository = raftStateRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
+        this.raftProperties = raftProperties;
         this.eventPublisher = eventPublisher;
     }
 
@@ -90,7 +94,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
 
     private RaftGroup createRaftGroup(String groupId, String nodeId) {
         Set<JpaRaftGroupNode> nodes= raftGroupNodeRepository.findByGroupId(groupId);
-        RaftGroup raftGroup = new GrpcRaftGroup(nodeId, nodes, groupId, raftStateRepository);
+        RaftGroup raftGroup = new GrpcRaftGroup(nodeId, nodes, groupId, raftStateRepository, raftProperties);
 
         if( ! ADMIN_GROUP.equals(groupId)) {
             eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

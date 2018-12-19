@@ -17,7 +17,7 @@ import io.axoniq.axonserver.cluster.replication.file.IndexManager;
 import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
-import io.axoniq.axonserver.cluster.replication.file.StorageProperties;
+import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.grpc.cluster.Node;
 
 import java.util.List;
@@ -38,13 +38,8 @@ public class GrpcRaftGroup implements RaftGroup {
     private final Map<String, RaftPeer> peers  = new ConcurrentHashMap<>();
 
     public GrpcRaftGroup(String nodeId, Set<JpaRaftGroupNode> nodes, String groupId,
-                         JpaRaftStateRepository raftStateRepository) {
+                         JpaRaftStateRepository raftStateRepository, RaftProperties storageOptions) {
         LogEntryTransformerFactory eventTransformerFactory = new DefaultLogEntryTransformerFactory();
-        StorageProperties storageOptions = new StorageProperties();
-        storageOptions.setSegmentSize(16*1024*1024);
-        storageOptions.setLogStorageFolder("log");
-
-
         IndexManager indexManager = new IndexManager(storageOptions, groupId);
         PrimaryLogEntryStore primary = new PrimaryLogEntryStore(groupId,
                                                                 indexManager,
@@ -86,17 +81,17 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public int minElectionTimeout() {
-                return 1000;
+                return storageOptions.getMinElectionTimeout();
             }
 
             @Override
             public int maxElectionTimeout() {
-                return 2500;
+                return storageOptions.getMaxElectionTimeout();
             }
 
             @Override
             public int heartbeatTimeout() {
-                return 250;
+                return storageOptions.getHeartbeatTimeout();
             }
         };
 
