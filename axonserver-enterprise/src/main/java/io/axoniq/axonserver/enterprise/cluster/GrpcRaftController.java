@@ -5,7 +5,6 @@ import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.StateChanged;
 import io.axoniq.axonserver.cluster.grpc.RaftGroupManager;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -14,9 +13,9 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
-import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -28,7 +27,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,7 +104,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     }
 
     private RaftGroup createRaftGroup(String groupId, String localNodeId) {
-        RaftGroup raftGroup = new GrpcRaftGroup(localNodeId, raftGroupNodeRepository, groupId, raftStateRepository, raftProperties);
+        RaftGroup raftGroup = new GrpcRaftGroup(localNodeId, groupId, raftStateRepository, nodeRepository, raftProperties);
 
         if( ! ADMIN_GROUP.equals(groupId)) {
             eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

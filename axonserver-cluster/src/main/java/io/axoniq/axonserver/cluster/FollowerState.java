@@ -215,6 +215,12 @@ public class FollowerState extends AbstractMembershipState {
         }
     }
 
+    @Override
+    public void forceStepDown() {
+        logger.warn("{}: Forced step down", groupId());
+        changeStateTo(stateFactory().candidateState());
+    }
+
     private void rescheduleElection(long term) {
         if (term >= currentTerm()) {
             lastMessage.set(clock.millis());

@@ -9,7 +9,6 @@ import io.axoniq.axonserver.cluster.configuration.MembersStore;
 import io.axoniq.axonserver.cluster.configuration.store.JpaMembersStore;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.grpc.GrpcRaftPeer;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateController;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
@@ -25,10 +24,6 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -56,7 +51,7 @@ public class GrpcRaftGroup implements RaftGroup {
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
         raftConfiguration = new RaftConfiguration() {
 
-            private final MembersStore membersStore = new JpaMembersStore(this::groupId, raftGroupNodeRepository);
+            private final MembersStore membersStore = new JpaMembersStore(this::groupId, nodeRepository);
 
             @Override
             public List<Node> groupMembers() {
@@ -75,7 +70,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public void clear() {
-                membersStore.clear();
+                membersStore.set(Collections.emptyList());
             }
 
             @Override
