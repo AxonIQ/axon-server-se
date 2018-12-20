@@ -37,7 +37,7 @@ public class GrpcRaftGroup implements RaftGroup {
     private final LogEntryProcessor logEntryProcessor;
     private final Map<String, RaftPeer> peers  = new ConcurrentHashMap<>();
 
-    public GrpcRaftGroup(String nodeId, Set<JpaRaftGroupNode> nodes, String groupId,
+    public GrpcRaftGroup(String nodeId, RaftGroupRepositoryManager raftGroupNodeRepository, String groupId,
                          JpaRaftStateRepository raftStateRepository, RaftProperties storageOptions) {
         LogEntryTransformerFactory eventTransformerFactory = new DefaultLogEntryTransformerFactory();
         IndexManager indexManager = new IndexManager(storageOptions, groupId);
@@ -47,6 +47,9 @@ public class GrpcRaftGroup implements RaftGroup {
                                                                 storageOptions);
         primary.setNext(new SecondaryLogEntryStore(groupId, indexManager, eventTransformerFactory, storageOptions));
         primary.initSegments(Long.MAX_VALUE);
+
+        Set<JpaRaftGroupNode> nodes= raftGroupNodeRepository.findByGroupId(groupId);
+
 
         nodes.forEach(node -> {
             GrpcRaftPeer raftPeer = new GrpcRaftPeer(Node.newBuilder()
@@ -76,7 +79,13 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public void update(List<Node> nodes) {
+                raftGroupNodeRepository.update(groupId, nodes);
+            }
 
+            @Override
+            public void clear() {
+                raftGroupNodeRepository.delete(groupId);
+                peers.clear();
             }
 
             @Override

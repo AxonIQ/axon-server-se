@@ -5,7 +5,6 @@ import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.StateChanged;
 import io.axoniq.axonserver.cluster.grpc.RaftGroupManager;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -93,8 +92,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     }
 
     private RaftGroup createRaftGroup(String groupId, String nodeId) {
-        Set<JpaRaftGroupNode> nodes= raftGroupNodeRepository.findByGroupId(groupId);
-        RaftGroup raftGroup = new GrpcRaftGroup(nodeId, nodes, groupId, raftStateRepository, raftProperties);
+        RaftGroup raftGroup = new GrpcRaftGroup(nodeId, raftGroupNodeRepository, groupId, raftStateRepository, raftProperties);
 
         if( ! ADMIN_GROUP.equals(groupId)) {
             eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

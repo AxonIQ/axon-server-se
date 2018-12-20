@@ -41,9 +41,4 @@ public class NewConfigurationConsumer implements LogEntryConsumer {
 
         }
     }
-
-    @Override
-    public int priority() {
-        return 0;
-    }
 }

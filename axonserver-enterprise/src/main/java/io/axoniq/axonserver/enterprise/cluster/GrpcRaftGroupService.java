@@ -118,4 +118,6 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
         localRaftGroupService.getStatus(responseObserver::onNext);
         responseObserver.onCompleted();
     }
+
+
 }

@@ -162,4 +162,10 @@ public class RaftNode {
     public EntryIterator unappliedEntries() {
         return raftGroup.localLogEntryStore().createIterator(raftGroup.logEntryProcessor().lastAppliedIndex() + 1);
     }
+
+    public CompletableFuture<Void> removeGroup() {
+        state.get().stop();
+        raftGroup.raftConfiguration().clear();
+        return CompletableFuture.completedFuture(null);
+    }
 }

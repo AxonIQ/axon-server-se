@@ -5,6 +5,8 @@ import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
@@ -18,8 +20,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -53,24 +59,19 @@ class LocalRaftConfigService implements RaftConfigService {
         RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
 
         ClusterNode clusterNode = contextController.getNode(node);
-        raftGroupServiceFactory.getRaftGroupService(context).addNodeToContext(context, clusterNode.toNode())
-                                             .thenApply(r -> {
-                                                 ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
-                                                                                                                 .setContext(context)
-                                                                                                                 .addAllNodes(
-                                                                                                                         Stream.concat(
-                                                                                                                                 nodes(context),
-                                                                                                                                 Stream.of(
-                                                                                                                                         clusterNode
-                                                                                                                                                 .toNodeInfo()))
-                                                                                                                               .collect(
-                                                                                                                                       Collectors
-                                                                                                                                               .toList()))
-                                                                                                                 .build();
-                                                 config.appendEntry(ContextConfiguration.class.getName(),
-                                                                                contextConfiguration.toByteArray());
-                                                 return r;
-                                             });
+        raftGroupServiceFactory.getRaftGroupService(context).addNodeToContext(context, clusterNode.toNode()).thenApply(
+                r -> {
+                    ContextConfiguration contextConfiguration =
+                            ContextConfiguration.newBuilder()
+                                                .setContext(context)
+                                                .addAllNodes(
+                                                        Stream.concat(nodes(context),Stream.of(clusterNode.toNodeInfo()))
+                                                              .collect(Collectors.toList()))
+                                                .build();
+                    config.appendEntry(ContextConfiguration.class.getName(),
+                                       contextConfiguration.toByteArray());
+                    return r;
+                });
     }
 
     private Stream<NodeInfo> nodes(String context) {
@@ -79,7 +80,38 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void deleteContext(String context) {
+        Collection<String> nodeNames = contextController.getContext(context).getNodeNames();
+        CompletableFuture<Void>[] workers = new CompletableFuture[nodeNames.size()];
+        int nodeIdx = 0;
+        for( String name : nodeNames) {
+            workers[nodeIdx] = raftGroupServiceFactory.getRaftGroupServiceForNode(name).deleteContext(context);
+            workers[nodeIdx].whenComplete((r,throwable) -> {
+                if( throwable == null) nodeNames.remove(name);
+            });
+            nodeIdx++;
+        }
+        try {
+            CompletableFuture.allOf(workers).get(10, TimeUnit.SECONDS);
+            RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
+            ContextConfiguration contextConfiguration =
+                        ContextConfiguration.newBuilder()
+                                            .setContext(context)
+                                            .addAllNodes(nodes(context)
+                                                                 .filter(n -> nodeNames.contains(n.getNodeName()))
+                                                                 .collect(Collectors.toList()))
+                                            .build();
+            config.appendEntry(contextConfiguration.getClass().getName(), contextConfiguration.toByteArray()).get();
+            if( nodeNames.isEmpty()) {
+                throw new MessagingPlatformException(ErrorCode.OTHER, context + ": Could not delete context from " + String.join(",", nodeNames));
+            }
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to execute", e.getCause());
+        } catch (TimeoutException e) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Timeout while deleting context", e);
+        }
     }
 
 
@@ -87,21 +119,20 @@ class LocalRaftConfigService implements RaftConfigService {
     public void deleteNodeFromContext(String context, String node) {
         RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
 
-        ClusterNode clusterNode = contextController.getNode(node);
         raftGroupServiceFactory.getRaftGroupService(context).deleteNode(context, node).thenApply(r -> {
-            ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
-                                                                            .setContext(context)
-                                                                            .addAllNodes(Stream.of(clusterNode
-                                                                                                           .toNodeInfo())
-                                                                                               .filter(n -> !n
-                                                                                                       .getNodeName()
-                                                                                                       .equals(context))
-                                                                                               .collect(Collectors
-                                                                                                                .toList()))
-                                                                            .build();
-            config.appendEntry(ContextConfiguration.class.getName(),
-                                           contextConfiguration.toByteArray());
-            return r;
+                ContextConfiguration contextConfiguration =
+                        ContextConfiguration.newBuilder()
+                                            .setContext(context)
+                                            .addAllNodes(nodes(context)
+                                                                 .filter(n -> !n.getNodeName().equals(node))
+                                                                 .collect(Collectors.toList()))
+                                            .build();
+                config.appendEntry(ContextConfiguration.class.getName(),
+                                   contextConfiguration.toByteArray());
+                return r;
+        }).exceptionally(t -> {
+            logger.warn("{}: Delete node {} failed", context, node, t);
+            return null;
         });
     }
 

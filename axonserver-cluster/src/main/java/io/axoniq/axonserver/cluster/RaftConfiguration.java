@@ -34,4 +34,6 @@ public interface RaftConfiguration {
     default int heartbeatTimeout() {
         return 50;
     }
+
+    default void clear() {}
 }

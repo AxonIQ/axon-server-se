@@ -208,9 +208,11 @@ public class LeaderState extends AbstractMembershipState {
 
         void stop() {
             logger.info("{}: Stop replication thread", groupId());
+            long now = clock.millis();
             replicatorPeerMap.forEach((peer,replicator) -> {
                 replicator.stop();
-                logger.info("{}: MatchIndex = {}, NextIndex = {}", peer, replicator.matchIndex(), replicator.nextIndex());
+                logger.info("{}: MatchIndex = {}, NextIndex = {}, lastMessageReceived = {}ms ago, lastMessageSent = {}ms ago", peer, replicator.matchIndex(), replicator.nextIndex(),
+                            now - replicator.lastMessageReceived(), now - replicator.lastMessageSent());
             });
             logger.info("{}: last applied: {}", groupId(), raftGroup().logEntryProcessor().lastAppliedIndex());
 

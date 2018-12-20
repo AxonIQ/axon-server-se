@@ -23,6 +23,7 @@ import java.util.function.Consumer;
  */
 class ReplicatorPeer {
 
+
     private interface ReplicatorPeerState {
 
         default void start() {
@@ -352,6 +353,9 @@ class ReplicatorPeer {
         return lastMessageReceived;
     }
 
+    public long lastMessageSent() {
+        return lastMessageSent;
+    }
     public long nextIndex() {
         return nextIndex.get();
     }
