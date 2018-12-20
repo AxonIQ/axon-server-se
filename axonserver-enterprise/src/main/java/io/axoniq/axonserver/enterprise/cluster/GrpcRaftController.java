@@ -5,6 +5,8 @@ import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.StateChanged;
 import io.axoniq.axonserver.cluster.grpc.RaftGroupManager;
+import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
+import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -12,6 +14,7 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
@@ -25,10 +28,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Author: marc
@@ -47,17 +53,20 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     private final RaftProperties raftProperties;
     private final ApplicationEventPublisher eventPublisher;
     private ApplicationContext applicationContext;
+    private final JpaRaftGroupNodeRepository nodeRepository;
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
                               RaftGroupRepositoryManager raftGroupNodeRepository,
                               RaftProperties raftProperties,
-                              ApplicationEventPublisher eventPublisher) {
+                              ApplicationEventPublisher eventPublisher,
+                              JpaRaftGroupNodeRepository nodeRepository) {
         this.raftStateRepository = raftStateRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
         this.raftProperties = raftProperties;
         this.eventPublisher = eventPublisher;
+        this.nodeRepository = nodeRepository;
     }
 
 
@@ -86,13 +95,18 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
 
 
     public RaftGroup initRaftGroup(String groupId) {
-
-        raftGroupNodeRepository.initRaftGroup(groupId);
-        return createRaftGroup(groupId, messagingPlatformConfiguration.getName());
+        Node node = Node.newBuilder()
+                        .setNodeId(messagingPlatformConfiguration.getName())
+                        .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
+                        .setPort(messagingPlatformConfiguration.getPort())
+                        .build();
+        RaftGroup raftGroup = createRaftGroup(groupId, node.getNodeId());
+        raftGroup.raftConfiguration().update(singletonList(node));
+        return raftGroup;
     }
 
-    private RaftGroup createRaftGroup(String groupId, String nodeId) {
-        RaftGroup raftGroup = new GrpcRaftGroup(nodeId, raftGroupNodeRepository, groupId, raftStateRepository, raftProperties);
+    private RaftGroup createRaftGroup(String groupId, String localNodeId) {
+        RaftGroup raftGroup = new GrpcRaftGroup(localNodeId, raftGroupNodeRepository, groupId, raftStateRepository, raftProperties);
 
         if( ! ADMIN_GROUP.equals(groupId)) {
             eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

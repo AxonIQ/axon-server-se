@@ -22,7 +22,7 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
 
     private final AtomicReference<List<Node>> cachedNodes = new AtomicReference<>();
 
-    private final AtomicBoolean cachedIsCommitted = new AtomicBoolean();
+    private final AtomicBoolean cachedIsUncommitted = new AtomicBoolean();
 
     private final List<Consumer<List<Node>>> listeners = new CopyOnWriteArrayList<>();
 
@@ -46,17 +46,17 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
     }
 
     @Override
-    public boolean isCommitted() {
+    public boolean isUncommitted() {
         if (cachedNodes.get() == null){
             update();
         }
-        return cachedIsCommitted.get();
+        return cachedIsUncommitted.get();
     }
 
     private void update(){
         List<Node> newConfig = currentConfiguration.groupMembers();
         List<Node> oldConfig = cachedNodes.getAndSet(newConfig);
-        cachedIsCommitted.set(currentConfiguration.isCommitted());
+        cachedIsUncommitted.set(currentConfiguration.isUncommitted());
         if (!newConfig.equals(oldConfig)){
             listeners.forEach(listener -> listener.accept(newConfig));
         }

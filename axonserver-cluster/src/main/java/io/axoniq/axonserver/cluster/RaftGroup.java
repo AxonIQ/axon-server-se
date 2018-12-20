@@ -28,7 +28,4 @@ public interface RaftGroup {
         localNode().start();
     }
 
-    default void registerNode(Node node) {}
-
-    default void unregisterNode(String nodeID) {}
 }

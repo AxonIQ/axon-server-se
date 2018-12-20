@@ -8,7 +8,6 @@ import java.util.function.Consumer;
 
 /**
  * @author Sara Pellegrini
- * @since
  */
 public class FakeRaftPeer implements RaftPeer {
 
@@ -16,8 +15,8 @@ public class FakeRaftPeer implements RaftPeer {
     private final String nodeId;
     private long term;
     private boolean voteGranted;
-    private Consumer<AppendEntriesResponse> appendEntriesResponseConsumer;
-    private Consumer<InstallSnapshotResponse> installSnapshotResponseConsumer;
+    private Consumer<AppendEntriesResponse> appendEntriesResponseConsumer = response -> {};
+    private Consumer<InstallSnapshotResponse> installSnapshotResponseConsumer = response -> {};
 
     public FakeRaftPeer(Scheduler scheduler, String nodeId) {
         this.scheduler = scheduler;
@@ -56,13 +55,13 @@ public class FakeRaftPeer implements RaftPeer {
     @Override
     public Registration registerAppendEntriesResponseListener(Consumer<AppendEntriesResponse> listener) {
         appendEntriesResponseConsumer = listener;
-        return () -> appendEntriesResponseConsumer = null;
+        return () -> appendEntriesResponseConsumer = response -> {};
     }
 
     @Override
     public Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener) {
         installSnapshotResponseConsumer = listener;
-        return () -> installSnapshotResponseConsumer = null;
+        return () -> installSnapshotResponseConsumer = response -> {};
     }
 
     @Override

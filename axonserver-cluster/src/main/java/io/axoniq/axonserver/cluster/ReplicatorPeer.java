@@ -337,6 +337,7 @@ class ReplicatorPeer {
 
     public void start() {
         running = true;
+        matchIndexCallback.accept(matchIndex.get());
         changeStateTo(new AppendEntryState());
     }
 
@@ -389,9 +390,7 @@ class ReplicatorPeer {
     }
 
     private void setMatchIndex(long newMatchIndex) {
-        long oldValue = matchIndex.getAndUpdate(old -> (old < newMatchIndex) ? newMatchIndex : old);
-        if (oldValue < matchIndex.get()) {
-            matchIndexCallback.accept(matchIndex.get());
-        }
+        long newValue = matchIndex.updateAndGet(old -> (old < newMatchIndex) ? newMatchIndex : old);
+        matchIndexCallback.accept(newValue);
     }
 }
