@@ -23,7 +23,8 @@ public class LeaderConfigurationTest {
 
     @Test
     public void testAddFastNode() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",
+                                                            operation -> completedFuture(null),
                                                              node -> completedFuture(null),
                                                              new RaftErrorMapping());
         Node node = Node.newBuilder().setNodeId("MyNode").setHost("localhost").setPort(1234).build();
@@ -34,7 +35,8 @@ public class LeaderConfigurationTest {
 
     @Test
     public void testAddSlowServer() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",
+                                                             operation -> completedFuture(null),
                                                              node -> failedFuture(new ServerTooSlowException("My message")),
                                                              new RaftErrorMapping());
         Node node = Node.newBuilder()
@@ -52,7 +54,7 @@ public class LeaderConfigurationTest {
 
     @Test
     public void testAddServerCommitError() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> failedFuture(new UncommittedConfigException("My message")),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> failedFuture(new UncommittedConfigException("My message")),
                                                              node ->  completedFuture(null),
                                                              new RaftErrorMapping());
         Node node = Node.newBuilder()
@@ -69,7 +71,7 @@ public class LeaderConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAddInvalidNodeId() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> completedFuture(null),
                                                              node -> failedFuture(new ServerTooSlowException("My message")),
                                                              new RaftErrorMapping());
         Node node = Node.newBuilder()
@@ -81,7 +83,7 @@ public class LeaderConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAddInvalidHost() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> completedFuture(null),
                                                              node -> failedFuture(new ServerTooSlowException("My message")),
                                                              new RaftErrorMapping());
         Node node = Node.newBuilder()
@@ -93,7 +95,7 @@ public class LeaderConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAddInvalidPort() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> completedFuture(null),
                                                              node -> failedFuture(new ServerTooSlowException("My message")),
                                                              new RaftErrorMapping());
         Node node = Node.newBuilder()
@@ -106,7 +108,7 @@ public class LeaderConfigurationTest {
 
     @Test
     public void testRemoveNode() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> completedFuture(null),
                                                              node -> completedFuture(null),
                                                              new RaftErrorMapping());
         CompletableFuture<ConfigChangeResult> result = leader.removeServer("myNode");
@@ -116,7 +118,7 @@ public class LeaderConfigurationTest {
 
     @Test
     public void testRemoveCommitError() throws ExecutionException, InterruptedException {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> failedFuture(new UncommittedConfigException("My message")),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> failedFuture(new UncommittedConfigException("My message")),
                                                              node ->  completedFuture(null),
                                                              new RaftErrorMapping());
         CompletableFuture<ConfigChangeResult> result = leader.removeServer("myNode");
@@ -129,7 +131,7 @@ public class LeaderConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testRemoveNullId() {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> completedFuture(null),
                                                              node -> completedFuture(null),
                                                              new RaftErrorMapping());
         CompletableFuture<ConfigChangeResult> result = leader.removeServer(null);
@@ -137,7 +139,7 @@ public class LeaderConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testRemoveEmptyId() {
-        LeaderConfiguration leader = new LeaderConfiguration(operation -> completedFuture(null),
+        LeaderConfiguration leader = new LeaderConfiguration(() -> "me",operation -> completedFuture(null),
                                                              node -> completedFuture(null),
                                                              new RaftErrorMapping());
         CompletableFuture<ConfigChangeResult> result = leader.removeServer("");

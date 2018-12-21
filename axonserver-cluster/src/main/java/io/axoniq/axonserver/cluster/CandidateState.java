@@ -100,7 +100,7 @@ public class CandidateState extends AbstractMembershipState {
                 updateCurrentTerm(currentTerm() + 1);
                 markVotedFor(me());
             }
-            logger.info("{}: Starting election from {} in term {}", groupId(), this, currentTerm());
+            logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
             resetElectionTimeout();
             currentElection.set(new MajorityElection(this::clusterSize));
             currentElection.get().registerVoteReceived(me(), true);

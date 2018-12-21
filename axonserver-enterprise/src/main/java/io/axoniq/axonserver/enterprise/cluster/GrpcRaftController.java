@@ -100,6 +100,9 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                         .build();
         RaftGroup raftGroup = createRaftGroup(groupId, node.getNodeId());
         raftGroup.raftConfiguration().update(singletonList(node));
+        if( replicationServerStarted) {
+            raftGroup.connect();
+        }
         return raftGroup;
     }
 

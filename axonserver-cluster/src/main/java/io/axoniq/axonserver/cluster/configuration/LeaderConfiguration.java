@@ -17,12 +17,15 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * @author Sara Pellegrini
  * @since 4.0
  */
 public class LeaderConfiguration implements ClusterConfiguration {
+
+    private final Supplier<String> localNode;
 
     private final Function<Node, CompletableFuture<Void>> updateNode;
 
@@ -34,18 +37,23 @@ public class LeaderConfiguration implements ClusterConfiguration {
                                Supplier<Long> currentTime,
                                Function<Node, NodeReplicator> replicatorFactory,
                                Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange) {
-        this(appendConfigurationChange, new UpdatePendingMember(raftGroup, currentTime, replicatorFactory));
+        this(() -> raftGroup.localNode().nodeId(),
+             appendConfigurationChange,
+             new UpdatePendingMember(raftGroup, currentTime, replicatorFactory));
     }
 
     public LeaderConfiguration(
+            Supplier<String> localNode,
             Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange,
             Function<Node, CompletableFuture<Void>> updateNode) {
-        this(appendConfigurationChange, updateNode, new RaftErrorMapping());
+        this(localNode, appendConfigurationChange, updateNode, new RaftErrorMapping());
     }
 
-    public LeaderConfiguration(Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange,
+    public LeaderConfiguration(Supplier<String> localNode,
+                               Function<UnaryOperator<List<Node>>, CompletableFuture<Void>> appendConfigurationChange,
                                Function<Node, CompletableFuture<Void>> updateNode,
                                Function<Throwable, ErrorMessage> errorMapping) {
+        this.localNode = localNode;
         this.appendConfigurationChange = appendConfigurationChange;
         this.updateNode = updateNode;
         this.errorMapping = errorMapping;
@@ -54,10 +62,16 @@ public class LeaderConfiguration implements ClusterConfiguration {
     @Override
     public CompletableFuture<ConfigChangeResult> addServer(Node node) {
         checkValidityOf(node);
-        return updateNode.apply(node)
-                         .thenCompose(success -> appendConfigurationChange.apply(new AddServer(node)))
-                         .thenApply(success -> success())
-                         .exceptionally(this::failure);
+        return update(node).thenCompose(success -> appendConfigurationChange.apply(new AddServer(node)))
+                           .thenApply(success -> success())
+                           .exceptionally(this::failure);
+    }
+
+    private CompletableFuture<Void> update(Node node) {
+        if (node.getNodeId().equals(localNode.get())) {
+            return completedFuture(null);
+        }
+        return updateNode.apply(node);
     }
 
     private void checkValidityOf(Node node) {
@@ -88,6 +102,4 @@ public class LeaderConfiguration implements ClusterConfiguration {
                 .setFailure(ConfigChangeFailure.newBuilder().setError(errorMapping.apply(error.getCause())))
                 .build();
     }
-
-
 }

@@ -343,7 +343,7 @@ public class LeaderState extends AbstractMembershipState {
             Set<String> toRemove = new HashSet<>(replicatorPeerMap.keySet());
             for (Node node : nodes) {
                 toRemove.remove(node.getNodeId());
-                if (!replicatorPeerMap.containsKey(node.getNodeId())) {
+                if (!replicatorPeerMap.containsKey(node.getNodeId()) && !node.getNodeId().equals(me())) {
                     addNode(node);
                 }
             }
@@ -353,7 +353,7 @@ public class LeaderState extends AbstractMembershipState {
 
         public void addNode(Node node) {
             if( ! node.getNodeId().equals(me())) {
-                RaftPeer raftPeer = raftGroup().peer(node.getNodeId());
+                RaftPeer raftPeer = raftGroup().peer(node);
                 registrations.add(registerPeer(raftPeer, this::updateMatchIndex));
             }
         }

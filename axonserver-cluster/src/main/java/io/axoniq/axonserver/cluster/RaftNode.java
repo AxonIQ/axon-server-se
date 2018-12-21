@@ -116,7 +116,7 @@ public class RaftNode {
         registrations.forEach(Registration::cancel);
     }
 
-    String nodeId() {
+    public String nodeId() {
         return nodeId;
     }
 
