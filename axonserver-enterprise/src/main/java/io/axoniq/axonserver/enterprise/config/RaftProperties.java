@@ -14,6 +14,8 @@ public class RaftProperties extends StorageProperties {
     private int minElectionTimeout = 1000;
     private int maxElectionTimeout = 2500;
     private int heartbeatTimeout = 250;
+    private int maxEntriesPerBatch = 100;
+    private int flowBuffer = 1000;
 
     public int getMinElectionTimeout() {
         return minElectionTimeout;
@@ -37,5 +39,21 @@ public class RaftProperties extends StorageProperties {
 
     public void setHeartbeatTimeout(int heartbeatTimeout) {
         this.heartbeatTimeout = heartbeatTimeout;
+    }
+
+    public int getMaxEntriesPerBatch() {
+        return maxEntriesPerBatch;
+    }
+
+    public void setMaxEntriesPerBatch(int maxEntriesPerBatch) {
+        this.maxEntriesPerBatch = maxEntriesPerBatch;
+    }
+
+    public int getFlowBuffer() {
+        return flowBuffer;
+    }
+
+    public void setFlowBuffer(int flowBuffer) {
+        this.flowBuffer = flowBuffer;
     }
 }

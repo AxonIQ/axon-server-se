@@ -35,6 +35,7 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
     private volatile String leader;
+    private volatile boolean stopped;
     private final AtomicLong nextTimeout = new AtomicLong();
     private final AtomicLong lastMessage = new AtomicLong();
     private final Clock clock;
@@ -60,6 +61,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void stop() {
+        stopped = true;
         cancelElectionTimeoutChecker();
     }
 
@@ -70,7 +72,7 @@ public class FollowerState extends AbstractMembershipState {
 
             //1. Reply false if term < currentTerm
             if (request.getTerm() < currentTerm()) {
-                logger.warn("{}: term before current term {}", groupId(), currentTerm());
+                logger.debug("{}: term before current term {}", groupId(), currentTerm());
                 return appendEntriesFailure();
             }
 
@@ -97,11 +99,10 @@ public class FollowerState extends AbstractMembershipState {
             // and all that follow it
             //4. Append any new entries not already in the log
             try {
-                if( request.getEntriesCount() > 0) {
+                if( logger.isTraceEnabled() && request.getEntriesCount() > 0) {
                     logger.trace("{}: received {}", groupId(), request.getEntries(0).getIndex());
                 }
                 logEntryStore.appendEntry(request.getEntriesList());
-                logger.trace("{}: stored {}", groupId(), lastLogIndex());
             } catch (IOException e) {
                 logger.warn("{}: append failed", groupId(), e);
                 stop();
@@ -206,6 +207,10 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void checkMessageReceived() {
+        if( stopped) {
+            logger.warn("{}: Checking for timeout while already stopped", groupId());
+            return;
+        }
         long now = clock.millis();
         if( nextTimeout.get() < now) {
             logger.warn("{}: Timeout in follower state: {}", groupId(), (now-nextTimeout.get()));
@@ -224,7 +229,7 @@ public class FollowerState extends AbstractMembershipState {
     private void rescheduleElection(long term) {
         if (term >= currentTerm()) {
             lastMessage.set(clock.millis());
-            nextTimeout.updateAndGet(old -> Math.max(old,lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout())));
+            nextTimeout.set(lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout()));
         }
     }
 

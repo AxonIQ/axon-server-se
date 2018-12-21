@@ -111,7 +111,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        scheduleStepDown();
+        scheduleStepDownTimeoutChecker();
         replicators = new Replicators();
         executor.submit(() -> replicators.start());
     }
@@ -120,9 +120,9 @@ public class LeaderState extends AbstractMembershipState {
     public void stop() {
         replicators.stop();
         replicators = null;
-        cancelStepDown();
+        cancelStepDownTimeoutChecker();
         pendingEntries.forEach((index, completableFuture) -> completableFuture
-                .completeExceptionally(new IllegalStateException()));
+                .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
         pendingEntries.clear();
     }
 
@@ -137,6 +137,10 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
+        if (request.getTerm() > currentTerm()) {
+            logger.info("{}: received higher term from {}", groupId(), request.getCandidateId());
+            return handleAsFollower(follower -> follower.requestVote(request));
+        }
         return requestVoteResponse(false);
     }
 
@@ -158,12 +162,12 @@ public class LeaderState extends AbstractMembershipState {
         return createEntry(currentTerm(), entryType, entryData);
     }
 
-    private void scheduleStepDown() {
+    private void scheduleStepDownTimeoutChecker() {
         ScheduledRegistration newTask = scheduler().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
         stepDown.set(newTask);
     }
 
-    private void cancelStepDown() {
+    private void cancelStepDownTimeoutChecker() {
         stepDown.get().cancel();
     }
 
@@ -353,7 +357,7 @@ public class LeaderState extends AbstractMembershipState {
 
         public void addNode(Node node) {
             if( ! node.getNodeId().equals(me())) {
-                RaftPeer raftPeer = raftGroup().peer(node.getNodeId());
+                RaftPeer raftPeer = raftGroup().peer(node);
                 registrations.add(registerPeer(raftPeer, this::updateMatchIndex));
             }
         }

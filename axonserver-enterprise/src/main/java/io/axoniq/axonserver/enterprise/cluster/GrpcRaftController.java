@@ -96,7 +96,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         Node node = Node.newBuilder()
                         .setNodeId(messagingPlatformConfiguration.getName())
                         .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
-                        .setPort(messagingPlatformConfiguration.getPort())
+                        .setPort(messagingPlatformConfiguration.getInternalPort())
                         .build();
         RaftGroup raftGroup = createRaftGroup(groupId, node.getNodeId());
         raftGroup.raftConfiguration().update(singletonList(node));
@@ -104,19 +104,34 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     }
 
     private RaftGroup createRaftGroup(String groupId, String localNodeId) {
-        RaftGroup raftGroup = new GrpcRaftGroup(localNodeId, groupId, raftStateRepository, nodeRepository, raftProperties);
+        synchronized (raftGroupMap) {
+            RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
+            if( existingRaftGroup != null) return existingRaftGroup;
 
-        if( ! ADMIN_GROUP.equals(groupId)) {
-            eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
-        }
-        applicationContext.getBeansOfType(LogEntryConsumer.class).forEach((name, bean) -> raftGroup.localNode().registerEntryConsumer(e -> bean.consumeLogEntry(groupId, e)));
-        raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(), stateChanged));
+            RaftGroup raftGroup = new GrpcRaftGroup(localNodeId,
+                                                    groupId,
+                                                    raftStateRepository,
+                                                    nodeRepository,
+                                                    raftProperties);
 
-        raftGroupMap.put(groupId, raftGroup);
-        if( replicationServerStarted) {
-            raftGroup.localNode().start();
+            if (!ADMIN_GROUP.equals(groupId)) {
+                eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
+            }
+            applicationContext.getBeansOfType(LogEntryConsumer.class).forEach((name, bean) -> raftGroup.localNode()
+                                                                                                       .registerEntryConsumer(
+                                                                                                               e -> bean
+                                                                                                                       .consumeLogEntry(
+                                                                                                                               groupId,
+                                                                                                                               e)));
+            raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(),
+                                                                                           stateChanged));
+
+            raftGroupMap.put(groupId, raftGroup);
+            if (replicationServerStarted) {
+                raftGroup.localNode().start();
+            }
+            return raftGroup;
         }
-        return raftGroup;
     }
 
     private void stateChanged(RaftNode node, StateChanged stateChanged) {

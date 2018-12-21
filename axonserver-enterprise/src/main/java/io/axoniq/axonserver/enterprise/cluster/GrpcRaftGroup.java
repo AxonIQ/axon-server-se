@@ -87,6 +87,16 @@ public class GrpcRaftGroup implements RaftGroup {
             public int heartbeatTimeout() {
                 return storageOptions.getHeartbeatTimeout();
             }
+
+            @Override
+            public int flowBuffer() {
+                return storageOptions.getFlowBuffer();
+            }
+
+            @Override
+            public int maxEntriesPerBatch() {
+                return storageOptions.getMaxEntriesPerBatch();
+            }
         };
 
         localNode = new RaftNode(localNodeId, this);

@@ -41,6 +41,8 @@ public class CandidateState extends AbstractMembershipState {
         return new Builder();
     }
 
+    private volatile boolean stopped;
+
     @Override
     public void start() {
         startElection();
@@ -48,6 +50,7 @@ public class CandidateState extends AbstractMembershipState {
 
     @Override
     public void stop() {
+        stopped = false;
         Optional.ofNullable(nextElection.get()).ifPresent(Registration::cancel);
     }
 
@@ -95,6 +98,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void startElection() {
+        if( stopped) return;
         try {
             synchronized (this) {
                 updateCurrentTerm(currentTerm() + 1);
@@ -133,6 +137,8 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private synchronized void onVoteResponse(String voter, RequestVoteResponse response) {
+        logger.debug("{} - curentTerm {} VoteResponse {}, stopped: {}", voter, currentTerm(), response, stopped);
+        if( stopped) return;
         if (response.getTerm() > currentTerm()) {
             changeStateTo(stateFactory().followerState());
             return;

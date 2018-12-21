@@ -88,7 +88,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public void stepDown(String context) {
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        if (raftNode != null && raftNode.isLeader()) {
+        if (raftNode != null ) {
             raftNode.stepdown();
         }
     }

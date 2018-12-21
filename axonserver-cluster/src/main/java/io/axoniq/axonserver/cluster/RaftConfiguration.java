@@ -36,4 +36,12 @@ public interface RaftConfiguration {
     }
 
     default void clear() {}
+
+    default int flowBuffer() {
+        return 100;
+    }
+
+    default int maxEntriesPerBatch() {
+        return 10;
+    }
 }

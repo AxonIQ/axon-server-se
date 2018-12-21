@@ -51,7 +51,7 @@ public class RaftNode {
         this.registerEntryConsumer(this::updateConfig);
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState));
         this.scheduler = scheduler;
-        updateState(stateFactory.idleState(nodeId));
+        updateState(null, stateFactory.idleState(nodeId));
         scheduleLogCleaning();
     }
 
@@ -68,25 +68,33 @@ public class RaftNode {
         }
     }
 
-    private synchronized void updateState(MembershipState newState) {
-        Optional.ofNullable(state.get()).ifPresent(MembershipState::stop);
-        logger.info("{}: Updating state of {} from {} to {}", groupId(), nodeId, state.get(), newState);
-        stateChangeListeners.forEach(stateChangeListeners -> {
-            try {
-                stateChangeListeners.accept(new StateChanged(state.get().getClass().getSimpleName(),
-                                                             newState.getClass().getSimpleName(),
-                                                             groupId()));
-            } catch (Exception ex) {
-                logger.warn("{}: Failed to handle event", groupId(), ex);
-                throw new RuntimeException("Transition to " + newState.getClass().getSimpleName() + " failed", ex);
-            }
-        });
-        state.set(newState);
-        newState.start();
+    private void updateState(MembershipState currentState, MembershipState newState) {
+        if( state.compareAndSet(currentState, newState)) {
+            Optional.ofNullable(currentState).ifPresent(MembershipState::stop);
+            logger.info("{}: Updating state from {} to {}", groupId(), toString(currentState), toString(newState));
+            stateChangeListeners.forEach(stateChangeListeners -> {
+                try {
+                    stateChangeListeners.accept(new StateChanged(toString(currentState),
+                                                                 toString(newState),
+                                                                 groupId()));
+                } catch (Exception ex) {
+                    logger.warn("{}: Failed to handle event", groupId(), ex);
+                    throw new RuntimeException("Transition to " + toString(newState) + " failed", ex);
+                }
+            });
+            logger.info("{}: Updated state to {}", groupId(), toString(newState));
+            newState.start();
+        } else {
+            logger.warn("{}: transition to {} failed, invalid current state", groupId(), toString(newState));
+        }
+    }
+
+    private String toString(MembershipState state) {
+        return state == null? null : state.getClass().getSimpleName();
     }
 
     public void start() {
-        updateState(stateFactory.followerState());
+        updateState(state.get(), stateFactory.followerState());
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers));
@@ -112,7 +120,7 @@ public class RaftNode {
         raftGroup.logEntryProcessor().stop();
         applyTask.cancel(true);
         applyTask = null;
-        updateState(stateFactory.idleState(nodeId));
+        updateState(state.get(), stateFactory.idleState(nodeId));
         registrations.forEach(Registration::cancel);
     }
 

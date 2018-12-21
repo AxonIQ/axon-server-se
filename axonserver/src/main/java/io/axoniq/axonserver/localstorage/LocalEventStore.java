@@ -105,17 +105,24 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             public void onCompleted() {
                 workersMap.get(context).eventWriteStorage.store(eventList).whenComplete((result, exception) -> {
                     if( exception != null) {
-                        if( isClientException(exception)) {
-                            logger.warn("Error while storing events: {}", exception.getMessage());
-                        } else {
-                            logger.warn("Error while storing events", exception);
-                        }
+                        logException(exception);
                         responseObserver.onError(exception);
                     } else {
                         responseObserver.onNext(CONFIRMATION);
                         responseObserver.onCompleted();
                     }
                 });
+            }
+
+            private void logException(Throwable exception) {
+                if( isClientException(exception)) {
+                    logger.warn("Error while storing events: {}", exception.getMessage());
+                } else if (exception instanceof IllegalStateException) {
+                    logger.warn("Error while storing events: node is no longer leader");
+                } else {
+                    logger.warn("Error while storing events", exception);
+                }
+
             }
         };
     }

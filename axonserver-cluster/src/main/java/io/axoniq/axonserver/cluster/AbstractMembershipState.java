@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -26,7 +27,7 @@ import java.util.stream.Stream;
 public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
-    private final Consumer<MembershipState> transitionHandler;
+    private final BiConsumer<MembershipState, MembershipState> transitionHandler;
     private final MembershipStateFactory stateFactory;
     private final Scheduler scheduler;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
@@ -59,7 +60,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     public static abstract class Builder<B extends Builder<B>> {
 
         private RaftGroup raftGroup;
-        private Consumer<MembershipState> transitionHandler;
+        private BiConsumer<MembershipState, MembershipState> transitionHandler;
         private MembershipStateFactory stateFactory;
         private Scheduler scheduler;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
@@ -73,7 +74,7 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B transitionHandler(Consumer<MembershipState> transitionHandler) {
+        public B transitionHandler(BiConsumer<MembershipState, MembershipState> transitionHandler) {
             this.transitionHandler = transitionHandler;
             return self();
         }
@@ -192,7 +193,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected void changeStateTo(MembershipState newState) {
-        transitionHandler.accept(newState);
+        transitionHandler.accept(this, newState);
     }
 
     protected void updateCurrentTerm(long term) {

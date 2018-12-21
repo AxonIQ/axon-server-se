@@ -74,7 +74,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
     public void on(ClusterEvents.LeaderStepDown masterStepDown) {
         token.set(-1);
-        logger.error("Step down");
+        logger.error("{}: Step down", datafileManagerChain.getType());
         datafileManagerChain.stepDown();
     }
 
@@ -89,7 +89,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
             }
             long after = System.nanoTime();
             if( after - before > 10000) {
-                logger.warn("Waited {} nanos for access", (after - before));
+                logger.debug("Waited {} nanos for access", (after - before));
             }
             CompletableFuture<Void> appendEntryResult;
             TransactionWithToken transactionWithToken;

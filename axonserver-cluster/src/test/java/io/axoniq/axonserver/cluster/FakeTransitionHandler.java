@@ -1,17 +1,17 @@
 package io.axoniq.axonserver.cluster;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * @author Sara Pellegrini
  * @since
  */
-public class FakeTransitionHandler implements Consumer<MembershipState> {
+public class FakeTransitionHandler implements BiConsumer<MembershipState, MembershipState> {
 
     private MembershipState lastTransition;
 
     @Override
-    public void accept(MembershipState membershipState) {
+    public void accept(MembershipState oldState, MembershipState membershipState) {
         lastTransition= membershipState;
     }
 

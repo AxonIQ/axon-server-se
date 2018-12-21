@@ -18,13 +18,15 @@ public class LogEntryFileTest {
     @Test
     @Ignore("Manual test only")
     public void readLogFile() throws IOException {
-        try (DataInputStream dataInputStream = new DataInputStream(new FileInputStream(
-                                                              "D:\\test\\loadtest\\axonhub\\log\\default\\00000000000001.log"))) {
+        long start =170694;
+        StorageProperties storageProperties = new StorageProperties();
+        storageProperties.setLogStorageFolder("D:\\test\\loadtest\\axonhub2\\log");
+        try (DataInputStream dataInputStream = new DataInputStream(new FileInputStream( storageProperties.logFile("default", start)))) {
 
             dataInputStream.read();
             dataInputStream.readInt();
             int size = dataInputStream.readInt();
-            long index = 249027L;
+            long index = start;
             while (size > 0) {
                 dataInputStream.read(); // version
                 long term = dataInputStream.readLong();
@@ -37,7 +39,9 @@ public class LogEntryFileTest {
                     case SERIALIZEDOBJECT:
                         SerializedObject so = SerializedObject.parseFrom(bytes);
                         TransactionWithToken twt = TransactionWithToken.parseFrom(so.getData());
-                        System.out.println( twt.getToken() + " " + twt.getEventsCount());
+                        if( index == 173757) {
+                            System.out.println(twt.getIndex() + " " + twt.getEventsCount());
+                        }
                         builder.setSerializedObject(so);
                         break;
                     case NEWCONFIGURATION:
@@ -48,10 +52,12 @@ public class LogEntryFileTest {
                 }
                 dataInputStream.readInt(); //CRC
                 size = dataInputStream.readInt();
-                System.out.print(builder.build());
+                if( index == 173757) {
+                    System.out.print(builder.build());
+                }
                 index++;
             }
-
+            System.out.println(size);
         }
     }
 
@@ -60,7 +66,7 @@ public class LogEntryFileTest {
     @Ignore("Manual test only")
     public void readEventsFile() throws IOException {
         try (DataInputStream dataInputStream = new DataInputStream(new FileInputStream(
-                "D:\\test\\loadtest\\axonhub2\\data\\default\\00000000000000.events"))) {
+                "D:\\test\\loadtest\\axonhub\\data\\default\\00000000000000.events"))) {
 
             dataInputStream.read();
             dataInputStream.readInt();

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -10,11 +11,11 @@ public class DefaultStateFactory implements MembershipStateFactory {
 
     private final RaftGroup raftGroup;
 
-    private final Consumer<MembershipState> transitionHandler;
+    private final BiConsumer<MembershipState, MembershipState> transitionHandler;
     private final Scheduler scheduler;
 
     public DefaultStateFactory(RaftGroup raftGroup,
-                               Consumer<MembershipState> transitionHandler) {
+                               BiConsumer<MembershipState, MembershipState> transitionHandler) {
         this.raftGroup = raftGroup;
         this.transitionHandler = transitionHandler;
         this.scheduler = new DefaultScheduler();

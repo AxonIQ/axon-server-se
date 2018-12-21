@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
@@ -35,7 +36,7 @@ public class LeaderStateTest {
 
     @Before
     public void setup() {
-        Consumer<MembershipState> transitionHandler = (state) -> stateRef.set(state);
+        BiConsumer<MembershipState, MembershipState> transitionHandler = (old, state) -> stateRef.set(state);
 
         RaftConfiguration raftConfiguration = new RaftConfiguration() {
             private List<Node> groupMembers = Arrays.asList(Node.newBuilder().setNodeId("test").build(),

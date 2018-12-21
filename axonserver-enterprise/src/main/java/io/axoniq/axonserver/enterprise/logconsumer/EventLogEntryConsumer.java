@@ -30,7 +30,7 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                 try {
                     transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
                     if( logger.isTraceEnabled()) {
-                        logger.warn("Index {}: Received Event with index: {} and {} events",
+                        logger.trace("Index {}: Received Event with index: {} and {} events",
                                     e.getIndex(),
                                     transactionWithToken.getIndex(),
                                     transactionWithToken.getEventsCount()
@@ -39,7 +39,7 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                     if (transactionWithToken.getIndex() > localEventStore.getLastEventIndex(groupId)) {
                         localEventStore.syncEvents(groupId, new TransactionInformation(transactionWithToken.getIndex()), transactionWithToken);
                     } else {
-                        logger.warn("Index {}: event already applied",
+                        logger.debug("Index {}: event already applied",
                                     e.getIndex());
                     }
                 } catch (InvalidProtocolBufferException e1) {
@@ -52,7 +52,7 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                     if (transactionWithToken.getIndex() > localEventStore.getLastSnapshotIndex(groupId)) {
                         localEventStore.syncSnapshots(groupId, new TransactionInformation(transactionWithToken.getIndex()), transactionWithToken);
                     } else {
-                        logger.warn("Index {}: snapshot already applied",
+                        logger.debug("Index {}: snapshot already applied",
                                     e.getIndex());
                     }
                 } catch (InvalidProtocolBufferException e1) {

@@ -127,7 +127,7 @@ class ReplicatorPeer {
                              offset,
                              lastReceivedOffset);
             }
-            while (canSend() && sent < MAX_ENTRIES_PER_BATCH) {
+            while (canSend() && sent < raftGroup.raftConfiguration().maxEntriesPerBatch()) {
                 subscription.request(1);
                 sent++;
             }
@@ -137,11 +137,11 @@ class ReplicatorPeer {
         private void send(InstallSnapshotRequest request) {
             logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
             raftPeer.installSnapshot(request);
-            lastMessageSent = Math.max(lastMessageSent, clock.millis());
+            lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 
         public void handleResponse(InstallSnapshotResponse installSnapshotResponse) {
-            lastMessageReceived = Math.max(lastMessageReceived, clock.millis());
+            lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
             if (installSnapshotResponse.hasSuccess()) {
                 lastReceivedOffset = installSnapshotResponse.getSuccess().getLastReceivedOffset();
                 if (done) {
@@ -159,7 +159,7 @@ class ReplicatorPeer {
         }
 
         private boolean canSend() {
-            return running && offset - lastReceivedOffset < FLOW_BUFFER;
+            return running && offset - lastReceivedOffset < raftGroup.raftConfiguration().flowBuffer();
         }
     }
 
@@ -192,7 +192,7 @@ class ReplicatorPeer {
                 }
 
                 if (!canSend()) {
-                    logger.trace("{}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
+                    logger.info("{}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
                                  groupId(),
                                  raftPeer.nodeId(),
                                  nextIndex,
@@ -200,7 +200,7 @@ class ReplicatorPeer {
                                  raftGroup.localLogEntryStore().lastLogIndex());
                 }
                 while (canSend()
-                        && sent < MAX_ENTRIES_PER_BATCH && entryIterator.hasNext()) {
+                        && sent < raftGroup.raftConfiguration().maxEntriesPerBatch() && entryIterator.hasNext()) {
                     Entry entry = entryIterator.next();
                     //
                     TermIndex previous = entryIterator.previous();
@@ -219,13 +219,9 @@ class ReplicatorPeer {
                 }
 
                 long now = clock.millis();
-                if (sent == 0 && now - lastMessageSent > raftGroup.raftConfiguration().heartbeatTimeout()) {
+                if (sent == 0 && now - lastMessageSent.get() > raftGroup.raftConfiguration().heartbeatTimeout()) {
                     sendHeartbeat(raftGroup.localLogEntryStore().lastLog(),
                                   raftGroup.logEntryProcessor().commitIndex());
-                } else {
-                    if (sent > 0) {
-                        lastMessageSent = clock.millis();
-                    }
                 }
             } catch (RuntimeException ex) {
                 logger.warn("{}: Sending nextEntries to {} failed", groupId(), raftPeer.nodeId(), ex);
@@ -234,7 +230,7 @@ class ReplicatorPeer {
         }
 
         public void handleResponse(AppendEntriesResponse appendEntriesResponse) {
-            lastMessageReceived = Math.max(lastMessageReceived, clock.millis());
+            lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
             logger.trace("{}: Received response from {}: {}", groupId(), raftPeer.nodeId(), appendEntriesResponse);
             if (appendEntriesResponse.hasFailure()) {
                 if (currentTerm() < appendEntriesResponse.getTerm()) {
@@ -243,11 +239,12 @@ class ReplicatorPeer {
                     transitToFollower.run();
                     return;
                 }
-                logger.info("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}",
+                logger.info("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}, currentMatchIndex = {}",
                             groupId(),
                             raftPeer.nodeId(),
                             nextIndex,
-                            appendEntriesResponse.getFailure().getLastAppliedIndex());
+                            appendEntriesResponse.getFailure().getLastAppliedIndex(),
+                            matchIndex());
                 setMatchIndex(appendEntriesResponse.getFailure().getLastAppliedIndex());
                 nextIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex() + 1);
                 updateEntryIterator();
@@ -272,7 +269,7 @@ class ReplicatorPeer {
         private void send(AppendEntriesRequest request) {
             logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
             raftPeer.appendEntries(request);
-            lastMessageSent = Math.max(lastMessageSent, clock.millis());
+            lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 
         private void updateEntryIterator() {
@@ -288,22 +285,18 @@ class ReplicatorPeer {
         }
 
         private boolean canSend() {
-            return running && matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < FLOW_BUFFER;
+            return running && matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < raftGroup.raftConfiguration().flowBuffer();
         }
     }
-
-    private static final long FLOW_BUFFER = 100;
-    private static final long MAX_ENTRIES_PER_BATCH = 10;
 
     private static final Logger logger = LoggerFactory.getLogger(ReplicatorPeer.class);
 
     private final RaftPeer raftPeer;
     private final Consumer<Long> matchIndexCallback;
-    private volatile EntryIterator entryIterator;
     private final AtomicLong nextIndex = new AtomicLong(0);
     private final AtomicLong matchIndex = new AtomicLong(0);
-    private volatile long lastMessageSent = 0L;
-    private volatile long lastMessageReceived;
+    private final AtomicLong lastMessageSent = new AtomicLong(0);
+    private final AtomicLong lastMessageReceived = new AtomicLong();
     private volatile boolean running;
     private final Clock clock;
     private final RaftGroup raftGroup;
@@ -320,7 +313,7 @@ class ReplicatorPeer {
         this.raftPeer = raftPeer;
         this.matchIndexCallback = matchIndexCallback;
         this.clock = clock;
-        lastMessageReceived = clock.millis();
+        lastMessageReceived.set(clock.millis());
         this.raftGroup = raftGroup;
         this.transitToFollower = transitToFollower;
         this.snapshotManager = snapshotManager;
@@ -351,11 +344,11 @@ class ReplicatorPeer {
     }
 
     public long lastMessageReceived() {
-        return lastMessageReceived;
+        return lastMessageReceived.get();
     }
 
     public long lastMessageSent() {
-        return lastMessageSent;
+        return lastMessageSent.get();
     }
     public long nextIndex() {
         return nextIndex.get();

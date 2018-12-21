@@ -18,10 +18,11 @@ import org.junit.*;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.*;
 
 /**
@@ -36,7 +37,7 @@ public class FollowerStateTest {
     private static final long LAST_APPLIED_EVENT_SEQUENCE = 2L;
 
     private int electionTimeout = 160;
-    private Consumer<MembershipState> transitionHandler;
+    private BiConsumer<MembershipState, MembershipState> transitionHandler;
     private FakeScheduler fakeScheduler;
     private FollowerState followerState;
     private LogEntryStore logEntryStore;
@@ -47,7 +48,7 @@ public class FollowerStateTest {
 
     @Before
     public void setup() {
-        transitionHandler = mock(Consumer.class);
+        transitionHandler = mock(BiConsumer.class);
 
         logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
@@ -92,7 +93,7 @@ public class FollowerStateTest {
     @Test
     public void testTransitionToCandidateState() {
         fakeScheduler.timeElapses(electionTimeout + 1);
-        verify(transitionHandler).accept(any(CandidateState.class));
+        verify(transitionHandler).accept(any(), any(CandidateState.class));
     }
 
     @Test
@@ -307,7 +308,7 @@ public class FollowerStateTest {
         verify(snapshotManager).applySnapshotData(request.getDataList());
 
         fakeScheduler.timeElapses(electionTimeout + 1);
-        verify(transitionHandler).accept(any(CandidateState.class));
+        verify(transitionHandler).accept(any(), any(CandidateState.class));
     }
 
     private AppendEntriesRequest firstAppend() {
