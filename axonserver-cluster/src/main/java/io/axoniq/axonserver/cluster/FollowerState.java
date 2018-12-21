@@ -35,7 +35,6 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicReference<ScheduledRegistration> scheduledElection = new AtomicReference<>();
     private volatile boolean heardFromLeader;
     private volatile String leader;
-    private volatile boolean stopped;
     private final AtomicLong nextTimeout = new AtomicLong();
     private final AtomicLong lastMessage = new AtomicLong();
     private final Clock clock;
@@ -61,7 +60,6 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void stop() {
-        stopped = true;
         cancelElectionTimeoutChecker();
     }
 
@@ -207,10 +205,6 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void checkMessageReceived() {
-        if( stopped) {
-            logger.warn("{}: Checking for timeout while already stopped", groupId());
-            return;
-        }
         long now = clock.millis();
         if( nextTimeout.get() < now) {
             logger.warn("{}: Timeout in follower state: {}", groupId(), (now-nextTimeout.get()));
