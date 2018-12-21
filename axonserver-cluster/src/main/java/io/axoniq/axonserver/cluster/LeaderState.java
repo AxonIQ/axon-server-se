@@ -347,7 +347,7 @@ public class LeaderState extends AbstractMembershipState {
             Set<String> toRemove = new HashSet<>(replicatorPeerMap.keySet());
             for (Node node : nodes) {
                 toRemove.remove(node.getNodeId());
-                if (!replicatorPeerMap.containsKey(node.getNodeId())) {
+                if (!replicatorPeerMap.containsKey(node.getNodeId()) && !node.getNodeId().equals(me())) {
                     addNode(node);
                 }
             }
