@@ -62,7 +62,7 @@ public class CandidateStateTest {
         candidateState = CandidateState.builder()
                                        .raftGroup(raftGroup)
                                        .transitionHandler(transitionHandler)
-                                       .scheduler(fakeScheduler)
+                                       .schedulerFactory(() -> fakeScheduler)
                                        .randomValueSupplier((min, max) -> electionTimeout)
                                        .stateFactory(new FakeStateFactory()).build();
     }

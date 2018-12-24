@@ -19,7 +19,6 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -51,12 +50,11 @@ public class LeaderState extends AbstractMembershipState {
     private final ClusterConfiguration clusterConfiguration;
 
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
-    private final AtomicReference<ScheduledRegistration> stepDown = new AtomicReference<>();
+    private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
     private final ExecutorService executor;
     private volatile Replicators replicators;
-    private final Clock clock;
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
         public LeaderState build(){
@@ -71,9 +69,8 @@ public class LeaderState extends AbstractMembershipState {
     private LeaderState(Builder builder) {
         super(builder);
         executor = Executors.newCachedThreadPool(new AxonThreadFactory("Replicator-" + groupId()));
-        clock = scheduler().clock();
         clusterConfiguration = new LeaderConfiguration(raftGroup(),
-                                                       clock::millis,
+                                                       () -> scheduler.get().clock().millis(),
                                                        this::replicator,
                                                        this::appendConfigurationChange);
     }
@@ -111,6 +108,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        scheduler.set(schedulerFactory().get());
         scheduleStepDownTimeoutChecker();
         replicators = new Replicators();
         executor.submit(() -> replicators.start());
@@ -120,10 +118,12 @@ public class LeaderState extends AbstractMembershipState {
     public void stop() {
         replicators.stop();
         replicators = null;
-        cancelStepDownTimeoutChecker();
         pendingEntries.forEach((index, completableFuture) -> completableFuture
                 .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
         pendingEntries.clear();
+        if (scheduler.get() != null) {
+            scheduler.getAndSet(null).shutdownNow();
+        }
     }
 
     @Override
@@ -163,12 +163,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private void scheduleStepDownTimeoutChecker() {
-        ScheduledRegistration newTask = scheduler().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
-        stepDown.set(newTask);
-    }
-
-    private void cancelStepDownTimeoutChecker() {
-        stepDown.get().cancel();
+        scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
     }
 
     public void forceStepDown() {
@@ -180,7 +175,7 @@ public class LeaderState extends AbstractMembershipState {
         if (otherPeers().isEmpty()) {
             return;
         }
-        long now = clock.millis();
+        long now = scheduler.get().clock().millis();
         long lastReceived = replicators.lastMessageTimeFromMajority();
         if( now - lastReceived > maxElectionTimeout()) {
             logger.info("{}: StepDown as no messages received for {}ms", groupId(), (now-lastReceived));
@@ -189,10 +184,7 @@ public class LeaderState extends AbstractMembershipState {
             logger.trace("{}: Reschedule checkStepdown after {}ms",
                          groupId(),
                          maxElectionTimeout() - (now - lastReceived));
-            ScheduledRegistration newTask = scheduler().schedule(this::checkStepdown,
-                                                                 maxElectionTimeout() - (now - lastReceived),
-                                                                 MILLISECONDS);
-            stepDown.set(newTask);
+            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout() - (now - lastReceived), MILLISECONDS);
         }
     }
 
@@ -256,7 +248,7 @@ public class LeaderState extends AbstractMembershipState {
 
         void stop() {
             logger.info("{}: Stop replication thread", groupId());
-            long now = clock.millis();
+            long now = scheduler.get().clock().millis();
             replicatorPeerMap.forEach((peer, replicator) -> {
                 replicator.stop();
                 logger.info("{}: MatchIndex = {}, NextIndex = {}, lastMessageReceived = {}ms ago, lastMessageSent = {}ms ago",
@@ -384,7 +376,7 @@ public class LeaderState extends AbstractMembershipState {
         private Registration registerPeer(RaftPeer raftPeer, Consumer<Long> matchIndexCallback) {
             ReplicatorPeer replicatorPeer = new ReplicatorPeer(raftPeer,
                                                                matchIndexCallback,
-                                                               clock,
+                                                               scheduler.get().clock(),
                                                                raftGroup(),
                                                                () -> changeStateTo(stateFactory().followerState()),
                                                                snapshotManager());

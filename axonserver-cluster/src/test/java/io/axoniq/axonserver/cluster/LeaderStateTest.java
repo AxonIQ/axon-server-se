@@ -136,7 +136,7 @@ public class LeaderStateTest {
         testSubject = LeaderState.builder()
                 .transitionHandler(transitionHandler)
                 .raftGroup(raftGroup)
-                .scheduler(fakeScheduler)
+                .schedulerFactory(() -> fakeScheduler)
                 .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
                 .build();
     }

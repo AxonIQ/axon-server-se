@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * @author Sara Pellegrini
@@ -12,13 +13,13 @@ public class DefaultStateFactory implements MembershipStateFactory {
     private final RaftGroup raftGroup;
 
     private final BiConsumer<MembershipState, MembershipState> transitionHandler;
-    private final Scheduler scheduler;
+    private final Supplier<Scheduler> schedulerFactory;
 
     public DefaultStateFactory(RaftGroup raftGroup,
                                BiConsumer<MembershipState, MembershipState> transitionHandler) {
         this.raftGroup = raftGroup;
         this.transitionHandler = transitionHandler;
-        this.scheduler = new DefaultScheduler();
+        this.schedulerFactory = DefaultScheduler::new;
     }
 
     @Override
@@ -30,7 +31,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     public LeaderState leaderState() {
         return LeaderState.builder()
                           .raftGroup(raftGroup)
-                          .scheduler(scheduler)
+                          .schedulerFactory(schedulerFactory)
                           .transitionHandler(transitionHandler)
                           .stateFactory(this)
                           .build();
@@ -40,7 +41,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     public FollowerState followerState() {
         return FollowerState.builder()
                             .raftGroup(raftGroup)
-                            .scheduler(scheduler)
+                            .schedulerFactory(schedulerFactory)
                             .transitionHandler(transitionHandler)
                             .stateFactory(this)
                             .build();
@@ -50,7 +51,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     public CandidateState candidateState() {
         return CandidateState.builder()
                              .raftGroup(raftGroup)
-                             .scheduler(scheduler)
+                             .schedulerFactory(schedulerFactory)
                              .transitionHandler(transitionHandler)
                              .stateFactory(this)
                              .build();

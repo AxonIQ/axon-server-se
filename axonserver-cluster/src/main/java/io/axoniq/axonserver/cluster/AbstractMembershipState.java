@@ -17,6 +17,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -29,7 +30,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final RaftGroup raftGroup;
     private final BiConsumer<MembershipState, MembershipState> transitionHandler;
     private final MembershipStateFactory stateFactory;
-    private final Scheduler scheduler;
+    private final Supplier<Scheduler> schedulerFactory;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
     private final SnapshotManager snapshotManager;
     private final CurrentConfiguration currentConfiguration;
@@ -40,7 +41,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
         this.stateFactory = builder.stateFactory;
-        this.scheduler = builder.scheduler;
+        this.schedulerFactory = builder.schedulerFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
         this.snapshotManager = builder.snapshotManager;
         this.currentConfiguration = builder.currentConfiguration;
@@ -62,7 +63,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         private RaftGroup raftGroup;
         private BiConsumer<MembershipState, MembershipState> transitionHandler;
         private MembershipStateFactory stateFactory;
-        private Scheduler scheduler;
+        private Supplier<Scheduler> schedulerFactory;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
         private SnapshotManager snapshotManager;
@@ -84,8 +85,8 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B scheduler(Scheduler scheduler) {
-            this.scheduler = scheduler;
+        public B schedulerFactory(Supplier<Scheduler> schedulerFactory) {
+            this.schedulerFactory = schedulerFactory;
             return self();
         }
 
@@ -110,8 +111,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
 
         protected void validate() {
-            if (scheduler == null) {
-                scheduler = new DefaultScheduler();
+            if (schedulerFactory == null) {
+                schedulerFactory = DefaultScheduler::new;
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
@@ -176,8 +177,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup;
     }
 
-    public Scheduler scheduler() {
-        return scheduler;
+    public Supplier<Scheduler> schedulerFactory() {
+        return schedulerFactory;
     }
 
     public MembershipStateFactory stateFactory() {

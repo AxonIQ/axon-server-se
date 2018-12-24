@@ -29,9 +29,9 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class CandidateState extends AbstractMembershipState {
 
     private static final Logger logger = LoggerFactory.getLogger(CandidateState.class);
-    private final AtomicReference<Registration> nextElection = new AtomicReference<>();
     private final AtomicReference<Election> currentElection = new AtomicReference<>();
     private final ClusterConfiguration clusterConfiguration = new CandidateConfiguration();
+    private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private CandidateState(Builder builder) {
         super(builder);
@@ -41,17 +41,17 @@ public class CandidateState extends AbstractMembershipState {
         return new Builder();
     }
 
-    private volatile boolean stopped;
-
     @Override
     public void start() {
+        scheduler.set(schedulerFactory().get());
         startElection();
     }
 
     @Override
     public void stop() {
-        stopped = false;
-        Optional.ofNullable(nextElection.get()).ifPresent(Registration::cancel);
+        if (scheduler.get() != null) {
+            scheduler.getAndSet(null).shutdownNow();
+        }
     }
 
     @Override
@@ -93,12 +93,10 @@ public class CandidateState extends AbstractMembershipState {
 
     private void resetElectionTimeout() {
         int timeout = random(minElectionTimeout(), maxElectionTimeout() + 1);
-        Registration newTask = scheduler().schedule(this::startElection, timeout, MILLISECONDS);
-        nextElection.set(newTask);
+        scheduler.get().schedule(this::startElection, timeout, MILLISECONDS);
     }
 
     private void startElection() {
-        if( stopped) return;
         try {
             synchronized (this) {
                 updateCurrentTerm(currentTerm() + 1);
@@ -137,8 +135,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private synchronized void onVoteResponse(String voter, RequestVoteResponse response) {
-        logger.debug("{} - curentTerm {} VoteResponse {}, stopped: {}", voter, currentTerm(), response, stopped);
-        if( stopped) return;
+        logger.debug("{} - curentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
             changeStateTo(stateFactory().followerState());
             return;
