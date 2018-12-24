@@ -126,7 +126,7 @@ public class ApplicationController {
         synchronized (applicationRepository) {
             Application application = applicationRepository.findFirstByName(name);
             if (application == null) {
-                return;
+                throw new ApplicationNotFoundException(String.format("Application %s doesn't exists.",name));
             }
             applicationRepository.delete(application);
             deleteListeners.forEach((key, deleteListener) -> deleteListener.accept(application));
