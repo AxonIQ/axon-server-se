@@ -326,9 +326,11 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     public void clearOlderThan(long time, TimeUnit timeUnit) {
         File storageDir  = new File(storageProperties.getStorage(getType()));
         String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
+        String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
         long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
-        Arrays.stream(logFiles)
+        Stream.of(logFiles, indexFiles).flatMap(Stream::of)
               .filter(name -> !readBuffers.containsKey(getSegment(name))) // filter out opened files
+              .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
               .map(File::new)
               .filter(f -> f.lastModified() <= filter) // filter out files older than <time>
               .forEach(FileUtils::delete);
