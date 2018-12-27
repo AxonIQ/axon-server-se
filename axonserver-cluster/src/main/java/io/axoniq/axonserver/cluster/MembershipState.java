@@ -36,6 +36,10 @@ public interface MembershipState extends ClusterConfiguration{
         return false;
     }
 
+    default boolean isIdle() {
+        return false;
+    }
+
     default CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
         CompletableFuture<Void> cf = new CompletableFuture<>();
         cf.completeExceptionally(new UnsupportedOperationException());

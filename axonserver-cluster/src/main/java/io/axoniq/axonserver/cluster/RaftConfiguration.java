@@ -32,7 +32,7 @@ public interface RaftConfiguration {
     }
 
     default int heartbeatTimeout() {
-        return 50;
+        return 15;
     }
 
     default void clear() {}

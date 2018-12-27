@@ -94,10 +94,16 @@ public class RaftNode {
     }
 
     public void start() {
+        logger.info("{}: Starting the node...", groupId());
+        if (!state.get().isIdle()) {
+            logger.warn("{}: Node is already started!", groupId());
+            return;
+        }
         updateState(state.get(), stateFactory.followerState());
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers));
+        logger.info("{}: Node started.", groupId());
     }
 
     public void registerStateChangeListener(Consumer<StateChanged> stateChangedConsumer) {
@@ -105,23 +111,28 @@ public class RaftNode {
     }
 
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        logger.trace("{}: Received AppendEntries request in state {} {}", groupId(), state.get(), request);
         return state.get().appendEntries(request);
     }
 
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
+        logger.trace("{}: Received RequestVote request in state {} {}", groupId(), state.get(), request);
         return state.get().requestVote(request);
     }
 
     public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+        logger.trace("{}: Received InstallSnapshot request in state {} {}", groupId(), state.get(), request);
         return state.get().installSnapshot(request);
     }
 
     public void stop() {
+        logger.info("{}: Stopping the node...", groupId());
         raftGroup.logEntryProcessor().stop();
         applyTask.cancel(true);
         applyTask = null;
         updateState(state.get(), stateFactory.idleState(nodeId));
         registrations.forEach(Registration::cancel);
+        logger.info("{}: Node stopped.", groupId());
     }
 
     public String nodeId() {

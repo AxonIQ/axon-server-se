@@ -79,17 +79,17 @@ public class FollowerState extends AbstractMembershipState {
             rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
             LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
-            if( logger.isTraceEnabled() && request.getPrevLogIndex() == 0) {
-                logger.trace("{} Received heartbeat, commitindex: {}", me(), request.getCommitIndex());
+            if (logger.isTraceEnabled() && request.getPrevLogIndex() == 0) {
+                logger.trace("{}: Received heartbeat, commitindex: {}", me(), request.getCommitIndex());
             }
 
             //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
             if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
-                logger.warn("{}: previous term/index missing {}/{} last log {}",
-                            groupId(),
-                            request.getPrevLogTerm(),
-                            request.getPrevLogIndex(),
-                            logEntryStore.lastLogIndex());
+                logger.trace("{}: previous term/index missing {}/{} last log {}",
+                             groupId(),
+                             request.getPrevLogTerm(),
+                             request.getPrevLogIndex(),
+                             logEntryStore.lastLogIndex());
                 return appendEntriesFailure();
             }
 
@@ -97,7 +97,7 @@ public class FollowerState extends AbstractMembershipState {
             // and all that follow it
             //4. Append any new entries not already in the log
             try {
-                if( logger.isTraceEnabled() && request.getEntriesCount() > 0) {
+                if (logger.isTraceEnabled() && request.getEntriesCount() > 0) {
                     logger.trace("{}: received {}", groupId(), request.getEntries(0).getIndex());
                 }
                 logEntryStore.appendEntry(request.getEntriesList());
@@ -113,15 +113,15 @@ public class FollowerState extends AbstractMembershipState {
                     logEntryProcessor.markCommitted(request.getCommitIndex());
                 } else {
                     logEntryProcessor.markCommitted(min(request.getCommitIndex(),
-                                                    request.getEntries(request.getEntriesCount() - 1).getIndex()));
+                                                        request.getEntries(request.getEntriesCount() - 1).getIndex()));
                 }
             }
 
             long last = lastLogIndex();
-            if( request.getEntriesCount() == 0 && request.getPrevLogIndex()  > 0 && request.getPrevLogIndex() < last) {
+            if (request.getEntriesCount() == 0 && request.getPrevLogIndex() > 0 && request.getPrevLogIndex() < last) {
                 // this follower has more data than leader, sets matchIndex on leader to last common
                 last = request.getPrevLogIndex();
-                logger.trace("Updated last to {}", last);
+                logger.trace("{}: Updated last to {}", groupId(), last);
             }
             return AppendEntriesResponse.newBuilder()
                                         .setGroupId(groupId())
@@ -129,8 +129,8 @@ public class FollowerState extends AbstractMembershipState {
                                         .setSuccess(buildAppendEntrySuccess(last))
                                         .setTerm(currentTerm())
                                         .build();
-        } catch( Exception ex) {
-            logger.error("{}: failed to append events", me(), ex);
+        } catch (Exception ex) {
+            logger.error("{}: failed to append events", groupId(), ex);
             return appendEntriesFailure();
         }
     }
@@ -140,23 +140,23 @@ public class FollowerState extends AbstractMembershipState {
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
         if (heardFromLeader && scheduler.get().clock().millis() - lastMessage.get() < minElectionTimeout()) {
-            logger.debug("{}: Request for vote received from {}. {} voted rejected", groupId(), request.getCandidateId(), me());
+            logger.trace("{}: Request for vote received from {}. {} voted rejected",
+                         groupId(),
+                         request.getCandidateId(),
+                         me());
             return requestVoteResponse(false);
         }
 
         updateCurrentTerm(request.getTerm());
         boolean voteGranted = voteGrantedFor(request);
-        if (voteGranted){
+        if (voteGranted) {
             rescheduleElection(request.getTerm());
         }
-
-        logger.debug("{}: Request for vote received from {}. {} voted {}", groupId(), request.getCandidateId(), me(), voteGranted);
         return requestVoteResponse(voteGranted);
     }
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        logger.debug("{}: received {}", me(), request);
         updateCurrentTerm(request.getTerm());
 
         // Reply immediately if term < currentTerm
@@ -193,16 +193,16 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void scheduleElectionTimeoutChecker() {
-    scheduler.get().schedule(
-                    this::checkMessageReceived,
-                    minElectionTimeout()/10,
-                    TimeUnit.MILLISECONDS);
+        scheduler.get().schedule(
+                this::checkMessageReceived,
+                minElectionTimeout() / 10,
+                TimeUnit.MILLISECONDS);
     }
 
     private void checkMessageReceived() {
         long now = scheduler.get().clock().millis();
-        if( nextTimeout.get() < now) {
-            logger.warn("{}: Timeout in follower state: {}", groupId(), (now-nextTimeout.get()));
+        if (nextTimeout.get() < now) {
+            logger.warn("{}: Timeout in follower state: {}", groupId(), (now - nextTimeout.get()));
             changeStateTo(stateFactory().candidateState());
         } else {
             scheduleElectionTimeoutChecker();
@@ -237,6 +237,10 @@ public class FollowerState extends AbstractMembershipState {
     private boolean voteGrantedFor(RequestVoteRequest request) {
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
+            logger.trace("{}: Vote not granted. Current term {} is greater than requested {}.",
+                         groupId(),
+                         currentTerm(),
+                         request.getTerm());
             return false;
         }
 
@@ -244,18 +248,28 @@ public class FollowerState extends AbstractMembershipState {
         // vote
         String votedFor = votedFor();
         if (votedFor != null && !votedFor.equals(request.getCandidateId())) {
+            logger.trace("{}: Vote not granted. Already voted for: {}.", groupId(), votedFor);
             return false;
         }
 
         TermIndex lastLog = lastLog();
         if (request.getLastLogTerm() < lastLog.getTerm()) {
+            logger.trace("{}: Vote not granted. Requested last log term {}, my last log term {}.",
+                         groupId(),
+                         request.getLastLogTerm(),
+                         lastLog.getTerm());
             return false;
         }
 
         if (request.getLastLogIndex() < lastLog.getIndex()) {
+            logger.trace("{}: Vote not granted. Requested last log index {}, my last log index {}.",
+                         groupId(),
+                         request.getLastLogIndex(),
+                         lastLog.getIndex());
             return false;
         }
 
+        logger.trace("{}: Vote granted for {}.", groupId(), request.getCandidateId());
         markVotedFor(request.getCandidateId());
         return true;
     }

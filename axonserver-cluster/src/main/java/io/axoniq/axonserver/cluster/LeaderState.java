@@ -127,28 +127,49 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
-    public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+    public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() > currentTerm()) {
-            logger.info("{}: received higher term from {}", groupId(), request.getLeaderId());
+            logger.trace("{}: Received term {} which is greater than mine {}. Moving to Follower...",
+                         groupId(),
+                         request.getTerm(),
+                         currentTerm());
             return handleAsFollower(follower -> follower.appendEntries(request));
         }
+        logger.trace("{}: Received term {} is smaller or equal than mine {}. Rejecting the request.",
+                     groupId(),
+                     request.getTerm(),
+                     currentTerm());
         return appendEntriesFailure();
     }
 
     @Override
-    public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
+    public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
-            logger.info("{}: received higher term from {}", groupId(), request.getCandidateId());
+            logger.trace("{}: Request Vote received higher term from {}", groupId(), request.getCandidateId());
             return handleAsFollower(follower -> follower.requestVote(request));
         }
+        logger.trace("{}: Request for vote received from {} in term {}. {} voted rejected",
+                     groupId(),
+                     request.getCandidateId(),
+                     request.getTerm(),
+                     me());
         return requestVoteResponse(false);
     }
 
     @Override
-    public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+    public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
+            logger.trace(
+                    "{}: Received install snapshot with term {} which is greater than mine {}. Moving to Follower...",
+                    groupId(),
+                    request.getTerm(),
+                    currentTerm());
             return handleAsFollower(follower -> follower.installSnapshot(request));
         }
+        logger.trace("{}: Received term {} is smaller or equal than mine {}. Rejecting the request.",
+                     groupId(),
+                     request.getTerm(),
+                     currentTerm());
         return installSnapshotFailure();
     }
 

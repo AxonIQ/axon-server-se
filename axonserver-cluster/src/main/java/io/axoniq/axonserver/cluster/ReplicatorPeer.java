@@ -142,6 +142,7 @@ class ReplicatorPeer {
 
         public void handleResponse(InstallSnapshotResponse installSnapshotResponse) {
             lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
+            logger.trace("{}: Install snapshot - received response: {}", groupId(), installSnapshotResponse);
             if (installSnapshotResponse.hasSuccess()) {
                 lastReceivedOffset = installSnapshotResponse.getSuccess().getLastReceivedOffset();
                 if (done) {
@@ -269,6 +270,7 @@ class ReplicatorPeer {
         private void send(AppendEntriesRequest request) {
             logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
             raftPeer.appendEntries(request);
+            logger.trace("{}: Request sent to {}: {}", groupId(), raftPeer.nodeId(), request);
             lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 

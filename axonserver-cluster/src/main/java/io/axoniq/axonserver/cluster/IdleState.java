@@ -28,6 +28,11 @@ public class IdleState implements MembershipState {
     }
 
     @Override
+    public boolean isIdle() {
+        return true;
+    }
+
+    @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         throw new IllegalStateException(nodeId + " : in idle state");
     }

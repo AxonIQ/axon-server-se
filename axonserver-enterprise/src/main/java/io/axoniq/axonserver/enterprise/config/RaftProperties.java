@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 public class RaftProperties extends StorageProperties {
     private int minElectionTimeout = 1000;
     private int maxElectionTimeout = 2500;
-    private int heartbeatTimeout = 250;
+    private int heartbeatTimeout = 100;
     private int maxEntriesPerBatch = 100;
     private int flowBuffer = 1000;
 

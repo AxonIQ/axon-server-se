@@ -57,8 +57,16 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
+            logger.trace("{}: Received term {} which is greater or equals than mine {}. Moving to Follower...",
+                         groupId(),
+                         request.getTerm(),
+                         currentTerm());
             return handleAsFollower(follower -> follower.appendEntries(request));
         }
+        logger.trace("{}: Received term {} is smaller than mine {}. Rejecting the request.",
+                     groupId(),
+                     request.getTerm(),
+                     currentTerm());
         return appendEntriesFailure();
     }
 
@@ -66,18 +74,36 @@ public class CandidateState extends AbstractMembershipState {
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request));
-            logger.debug("Request for vote received from {} in term {}. {} voted {}", request.getCandidateId(), request.getTerm(), me(), vote != null && vote.getVoteGranted());
+            logger.trace("{}: Request for vote received from {} in term {}. {} voted {}",
+                         groupId(),
+                         request.getCandidateId(),
+                         request.getTerm(),
+                         me(),
+                         vote != null && vote.getVoteGranted());
             return vote;
         }
-        logger.debug("Request for vote received from {} in term {}. {} voted rejected", request.getCandidateId(), request.getTerm(), me());
+        logger.trace("{}: Request for vote received from {} in term {}. {} voted rejected",
+                     groupId(),
+                     request.getCandidateId(),
+                     request.getTerm(),
+                     me());
         return requestVoteResponse(false);
     }
 
     @Override
     public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
+            logger.trace(
+                    "{}: Received install snapshot with term {} which is greater than mine {}. Moving to Follower...",
+                    groupId(),
+                    request.getTerm(),
+                    currentTerm());
             return handleAsFollower(follower -> follower.installSnapshot(request));
         }
+        logger.trace("{}: Received term {} is smaller or equal than mine {}. Rejecting the request.",
+                     groupId(),
+                     request.getTerm(),
+                     currentTerm());
         return installSnapshotFailure();
     }
 
@@ -102,7 +128,7 @@ public class CandidateState extends AbstractMembershipState {
                 updateCurrentTerm(currentTerm() + 1);
                 markVotedFor(me());
             }
-            logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
+            logger.trace("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
             resetElectionTimeout();
             currentElection.set(new MajorityElection(this::clusterSize));
             currentElection.get().registerVoteReceived(me(), true);
@@ -135,7 +161,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private synchronized void onVoteResponse(String voter, RequestVoteResponse response) {
-        logger.debug("{} - curentTerm {} VoteResponse {}", voter, currentTerm(), response);
+        logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
             changeStateTo(stateFactory().followerState());
             return;
@@ -156,6 +182,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
+
         public CandidateState build() {
             return new CandidateState(this);
         }
