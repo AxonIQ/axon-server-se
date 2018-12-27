@@ -46,7 +46,7 @@ public class DataSynchronizationReplicaTest {
     @Mock
     private LocalEventStore localEventStore;
     @Mock
-    private SafepointRepository safepointRespository;
+    private SyncStatusController safepointRespository;
     private FakeClock clock = new FakeClock();
 
 
@@ -61,7 +61,6 @@ public class DataSynchronizationReplicaTest {
         ClusterNode myNode = new ClusterNode("me", "host", "host", 0, 0, 0);
         myNode.addContext(new Context(Topology.DEFAULT_CONTEXT), true, true);
         when(clusterController.getMe()).thenReturn(myNode);
-        when(safepointRespository.findById(any())).thenReturn(Optional.empty());
         doAnswer(invocationOnMock -> {
             TransactionWithToken t = (TransactionWithToken)invocationOnMock.getArguments()[1];
 

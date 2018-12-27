@@ -57,7 +57,8 @@ public class DataSynchronizationMasterTest {
 
             }
         };
-        testSubject = new DataSynchronizationMaster(contextController, eventPublisher);
+        SyncStatusController syncStatusController = mock(SyncStatusController.class);
+        testSubject = new DataSynchronizationMaster(contextController, syncStatusController, eventPublisher);
         when(applicationContext.getBean(eq(LocalEventStore.class))).thenReturn(localEventStore);
         when( localEventStore.streamEventTransactions(any(), anyLong(), any())).thenReturn(new CompletableFuture<>());
         when( localEventStore.streamSnapshotTransactions(any(), anyLong(), any())).thenReturn(new CompletableFuture<>());

@@ -9,13 +9,16 @@ import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -54,6 +57,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final StubFactory stubFactory;
     private final LifecycleController lifecycleController;
     private final LocalEventStore localEventStore;
+    private final SyncStatusController syncStatusController;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final Map<String,String> masterPerContext = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("storage-manager-selector"));
@@ -70,6 +74,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     public EventStoreManager(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              StubFactory stubFactory, LifecycleController lifecycleController,
                              LocalEventStore localEventStore,
+                             SyncStatusController syncStatusController,
                              ApplicationEventPublisher applicationEventPublisher,
                              Iterable<Context> dynamicContexts, boolean needsValidation, String nodeName,
                              boolean clustered,
@@ -79,6 +84,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         this.stubFactory = stubFactory;
         this.lifecycleController = lifecycleController;
         this.localEventStore = localEventStore;
+        this.syncStatusController = syncStatusController;
         this.applicationEventPublisher = applicationEventPublisher;
         this.dynamicContexts = dynamicContexts;
         this.needsValidation = needsValidation;
@@ -95,8 +101,9 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              ClusterController clusterController,
                              LifecycleController lifecycleController,
                              LocalEventStore localEventStore,
+                             SyncStatusController syncStatusController,
                              ApplicationEventPublisher applicationEventPublisher) {
-        this(messagingPlatformConfiguration, stubFactory, lifecycleController, localEventStore, applicationEventPublisher,
+        this(messagingPlatformConfiguration, stubFactory, lifecycleController, localEventStore, syncStatusController, applicationEventPublisher,
              () -> contextController.getContexts().iterator(), lifecycleController.isCleanShutdown(), clusterController.getName(), clusterController.isClustered(),
              messagingPlatformConfiguration.getCluster().getConnectionWaitTime(), clusterController::getNode);
     }
@@ -242,6 +249,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     }
     private void startLeaderElection(String contextName) {
+        if (isNotEligible(contextName)) return; //If I'm not eligible I do not request to be the master
+
         logger.debug("Start leader election for {}: master: {}", contextName, masterPerContext.get(contextName));
         if( ! running || masterPerContext.containsKey(contextName)) return;
         Context context = context(contextName);
@@ -254,6 +263,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                          .setMasterSequenceNumber(localEventStore.getLastToken(context.getName()))
                                                          .setHashKey(hash(contextName, nodeName))
                                                          .setNrOfMasterContexts(getNrOrMasterContexts(nodeName))
+                                                         .setEventSafePoint(syncStatusController.getSafePoint(EventType.EVENT, contextName))
+                                                         .setPrevMasterGeneration(syncStatusController.generation(EventType.EVENT, contextName))
                                                          .build();
 
         Set<ClusterNode> storageNodes = context.getStorageNodes();
@@ -279,6 +290,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                 if (approved.get() && hasQuorumToChange(storageNodes.size(), responseCount.get())) {
                     logger.info("Become master");
                     masterPerContext.put(context.getName(), nodeName);
+                    syncStatusController.increaseGenerations(contextName);
                     applicationEventPublisher.publishEvent(new ClusterEvents.BecomeMaster(context.getName(),
                                                                                           nodeName,
                                                                                           false));
@@ -296,6 +308,16 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                 task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName), 1, TimeUnit.SECONDS);
             }
         }
+    }
+
+    private boolean isNotEligible(String context) {
+        if( logger.isDebugEnabled()) {
+            logger.debug("{} Checking eligible safepoint = {}. lastToken = {}",
+                         context,
+                         syncStatusController.getSafePoint(EventType.EVENT, context),
+                         localEventStore.getLastToken(context));
+        }
+        return syncStatusController.getSafePoint(EventType.EVENT, context) > localEventStore.getLastToken(context) + 1;
     }
 
     public int getNrOrMasterContexts(String name) {

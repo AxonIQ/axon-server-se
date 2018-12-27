@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -54,6 +56,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long defaultLimit = 200;
     @Value("${axoniq.axonserver.query.timeout:300000}")
     private long timeout = 300000;
+    @Value("${axoniq.axonserver.new-permits-timeout:120000}")
+    private long newPermitsTimeout;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
         this.eventStoreFactory = eventStoreFactory;
@@ -244,6 +248,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return 0;
     }
 
+    @Scheduled(fixedRateString = "${axoniq.axonserver.event-processor-heartbeat-check:50}")
+    public void checkHeartbeat() {
+        workersMap.forEach((k,v) -> v.sendHeartbeats());
+    }
+
+    @Scheduled(fixedRateString = "${axoniq.axonserver.event-processor-permits-check:2000}")
+    public void checkPermits() {
+        workersMap.forEach((k,v) -> v.validateActiveConnections());
+    }
+
     public long getLastToken(String context) {
         return workersMap.get(context).eventWriteStorage.getLastToken();
     }
@@ -323,6 +337,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
+    public boolean containsEvents(String context, TransactionWithToken syncRequest) {
+        return workersMap.get(context).eventDatafileManagerChain.contains(syncRequest);
+    }
+
+    public boolean containsSnapshots(String context, TransactionWithToken syncRequest) {
+        return workersMap.get(context).snapshotDatafileManagerChain.contains(syncRequest);
+    }
+
+    public long getLastCommitted(String context, EventType eventType) {
+        if( EventType.EVENT.equals(eventType)) return getLastCommittedToken(context);
+
+        return getLastCommittedSnapshot(context);
+    }
 
     private class Workers {
         private final EventWriteStorage eventWriteStorage;
@@ -380,6 +407,20 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void cancelTrackingEventProcessors() {
             eventStreamControllerSet.forEach(EventStreamController::cancel);
             eventStreamControllerSet.clear();
+        }
+
+        public void sendHeartbeats() {
+            eventStreamControllerSet.forEach(c -> c.sendHeartBeat());
+        }
+
+        public void validateActiveConnections() {
+            long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
+            eventStreamControllerSet.forEach(controller -> {
+                    if( controller.missingNewPermits(minLastPermits)) {
+                        logger.warn("{}: Closing connection as waiting for new permits", context) ;
+                        controller.cancel();
+                    }
+            });
         }
     }
 }

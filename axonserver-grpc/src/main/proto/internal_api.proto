@@ -318,6 +318,8 @@ message TransactionWithToken {
     int64 token = 1;
     int32 version = 2;
     repeated io.axoniq.axonserver.grpc.event.Event events = 3;
+    int64 master_generation = 4;
+    int64 safe_point = 5;
 }
 
 message NodeContextInfo {
@@ -327,6 +329,8 @@ message NodeContextInfo {
     int64 active_since = 4;
     int32 nr_of_master_contexts = 5;
     int32 hash_key = 6;
+    int64 event_safe_point = 7;
+    int64 prev_master_generation = 8;
 }
 
 message Application {

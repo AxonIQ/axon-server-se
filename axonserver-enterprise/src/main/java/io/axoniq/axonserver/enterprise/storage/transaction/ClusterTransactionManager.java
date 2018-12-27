@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage.transaction;
 
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -22,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClusterTransactionManager implements StorageTransactionManager {
     private static final Logger logger = LoggerFactory.getLogger(ClusterTransactionManager.class);
     private final EventStore datafileManagerChain;
+    private final SyncStatusController syncStatusController;
     private final ReplicationManager replicationManager;
 
     private final Map<Long, TransactionInformation> activeTransactions = new ConcurrentHashMap<>();
@@ -29,8 +31,10 @@ public class ClusterTransactionManager implements StorageTransactionManager {
 
     public ClusterTransactionManager(
             EventStore datafileManagerChain,
+            SyncStatusController syncStatusController,
             ReplicationManager replicationManager) {
         this.datafileManagerChain = datafileManagerChain;
+        this.syncStatusController = syncStatusController;
         this.replicationManager = replicationManager;
         this.type = datafileManagerChain.getType();
         this.replicationManager.registerListener( type, this::replicationCompleted);
@@ -41,7 +45,7 @@ public class ClusterTransactionManager implements StorageTransactionManager {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
         activeTransactions.put( preparedTransaction.getToken(),
-                                new TransactionInformation( completableFuture, replicationManager.getQuorum(type.getContext())));
+                                new TransactionInformation( completableFuture, replicationManager.getQuorum(type.getContext()), eventList.size()));
         try {
             replicationManager.publish(type, eventList, preparedTransaction.getToken());
             datafileManagerChain.store(preparedTransaction).whenComplete((firstToken, cause) -> {
@@ -62,6 +66,7 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     private void replicationCompleted(long token) {
         TransactionInformation transactionInformation = activeTransactions.get(token);
         if (transactionInformation != null && transactionInformation.completed()) {
+            syncStatusController.updateSafePoint(datafileManagerChain.getType().getEventType(), datafileManagerChain.getType().getContext(), token + transactionInformation.eventCount);
             transactionInformation.storageCallback.complete(token);
             activeTransactions.remove(token);
         }
@@ -98,10 +103,12 @@ public class ClusterTransactionManager implements StorageTransactionManager {
 
         private final CompletableFuture<Long> storageCallback;
         private final AtomicInteger quorum;
+        private final int eventCount;
 
-        public TransactionInformation(CompletableFuture<Long> storageCallback, int quorum) {
+        public TransactionInformation(CompletableFuture<Long> storageCallback, int quorum, int eventCount) {
             this.storageCallback = storageCallback;
             this.quorum = new AtomicInteger(quorum);
+            this.eventCount = eventCount;
         }
 
         public boolean completed() {

@@ -3,6 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
@@ -20,6 +21,8 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -255,6 +258,28 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
 
         initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(context)));
+    }
+
+    @Override
+    public boolean contains( TransactionWithToken newTransaction){
+        long token = newTransaction.getToken();
+        long segment = getSegmentFor(token);
+        EventSource eventSource = getEventSource(segment).orElse(null);
+        if( eventSource == null)  {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored");
+        }
+
+        try (TransactionIterator iterator = eventSource.createTransactionIterator(segment, token, false)){
+            return iterator.hasNext() && equals(newTransaction,iterator.next());
+        } catch (Exception e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored", e);
+        }
+    }
+
+    private boolean equals(TransactionWithToken newTransaction, TransactionWithToken storedTransaction) {
+        return newTransaction.getToken() == storedTransaction.getToken()
+                && newTransaction.getVersion() == storedTransaction.getVersion()
+                && newTransaction.getEventsList().equals(storedTransaction.getEventsList());
     }
 
     @Override

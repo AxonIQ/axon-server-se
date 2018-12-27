@@ -107,7 +107,7 @@ public class EventDispatcher implements AxonServerClientService {
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                     NO_EVENT_STORE_CONFIGURED + context));
-            return null;
+            return new NoOpStreamObserver<>();
         }
         StreamObserver<Event> appendEventConnection = eventStore.createAppendEventConnection(context,
                                                                                                          responseObserver);
@@ -183,7 +183,7 @@ public class EventDispatcher implements AxonServerClientService {
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                     NO_EVENT_STORE_CONFIGURED + context));
-            return null;
+            return new NoOpStreamObserver<>();
         }
 
         return new GetEventsRequestStreamObserver(responseObserver, eventStore, context);

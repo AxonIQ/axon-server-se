@@ -1,8 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,12 +26,14 @@ public class LeaderRequestHandler {
     private final BiConsumer<String, ConnectorCommand> commandPublisher;
     private final String nodeName;
     private final Function<String, Long> lastTokenProvider;
+    private final Function<String, Long> lastCommittedTokenProvider;
+    private final Function<String, Long> generationProvider;
     private final Function<String, Integer> nrOfMasterContextsProvider;
     private final Logger logger = LoggerFactory.getLogger(LeaderRequestHandler.class);
 
 
     @Autowired
-    public LeaderRequestHandler(LocalEventStore localEventStore, Optional<EventStoreManager> eventStoreManager, ClusterController clusterConfiguration) {
+    public LeaderRequestHandler(LocalEventStore localEventStore, SyncStatusController syncStatusController, Optional<EventStoreManager> eventStoreManager, ClusterController clusterConfiguration) {
         this.nodeName = clusterConfiguration.getName();
         if( eventStoreManager.isPresent()) {
             this.currentMasterProvider = eventStoreManager.get()::getMaster;
@@ -39,17 +44,23 @@ public class LeaderRequestHandler {
         }
         this.commandPublisher = clusterConfiguration::publishTo;
         this.lastTokenProvider = localEventStore::getLastToken;
+        this.lastCommittedTokenProvider = context -> syncStatusController.getSafePoint(EventType.EVENT, context);
+        this.generationProvider = context -> syncStatusController.generation(EventType.EVENT, context);
     }
 
     public LeaderRequestHandler(String nodeName,
                                 Function<String, String> currentMasterProvider,
                                 BiConsumer<String, ConnectorCommand> commandPublisher,
                                 Function<String, Long> lastTokenProvider,
+                                Function<String, Long> lastCommittedTokenProvider,
+                                Function<String, Long> generationProvider,
                                 Function<String, Integer> nrOfMasterContextsProvider) {
         this.currentMasterProvider = currentMasterProvider;
         this.commandPublisher = commandPublisher;
         this.nodeName = nodeName;
         this.lastTokenProvider = lastTokenProvider;
+        this.lastCommittedTokenProvider = lastCommittedTokenProvider;
+        this.generationProvider = generationProvider;
         this.nrOfMasterContextsProvider = nrOfMasterContextsProvider;
     }
 
@@ -75,6 +86,21 @@ public class LeaderRequestHandler {
     }
 
     private boolean checkOnFields(String me, NodeContextInfo candidate) {
+        //the candidate is not eligible because the sequence is behind the safe point (the node is catching up)
+        if (candidate.getEventSafePoint() > candidate.getMasterSequenceNumber() + 1) {return false;}
+
+        long eventSafePoint = lastCommittedTokenProvider.apply(candidate.getContext());
+        if (candidate.getEventSafePoint() != eventSafePoint){
+            return candidate.getEventSafePoint() > eventSafePoint;
+        }
+
+        //if previous parameter are equals, choose the node that joined the most recent master generation
+        long prevMasterGeneration = generationProvider.apply(candidate.getContext());
+        if (candidate.getPrevMasterGeneration() != prevMasterGeneration){
+            return candidate.getPrevMasterGeneration() > prevMasterGeneration;
+        }
+
+
         long sequenceNumber =  lastTokenProvider.apply(candidate.getContext());
         if (candidate.getMasterSequenceNumber() != sequenceNumber)
             return candidate.getMasterSequenceNumber() > sequenceNumber;

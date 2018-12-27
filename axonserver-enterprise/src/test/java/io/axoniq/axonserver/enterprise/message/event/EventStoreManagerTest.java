@@ -5,6 +5,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.TestMessagingClusterService;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
@@ -43,6 +44,9 @@ public class EventStoreManagerTest {
 
     @Mock
     private LifecycleController lifecycleController;
+
+    @Mock
+    private SyncStatusController syncStatusController;
 
     private List<Context> contexts = new ArrayList<>();
 
@@ -85,7 +89,7 @@ public class EventStoreManagerTest {
             }
         };
         testSubject = new EventStoreManager( messagingPlatformConfiguration,
-                                            stubFactory, lifecycleController, localEventStore, applicationEventPublisher, () -> contexts.iterator(), false, "me", true, 10, n->new ClusterNode());
+                                            stubFactory, lifecycleController, localEventStore, syncStatusController, applicationEventPublisher, () -> contexts.iterator(), false, "me", true, 10, n->new ClusterNode());
     }
 
     private Context createContext(String name, String... nodes) {

@@ -72,4 +72,8 @@ public interface EventStore {
 
     default void rollback(long token) {
     }
+
+    default boolean contains( TransactionWithToken newTransaction) {
+        return true;
+    }
 }

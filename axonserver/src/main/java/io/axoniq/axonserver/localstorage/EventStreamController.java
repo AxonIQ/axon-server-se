@@ -36,6 +36,15 @@ public class EventStreamController {
     private final AtomicBoolean processingBacklog = new AtomicBoolean();
     private final AtomicBoolean running = new AtomicBoolean();
     private volatile Registration eventListener;
+    private volatile int heartbeatInterval;
+    private final AtomicLong lastMessageSent = new AtomicLong(System.currentTimeMillis());
+    private volatile long lastPermitTimestamp;
+
+
+    /**
+     * Monitor used to synchronize event dispatching to client
+     */
+    private final Object sendEventMonitor = new Object();
 
     public EventStreamController(
             Consumer<EventWithToken> eventWithTokenConsumer,
@@ -48,8 +57,14 @@ public class EventStreamController {
 
     public void update(long trackingToken, long numberOfPermits) {
         currentTrackingToken.compareAndSet(Long.MIN_VALUE, trackingToken);
+        lastPermitTimestamp = System.currentTimeMillis();
         if( remainingPermits.getAndAdd(numberOfPermits) <= 0)
             threadPool.execute(this::startTracker);
+    }
+
+    public boolean missingNewPermits(long minLastPermits) {
+        if (remainingPermits.get() > 0) return false;
+        return (lastPermitTimestamp < minLastPermits);
     }
 
     // always run async so that calling thread is not blocked by this method
@@ -117,9 +132,31 @@ public class EventStreamController {
             return false;
         }
 
-        eventWithTokenConsumer.accept(eventWithToken);
-        currentTrackingToken.incrementAndGet();
-        return true;
+        if (claimsLeft < 5) lastPermitTimestamp = System.currentTimeMillis();
+
+        synchronized (sendEventMonitor) {
+            boolean newToken = currentTrackingToken.compareAndSet(eventWithToken.getToken(), eventWithToken.getToken() + 1);
+            if (newToken) {
+                eventWithTokenConsumer.accept(eventWithToken);
+                lastMessageSent.updateAndGet(current -> Math.max(current, System.currentTimeMillis()));
+            } else {
+                // return permit, concurrent sending attempt
+                remainingPermits.incrementAndGet();
+            }
+            return newToken;
+        }
+    }
+
+    public void sendHeartBeat() {
+        try {
+            long now = System.currentTimeMillis();
+            if (heartbeatInterval > 0 && lastMessageSent.get() < now - heartbeatInterval) {
+                eventWithTokenConsumer.accept(EventWithToken.getDefaultInstance());
+                lastMessageSent.updateAndGet(current -> Math.max(current, now));
+            }
+        } catch (Exception e) {
+            logger.debug("Exception while sending heartbeat", e);
+        }
     }
 
     private void cancelListener() {
@@ -140,5 +177,4 @@ public class EventStreamController {
         cancelListener();
         errorCallback.accept(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by server"));
     }
-
 }

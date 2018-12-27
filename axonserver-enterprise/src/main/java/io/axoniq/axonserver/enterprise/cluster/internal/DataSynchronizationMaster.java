@@ -20,6 +20,8 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import io.netty.util.internal.OutOfDirectMemoryError;
+import org.apache.tomcat.jni.Local;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -48,10 +50,13 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     private final ContextController contextController;
     private final ApplicationEventPublisher eventPublisher;
     private ApplicationContext applicationContext;
+    private final SyncStatusController syncStatusController;
 
     public DataSynchronizationMaster(ContextController contextController,
+                                     SyncStatusController syncStatusController,
                                      ApplicationEventPublisher eventPublisher) {
         this.contextController = contextController;
+        this.syncStatusController = syncStatusController;
         this.eventPublisher = eventPublisher;
     }
 
@@ -71,6 +76,8 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         TransactionWithToken transactionWithToken = TransactionWithToken.newBuilder()
                                                                         .setToken(token)
                                                                         .addAllEvents(eventList)
+                                                                        .setMasterGeneration(syncStatusController.generation(type.getEventType(), type.getContext()))
+                                                                        .setSafePoint(syncStatusController.safePoint(type.getEventType(), type.getContext()))
                                                                         .build();
         Map<String, Replica> connections = connectionsPerContext.get(type.getContext());
         if( connections == null) {
@@ -170,7 +177,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             if( permits.decrementAndGet() > 0) {
                 try {
                     replicaInboundStreamObserver.onNext(message);
-                } catch( RuntimeException runtimeException) {
+                } catch( Throwable runtimeException) {
                     logger.warn("{}: Send message to {} failed", context, nodeName, runtimeException);
                     cancel(this);
                     return false;
@@ -207,11 +214,19 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             if( transactionWithToken.getToken() < lastEventTransaction.get()) {
                 return true;
             }
+            transactionWithToken = TransactionWithToken.newBuilder(transactionWithToken)
+                                                       .setMasterGeneration(syncStatusController.generation(EventType.EVENT, context))
+                                                       .setSafePoint(syncStatusController.safePoint(EventType.EVENT, context))
+                                                       .build();
             SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setEvent(transactionWithToken).build();
             return publish(message);
         }
         private boolean publishSnapshotFromStream(TransactionWithToken transactionWithToken) {
             if( transactionWithToken.getToken() < lastSnapshotTransaction.get()) return true;
+            transactionWithToken = TransactionWithToken.newBuilder(transactionWithToken)
+                                                       .setMasterGeneration(syncStatusController.generation(EventType.SNAPSHOT, context))
+                                                       .setSafePoint(syncStatusController.safePoint(EventType.SNAPSHOT, context))
+                                                       .build();
             SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setSnapshot(transactionWithToken).build();
             return publish(message);
         }

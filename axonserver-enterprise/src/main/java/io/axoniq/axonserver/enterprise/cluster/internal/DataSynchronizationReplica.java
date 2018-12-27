@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -57,7 +58,7 @@ public class DataSynchronizationReplica {
     private final StubFactory stubFactory;
     private final LocalEventStore localEventStore;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final SafepointRepository safepointRepository;
+    private final SyncStatusController safepointRepository;
     private final Clock clock;
 
     public DataSynchronizationReplica(ClusterController clusterController,
@@ -65,7 +66,7 @@ public class DataSynchronizationReplica {
                                       StubFactory stubFactory,
                                       LocalEventStore localEventStore,
                                       ApplicationEventPublisher applicationEventPublisher,
-                                      SafepointRepository safepointRepository, Clock clock) {
+                                      SyncStatusController safepointRepository, Clock clock) {
         this.clusterController = clusterController;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.stubFactory = stubFactory;
@@ -91,12 +92,6 @@ public class DataSynchronizationReplica {
             }
 
             logger.info("{}: received master {}", masterConfirmation.getContext(), masterConfirmation.getNode());
-
-            safepointRepository.findById(new Safepoint.SafepointKey(masterConfirmation.getContext(), EventType.EVENT.name()))
-                               .ifPresent(eventSafepoint -> localEventStore.rollbackEvents(masterConfirmation.getContext(),eventSafepoint.getToken()));
-
-            safepointRepository.findById(new Safepoint.SafepointKey(masterConfirmation.getContext(), EventType.SNAPSHOT.name()))
-                               .ifPresent(snapshotSafepoint -> localEventStore.rollbackSnapshots(masterConfirmation.getContext(),snapshotSafepoint.getToken()));
 
             ReplicaConnection replicaConnection = new ReplicaConnection(
                     masterConfirmation.getNode(),
@@ -168,8 +163,6 @@ public class DataSynchronizationReplica {
         private final ConcurrentNavigableMap<Long, TransactionWithToken> snapshotsToSynchronize = new ConcurrentSkipListMap<>();
         private final AtomicLong permitsLeft = new AtomicLong();
         private final FlowControl flowControl;
-        private final AtomicLong eventSafepoint = new AtomicLong(-1);
-        private final AtomicLong snapshotSafepoint = new AtomicLong(-1);
         private volatile long lastEventReceived = System.currentTimeMillis();
         private volatile long lastSnapshotReceived = System.currentTimeMillis();
         private volatile long lastMessageReceived = System.currentTimeMillis();
@@ -195,29 +188,21 @@ public class DataSynchronizationReplica {
                                     .getEvent();
                             lastEventReceived = clock.millis();
                             lastMessageReceived = lastEventReceived;
-                            syncTransaction(eventRequest, EventType.EVENT.name(), expectedEventToken, eventsToSynchronize,
-                                            transactionWithToken -> localEventStore.syncEvents(context, transactionWithToken));
+                            syncTransaction(eventRequest, EventType.EVENT, expectedEventToken, eventsToSynchronize);
                             break;
                         case SNAPSHOT:
                             TransactionWithToken snapshotRequest = synchronizationReplicaInbound
                                     .getSnapshot();
                             lastSnapshotReceived = clock.millis();
                             lastMessageReceived = lastSnapshotReceived;
-                            syncTransaction(snapshotRequest, EventType.SNAPSHOT.name(), expectedSnapshotToken, snapshotsToSynchronize,
-                                            transactionWithToken -> localEventStore.syncSnapshots(context, transactionWithToken));
+                            syncTransaction(snapshotRequest, EventType.SNAPSHOT, expectedSnapshotToken, snapshotsToSynchronize);
 
                             break;
                         case SAFEPOINT:
                             SafepointMessage safepoint = synchronizationReplicaInbound
                                     .getSafepoint();
                             lastMessageReceived = clock.millis();
-                            safepointRepository.save(new Safepoint(safepoint.getType(), safepoint.getContext(), safepoint.getToken()));
-                            EventType eventType = EventType.valueOf(safepoint.getType());
-                            if (eventType == EventType.SNAPSHOT) {
-                                snapshotSafepoint.set(safepoint.getToken());
-                            } else if (eventType == EventType.EVENT) {
-                                eventSafepoint.set(safepoint.getToken());
-                            }
+                            safepointRepository.storeSafePoint(EventType.valueOf(safepoint.getType()), safepoint.getContext(), safepoint.getToken());
                             streamObserver.onNext(SAFEPOINT_CONFIRMATION);
                             break;
                         case REQUEST_NOT_SET:
@@ -261,8 +246,9 @@ public class DataSynchronizationReplica {
         }
 
         private boolean isAlive() {
-            if( lastEventReceived < clock.millis() - TimeUnit.SECONDS.toMillis(10) && isProcessingBacklog(eventSafepoint, expectedEventToken)) {
-                logger.warn("{}: Not received any events while processing backlog (waiting for: {}, safepoint: {})", context, expectedEventToken, eventSafepoint);
+            if( lastEventReceived < clock.millis() - TimeUnit.SECONDS.toMillis(10) && isProcessingBacklog(EventType.EVENT, expectedEventToken)) {
+                logger.warn("{}: Not received any events while processing backlog (waiting for: {}, safepoint: {})", context, expectedEventToken,
+                            safepointRepository.getSafePoint(EventType.EVENT, context));
                 return false;
             }
             if( lastMessageReceived < clock.millis() - TimeUnit.SECONDS.toMillis(20)) {
@@ -272,38 +258,78 @@ public class DataSynchronizationReplica {
             return true;
         }
 
-        private boolean isProcessingBacklog(AtomicLong safepoint, AtomicLong expectedToken) {
-            return safepoint.get() > expectedToken.get();
+        private boolean isProcessingBacklog(EventType eventType, AtomicLong expectedToken) {
+            return safepointRepository.getSafePoint(eventType, context) > expectedToken.get();
         }
 
-        private void syncTransaction(TransactionWithToken syncRequest, String type, AtomicLong expectedToken,
-                                     ConcurrentNavigableMap<Long, TransactionWithToken> waitingToSynchronize,
-                                     Function<TransactionWithToken, Long> onTransaction) {
+        private void syncTransaction(TransactionWithToken syncRequest, EventType type, AtomicLong expectedToken,
+                                     ConcurrentNavigableMap<Long, TransactionWithToken> waitingToSynchronize) {
             if (syncRequest.getToken() < expectedToken.get()) {
-                markConsumed();
-                return;
+                if( contains(type, syncRequest)) {
+                    messageProcessed(true, expectedToken.get(), type.name());
+                    return;
+                }
+
+                rollback(type, syncRequest);
+                expectedToken.set(syncRequest.getToken());
             }
 
+            safepointRepository.storeSafePoint(type, context, syncRequest.getSafePoint());
             waitingToSynchronize.put(syncRequest.getToken(), syncRequest);
             Map.Entry<Long, TransactionWithToken> head = waitingToSynchronize
                     .pollFirstEntry();
             while (head != null && head.getKey().equals(expectedToken
                                                                                 .get())) {
-                expectedToken.set(onTransaction.apply(head.getValue()));
-                streamObserver.onNext(SynchronizationReplicaOutbound.newBuilder()
-                                                                    .setConfirmation(
-                                                                            TransactionConfirmation
-                                                                                    .newBuilder()
-                                                                                    .setType(type)
-                                                                                    .setToken(head.getKey())
-                                                                                    .build())
-                                                                    .build());
-                markConsumed();
+                expectedToken.set(syncTransaction(syncRequest, type));
+                safepointRepository.updateGeneration(type, context, head.getValue().getMasterGeneration());
 
                 head = waitingToSynchronize.pollFirstEntry();
             }
             if (head != null) waitingToSynchronize.put(head.getKey(),
                                                                  head.getValue());
+        }
+
+        private void rollback(EventType eventType, TransactionWithToken syncRequest) {
+            if( EventType.EVENT.equals(eventType)) {
+                localEventStore.rollbackEvents(context, syncRequest.getToken());
+            } else {
+                localEventStore.rollbackSnapshots(context, syncRequest.getToken());
+            }
+
+        }
+
+        private boolean contains(EventType eventType, TransactionWithToken syncRequest) {
+            if( EventType.EVENT.equals(eventType)) {
+                return localEventStore.containsEvents(context, syncRequest);
+            } else {
+                return localEventStore.containsSnapshots(context, syncRequest);
+            }
+        }
+
+        private long syncTransaction(TransactionWithToken transactionWithToken, EventType eventType) {
+            if( logger.isTraceEnabled()) logger.trace("Writing transaction: {}, # events: {}", transactionWithToken.getToken(), transactionWithToken.getEventsCount());
+            long expected;
+            if( EventType.EVENT.equals(eventType)) {
+                expected = localEventStore.syncEvents(context, transactionWithToken);
+            } else {
+                expected = localEventStore.syncSnapshots(context, transactionWithToken);
+            }
+
+            messageProcessed(safepointRepository.getSafePoint(eventType, context) < expected, transactionWithToken.getToken(), eventType.name());
+            return expected;
+        }
+
+        private void messageProcessed(boolean sendConfirmation, long nextExpectedToken, String eventTypeName) {
+            if (sendConfirmation) {
+                TransactionConfirmation request = TransactionConfirmation.newBuilder()
+                                                                         .setToken(nextExpectedToken)
+                                                                         .setType(eventTypeName)
+                                                                         .build();
+                streamObserver.onNext(SynchronizationReplicaOutbound.newBuilder().setConfirmation(request)
+                                                                             .build());
+            }
+
+            markConsumed();
         }
 
         private void markConsumed() {

@@ -6,6 +6,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
@@ -43,8 +44,10 @@ public class AxonServerEnterpriseConfiguration {
             MessagingPlatformConfiguration messagingPlatformConfiguration,
             StubFactory stubfactory, ClusterController clusterController,
             LifecycleController lifecycleController, LocalEventStore localEventStore,
+            SyncStatusController syncStatusController,
             ApplicationEventPublisher applicationEventPublisher) {
-        return new EventStoreManager(contextController, messagingPlatformConfiguration, stubfactory, clusterController, lifecycleController, localEventStore, applicationEventPublisher);
+        return new EventStoreManager(contextController, messagingPlatformConfiguration, stubfactory, clusterController, lifecycleController, localEventStore, syncStatusController,
+                                     applicationEventPublisher);
     }
 
     @Bean
@@ -76,8 +79,8 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
     @Conditional(ClusteringAllowed.class)
-    public StorageTransactionManagerFactory storageTransactionManagerFactory(ReplicationManager replicationManager) {
-        return new ClusterTransactionManagerFactory(replicationManager);
+    public StorageTransactionManagerFactory storageTransactionManagerFactory(SyncStatusController syncStatusController, ReplicationManager replicationManager) {
+        return new ClusterTransactionManagerFactory(syncStatusController, replicationManager);
     }
 
 }

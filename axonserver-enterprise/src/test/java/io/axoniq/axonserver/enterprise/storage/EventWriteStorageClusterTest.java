@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage;
 
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
@@ -22,6 +23,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
+import static org.mockito.Mockito.mock;
+
 /**
  * Author: marc
  */
@@ -40,7 +43,8 @@ public class EventWriteStorageClusterTest {
         embeddedDBProperties.getEvent().setSegmentSize(5120 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         fakeReplicationManager = new FakeReplicationManager();
-        ClusterTransactionManagerFactory defaultStorageTransactionManagerFactory = new ClusterTransactionManagerFactory(
+        SyncStatusController syncStatusController = mock(SyncStatusController.class);
+        ClusterTransactionManagerFactory defaultStorageTransactionManagerFactory = new ClusterTransactionManagerFactory( syncStatusController,
                 fakeReplicationManager);
         EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
                                                                             defaultStorageTransactionManagerFactory);

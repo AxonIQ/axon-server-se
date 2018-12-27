@@ -26,6 +26,8 @@ public class LeaderRequestHandlerTest {
                 context -> null,
                                                (node,connectorCommand) -> {},
                 context -> 10L,
+                                               name-> 10L,
+                                               name-> 10L,
                 name -> 0
         );
     }
@@ -97,6 +99,8 @@ public class LeaderRequestHandlerTest {
                 context -> "test",
                                                (node, connectorCommand) -> messageCount.incrementAndGet(),
                 context -> 10L,
+                                               context -> 10L,
+                                               context -> 10L,
                 name -> 0
         );
         AtomicBoolean resultHolder = new AtomicBoolean();

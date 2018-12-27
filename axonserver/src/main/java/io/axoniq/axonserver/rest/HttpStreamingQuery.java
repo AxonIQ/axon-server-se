@@ -54,7 +54,7 @@ public class HttpStreamingQuery {
         } catch (Exception e) {
             try {
                 logger.warn("Error while processing query {} - {}", queryString, e.getMessage(), e);
-                sseEmitter.send(SseEmitter.event().name("error").data(e.getMessage()));
+                sseEmitter.send(SseEmitter.event().name("error").data(e.getClass().getName() + ": " + e.getMessage()));
             } catch (IOException ignore) {
                 // ignore exception on sending error to client
             }
@@ -132,7 +132,10 @@ public class HttpStreamingQuery {
                 JSONObject values = new JSONObject();
                 row.getValuesMap().forEach((key, qv) -> addToObject(values, key, qv));
                 jsonObject.put("value", values);
+            } else {
+                jsonObject.put("deleted", true);
             }
+
             //SampleCommandHandler
             sseEmitter.send(SseEmitter.event().name("row").data(jsonObject.toString()));
         }
