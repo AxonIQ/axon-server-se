@@ -104,7 +104,8 @@ public class GrpcRaftPeer implements RaftPeer {
 
         public void onNext(AppendEntriesRequest request) {
             logger.trace("{} Send {}", node.getNodeId(), request);
-            requestStreamRef.compareAndSet(null, initStreamObserver());
+            requestStreamRef.updateAndGet(current -> current == null ?  initStreamObserver(): current);
+
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
 //            synchronized (requestStreamRef.get()) {
             if( stream != null) {
@@ -116,6 +117,7 @@ public class GrpcRaftPeer implements RaftPeer {
         private StreamObserver<AppendEntriesRequest> initStreamObserver() {
             LogReplicationServiceGrpc.LogReplicationServiceStub stub = LogReplicationServiceGrpc.newStub(
                     getManagedChannel(node));
+            logger.info("initStreamObserver {}", requestStreamRef);
             return stub.appendEntries(new StreamObserver<AppendEntriesResponse>() {
                 @Override
                 public void onNext(AppendEntriesResponse appendEntriesResponse) {
@@ -145,9 +147,9 @@ public class GrpcRaftPeer implements RaftPeer {
         }
     }
 
-    static Map<String, ManagedChannel> channelMap = new ConcurrentHashMap<>();
+    private static final Map<String, ManagedChannel> channelMap = new ConcurrentHashMap<>();
 
-    static ManagedChannel getManagedChannel(Node node) {
+    private static ManagedChannel getManagedChannel(Node node) {
         return channelMap.computeIfAbsent(node.getNodeId(), n -> NettyChannelBuilder.forAddress(node.getHost(), node.getPort()).usePlaintext().directExecutor().build());
     }
 
