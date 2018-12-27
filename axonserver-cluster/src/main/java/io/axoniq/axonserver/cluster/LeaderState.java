@@ -172,7 +172,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private void checkStepdown() {
-        if (otherPeers().isEmpty()) {
+        if (otherNodesCount() == 0) {
             return;
         }
         long now = scheduler.get().clock().millis();

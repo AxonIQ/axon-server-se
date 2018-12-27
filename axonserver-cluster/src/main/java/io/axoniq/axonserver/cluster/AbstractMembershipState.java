@@ -276,4 +276,9 @@ public abstract class AbstractMembershipState implements MembershipState {
     protected Registration registerConfigurationListener(Consumer<List<Node>> newConfigurationListener){
         return registerConfigurationListener.apply(newConfigurationListener);
     }
+
+    @Override
+    public List<Node> currentGroupMembers() {
+        return currentConfiguration.groupMembers();
+    }
 }
