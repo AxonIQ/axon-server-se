@@ -68,7 +68,7 @@ public class RaftNode {
         }
     }
 
-    private void updateState(MembershipState currentState, MembershipState newState) {
+    private synchronized void updateState(MembershipState currentState, MembershipState newState) {
         if( state.compareAndSet(currentState, newState)) {
             Optional.ofNullable(currentState).ifPresent(MembershipState::stop);
             logger.info("{}: Updating state from {} to {}", groupId(), toString(currentState), toString(newState));
@@ -104,7 +104,7 @@ public class RaftNode {
         stateChangeListeners.add(stateChangedConsumer);
     }
 
-    public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+    public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         return state.get().appendEntries(request);
     }
 
