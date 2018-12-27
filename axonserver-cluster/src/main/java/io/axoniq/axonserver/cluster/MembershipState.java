@@ -10,7 +10,11 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
+import static java.util.Collections.emptyList;
 
 public interface MembershipState extends ClusterConfiguration{
 
@@ -46,5 +50,9 @@ public interface MembershipState extends ClusterConfiguration{
 
     default void forceStepDown() {
 
+    }
+
+    default List<Node> currentGroupMembers(){
+        return emptyList();
     }
 }

@@ -184,4 +184,8 @@ public class RaftNode {
         raftGroup.raftConfiguration().clear();
         return CompletableFuture.completedFuture(null);
     }
+
+    public List<Node> currentGroupMembers(){
+        return state.get().currentGroupMembers();
+    }
 }

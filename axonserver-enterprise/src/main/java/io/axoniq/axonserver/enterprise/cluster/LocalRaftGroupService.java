@@ -74,8 +74,7 @@ public class LocalRaftGroupService implements RaftGroupService {
         RaftNode raftNode = raftGroup.localNode();
         String leader = raftNode.getLeader();
         return Context.newBuilder().setName(raftNode.groupId())
-                      .addAllMembers(raftGroup.raftConfiguration()
-                                              .groupMembers()
+                      .addAllMembers(raftGroup.localNode().currentGroupMembers()
                                               .stream()
                                               .map(n -> ContextMember.newBuilder()
                                                                      .setNodeId(n.getNodeId())
