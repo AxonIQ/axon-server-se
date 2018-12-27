@@ -280,7 +280,7 @@ public class DataSynchronizationReplica {
                     .pollFirstEntry();
             while (head != null && head.getKey().equals(expectedToken
                                                                                 .get())) {
-                expectedToken.set(syncTransaction(syncRequest, type));
+                expectedToken.set(syncTransaction(head.getValue(), type));
                 safepointRepository.updateGeneration(type, context, head.getValue().getMasterGeneration());
 
                 head = waitingToSynchronize.pollFirstEntry();

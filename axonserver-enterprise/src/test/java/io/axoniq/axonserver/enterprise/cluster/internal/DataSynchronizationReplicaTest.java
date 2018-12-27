@@ -68,7 +68,6 @@ public class DataSynchronizationReplicaTest {
         }).when(localEventStore).syncEvents(any(), any());
         doAnswer(invocationOnMock -> {
             TransactionWithToken t = (TransactionWithToken)invocationOnMock.getArguments()[1];
-
             return t.getToken() + t.getEventsCount();
         }).when(localEventStore).syncSnapshots(any(), any());
         ApplicationEventPublisher applicationEventPublisher = new ApplicationEventPublisher() {
@@ -195,6 +194,8 @@ public class DataSynchronizationReplicaTest {
 
     @Test
     public void noMessagesWhileProcessingBacklog() {
+        when(safepointRespository.getSafePoint(any(), any())).thenReturn(1000L);
+
         testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSafepoint(SafepointMessage.newBuilder()

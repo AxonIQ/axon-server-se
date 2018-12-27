@@ -11,6 +11,7 @@ import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,6 +55,10 @@ public class ContextRestController {
     public List<ContextJSON> getContexts() {
         return contextController.getContexts().map(this::createContextJSON).collect(Collectors.toList());
 
+    }
+    @GetMapping(path = "context/init")
+    public ResponseEntity<RestResponse> initCluster() {
+        return ResponseEntity.ok(new RestResponse(true, null));
     }
 
     private ContextJSON createContextJSON(Context context) {

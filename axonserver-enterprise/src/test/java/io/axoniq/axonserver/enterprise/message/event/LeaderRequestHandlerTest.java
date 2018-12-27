@@ -27,7 +27,7 @@ public class LeaderRequestHandlerTest {
                                                (node,connectorCommand) -> {},
                 context -> 10L,
                                                name-> 10L,
-                                               name-> 10L,
+                                               name-> 0L,
                 name -> 0
         );
     }
@@ -40,6 +40,7 @@ public class LeaderRequestHandlerTest {
                                                  .setNrOfMasterContexts(0)
                                                  .setHashKey(EventStoreManager.hash("default", "other"))
                                                  .setContext("default")
+                                                 .setEventSafePoint(10)
                                                  .setMasterSequenceNumber(9)
                                                  .build();
         RequestLeaderEvent event = new RequestLeaderEvent(request, resultHolder::set);
@@ -55,6 +56,7 @@ public class LeaderRequestHandlerTest {
                                                  .setNrOfMasterContexts(0)
                                                  .setHashKey(EventStoreManager.hash("default", "other"))
                                                  .setContext("default")
+                                                 .setEventSafePoint(10)
                                                  .setMasterSequenceNumber(11)
                                                  .build();
         RequestLeaderEvent event = new RequestLeaderEvent(request, resultHolder::set);
@@ -71,6 +73,7 @@ public class LeaderRequestHandlerTest {
                                                  .setHashKey(Integer.MIN_VALUE)
                                                  .setContext("default")
                                                  .setMasterSequenceNumber(10)
+                                                 .setEventSafePoint(10)
                                                  .build();
         RequestLeaderEvent event = new RequestLeaderEvent(request, resultHolder::set);
         testSubject.on(event);
@@ -86,6 +89,7 @@ public class LeaderRequestHandlerTest {
                                                  .setHashKey(Integer.MIN_VALUE)
                                                  .setContext("default")
                                                  .setMasterSequenceNumber(10)
+                                                 .setEventSafePoint(10)
                                                  .build();
         RequestLeaderEvent event = new RequestLeaderEvent(request, resultHolder::set);
         testSubject.on(event);
@@ -110,6 +114,7 @@ public class LeaderRequestHandlerTest {
                                                  .setHashKey(Integer.MAX_VALUE)
                                                  .setContext("default")
                                                  .setMasterSequenceNumber(10)
+                                                 .setEventSafePoint(10)
                                                  .build();
         RequestLeaderEvent event = new RequestLeaderEvent(request, resultHolder::set);
         testSubject.on(event);
