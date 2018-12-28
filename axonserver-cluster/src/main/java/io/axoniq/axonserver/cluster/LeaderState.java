@@ -401,8 +401,8 @@ public class LeaderState extends AbstractMembershipState {
                                                                raftGroup(),
                                                                () -> changeStateTo(stateFactory().followerState()),
                                                                snapshotManager());
-            replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
             replicatorPeer.start();
+            replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
             return () -> {
                 ReplicatorPeer removed = replicatorPeerMap.remove(raftPeer.nodeId());
                 if (removed != null) {

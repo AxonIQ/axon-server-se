@@ -80,6 +80,7 @@ class ReplicatorPeer {
                                                                  .setOffset(offset)
                                                                  .setDone(done)
                                                                  .addAllData(serializedObjects);
+                                   logger.trace("{}: Sending install snapshot chunk with offset: {}", groupId(), offset);
                                    if (firstChunk()) {
                                        requestBuilder.setLastConfig(raftGroup.raftConfiguration().config());
                                    }
@@ -106,6 +107,7 @@ class ReplicatorPeer {
                                                               .setOffset(offset)
                                                               .setDone(done)
                                                               .build());
+                                   logger.info("{}: Sending the last chunk for install snapshot", groupId());
                                }
                            });
         }
@@ -146,7 +148,9 @@ class ReplicatorPeer {
             if (installSnapshotResponse.hasSuccess()) {
                 lastReceivedOffset = installSnapshotResponse.getSuccess().getLastReceivedOffset();
                 if (done) {
+                    logger.trace("{}: Install snapshot confirmation received: {}", groupId(), installSnapshotResponse);
                     setMatchIndex(lastAppliedIndex);
+                    changeStateTo(new AppendEntryState());
                 }
             } else {
                 if (currentTerm() < installSnapshotResponse.getTerm()) {
@@ -160,7 +164,9 @@ class ReplicatorPeer {
         }
 
         private boolean canSend() {
-            return running && offset - lastReceivedOffset < raftGroup.raftConfiguration().flowBuffer();
+            return subscription != null &&
+                    running &&
+                    offset - lastReceivedOffset < raftGroup.raftConfiguration().flowBuffer();
         }
     }
 

@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +57,7 @@ public class RaftClusterTestFixture {
     public RaftNode spawnNew(String hostName) {
         StubRaftGroup raftGroup = new StubRaftGroup(hostName);
         clusterGroups.put(hostName, raftGroup);
-        RaftNode raftNode = new RaftNode(hostName, raftGroup);
+        RaftNode raftNode = new RaftNode(hostName, raftGroup, new FakeSnapshotManager());
         clusterNodes.put(hostName, raftNode);
         return raftNode;
     }
@@ -232,7 +233,7 @@ public class RaftClusterTestFixture {
             this.nodes.clear();
             nodes.stream()
                  .map(Node::getHost)
-                 .forEach(host -> this.nodes.put(host, new RaftNode(host, this)));
+                 .forEach(host -> this.nodes.put(host, new RaftNode(host, this, new FakeSnapshotManager())));
         }
 
         private void update(Map<String, RaftNode> nodes) {

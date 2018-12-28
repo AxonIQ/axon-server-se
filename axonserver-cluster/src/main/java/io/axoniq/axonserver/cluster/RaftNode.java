@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -41,15 +42,15 @@ public class RaftNode {
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
     private final Scheduler scheduler;
 
-    public RaftNode(String nodeId, RaftGroup raftGroup) {
-        this(nodeId, raftGroup, new DefaultScheduler());
+    public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
+        this(nodeId, raftGroup, new DefaultScheduler(), snapshotManager);
     }
 
-    public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler) {
+    public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
         this.registerEntryConsumer(this::updateConfig);
-        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState));
+        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState, snapshotManager));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId));
         scheduleLogCleaning();

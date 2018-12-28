@@ -52,19 +52,22 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     private final ApplicationEventPublisher eventPublisher;
     private ApplicationContext applicationContext;
     private final JpaRaftGroupNodeRepository nodeRepository;
+    private final SnapshotDataProviders snapshotDataProviders;
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
                               RaftGroupRepositoryManager raftGroupNodeRepository,
                               RaftProperties raftProperties,
                               ApplicationEventPublisher eventPublisher,
-                              JpaRaftGroupNodeRepository nodeRepository) {
+                              JpaRaftGroupNodeRepository nodeRepository,
+                              SnapshotDataProviders snapshotDataProviders) {
         this.raftStateRepository = raftStateRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
         this.raftProperties = raftProperties;
         this.eventPublisher = eventPublisher;
         this.nodeRepository = nodeRepository;
+        this.snapshotDataProviders = snapshotDataProviders;
     }
 
 
@@ -115,7 +118,8 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                                                     groupId,
                                                     raftStateRepository,
                                                     nodeRepository,
-                                                    raftProperties);
+                                                    raftProperties,
+                                                    snapshotDataProviders);
 
             if (!ADMIN_GROUP.equals(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

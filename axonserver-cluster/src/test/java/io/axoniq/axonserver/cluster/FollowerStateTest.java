@@ -80,7 +80,7 @@ public class FollowerStateTest {
                                          .schedulerFactory(() -> fakeScheduler)
                                          .randomValueSupplier((min, max) -> electionTimeout)
                                          .snapshotManager(snapshotManager)
-                                         .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
+                                         .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler, snapshotManager))
                                          .build());
         followerState.start();
     }

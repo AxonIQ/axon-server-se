@@ -12,6 +12,7 @@ import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.FileSegmentLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryEventStoreFactory;
+import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 
@@ -117,7 +118,7 @@ public class RaftServerFileBasedTest {
         final Map<String,RaftPeer> raftPeerMap = new HashMap<>();
 
         private GrpcRaftGroup(List<Node> nodes, String localNode) {
-            this.localNode = new RaftNode(localNode, this);
+            this.localNode = new RaftNode(localNode, this, new FakeSnapshotManager());
 
             logEntryStore = new FileSegmentLogEntryStore(localNode, PrimaryEventStoreFactory.create(localNode));
 

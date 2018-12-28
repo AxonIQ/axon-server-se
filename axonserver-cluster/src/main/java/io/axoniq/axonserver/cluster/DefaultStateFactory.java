@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
+
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -11,14 +12,16 @@ import java.util.function.Supplier;
 public class DefaultStateFactory implements MembershipStateFactory {
 
     private final RaftGroup raftGroup;
-
     private final BiConsumer<MembershipState, MembershipState> transitionHandler;
     private final Supplier<Scheduler> schedulerFactory;
+    private final SnapshotManager snapshotManager;
 
     public DefaultStateFactory(RaftGroup raftGroup,
-                               BiConsumer<MembershipState, MembershipState> transitionHandler) {
+                               BiConsumer<MembershipState, MembershipState> transitionHandler,
+                               SnapshotManager snapshotManager) {
         this.raftGroup = raftGroup;
         this.transitionHandler = transitionHandler;
+        this.snapshotManager = snapshotManager;
         this.schedulerFactory = DefaultScheduler::new;
     }
 
@@ -33,6 +36,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                           .raftGroup(raftGroup)
                           .schedulerFactory(schedulerFactory)
                           .transitionHandler(transitionHandler)
+                          .snapshotManager(snapshotManager)
                           .stateFactory(this)
                           .build();
     }
@@ -43,6 +47,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                             .raftGroup(raftGroup)
                             .schedulerFactory(schedulerFactory)
                             .transitionHandler(transitionHandler)
+                            .snapshotManager(snapshotManager)
                             .stateFactory(this)
                             .build();
     }
@@ -53,6 +58,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                              .raftGroup(raftGroup)
                              .schedulerFactory(schedulerFactory)
                              .transitionHandler(transitionHandler)
+                             .snapshotManager(snapshotManager)
                              .stateFactory(this)
                              .build();
     }

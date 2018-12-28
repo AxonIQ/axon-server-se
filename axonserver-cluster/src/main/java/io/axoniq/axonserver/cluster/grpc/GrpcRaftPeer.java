@@ -29,6 +29,9 @@ public class GrpcRaftPeer implements RaftPeer {
     private final AtomicReference<AppendEntriesStream> appendEntiesStreamRef = new AtomicReference<>();
     private final AtomicReference<Consumer<AppendEntriesResponse>> appendEntriesResponseListener = new AtomicReference<>();
 
+    private final AtomicReference<InstallSnapshotStream> installSnapshotStreamRef = new AtomicReference<>();
+    private final AtomicReference<Consumer<InstallSnapshotResponse>> installSnapshotResponseListener = new AtomicReference<>();
+
     public GrpcRaftPeer(Node node) {
         this.node = node;
     }
@@ -79,7 +82,13 @@ public class GrpcRaftPeer implements RaftPeer {
 
     @Override
     public void installSnapshot(InstallSnapshotRequest request) {
+        InstallSnapshotStream installSnapshotStream = getInstallSnapshotStream();
+        installSnapshotStream.onNext(request);
+    }
 
+    private InstallSnapshotStream getInstallSnapshotStream() {
+        installSnapshotStreamRef.compareAndSet(null, new InstallSnapshotStream());
+        return installSnapshotStreamRef.get();
     }
 
     @Override
@@ -90,13 +99,62 @@ public class GrpcRaftPeer implements RaftPeer {
 
     @Override
     public Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener) {
-        return () -> {};
+        installSnapshotResponseListener.set(listener);
+        return () -> installSnapshotResponseListener.set(null);
     }
 
     @Override
     public String nodeId() {
         return node.getNodeId();
     }
+
+    private class InstallSnapshotStream {
+
+        private final AtomicReference<StreamObserver<InstallSnapshotRequest>> requestStreamRef = new AtomicReference<>();
+
+        public void onNext(InstallSnapshotRequest request) {
+            logger.trace("{} Send {}", node.getNodeId(), request);
+            requestStreamRef.compareAndSet(null, initStreamObserver());
+            StreamObserver<InstallSnapshotRequest> stream = requestStreamRef.get();
+//            synchronized (requestStreamRef.get()) {
+            if( stream != null) {
+                stream.onNext(request);
+            }
+//            }
+        }
+
+        private StreamObserver<InstallSnapshotRequest> initStreamObserver() {
+            LogReplicationServiceGrpc.LogReplicationServiceStub stub = LogReplicationServiceGrpc.newStub(
+                    getManagedChannel(node));
+            return stub.installSnapshot(new StreamObserver<InstallSnapshotResponse>() {
+                @Override
+                public void onNext(InstallSnapshotResponse installSnapshotResponse) {
+                    if( installSnapshotResponse.hasFailure()) {
+                        requestStreamRef.get().onCompleted();
+                        requestStreamRef.set(null);
+                    }
+                    logger.trace("{}: Received {}", node.getNodeId(), installSnapshotResponse);
+                    if( installSnapshotResponseListener.get() != null) {
+                        installSnapshotResponseListener.get().accept(installSnapshotResponse);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    requestStreamRef.set(null);
+                }
+
+                @Override
+                public void onCompleted() {
+                    if( requestStreamRef.get() != null) {
+                        requestStreamRef.get().onCompleted();
+                        requestStreamRef.set(null);
+                    }
+                }
+            });
+        }
+    }
+
 
     private class AppendEntriesStream {
 

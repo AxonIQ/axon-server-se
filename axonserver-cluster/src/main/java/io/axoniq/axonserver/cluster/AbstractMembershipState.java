@@ -134,7 +134,10 @@ public abstract class AbstractMembershipState implements MembershipState {
             if (registerConfigurationListener == null) {
                 throw new IllegalStateException("The registerConfigurationListener function must be provided");
             }
-            // TODO: 11/22/2018 require snapshotManager
+
+            if (snapshotManager == null){
+                throw new IllegalStateException("The snapshotManager must be provided");
+            }
         }
 
         @SuppressWarnings("unchecked")

@@ -53,6 +53,37 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
 
     @Override
     public StreamObserver<InstallSnapshotRequest> installSnapshot(StreamObserver<InstallSnapshotResponse> responseObserver) {
-        return super.installSnapshot(responseObserver);
+        return new StreamObserver<InstallSnapshotRequest>() {
+            volatile  boolean running = true;
+            @Override
+            public void onNext(InstallSnapshotRequest installSnapshotRequest) {
+                if( ! running) return;
+                RaftNode target = raftGroupManager.raftNode(installSnapshotRequest.getGroupId());
+                try {
+                    synchronized (target) {
+                        InstallSnapshotResponse response = target.installSnapshot(installSnapshotRequest);
+                        responseObserver.onNext(response);
+                        if (response.hasFailure()) {
+                            responseObserver.onCompleted();
+                            running = false;
+                        }
+                    }
+                } catch( RuntimeException ex) {
+                    logger.warn("Failed to process request {}", installSnapshotRequest, ex);
+                    responseObserver.onError(ex);
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                logger.trace("Failure on appendEntries on leader connection- {}", throwable.getMessage());
+
+            }
+
+            @Override
+            public void onCompleted() {
+                logger.debug("Connection completed by peer");
+            }
+        };
     }
 }

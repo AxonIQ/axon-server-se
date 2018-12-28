@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -131,14 +132,15 @@ public class LeaderStateTest {
             }
         };
 
-        nodeRef.set(new RaftNode("test", raftGroup));
+        nodeRef.set(new RaftNode("test", raftGroup, new FakeSnapshotManager()));
 
         testSubject = LeaderState.builder()
-                .transitionHandler(transitionHandler)
-                .raftGroup(raftGroup)
-                .schedulerFactory(() -> fakeScheduler)
-                .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler))
-                .build();
+                                 .transitionHandler(transitionHandler)
+                                 .raftGroup(raftGroup)
+                                 .snapshotManager(new FakeSnapshotManager())
+                                 .schedulerFactory(() -> fakeScheduler)
+                                 .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler, new FakeSnapshotManager()))
+                                 .build();
     }
 
     @Test
