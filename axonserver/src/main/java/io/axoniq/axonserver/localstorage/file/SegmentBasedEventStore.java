@@ -216,6 +216,33 @@ public abstract class SegmentBasedEventStore implements EventStore {
         if( validate) validate(storageProperties.getValidationSegments());
     }
 
+
+    @Override
+    public boolean contains( TransactionWithToken newTransaction){
+        long token = newTransaction.getToken();
+        long segment = getSegmentFor(token);
+        EventSource eventSource = getEventSource(segment).orElse(null);
+        if( eventSource == null )  {
+            if( next != null) {
+                return next.contains(newTransaction);
+            }
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored");
+        }
+
+        try (TransactionIterator iterator = eventSource.createTransactionIterator(segment, token, false)){
+            return iterator.hasNext() && equals(newTransaction,iterator.next());
+        } catch (Exception e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored", e);
+        }
+    }
+
+    private boolean equals(TransactionWithToken newTransaction, TransactionWithToken storedTransaction) {
+        return newTransaction.getToken() == storedTransaction.getToken()
+                && newTransaction.getVersion() == storedTransaction.getVersion()
+                && newTransaction.getEventsList().equals(storedTransaction.getEventsList());
+    }
+
+
     @Override
     public long getFirstToken() {
         if( next != null) return next.getFirstToken();

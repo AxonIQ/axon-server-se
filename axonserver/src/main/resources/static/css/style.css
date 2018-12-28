@@ -585,7 +585,7 @@ select {
 }
 
 #applicationDetails, #userDetails {
-	width: 50%;
+	width: 800px;
 }
 
 .nodeName {
@@ -596,12 +596,12 @@ select {
 .contextName {
 	display: inline-block !important;
 	float: none !important;
-	width: 180px;
+	width: 150px;
 }
 .roleName {
 	display: inline-block !important;
 	float: none !important;
-	width: 180px;
+	width: 150px;
 }
 .messaging {
 	display: inline-block;

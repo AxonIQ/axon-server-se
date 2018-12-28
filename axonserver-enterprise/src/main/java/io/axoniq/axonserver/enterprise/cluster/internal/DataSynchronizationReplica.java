@@ -22,6 +22,8 @@ import io.axoniq.axonserver.grpc.internal.TransactionConfirmation;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,8 +144,12 @@ public class DataSynchronizationReplica {
         invalidConnections.forEach(context -> {
             ReplicaConnection old = connectionPerContext.remove(context);
             if( old != null) {
-                old.error("No longer alive");
-                applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
+                old.error("Trying to reconnect");
+                ReplicaConnection replicaConnection = new ReplicaConnection(
+                        old.node,
+                        context);
+                connectionPerContext.put(context, replicaConnection);
+                replicaConnection.start();
             }
         });
     }
@@ -219,7 +225,12 @@ public class DataSynchronizationReplica {
                 public void onError(Throwable cause) {
                     ManagedChannelHelper.checkShutdownNeeded(node, cause);
                     logger.warn("Received error from {}: {}", node, cause.getMessage());
-                    applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
+                    if( isUnavailable(cause)) {
+                        applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
+                    } else {
+                        // restart connection if connection stopped for other reason than unavailable
+                        start();
+                    }
                 }
 
                 @Override
@@ -251,8 +262,21 @@ public class DataSynchronizationReplica {
                             safepointRepository.getSafePoint(EventType.EVENT, context));
                 return false;
             }
+            if( lastSnapshotReceived < clock.millis() - TimeUnit.SECONDS.toMillis(10) && isProcessingBacklog(EventType.SNAPSHOT, expectedSnapshotToken)) {
+                logger.warn("{}: Not received any snapshots while processing backlog (waiting for: {}, safepoint: {})", context, expectedSnapshotToken,
+                            safepointRepository.getSafePoint(EventType.SNAPSHOT, context));
+                return false;
+            }
             if( lastMessageReceived < clock.millis() - TimeUnit.SECONDS.toMillis(20)) {
                 logger.warn("{}: Not received any messages", context);
+                return false;
+            }
+            if( waitingSnapshots() > 20) {
+                logger.warn("{}: Waiting too long for snapshot {}, first is {}", context, expectedSnapshotToken, snapshotsToSynchronize.firstKey());
+                return false;
+            }
+            if( waitingEvents() > 20) {
+                logger.warn("{}: Waiting too long for event {}, first is {}", context, expectedEventToken, eventsToSynchronize.firstKey());
                 return false;
             }
             return true;
@@ -379,5 +403,9 @@ public class DataSynchronizationReplica {
                 logger.debug("{}: Failed to complete with error", context, cause);
             }
         }
+    }
+
+    private boolean isUnavailable(Throwable cause) {
+        return cause instanceof StatusRuntimeException && ((StatusRuntimeException)cause).getStatus().getCode().equals(Status.Code.UNAVAILABLE);
     }
 }

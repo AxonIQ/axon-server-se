@@ -28,6 +28,7 @@ public class CommandDispatcher {
         executorMap.put("delete-user", DeleteUser::run);
         executorMap.put("users", ListUsers::run);
         executorMap.put("metrics", Metrics::run);
+        executorMap.put("init-cluster", InitCluster::run);
     }
 
     public static void main(String[] args)  {
