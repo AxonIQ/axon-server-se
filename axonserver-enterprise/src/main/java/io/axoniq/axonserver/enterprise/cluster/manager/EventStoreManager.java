@@ -249,7 +249,13 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     }
     private void startLeaderElection(String contextName) {
-        if (isNotEligible(contextName)) return; //If I'm not eligible I do not request to be the master
+//        if (isNotEligible(contextName)) {
+//                logger.warn("{}: Not eligible as leader as safepoint = {} after lastToken = {}",
+//                             contextName,
+//                             syncStatusController.getSafePoint(EventType.EVENT, contextName),
+//                             localEventStore.getLastToken(contextName));
+//            return; //If I'm not eligible I do not request to be the master
+//        }
 
         logger.debug("Start leader election for {}: master: {}", contextName, masterPerContext.get(contextName));
         if( ! running || masterPerContext.containsKey(contextName)) return;
@@ -311,12 +317,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     private boolean isNotEligible(String context) {
-        if( logger.isDebugEnabled()) {
-            logger.debug("{} Checking eligible safepoint = {}. lastToken = {}",
-                         context,
-                         syncStatusController.getSafePoint(EventType.EVENT, context),
-                         localEventStore.getLastToken(context));
-        }
+
         return syncStatusController.getSafePoint(EventType.EVENT, context) > localEventStore.getLastToken(context) + 1;
     }
 

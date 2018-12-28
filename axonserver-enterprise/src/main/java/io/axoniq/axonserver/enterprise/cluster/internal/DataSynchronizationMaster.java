@@ -272,8 +272,8 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         public void sendMessage(SynchronizationReplicaInbound synchronizationReplicaInbound) {
             try {
                 replicaInboundStreamObserver.onNext(synchronizationReplicaInbound);
-            } catch (StatusRuntimeException sre) {
-                logger.warn("{}: Send message to {} failed", context, nodeName, sre);
+            } catch (Exception ex) {
+                logger.warn("{}: Send message to {} failed", context, nodeName, ex);
                 cancel(this);
             }
         }
@@ -282,6 +282,9 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             replicaInboundStreamObserver.onCompleted();
         }
 
+        public long remainingPermits() {
+            return this.permits.get();
+        }
     }
 
 
@@ -359,7 +362,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     private void cancel(Replica replica) {
         Map<String, Replica> connection = connectionsPerContext.get(replica.context);
         if( connection != null) {
-            connection.remove(replica.nodeName);
+            connection.computeIfPresent(replica.nodeName, (n,r) -> replica.equals(r) ? null : r);
             checkQuorum(replica.context);
         }
     }

@@ -38,6 +38,7 @@ public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
                     replicas.forEach((n, replica) -> {
                         builder.withDetail(String.format("%s.%s.lastConfirmedEventTransaction", context, n), replica.getLastEventTransaction());
                         builder.withDetail(String.format("%s.%s.lastConfirmedSnapshotTransaction", context, n), replica.getLastSnapshotTransaction());
+                        builder.withDetail(String.format("%s.%s.remainingPermits", context, n), replica.remainingPermits());
                     });
                 }
         );
@@ -49,6 +50,7 @@ public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
             builder.withDetail(String.format("%s.waitingForSnapshot", context), replicaConnection.getExpectedSnapshotToken());
             builder.withDetail(String.format("%s.waitingEvents", context), replicaConnection.waitingEvents());
             builder.withDetail(String.format("%s.waitingSnapshots", context), replicaConnection.waitingSnapshots());
+            builder.withDetail(String.format("%s.remainingPermits", context), replicaConnection.remainingPermits());
         });
 
         builder.up();

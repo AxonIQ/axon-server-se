@@ -87,23 +87,37 @@ public class LeaderRequestHandler {
 
     private boolean checkOnFields(String me, NodeContextInfo candidate) {
         //the candidate is not eligible because the sequence is behind the safe point (the node is catching up)
-        if (candidate.getEventSafePoint() > candidate.getMasterSequenceNumber() + 1) {return false;}
+        if (candidate.getEventSafePoint() > candidate.getMasterSequenceNumber() + 1) {
+            logger.warn("{} is catching up, returning false", candidate.getNodeName());
+            return false;
+        }
 
         long eventSafePoint = lastCommittedTokenProvider.apply(candidate.getContext());
+        long sequenceNumber =  lastTokenProvider.apply(candidate.getContext());
+
+        if( eventSafePoint >= sequenceNumber + 1) {
+            // I am catching up, allow candidate to become master
+            logger.warn("{} is catching up, returning true", me);
+            return true;
+        }
+
         if (candidate.getEventSafePoint() != eventSafePoint){
+            logger.warn("{} different safepoint, returning {}", candidate.getNodeName(), candidate.getEventSafePoint() > eventSafePoint);
             return candidate.getEventSafePoint() > eventSafePoint;
         }
 
         //if previous parameter are equals, choose the node that joined the most recent master generation
         long prevMasterGeneration = generationProvider.apply(candidate.getContext());
         if (candidate.getPrevMasterGeneration() != prevMasterGeneration){
+            logger.warn("{} different prevMasterGeneration, returning {}", candidate.getNodeName(), candidate.getPrevMasterGeneration() > prevMasterGeneration);
             return candidate.getPrevMasterGeneration() > prevMasterGeneration;
         }
 
 
-        long sequenceNumber =  lastTokenProvider.apply(candidate.getContext());
-        if (candidate.getMasterSequenceNumber() != sequenceNumber)
+        if (candidate.getMasterSequenceNumber() != sequenceNumber) {
+            logger.warn("{} different masterSequenceNumber, returning {}", candidate.getNodeName(), candidate.getMasterSequenceNumber() > sequenceNumber);
             return candidate.getMasterSequenceNumber() > sequenceNumber;
+        }
 
         int nrMasterContexts = nrOfMasterContextsProvider.apply(me);
 
@@ -111,8 +125,10 @@ public class LeaderRequestHandler {
             return candidate.getNrOfMasterContexts() < nrMasterContexts;
 
         int hashKey = EventStoreManager.hash(candidate.getContext(), me);
-        if (candidate.getHashKey() != hashKey)
+        if (candidate.getHashKey() != hashKey) {
+            logger.warn("{} different hashKey, returning {}", candidate.getNodeName(), candidate.getHashKey() < hashKey);
             return candidate.getHashKey() < hashKey;
+        }
 
         return me.compareTo(candidate.getNodeName()) < 0;
     }

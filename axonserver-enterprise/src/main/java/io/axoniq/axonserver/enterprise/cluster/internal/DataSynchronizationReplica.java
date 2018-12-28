@@ -144,12 +144,14 @@ public class DataSynchronizationReplica {
         invalidConnections.forEach(context -> {
             ReplicaConnection old = connectionPerContext.remove(context);
             if( old != null) {
-                old.error("Trying to reconnect");
-                ReplicaConnection replicaConnection = new ReplicaConnection(
-                        old.node,
-                        context);
-                connectionPerContext.put(context, replicaConnection);
-                replicaConnection.start();
+                old.error("No longer alive");
+                applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
+//                old.error("Trying to reconnect");
+//                ReplicaConnection replicaConnection = new ReplicaConnection(
+//                        old.node,
+//                        context);
+//                connectionPerContext.put(context, replicaConnection);
+//                replicaConnection.start();
             }
         });
     }
@@ -225,12 +227,12 @@ public class DataSynchronizationReplica {
                 public void onError(Throwable cause) {
                     ManagedChannelHelper.checkShutdownNeeded(node, cause);
                     logger.warn("Received error from {}: {}", node, cause.getMessage());
-                    if( isUnavailable(cause)) {
+//                    if( isUnavailable(cause)) {
                         applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
-                    } else {
-                        // restart connection if connection stopped for other reason than unavailable
-                        start();
-                    }
+//                    } else {
+//                        // restart connection if connection stopped for other reason than unavailable
+//                        start();
+//                    }
                 }
 
                 @Override
@@ -242,16 +244,25 @@ public class DataSynchronizationReplica {
 
             expectedEventToken.set(localEventStore.getLastToken(context)+1);
             expectedSnapshotToken.set(localEventStore.getLastSnapshot(context)+1);
-            streamObserver.onNext(SynchronizationReplicaOutbound.newBuilder()
-                                                                .setStart(StartSynchronization.newBuilder()
-                                                                                              .setContext(context)
-                                                                                              .setNodeName(messagingPlatformConfiguration.getName())
-                                                                                              .setEventToken(localEventStore.getLastToken(context)+1)
-                                                                                              .setSnaphshotToken(localEventStore.getLastSnapshot(context)+1)
-                                                                                              .setPermits(flowControl.getInitialPermits())
-                                                                                              .build())
-                                                                .build());
+            SynchronizationReplicaOutbound request = SynchronizationReplicaOutbound.newBuilder()
+                                                                                   .setStart(StartSynchronization
+                                                                                                     .newBuilder()
+                                                                                                     .setContext(context)
+                                                                                                     .setNodeName(
+                                                                                                             messagingPlatformConfiguration
+                                                                                                                     .getName())
+                                                                                                     .setEventToken(
+                                                                                                             Math.min(safepointRepository.getSafePoint(EventType.EVENT, context), localEventStore.getLastToken(context) + 1))
+                                                                                                     .setSnaphshotToken(
+                                                                                                             Math.min(safepointRepository.getSafePoint(EventType.SNAPSHOT, context), localEventStore.getLastSnapshot(context) + 1))
+                                                                                                     .setPermits(
+                                                                                                             flowControl
+                                                                                                                     .getInitialPermits())
+                                                                                                     .build())
+                                                                                   .build();
+            logger.warn("{}: Starting replication: {}", context, request);
 
+            this.streamObserver.onNext(request);
             permitsLeft.set(flowControl.getInitialPermits() - flowControl.getThreshold());
 
         }
@@ -403,9 +414,9 @@ public class DataSynchronizationReplica {
                 logger.debug("{}: Failed to complete with error", context, cause);
             }
         }
-    }
 
-    private boolean isUnavailable(Throwable cause) {
-        return cause instanceof StatusRuntimeException && ((StatusRuntimeException)cause).getStatus().getCode().equals(Status.Code.UNAVAILABLE);
+        public long remainingPermits() {
+            return permitsLeft.get();
+        }
     }
 }

@@ -419,6 +419,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     if( controller.missingNewPermits(minLastPermits)) {
                         logger.warn("{}: Closing connection as waiting for new permits", context) ;
                         controller.cancel();
+                        eventStreamControllerSet.remove(controller);
                     }
             });
         }
