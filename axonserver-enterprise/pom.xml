@@ -30,6 +30,11 @@
             <artifactId>axonserver-cluster</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
+        <!-- Micrometer Prometheus registry  -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>
