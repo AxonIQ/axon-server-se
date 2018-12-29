@@ -109,6 +109,25 @@ public class PrimaryLogEntryStoreTest {
         assertEquals(100, entry.getIndex());
     }
 
+    @Ignore("NIO has problem cleaning buffers on windows")
+    @Test
+    public void clear() throws InterruptedException, ExecutionException, TimeoutException {
+        SerializedObject so = SerializedObject.newBuilder()
+                                              .setType("Demo")
+                                              .setData(ByteString.copyFromUtf8("Hello, world"))
+                                              .build();
+        CompletableFuture[] futures = new CompletableFuture[50000];
+        IntStream.range(0, futures.length)
+                 .parallel()
+                 .forEach(i -> futures[i] = testSubject
+                         .write(1, Entry.DataCase.SERIALIZEDOBJECT.getNumber(), so.toByteArray()));
+
+        CompletableFuture.allOf(futures).get(1, TimeUnit.SECONDS);
+        Thread.sleep(3000);
+        testSubject.clear();
+        assertEquals(0, testSubject.getSegments().size());
+    }
+
     @Test
     public void rollback() throws InterruptedException, ExecutionException, TimeoutException {
         SerializedObject so = SerializedObject.newBuilder().setType("Demo").setData(ByteString.copyFromUtf8("Hello, world")).build();

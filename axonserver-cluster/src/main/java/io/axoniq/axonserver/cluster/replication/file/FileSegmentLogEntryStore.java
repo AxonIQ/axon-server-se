@@ -204,13 +204,8 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clear(long logIndex, long logTerm) {
-        Entry entry = getEntry(logIndex);
-        if( entry == null && entry.getTerm() != logTerm) {
-            // TODO: implement clear
-            // primaryEventStore.clear();
-        }
-
+    public void clear() {
+        primaryEventStore.clear();
     }
 
     @Override

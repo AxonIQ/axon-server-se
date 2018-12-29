@@ -31,7 +31,7 @@ public interface LogEntryStore {
         return createIterator(1);
     }
 
-    void clear(long logIndex, long logTerm);
+    void clear();
 
     void clearOlderThan(long time, TimeUnit timeUnit);
 

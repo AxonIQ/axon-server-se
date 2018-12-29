@@ -68,16 +68,8 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clear(long logIndex, long logTerm) {
-        if (contains(logIndex, logTerm)) {
-            // If existing log entry has same index and term as snapshot's last included entry, retain log entries
-            // following it
-            entryMap.headMap(logIndex, true)
-                    .clear();
-        } else {
-            // Otherwise, discard the log
-            entryMap.clear();
-        }
+    public void clear() {
+        entryMap.clear();
     }
 
     @Override

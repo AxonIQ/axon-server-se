@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.FakeStateFactory.FakeState;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
+import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -57,6 +58,7 @@ public class LeaderStateTestWithFakeTransition {
                                  .raftGroup(raftGroup)
                                  .transitionHandler(transitionHandler)
                                  .schedulerFactory(() -> scheduler)
+                                 .snapshotManager(new FakeSnapshotManager())
                                  .stateFactory(new FakeStateFactory())
                                  .build();
     }

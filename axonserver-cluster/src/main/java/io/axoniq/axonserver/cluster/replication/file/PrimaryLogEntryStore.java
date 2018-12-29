@@ -128,7 +128,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getLogSuffix());
 
         return Arrays.stream(eventFiles)
-                     .map(name -> getSegment(name))
+                     .map(this::getSegment)
                      .filter(segment -> segment < lastInitialized)
                      .max(Long::compareTo)
                      .orElse(1L);
@@ -323,12 +323,26 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         next = secondaryEventStore;
     }
 
+    public void clear() {
+        cleanup(0);
+        File storageDir  = new File(storageProperties.getStorage(getType()));
+        String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
+        String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
+        Stream.of(logFiles, indexFiles)
+              .flatMap(Stream::of)
+              .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
+              .map(File::new)
+              .forEach(FileUtils::delete);
+        lastToken.set(0);
+    }
+
     public void clearOlderThan(long time, TimeUnit timeUnit) {
         File storageDir  = new File(storageProperties.getStorage(getType()));
         String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
         String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
         long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
-        Stream.of(logFiles, indexFiles).flatMap(Stream::of)
+        Stream.of(logFiles, indexFiles)
+              .flatMap(Stream::of)
               .filter(name -> !readBuffers.containsKey(getSegment(name))) // filter out opened files
               .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
               .map(File::new)
