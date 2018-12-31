@@ -103,6 +103,8 @@ public class RaftClusterIntegrationTest {
         String firstLeader = fixture.leaders().stream().findFirst().orElseThrow(() -> new AssertionError("Expected at least one leader. Did it step down?"));
         fixture.createNetworkPartition(firstLeader);
 
+        assertWithin(5, SECONDS, () -> assertFalse(fixture.getNode(firstLeader).isLeader()));
+
         assertWithin(5, SECONDS, () -> {
             long leaderCount = fixture.leaders().stream().filter(n -> !firstLeader.equals(n)).count();
             assertEquals(1, leaderCount);
@@ -126,6 +128,7 @@ public class RaftClusterIntegrationTest {
 
         String firstLeader = fixture.leaders().stream().findFirst().orElseThrow(() -> new AssertionError("Expected at least one leader. Did it step down?"));
         fixture.createNetworkPartition(firstLeader);
+        assertWithin(5, SECONDS, () -> assertFalse(fixture.getNode(firstLeader).isLeader()));
 
         assertWithin(5, SECONDS, () -> {
             long leaderCount = fixture.leaders().stream().filter(n -> !firstLeader.equals(n)).count();

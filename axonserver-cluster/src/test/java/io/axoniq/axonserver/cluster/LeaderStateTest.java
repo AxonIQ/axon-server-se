@@ -146,7 +146,7 @@ public class LeaderStateTest {
     @Test
     public void startAndStop() throws InterruptedException, TimeoutException, ExecutionException {
         testSubject.start();
-        Thread.sleep(10);
+        Thread.sleep(100);
         fakeScheduler.timeElapses(500);
         assertTrue(stateRef.get() instanceof FollowerState);
     }

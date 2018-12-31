@@ -158,7 +158,6 @@ class ReplicatorPeer {
                                 groupId(),
                                 installSnapshotResponse.getTerm());
                     updateCurrentTerm(installSnapshotResponse.getTerm());
-                    transitToFollower.run();
                 }
             }
         }
@@ -243,7 +242,6 @@ class ReplicatorPeer {
                 if (currentTerm() < appendEntriesResponse.getTerm()) {
                     logger.info("{}: Replica has higher term: {}", groupId(), appendEntriesResponse.getTerm());
                     updateCurrentTerm(appendEntriesResponse.getTerm());
-                    transitToFollower.run();
                     return;
                 }
                 logger.info("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}, currentMatchIndex = {}",
