@@ -52,7 +52,7 @@ public class FollowerStateTest {
 
         logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
-        logEntryProcessor = spy( new LogEntryProcessor(new InMemoryProcessorStore()));
+        logEntryProcessor = spy(new LogEntryProcessor(new InMemoryProcessorStore()));
 
         raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.groupId()).thenReturn("defaultGroup");
@@ -80,7 +80,9 @@ public class FollowerStateTest {
                                          .schedulerFactory(() -> fakeScheduler)
                                          .randomValueSupplier((min, max) -> electionTimeout)
                                          .snapshotManager(snapshotManager)
-                                         .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler, snapshotManager))
+                                         .stateFactory(new DefaultStateFactory(raftGroup,
+                                                                               transitionHandler,
+                                                                               snapshotManager))
                                          .build());
         followerState.start();
     }
@@ -309,6 +311,27 @@ public class FollowerStateTest {
 
         fakeScheduler.timeElapses(electionTimeout + 1);
         verify(transitionHandler).accept(any(), any(CandidateState.class));
+    }
+
+    @Test
+    public void testApplyingLastUpdatedIndexOnLastSnapshotChunk() {
+        InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder()
+                                                               .setLeaderId("node1")
+                                                               .setGroupId("defaultGroup")
+                                                               .setTerm(0L)
+                                                               .setOffset(1)
+                                                               .setLastIncludedIndex(2L)
+                                                               .setLastIncludedTerm(0L)
+                                                               .setDone(true)
+                                                               .build();
+
+        InstallSnapshotResponse response = followerState.installSnapshot(request);
+
+        assertEquals("defaultGroup", response.getGroupId());
+        assertEquals(0L, response.getTerm());
+        assertTrue(response.hasSuccess());
+        verify(snapshotManager).applySnapshotData(request.getDataList());
+        verify(logEntryProcessor).updateLastApplied(2L);
     }
 
     private AppendEntriesRequest firstAppend() {

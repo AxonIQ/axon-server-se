@@ -87,6 +87,10 @@ public class LogEntryProcessor {
         return processorStore.lastApplied();
     }
 
+    public void updateLastApplied(long index) {
+        processorStore.updateLastApplied(index);
+    }
+
     public void stop() {
         running = false;
     }

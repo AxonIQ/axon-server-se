@@ -180,6 +180,10 @@ public class FollowerState extends AbstractMembershipState {
         snapshotManager().applySnapshotData(request.getDataList())
                          .block();
 
+        if (request.getDone()) {
+            raftGroup().logEntryProcessor().updateLastApplied(request.getLastIncludedIndex());
+        }
+
         return InstallSnapshotResponse.newBuilder()
                                       .setTerm(currentTerm())
                                       .setGroupId(groupId())
