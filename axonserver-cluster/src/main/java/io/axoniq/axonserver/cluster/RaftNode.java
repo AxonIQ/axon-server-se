@@ -53,7 +53,7 @@ public class RaftNode {
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState, snapshotManager));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId));
-        scheduleLogCleaning();
+//        scheduleLogCleaning();
     }
 
     private void scheduleLogCleaning() {
