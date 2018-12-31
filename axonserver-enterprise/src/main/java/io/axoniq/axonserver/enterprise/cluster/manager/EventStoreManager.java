@@ -7,6 +7,7 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupRepositoryManager;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -79,6 +80,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         running = true;
     }
 
+    @EventListener
+    public void on(ClusterEvents.LeaderStepDown leaderStepDown) {
+        localEventStore.cancel(leaderStepDown.getContextName());
+    }
 
     @EventListener
     public void on(ContextEvents.ContextCreated contextCreated) {
