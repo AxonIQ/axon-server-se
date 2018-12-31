@@ -18,4 +18,9 @@ public class FakeSnapshotManager implements SnapshotManager{
     public Mono<Void> applySnapshotData(SerializedObject serializedObject) {
         return Mono.empty();
     }
+
+    @Override
+    public void clear() {
+        // no nop
+    }
 }

@@ -38,4 +38,9 @@ public class AxonServerSnapshotManager implements SnapshotManager {
                         .filter(snapshotDataConsumer -> snapshotDataConsumer.canConsume(serializedObject.getType()))
                         .forEach(snapshotDataConsumer -> snapshotDataConsumer.consume(serializedObject)));
     }
+
+    @Override
+    public void clear() {
+        snapshotDataProviders.forEach(SnapshotDataProvider::clear);
+    }
 }

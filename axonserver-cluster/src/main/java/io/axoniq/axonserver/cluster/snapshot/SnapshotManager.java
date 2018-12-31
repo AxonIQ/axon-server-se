@@ -21,4 +21,6 @@ public interface SnapshotManager {
     }
 
     Mono<Void> applySnapshotData(SerializedObject serializedObject);
+
+    void clear();
 }

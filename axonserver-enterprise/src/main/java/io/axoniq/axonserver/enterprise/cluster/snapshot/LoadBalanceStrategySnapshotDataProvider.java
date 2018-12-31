@@ -50,6 +50,11 @@ public class LoadBalanceStrategySnapshotDataProvider implements SnapshotDataProv
         }
     }
 
+    @Override
+    public void clear() {
+        // TODO: 12/31/2018 should we delete load balance strategies???
+    }
+
     private <V> SerializedObject toSerializedObject(LoadBalanceStrategy loadBalanceStrategy) {
         return SerializedObject.newBuilder()
                                .setType(LoadBalancingStrategy.class.getName())

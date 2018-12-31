@@ -56,6 +56,11 @@ public class ApplicationSnapshotDataProvider implements SnapshotDataProvider {
         }
     }
 
+    @Override
+    public void clear() {
+        applicationController.deleteByContext(context);
+    }
+
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.Application application) {
         return SerializedObject.newBuilder()
                                .setType(Application.class.getName())

@@ -175,6 +175,7 @@ public class FollowerState extends AbstractMembershipState {
         if (request.getOffset() == 0) {
             // first segment
             raftGroup().localLogEntryStore().clear();
+            snapshotManager().clear();
         }
 
         snapshotManager().applySnapshotData(request.getDataList())

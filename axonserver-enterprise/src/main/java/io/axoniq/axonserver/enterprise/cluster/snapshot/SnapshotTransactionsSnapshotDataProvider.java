@@ -51,4 +51,9 @@ public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataPro
             throw new SnapshotDeserializationException("Unable to deserialize events transaction.", e);
         }
     }
+
+    @Override
+    public void clear() {
+        // we don't delete snapshots
+    }
 }

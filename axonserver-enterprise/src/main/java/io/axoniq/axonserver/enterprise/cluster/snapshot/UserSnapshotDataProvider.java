@@ -50,6 +50,11 @@ public class UserSnapshotDataProvider implements SnapshotDataProvider {
         }
     }
 
+    @Override
+    public void clear() {
+        // TODO: 12/31/2018 should we clear users???
+    }
+
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.User user) {
         return SerializedObject.newBuilder()
                                .setType(User.class.getName())

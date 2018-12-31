@@ -148,14 +148,17 @@ public class SnapshotIntegrationTest {
             assertEquals("snapshotsTransaction", snapshotChunks.get(i).getType());
         }
 
+        assertEquals(2, processorLoadBalancingRepository.findAll().size());
         clearRepositories();
+        assertEquals(1, processorLoadBalancingRepository.findAll().size());
         followerSnapshotManager.applySnapshotData(snapshotChunks)
                                .block();
+        assertEquals(2, processorLoadBalancingRepository.findAll().size());
 
         assertEventStores(leaderEventStore, followerEventStore, 0, 95);
         assertEventStores(leaderSnapshotStore, followerSnapshotStore, 0, 9);
 
-        List<Application> applications = applicationRepository.findAll();
+        List<Application> applications = applicationRepository.findAllByContextsContext(CONTEXT);
         assertEquals(1, applications.size());
         assertApplications(app1, applications.get(0));
 
@@ -167,17 +170,16 @@ public class SnapshotIntegrationTest {
         assertEquals(1, loadBalancingStrategies.size());
         assertLoadBalancingStrategies(loadBalancingStrategy, loadBalancingStrategies.get(0));
 
-        List<ProcessorLoadBalancing> processorLoadBalancingList = processorLoadBalancingRepository.findAll();
+        List<ProcessorLoadBalancing> processorLoadBalancingList = processorLoadBalancingRepository
+                .findByContext(CONTEXT);
         assertEquals(1, processorLoadBalancingList.size());
         assertProcessorLoadBalancing(processorLoadBalancing1, processorLoadBalancingList.get(0));
     }
 
     private void clearRepositories() {
-        applicationRepository.deleteAll();
-        applicationRepository.flush();
+        followerSnapshotManager.clear();
         userRepository.deleteAll();
         loadBalanceStrategyRepository.deleteAll();
-        processorLoadBalancingRepository.deleteAll();
     }
 
     private EventStore eventStore(EmbeddedDBProperties embeddedDBProperties) {
@@ -258,7 +260,8 @@ public class SnapshotIntegrationTest {
                                    .setPayload(SerializedObject.newBuilder().build())
                                    .build());
             });
-            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(new TransactionInformation(0), newEvents);
+            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(new TransactionInformation(0),
+                                                                                    newEvents);
             eventStore.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 

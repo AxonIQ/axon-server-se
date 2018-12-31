@@ -17,4 +17,6 @@ public interface SnapshotDataProvider {
     boolean canConsume(String type);
 
     void consume(SerializedObject serializedObject);
+
+    void clear();
 }

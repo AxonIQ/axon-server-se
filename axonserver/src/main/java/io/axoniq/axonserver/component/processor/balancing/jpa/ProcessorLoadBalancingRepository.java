@@ -18,4 +18,6 @@ public interface ProcessorLoadBalancingRepository extends JpaRepository<Processo
 
     @Query("select p from ProcessorLoadBalancing p where p.processor.context = ?1")
     List<ProcessorLoadBalancing> findByContext(String context);
+
+    void deleteAllByProcessorContext(String context);
 }

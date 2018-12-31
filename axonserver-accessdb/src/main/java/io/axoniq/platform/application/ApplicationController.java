@@ -134,6 +134,13 @@ public class ApplicationController {
         }
     }
 
+    public void deleteByContext(String context) {
+        synchronized (applicationRepository) {
+            applicationRepository.deleteAllByContextsContext(context);
+            applicationRepository.flush();
+        }
+    }
+
     public void registerUpdateListener(String name, Consumer<Application> updateListener) {
         updateListeners.put(name, updateListener);
     }

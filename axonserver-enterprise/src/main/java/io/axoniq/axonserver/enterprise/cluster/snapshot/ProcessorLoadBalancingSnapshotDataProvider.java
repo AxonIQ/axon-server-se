@@ -53,6 +53,11 @@ public class ProcessorLoadBalancingSnapshotDataProvider implements SnapshotDataP
         }
     }
 
+    @Override
+    public void clear() {
+        processorLoadBalancingRepository.deleteAllByProcessorContext(context);
+    }
+
     private SerializedObject toSerializedObject(ProcessorLBStrategy processorLBStrategy) {
         return SerializedObject.newBuilder()
                                .setType(ProcessorLoadBalancing.class.getName())
