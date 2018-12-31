@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 
 import java.nio.ByteBuffer;
 
@@ -30,11 +30,11 @@ public class ByteBufferEventSource implements EventSource {
         this.main = false;
     }
 
-    public Event readEvent() {
+    public SerializedEvent readEvent() {
         int size = buffer.getInt();
         byte[] bytes = new byte[size];
         buffer.get(bytes);
-        return eventTransformer.readEvent(bytes);
+        return new SerializedEvent(bytes, eventTransformer);
     }
 
     public ByteBufferEventSource duplicate() {
@@ -46,7 +46,7 @@ public class ByteBufferEventSource implements EventSource {
         CleanUtils.cleanDirectBuffer(buffer, main, 60);
     }
 
-    public Event readEvent(int position) {
+    public SerializedEvent readEvent(int position) {
         buffer.position(position);
         return readEvent();
     }

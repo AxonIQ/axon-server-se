@@ -15,13 +15,14 @@ public class SnapshotReader {
         this.datafileManagerChain = datafileManagerChain;
     }
 
-    public Optional<Event> readSnapshot(String aggregateId, long minSequenceNumber) {
+    public Optional<SerializedEvent> readSnapshot(String aggregateId, long minSequenceNumber) {
             return datafileManagerChain
                     .getLastEvent(aggregateId, minSequenceNumber)
-                    .map(s -> Event.newBuilder(s).setSnapshot(true).build());
+                    .map(s -> new SerializedEvent(Event.newBuilder(s.asEvent()).setSnapshot(true).build(),
+                                                  s.eventTransformer()));
     }
 
-    public void streamByAggregateId(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<Event> eventConsumer) {
+    public void streamByAggregateId(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
         datafileManagerChain.streamByAggregateId(aggregateId, minSequenceNumber, maxSequenceNumber, maxResults, eventConsumer);
     }
 }

@@ -2,9 +2,9 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +37,7 @@ public class InputStreamEventSource implements EventSource {
     }
 
     @Override
-    public Event readEvent(int position)  {
+    public SerializedEvent readEvent(int position)  {
         try {
             dataInputStream.position(position);
             return readEvent();
@@ -46,9 +46,9 @@ public class InputStreamEventSource implements EventSource {
         }
     }
 
-    public Event readEvent() throws IOException {
+    public SerializedEvent readEvent() throws IOException {
         byte[] bytes = dataInputStream.readEvent();
-        return eventTransformer.readEvent(bytes);
+        return new SerializedEvent(bytes, eventTransformer);
     }
 
     @Override

@@ -21,7 +21,7 @@ public class EventStreamReader {
         this.eventWriteStorage = eventWriteStorage;
     }
 
-    public EventStreamController createController(Consumer<EventWithToken> eventWithTokenConsumer, Consumer<Throwable> errorCallback) {
+    public EventStreamController createController(Consumer<SerializedEventWithToken> eventWithTokenConsumer, Consumer<Throwable> errorCallback) {
         return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage);
     }
 

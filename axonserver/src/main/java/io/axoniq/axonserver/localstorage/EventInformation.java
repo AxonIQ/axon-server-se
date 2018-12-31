@@ -8,19 +8,16 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
  */
 public class EventInformation {
 
-    private final long token;
     private final int position;
-    private final Event event;
+    private final SerializedEventWithToken event;
 
-    public EventInformation(long token, int position, Event event) {
-
-        this.token = token;
+    public EventInformation(int position, SerializedEventWithToken event) {
         this.position = position;
         this.event = event;
     }
 
     public long getToken() {
-        return token;
+        return event.getToken();
     }
 
     public int getPosition() {
@@ -28,10 +25,14 @@ public class EventInformation {
     }
 
     public Event getEvent() {
-        return event;
+        return event.asEvent();
     }
 
     public EventWithToken asEventWithToken() {
-        return EventWithToken.newBuilder().setToken(token).setEvent(event).build();
+        return event.asEventWithToken();
+    }
+
+    public SerializedEventWithToken getSerializedEventWithToken() {
+        return event;
     }
 }

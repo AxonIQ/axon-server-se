@@ -1,24 +1,9 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Confirmation;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
-import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.grpc.event.*;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
-import io.grpc.MethodDescriptor;
-import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,12 +106,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
-        MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
-                .marshaller(Event.getDefaultInstance());
         workersMap.get(context).aggregateReader.readEvents( request.getAggregateId(),
                                                             request.getAllowSnapshots(),
                                                             request.getInitialSequence(),
-                                                            event -> responseStreamObserver.onNext(marshaller.stream(event)));
+                                                            event -> responseStreamObserver.onNext(event.asInputStream()));
         responseStreamObserver.onCompleted();
     }
 
@@ -134,14 +117,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
         if( request.getMaxSequence() >= 0) {
-            MethodDescriptor.Marshaller<Event> marshaller = ProtoUtils
-                    .marshaller(Event.getDefaultInstance());
             workersMap.get(context).aggregateReader.readSnapshots(request.getAggregateId(),
                                                                   request.getInitialSequence(),
                                                                   request.getMaxSequence(),
                                                                   request.getMaxResults(),
                                                                   event -> responseStreamObserver
-                                                                          .onNext(marshaller.stream(event)));
+                                                                          .onNext(event.asInputStream()));
         }
         responseStreamObserver.onCompleted();
     }
@@ -149,10 +130,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public StreamObserver<GetEventsRequest> listEvents(String context,
                                                        StreamObserver<InputStream> responseStreamObserver) {
-        MethodDescriptor.Marshaller<EventWithToken> marshaller = ProtoUtils
-                .marshaller(EventWithToken.getDefaultInstance());
         EventStreamController controller = workersMap.get(context).createController(
-                eventWithToken -> responseStreamObserver.onNext(marshaller.stream(eventWithToken)),responseStreamObserver::onError);
+                eventWithToken -> responseStreamObserver.onNext(eventWithToken.asInputStream()),responseStreamObserver::onError);
         return new StreamObserver<GetEventsRequest>() {
             @Override
             public void onNext(GetEventsRequest getEventsRequest) {
@@ -366,7 +345,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             cancelTrackingEventProcessors();
         }
 
-        public EventStreamController createController(Consumer<EventWithToken> consumer, Consumer<Throwable> errorCallback) {
+        public EventStreamController createController(Consumer<SerializedEventWithToken> consumer, Consumer<Throwable> errorCallback) {
             EventStreamController controller = eventStreamReader.createController(consumer, errorCallback);
             eventStreamControllerSet.add(controller);
             return controller;
