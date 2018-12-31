@@ -17,6 +17,9 @@ spring:
       connection-init-sql: select 1;
       leak-detection-threshold: 2000
 
+  transaction:
+    default-timeout: 10
+
   h2:
     console:
       enabled: true

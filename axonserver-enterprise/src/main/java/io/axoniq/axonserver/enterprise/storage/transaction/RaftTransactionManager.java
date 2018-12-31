@@ -41,7 +41,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
         waitingTransactions.set(0);
         token.set(datafileManagerChain.lastIndex());
-        if( datafileManagerChain.getType().equals(EventType.EVENT)) {
+        if(EventType.EVENT.equals(datafileManagerChain.getType())) {
             try (EntryIterator iterator = becomeMaster.getUnappliedEntries().get()) {
                 while (iterator.hasNext()) {
                     Entry entry = iterator.next();

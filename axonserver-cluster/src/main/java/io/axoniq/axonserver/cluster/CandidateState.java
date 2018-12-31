@@ -163,6 +163,7 @@ public class CandidateState extends AbstractMembershipState {
     private synchronized void onVoteResponse(String voter, RequestVoteResponse response) {
         logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
+            updateCurrentTerm(response.getTerm());
             changeStateTo(stateFactory().followerState());
             return;
         }

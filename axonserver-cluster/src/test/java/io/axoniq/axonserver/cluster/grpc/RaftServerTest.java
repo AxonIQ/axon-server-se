@@ -115,10 +115,10 @@ public class RaftServerTest {
         final Map<String,RaftPeer> raftPeerMap = new HashMap<>();
 
         private GrpcRaftGroup(List<Node> nodes, String localNode) {
-            this.localNode = new RaftNode(localNode, this, new FakeSnapshotManager());
             logEntryStore = new InMemoryLogEntryStore(localNode);
             logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
             electionStore = new InMemoryElectionStore();
+            this.localNode = new RaftNode(localNode, this, new FakeSnapshotManager());
             initializePeers(nodes);
 
         }
