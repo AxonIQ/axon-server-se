@@ -57,10 +57,13 @@ public class RaftNode {
     }
 
     private void scheduleLogCleaning() {
-        scheduler.scheduleWithFixedDelay(() -> raftGroup.localLogEntryStore().clearOlderThan(1, TimeUnit.HOURS),
-                                         0,
-                                         1,
-                                         TimeUnit.HOURS);
+        scheduler.scheduleWithFixedDelay(
+                () -> raftGroup.localLogEntryStore().clearOlderThan(1,
+                                                                    TimeUnit.HOURS,
+                                                                    () -> raftGroup.logEntryProcessor().commitIndex()),
+                0,
+                1,
+                TimeUnit.HOURS);
     }
 
     private void updateConfig(Entry entry){

@@ -20,6 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Author: marc
@@ -73,8 +74,8 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clearOlderThan(long time, TimeUnit timeUnit) {
-
+    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastCommittedIndexSupplier) {
+        // TODO: 12/31/2018
     }
 
     @Override

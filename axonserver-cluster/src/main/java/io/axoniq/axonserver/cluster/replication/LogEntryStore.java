@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public interface LogEntryStore {
 
@@ -33,7 +34,7 @@ public interface LogEntryStore {
 
     void clear();
 
-    void clearOlderThan(long time, TimeUnit timeUnit);
+    void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastCommittedIndexSupplier);
 
     long lastLogIndex();
 
