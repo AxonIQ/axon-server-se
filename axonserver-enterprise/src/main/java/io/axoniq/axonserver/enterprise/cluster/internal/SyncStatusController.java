@@ -7,6 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Author: marc
  */
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Component;
 public class SyncStatusController {
     private final Logger log = LoggerFactory.getLogger(SyncStatusController.class);
     private final SafepointRepository safepointRepository;
+    private final Map<Safepoint.SafepointKey, Safepoint> lastSyncStatus = new ConcurrentHashMap<>();
 
     public SyncStatusController(SafepointRepository safepointRepository) {
         this.safepointRepository = safepointRepository;
@@ -30,8 +34,8 @@ public class SyncStatusController {
     }
 
     private Safepoint lastSyncStatus(EventType eventType, String context){
-        Safepoint syncStatus = safepointRepository.findById(new Safepoint.SafepointKey(context, eventType.name())).orElse(null);
-        return syncStatus != null ? syncStatus : new Safepoint(eventType.name(), context);
+        Safepoint.SafepointKey key = new Safepoint.SafepointKey(context, eventType.name());
+        return lastSyncStatus.computeIfAbsent(key,  k -> safepointRepository.findById(key).orElse(new Safepoint(eventType.name(), context)));
     }
 
     public long generation(EventType eventType, String context){
@@ -58,12 +62,15 @@ public class SyncStatusController {
     }
 
     public void updateSafePoint(EventType eventType, String context, long safePoint){
+        updateSafePoint(eventType, context, safePoint, false);
+    }
+    public void updateSafePoint(EventType eventType, String context, long safePoint, boolean forceSafe){
         log.trace("{}: Storing safePoint for {} = {}", context, eventType, safePoint);
         Safepoint syncStatus = lastSyncStatus(eventType, context);
-        if (safePoint == syncStatus.safePoint()){
+        syncStatus.setSafePoint(safePoint);
+        if (!forceSafe && safePoint < syncStatus.safePoint() - 100){
             return;
         }
-        syncStatus.setSafePoint(safePoint);
         safepointRepository.save(syncStatus);
     }
 

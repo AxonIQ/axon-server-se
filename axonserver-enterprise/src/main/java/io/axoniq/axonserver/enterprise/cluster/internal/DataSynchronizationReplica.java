@@ -299,7 +299,8 @@ public class DataSynchronizationReplica {
 
         private void syncTransaction(TransactionWithToken syncRequest, EventType type, AtomicLong expectedToken,
                                      ConcurrentNavigableMap<Long, TransactionWithToken> waitingToSynchronize) {
-            if (syncRequest.getToken() < expectedToken.get()) {
+            if (syncRequest.getToken() < expectedToken.get() ) {
+                logger.warn("Received {} {} while expecting {}", type, syncRequest.getToken(), expectedToken.get() );
                 if( contains(type, syncRequest)) {
                     messageProcessed(true, expectedToken.get(), type.name());
                     return;
@@ -325,10 +326,12 @@ public class DataSynchronizationReplica {
         }
 
         private void rollback(EventType eventType, TransactionWithToken syncRequest) {
+            logger.warn("{}: Rollback {} to {}", context, eventType, syncRequest.getToken());
             if( EventType.EVENT.equals(eventType)) {
-                localEventStore.rollbackEvents(context, syncRequest.getToken());
+                localEventStore.rollbackEvents(context, syncRequest.getToken()-1);
+                logger.warn("{}: Last event is {}", context, localEventStore.getLastToken(context));
             } else {
-                localEventStore.rollbackSnapshots(context, syncRequest.getToken());
+                localEventStore.rollbackSnapshots(context, syncRequest.getToken()-1);
             }
 
         }
