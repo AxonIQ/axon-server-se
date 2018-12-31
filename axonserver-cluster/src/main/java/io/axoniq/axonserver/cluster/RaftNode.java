@@ -22,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -39,6 +40,7 @@ public class RaftNode {
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
     private volatile Future<?> applyTask;
+    private volatile ScheduledFuture<?> scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
     private final Scheduler scheduler;
 
@@ -53,11 +55,10 @@ public class RaftNode {
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState, snapshotManager));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId));
-//        scheduleLogCleaning();
     }
 
-    private void scheduleLogCleaning() {
-        scheduler.scheduleWithFixedDelay(
+    private ScheduledFuture<?> scheduleLogCleaning() {
+        return scheduler.scheduleWithFixedDelay(
                 () -> raftGroup.localLogEntryStore().clearOlderThan(1,
                                                                     TimeUnit.HOURS,
                                                                     () -> raftGroup.logEntryProcessor().commitIndex()),
@@ -107,6 +108,7 @@ public class RaftNode {
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers));
+//        scheduledLogCleaning = scheduleLogCleaning();
         logger.info("{}: Node started.", groupId());
     }
 
@@ -132,8 +134,14 @@ public class RaftNode {
     public void stop() {
         logger.info("{}: Stopping the node...", groupId());
         raftGroup.logEntryProcessor().stop();
-        applyTask.cancel(true);
-        applyTask = null;
+        if (applyTask != null) {
+            applyTask.cancel(true);
+            applyTask = null;
+        }
+        if (scheduledLogCleaning != null) {
+            scheduledLogCleaning.cancel(true);
+            scheduledLogCleaning = null;
+        }
         updateState(state.get(), stateFactory.idleState(nodeId));
         registrations.forEach(Registration::cancel);
         logger.info("{}: Node stopped.", groupId());
