@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
+import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +21,7 @@ import java.util.stream.IntStream;
 public class EventWriteStorage {
     private static final Logger logger = LoggerFactory.getLogger(EventWriteStorage.class);
 
-    private final Map<String, Consumer<EventWithToken>> listeners = new ConcurrentHashMap<>();
+    private final Map<String, Consumer<SerializedEventWithToken>> listeners = new ConcurrentHashMap<>();
     private final StorageTransactionManager storageTransactionManager;
     private final AtomicLong lastCommitted = new AtomicLong(-1L);
 
@@ -43,12 +43,8 @@ public class EventWriteStorage {
                     if( ! listeners.isEmpty()) {
                         IntStream.range(0, eventList.size())
                                  .forEach(i -> {
-                                     EventWithToken event = EventWithToken.newBuilder()
-                                                                          .setToken(firstToken + i)
-                                                                          .setEvent(eventList.get(i))
-                                                                          .build();
                                      listeners.values()
-                                              .forEach(consumer -> safeForwardEvent(consumer, event));
+                                              .forEach(consumer -> safeForwardEvent(consumer, new SerializedEventWithToken(firstToken + i, eventList.get(i), NoOpEventTransformer.INSTANCE)));
                                  });
                     }
                 } else {
@@ -61,7 +57,7 @@ public class EventWriteStorage {
         return completableFuture;
     }
 
-    private void safeForwardEvent(Consumer<EventWithToken> consumer, EventWithToken event) {
+    private void safeForwardEvent(Consumer<SerializedEventWithToken> consumer, SerializedEventWithToken event) {
         try {
             consumer.accept(event);
         } catch( RuntimeException re) {
@@ -82,7 +78,7 @@ public class EventWriteStorage {
         storageTransactionManager.reserveSequenceNumbers(eventList);
     }
 
-    public Registration registerEventListener(Consumer<EventWithToken> listener) {
+    public Registration registerEventListener(Consumer<SerializedEventWithToken> listener) {
         String id = UUID.randomUUID().toString();
         listeners.put(id, listener);
         return () -> listeners.remove(id);

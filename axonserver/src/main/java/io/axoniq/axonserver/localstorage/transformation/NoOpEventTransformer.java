@@ -11,6 +11,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 public class NoOpEventTransformer extends EventTransformer {
 
     public static final NoOpEventTransformer INSTANCE = new NoOpEventTransformer();
+
     private NoOpEventTransformer() {
 
     }
@@ -25,7 +26,7 @@ public class NoOpEventTransformer extends EventTransformer {
     }
 
     @Override
-    protected ProcessedEvent transform(Event event) {
+    public ProcessedEvent transform(Event event) {
         return new WrappedEvent(event);
     }
 }

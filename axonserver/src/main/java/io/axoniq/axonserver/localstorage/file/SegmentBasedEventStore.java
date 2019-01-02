@@ -8,6 +8,8 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
@@ -19,16 +21,7 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -95,7 +88,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, Consumer<Event> eventConsumer) {
+    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber);
         boolean delegate = true;
         if( ! positionInfos.isEmpty()) {
@@ -116,7 +109,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     @Override
     public void streamByAggregateId(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
-                                    int maxResults, Consumer<Event> eventConsumer) {
+                                    int maxResults, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber, maxSequenceNumber, maxResults);
         AtomicInteger toDo = new AtomicInteger(maxResults);
         if( ! positionInfos.isEmpty()) {
@@ -188,7 +181,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public Optional<Event> getLastEvent(String aggregateId, long minSequenceNumber) {
+    public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
         for (Long segment : getSegments()) {
             SortedSet<PositionInfo> positionInfos = getPositions(segment, aggregateId);
             if (positionInfos != null ) {
@@ -198,7 +191,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
                 }
                 Optional<EventSource> buffer = getEventSource(segment);
                 if( buffer.isPresent()) {
-                    Event event = buffer.get().readEvent(last.getPosition());
+                    SerializedEvent event = buffer.get().readEvent(last.getPosition());
                     buffer.get().close();
                     return Optional.of(event);
                 }
@@ -341,7 +334,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public boolean streamEvents(long token, Predicate<EventWithToken> onEvent) {
+    public boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent) {
         logger.debug("Start streaming event from files at {}", token);
         long lastSegment = -1;
         long segment = getSegmentFor(token);
@@ -350,7 +343,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
             EventIterator eventIterator = getEvents(segment, token);
             while (eventIterator.hasNext()) {
                 eventWithToken = eventIterator.next();
-                if (!onEvent.test(eventWithToken.asEventWithToken())) {
+                if (!onEvent.test(eventWithToken.getSerializedEventWithToken())) {
                     eventIterator.close();
                     logger.debug("Stopped streaming event from files at {}, out of permits", eventWithToken.getToken());
                     return false;
@@ -468,7 +461,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         return reversedPositionInfos;
     }
 
-    private void retrieveEventsForAnAggregate(long segment, SortedSet<PositionInfo> positions, Consumer<Event> onEvent) {
+    private void retrieveEventsForAnAggregate(long segment, SortedSet<PositionInfo> positions, Consumer<SerializedEvent> onEvent) {
         Optional<EventSource> buffer = getEventSource(segment);
         buffer.ifPresent(eventSource -> {
             positions.forEach(positionInfo -> onEvent.accept(eventSource.readEvent(positionInfo.getPosition())));

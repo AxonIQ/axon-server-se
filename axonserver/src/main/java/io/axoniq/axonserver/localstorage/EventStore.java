@@ -35,16 +35,16 @@ public interface EventStore {
     default void cleanup() {
     }
 
-    boolean streamEvents(long token, Predicate<EventWithToken> onEvent);
+    boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent);
 
-    Optional<Event> getLastEvent(String aggregateId, long minSequenceNumber);
+    Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber);
 
     default void reserveSequenceNumbers(List<Event> events) {
     }
 
-    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<Event> eventConsumer);
+    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer);
 
-    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<Event> eventConsumer);
+    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
 
     PreparedTransaction prepareTransaction(List<Event> eventList);
 
