@@ -17,7 +17,7 @@ public class SerializedEvent {
     private volatile Event event;
 
     public SerializedEvent(Event event, EventTransformer eventTransformer) {
-        this(eventTransformer.transform(event).getPayloadBytes(), eventTransformer);
+        this(eventTransformer.transform(event).toByteArray(), eventTransformer);
         this.event = event;
     }
 
