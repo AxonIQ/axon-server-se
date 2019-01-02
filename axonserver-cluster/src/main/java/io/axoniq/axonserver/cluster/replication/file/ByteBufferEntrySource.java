@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 
 import java.nio.ByteBuffer;
@@ -58,6 +59,9 @@ public class ByteBufferEntrySource implements EntrySource {
                     break;
                 case NEWCONFIGURATION:
                     builder.setNewConfiguration(Config.parseFrom(bytes));
+                    break;
+                case LEADERELECTED:
+                    builder.setLeaderElected(LeaderElected.parseFrom(bytes));
                     break;
                 case DATA_NOT_SET:
                     break;

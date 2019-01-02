@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,5 +144,18 @@ public class InMemoryLogEntryStore implements LogEntryStore {
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
 
+    }
+
+    @Override
+    public CompletableFuture<Entry> createEntry(long currentTerm, LeaderElected leader) {
+        long index = lastIndex.incrementAndGet();
+        Entry entry = Entry.newBuilder()
+                           .setIndex(index)
+                           .setTerm(currentTerm)
+                           .setLeaderElected(leader)
+                           .build();
+        entryMap.put(index, entry);
+        appendListeners.forEach(listener -> listener.accept(entry));
+        return CompletableFuture.completedFuture(entry);
     }
 }

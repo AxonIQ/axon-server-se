@@ -10,6 +10,7 @@ import io.axoniq.axonserver.cluster.replication.InMemoryEntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,6 +115,31 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public CompletableFuture<Entry> createEntry(long currentTerm, LeaderElected leader) {
+        CompletableFuture<Entry> completableFuture = new CompletableFuture<>();
+        try {
+            CompletableFuture<Long> writeCompleted = primaryEventStore.write(currentTerm,
+                                                                             Entry.DataCase.LEADERELECTED.getNumber(),
+                                                                             leader.toByteArray());
+
+            writeCompleted.whenComplete((index, throwable ) -> {
+                if( throwable != null) {
+                    completableFuture.completeExceptionally(throwable);
+                } else {
+                    logger.info("{}: written {}", name, index);
+                    Entry entry = Entry.newBuilder().setTerm(currentTerm).setIndex(index).setLeaderElected(leader).build();
+                    completableFuture.complete(entry);
+                    appendListeners.forEach(listener -> listener.accept(entry));
+                }
+            });
+        } catch( Exception ex) {
+            completableFuture.completeExceptionally(ex);
+        }
+
+        return completableFuture;
+    }
+
+    @Override
     public void appendEntry(List<Entry> entries) throws IOException {
         entries.forEach(e -> {
             Entry existingEntry = getEntry(e.getIndex());
@@ -136,6 +162,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                         break;
                     case NEWCONFIGURATION:
                         writeCompleted = primaryEventStore.write(e.getTerm(), Entry.DataCase.NEWCONFIGURATION.getNumber(), e.getNewConfiguration().toByteArray());
+                        break;
+                    case LEADERELECTED:
+                        writeCompleted = primaryEventStore.write(e.getTerm(), Entry.DataCase.LEADERELECTED.getNumber(), e.getLeaderElected().toByteArray());
                         break;
                     case DATA_NOT_SET:
                         break;

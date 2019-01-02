@@ -133,6 +133,8 @@ public class RaftNode {
 
     public void stop() {
         logger.info("{}: Stopping the node...", groupId());
+        updateState(state.get(), stateFactory.idleState(nodeId));
+        logger.info("{}: Moved to idle state", groupId());
         raftGroup.logEntryProcessor().stop();
         if (applyTask != null) {
             applyTask.cancel(true);
@@ -142,7 +144,6 @@ public class RaftNode {
             scheduledLogCleaning.cancel(true);
             scheduledLogCleaning = null;
         }
-        updateState(state.get(), stateFactory.idleState(nodeId));
         registrations.forEach(Registration::cancel);
         logger.info("{}: Node stopped.", groupId());
     }

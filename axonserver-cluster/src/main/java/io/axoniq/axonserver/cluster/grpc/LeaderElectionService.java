@@ -23,8 +23,8 @@ public class LeaderElectionService extends LeaderElectionServiceGrpc.LeaderElect
                 RequestVoteResponse response = node.requestVote(request);
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
-            } catch (IllegalStateException illegalState) {
-                responseObserver.onError(illegalState);
+            } catch (Exception e) {
+                responseObserver.onError(e);
             }
         } else {
             responseObserver.onError(new MissingNodeForGroupException(request.getGroupId()));
