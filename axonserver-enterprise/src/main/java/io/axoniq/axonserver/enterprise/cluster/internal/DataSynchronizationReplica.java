@@ -260,7 +260,7 @@ public class DataSynchronizationReplica {
                                                                                                                      .getInitialPermits())
                                                                                                      .build())
                                                                                    .build();
-            logger.warn("{}: Starting replication: {}", context, request);
+            logger.info("{}: Starting replication: {}", context, request);
 
             this.streamObserver.onNext(request);
             permitsLeft.set(flowControl.getInitialPermits() - flowControl.getThreshold());
