@@ -42,6 +42,9 @@ public class GrpcRaftGroup implements RaftGroup {
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
                          RaftProperties storageOptions,
                          Function<String, List<SnapshotDataProvider>> snapshotDataProvidersFactory) {
+        raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
+        raftStateController.init();
+        logEntryProcessor = new LogEntryProcessor(raftStateController);
         LogEntryTransformerFactory eventTransformerFactory = new DefaultLogEntryTransformerFactory();
         IndexManager indexManager = new IndexManager(storageOptions, groupId);
         PrimaryLogEntryStore primary = new PrimaryLogEntryStore(groupId,
@@ -52,7 +55,7 @@ public class GrpcRaftGroup implements RaftGroup {
         primary.initSegments(Long.MAX_VALUE);
 
         localLogEntryStore = new FileSegmentLogEntryStore(groupId, primary);
-        raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
+
         raftConfiguration = new RaftConfiguration() {
 
             private final MembersStore membersStore = new JpaMembersStore(this::groupId, nodeRepository);
@@ -105,8 +108,6 @@ public class GrpcRaftGroup implements RaftGroup {
 
         List<SnapshotDataProvider> dataProviders = snapshotDataProvidersFactory.apply(groupId);
         localNode = new RaftNode(localNodeId, this, new AxonServerSnapshotManager(dataProviders));
-        logEntryProcessor = new LogEntryProcessor(raftStateController);
-        raftStateController.init();
 
     }
 

@@ -20,8 +20,8 @@ public class DefaultStateFactory implements MembershipStateFactory {
     private final BiConsumer<MembershipState, MembershipState> transitionHandler;
     private final Supplier<Scheduler> schedulerFactory;
     private final SnapshotManager snapshotManager;
-//    private final CurrentConfiguration currentConfiguration;
-//    private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
+    private final CurrentConfiguration currentConfiguration;
+    private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
 
     public DefaultStateFactory(RaftGroup raftGroup,
                                BiConsumer<MembershipState, MembershipState> transitionHandler,
@@ -30,9 +30,9 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.transitionHandler = transitionHandler;
         this.snapshotManager = snapshotManager;
         this.schedulerFactory = DefaultScheduler::new;
-//        CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
-//        this.currentConfiguration = configuration;
-//        this.registerConfigurationListener = configuration::registerChangeListener;
+        CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
+        this.currentConfiguration = configuration;
+        this.registerConfigurationListener = configuration::registerChangeListener;
 
     }
 
@@ -48,8 +48,8 @@ public class DefaultStateFactory implements MembershipStateFactory {
                           .schedulerFactory(schedulerFactory)
                           .transitionHandler(transitionHandler)
                           .snapshotManager(snapshotManager)
-//                          .currentConfiguration(currentConfiguration)
-//                          .registerConfigurationListenerFn(registerConfigurationListener)
+                          .currentConfiguration(currentConfiguration)
+                          .registerConfigurationListenerFn(registerConfigurationListener)
                           .stateFactory(this)
                           .build();
     }
@@ -61,8 +61,8 @@ public class DefaultStateFactory implements MembershipStateFactory {
                             .schedulerFactory(schedulerFactory)
                             .transitionHandler(transitionHandler)
                             .snapshotManager(snapshotManager)
-//                            .currentConfiguration(currentConfiguration)
-//                            .registerConfigurationListenerFn(registerConfigurationListener)
+                            .currentConfiguration(currentConfiguration)
+                            .registerConfigurationListenerFn(registerConfigurationListener)
                             .stateFactory(this)
                             .build();
     }
@@ -74,8 +74,8 @@ public class DefaultStateFactory implements MembershipStateFactory {
                              .schedulerFactory(schedulerFactory)
                              .transitionHandler(transitionHandler)
                              .snapshotManager(snapshotManager)
-//                             .currentConfiguration(currentConfiguration)
-//                             .registerConfigurationListenerFn(registerConfigurationListener)
+                             .currentConfiguration(currentConfiguration)
+                             .registerConfigurationListenerFn(registerConfigurationListener)
                              .stateFactory(this)
                              .build();
     }
