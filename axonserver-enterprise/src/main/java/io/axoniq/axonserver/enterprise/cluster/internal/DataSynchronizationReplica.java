@@ -174,6 +174,7 @@ public class DataSynchronizationReplica {
         private volatile long lastEventReceived = System.currentTimeMillis();
         private volatile long lastSnapshotReceived = System.currentTimeMillis();
         private volatile long lastMessageReceived = System.currentTimeMillis();
+        private volatile boolean completed;
 
         public ReplicaConnection(String node, String context) {
             this.node = node;
@@ -190,6 +191,7 @@ public class DataSynchronizationReplica {
             this.streamObserver = new SendingStreamObserver<>(stub.openConnection(new ReceivingStreamObserver<SynchronizationReplicaInbound>(logger) {
                 @Override
                 protected void consume(SynchronizationReplicaInbound synchronizationReplicaInbound) {
+                    if( completed ) return;
                     switch (synchronizationReplicaInbound.getRequestCase()) {
                         case EVENT:
                             TransactionWithToken eventRequest = synchronizationReplicaInbound
@@ -227,12 +229,7 @@ public class DataSynchronizationReplica {
                 public void onError(Throwable cause) {
                     ManagedChannelHelper.checkShutdownNeeded(node, cause);
                     logger.warn("Received error from {}: {}", node, cause.getMessage());
-//                    if( isUnavailable(cause)) {
-                        applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
-//                    } else {
-//                        // restart connection if connection stopped for other reason than unavailable
-//                        start();
-//                    }
+                    applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
                 }
 
                 @Override
@@ -260,7 +257,7 @@ public class DataSynchronizationReplica {
                                                                                                                      .getInitialPermits())
                                                                                                      .build())
                                                                                    .build();
-            logger.info("{}: Starting replication: {}", context, request);
+            logger.debug("{}: Starting replication: {}, my last token: {} ", context, request, localEventStore.getLastToken(context));
 
             this.streamObserver.onNext(request);
             permitsLeft.set(flowControl.getInitialPermits() - flowControl.getThreshold());
@@ -300,7 +297,7 @@ public class DataSynchronizationReplica {
         private void syncTransaction(TransactionWithToken syncRequest, EventType type, AtomicLong expectedToken,
                                      ConcurrentNavigableMap<Long, TransactionWithToken> waitingToSynchronize) {
             if (syncRequest.getToken() < expectedToken.get() ) {
-                logger.warn("Received {} {} while expecting {}", type, syncRequest.getToken(), expectedToken.get() );
+                logger.debug("Received {} {} while expecting {}", type, syncRequest.getToken(), expectedToken.get() );
                 if( contains(type, syncRequest)) {
                     messageProcessed(true, expectedToken.get(), type.name());
                     return;
@@ -384,6 +381,7 @@ public class DataSynchronizationReplica {
                 expectedSnapshotToken.set(Long.MAX_VALUE);
                 expectedEventToken.set(Long.MAX_VALUE);
                 streamObserver.onCompleted();
+                completed = true;
             } catch (RuntimeException cause) {
                 logger.debug("{}: Failed to complete with error", context, cause);
             }
@@ -413,6 +411,7 @@ public class DataSynchronizationReplica {
                 expectedSnapshotToken.set(Long.MAX_VALUE);
                 expectedEventToken.set(Long.MAX_VALUE);
                 streamObserver.onError(new MessagingPlatformException(ErrorCode.OTHER, message));
+                completed = true;
             } catch (RuntimeException cause) {
                 logger.debug("{}: Failed to complete with error", context, cause);
             }
