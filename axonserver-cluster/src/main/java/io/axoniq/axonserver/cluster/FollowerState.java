@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
+import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotSuccess;
@@ -84,13 +85,10 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
-            if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
-                logger.trace("{}: previous term/index missing {}/{} last log {}",
-                             groupId(),
-                             request.getPrevLogTerm(),
-                             request.getPrevLogIndex(),
-                             logEntryStore.lastLogIndex());
-                return appendEntriesFailure();
+            if (request.getCommitIndex() > logEntryProcessor.commitIndex()) {
+                long commit = min(request.getCommitIndex(), logEntryStore.lastLogIndex());
+                Entry entry = logEntryStore.getEntry(commit);
+                logEntryProcessor.markCommitted(entry.getIndex());
             }
 
             //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
