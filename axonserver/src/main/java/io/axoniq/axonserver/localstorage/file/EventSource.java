@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 
 /**
  * Author: marc
  */
 public interface EventSource extends AutoCloseable {
 
-    Event readEvent(int position);
+    SerializedEvent readEvent(int position);
 
     default void close()  {
         // no-action

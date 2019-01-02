@@ -17,7 +17,6 @@ public abstract class EventTransformer {
     }
 
     protected abstract Event transform(byte[] eventBytes);
-
     private byte[] getEventBytes(ByteBuffer buffer, int position) {
         buffer.position(position);
         return getEventBytes(buffer);
@@ -34,5 +33,5 @@ public abstract class EventTransformer {
         return origEventList.stream().map(this::transform).collect(Collectors.toList());
     }
 
-    protected abstract ProcessedEvent transform(Event e);
+    public abstract ProcessedEvent transform(Event e);
 }

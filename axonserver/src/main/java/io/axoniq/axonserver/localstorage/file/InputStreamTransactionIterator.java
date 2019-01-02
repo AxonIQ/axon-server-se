@@ -53,7 +53,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
 
     private void addEvent(TransactionWithToken.Builder transactionWithTokenBuilder) {
         try {
-            transactionWithTokenBuilder.addEvents(eventSource.readEvent());
+            transactionWithTokenBuilder.addEvents(eventSource.readEvent().asEvent());
             currentSequenceNumber++;
         } catch (IOException | RuntimeException io) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);

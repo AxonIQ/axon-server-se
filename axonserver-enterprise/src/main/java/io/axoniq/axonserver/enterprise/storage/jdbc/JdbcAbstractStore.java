@@ -9,16 +9,15 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
+import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
+import javax.sql.DataSource;
+import java.sql.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -26,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
 
 /**
  * Author: marc
@@ -52,7 +50,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     private final DataSource dataSource;
 
     protected JdbcAbstractStore(EventTypeContext eventTypeContext,
-                             DataSource dataSource) {
+                                DataSource dataSource) {
         this.eventTypeContext = eventTypeContext;
         this.dataSource = dataSource;
     }
@@ -93,8 +91,8 @@ public abstract class JdbcAbstractStore implements EventStore {
                     maxGlobalIndex);
                  ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
-                    Number last = (Number)resultSet.getObject(1);
-                    if( last != null)lastToken.set(last.longValue());
+                    Number last = (Number) resultSet.getObject(1);
+                    if (last != null) lastToken.set(last.longValue());
                 }
             }
         } catch (SQLException e) {
@@ -151,8 +149,8 @@ public abstract class JdbcAbstractStore implements EventStore {
             preparedStatement.setString(1, aggregateIdentifier);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
-                    Number last = (Number)resultSet.getObject(1);
-                    if( last != null) return Optional.of(last.longValue());
+                    Number last = (Number) resultSet.getObject(1);
+                    if (last != null) return Optional.of(last.longValue());
                 }
                 return Optional.empty();
             }
@@ -163,11 +161,11 @@ public abstract class JdbcAbstractStore implements EventStore {
 
     @Override
     public boolean streamEvents(long token,
-                             Predicate<EventWithToken> onEvent) {
+                                Predicate<SerializedEventWithToken> onEvent) {
         try (Connection connection = dataSource.getConnection();
-                     PreparedStatement preparedStatement = connection.prepareStatement(
-                             readEvents)) {
-            EventWithToken event;
+             PreparedStatement preparedStatement = connection.prepareStatement(
+                     readEvents)) {
+            SerializedEventWithToken event;
             preparedStatement.setLong(1, token);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
@@ -183,28 +181,28 @@ public abstract class JdbcAbstractStore implements EventStore {
         }
     }
 
-    private EventWithToken readEventWithToken(ResultSet resultSet) throws SQLException {
-        return EventWithToken.newBuilder()
-                             .setToken(resultSet.getLong("global_index"))
-                             .setEvent(readEvent(resultSet))
-                             .build();
+    private SerializedEventWithToken readEventWithToken(ResultSet resultSet) throws SQLException {
+        return new SerializedEventWithToken(resultSet.getLong("global_index"),
+                                            readEvent(resultSet));
     }
 
-    private Event readEvent(ResultSet resultSet) throws SQLException {
-        return Event.newBuilder()
-                    .setAggregateIdentifier(resultSet.getString("aggregate_identifier"))
-                    .setAggregateSequenceNumber(resultSet.getLong("sequence_number"))
-                    .setMessageIdentifier(resultSet.getString("event_identifier"))
-                    .setPayload(SerializedObject.newBuilder()
-                                                .setData(ByteString.copyFrom(resultSet.getBytes("payload")))
-                                                .setRevision(resultSet.getString("payload_revision"))
-                                                .setType(resultSet.getString("payload_type")))
-                    .setTimestamp(resultSet.getLong("time_stamp"))
-                    .setAggregateType(resultSet.getString("type")).build();
+    private SerializedEvent readEvent(ResultSet resultSet) throws SQLException {
+        return new SerializedEvent(
+                Event.newBuilder()
+                     .setAggregateIdentifier(resultSet.getString("aggregate_identifier"))
+                     .setAggregateSequenceNumber(resultSet.getLong("sequence_number"))
+                     .setMessageIdentifier(resultSet.getString("event_identifier"))
+                     .setPayload(SerializedObject.newBuilder()
+                                                 .setData(ByteString.copyFrom(resultSet.getBytes("payload")))
+                                                 .setRevision(resultSet.getString("payload_revision"))
+                                                 .setType(resultSet.getString("payload_type")))
+                     .setTimestamp(resultSet.getLong("time_stamp"))
+                     .setAggregateType(resultSet.getString("type")).build(),
+                NoOpEventTransformer.INSTANCE);
     }
 
     @Override
-    public Optional<Event> getLastEvent(String aggregateIdentifier, long minSequenceNumber) {
+    public Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidDesc)) {
@@ -223,7 +221,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<Event> eventConsumer) {
+    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidWithinRangeDesc)) {
@@ -242,7 +240,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<Event> eventConsumer) {
+    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidAsc)) {

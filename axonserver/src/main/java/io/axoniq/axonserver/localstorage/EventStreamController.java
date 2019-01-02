@@ -2,7 +2,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
@@ -27,7 +26,7 @@ public class EventStreamController {
         }
     });
     private static final Logger logger = LoggerFactory.getLogger(EventStreamController.class);
-    private final Consumer<EventWithToken> eventWithTokenConsumer;
+    private final Consumer<SerializedEventWithToken> eventWithTokenConsumer;
     private final Consumer<Throwable> errorCallback;
     private final EventStore datafileManagerChain;
     private final EventWriteStorage eventWriteStorage;
@@ -38,7 +37,7 @@ public class EventStreamController {
     private volatile Registration eventListener;
 
     public EventStreamController(
-            Consumer<EventWithToken> eventWithTokenConsumer,
+            Consumer<SerializedEventWithToken> eventWithTokenConsumer,
             Consumer<Throwable> errorCallback, EventStore datafileManagerChain, EventWriteStorage eventWriteStorage) {
         this.eventWithTokenConsumer = eventWithTokenConsumer;
         this.errorCallback = errorCallback;
@@ -80,7 +79,7 @@ public class EventStreamController {
         }
     }
 
-    private void sendFromWriter(EventWithToken eventWithToken) {
+    private void sendFromWriter(SerializedEventWithToken eventWithToken) {
         long current = currentTrackingToken.get();
         if(current > eventWithToken.getToken()) return;
         if( processingBacklog.get()) {
@@ -103,12 +102,12 @@ public class EventStreamController {
         sendEvent(eventWithToken);
     }
 
-    private boolean sendFromStream(EventWithToken eventWithToken) {
+    private boolean sendFromStream(SerializedEventWithToken eventWithToken) {
         if( eventWriteStorage.getLastToken() < eventWithToken.getToken()) return false;
         return sendEvent(eventWithToken);
     }
 
-    private boolean sendEvent(EventWithToken eventWithToken) {
+    private boolean sendEvent(SerializedEventWithToken eventWithToken) {
         if( ! running.get() ) return false;
         long claimsLeft = remainingPermits.getAndDecrement();
         if( claimsLeft <= 0) {
