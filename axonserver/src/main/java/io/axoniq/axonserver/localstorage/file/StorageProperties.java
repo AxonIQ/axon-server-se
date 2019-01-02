@@ -11,6 +11,8 @@ import java.io.File;
 public class StorageProperties {
 
     public static final String PATH_FORMAT = "%s/%s/%014d%s";
+    private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
+
     private String eventsSuffix = ".events";
     private String indexSuffix = ".index";
     private String bloomIndexSuffix = ".bloom";
@@ -27,6 +29,11 @@ public class StorageProperties {
     private int maxIndexesInMemory = 50;
     private int maxBloomFiltersInMemory = 100;
     private long syncInterval = 1000;
+
+    /**
+     * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
+     */
+    private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
 
     public StorageProperties() {
     }
@@ -171,5 +178,13 @@ public class StorageProperties {
 
     public void setSyncInterval(long syncInterval) {
         this.syncInterval = syncInterval;
+    }
+
+    public int getReadBufferSize() {
+        return readBufferSize;
+    }
+
+    public void setReadBufferSize(int readBufferSize) {
+        this.readBufferSize = readBufferSize;
     }
 }
