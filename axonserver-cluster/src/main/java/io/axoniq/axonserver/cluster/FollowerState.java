@@ -85,10 +85,13 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
-            if (request.getCommitIndex() > logEntryProcessor.commitIndex()) {
-                long commit = min(request.getCommitIndex(), logEntryStore.lastLogIndex());
-                Entry entry = logEntryStore.getEntry(commit);
-                logEntryProcessor.markCommitted(entry.getIndex());
+            if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
+                logger.trace("{}: previous term/index missing {}/{} last log {}",
+                             groupId(),
+                             request.getPrevLogTerm(),
+                             request.getPrevLogIndex(),
+                             logEntryStore.lastLogIndex());
+                return appendEntriesFailure();
             }
 
             //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -107,12 +110,9 @@ public class FollowerState extends AbstractMembershipState {
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
             if (request.getCommitIndex() > logEntryProcessor.commitIndex()) {
-                if (request.getEntriesCount() == 0) {
-                    logEntryProcessor.markCommitted(request.getCommitIndex());
-                } else {
-                    logEntryProcessor.markCommitted(min(request.getCommitIndex(),
-                                                        request.getEntries(request.getEntriesCount() - 1).getIndex()));
-                }
+                long commit = min(request.getCommitIndex(), logEntryStore.lastLogIndex());
+                Entry entry = logEntryStore.getEntry(commit);
+                logEntryProcessor.markCommitted(entry.getIndex());
             }
 
             long last = lastLogIndex();
