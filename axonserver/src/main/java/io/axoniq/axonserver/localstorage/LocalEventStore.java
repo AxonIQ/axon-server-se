@@ -227,7 +227,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return 0;
     }
 
-    @Scheduled(fixedRateString = "${axoniq.axonserver.event-processor-heartbeat-check:50}")
+// Not scheduled yet as client does not expect heartbeats
+//    @Scheduled(fixedRateString = "${axoniq.axonserver.event-processor-heartbeat-check:50}")
     public void checkHeartbeat() {
         workersMap.forEach((k,v) -> v.sendHeartbeats());
     }

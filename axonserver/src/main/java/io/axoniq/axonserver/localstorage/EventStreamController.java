@@ -150,7 +150,7 @@ public class EventStreamController {
         try {
             long now = System.currentTimeMillis();
             if (heartbeatInterval > 0 && lastMessageSent.get() < now - heartbeatInterval) {
-                eventWithTokenConsumer.accept(EventWithToken.getDefaultInstance());
+                // eventWithTokenConsumer.accept(SerializedEventWithToken.DEFAULT_INSTANCE);
                 lastMessageSent.updateAndGet(current -> Math.max(current, now));
             }
         } catch (Exception e) {
