@@ -61,7 +61,7 @@ public class RaftNode {
         return scheduler.scheduleWithFixedDelay(
                 () -> raftGroup.localLogEntryStore().clearOlderThan(1,
                                                                     TimeUnit.HOURS,
-                                                                    () -> raftGroup.logEntryProcessor().commitIndex()),
+                                                                    () -> raftGroup.logEntryProcessor().lastAppliedIndex()),
                 0,
                 1,
                 TimeUnit.HOURS);

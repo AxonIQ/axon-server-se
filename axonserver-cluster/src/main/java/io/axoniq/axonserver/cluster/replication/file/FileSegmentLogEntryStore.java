@@ -239,7 +239,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastCommittedIndexSupplier) {
-        primaryEventStore.clearOlderThan(time, timeUnit, lastCommittedIndexSupplier);
+    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
+        primaryEventStore.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
     }
 }

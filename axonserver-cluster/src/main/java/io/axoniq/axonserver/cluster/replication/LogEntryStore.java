@@ -37,7 +37,7 @@ public interface LogEntryStore {
 
     void clear();
 
-    void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastCommittedIndexSupplier);
+    void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier);
 
     long lastLogIndex();
 
