@@ -59,7 +59,7 @@ class ReplicatorPeer {
             offset = 0;
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
-            long lastIncludedTerm = currentTerm();
+            long lastIncludedTerm = lastAppliedTerm();
             snapshotManager.streamSnapshotChunks(nextIndex(), lastAppliedIndex)
                            .buffer(SNAPSHOT_CHUNKS_BUFFER_SIZE)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
@@ -383,6 +383,10 @@ class ReplicatorPeer {
 
     private long lastAppliedIndex() {
         return raftGroup.logEntryProcessor().lastAppliedIndex();
+    }
+
+    private long lastAppliedTerm() {
+        return raftGroup.logEntryProcessor().lastAppliedTerm();
     }
 
     private void setMatchIndex(long newMatchIndex) {
