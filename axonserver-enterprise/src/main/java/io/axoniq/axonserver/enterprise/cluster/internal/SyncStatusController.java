@@ -5,6 +5,7 @@ import io.axoniq.axonserver.enterprise.jpa.Safepoint;
 import io.axoniq.axonserver.localstorage.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -43,39 +44,47 @@ public class SyncStatusController {
     }
 
     public void increaseGenerations(String context) {
-        Safepoint eventSyncStatus = lastSyncStatus(EventType.EVENT, context);
-        eventSyncStatus.increaseGeneration();
-        safepointRepository.save(eventSyncStatus);
-        Safepoint snapshotSyncStatus = lastSyncStatus(EventType.SNAPSHOT, context);
-        snapshotSyncStatus.increaseGeneration();
-        safepointRepository.save(snapshotSyncStatus);
+        synchronized (safepointRepository) {
+            Safepoint eventSyncStatus = lastSyncStatus(EventType.EVENT, context);
+            eventSyncStatus.increaseGeneration();
+            safepointRepository.save(eventSyncStatus);
+            Safepoint snapshotSyncStatus = lastSyncStatus(EventType.SNAPSHOT, context);
+            snapshotSyncStatus.increaseGeneration();
+            safepointRepository.save(snapshotSyncStatus);
+        }
     }
 
     public void updateGeneration(EventType eventType, String context, long generation){
-        log.trace("{}: Storing generation for {} = {}", context, eventType, generation);
-        Safepoint syncStatus = lastSyncStatus(eventType, context);
-        if (generation == syncStatus.generation()){
-            return;
+        synchronized (safepointRepository) {
+            log.trace("{}: Storing generation for {} = {}", context, eventType, generation);
+            Safepoint syncStatus = lastSyncStatus(eventType, context);
+            if (generation == syncStatus.generation()) {
+                return;
+            }
+            syncStatus.setGeneration(generation);
+            safepointRepository.save(syncStatus);
         }
-        syncStatus.setGeneration(generation);
-        safepointRepository.save(syncStatus);
     }
 
     public void updateSafePoint(EventType eventType, String context, long safePoint){
         updateSafePoint(eventType, context, safePoint, false);
     }
+
     public void updateSafePoint(EventType eventType, String context, long safePoint, boolean forceSafe){
         log.trace("{}: Storing safePoint for {} = {}", context, eventType, safePoint);
         Safepoint syncStatus = lastSyncStatus(eventType, context);
         syncStatus.setSafePoint(safePoint);
-        if (!forceSafe && safePoint < syncStatus.safePoint() - 100){
-            return;
-        }
-        safepointRepository.save(syncStatus);
     }
 
     public long safePoint(EventType eventType, String context){
         return lastSyncStatus(eventType,context).safePoint();
     }
 
+
+    @Scheduled(fixedDelayString = "${axoniq.axonserver.safepoint.safe-interval:100}")
+    public void safeSafePoint() {
+        synchronized (safepointRepository) {
+            lastSyncStatus.forEach((k, v) -> safepointRepository.save(v));
+        }
+    }
 }

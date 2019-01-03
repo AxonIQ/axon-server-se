@@ -5,6 +5,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.data.util.CloseableIterator;
 
 import java.util.List;
 import java.util.Optional;
@@ -76,4 +77,11 @@ public interface EventStore {
     default boolean contains( TransactionWithToken newTransaction) {
         return true;
     }
+
+    /**
+     * Return a closeable iterator to iterate over all events starting at token start.
+     * @param start
+     * @return closeable iterator of SerializedEventWithToken
+     */
+    CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start);
 }

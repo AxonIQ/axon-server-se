@@ -13,7 +13,7 @@ import java.nio.MappedByteBuffer;
 public class WritableEventSource extends ByteBufferEventSource {
     private static final Logger logger = LoggerFactory.getLogger(WritableEventSource.class);
     public WritableEventSource(ByteBuffer buffer, EventTransformer eventTransformer) {
-        super(buffer, eventTransformer);
+        super(buffer, eventTransformer, () -> {});
     }
 
     private MappedByteBuffer mappedByteBuffer() {

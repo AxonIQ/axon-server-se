@@ -15,9 +15,11 @@ import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
+import org.springframework.data.util.CloseableIterator;
 
 import javax.sql.DataSource;
 import java.sql.*;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -176,6 +178,49 @@ public abstract class JdbcAbstractStore implements EventStore {
                 }
             }
             return true;
+        } catch (SQLException e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
+        try {
+            Connection connection = dataSource.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(readEvents);
+            preparedStatement.setLong(1, start);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            return new CloseableIterator<SerializedEventWithToken>() {
+                @Override
+                public void close() {
+                    try {
+                        resultSet.close();
+                        preparedStatement.close();
+                        connection.close();
+                    } catch (SQLException e) {
+                        // Ignore exceptions on close
+                    }
+                }
+
+                @Override
+                public boolean hasNext() {
+                    try {
+                        return resultSet.next();
+                    } catch (SQLException e) {
+                        throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+                    }
+                }
+
+                @Override
+                public SerializedEventWithToken next() {
+                    try {
+                        return readEventWithToken(resultSet);
+                    } catch (SQLException e) {
+                        throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+                    }
+                }
+            };
         } catch (SQLException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }

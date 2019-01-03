@@ -13,6 +13,7 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
@@ -140,17 +141,19 @@ public abstract class SegmentBasedEventStore implements EventStore {
             eventSource.ifPresent(e -> {
                 long minTimestampInSegment = Long.MAX_VALUE;
                 EventInformation eventWithToken;
-                Iterator<EventInformation> iterator = createEventIterator(e,segment,segment);
+                EventIterator iterator = createEventIterator(e,segment,segment);
                 while (iterator.hasNext()) {
                     eventWithToken = iterator.next();
                     minTimestampInSegment = Math.min(minTimestampInSegment, eventWithToken.getEvent().getTimestamp());
                     if (eventWithToken.getToken() >= minToken
                             && eventWithToken.getEvent().getTimestamp() >= minTimestamp
                             && !consumer.test(eventWithToken.asEventWithToken())) {
+                        iterator.close();
                         return;
                     }
                 }
                 if (minToken > segment || minTimestampInSegment < minTimestamp) done.set(true);
+                iterator.close();
             });
             if( done.get()) return;
         }
@@ -262,6 +265,48 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
         if( next != null) return next.getTokenAt(instant);
         return -1;
+    }
+
+    @Override
+    public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
+
+        return new CloseableIterator<SerializedEventWithToken>() {
+
+            @Override
+            public void close() {
+                if( eventIterator != null) eventIterator.close();
+            }
+
+            long nextToken = start;
+            EventIterator eventIterator;
+
+            @Override
+            public boolean hasNext() {
+                return nextToken <= getLastToken();
+            }
+
+            @Override
+            public SerializedEventWithToken next() {
+                if( eventIterator == null) {
+                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
+                }
+                SerializedEventWithToken event = null;
+                if( eventIterator.hasNext() ) {
+                    event = eventIterator.next().getSerializedEventWithToken();
+                } else {
+                    eventIterator.close();
+                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
+                    if( eventIterator.hasNext()) {
+                        event = eventIterator.next().getSerializedEventWithToken();
+                    }
+                }
+                if( event != null) {
+                    nextToken = event.getToken() + 1;
+                    return event;
+                }
+                throw new NoSuchElementException("No event for token " + nextToken);
+            }
+        };
     }
 
     public void validate(int maxSegments) {

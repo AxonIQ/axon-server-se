@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.EventInformation;
+import org.springframework.data.util.CloseableIterator;
 
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -10,7 +10,7 @@ import java.util.NoSuchElementException;
 /**
  * Author: marc
  */
-public abstract class EventIterator implements Iterator<EventInformation>, AutoCloseable {
+public abstract class EventIterator implements CloseableIterator<EventInformation> {
     protected long currentSequenceNumber;
     protected final List<EventInformation> eventsInTransaction = new LinkedList<>();
 

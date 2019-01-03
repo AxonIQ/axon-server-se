@@ -10,6 +10,8 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 /**
  * Author: marc
@@ -56,13 +58,13 @@ public class CleanUtils {
     private CleanUtils() {
     }
 
-    public static void cleanDirectBuffer(ByteBuffer buf, boolean allowed, long delay) {
-        if (allowed && cleanMethod != null && buf != null) {
+    public static void cleanDirectBuffer(ByteBuffer buf, BooleanSupplier allowed, long delay) {
+        if (cleanMethod != null && buf != null) {
             if (delay <= 0) {
-                doCleanup(buf);
+                doCleanup(allowed, buf);
             } else {
                 try {
-                    cleanupExecutor.schedule(() -> doCleanup(buf), delay, TimeUnit.SECONDS);
+                    cleanupExecutor.schedule(() -> doCleanup(allowed, buf), delay, TimeUnit.SECONDS);
                 } catch( Exception ignore) {
                     //may be as executor is shutdown
                 }
@@ -70,7 +72,8 @@ public class CleanUtils {
         }
     }
 
-    private static void doCleanup(ByteBuffer buf) {
+    private static void doCleanup(BooleanSupplier allowed, ByteBuffer buf) {
+        if( ! allowed.getAsBoolean()) return;
         try {
             cleanMethod.invoke(cleanerMethod.invoke(buf));
         } catch (IllegalArgumentException | InvocationTargetException | SecurityException | IllegalAccessException exception) {

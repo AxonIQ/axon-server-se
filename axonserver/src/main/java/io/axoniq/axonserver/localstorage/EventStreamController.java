@@ -4,12 +4,14 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
@@ -38,6 +40,7 @@ public class EventStreamController {
     private volatile int heartbeatInterval;
     private final AtomicLong lastMessageSent = new AtomicLong(System.currentTimeMillis());
     private volatile long lastPermitTimestamp;
+    private AtomicReference<CloseableIterator<SerializedEventWithToken>> eventIteratorReference = new AtomicReference<>();
 
 
     /**
@@ -72,16 +75,17 @@ public class EventStreamController {
             if( remainingPermits.get() > 0 && processingBacklog.compareAndSet(false, true) ) {
                 logger.info("Start tracker from token: {}", currentTrackingToken);
                 cancelListener();
+                eventIteratorReference.compareAndSet(null, datafileManagerChain.getGlobalIterator(currentTrackingToken.get()));
                 running.set(true);
-                while( running.get() && remainingPermits.get() > 0 && ! datafileManagerChain.streamEvents(currentTrackingToken.get(),
-                                                  this::sendFromStream) ) {
-                    if( remainingPermits.get() > 0) {
-                        logger.info("restart tracker from token: {}, remaining permits after run {}",
-                                    currentTrackingToken,
-                                    remainingPermits.get());
-                    }
+                while( running.get() && remainingPermits.get() > 0 && eventIteratorReference.get().hasNext()) {
+                    SerializedEventWithToken serializedEventWithToken = eventIteratorReference.get().next();
+                    if( ! sendFromStream(serializedEventWithToken)) break;
+
                 }
 
+                if( remainingPermits.get() > 0) {
+                    closeIterator();
+                }
                 this.eventListener = eventWriteStorage.registerEventListener(this::sendFromWriter);
                 processingBacklog.set(false);
                 logger.debug("Done processing backlog at: {}", currentTrackingToken.get());
@@ -95,26 +99,30 @@ public class EventStreamController {
     }
 
     private void sendFromWriter(SerializedEventWithToken eventWithToken) {
-        long current = currentTrackingToken.get();
-        if(current > eventWithToken.getToken()) return;
-        if( processingBacklog.get()) {
-            return;
-        }
+        try {
+            long current = currentTrackingToken.get();
+            if (current > eventWithToken.getToken()) return;
+            if( processingBacklog.get()) {
+                return;
+            }
 
-        int retries = 20;
-        while( current != eventWithToken.getToken() && retries > 0) {
-            logger.debug("Received unexpected token: {} while expecting: {}", eventWithToken.getToken(), current);
-            LockSupport.parkNanos(100);
-            current = currentTrackingToken.get();
-            retries--;
-        }
+            int retries = 5;
+            while( current != eventWithToken.getToken() && retries > 0) {
+                logger.debug("Received unexpected token: {} while expecting: {}", eventWithToken.getToken(), current);
+                LockSupport.parkNanos(100);
+                current = currentTrackingToken.get();
+                retries--;
+            }
 
-        if(current != eventWithToken.getToken()) {
-            threadPool.execute(this::startTracker);
-            return;
-        }
+            if(current != eventWithToken.getToken()) {
+                threadPool.execute(this::startTracker);
+                return;
+            }
 
-        sendEvent(eventWithToken);
+            sendEvent(eventWithToken);
+        } catch (Throwable t) {
+            logger.warn("Failed to send {}", eventWithToken, t);
+        }
     }
 
     private boolean sendFromStream(SerializedEventWithToken eventWithToken) {
@@ -166,14 +174,22 @@ public class EventStreamController {
         }
     }
 
+    private void closeIterator() {
+        eventIteratorReference.updateAndGet(old -> { if( old != null) old.close();
+            return null;}
+        );
+    }
+
 
     public void stop() {
         running.set(false);
+        closeIterator();
         cancelListener();
     }
 
     public void cancel() {
         cancelListener();
+        closeIterator();
         errorCallback.accept(new MessagingPlatformException(ErrorCode.OTHER, "Connection reset by server"));
     }
 }
