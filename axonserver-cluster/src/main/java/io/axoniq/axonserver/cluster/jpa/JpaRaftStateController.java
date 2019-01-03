@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster.jpa;
 
 import io.axoniq.axonserver.cluster.ProcessorStore;
+import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 
 /**
@@ -45,13 +46,15 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     }
 
     @Override
-    public void updateLastApplied(long lastApplied) {
-        raftState.setLastApplied(lastApplied);
+    public void updateLastApplied(long lastAppliedIndex, long lastAppliedTerm) {
+        raftState.setLastAppliedIndex(lastAppliedIndex);
+        raftState.setLastAppliedTerm(lastAppliedTerm);
     }
 
     @Override
-    public void updateCommitIndex(long commitIndex) {
+    public void updateCommit(long commitIndex, long commitTerm) {
         raftState.setCommitIndex(commitIndex);
+        raftState.setCurrentTerm(commitTerm);
     }
 
     @Override
@@ -60,8 +63,18 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     }
 
     @Override
-    public long lastApplied() {
-        return raftState.getLastApplied();
+    public long lastAppliedIndex() {
+        return raftState.getLastAppliedIndex();
+    }
+
+    @Override
+    public long commitTerm() {
+        return raftState.commitTerm();
+    }
+
+    @Override
+    public long lastAppliedTerm() {
+        return raftState.lastAppliedTerm();
     }
 
     public void sync() {

@@ -49,16 +49,16 @@ public class LogEntryProcessor {
     public int applyEntries(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
         int count = 0;
         if( applyRunning.compareAndSet(false, true)) {
-            if( processorStore.lastApplied() < processorStore.commitIndex()) {
-                logger.trace("Start to apply entries at: {}", processorStore.lastApplied());
-                try(EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastApplied() + 1)) {
+            if( processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
+                logger.trace("Start to apply entries at: {}", processorStore.lastAppliedIndex());
+                try(EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastAppliedIndex() + 1)) {
                     boolean beforeCommit = true;
                     while (beforeCommit && iterator.hasNext()) {
                         Entry entry = iterator.next();
                         beforeCommit = entry.getIndex() <= processorStore.commitIndex();
                         if (beforeCommit) {
                             consumer.accept(entry);
-                            processorStore.updateLastApplied(entry.getIndex());
+                            processorStore.updateLastApplied(entry.getIndex(), entry.getTerm());
                             count++;
                             logAppliedListeners.forEach(listener -> listener.accept(entry));
                         }
@@ -70,9 +70,9 @@ public class LogEntryProcessor {
         return count;
     }
 
-    public void markCommitted(long committedIndex) {
+    public void markCommitted(long committedIndex, long term) {
         if( committedIndex > processorStore.commitIndex()) {
-            processorStore.updateCommitIndex(committedIndex);
+            processorStore.updateCommit(committedIndex, term);
             if( commitListenerThread != null) {
                 LockSupport.unpark(commitListenerThread);
             }
@@ -83,12 +83,20 @@ public class LogEntryProcessor {
         return processorStore.commitIndex();
     }
 
-    public long lastAppliedIndex() {
-        return processorStore.lastApplied();
+    public long commitTerm() {
+        return processorStore.commitTerm();
     }
 
-    public void updateLastApplied(long index) {
-        processorStore.updateLastApplied(index);
+    public long lastAppliedIndex() {
+        return processorStore.lastAppliedIndex();
+    }
+
+    public long lastAppliedTerm() {
+        return processorStore.lastAppliedTerm();
+    }
+
+    public void updateLastApplied(long index, long term) {
+        processorStore.updateLastApplied(index, term);
     }
 
     public void stop() {

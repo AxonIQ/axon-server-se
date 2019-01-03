@@ -314,7 +314,7 @@ public class LeaderState extends AbstractMembershipState {
 
             Entry entry = raftGroup().localLogEntryStore().getEntry(nextCommitCandidate);
             if (updateCommit && entry.getTerm() == raftGroup().localElectionStore().currentTerm()) {
-                raftGroup().logEntryProcessor().markCommitted(entry.getIndex());
+                raftGroup().logEntryProcessor().markCommitted(entry.getIndex(), entry.getTerm());
             }
         }
 

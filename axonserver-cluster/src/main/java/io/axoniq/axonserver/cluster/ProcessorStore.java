@@ -5,11 +5,15 @@ package io.axoniq.axonserver.cluster;
  */
 public interface ProcessorStore {
 
-    void updateLastApplied(long lastApplied);
+    void updateLastApplied(long lastApplied, long term);
 
-    void updateCommitIndex(long commitIndex);
+    void updateCommit(long commitIndex, long term);
 
     long commitIndex();
 
-    long lastApplied();
+    long lastAppliedIndex();
+
+    long commitTerm();
+
+    long lastAppliedTerm();
 }

@@ -112,7 +112,7 @@ public class FollowerState extends AbstractMembershipState {
             if (request.getCommitIndex() > logEntryProcessor.commitIndex()) {
                 long commit = min(request.getCommitIndex(), logEntryStore.lastLogIndex());
                 Entry entry = logEntryStore.getEntry(commit);
-                logEntryProcessor.markCommitted(entry.getIndex());
+                logEntryProcessor.markCommitted(entry.getIndex(), entry.getTerm());
             }
 
             long last = lastLogIndex();
@@ -180,7 +180,7 @@ public class FollowerState extends AbstractMembershipState {
                          .block();
 
         if (request.getDone()) {
-            raftGroup().logEntryProcessor().updateLastApplied(request.getLastIncludedIndex());
+            raftGroup().logEntryProcessor().updateLastApplied(request.getLastIncludedIndex(), request.getLastIncludedTerm());
         }
 
         return InstallSnapshotResponse.newBuilder()
