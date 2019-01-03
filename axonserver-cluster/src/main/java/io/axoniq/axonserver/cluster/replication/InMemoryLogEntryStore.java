@@ -75,7 +75,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastCommittedIndexSupplier) {
+    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
         // TODO: 12/31/2018
     }
 
