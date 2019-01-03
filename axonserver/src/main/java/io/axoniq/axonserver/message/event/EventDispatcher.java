@@ -8,20 +8,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.event.Confirmation;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
-import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
-import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.grpc.event.*;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -36,11 +23,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -60,18 +43,18 @@ public class EventDispatcher implements AxonServerClientService {
     public static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "Error on connection from event store: {}";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
     public static final MethodDescriptor<GetEventsRequest, InputStream> METHOD_LIST_EVENTS =
-            EventStoreGrpc.METHOD_LIST_EVENTS.toBuilder(
+            EventStoreGrpc.getListEventsMethod().toBuilder(
                     ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
                     InputStreamMarshaller.inputStreamMarshaller())
                                              .build();
     public static final MethodDescriptor<GetAggregateEventsRequest, InputStream> METHOD_LIST_AGGREGATE_EVENTS =
-            EventStoreGrpc.METHOD_LIST_AGGREGATE_EVENTS.toBuilder(
+            EventStoreGrpc.getListAggregateEventsMethod().toBuilder(
                     ProtoUtils.marshaller(GetAggregateEventsRequest.getDefaultInstance()),
                     InputStreamMarshaller.inputStreamMarshaller())
                                               .build();
 
     public static final MethodDescriptor<GetAggregateSnapshotsRequest, InputStream> METHOD_LIST_AGGREGATE_SNAPSHOTS =
-            EventStoreGrpc.METHOD_LIST_AGGREGATE_SNAPSHOTS.toBuilder(
+            EventStoreGrpc.getListAggregateSnapshotsMethod().toBuilder(
                     ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
                     InputStreamMarshaller.inputStreamMarshaller())
                                                        .build();
@@ -228,12 +211,11 @@ public class EventDispatcher implements AxonServerClientService {
     public final io.grpc.ServerServiceDefinition bindService() {
         return io.grpc.ServerServiceDefinition.builder(EventStoreGrpc.SERVICE_NAME)
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_APPEND_EVENT,
+                                                      EventStoreGrpc.getAppendEventMethod(),
                                                       asyncClientStreamingCall( this::appendEvent))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_APPEND_SNAPSHOT,
-                                                      asyncUnaryCall(
-                                                              this::appendSnapshot))
+                                                      EventStoreGrpc.getAppendSnapshotMethod(),
+                                                      asyncUnaryCall(this::appendSnapshot))
                                               .addMethod(
                                                       METHOD_LIST_AGGREGATE_EVENTS,
                                                       asyncServerStreamingCall(this::listAggregateEvents))
@@ -244,19 +226,19 @@ public class EventDispatcher implements AxonServerClientService {
                                                       METHOD_LIST_EVENTS,
                                                       asyncBidiStreamingCall(this::listEvents))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_READ_HIGHEST_SEQUENCE_NR,
+                                                      EventStoreGrpc.getReadHighestSequenceNrMethod(),
                                                       asyncUnaryCall(this::readHighestSequenceNr))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_GET_FIRST_TOKEN,
+                                                      EventStoreGrpc.getGetFirstTokenMethod(),
                                                       asyncUnaryCall(this::getFirstToken))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_GET_LAST_TOKEN,
+                                                      EventStoreGrpc.getGetLastTokenMethod(),
                                                       asyncUnaryCall(this::getLastToken))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_GET_TOKEN_AT,
+                                                      EventStoreGrpc.getGetTokenAtMethod(),
                                                       asyncUnaryCall(this::getTokenAt))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_QUERY_EVENTS,
+                                                      EventStoreGrpc.getQueryEventsMethod(),
                                                       asyncBidiStreamingCall(this::queryEvents))
                                               .build();
     }
