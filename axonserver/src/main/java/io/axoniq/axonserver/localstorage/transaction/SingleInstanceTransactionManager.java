@@ -2,6 +2,7 @@ package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 
 import java.util.List;
@@ -19,7 +20,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
     }
 
     @Override
-    public CompletableFuture<Long> store(List<Event> eventList) {
+    public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
         return datafileManagerChain.store(datafileManagerChain.prepareTransaction(eventList));
     }
 
@@ -29,7 +30,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
     }
 
     @Override
-    public void reserveSequenceNumbers(List<Event> eventList) {
+    public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
         datafileManagerChain.reserveSequenceNumbers(eventList);
     }
 }

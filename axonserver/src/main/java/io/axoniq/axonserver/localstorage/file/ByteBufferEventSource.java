@@ -18,8 +18,10 @@ public class ByteBufferEventSource implements EventSource {
     private final ByteBuffer buffer;
     private final boolean main;
     private final AtomicInteger duplicatesCount = new AtomicInteger();
+    private final String path;
 
-    public ByteBufferEventSource(ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+    public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+        this.path = path;
         byte version = buffer.get();
         int flags = buffer.getInt();
         this.eventTransformer = eventTransformerFactory.get(version, flags, storageProperties);
@@ -28,7 +30,8 @@ public class ByteBufferEventSource implements EventSource {
         this.onClose = null;
     }
 
-    protected ByteBufferEventSource(ByteBuffer buffer, EventTransformer eventTransformer, Runnable onClose) {
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer, Runnable onClose) {
+        this.path = path;
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.onClose = onClose;
@@ -39,18 +42,18 @@ public class ByteBufferEventSource implements EventSource {
         int size = buffer.getInt();
         byte[] bytes = new byte[size];
         buffer.get(bytes);
-        return new SerializedEvent(bytes, eventTransformer);
+        return new SerializedEvent(eventTransformer.readEvent(bytes));
     }
 
     public ByteBufferEventSource duplicate() {
         duplicatesCount.incrementAndGet();
-        return new ByteBufferEventSource(buffer.duplicate(), eventTransformer, duplicatesCount::decrementAndGet);
+        return new ByteBufferEventSource(path, buffer.duplicate(), eventTransformer, duplicatesCount::decrementAndGet);
     }
 
     @Override
     protected void finalize() {
         if( main) {
-            CleanUtils.cleanDirectBuffer(buffer, () -> true, 60);
+            CleanUtils.cleanDirectBuffer(buffer, () -> duplicatesCount.get() == 0, 60, path);
         }
     }
 
@@ -79,7 +82,7 @@ public class ByteBufferEventSource implements EventSource {
 
     public void clean(long delay) {
         if( main ) {
-            CleanUtils.cleanDirectBuffer(getBuffer(), () -> duplicatesCount.get() == 0, delay);
+            CleanUtils.cleanDirectBuffer(getBuffer(), () -> duplicatesCount.get() == 0, delay, path);
         }
     }
 

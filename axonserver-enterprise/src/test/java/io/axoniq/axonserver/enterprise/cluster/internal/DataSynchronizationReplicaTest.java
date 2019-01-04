@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaInbound;
 import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaOutbound;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -62,12 +63,12 @@ public class DataSynchronizationReplicaTest {
         myNode.addContext(new Context(Topology.DEFAULT_CONTEXT), true, true);
         when(clusterController.getMe()).thenReturn(myNode);
         doAnswer(invocationOnMock -> {
-            TransactionWithToken t = (TransactionWithToken)invocationOnMock.getArguments()[1];
+            SerializedTransactionWithToken t = (SerializedTransactionWithToken)invocationOnMock.getArguments()[1];
 
             return t.getToken() + t.getEventsCount();
         }).when(localEventStore).syncEvents(any(), any());
         doAnswer(invocationOnMock -> {
-            TransactionWithToken t = (TransactionWithToken)invocationOnMock.getArguments()[1];
+            SerializedTransactionWithToken t = (SerializedTransactionWithToken)invocationOnMock.getArguments()[1];
             return t.getToken() + t.getEventsCount();
         }).when(localEventStore).syncSnapshots(any(), any());
         ApplicationEventPublisher applicationEventPublisher = new ApplicationEventPublisher() {
@@ -215,14 +216,14 @@ public class DataSynchronizationReplicaTest {
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setEvent(TransactionWithToken.newBuilder()
                                                                                               .setToken(1)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(2, sentMessages.size());
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setEvent(TransactionWithToken.newBuilder()
                                                                                               .setToken(2)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(3, sentMessages.size());
@@ -239,7 +240,7 @@ public class DataSynchronizationReplicaTest {
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
                                                                                               .setToken(2)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(1, sentMessages.size());
@@ -251,7 +252,7 @@ public class DataSynchronizationReplicaTest {
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
                                                                                               .setToken(1)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(3, sentMessages.size());
@@ -271,7 +272,7 @@ public class DataSynchronizationReplicaTest {
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
                                                                                                  .setToken(-1)
-                                                                                                 .addEvents(Event.newBuilder().build())
+                                                                                                 .addEvents(Event.newBuilder().build().toByteString())
                                                                                                  .build())
                                                                 .build()));
         assertEquals(2, sentMessages.size());

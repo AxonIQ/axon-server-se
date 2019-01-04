@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
@@ -53,11 +54,11 @@ public class TestStorageContainer {
         CountDownLatch countDownLatch = new CountDownLatch(transactions);
         IntStream.range(0, transactions).parallel().forEach(j -> {
             String aggId = prefix + j;
-            List<Event> newEvents = new ArrayList<>();
+            List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, transactionSize).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i).setAggregateType("Demo").setPayload(
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i).setAggregateType("Demo").setPayload(
                         SerializedObject
-                                .newBuilder().build()).build());
+                                .newBuilder().build()).build()));
             });
             eventWriter.store(newEvents).whenComplete((r,t)->countDownLatch.countDown());
         });

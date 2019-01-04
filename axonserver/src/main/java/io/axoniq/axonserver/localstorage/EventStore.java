@@ -2,7 +2,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
@@ -40,14 +39,14 @@ public interface EventStore {
 
     Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber);
 
-    default void reserveSequenceNumbers(List<Event> events) {
+    default void reserveSequenceNumbers(List<SerializedEvent> events) {
     }
 
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer);
 
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
 
-    PreparedTransaction prepareTransaction(List<Event> eventList);
+    PreparedTransaction prepareTransaction(List<SerializedEvent> eventList);
 
     default boolean replicated() {
         return false;
@@ -56,7 +55,7 @@ public interface EventStore {
     EventTypeContext getType();
 
     void streamTransactions(long firstToken,
-                            Predicate<TransactionWithToken> transactionConsumer);
+                            Predicate<SerializedTransactionWithToken> transactionConsumer);
 
     void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer);
 
@@ -74,7 +73,7 @@ public interface EventStore {
     default void rollback(long token) {
     }
 
-    default boolean contains( TransactionWithToken newTransaction) {
+    default boolean contains( SerializedTransactionWithToken newTransaction) {
         return true;
     }
 

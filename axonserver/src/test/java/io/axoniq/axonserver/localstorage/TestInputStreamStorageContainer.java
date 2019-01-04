@@ -50,11 +50,11 @@ public class TestInputStreamStorageContainer {
         CountDownLatch countDownLatch = new CountDownLatch(transactions);
         IntStream.range(0, transactions).parallel().forEach(j -> {
             String aggId = prefix + j;
-            List<Event> newEvents = new ArrayList<>();
+            List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, transactionSize).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i).setAggregateType("Demo").setPayload(
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i).setAggregateType("Demo").setPayload(
                         SerializedObject
-                                .newBuilder().build()).build());
+                                .newBuilder().build()).build()));
             });
             eventWriter.store(newEvents).whenComplete((r,t) -> countDownLatch.countDown());
         });

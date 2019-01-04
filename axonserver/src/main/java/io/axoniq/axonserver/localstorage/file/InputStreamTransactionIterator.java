@@ -3,8 +3,12 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
@@ -16,7 +20,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     private final PositionKeepingDataInputStream reader;
     private long currentSequenceNumber;
     private final boolean validating;
-    private TransactionWithToken next;
+    private SerializedTransactionWithToken next;
 
     public InputStreamTransactionIterator(InputStreamEventSource eventSource, long segment, long start, boolean validating) {
         this.eventSource = eventSource;
@@ -51,14 +55,14 @@ public class InputStreamTransactionIterator implements TransactionIterator {
         }
     }
 
-    private void addEvent(TransactionWithToken.Builder transactionWithTokenBuilder) {
-        try {
-            transactionWithTokenBuilder.addEvents(eventSource.readEvent().asEvent());
-            currentSequenceNumber++;
-        } catch (IOException | RuntimeException io) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);
-        }
-    }
+//    private void addEvent(TransactionWithToken.Builder transactionWithTokenBuilder) {
+//        try {
+//            transactionWithTokenBuilder.addEvents(eventSource.readEvent().asEvent());
+//            currentSequenceNumber++;
+//        } catch (IOException | RuntimeException io) {
+//            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);
+//        }
+//    }
 
     private boolean readTransaction() {
         try {
@@ -66,15 +70,15 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             if (size == -1 || size == 0) {
                 return false;
             }
-            reader.readByte(); // version
-            TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder().setToken(
-                    currentSequenceNumber);
+            byte version = reader.readByte(); // version
 
             short nrOfMessages = reader.readShort();
+            List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
             for (int idx = 0; idx < nrOfMessages; idx++) {
-                addEvent(transactionWithTokenBuilder);
+                events.add(eventSource.readEvent());
             }
-            next = transactionWithTokenBuilder.build();
+            next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
+            currentSequenceNumber += nrOfMessages;
             int chk = reader.readInt(); // checksum
 //            if (validating) {
 //                Checksum checksum = new Checksum();
@@ -97,7 +101,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     }
 
     @Override
-    public TransactionWithToken next() {
+    public SerializedTransactionWithToken next() {
         if( next == null) throw new NoSuchElementException();
         return next;
     }

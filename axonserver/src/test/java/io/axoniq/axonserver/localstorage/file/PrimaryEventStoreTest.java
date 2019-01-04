@@ -4,6 +4,7 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
@@ -51,10 +52,10 @@ public class PrimaryEventStoreTest {
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<Event> newEvents = new ArrayList<>();
+            List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, 100).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
+                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
             });
                 PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
                 testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
@@ -74,10 +75,10 @@ public class PrimaryEventStoreTest {
         CountDownLatch latch = new CountDownLatch(5);
         IntStream.range(0, 5).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<Event> newEvents = new ArrayList<>();
+            List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, 3).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
+                                                       .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
             });
             PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
             testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());

@@ -2,15 +2,15 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
+import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +21,6 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +34,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -136,8 +135,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
 
     @Override
-    public FilePreparedTransaction prepareTransaction(List<Event> origEventList) {
-        List<ProcessedEvent>eventList = eventTransformer.transform(origEventList);
+    public FilePreparedTransaction prepareTransaction(List<SerializedEvent> origEventList) {
+        List<ProcessedEvent>eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
+                Collectors.toList());
         int eventSize = eventBlockSize(eventList);
         WritePosition writePosition = claim(eventSize, eventList.size());
         return new FilePreparedTransaction(writePosition, eventSize, eventList);
@@ -214,9 +214,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void reserveSequenceNumbers(List<Event> events) {
+    public void reserveSequenceNumbers(List<SerializedEvent> events) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
+              .map(SerializedEvent::asEvent)
               .filter(this::isDomainEvent)
               .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(), i -> new MinMaxPair(e.getAggregateIdentifier(), e.getAggregateSequenceNumber())).setMax(e.getAggregateSequenceNumber()));
 
@@ -348,7 +349,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             buffer.put(VERSION);
             buffer.putInt(storageProperties.getFlags());
-            WritableEventSource writableEventSource = new WritableEventSource(buffer, eventTransformer);
+            WritableEventSource writableEventSource = new WritableEventSource(file.getAbsolutePath(), buffer, eventTransformer);
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {

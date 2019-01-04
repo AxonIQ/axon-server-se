@@ -20,7 +20,7 @@ public class SyncStorage {
         this.datafileManagerChain = datafileManagerChain;
     }
 
-    public void sync(List<Event> eventList) {
+    public void sync(List<SerializedEvent> eventList) {
         PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
         try {
             datafileManagerChain.store(preparedTransaction).get();

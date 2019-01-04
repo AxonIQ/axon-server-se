@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
@@ -18,6 +19,8 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import io.netty.util.internal.OutOfDirectMemoryError;
@@ -36,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -72,13 +76,8 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     }
 
     @Override
-    public void publish(EventTypeContext type, List<Event> eventList, long token) {
-        TransactionWithToken transactionWithToken = TransactionWithToken.newBuilder()
-                                                                        .setToken(token)
-                                                                        .addAllEvents(eventList)
-                                                                        .setMasterGeneration(syncStatusController.generation(type.getEventType(), type.getContext()))
-                                                                        .setSafePoint(syncStatusController.safePoint(type.getEventType(), type.getContext()))
-                                                                        .build();
+    public void publish(EventTypeContext type, List<SerializedEvent> eventList, long token) {
+        TransactionWithToken transactionWithToken = getTransactionWithToken(type, new SerializedTransactionWithToken(token, 0, eventList));
         Map<String, Replica> connections = connectionsPerContext.get(type.getContext());
         if( connections == null) {
             logger.trace("No connections found for context {}, cannot synchronize message", type.getContext());
@@ -92,6 +91,19 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             message = SynchronizationReplicaInbound.newBuilder().setEvent(transactionWithToken).build();
             connections.forEach((name,r) -> r.publishEvent(message));
         }
+    }
+
+    private TransactionWithToken getTransactionWithToken(EventTypeContext type, SerializedTransactionWithToken serializedTransactionWithToken) {
+        return TransactionWithToken.newBuilder()
+                                   .setToken(serializedTransactionWithToken.getToken())
+                                   .setVersion(serializedTransactionWithToken.getVersion())
+                                   .addAllEvents(serializedTransactionWithToken.getEvents().stream().map(e -> ByteString
+                                           .copyFrom(e.serializedData())).collect(
+                                           Collectors.toList()))
+                                   .setMasterGeneration(syncStatusController
+                                                                .generation(type.getEventType(), type.getContext()))
+                                   .setSafePoint(syncStatusController.safePoint(type.getEventType(), type.getContext()))
+                                   .build();
     }
 
     @Override
@@ -211,23 +223,18 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             return null;
         }
 
-        private boolean publishEventFromStream(TransactionWithToken transactionWithToken) {
+        private boolean publishEventFromStream(SerializedTransactionWithToken transactionWithToken) {
             if( transactionWithToken.getToken() < lastEventTransaction.get()) {
                 return true;
             }
-            TransactionWithToken extTransactionWithToken = TransactionWithToken.newBuilder(transactionWithToken)
-                                                       .setMasterGeneration(syncStatusController.generation(EventType.EVENT, context))
-                                                       .setSafePoint(syncStatusController.safePoint(EventType.EVENT, context))
-                                                       .build();
+            TransactionWithToken extTransactionWithToken = getTransactionWithToken(new EventTypeContext(context, EventType.EVENT), transactionWithToken);
             SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setEvent(extTransactionWithToken).build();
             return publish(message, () -> lastEventTransaction.addAndGet(extTransactionWithToken.getEventsCount()));
         }
-        private boolean publishSnapshotFromStream(TransactionWithToken transactionWithToken) {
+
+        private boolean publishSnapshotFromStream(SerializedTransactionWithToken transactionWithToken) {
             if( transactionWithToken.getToken() < lastSnapshotTransaction.get()) return true;
-            TransactionWithToken extTransactionWithToken = TransactionWithToken.newBuilder(transactionWithToken)
-                                                       .setMasterGeneration(syncStatusController.generation(EventType.SNAPSHOT, context))
-                                                       .setSafePoint(syncStatusController.safePoint(EventType.SNAPSHOT, context))
-                                                       .build();
+            TransactionWithToken extTransactionWithToken = getTransactionWithToken(new EventTypeContext(context, EventType.SNAPSHOT), transactionWithToken);
             SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setSnapshot(extTransactionWithToken).build();
             return publish(message, lastSnapshotTransaction::incrementAndGet);
         }

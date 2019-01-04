@@ -58,6 +58,10 @@ public class EventDispatcher implements AxonServerClientService {
                     ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
                     InputStreamMarshaller.inputStreamMarshaller())
                                                        .build();
+    public static final MethodDescriptor<InputStream, Confirmation> METHOD_APPEND_EVENT =
+            EventStoreGrpc.getAppendEventMethod().toBuilder(
+                    InputStreamMarshaller.inputStreamMarshaller(), ProtoUtils.marshaller(Confirmation.getDefaultInstance()))
+                          .build();
 
     private final EventStoreLocator eventStoreClient;
     private final List<EventConnector> connectors;
@@ -80,11 +84,11 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
 
-    public StreamObserver<Event> appendEvent(StreamObserver<Confirmation> responseObserver) {
+    public StreamObserver<InputStream> appendEvent(StreamObserver<Confirmation> responseObserver) {
         return appendEvent(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, responseObserver));
     }
 
-    public StreamObserver<Event> appendEvent(String context, StreamObserver<Confirmation> responseObserver) {
+    public StreamObserver<InputStream> appendEvent(String context, StreamObserver<Confirmation> responseObserver) {
         EventStore eventStore = eventStoreClient.getEventStore(context);
 
         if (eventStore == null) {
@@ -92,17 +96,17 @@ public class EventDispatcher implements AxonServerClientService {
                                                                     NO_EVENT_STORE_CONFIGURED + context));
             return new NoOpStreamObserver<>();
         }
-        StreamObserver<Event> appendEventConnection = eventStore.createAppendEventConnection(context,
+        StreamObserver<InputStream> appendEventConnection = eventStore.createAppendEventConnection(context,
                                                                                                          responseObserver);
-        return new StreamObserver<Event>() {
+        return new StreamObserver<InputStream>() {
             final List<UnitOfWork> unitsOfWork = connectors.stream().map(EventConnector::createUnitOfWork).collect(
                     Collectors.toList());
 
             @Override
-            public void onNext(Event event) {
+            public void onNext(InputStream event) {
                 appendEventConnection.onNext(event);
                 if( ! unitsOfWork.isEmpty()) {
-                    unitsOfWork.forEach(c -> c.publish(new GrpcBackedEvent(event)));
+//                    unitsOfWork.forEach(c -> c.publish(new GrpcBackedEvent(event)));
                 }
                 eventsCounter.increment();
             }
@@ -211,8 +215,8 @@ public class EventDispatcher implements AxonServerClientService {
     public final io.grpc.ServerServiceDefinition bindService() {
         return io.grpc.ServerServiceDefinition.builder(EventStoreGrpc.SERVICE_NAME)
                                               .addMethod(
-                                                      EventStoreGrpc.getAppendEventMethod(),
-                                                      asyncClientStreamingCall( this::appendEvent))
+                                                      METHOD_APPEND_EVENT,
+                                                      asyncClientStreamingCall(this::appendEvent))
                                               .addMethod(
                                                       EventStoreGrpc.getAppendSnapshotMethod(),
                                                       asyncUnaryCall(this::appendSnapshot))

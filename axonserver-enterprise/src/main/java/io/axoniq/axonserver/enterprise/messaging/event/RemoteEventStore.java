@@ -73,9 +73,9 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     }
 
     @Override
-    public StreamObserver<Event> createAppendEventConnection(String context,
+    public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    StreamObserver<Confirmation> responseObserver) {
-        EventStoreGrpc.EventStoreStub stub = getEventStoreStub(context);
+        EventDispatcherStub stub = getNonMarshallingStub(context);
         return stub.appendEvent(new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
@@ -185,6 +185,11 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
         public void listAggregateSnapshots(GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseStream) {
             ClientCalls.asyncServerStreamingCall(
                     getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_SNAPSHOTS, getCallOptions()), request, responseStream);
+        }
+
+        public StreamObserver<InputStream> appendEvent(
+                StreamObserver<Confirmation> responseObserver) {
+            return ClientCalls.asyncBidiStreamingCall(getChannel().newCall(EventDispatcher.METHOD_APPEND_EVENT, getCallOptions()), responseObserver);
         }
 
     }

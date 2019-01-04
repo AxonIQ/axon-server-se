@@ -1,9 +1,20 @@
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.*;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
+import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
+import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -74,13 +85,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public StreamObserver<Event> createAppendEventConnection(String context,
+    public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    StreamObserver<Confirmation> responseObserver) {
-        return new StreamObserver<Event>() {
-            private final List<Event> eventList = new ArrayList<>();
+        return new StreamObserver<InputStream>() {
+            private final List<SerializedEvent> eventList = new ArrayList<>();
             @Override
-            public void onNext(Event event) {
-                eventList.add(event);
+            public void onNext(InputStream event) {
+                try {
+                    eventList.add(new SerializedEvent(event));
+                } catch (Exception e) {
+                    responseObserver.onError(GrpcExceptionBuilder.build(e));
+                }
             }
 
             @Override
@@ -246,25 +261,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotWriteStorage.getLastToken();
     }
 
-    public CompletableFuture<Void> streamEventTransactions(String context, long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
+    public CompletableFuture<Void> streamEventTransactions(String context, long firstToken, Predicate<SerializedTransactionWithToken> transactionConsumer) {
         return workersMap.get(context).eventStreamReader.streamTransactions( firstToken, transactionConsumer);
     }
 
     public CompletableFuture<Void> streamSnapshotTransactions(String context, long firstToken,
-                                                              Predicate<TransactionWithToken> transactionConsumer) {
+                                                              Predicate<SerializedTransactionWithToken> transactionConsumer) {
         return workersMap.get(context).snapshotStreamReader.streamTransactions(firstToken, transactionConsumer);
     }
 
-    public long syncEvents(String context, TransactionWithToken value) {
+    public long syncEvents(String context, SerializedTransactionWithToken value) {
         SyncStorage writeStorage = workersMap.get(context).eventSyncStorage;
-        writeStorage.sync(value.getEventsList());
-        return value.getToken() + value.getEventsCount();
+        writeStorage.sync(value.getEvents());
+        return value.getToken() + value.getEvents().size();
     }
 
-    public long syncSnapshots(String context, TransactionWithToken value) {
+    public long syncSnapshots(String context, SerializedTransactionWithToken value) {
         SyncStorage writeStorage = workersMap.get(context).snapshotSyncStorage;
-        writeStorage.sync(value.getEventsList());
-        return value.getToken() + value.getEventsCount();
+        writeStorage.sync(value.getEvents());
+        return value.getToken() + value.getEvents().size();
     }
 
     public long getWaitingEventTransactions(String context) {
@@ -317,11 +332,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
-    public boolean containsEvents(String context, TransactionWithToken syncRequest) {
+    public boolean containsEvents(String context, SerializedTransactionWithToken syncRequest) {
         return workersMap.get(context).eventDatafileManagerChain.contains(syncRequest);
     }
 
-    public boolean containsSnapshots(String context, TransactionWithToken syncRequest) {
+    public boolean containsSnapshots(String context, SerializedTransactionWithToken syncRequest) {
         return workersMap.get(context).snapshotDatafileManagerChain.contains(syncRequest);
     }
 

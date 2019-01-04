@@ -39,7 +39,7 @@ public class EventDispatcherTest {
     private EventStoreLocator eventStoreManager;
 
     @Mock
-    private StreamObserver<Event> appendEventConnection;
+    private StreamObserver<InputStream> appendEventConnection;
 
     @Before
     public void setUp() {
@@ -53,21 +53,21 @@ public class EventDispatcherTest {
     @Test
     public void appendEvent() {
         CountingStreamObserver<Confirmation> responseObserver = new CountingStreamObserver<>();
-        StreamObserver<Event> inputStream = testSubject.appendEvent(responseObserver);
+        StreamObserver<InputStream> inputStream = testSubject.appendEvent(responseObserver);
         inputStream.onNext(dummyEvent());
         assertEquals(0, responseObserver.count);
         inputStream.onCompleted();
         verify( appendEventConnection).onCompleted();
     }
 
-    private Event dummyEvent() {
-        return Event.newBuilder().build();
+    private InputStream dummyEvent() {
+        return new ByteArrayInputStream(Event.newBuilder().build().toByteArray());
     }
 
     @Test
     public void appendEventRollback() {
         CountingStreamObserver<Confirmation> responseObserver = new CountingStreamObserver<>();
-        StreamObserver<Event> inputStream = testSubject.appendEvent(responseObserver);
+        StreamObserver<InputStream> inputStream = testSubject.appendEvent(responseObserver);
         inputStream.onNext(dummyEvent());
         assertEquals(0, responseObserver.count);
         inputStream.onError(new Throwable());

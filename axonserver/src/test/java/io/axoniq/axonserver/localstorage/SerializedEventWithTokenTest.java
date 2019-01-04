@@ -33,7 +33,7 @@ public class SerializedEventWithTokenTest {
                                                       .setToken(Long.MAX_VALUE)
                                                       .setEvent(event).build();
 
-        SerializedEventWithToken testSubject = new SerializedEventWithToken(eventWithToken.getToken(), new SerializedEvent(event.toByteArray(), NoOpEventTransformer.INSTANCE));
+        SerializedEventWithToken testSubject = new SerializedEventWithToken(eventWithToken.getToken(), new SerializedEvent(event.toByteArray()));
 
 
         byte[] actual = IoUtils.toByteArray(testSubject.asInputStream());

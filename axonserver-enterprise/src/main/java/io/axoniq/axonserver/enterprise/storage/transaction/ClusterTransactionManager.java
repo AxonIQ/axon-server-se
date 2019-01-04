@@ -6,6 +6,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
@@ -41,7 +42,7 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     }
 
     @Override
-    public CompletableFuture<Long> store(List<Event> eventList) {
+    public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
         activeTransactions.put( preparedTransaction.getToken(),
@@ -83,7 +84,7 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     }
 
     @Override
-    public void reserveSequenceNumbers(List<Event> eventList) {
+    public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
         datafileManagerChain.reserveSequenceNumbers(eventList);
     }
 

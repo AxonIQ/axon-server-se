@@ -29,6 +29,7 @@ public class CleanUtils {
             return thread;
         }
     });
+    private static final int RETRIES = 5;
 
     static {
         ByteBuffer tempBuffer = ByteBuffer.allocateDirect(0);
@@ -58,13 +59,13 @@ public class CleanUtils {
     private CleanUtils() {
     }
 
-    public static void cleanDirectBuffer(ByteBuffer buf, BooleanSupplier allowed, long delay) {
+    public static void cleanDirectBuffer(ByteBuffer buf, BooleanSupplier allowed, long delay, String file) {
         if (cleanMethod != null && buf != null) {
             if (delay <= 0) {
-                doCleanup(allowed, buf);
+                doCleanup(allowed, buf, 10, file, RETRIES);
             } else {
                 try {
-                    cleanupExecutor.schedule(() -> doCleanup(allowed, buf), delay, TimeUnit.SECONDS);
+                    cleanupExecutor.schedule(() -> doCleanup(allowed, buf, delay, file, RETRIES), delay, TimeUnit.SECONDS);
                 } catch( Exception ignore) {
                     //may be as executor is shutdown
                 }
@@ -72,10 +73,20 @@ public class CleanUtils {
         }
     }
 
-    private static void doCleanup(BooleanSupplier allowed, ByteBuffer buf) {
-        if( ! allowed.getAsBoolean()) return;
+    private static void doCleanup(BooleanSupplier allowed, ByteBuffer buf, long delay, String file, int retries) {
+        if( ! allowed.getAsBoolean()) {
+            if( retries > 0) {
+                logger.debug("Memory mapped buffer not cleared for {}, retry after {} seconds", file, delay);
+                cleanupExecutor.schedule(() -> doCleanup(allowed, buf, delay, file, retries-1), delay, TimeUnit.SECONDS);
+            } else {
+                logger.debug("Memory mapped buffer not cleared for {}, giving up", file);
+            }
+
+            return;
+        }
         try {
             cleanMethod.invoke(cleanerMethod.invoke(buf));
+            logger.debug("Memory mapped buffer cleared for {}", file);
         } catch (IllegalArgumentException | InvocationTargetException | SecurityException | IllegalAccessException exception) {
             logger.warn("Clean failed", exception);
         }

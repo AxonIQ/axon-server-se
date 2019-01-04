@@ -22,6 +22,8 @@ import io.axoniq.axonserver.grpc.internal.TransactionConfirmation;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
@@ -43,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -167,8 +170,8 @@ public class DataSynchronizationReplica {
         private final AtomicLong expectedEventToken = new AtomicLong();
         private final AtomicLong expectedSnapshotToken = new AtomicLong();
         private StreamObserver<SynchronizationReplicaOutbound> streamObserver;
-        private final ConcurrentNavigableMap<Long, TransactionWithToken> eventsToSynchronize = new ConcurrentSkipListMap<>();
-        private final ConcurrentNavigableMap<Long, TransactionWithToken> snapshotsToSynchronize = new ConcurrentSkipListMap<>();
+        private final ConcurrentNavigableMap<Long, SerializedTransactionWithToken> eventsToSynchronize = new ConcurrentSkipListMap<>();
+        private final ConcurrentNavigableMap<Long, SerializedTransactionWithToken> snapshotsToSynchronize = new ConcurrentSkipListMap<>();
         private final AtomicLong permitsLeft = new AtomicLong();
         private final FlowControl flowControl;
         private volatile long lastEventReceived = System.currentTimeMillis();
@@ -194,15 +197,15 @@ public class DataSynchronizationReplica {
                     if( completed ) return;
                     switch (synchronizationReplicaInbound.getRequestCase()) {
                         case EVENT:
-                            TransactionWithToken eventRequest = synchronizationReplicaInbound
-                                    .getEvent();
+                            SerializedTransactionWithToken eventRequest = toSerializedTransactionWithToken(synchronizationReplicaInbound
+                                    .getEvent());
                             lastEventReceived = clock.millis();
                             lastMessageReceived = lastEventReceived;
                             syncTransaction(eventRequest, EventType.EVENT, expectedEventToken, eventsToSynchronize);
                             break;
                         case SNAPSHOT:
-                            TransactionWithToken snapshotRequest = synchronizationReplicaInbound
-                                    .getSnapshot();
+                            SerializedTransactionWithToken snapshotRequest = toSerializedTransactionWithToken(synchronizationReplicaInbound
+                                    .getSnapshot());
                             lastSnapshotReceived = clock.millis();
                             lastMessageReceived = lastSnapshotReceived;
                             syncTransaction(snapshotRequest, EventType.SNAPSHOT, expectedSnapshotToken, snapshotsToSynchronize);
@@ -294,8 +297,8 @@ public class DataSynchronizationReplica {
             return safepointRepository.getSafePoint(eventType, context) > expectedToken.get();
         }
 
-        private void syncTransaction(TransactionWithToken syncRequest, EventType type, AtomicLong expectedToken,
-                                     ConcurrentNavigableMap<Long, TransactionWithToken> waitingToSynchronize) {
+        private void syncTransaction(SerializedTransactionWithToken syncRequest, EventType type, AtomicLong expectedToken,
+                                     ConcurrentNavigableMap<Long, SerializedTransactionWithToken> waitingToSynchronize) {
             if (syncRequest.getToken() < expectedToken.get() ) {
                 logger.debug("Received {} {} while expecting {}", type, syncRequest.getToken(), expectedToken.get() );
                 if( contains(type, syncRequest)) {
@@ -309,7 +312,7 @@ public class DataSynchronizationReplica {
 
             safepointRepository.storeSafePoint(type, context, syncRequest.getSafePoint());
             waitingToSynchronize.put(syncRequest.getToken(), syncRequest);
-            Map.Entry<Long, TransactionWithToken> head = waitingToSynchronize
+            Map.Entry<Long, SerializedTransactionWithToken> head = waitingToSynchronize
                     .pollFirstEntry();
             while (head != null && head.getKey().equals(expectedToken
                                                                                 .get())) {
@@ -322,7 +325,7 @@ public class DataSynchronizationReplica {
                                                                  head.getValue());
         }
 
-        private void rollback(EventType eventType, TransactionWithToken syncRequest) {
+        private void rollback(EventType eventType, SerializedTransactionWithToken syncRequest) {
             logger.warn("{}: Rollback {} to {}", context, eventType, syncRequest.getToken());
             if( EventType.EVENT.equals(eventType)) {
                 localEventStore.rollbackEvents(context, syncRequest.getToken()-1);
@@ -333,7 +336,7 @@ public class DataSynchronizationReplica {
 
         }
 
-        private boolean contains(EventType eventType, TransactionWithToken syncRequest) {
+        private boolean contains(EventType eventType, SerializedTransactionWithToken syncRequest) {
             if( EventType.EVENT.equals(eventType)) {
                 return localEventStore.containsEvents(context, syncRequest);
             } else {
@@ -341,7 +344,7 @@ public class DataSynchronizationReplica {
             }
         }
 
-        private long syncTransaction(TransactionWithToken transactionWithToken, EventType eventType) {
+        private long syncTransaction(SerializedTransactionWithToken transactionWithToken, EventType eventType) {
             if( logger.isTraceEnabled()) logger.trace("Writing transaction: {}, # events: {}", transactionWithToken.getToken(), transactionWithToken.getEventsCount());
             long expected;
             if( EventType.EVENT.equals(eventType)) {
@@ -420,5 +423,10 @@ public class DataSynchronizationReplica {
         public long remainingPermits() {
             return permitsLeft.get();
         }
+    }
+
+    private SerializedTransactionWithToken toSerializedTransactionWithToken(TransactionWithToken snapshot) {
+        return new SerializedTransactionWithToken(snapshot.getToken(), snapshot.getVersion(), snapshot.getEventsList().stream().map( e -> new SerializedEvent(e.toByteArray()) ).collect(
+                Collectors.toList()), snapshot.getSafePoint(), snapshot.getMasterGeneration());
     }
 }

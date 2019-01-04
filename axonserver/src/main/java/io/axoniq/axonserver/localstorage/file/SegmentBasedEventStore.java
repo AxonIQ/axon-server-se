@@ -10,6 +10,7 @@ import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
@@ -214,7 +215,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
 
     @Override
-    public boolean contains( TransactionWithToken newTransaction){
+    public boolean contains( SerializedTransactionWithToken newTransaction){
         long token = newTransaction.getToken();
         long segment = getSegmentFor(token);
         EventSource eventSource = getEventSource(segment).orElse(null);
@@ -226,18 +227,11 @@ public abstract class SegmentBasedEventStore implements EventStore {
         }
 
         try (TransactionIterator iterator = eventSource.createTransactionIterator(segment, token, false)){
-            return iterator.hasNext() && equals(newTransaction,iterator.next());
+            return iterator.hasNext() && newTransaction.equals(iterator.next());
         } catch (Exception e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored", e);
         }
     }
-
-    private boolean equals(TransactionWithToken newTransaction, TransactionWithToken storedTransaction) {
-        return newTransaction.getToken() == storedTransaction.getToken()
-                && newTransaction.getVersion() == storedTransaction.getVersion()
-                && newTransaction.getEventsList().equals(storedTransaction.getEventsList());
-    }
-
 
     @Override
     public long getFirstToken() {
@@ -332,13 +326,13 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     protected ValidationResult validateSegment(long segment) {
         logger.debug("{}: Validating {} segment: {}", type.getContext(), type.getEventType(), segment);
-        Iterator<TransactionWithToken> iterator = getTransactions(segment, segment, true);
+        Iterator<SerializedTransactionWithToken> iterator = getTransactions(segment, segment, true);
         try {
-            TransactionWithToken last = null;
+            SerializedTransactionWithToken last = null;
             while (iterator.hasNext()) {
                 last = iterator.next();
             }
-            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEventsCount());
+            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvents().size());
         } catch (Exception ex) {
             return new ValidationResult(segment, ex.getMessage());
         }
@@ -403,17 +397,17 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamTransactions(long token, Predicate<TransactionWithToken> onEvent)  {
+    public void streamTransactions(long token, Predicate<SerializedTransactionWithToken> onEvent)  {
         logger.debug("{}: Start streaming {} transactions at {}", context, type.getEventType(), token);
 
         long lastSegment = -1;
         long segment = getSegmentFor(token);
-        TransactionWithToken eventWithToken = null;
+        SerializedTransactionWithToken eventWithToken = null;
         while (segment > lastSegment) {
             TransactionIterator transactionIterator = getTransactions(segment, token);
             while (transactionIterator.hasNext()) {
                 eventWithToken = transactionIterator.next();
-                token += eventWithToken.getEventsCount();
+                token += eventWithToken.getEvents().size();
                 if( ! onEvent.test(eventWithToken)) {
                     transactionIterator.close();
                     logger.debug("{}: Done streaming {} transactions due to false result", context, type.getEventType());

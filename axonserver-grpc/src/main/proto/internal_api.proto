@@ -317,7 +317,7 @@ message SafepointMessage {
 message TransactionWithToken {
     int64 token = 1;
     int32 version = 2;
-    repeated io.axoniq.axonserver.grpc.event.Event events = 3;
+    repeated bytes events = 3;
     int64 master_generation = 4;
     int64 safe_point = 5;
 }

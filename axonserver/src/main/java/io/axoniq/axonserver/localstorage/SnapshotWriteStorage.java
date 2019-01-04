@@ -22,7 +22,7 @@ public class SnapshotWriteStorage {
 
     public CompletableFuture<Confirmation> store(Event eventMessage) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        storageTransactionManager.store(Collections.singletonList(eventMessage))
+        storageTransactionManager.store(Collections.singletonList(new SerializedEvent(eventMessage)))
                                  .whenComplete((firstToken, cause) ->  {
             if( cause == null ) {
                 lastCommitted.set(firstToken);

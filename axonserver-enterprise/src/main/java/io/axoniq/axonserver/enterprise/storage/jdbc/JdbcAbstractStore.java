@@ -6,11 +6,11 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
@@ -19,7 +19,6 @@ import org.springframework.data.util.CloseableIterator;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -63,7 +62,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
+    public void streamTransactions(long firstToken, Predicate<SerializedTransactionWithToken> transactionConsumer) {
         throw new UnsupportedOperationException();
     }
 
@@ -103,9 +102,9 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(List<Event> eventList) {
+    public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
         long firstToken = lastToken.getAndAdd(eventList.size()) + 1;
-        return new PreparedTransaction(firstToken, eventList.stream().map(WrappedEvent::new).collect(Collectors.toList()));
+        return new PreparedTransaction(firstToken, eventList.stream().map(e -> new WrappedEvent(e, NoOpEventTransformer.INSTANCE)).collect(Collectors.toList()));
     }
 
     @Override
@@ -120,6 +119,7 @@ public abstract class JdbcAbstractStore implements EventStore {
                     insert.setLong(1, firstToken++);
                     insert.setString(2, event.getAggregateIdentifier());
                     insert.setString(3, event.getMessageIdentifier());
+                    // TODO: serialize metadata
                     insert.setNull(4, Types.BLOB);
                     insert.setBytes(5, event.getPayloadBytes());
                     insert.setString(6, event.getPayloadRevision());
@@ -242,8 +242,7 @@ public abstract class JdbcAbstractStore implements EventStore {
                                                  .setRevision(resultSet.getString("payload_revision"))
                                                  .setType(resultSet.getString("payload_type")))
                      .setTimestamp(resultSet.getLong("time_stamp"))
-                     .setAggregateType(resultSet.getString("type")).build(),
-                NoOpEventTransformer.INSTANCE);
+                     .setAggregateType(resultSet.getString("type")).build());
     }
 
     @Override

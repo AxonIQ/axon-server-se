@@ -10,6 +10,7 @@ import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
@@ -63,12 +64,12 @@ public class EventWriteStorageClusterTest {
     public void stepDown() throws ExecutionException, InterruptedException {
         Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(0).setAggregateType(
                 "Demo").setPayload(SerializedObject.newBuilder().build()).build();
-        CompletableFuture<Void> first = testSubject.store(Collections.singletonList(event));
+        CompletableFuture<Void> first = testSubject.store(Collections.singletonList(new SerializedEvent(event)));
 
         event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(1).setAggregateType(
                 "Demo").setPayload(SerializedObject.newBuilder().build()).build();
 
-        CompletableFuture<Void> second = testSubject.store(Collections.singletonList(event));
+        CompletableFuture<Void> second = testSubject.store(Collections.singletonList(new SerializedEvent(event)));
         fakeReplicationManager.completed(0);
         first.get();
         Assert.assertEquals(0, testSubject.getLastCommittedToken());
@@ -95,7 +96,7 @@ public class EventWriteStorageClusterTest {
         }
 
         @Override
-        public void publish(EventTypeContext type, List<Event> eventList, long token) {
+        public void publish(EventTypeContext type, List<SerializedEvent> eventList, long token) {
 
         }
 

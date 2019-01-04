@@ -1,12 +1,13 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import org.springframework.data.util.CloseableIterator;
 
 /**
  * Author: marc
  */
-public interface TransactionIterator extends CloseableIterator<TransactionWithToken> {
+public interface TransactionIterator extends CloseableIterator<SerializedTransactionWithToken> {
 
     @Override
     default void close() {

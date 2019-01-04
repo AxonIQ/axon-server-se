@@ -50,7 +50,7 @@ public class InputStreamEventSource implements EventSource {
 
     public SerializedEvent readEvent() throws IOException {
         byte[] bytes = dataInputStream.readEvent();
-        return new SerializedEvent(bytes, eventTransformer);
+        return new SerializedEvent(eventTransformer.readEvent(bytes));
     }
 
     @Override
