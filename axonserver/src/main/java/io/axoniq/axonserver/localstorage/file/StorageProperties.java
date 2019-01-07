@@ -10,7 +10,8 @@ import java.io.File;
 @KeepNames
 public class StorageProperties {
 
-    public static final String PATH_FORMAT = "%s/%s/%014d%s";
+    public static final String PATH_FORMAT = "%s/%s/%020d%s";
+    public static final String OLD_PATH_FORMAT = "%s/%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
 
     private String eventsSuffix = ".events";
@@ -101,7 +102,7 @@ public class StorageProperties {
     }
 
     public File indexTemp(String context, long segment) {
-        return new File(String.format("%s/%s/%014d%s.temp", storage, context, segment, indexSuffix));
+        return new File(String.format(PATH_FORMAT + ".temp", storage, context, segment, indexSuffix));
     }
 
     public File dataFile(String context, long segment) {
@@ -186,5 +187,15 @@ public class StorageProperties {
 
     public void setReadBufferSize(int readBufferSize) {
         this.readBufferSize = readBufferSize;
+    }
+
+    public File oldDataFile(String context, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, eventsSuffix));
+    }
+    public File oldIndex(String context, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, indexSuffix));
+    }
+    public File oldBloomFilter(String context, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, bloomIndexSuffix));
     }
 }

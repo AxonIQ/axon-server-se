@@ -435,6 +435,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
               .filter(segment -> segment < lastInitialized)
               .forEach(segments::add);
 
+        segments.forEach(this::renameFileIfNecessary);
         long firstValidIndex = segments.stream().filter(this::indexValid).findFirst().orElse(-1L);
         logger.debug("First valid index: {}", firstValidIndex);
         return segments;
@@ -537,6 +538,21 @@ public abstract class SegmentBasedEventStore implements EventStore {
                 return;
             }
             n = n.next;
+        }
+    }
+
+    protected void renameFileIfNecessary(long segment) {
+        File dataFile = storageProperties.oldDataFile(context, segment);
+        if( dataFile.exists()) {
+            dataFile.renameTo(storageProperties.dataFile(context, segment));
+            File indexFile = storageProperties.oldIndex(context, segment);
+            if( indexFile.exists()) {
+                indexFile.renameTo(storageProperties.index(context, segment));
+            }
+            File bloomFile = storageProperties.oldBloomFilter(context, segment);
+            if( bloomFile.exists()) {
+                bloomFile.renameTo(storageProperties.bloomFilter(context, segment));
+            }
         }
     }
 

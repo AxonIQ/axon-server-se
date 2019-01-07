@@ -58,6 +58,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     @Override
     public void initSegments(long lastInitialized)  {
         segments.addAll(prepareSegmentStore(lastInitialized));
+
         if( next != null) next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
     }
 

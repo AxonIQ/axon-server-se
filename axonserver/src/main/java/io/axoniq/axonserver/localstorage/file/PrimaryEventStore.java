@@ -68,6 +68,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir) {
         long first = getFirstFile(lastInitialized, storageDir);
+        renameFileIfNecessary(first);
         WritableEventSource buffer = getOrOpenDatafile(first);
         FileUtils.delete(storageProperties.index(context, first));
         FileUtils.delete(storageProperties.bloomFilter(context, first));
