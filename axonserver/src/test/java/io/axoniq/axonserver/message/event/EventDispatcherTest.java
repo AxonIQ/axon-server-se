@@ -45,7 +45,7 @@ public class EventDispatcherTest {
     public void setUp() {
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
         when(eventStoreManager.getEventStore(any())).thenReturn(eventStoreClient);
-        testSubject = new EventDispatcher(eventStoreManager, Optional.empty(), () -> Topology.DEFAULT_CONTEXT,
+        testSubject = new EventDispatcher(eventStoreManager, () -> Topology.DEFAULT_CONTEXT,
                                           Metrics.globalRegistry,
                                           new DefaultMetricCollector());
     }

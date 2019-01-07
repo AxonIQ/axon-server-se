@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage.transaction;
 
+import io.axoniq.axonserver.connector.EventConnector;
+import io.axoniq.axonserver.connector.UnitOfWork;
 import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -14,9 +16,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -25,6 +29,7 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     private static final Logger logger = LoggerFactory.getLogger(ClusterTransactionManager.class);
     private final EventStore datafileManagerChain;
     private final SyncStatusController syncStatusController;
+    private final List<EventConnector> eventConnectors;
     private final ReplicationManager replicationManager;
 
     private final Map<Long, TransactionInformation> activeTransactions = new ConcurrentHashMap<>();
@@ -33,9 +38,11 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     public ClusterTransactionManager(
             EventStore datafileManagerChain,
             SyncStatusController syncStatusController,
+            List<EventConnector> eventConnectors,
             ReplicationManager replicationManager) {
         this.datafileManagerChain = datafileManagerChain;
         this.syncStatusController = syncStatusController;
+        this.eventConnectors = eventConnectors;
         this.replicationManager = replicationManager;
         this.type = datafileManagerChain.getType();
         this.replicationManager.registerListener( type, this::replicationCompleted);
@@ -44,6 +51,12 @@ public class ClusterTransactionManager implements StorageTransactionManager {
     @Override
     public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
+        final List<UnitOfWork> unitsOfWork = eventConnectors.stream().map(EventConnector::createUnitOfWork).collect(
+                Collectors.toList());
+        if( ! unitsOfWork.isEmpty()) {
+            unitsOfWork.forEach(c -> c.publish(eventList));
+        }
+
         PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(eventList);
         activeTransactions.put( preparedTransaction.getToken(),
                                 new TransactionInformation( completableFuture, replicationManager.getQuorum(type.getContext()), eventList.size()));
@@ -52,14 +65,17 @@ public class ClusterTransactionManager implements StorageTransactionManager {
             datafileManagerChain.store(preparedTransaction).whenComplete((firstToken, cause) -> {
                 if( cause == null) {
                     replicationCompleted(firstToken);
+                    unitsOfWork.forEach(UnitOfWork::commit);
                 } else {
                     // What if local storage fails
                     logger.error("Failed to store event", cause);
+                    unitsOfWork.forEach(UnitOfWork::rollback);
                 }
                                                                          });
         } catch( Exception ex) {
             completableFuture.completeExceptionally(ex);
             activeTransactions.remove(preparedTransaction.getToken());
+            unitsOfWork.forEach(UnitOfWork::rollback);
         }
         return completableFuture;
     }

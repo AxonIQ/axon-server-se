@@ -1,14 +1,18 @@
 package io.axoniq.axonserver.localstorage;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.connector.ConnectorEvent;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.apache.commons.compress.utils.IOUtils.toByteArray;
 
@@ -16,36 +20,36 @@ import static org.apache.commons.compress.utils.IOUtils.toByteArray;
  * Wrapper around an Event that keeps track of the Serialized form of the Event, to prevent unnecessary
  * (un)marshalling of Event messages.
  */
-public class SerializedEvent {
+public class SerializedEvent implements ConnectorEvent {
 
-    private final byte[] serializedEvent;
+    private final byte[] serializedData;
     private volatile Event event;
 
     public SerializedEvent(Event event) {
-        this.serializedEvent = event.toByteArray();
+        this.serializedData = event.toByteArray();
         this.event = event;
     }
 
     public SerializedEvent(byte[] eventFromFile) {
-        this.serializedEvent = eventFromFile;
+        this.serializedData = eventFromFile;
     }
 
     public SerializedEvent(InputStream event) {
         try {
-            this.serializedEvent = toByteArray(event);
+            this.serializedData = toByteArray(event);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }
     }
 
     public InputStream asInputStream() {
-        return new ByteArrayInputStream(serializedEvent);
+        return new ByteArrayInputStream(serializedData);
     }
 
     public Event asEvent() {
         if (event == null) {
             try {
-                event = Event.parseFrom(serializedEvent);
+                event = Event.parseFrom(serializedData);
             } catch (InvalidProtocolBufferException e) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
             }
@@ -54,14 +58,87 @@ public class SerializedEvent {
     }
 
     public int size() {
-        return serializedEvent.length;
+        return serializedData.length;
     }
 
     public byte[] serializedData() {
-        return serializedEvent;
+        return serializedData;
     }
 
     public long getAggregateSequenceNumber() {
         return asEvent().getAggregateSequenceNumber();
+    }
+
+    @Override
+    public byte[] getPayload() {
+        return asEvent().getPayload().getData().toByteArray();
+    }
+
+    @Override
+    public String getIdentifier() {
+        return asEvent().getMessageIdentifier();
+    }
+
+    @Override
+    public String getAggregateType() {
+        return asEvent().getAggregateType();
+    }
+
+    @Override
+    public String getPayloadType() {
+        return asEvent().getPayload().getType();
+    }
+
+    @Override
+    public String getPayloadRevision() {
+        return asEvent().getPayload().getRevision();
+    }
+
+    @Override
+    public long getTimestamp() {
+        return asEvent().getTimestamp();
+    }
+
+    @Override
+    public boolean isDomainEvent() {
+        return ! StringUtils.isEmpty(getAggregateIdentifier());
+    }
+
+    @Override
+    public String getAggregateIdentifier() {
+        return asEvent().getAggregateIdentifier();
+    }
+
+    @Override
+    public long getSequenceNumber() {
+        return asEvent().getAggregateSequenceNumber();
+    }
+
+    @Override
+    public String getType() {
+        return asEvent().getAggregateType();
+    }
+
+    @Override
+    public Map<String, Object> getMetaData() {
+        Map<String,Object> metaData = new HashMap<>();
+        asEvent().getMetaDataMap().forEach((key, value) -> metaData.put(key, asObject(value)));
+        return metaData;
+    }
+
+    private Object asObject(MetaDataValue value) {
+        switch (value.getDataCase()) {
+            case TEXT_VALUE:
+                return value.getTextValue();
+            case NUMBER_VALUE:
+                return value.getNumberValue();
+            case BOOLEAN_VALUE:
+                return value.getBooleanValue();
+            case DOUBLE_VALUE:
+                return value.getDoubleValue();
+            case BYTES_VALUE:
+                return value.getBytesValue();
+        }
+        return "Null";
     }
 }

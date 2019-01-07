@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.config;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.config.AxonServerFreeConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.connector.EventConnector;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
@@ -29,6 +30,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Author: marc
@@ -79,8 +84,10 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
     @Conditional(ClusteringAllowed.class)
-    public StorageTransactionManagerFactory storageTransactionManagerFactory(SyncStatusController syncStatusController, ReplicationManager replicationManager) {
-        return new ClusterTransactionManagerFactory(syncStatusController, replicationManager);
+    public StorageTransactionManagerFactory storageTransactionManagerFactory(SyncStatusController syncStatusController,
+                                                                             Optional<List<EventConnector>> eventConnectors,
+                                                                             ReplicationManager replicationManager) {
+        return new ClusterTransactionManagerFactory(syncStatusController, eventConnectors.orElse(Collections.emptyList()), replicationManager);
     }
 
 }

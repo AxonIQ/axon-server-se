@@ -5,9 +5,7 @@ import java.util.Map;
 /**
  * Author: marc
  */
-public interface Event {
-    Map<String, Object> getMetaData();
-
+public interface ConnectorEvent {
     byte[] getPayload();
 
     String getIdentifier();
@@ -27,4 +25,6 @@ public interface Event {
     long getSequenceNumber();
 
     String getType();
+
+    Map<String, Object> getMetaData();
 }

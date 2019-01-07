@@ -64,21 +64,19 @@ public class EventDispatcher implements AxonServerClientService {
                           .build();
 
     private final EventStoreLocator eventStoreClient;
-    private final List<EventConnector> connectors;
     private final ContextProvider contextProvider;
     private final MetricCollector clusterMetrics;
     private final Map<String, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Counter eventsCounter;
     private final Counter snapshotCounter;
 
-    public EventDispatcher(EventStoreLocator eventStoreClient, Optional<List<EventConnector>> eventConnectors,
+    public EventDispatcher(EventStoreLocator eventStoreClient,
                            ContextProvider contextProvider,
                            MeterRegistry meterRegistry,
                            MetricCollector clusterMetrics) {
         this.contextProvider = contextProvider;
         this.clusterMetrics = clusterMetrics;
         this.eventStoreClient = eventStoreClient;
-        connectors = eventConnectors.orElse(Collections.emptyList());
         eventsCounter = meterRegistry.counter(EVENTS_METRIC_NAME);
         snapshotCounter = meterRegistry.counter(SNAPSHOTS_METRIC_NAME);
     }
@@ -99,29 +97,21 @@ public class EventDispatcher implements AxonServerClientService {
         StreamObserver<InputStream> appendEventConnection = eventStore.createAppendEventConnection(context,
                                                                                                          responseObserver);
         return new StreamObserver<InputStream>() {
-            final List<UnitOfWork> unitsOfWork = connectors.stream().map(EventConnector::createUnitOfWork).collect(
-                    Collectors.toList());
-
             @Override
             public void onNext(InputStream event) {
                 appendEventConnection.onNext(event);
-                if( ! unitsOfWork.isEmpty()) {
-//                    unitsOfWork.forEach(c -> c.publish(new GrpcBackedEvent(event)));
-                }
                 eventsCounter.increment();
             }
 
             @Override
             public void onError(Throwable throwable) {
                 logger.warn("Error on connection from client: {}", throwable.getMessage());
-                unitsOfWork.forEach(UnitOfWork::rollback);
                 appendEventConnection.onError(throwable);
             }
 
             @Override
             public void onCompleted() {
                 appendEventConnection.onCompleted();
-                unitsOfWork.forEach(UnitOfWork::commit);
             }
         };
     }

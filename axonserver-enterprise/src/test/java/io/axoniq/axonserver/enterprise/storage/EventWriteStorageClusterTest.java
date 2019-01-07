@@ -45,7 +45,7 @@ public class EventWriteStorageClusterTest {
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         fakeReplicationManager = new FakeReplicationManager();
         SyncStatusController syncStatusController = mock(SyncStatusController.class);
-        ClusterTransactionManagerFactory defaultStorageTransactionManagerFactory = new ClusterTransactionManagerFactory( syncStatusController,
+        ClusterTransactionManagerFactory defaultStorageTransactionManagerFactory = new ClusterTransactionManagerFactory( syncStatusController, Collections.emptyList(),
                 fakeReplicationManager);
         EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
                                                                             defaultStorageTransactionManagerFactory);
