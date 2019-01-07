@@ -273,7 +273,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             long before = permits.getAndAccumulate(newPermits, (old, inc) -> Math.max(old, 0) + inc);
             if( before <= 0) {
                 logger.debug("restart streaming with {} permits", newPermits);
-                startStreaming(lastEventTransaction.get(), lastSnapshotTransaction.get());
+                startStreaming(lastEventTransaction.get()+1, lastSnapshotTransaction.get()+1);
             }
         }
 

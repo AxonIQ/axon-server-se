@@ -38,6 +38,14 @@ public class ByteBufferEventSource implements EventSource {
         this.main = false;
     }
 
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer) {
+        this.path = path;
+        this.buffer = buffer;
+        this.eventTransformer = eventTransformer;
+        this.onClose = null;
+        this.main = true;
+    }
+
     public SerializedEvent readEvent() {
         int size = buffer.getInt();
         byte[] bytes = new byte[size];

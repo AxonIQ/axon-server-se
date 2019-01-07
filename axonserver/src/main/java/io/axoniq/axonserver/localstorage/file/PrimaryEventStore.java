@@ -244,13 +244,13 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void rollback( long token) {
-        if( token >= getLastToken()) {
+        if( token >= getLastToken() ) {
             return;
         }
         synchronizer.shutdown(false);
 
         for( long segment: getSegments()) {
-            if( segment > token) {
+            if( segment > token && segment > 0) {
                 removeSegment(segment);
             }
         }

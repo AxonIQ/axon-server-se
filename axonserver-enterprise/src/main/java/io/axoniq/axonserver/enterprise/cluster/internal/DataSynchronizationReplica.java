@@ -326,10 +326,10 @@ public class DataSynchronizationReplica {
         }
 
         private void rollback(EventType eventType, SerializedTransactionWithToken syncRequest) {
-            logger.warn("{}: Rollback {} to {}", context, eventType, syncRequest.getToken());
+            logger.warn("{}: Rollback {} to {}", context, eventType, syncRequest.getToken()-1);
             if( EventType.EVENT.equals(eventType)) {
                 localEventStore.rollbackEvents(context, syncRequest.getToken()-1);
-                logger.warn("{}: Last event is {}", context, localEventStore.getLastToken(context));
+                logger.debug("{}: Last event is {}", context, localEventStore.getLastToken(context));
             } else {
                 localEventStore.rollbackSnapshots(context, syncRequest.getToken()-1);
             }
@@ -353,7 +353,7 @@ public class DataSynchronizationReplica {
                 expected = localEventStore.syncSnapshots(context, transactionWithToken);
             }
 
-            messageProcessed(safepointRepository.getSafePoint(eventType, context) < expected, transactionWithToken.getToken(), eventType.name());
+            messageProcessed(safepointRepository.getSafePoint(eventType, context) <= expected, transactionWithToken.getToken(), eventType.name());
             return expected;
         }
 
