@@ -39,7 +39,7 @@ def getTestSummary = { ->
         def failed = testResultAction.getFailCount()
         def skipped = testResultAction.getSkipCount()
 
-        summary = "Test results: Passed: " + (total - failed - skipped)) + (", Failed: " + failed) + (", Skipped: " + skipped)
+        summary = "Test results: Passed: " + (total - failed - skipped) + (", Failed: " + failed) + (", Skipped: " + skipped)
     } else {
         summary = "No tests found"
     }
