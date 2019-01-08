@@ -53,6 +53,8 @@ podTemplate(label: label,
             pom = readMavenPom file: 'pom.xml'
             def pomVersion = pom.version
 
+            def slackResponse = slackSend(message: "Build Started - Axon Server, branch ${gitBranch}, commit ${gitCommit} (<${env.BUILD_URL}|Open>)")
+
             stage ('Project setup') {
                 container("maven") {
                     sh """
@@ -74,6 +76,7 @@ podTemplate(label: label,
                     junit '**/target/surefire-reports/TEST-*.xml'
 
                     when(relevantBranch(gitBranch, deployingBranches)) {
+                        slackSend(channel: slackResponse.threadId, message: "Deploying ${pomVersion} to Nexus.")
                         sh "mvn \${MVN_BLD} -DskipTests deploy"
                     }
                 }
@@ -82,6 +85,7 @@ podTemplate(label: label,
             stage ('Run SonarQube') {
                 when(relevantBranch(gitBranch, sonarBranches)) {
                     container("maven") {
+                        slackSend(channel: slackResponse.threadId, message: "Analyzing ${pomVersion} with SonarQube.")
                         sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
                     }
                 }
@@ -95,6 +99,7 @@ podTemplate(label: label,
 //        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
 //        string(name: 'artifactId', defaultValue: 'axonserver'),
 //        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+                    slackSend(channel: slackResponse.threadId, message: "Building Docker images for ${pomVersion}.")
                     build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
                         parameters: [
                             string(name: 'namespace', value: params.namespace),
@@ -112,6 +117,7 @@ podTemplate(label: label,
 //        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
 //        string(name: 'artifactId', defaultValue: 'axonserver'),
 //        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+                    slackSend(channel: slackResponse.threadId, message: "Running Canary tests on ${pomVersion}.")
                     build job: 'axon-server-canary/master', propagate: false, wait: false,
                         parameters: [
                             string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
