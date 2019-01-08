@@ -8,13 +8,13 @@ properties([
 def label = "worker-${UUID.randomUUID().toString()}"
 
 def deployingBranches = [
-    "master"
+    "master", "axonserver-4.0.x"
 ]
 def dockerBranches = [
-    "master"
+    "master", "axonserver-4.0.x"
 ]
 def sonarBranches = [
-    "master"
+    "master", "axonserver-4.0.x"
 ]
 
 def relevantBranch(thisBranch, branches) {
@@ -28,16 +28,14 @@ def relevantBranch(thisBranch, branches) {
 
 podTemplate(label: label,
     containers: [
-        containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven:3.5.4-jdk-8',
+        containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:latest',
             command: 'cat', ttyEnabled: true,
             resourceRequestCpu: '1000m', resourceLimitCpu: '1000m',
             resourceRequestMemory: '3200Mi', resourceLimitMemory: '4Gi',
             envVars: [
                 envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ]),
-        containerTemplate(name: 'docker', image: 'docker',
-            command: 'cat', ttyEnabled: true)
+            ])
     ],
     volumes: [
         hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
@@ -58,11 +56,10 @@ podTemplate(label: label,
             stage ('Project setup') {
                 container("maven") {
                     sh """
-                        sh ./getLastFromNexus.sh io.axoniq.axoniq-templater axoniq-templater
                         cat /maven_settings/*xml >./settings.xml
                         export AXONIQ_BRANCH=${gitBranch}
                         export AXONIQ_NS=${params.namespace}
-                        ./axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonserver -env AXONIQ -envDot -q -dump >jenkins-build.properties
+                        axoniq-templater -s ./settings.xml -P docker -pom pom.xml -mod axonserver -env AXONIQ -envDot -q -dump >jenkins-build.properties
                     """
                 }
             }
@@ -81,26 +78,6 @@ podTemplate(label: label,
                     }
                 }
             }
-
-//            stage('Docker build') {
-//                when(relevantBranch(gitBranch, dockerBranches)) {
-//                    container("maven") {
-//                        sh "mvn \${MVN_BLD} -DskipTests -Ddockerfile.push.skip -Ddockerfile.build.skip -Pdocker package"
-//                    }
-//                }
-//            }
-
-//            stage('Docker push') {
-//                when(relevantBranch(gitBranch, dockerBranches)) {
-//                    container('docker') {
-//                        sh """
-//                            cat /dockercfg/system-account.json | docker login -u _json_key --password-stdin https://eu.gcr.io
-//                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver:${pomVersion}
-//                            docker push ${gcloudRegistry}/${gcloudProjectName}/axonserver-enterprise:${pomVersion}
-//                        """
-//                    }
-//                }
-//            }
 
             stage ('Run SonarQube') {
                 when(relevantBranch(gitBranch, sonarBranches)) {
