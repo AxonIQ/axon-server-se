@@ -152,7 +152,7 @@ podTemplate(label: label,
 //        string(name: 'artifactId', defaultValue: 'axonserver'),
 //        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
 
-                    def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: false,
+                    def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
                             string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
                             string(name: 'imageName', value: 'axonserver'),
