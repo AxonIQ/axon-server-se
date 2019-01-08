@@ -101,7 +101,7 @@ podTemplate(label: label,
                     }
                     finally {
                         junit '**/target/surefire-reports/TEST-*.xml'
-                        slackSend(message: getSummary())
+                        slackSend(message: getTestSummary())
                     }
 
                     when(relevantBranch(gitBranch, deployingBranches)) {
