@@ -54,7 +54,7 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     @Override
     public void updateCommit(long commitIndex, long commitTerm) {
         raftState.setCommitIndex(commitIndex);
-        raftState.setCurrentTerm(commitTerm);
+        raftState.setCommitTerm(commitTerm);
     }
 
     @Override
