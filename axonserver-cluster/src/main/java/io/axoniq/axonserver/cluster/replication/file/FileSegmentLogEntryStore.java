@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * File format is:
@@ -241,5 +242,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     @Override
     public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
         primaryEventStore.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
+    }
+
+    public Stream<String> getBackupFilenames(){
+        return primaryEventStore.getBackupFilenames(0L);
     }
 }
