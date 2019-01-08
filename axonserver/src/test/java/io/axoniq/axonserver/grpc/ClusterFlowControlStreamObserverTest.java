@@ -4,6 +4,7 @@ import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
 import io.axoniq.axonserver.grpc.internal.Group;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
@@ -38,11 +39,11 @@ public class ClusterFlowControlStreamObserverTest {
     @Test
     public void onNextCommand() {
         testSubject.initCommandFlowControl(messagingPlatformConfiguration);
-        testSubject.onNext(ConnectorCommand.newBuilder().setCommandResponse(CommandResponse.newBuilder().build()).build());
+        testSubject.onNext(ConnectorCommand.newBuilder().setCommandResponse(ForwardedCommandResponse.newBuilder().build()).build());
         assertEquals(3, delegate.count);
         assertEquals( COMMAND_RESPONSE, delegate.responseList.get(1).getRequestCase());
         assertEquals( FLOW_CONTROL, delegate.responseList.get(2).getRequestCase());
-        testSubject.onNext(ConnectorCommand.newBuilder().setCommandResponse(CommandResponse.newBuilder().build()).build());
+        testSubject.onNext(ConnectorCommand.newBuilder().setCommandResponse(ForwardedCommandResponse.newBuilder().build()).build());
         assertEquals(4, delegate.count);
         assertEquals( COMMAND_RESPONSE, delegate.responseList.get(3).getRequestCase());
     }

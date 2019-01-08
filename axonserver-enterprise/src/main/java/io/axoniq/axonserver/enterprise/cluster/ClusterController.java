@@ -17,6 +17,7 @@ import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.rest.ClusterRestController;
 import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;

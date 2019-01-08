@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.grpc.stub.StreamObserver;
 
 import java.util.Objects;
@@ -50,7 +50,7 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
         return clientResult;
     }
 
-    public abstract void dispatch( Command request);
+    public abstract void dispatch( SerializedCommand request);
 
     public abstract void confirm( String messageId);
 

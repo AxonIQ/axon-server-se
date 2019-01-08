@@ -21,12 +21,15 @@ import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.ProcessingKey;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
+import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommand;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
 import io.axoniq.axonserver.grpc.internal.GetApplicationsRequest;
 import io.axoniq.axonserver.grpc.internal.GetUsersRequest;
 import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
@@ -113,16 +116,18 @@ public class RemoteConnection  {
                                     break;
 
                                 case COMMAND:
+                                    ForwardedCommand forwardedCommand = connectorResponse.getCommand();
                                     applicationEventPublisher.publishEvent(
-                                            new DispatchEvents.DispatchCommand(ProcessingInstructionHelper
-                                                                                       .context(connectorResponse
-                                                                                                        .getCommand()
-                                                                                                        .getProcessingInstructionsList()),
-                                                                               connectorResponse.getCommand(),
+                                            new DispatchEvents.DispatchCommand(forwardedCommand.getContext(),
+                                                                               new SerializedCommand(forwardedCommand.getCommand().toByteArray(),
+                                                                                                     forwardedCommand.getClient(),
+                                                                                                     forwardedCommand.getMessageId()),
                                                                                commandResponse -> publish(
                                                                                        ConnectorCommand.newBuilder()
                                                                                                        .setCommandResponse(
-                                                                                                               commandResponse)
+                                                                                                               ForwardedCommandResponse
+                                                                                                                       .newBuilder().setRequestIdentifier(commandResponse.getRequestIdentifier())
+                                                                                                               .setResponse(commandResponse.toByteString()).build())
                                                                                                        .build()),
                                                                                true));
                                     break;

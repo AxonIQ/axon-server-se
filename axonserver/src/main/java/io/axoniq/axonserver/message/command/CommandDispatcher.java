@@ -6,6 +6,8 @@ import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -73,18 +75,15 @@ public class CommandDispatcher {
         dispatch(dispatchCommand.getContext(), dispatchCommand.getRequest(), dispatchCommand.getResponseObserver(), dispatchCommand.isProxied());
     }
 
-    public void dispatch(String context, Command request, Consumer<CommandResponse> responseObserver, boolean proxied) {
+    public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if( proxied) {
-            String client = ProcessingInstructionHelper.targetClient(request.getProcessingInstructionsList());
-            context = ProcessingInstructionHelper.context(request.getProcessingInstructionsList());
-            CommandHandler handler = registrations.findByClientAndCommand(client, request);
+            String client = request.getClient();
+            CommandHandler handler = registrations.findByClientAndCommand(client, request.getCommand());
             dispatchToCommandHandler(context, request, handler, responseObserver);
         } else {
             commandCounter.increment();
-            CommandHandler commandHandler = registrations.getNode(context, request,
-                                                                  ProcessingInstructionHelper.routingKey(request.getProcessingInstructionsList()));
-            Command command = Command.newBuilder(request).addProcessingInstructions(ProcessingInstructionHelper.targetClient(commandHandler == null? "" : commandHandler.getClient())).build();
-            dispatchToCommandHandler(context, command, commandHandler, responseObserver);
+            CommandHandler commandHandler = registrations.getNode(context, request.wrapped(), request.getRoutingKey());
+            dispatchToCommandHandler(context, request, commandHandler, responseObserver);
         }
     }
 
@@ -106,31 +105,25 @@ public class CommandDispatcher {
         handlePendingCommands(client);
     }
 
-    //TODO: move code
-//    @EventListener
-//    public void on(ClusterEvents.AxonHubInstanceDisconnected event) {
-//        getCommandQueues().move(event.getNodeName(), this::redispatch);
-//    }
-
-    private void dispatchToCommandHandler(String context, Command command, CommandHandler commandHandler,
-                                          Consumer<CommandResponse> responseObserver) {
+    private void dispatchToCommandHandler(String context, SerializedCommand command, CommandHandler commandHandler,
+                                          Consumer<SerializedCommandResponse> responseObserver) {
         if (commandHandler == null) {
-            responseObserver.accept(CommandResponse.newBuilder()
+            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                    .setMessageIdentifier(command.getMessageIdentifier())
                                                    .setRequestIdentifier(command.getMessageIdentifier())
                                                    .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
                                                    .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + command.getName()))
-                                                   .build());
+                                                   .build()));
             return;
         }
 
         logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClient());
         commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(), responseObserver, commandHandler.getClient(), commandHandler.getComponentName()));
-        commandQueues.put(commandHandler.queueName(), new WrappedCommand(context, command));
+        commandQueues.put(commandHandler.queueName(), new WrappedCommand(context, commandHandler.getClient(), command));
     }
 
 
-    public void handleResponse(CommandResponse commandResponse, boolean proxied) {
+    public void handleResponse(SerializedCommandResponse commandResponse, boolean proxied) {
         CommandInformation toPublisher = commandCache.remove(commandResponse.getRequestIdentifier());
         if (toPublisher != null) {
             logger.debug("Sending response to: {}", toPublisher);
@@ -153,17 +146,17 @@ public class CommandDispatcher {
     }
 
     private String redispatch(WrappedCommand command) {
-        Command request = command.command();
+        Command request = command.command().wrapped();
         CommandInformation commandInformation = commandCache.remove(request.getMessageIdentifier());
         if( commandInformation == null) return null;
 
         CommandHandler client = registrations.getNode(command.context(), request, ProcessingInstructionHelper.routingKey(request.getProcessingInstructionsList()));
         if (client == null) {
-            commandInformation.getResponseConsumer().accept(CommandResponse.newBuilder()
+            commandInformation.getResponseConsumer().accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                     .setMessageIdentifier(request.getMessageIdentifier()).setRequestIdentifier(request.getMessageIdentifier())
                     .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
                     .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + request.getName()))
-                    .build());
+                    .build()));
             return null;
         }
 
@@ -180,12 +173,12 @@ public class CommandDispatcher {
         messageIds.forEach(m -> {
             CommandInformation ci = commandCache.remove(m);
             if( ci != null) {
-                ci.getResponseConsumer().accept(CommandResponse.newBuilder()
+                ci.getResponseConsumer().accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                         .setMessageIdentifier(m)
                                                                .setRequestIdentifier(m)
                         .setErrorMessage(ErrorMessageFactory.build("Connection lost while executing command on: " + ci.getClientId()))
                         .setErrorCode(ErrorCode.CONNECTION_TO_HANDLER_LOST.getCode())
-                        .build());
+                        .build()));
             }
         });
     }

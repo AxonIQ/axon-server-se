@@ -4,7 +4,6 @@ import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.TopologyEvents;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -43,12 +42,14 @@ public class CommandServiceTest {
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<CommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
+        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
         requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
-        commandQueue.put("name", new WrappedCommand(Topology.DEFAULT_CONTEXT, Command.newBuilder().build()));
+        commandQueue.put("name", new WrappedCommand(Topology.DEFAULT_CONTEXT,
+                                                    "client",
+                                                    new SerializedCommand(Command.newBuilder().build())));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);
     }
@@ -107,10 +108,10 @@ public class CommandServiceTest {
     public void dispatch() {
         doAnswer(invocationOnMock -> {
             DispatchEvents.DispatchCommand dispatchCommand = (DispatchEvents.DispatchCommand) invocationOnMock.getArguments()[0];
-            dispatchCommand.getResponseObserver().accept(CommandResponse.newBuilder().build());
+            dispatchCommand.getResponseObserver().accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
         }).when(commandDispatcher).on(isA(DispatchEvents.DispatchCommand.class));
-        CountingStreamObserver<CommandResponse> responseObserver = new CountingStreamObserver<>();
+        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.count);
     }

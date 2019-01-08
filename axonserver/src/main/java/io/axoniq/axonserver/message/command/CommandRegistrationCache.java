@@ -69,10 +69,10 @@ public class CommandRegistrationCache {
         return contextForClient.get(client);
     }
 
-    public CommandHandler findByClientAndCommand(String clientName, Command request) {
+    public CommandHandler findByClientAndCommand(String clientName, String request) {
         String client = registrationsPerClient.entrySet().stream()
                 .filter(e -> e.getKey().equals(clientName))
-                .filter(e -> containsCommand(e.getValue(), request.getName()))
+                .filter(e -> containsCommand(e.getValue(), request))
                 .map(Map.Entry::getKey)
                 .findFirst().orElse(null);
         if( client == null) return null;

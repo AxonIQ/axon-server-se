@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.command.CommandHandler;
@@ -33,7 +34,7 @@ public class MetricsRestControllerTest {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
         commandRegistrationCache.add(Topology.DEFAULT_CONTEXT, "Sample", new CommandHandler<Object>(null, "testclient", "testcomponent") {
             @Override
-            public void dispatch(Command request) {
+            public void dispatch(SerializedCommand request) {
 
             }
 

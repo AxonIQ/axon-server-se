@@ -30,6 +30,7 @@ import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
+import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.axonserver.grpc.internal.Applications;
@@ -369,6 +370,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                                     responseObserver,
                                                                                                     command.getClientId(),
                                                                                                     command.getComponentName(),
+                                                                                                    connectorCommand
+                                                                                                            .getSubscribeCommand()
+                                                                                                            .getContext(),
                                                                                                     messagingServerName)
                         ));
                         break;
@@ -385,7 +389,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     case COMMAND_RESPONSE:
                         logger.debug("Received command response {} from: {}", connectorCommand.getCommandResponse(),
                                      messagingServerName);
-                        commandDispatcher.handleResponse(connectorCommand.getCommandResponse(),true);
+                        commandDispatcher.handleResponse(new SerializedCommandResponse(connectorCommand.getCommandResponse().getRequestIdentifier(), connectorCommand.getCommandResponse().getResponse().toByteArray()), true);
                         break;
                     case SUBSCRIBE_QUERY:
                         QuerySubscription query = connectorCommand.getSubscribeQuery().getQuery();

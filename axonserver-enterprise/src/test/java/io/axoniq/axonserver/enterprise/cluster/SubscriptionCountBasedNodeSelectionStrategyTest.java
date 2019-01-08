@@ -47,7 +47,7 @@ public class SubscriptionCountBasedNodeSelectionStrategyTest {
         commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
                             new DirectCommandHandler(new CountingStreamObserver<>(), "client1", "component1"));
         commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
-                new ProxyCommandHandler(new CountingStreamObserver<>(), "client2", "component2", "server1"));
+                new ProxyCommandHandler(new CountingStreamObserver<>(), "client2", "component2",  Topology.DEFAULT_CONTEXT, "server1"));
 
         assertEquals(ME,testSubject.selectNode("client3", "component2", activeNodes));
         assertEquals("server1", testSubject.selectNode("client3", "component1", activeNodes) );
@@ -58,7 +58,7 @@ public class SubscriptionCountBasedNodeSelectionStrategyTest {
         commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
                 new DirectCommandHandler(new CountingStreamObserver<>(), "client1", "component1"));
         commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
-                new ProxyCommandHandler(new CountingStreamObserver<>(), "client2", "component2", "server1"));
+                new ProxyCommandHandler(new CountingStreamObserver<>(), "client2", "component2", Topology.DEFAULT_CONTEXT,"server1"));
 
         assertEquals("server2",testSubject.selectNode("client3", "component3", activeNodes) );
     }

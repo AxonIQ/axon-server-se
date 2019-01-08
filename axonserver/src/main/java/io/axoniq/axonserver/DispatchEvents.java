@@ -1,7 +1,7 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 
@@ -14,23 +14,23 @@ public class DispatchEvents {
     @KeepNames
     public static class DispatchCommand {
 
-        private final Command request;
-        private final Consumer<CommandResponse> responseObserver;
+        private final SerializedCommand request;
+        private final Consumer<SerializedCommandResponse> responseObserver;
         private final boolean proxied;
         private String context;
 
-        public DispatchCommand(String context, Command request, Consumer<CommandResponse> responseObserver, boolean proxied) {
+        public DispatchCommand(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
             this.context = context;
             this.request = request;
             this.responseObserver = responseObserver;
             this.proxied = proxied;
         }
 
-        public Command getRequest() {
+        public SerializedCommand getRequest() {
             return request;
         }
 
-        public Consumer<CommandResponse> getResponseObserver() {
+        public Consumer<SerializedCommandResponse> getResponseObserver() {
             return responseObserver;
         }
 
@@ -46,16 +46,16 @@ public class DispatchEvents {
     @KeepNames
     public static class DispatchCommandResponse {
 
-        private final CommandResponse commandResponse;
+        private final SerializedCommandResponse commandResponse;
 
         private final boolean proxied;
 
-        public DispatchCommandResponse(CommandResponse commandResponse, boolean proxied) {
+        public DispatchCommandResponse(SerializedCommandResponse commandResponse, boolean proxied) {
             this.commandResponse = commandResponse;
             this.proxied = proxied;
         }
 
-        public CommandResponse getCommandResponse() {
+        public SerializedCommandResponse getCommandResponse() {
             return commandResponse;
         }
 

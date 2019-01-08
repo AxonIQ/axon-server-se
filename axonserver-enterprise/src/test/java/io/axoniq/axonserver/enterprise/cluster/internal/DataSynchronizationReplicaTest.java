@@ -271,11 +271,12 @@ public class DataSynchronizationReplicaTest {
         IntStream.range(0,10).forEach(i ->
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
-                                                                                                 .setToken(-1)
+                                                                                                 .setToken(i+1)
                                                                                                  .addEvents(Event.newBuilder().build().toByteString())
                                                                                                  .build())
                                                                 .build()));
-        assertEquals(2, sentMessages.size());
+        assertEquals(1, sentMessages.stream().filter(SynchronizationReplicaOutbound::hasPermits).count());
+        assertEquals(1, sentMessages.stream().filter(SynchronizationReplicaOutbound::hasStart).count());
 
     }
 }

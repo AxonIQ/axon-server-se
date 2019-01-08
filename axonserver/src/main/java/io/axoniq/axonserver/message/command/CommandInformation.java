@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 
 import java.util.function.Consumer;
 
@@ -9,12 +9,12 @@ import java.util.function.Consumer;
  */
 public class CommandInformation {
     private final String command;
-    private final Consumer<CommandResponse> responseConsumer;
+    private final Consumer<SerializedCommandResponse> responseConsumer;
     private final long timestamp = System.currentTimeMillis();
     private final String clientId;
     private final String componentName;
 
-    public CommandInformation(String command, Consumer<CommandResponse> responseConsumer, String clientId, String componentName) {
+    public CommandInformation(String command, Consumer<SerializedCommandResponse> responseConsumer, String clientId, String componentName) {
         this.command = command;
         this.responseConsumer = responseConsumer;
         this.clientId = clientId;
@@ -25,7 +25,7 @@ public class CommandInformation {
         return command;
     }
 
-    public Consumer<CommandResponse> getResponseConsumer() {
+    public Consumer<SerializedCommandResponse> getResponseConsumer() {
         return responseConsumer;
     }
 

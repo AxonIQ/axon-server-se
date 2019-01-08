@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.topology.Topology;
@@ -15,8 +16,8 @@ import static org.junit.Assert.*;
 public class CommandRegistrationCacheTest {
 
     private CommandRegistrationCache registrationCache;
-    private StreamObserver<CommandProviderInbound> streamObserver1;
-    private StreamObserver<CommandProviderInbound> streamObserver2;
+    private StreamObserver<SerializedCommandProviderInbound> streamObserver1;
+    private StreamObserver<SerializedCommandProviderInbound> streamObserver2;
 
     @Before
     public void setup() {
@@ -69,12 +70,12 @@ public class CommandRegistrationCacheTest {
 
     @Test
     public void findByExistingClient() {
-        assertNotNull(registrationCache.findByClientAndCommand("client2", Command.newBuilder().setName("command1").build()));
+        assertNotNull(registrationCache.findByClientAndCommand("client2", "command1"));
     }
 
     @Test
     public void findByNonExistingClient() {
-        assertNull(registrationCache.findByClientAndCommand("client9", Command.newBuilder().setName("command1").build()));
+        assertNull(registrationCache.findByClientAndCommand("client9", "command1"));
     }
 
 }
