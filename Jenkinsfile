@@ -1,3 +1,6 @@
+import hudson.tasks.test.AbstractTestResultAction
+import hudson.model.Actionable
+
 properties([
     [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', daysToKeepStr: '2', numToKeepStr: '2']],
     parameters([
@@ -24,6 +27,23 @@ def relevantBranch(thisBranch, branches) {
         }
     }
     return false;
+}
+
+@NonCPS
+def getTestSummary = { ->
+    def testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
+    def summary = ""
+
+    if (testResultAction != null) {
+        def total = testResultAction.getTotalCount()
+        def failed = testResultAction.getFailCount()
+        def skipped = testResultAction.getSkipCount()
+
+        summary = "Test results: Passed: " + (total - failed - skipped)) + (", Failed: " + failed) + (", Skipped: " + skipped)
+    } else {
+        summary = "No tests found"
+    }
+    return summary
 }
 
 podTemplate(label: label,
@@ -53,7 +73,7 @@ podTemplate(label: label,
             pom = readMavenPom file: 'pom.xml'
             def pomVersion = pom.version
 
-            def slackResponse = slackSend(message: "Build Started - Axon Server, branch ${gitBranch}, commit ${gitCommit} (<${env.BUILD_URL}|Open>)")
+            slackSend(message: "Build Started for Axon Server, branch ${gitBranch} (<${env.BUILD_URL}|Open>)")
 
             stage ('Project setup') {
                 container("maven") {
@@ -72,12 +92,21 @@ podTemplate(label: label,
 
             stage ('Maven build') {
                 container("maven") {
-                    sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore clean package"
-                    junit '**/target/surefire-reports/TEST-*.xml'
+                    try {
+                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore clean package"
+                    }
+                    catch (err) {
+                        slackSend(message: "Maven build for Axon Server ${pomVersion} FAILED!")
+                        throw err
+                    }
+                    finally {
+                        junit '**/target/surefire-reports/TEST-*.xml'
+                        slackSend(message: getSummary())
+                    }
 
                     when(relevantBranch(gitBranch, deployingBranches)) {
-                        slackSend(channel: slackResponse.threadId, message: "Deploying ${pomVersion} to Nexus.")
                         sh "mvn \${MVN_BLD} -DskipTests deploy"
+                        slackSend(message: "New artifacts have been deployed in Nexus for Axon Server ${pomVersion}.")
                     }
                 }
             }
@@ -85,8 +114,8 @@ podTemplate(label: label,
             stage ('Run SonarQube') {
                 when(relevantBranch(gitBranch, sonarBranches)) {
                     container("maven") {
-                        slackSend(channel: slackResponse.threadId, message: "Analyzing ${pomVersion} with SonarQube.")
                         sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
+                        slackSend(message: "New SonarQube analysis is avialable for Axon Server ${pomVersion}.")
                     }
                 }
             }
@@ -99,14 +128,19 @@ podTemplate(label: label,
 //        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
 //        string(name: 'artifactId', defaultValue: 'axonserver'),
 //        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
-                    slackSend(channel: slackResponse.threadId, message: "Building Docker images for ${pomVersion}.")
-                    build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
+                    def dockerBuild = build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
                         parameters: [
                             string(name: 'namespace', value: params.namespace),
                             string(name: 'groupId', value: props ['project.groupId']),
                             string(name: 'artifactId', value: props ['project.artifactId']),
                             string(name: 'projectVersion', value: props ['project.version'])
                         ]
+                    if (dockerBuild.result == "FAILURE") {
+                        slackSend(message: "Build of Axon Server ${pomVersion} Docker images FAILED!")
+                    }
+                    else {
+                        slackSend(message: "New Docker images have been pushed for Axon Server ${pomVersion}.")
+                    }
                 }
 
                 when(relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
@@ -117,8 +151,8 @@ podTemplate(label: label,
 //        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
 //        string(name: 'artifactId', defaultValue: 'axonserver'),
 //        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
-                    slackSend(channel: slackResponse.threadId, message: "Running Canary tests on ${pomVersion}.")
-                    build job: 'axon-server-canary/master', propagate: false, wait: false,
+
+                    def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: false,
                         parameters: [
                             string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
                             string(name: 'imageName', value: 'axonserver'),
@@ -127,6 +161,9 @@ podTemplate(label: label,
                             string(name: 'artifactId', value: props ['project.artifactId']),
                             string(name: 'projectVersion', value: props ['project.version'])
                         ]
+                    if (canaryTests.result == "FAILURE") {
+                        slackSend(message: "Build of Axon Server ${pomVersion} FAILED Canary Testing!")
+                    }
                 }
             }
         }
