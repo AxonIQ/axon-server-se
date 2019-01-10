@@ -20,6 +20,7 @@ import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
@@ -55,11 +56,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long timeout = 300000;
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
     private long newPermitsTimeout=120000;
-    @Value("${axoniq.axonserver.max-events-per-transaction:32767}")
-    private int maxEventCount = Short.MAX_VALUE;
+
+    private final int maxEventCount;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
+        this(eventStoreFactory, Short.MAX_VALUE);
+    }
+
+    @Autowired
+    public LocalEventStore(EventStoreFactory eventStoreFactory, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount) {
         this.eventStoreFactory = eventStoreFactory;
+        this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
     }
 
     public void initContext(String context, boolean validating) {
