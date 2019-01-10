@@ -101,17 +101,6 @@ public class LeaderStateTestWithFakeTransition {
     }
 
     @Test
-    public void testAppendEntriesGreaterTerm() {
-        leaderState.start();
-        AppendEntriesRequest request = AppendEntriesRequest.newBuilder().setTerm(10).build();
-        AppendEntriesResponse response = leaderState.appendEntries(request);
-        assertTrue(transitionHandler.lastTransition() instanceof FakeState);
-        FakeState fakeState = (FakeState) transitionHandler.lastTransition();
-        assertEquals("follower", fakeState.name());
-        assertEquals("appendEntries", fakeState.lastMethodCalled());
-    }
-
-    @Test
     public void testInstallSnapshotSameTerm() {
         leaderState.start();
         InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder().setTerm(1).build();
@@ -125,17 +114,6 @@ public class LeaderStateTestWithFakeTransition {
         InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder().setTerm(0).build();
         InstallSnapshotResponse response = leaderState.installSnapshot(request);
         assertTrue(response.hasFailure());
-    }
-
-    @Test
-    public void testInstallSnapshotGreaterTerm() {
-        leaderState.start();
-        InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder().setTerm(10).build();
-        InstallSnapshotResponse response = leaderState.installSnapshot(request);
-        assertTrue(transitionHandler.lastTransition() instanceof FakeState);
-        FakeState fakeState = (FakeState) transitionHandler.lastTransition();
-        assertEquals("follower", fakeState.name());
-        assertEquals("installSnapshot", fakeState.lastMethodCalled());
     }
 
 }

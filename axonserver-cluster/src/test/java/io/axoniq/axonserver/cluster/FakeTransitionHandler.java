@@ -12,7 +12,7 @@ public class FakeTransitionHandler implements BiConsumer<MembershipState, Member
 
     @Override
     public void accept(MembershipState oldState, MembershipState membershipState) {
-        lastTransition= membershipState;
+        lastTransition = membershipState;
     }
 
     public MembershipState lastTransition() {
