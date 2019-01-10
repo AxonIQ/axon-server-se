@@ -230,7 +230,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
 
     @Override
     public EntryIterator createIterator(long index) {
-        if( index < primaryEventStore.getFirstToken()) throw new IllegalArgumentException("Read before start");
+        long firstToken = primaryEventStore.getFirstToken();
+        long lowerBound = firstToken == 1 ? firstToken : firstToken + 1;
+        if (index < lowerBound) {
+            throw new IllegalArgumentException("Read before start");
+        }
         return new InMemoryEntryIterator(this, index);
     }
 

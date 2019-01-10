@@ -345,7 +345,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         Stream.of(logFiles, indexFiles)
               .flatMap(Stream::of)
               .filter(name -> !readBuffers.containsKey(getSegment(name))) // filter out opened files
-              .filter(name -> getSegment(name) < getFirstFile(lastAppliedIndexSupplier.get(), storageDir)) // filter out non-applied files
+              .filter(name -> getSegment(name) < getFirstFile(lastAppliedIndexSupplier.get() - 1, storageDir)) // filter out non-applied files
               .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
               .map(File::new)
               .filter(f -> f.lastModified() <= filter) // filter out files older than <time>

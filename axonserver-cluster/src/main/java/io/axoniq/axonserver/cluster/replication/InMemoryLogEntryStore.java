@@ -111,8 +111,11 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     @Override
     public EntryIterator createIterator(long index) {
         logger.debug("{}: Create iterator: {}", name, index);
-        if( ! entryMap.isEmpty() && index < entryMap.firstKey()) {
-            throw new IllegalArgumentException("Index before start");
+        if (!entryMap.isEmpty()) {
+            long lowerBound = entryMap.firstKey() == 1 ? entryMap.firstKey() : entryMap.firstKey() + 1;
+            if (index < lowerBound) {
+                throw new IllegalArgumentException("Index before start");
+            }
         }
         return new InMemoryEntryIterator(this, index);
     }
