@@ -7,6 +7,7 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
@@ -47,8 +48,8 @@ public class CommandServiceTest {
         requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
-        commandQueue.put("name", new WrappedCommand(Topology.DEFAULT_CONTEXT,
-                                                    "client",
+        commandQueue.put("default/name", new WrappedCommand(new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                    "name"),
                                                     new SerializedCommand(Command.newBuilder().build())));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);

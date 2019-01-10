@@ -16,11 +16,11 @@ logging:
     io.axoniq: INFO
 
 axon:
-  eventhandling:
-    processors:
-      sample:
-        mode: tracking
-        batch-size: 500
+#  eventhandling:
+#    processors:
+#      sample:
+#        mode: tracking
+#        batch-size: 500
   serializer:
     general: jackson
     messages: jackson

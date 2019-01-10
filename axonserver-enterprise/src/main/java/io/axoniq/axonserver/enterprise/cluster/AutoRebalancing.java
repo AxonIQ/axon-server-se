@@ -22,15 +22,16 @@ public class AutoRebalancing  {
     private final ClusterController clusterController;
     private final FeatureChecker featureChecker;
 
-    @Value("${axoniq.axonserver.cluster.auto-balancing:true}")
-    private final boolean enabled = true;
+    private final boolean enabled;
 
     public AutoRebalancing(PlatformService platformService,
                            ClusterController clusterController,
-                           FeatureChecker featureChecker) {
+                           FeatureChecker featureChecker,
+                           @Value("${axoniq.axonserver.cluster.auto-balancing:true}") boolean enabled) {
         this.platformService = platformService;
         this.clusterController = clusterController;
         this.featureChecker = featureChecker;
+        this.enabled = enabled;
     }
 
 

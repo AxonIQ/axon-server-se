@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ProxyCommandHandler;
 import io.axoniq.axonserver.enterprise.cluster.internal.ProxyQueryHandler;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import org.slf4j.Logger;
@@ -33,7 +34,7 @@ public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectio
     }
 
     @Override
-    public String selectNode(String clientName, String componentName, Collection<String> activeNodes) {
+    public String selectNode(ClientIdentification clientName, String componentName, Collection<String> activeNodes) {
         Map<String, Integer> nodeWeights = new HashMap<>();
         activeNodes.forEach(n -> nodeWeights.put(n, 0));
 
@@ -49,7 +50,7 @@ public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectio
         return minValue.getKey();
     }
 
-    private void calculateWeightsForQueries(String clientName, String componentName, Map<String, Integer> nodeWeights) {
+    private void calculateWeightsForQueries(ClientIdentification clientName, String componentName, Map<String, Integer> nodeWeights) {
         queryRegistrationCache.getClients().forEach(client -> {
             if( !client.equals(clientName)) {
                 List<QueryRegistrationCache.QueryRegistration> queries = queryRegistrationCache.getForClient(client);
@@ -66,13 +67,13 @@ public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectio
         });
     }
 
-    private void calculateWeightsForCommands(String clientName, String componentName,
+    private void calculateWeightsForCommands(ClientIdentification clientName, String componentName,
                                              Map<String, Integer> nodeWeights) {
         commandRegistrationCache.getAll().forEach((client, actions) -> {
             if( ! client.getClient().equals(clientName)) {
                 int weight = 100 + actions.size() + ((client.getComponentName()!= null
                         && client.getComponentName().equals(componentName)) ? 1000 : 0);
-                String key = (client instanceof ProxyCommandHandler) ? ((ProxyCommandHandler)client).getMessagingServerName() : thisNodeName;
+                String key = (client instanceof ProxyCommandHandler) ? client.getMessagingServerName() : thisNodeName;
                 nodeWeights.computeIfPresent(key, (k, old) -> weight + old);
             }
         });
@@ -84,7 +85,7 @@ public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectio
     }
 
     @Override
-    public boolean canRebalance(String clientName, String componentName, List<String> activeNodes) {
+    public boolean canRebalance(ClientIdentification clientName, String componentName, List<String> activeNodes) {
         logger.debug("Trying to rebalance {}/{}, active AxonHub nodes: {}", clientName, componentName, activeNodes);
         String assignedNode = selectNode(clientName, componentName, activeNodes);
         logger.debug("Result for rebalance {}/{}, {}", clientName, componentName, assignedNode);

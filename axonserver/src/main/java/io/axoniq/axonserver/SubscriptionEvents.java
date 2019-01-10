@@ -2,6 +2,7 @@ package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
@@ -43,6 +44,10 @@ public class SubscriptionEvents {
             return request;
         }
 
+        public ClientIdentification clientIdentification() {
+            return new ClientIdentification(getContext(), request.getClientId());
+        }
+
     }
 
     @KeepNames
@@ -56,6 +61,9 @@ public class SubscriptionEvents {
 
         public QuerySubscription getUnsubscribe() {
             return unsubscribe;
+        }
+        public ClientIdentification clientIdentification() {
+            return new ClientIdentification(getContext(), unsubscribe.getClientId());
         }
 
     }
@@ -79,6 +87,9 @@ public class SubscriptionEvents {
             return queryHandler;
         }
 
+        public ClientIdentification clientIdentification() {
+            return new ClientIdentification(getContext(), subscription.getClientId());
+        }
     }
 
     @KeepNames
@@ -99,6 +110,10 @@ public class SubscriptionEvents {
 
         public CommandHandler getHandler() {
             return handler;
+        }
+
+        public ClientIdentification clientIdentification() {
+            return new ClientIdentification( getContext(), request.getClientId());
         }
 
     }

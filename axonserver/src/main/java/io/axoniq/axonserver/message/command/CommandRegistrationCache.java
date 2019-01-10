@@ -1,11 +1,13 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.hashing.ConsistentHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -13,29 +15,40 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * Registers the commands registered per client/context.
+ * @author Marc Gathier
  */
 @Component("CommandRegistrationCache")
 public class CommandRegistrationCache {
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
+    private final ConcurrentMap<ClientIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ClientIdentification, Set<String>> registrationsPerClient = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ConsistentHash> consistentHashPerContext= new ConcurrentHashMap<>();
 
-    private final ConcurrentMap<String, CommandHandler> contextForClient = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, Set<RegistrationEntry>> registrationsPerClient = new ConcurrentHashMap<>();
-    private final AtomicReference<ConsistentHash> consistentHashRef = new AtomicReference<>(new ConsistentHash());
-
-    public void remove(String client) {
-        consistentHashRef.updateAndGet(c-> c.without(client));
-        contextForClient.remove(client);
+    /**
+     * Removes all registrations for a client
+     * @param client the clientId to remove
+     */
+    public void remove(ClientIdentification client) {
+        logger.trace("Remove {}", client);
+        commandHandlersPerClientContext.remove(client);
+        consistentHashPerContext.computeIfPresent(client.getContext(),  (context,current) -> current.without(client.getClient()));
         registrationsPerClient.remove(client);
+        logger.trace("Consistent hash = {}", consistentHashPerContext.get(client.getContext()));
     }
 
-    public CommandHandler remove(String context, String command, String client) {
-        CommandHandler commandHandler = contextForClient.get(client);
-        Set<RegistrationEntry> registrations = registrationsPerClient.computeIfPresent(client, (c, set) -> {
-            set.remove(new RegistrationEntry(context,command));
+    /**
+     * Removes a particular command registration for a client within a context
+     * @param client the client handling the command
+     * @param command the command that was registered
+     */
+    public void remove(ClientIdentification client, String command) {
+        logger.trace("Remove command {} from {}", command, client);
+        Set<String> registrations = registrationsPerClient.computeIfPresent(client, (c, set) -> {
+            set.remove(command);
             if (set.isEmpty()) {
                 return null;
             }
@@ -44,54 +57,79 @@ public class CommandRegistrationCache {
         if( registrations == null) {
             remove(client);
         }
-        return commandHandler;
     }
 
-    public void add(String context, String command, CommandHandler commandHandler) {
-        consistentHashRef.updateAndGet(c -> c.with(commandHandler.getClient(), 100, cmd -> registrationsPerClient.get(commandHandler.getClient()).contains(cmd)));
-        registrationsPerClient.computeIfAbsent(commandHandler.getClient(), key ->new CopyOnWriteArraySet<>()).add(new RegistrationEntry(context, command));
-        contextForClient.put(commandHandler.getClient(), commandHandler);
+    /**
+     * Registers a command provider. If it is an unknown handler it will be added to the consistent hash for the context
+     * @param command the name of the command
+     * @param commandHandler the handler of the command
+     */
+    public void add( String command, CommandHandler commandHandler) {
+        logger.trace("Add command {} to {}", command, commandHandler.client);
+        ClientIdentification clientIdentification = commandHandler.getClient();
+        ConsistentHash consistentHash = consistentHashPerContext.computeIfAbsent(clientIdentification.getContext(), c -> new ConsistentHash());
+        if( ! consistentHash.contains(clientIdentification.getClient())) {
+            consistentHashPerContext.put(clientIdentification.getContext(), consistentHash.with(clientIdentification.getClient(), 100, cmd -> provides(clientIdentification,cmd)));
+        }
+        logger.trace("Consistent hash = {}", consistentHashPerContext.get(clientIdentification.getContext()));
+        registrationsPerClient.computeIfAbsent(clientIdentification, key ->new CopyOnWriteArraySet<>()).add(command);
+        commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
     }
 
+    private boolean provides(ClientIdentification client, String cmd) {
+        return registrationsPerClient.containsKey(client) && registrationsPerClient.get(client).contains(cmd);
+    }
+
+    /**
+     * Get all registrations per connection
+     * @return map of command per client connection
+     */
     public Map<CommandHandler, Set<RegistrationEntry>> getAll() {
         Map<CommandHandler, Set<RegistrationEntry>> resultMap = new HashMap<>();
-        registrationsPerClient.forEach((client, commands) -> resultMap.put(contextForClient.get(client),commands));
+        commandHandlersPerClientContext.forEach((contextClient, commandHandler)
+                                                        -> resultMap.put(commandHandler,
+                                                                         registrationsPerClient.get(contextClient)
+                                                                                               .stream()
+                                                                                               .map(command -> new RegistrationEntry(contextClient.getContext(), command))
+                                                                                               .collect(Collectors.toSet())));
         return resultMap;
     }
 
-    public Set<RegistrationEntry> getCommandsFor(String clientNode) {
+    /**
+     * Gets all commands handled by a specific client
+     * @param clientNode the client identification
+     * @return a set of commandName/context values
+     */
+    public Set<String> getCommandsFor(ClientIdentification clientNode) {
         return registrationsPerClient.get(clientNode);
     }
 
-    public CommandHandler getNode(String context, Command request, String routingKey) {
-        String client = consistentHashRef.get().getMember(routingKey, new RegistrationEntry(context, request.getName())).map(ConsistentHash.ConsistentHashMember::getClient).orElse(null);
+    /**
+     * Retrieves the client to route a specific command request to, based on its routing key. AxonServer sends requests with same routing key to the same client.
+     * @param context the context in which the command is requested
+     * @param request the command name
+     * @param routingKey the routing key
+     * @return a command handler for the command (or null of none found)
+     */
+    public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
+        String client = consistentHashPerContext.get(context)
+                                                .getMember(routingKey, request.getName())
+                                                .map(ConsistentHash.ConsistentHashMember::getClient)
+                                                .orElse(null);
         if( client == null ) return null;
-        return contextForClient.get(client);
+        return commandHandlersPerClientContext.get(new ClientIdentification(context, client));
     }
 
-    public CommandHandler findByClientAndCommand(String clientName, String request) {
-        String client = registrationsPerClient.entrySet().stream()
-                .filter(e -> e.getKey().equals(clientName))
-                .filter(e -> containsCommand(e.getValue(), request))
-                .map(Map.Entry::getKey)
-                .findFirst().orElse(null);
-        if( client == null) return null;
-        return contextForClient.get(client);
-
-    }
-
-    private boolean containsCommand(Set<RegistrationEntry> value, String command) {
-        for( RegistrationEntry entry :value) {
-            if( entry.getCommand().equals(command)) return true;
-        }
-        return false;
-    }
-
-    public String getComponentNameFor(String client) {
-        if( contextForClient.containsKey(client)) {
-            return contextForClient.get(client).getComponentName();
-        }
-        return null;
+    /**
+     * Find the command handler for a command based on the specified client/context
+     * @param clientIdentification the client identification
+     * @param request the command name
+     * @return the command handler for the request, or null when not found
+     */
+    public CommandHandler findByClientAndCommand(ClientIdentification clientIdentification, String request) {
+        boolean found = registrationsPerClient.getOrDefault(clientIdentification, Collections.emptySet()).contains(request);
+        if( !found) return null;
+        return commandHandlersPerClientContext.get(clientIdentification);
     }
 
     public static class RegistrationEntry {

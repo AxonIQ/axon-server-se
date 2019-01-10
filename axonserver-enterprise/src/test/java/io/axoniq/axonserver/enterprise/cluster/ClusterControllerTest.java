@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
@@ -59,6 +60,11 @@ public class ClusterControllerTest {
 
     @Autowired
     private EntityManager entityManager;
+    @Mock
+    private CommandDispatcher commandDispatcher;
+
+    @Mock
+    private QueryDispatcher queryDispatcher;
 
     @Before
     public void setUp()  {
@@ -109,7 +115,7 @@ public class ClusterControllerTest {
 
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
                                             stubFactory,
-                                            nodeSelectionStrategy, eventPublisher, limits);
+                                            nodeSelectionStrategy, queryDispatcher, commandDispatcher, eventPublisher, limits);
     }
 
     @Test

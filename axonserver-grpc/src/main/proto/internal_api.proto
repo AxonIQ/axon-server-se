@@ -116,7 +116,7 @@ message ConnectorResponse {
         Confirmation confirmation = 1;
         ForwardedCommand command = 2;
         ConnectResponse connect_response = 3;
-        io.axoniq.axonserver.grpc.query.QueryRequest query = 4;
+        ForwardedQuery query = 4;
         Application application = 5;
         Applications applications = 6;
         User user = 7;
@@ -127,6 +127,12 @@ message ConnectorResponse {
         ProcessorLBStrategy processor_strategy= 12;
         ClientSubscriptionQueryRequest subscription_query_request = 26;
     }
+}
+
+message ForwardedQuery {
+    string client = 1;
+    string context = 2;
+    bytes query = 3;
 }
 
 message ForwardedCommand {

@@ -53,8 +53,11 @@ import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.Users;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
+import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationModelController;
@@ -282,11 +285,13 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
 
-        private final CopyOnWriteArraySet<String> clients;
+        private final CopyOnWriteArraySet<ClientIdentification> clients;
         private final SendingStreamObserver<ConnectorResponse> responseObserver;
         private volatile GrpcInternalCommandDispatcherListener commandQueueListener;
         private volatile GrpcInternalQueryDispatcherListener queryQueueListener;
         private volatile String messagingServerName;
+        private final Map<ClientIdentification, CommandHandler> commandHandlerPerContextClient = new ConcurrentHashMap<>();
+        private final Map<ClientIdentification, QueryHandler> queryHandlerPerContextClient = new ConcurrentHashMap<>();
 
         public ConnectorReceivingStreamObserver(SendingStreamObserver<ConnectorResponse> responseObserver) {
             super(logger);
@@ -362,19 +367,15 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         checkClient(connectorCommand.getSubscribeCommand().getContext(),
                                     command.getComponentName(),
                                     command.getClientId());
-                        eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(connectorCommand
-                                                                                                    .getSubscribeCommand()
-                                                                                                    .getContext(),
-                                                                                            command,
-                                                                                            new ProxyCommandHandler(
-                                                                                                    responseObserver,
-                                                                                                    command.getClientId(),
-                                                                                                    command.getComponentName(),
-                                                                                                    connectorCommand
-                                                                                                            .getSubscribeCommand()
-                                                                                                            .getContext(),
-                                                                                                    messagingServerName)
-                        ));
+
+                        CommandHandler commandHandler = commandHandlerPerContextClient
+                                .computeIfAbsent(new ClientIdentification(connectorCommand.getSubscribeCommand().getContext(),
+                                                                          command.getClientId()), contextClient -> new
+                                        ProxyCommandHandler(responseObserver, new ClientIdentification(contextClient.getContext(),contextClient.getClient()),
+                                                            command.getComponentName(),
+                                                            messagingServerName));
+                        eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(commandHandler.getClient().getContext(),
+                                                                                            command, commandHandler));
                         break;
                     case UNSUBSCRIBE_COMMAND:
                         logger.debug("UNSUBSCRIBE [{}] [{}] [{}]",
@@ -401,15 +402,18 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                     query.getComponentName(),
                                     query.getClientId());
 
+                        ClientIdentification clientIdentification = new ClientIdentification(
+                                connectorCommand.getSubscribeQuery().getContext(),
+                                query.getClientId());
+                        QueryHandler queryHandler = queryHandlerPerContextClient.computeIfAbsent(clientIdentification,
+                                                                                                 contextClient -> new ProxyQueryHandler(responseObserver,
+                                                                                             clientIdentification,
+                                                                                             query.getComponentName(),
+                                                                                             messagingServerName));
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeQuery(connectorCommand
                                                                                                   .getSubscribeQuery()
                                                                                                   .getContext(),
-                                                                                          query
-                                , new ProxyQueryHandler(responseObserver,
-                                                        query.getClientId(),
-                                                        query.getComponentName(),
-                                                        messagingServerName)
-                        ));
+                                                                                          query, queryHandler));
 
                         break;
                     case UNSUBSCRIBE_QUERY:
@@ -591,7 +595,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void checkClient(String context, String component, String clientName) {
-            if( clients.add(clientName)) {
+            if( clients.add(new ClientIdentification(context, clientName))) {
                 eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
                                                                                     component,
                                                                                     clientName,
@@ -602,7 +606,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         private void updateClientStatus(ClientStatus clientStatus) {
             if( clientStatus.getConnected()) {
 
-                if( clients.add(clientStatus.getClientName())) {
+                if( clients.add(new ClientIdentification(clientStatus.getClientName(), clientStatus.getContext())) ){
                     // unknown client
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
@@ -610,9 +614,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                        messagingServerName));
                 }
             } else {
-                if( clients.remove(clientStatus.getClientName())) {
+                if( clients.remove(new ClientIdentification(clientStatus.getClientName(), clientStatus.getContext()))) {
                     // known client
                     logger.info("Client disconnected: {}", clientStatus.getClientName());
+                    commandHandlerPerContextClient.remove(new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName()));
+                    queryHandlerPerContextClient.remove(new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName()));
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
                                                                                        clientStatus.getClientName(),
@@ -647,9 +653,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 dispatchListeners.remove(queryQueueListener);
                 queryQueueListener = null;
             }
-            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(null,
+            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(client.getContext(),
                                                                                                         null,
-                                                                                                        client,
+                                                                                                        client.getClient(),
                                                                                                         messagingServerName)));
             eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
         }

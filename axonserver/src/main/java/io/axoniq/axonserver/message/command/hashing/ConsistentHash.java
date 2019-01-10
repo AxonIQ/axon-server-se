@@ -41,7 +41,7 @@ public class ConsistentHash {
      * @param commandMessage the command message to find a member for
      * @return the member that should handle the message or an empty Optional if no suitable member was found
      */
-    public Optional<ConsistentHashMember> getMember(String routingKey, CommandRegistrationCache.RegistrationEntry commandMessage) {
+    public Optional<ConsistentHashMember> getMember(String routingKey, String commandMessage) {
         String hash = hash(routingKey);
         SortedMap<String, ConsistentHashMember> tailMap = hashToMember.tailMap(hash);
         Iterator<Map.Entry<String, ConsistentHashMember>> tailIterator = tailMap.entrySet().iterator();
@@ -64,7 +64,7 @@ public class ConsistentHash {
         return Digester.md5Hex(routingKey);
     }
 
-    private Optional<ConsistentHashMember> findSuitableMember(CommandRegistrationCache.RegistrationEntry commandMessage,
+    private Optional<ConsistentHashMember> findSuitableMember(String commandMessage,
                                                 Iterator<Map.Entry<String, ConsistentHashMember>> iterator) {
         while (iterator.hasNext()) {
             Map.Entry<String, ConsistentHashMember> entry = iterator.next();
@@ -96,7 +96,7 @@ public class ConsistentHash {
      * @param commandFilter filter describing which commands can be handled by the given member
      * @return a new {@link ConsistentHash} instance with updated memberships
      */
-    public ConsistentHash with(String member, int loadFactor, Predicate<? super CommandRegistrationCache.RegistrationEntry> commandFilter) {
+    public ConsistentHash with(String member, int loadFactor, Predicate<String> commandFilter) {
         Assert.notNull(member,"Member may not be null");
 
         ConsistentHashMember newMember = new ConsistentHashMember(member, loadFactor, commandFilter);
@@ -144,6 +144,10 @@ public class ConsistentHash {
         return Objects.hash(hashToMember);
     }
 
+    public boolean contains(String client) {
+        return getMembers().stream().anyMatch(member -> member.member.equals(client));
+    }
+
     /**
      * Member implementation used by a {@link ConsistentHash} registry.
      */
@@ -151,10 +155,10 @@ public class ConsistentHash {
 
         private final String member;
         private final int segmentCount;
-        private final Predicate<? super CommandRegistrationCache.RegistrationEntry> commandFilter;
+        private final Predicate<String> commandFilter;
 
         private ConsistentHashMember(String member, int segmentCount,
-                                     Predicate<? super CommandRegistrationCache.RegistrationEntry> commandFilter) {
+                                     Predicate<String> commandFilter) {
             this.member = member;
             this.segmentCount = segmentCount;
             this.commandFilter = commandFilter;

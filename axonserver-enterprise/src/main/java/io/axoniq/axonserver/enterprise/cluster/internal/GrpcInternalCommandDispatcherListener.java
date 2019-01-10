@@ -23,8 +23,8 @@ public class GrpcInternalCommandDispatcherListener extends GrpcFlowControlledDis
     @Override
     protected boolean send(WrappedCommand message) {
         inboundStream.onNext(ConnectorResponse.newBuilder().setCommand(
-                ForwardedCommand.newBuilder().setClient(message.client())
-                                .setContext(message.context())
+                ForwardedCommand.newBuilder().setClient(message.client().getClient())
+                                .setContext(message.client().getContext())
                                 .setMessageId(message.command().getMessageIdentifier())
                                 .setCommand(message.command().toByteString())).build());
         return true;

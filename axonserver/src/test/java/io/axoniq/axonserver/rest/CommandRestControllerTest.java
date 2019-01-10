@@ -2,6 +2,7 @@ package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.command.ComponentCommand;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
@@ -30,7 +31,8 @@ public class CommandRestControllerTest {
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
-        commandRegistationCache.add(Topology.DEFAULT_CONTEXT, "DoIt", new DirectCommandHandler(new CountingStreamObserver<>(), "client", "component"));
+        commandRegistationCache.add("DoIt", new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                     "client"), "component"));
         testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
     }
 

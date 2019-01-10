@@ -9,6 +9,7 @@ import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
@@ -17,6 +18,8 @@ import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
@@ -49,13 +52,15 @@ public class QueryServiceTest {
         requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2).setClientId("name").build()).build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
-        queryQueue.put("name", new WrappedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder()
-                                                                                       .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
-                                                                                       .build(), System.currentTimeMillis() + 2000));
+        queryQueue.put("default/name", new WrappedQuery( new ClientIdentification(Topology.DEFAULT_CONTEXT,"name"),
+                                                 new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
+                                                                     QueryRequest.newBuilder()
+                                                                                 .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
+                                                                                 .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put("name", new WrappedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder()
-                .build(), System.currentTimeMillis() - 2000));
+        queryQueue.put("default/name", new WrappedQuery(new ClientIdentification(Topology.DEFAULT_CONTEXT,"name"),
+                                                new SerializedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
         verify(queryDispatcher).removeFromCache(any());
@@ -112,13 +117,14 @@ public class QueryServiceTest {
         requestStream.onCompleted();
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void dispatch()  {
         doAnswer(invocationOnMock -> {
-            DispatchEvents.DispatchQuery dispatchCommand = (DispatchEvents.DispatchQuery) invocationOnMock.getArguments()[0];
-            dispatchCommand.getCallback().accept(QueryResponse.newBuilder().build());
+            Consumer<QueryResponse> callback = (Consumer<QueryResponse>) invocationOnMock.getArguments()[1];
+            callback.accept(QueryResponse.newBuilder().build());
             return null;
-        }).when(eventPublisher).publishEvent(isA(DispatchEvents.DispatchQuery.class));
+        }).when(queryDispatcher).query(isA(SerializedQuery.class), isA(Consumer.class), any());
         CountingStreamObserver<QueryResponse> responseObserver = new CountingStreamObserver<>();
         testSubject.query(QueryRequest.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.count);

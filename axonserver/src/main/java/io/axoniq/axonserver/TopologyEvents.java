@@ -1,5 +1,7 @@
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.message.ClientIdentification;
+
 /**
  * Author: marc
  */
@@ -98,6 +100,10 @@ public class TopologyEvents {
             return isForwarded();
         }
 
+        public ClientIdentification clientIdentification() {
+            return new ClientIdentification(context, client);
+        }
+
     }
 
     @KeepNames
@@ -128,6 +134,9 @@ public class TopologyEvents {
             return isForwarded();
         }
 
+        public ClientIdentification clientIdentification() {
+            return new ClientIdentification(context, client);
+        }
     }
 
     @KeepNames
@@ -156,6 +165,10 @@ public class TopologyEvents {
 
         public boolean isProxied() {
             return isForwarded();
+        }
+
+        public ClientIdentification clientIdentification() {
+            return new ClientIdentification(context, client);
         }
 
     }

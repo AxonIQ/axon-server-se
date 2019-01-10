@@ -53,7 +53,7 @@ public class SubscriptionSynchronizer {
                 commands.forEach(command ->
                                          event.getRemoteConnection().subscribeCommand(command.getContext(),
                                                                                       command.getCommand(),
-                                                                                      member.getClient(),
+                                                                                      member.getClient().getClient(),
                                                                                       member.getComponentName()));
             }
         });
@@ -62,7 +62,7 @@ public class SubscriptionSynchronizer {
                 (query, handlersPerComponentMap) -> handlersPerComponentMap.forEach(
                         (component, handlers) -> handlers.forEach(handler -> {
                             if (handler instanceof DirectQueryHandler) {
-                                event.getRemoteConnection().subscribeQuery(query, queryRegistrationCache.getResponseTypes(query), component, handler.getClientName());
+                                event.getRemoteConnection().subscribeQuery(query, queryRegistrationCache.getResponseTypes(query), component, handler.getClient().getClient());
                             }
                         })));
 

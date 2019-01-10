@@ -6,7 +6,9 @@ import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
@@ -86,23 +88,17 @@ public class CommandService implements AxonServerClientService {
         return new ReceivingStreamObserver<CommandProviderOutbound>(logger) {
             private volatile String client;
             private volatile GrpcCommandDispatcherListener listener;
+            private volatile CommandHandler commandHandler;
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
                 switch (commandFromSubscriber.getRequestCase()) {
                     case SUBSCRIBE:
-                        if (this.client == null) {
-                            client = commandFromSubscriber.getSubscribe().getClientId();
-                        }
+                        checkInitClient(commandFromSubscriber.getSubscribe().getClientId(), commandFromSubscriber.getSubscribe().getComponentName());
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(context,
                                                                                             commandFromSubscriber
-                                                                                                    .getSubscribe(),
-                                                                                            new DirectCommandHandler(
-                                                                                                    wrappedResponseObserver,
-                                                                                                    client,
-                                                                                                    commandFromSubscriber
-                                                                                                            .getSubscribe()
-                                                                                                            .getComponentName())));
+                                                                                                    .getSubscribe()
+                                                                                            , commandHandler));
                         break;
                     case UNSUBSCRIBE:
                         if (client != null) {
@@ -115,8 +111,8 @@ public class CommandService implements AxonServerClientService {
                     case FLOW_CONTROL:
                         if (this.listener == null) {
                             listener = new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
-                                                                         commandFromSubscriber.getFlowControl()
-                                                                                              .getClientId(),
+                                                                         new ClientIdentification(context, commandFromSubscriber.getFlowControl()
+                                                                                                                                .getClientId()).toString(),
                                                                          wrappedResponseObserver, processingThreads);
                             dispatcherListenerSet.add(listener);
                         }
@@ -128,6 +124,14 @@ public class CommandService implements AxonServerClientService {
 
                     case REQUEST_NOT_SET:
                         break;
+                }
+            }
+
+            private void checkInitClient(String clientId, String component) {
+                if( this.client == null) {
+                    client = clientId;
+                    commandHandler = new DirectCommandHandler(
+                            wrappedResponseObserver, new ClientIdentification(context, client), component);
                 }
             }
 
@@ -143,7 +147,9 @@ public class CommandService implements AxonServerClientService {
             }
 
             private void cleanup() {
-                eventPublisher.publishEvent(new CommandHandlerDisconnected(context, client));
+                if( client != null) {
+                    eventPublisher.publishEvent(new CommandHandlerDisconnected(context, client));
+                }
                 if (listener != null) {
                     listener.cancel();
                     dispatcherListenerSet.remove(listener);

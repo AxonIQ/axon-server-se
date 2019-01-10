@@ -22,6 +22,7 @@ import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.ProcessingKey;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
@@ -39,7 +40,9 @@ import io.axoniq.axonserver.grpc.internal.QueryComplete;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDefinition;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +69,8 @@ public class RemoteConnection  {
     private final ClusterNode clusterNode;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final StubFactory stubFactory;
+    private QueryDispatcher queryDispatcher;
+    private CommandDispatcher commandDispatcher;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private volatile boolean connected = false;
     private volatile long connectionPending;
@@ -77,11 +82,15 @@ public class RemoteConnection  {
     public RemoteConnection(ClusterNode me, ClusterNode clusterNode,
                             ApplicationEventPublisher applicationEventPublisher,
                             StubFactory stubFactory,
+                            QueryDispatcher queryDispatcher,
+                            CommandDispatcher commandDispatcher,
                             MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.me = me;
         this.clusterNode = clusterNode;
         this.applicationEventPublisher = applicationEventPublisher;
         this.stubFactory = stubFactory;
+        this.queryDispatcher = queryDispatcher;
+        this.commandDispatcher = commandDispatcher;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.connectionWaitTime = messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
     }
@@ -117,35 +126,31 @@ public class RemoteConnection  {
 
                                 case COMMAND:
                                     ForwardedCommand forwardedCommand = connectorResponse.getCommand();
-                                    applicationEventPublisher.publishEvent(
-                                            new DispatchEvents.DispatchCommand(forwardedCommand.getContext(),
-                                                                               new SerializedCommand(forwardedCommand.getCommand().toByteArray(),
-                                                                                                     forwardedCommand.getClient(),
-                                                                                                     forwardedCommand.getMessageId()),
-                                                                               commandResponse -> publish(
-                                                                                       ConnectorCommand.newBuilder()
-                                                                                                       .setCommandResponse(
-                                                                                                               ForwardedCommandResponse
-                                                                                                                       .newBuilder().setRequestIdentifier(commandResponse.getRequestIdentifier())
-                                                                                                               .setResponse(commandResponse.toByteString()).build())
-                                                                                                       .build()),
-                                                                               true));
-                                    break;
+                                    commandDispatcher.dispatch(forwardedCommand.getContext(),
+                                                               new SerializedCommand(forwardedCommand.getCommand().toByteArray(),
+                                                                                     forwardedCommand.getClient(),
+                                                                                     forwardedCommand.getMessageId()),
+                                                               commandResponse -> publish(
+                                                                       ConnectorCommand.newBuilder()
+                                                                                       .setCommandResponse(
+                                                                                               ForwardedCommandResponse
+                                                                                                       .newBuilder().setRequestIdentifier(commandResponse.getRequestIdentifier())
+                                                                                                       .setResponse(commandResponse.toByteString()).build())
+                                                                                       .build()),
+                                                               true);
 
+                                    break;
                                 case QUERY:
-                                    applicationEventPublisher.publishEvent(
-                                            new DispatchEvents.DispatchQuery(ProcessingInstructionHelper
-                                                                                     .context(connectorResponse
-                                                                                                      .getQuery()
-                                                                                                      .getProcessingInstructionsList()),
-                                                                             connectorResponse.getQuery(),
+                                    SerializedQuery query = new SerializedQuery(connectorResponse.getQuery().getContext(),
+                                                        connectorResponse.getQuery().getClient(),
+                                                        connectorResponse.getQuery().getQuery().toByteArray());
+                                    queryDispatcher.dispatchProxied(query,
                                                                              queryResponse -> sendQueryResponse(
-                                                                                     connectorResponse.getQuery(),
+                                                                                     query.client(),
                                                                                      queryResponse),
                                                                              client -> sendQueryComplete(
-                                                                                     connectorResponse.getQuery(),
-                                                                                     client),
-                                                                             true));
+                                                                                     query.getMessageIdentifier(),
+                                                                                     client));
                                     break;
 
                                 case CONNECT_RESPONSE:
@@ -283,21 +288,21 @@ public class RemoteConnection  {
 
     }
 
-    private void sendQueryResponse( QueryRequest query, QueryResponse queryResponse) {
+    private void sendQueryResponse( String client, QueryResponse queryResponse) {
         requestStreamObserver.onNext(ConnectorCommand.newBuilder().setQueryResponse(
                 QueryResponse.newBuilder(queryResponse)
                         .addProcessingInstructions(ProcessingInstruction.newBuilder()
                                 .setKey(ProcessingKey.TARGET_CLIENT)
-                                .setValue(MetaDataValue.newBuilder().setTextValue(ProcessingInstructionHelper.targetClient(query.getProcessingInstructionsList())))
+                                .setValue(MetaDataValue.newBuilder().setTextValue(client))
                         )
         ).build());
     }
 
-    private void sendQueryComplete( QueryRequest query, String client) {
+    private void sendQueryComplete( String client, String requestIdentifier) {
         requestStreamObserver.onNext(ConnectorCommand.newBuilder()
                                                      .setQueryComplete(
                                                              QueryComplete.newBuilder()
-                                                                          .setMessageId(query.getMessageIdentifier())
+                                                                          .setMessageId(requestIdentifier)
                                                                           .setClient(client))
                                                      .build());
     }

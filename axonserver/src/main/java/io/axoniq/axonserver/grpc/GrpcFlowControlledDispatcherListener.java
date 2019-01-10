@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -18,7 +19,6 @@ import java.util.stream.IntStream;
  * Author: marc
  */
 public abstract class GrpcFlowControlledDispatcherListener<I, T> {
-    private static final Logger LOG = LoggerFactory.getLogger(GrpcFlowControlledDispatcherListener.class);
     private static final ExecutorService executorService = Executors.newCachedThreadPool(new CustomizableThreadFactory("request-dispatcher-"));
 
     protected final StreamObserver<I> inboundStream;
@@ -39,17 +39,17 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
         try {
             getLogger().debug("Starting listener for {} ", queueName);
             while (running && permitsLeft.get() > 0) {
-                getLogger().debug("waiting for message for {} ", queueName);
+                getLogger().trace("waiting for message for {} ", queueName);
                 T message = queues.take(queueName);
                 if (message != null && send(message)) {
                     long left = permitsLeft.decrementAndGet();
-                    getLogger().debug("{} permits left", left);
+                    getLogger().trace("{} permits left", left);
                 }
             }
             getLogger().debug("Listener stopped as no more permits ({}) left for {} ", permitsLeft.get(), queueName);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            getLogger().info("Processing of messages from {} interrupted", queueName, e);
+            getLogger().trace("Processing of messages from {} interrupted", queueName, e);
         }
     }
 

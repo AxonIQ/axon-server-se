@@ -3,6 +3,7 @@ package io.axoniq.axonserver.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.query.Query;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -36,7 +37,7 @@ public class QueryRestControllerTest {
                 .setClientId("client")
                 .setNrOfHandlers(1).build();
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
-                             new DirectQueryHandler(new CountingStreamObserver<>(), querySubscription.getClientId(), querySubscription.getComponentName()));
+                             new DirectQueryHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, querySubscription.getClientId()), querySubscription.getComponentName()));
 
         testSubject = new QueryRestController(registationCache, queryDispatcher);
     }

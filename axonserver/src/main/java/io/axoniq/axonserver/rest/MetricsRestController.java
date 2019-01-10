@@ -47,7 +47,7 @@ public class MetricsRestController {
 
     private List<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHander, Set<CommandRegistrationCache.RegistrationEntry> registrations) {
         return registrations.stream()
-                .map(registration -> commandMetricsRegistry.commandMetric(registration.getCommand(), commandHander.getClient(), commandHander.getComponentName()))
+                .map(registration -> commandMetricsRegistry.commandMetric(registration.getCommand(), commandHander.getClient().toString(), commandHander.getComponentName()))
                // .filter(m -> m.getCount() == 0)
                 .collect(Collectors.toList());
     }
@@ -62,7 +62,7 @@ public class MetricsRestController {
     private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition, Map<String, Set<QueryHandler>> handlersPerComponent) {
         return handlersPerComponent.entrySet().stream()
                 .map(queryHandlers -> queryHandlers.getValue().stream().map(queryHandler ->
-                        queryMetricsRegistry.queryMetric(queryDefinition, queryHandler.getClientName(), queryHandlers.getKey())
+                        queryMetricsRegistry.queryMetric(queryDefinition, queryHandler.getClient().toString(), queryHandlers.getKey())
                 ).collect(Collectors.toList()))
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());

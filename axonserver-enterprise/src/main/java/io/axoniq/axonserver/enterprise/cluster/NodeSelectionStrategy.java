@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.message.ClientIdentification;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -7,7 +9,7 @@ import java.util.List;
  * Author: marc
  */
 public interface NodeSelectionStrategy {
-    String selectNode(String clientName, String componentName, Collection<String> activeNodes);
+    String selectNode(ClientIdentification clientName, String componentName, Collection<String> activeNodes);
 
-    boolean canRebalance(String clientName, String componentName, List<String> activeNodes);
+    boolean canRebalance(ClientIdentification clientName, String componentName, List<String> activeNodes);
 }

@@ -17,7 +17,9 @@ import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.rest.ClusterRestController;
 import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
@@ -54,6 +56,8 @@ public class ClusterController implements SmartLifecycle {
     private final EntityManager entityManager;
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
+    private final QueryDispatcher queryDispatcher;
+    private final CommandDispatcher commandDispatcher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -66,6 +70,8 @@ public class ClusterController implements SmartLifecycle {
                              EntityManager entityManager,
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
+                             QueryDispatcher queryDispatcher,
+                             CommandDispatcher commandDispatcher,
                              ApplicationEventPublisher applicationEventPublisher,
                              FeatureChecker limits
     ) {
@@ -73,6 +79,8 @@ public class ClusterController implements SmartLifecycle {
         this.entityManager = entityManager;
         this.stubFactory = stubFactory;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
+        this.queryDispatcher = queryDispatcher;
+        this.commandDispatcher = commandDispatcher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
@@ -219,7 +227,10 @@ public class ClusterController implements SmartLifecycle {
 
         RemoteConnection remoteConnection = new RemoteConnection(getMe(), clusterNode,
                                                                  applicationEventPublisher,
-                                                                 stubFactory, messagingPlatformConfiguration);
+                                                                 stubFactory,
+                                                                 queryDispatcher,
+                                                                 commandDispatcher,
+                                                                 messagingPlatformConfiguration);
         remoteConnections.put(clusterNode.getName(), remoteConnection);
 
         if (connect) {
@@ -351,7 +362,7 @@ public class ClusterController implements SmartLifecycle {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No active Axon servers found for context: " + context);
         }
-        String nodeName = nodeSelectionStrategy.selectNode(clientName, componentName, activeNodes);
+        String nodeName = nodeSelectionStrategy.selectNode(new ClientIdentification(context,clientName), componentName, activeNodes);
         if (remoteConnections.containsKey(nodeName)) {
             return remoteConnections.get(nodeName).getClusterNode();
         }
@@ -366,7 +377,7 @@ public class ClusterController implements SmartLifecycle {
 
     public boolean canRebalance(String clientName, String componentName, String context) {
         Context context1 = entityManager.find(Context.class, context);
-        if (context1 == null) {
+        if (context1 == null || context1.getMessagingNodes().size() <= 1) {
             return false;
         }
         List<String> activeNodes = new ArrayList<>();
@@ -380,7 +391,7 @@ public class ClusterController implements SmartLifecycle {
             return false;
         }
 
-        return nodeSelectionStrategy.canRebalance(clientName, componentName, activeNodes);
+        return nodeSelectionStrategy.canRebalance(new ClientIdentification(context,clientName), componentName, activeNodes);
     }
 
 

@@ -71,4 +71,8 @@ public class QueryInformation {
             // ignore exception on cancel
         }
     }
+
+    public String getContext() {
+        return query.getContext();
+    }
 }

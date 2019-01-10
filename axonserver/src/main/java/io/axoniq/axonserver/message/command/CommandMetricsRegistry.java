@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
@@ -38,9 +39,9 @@ public class CommandMetricsRegistry {
     }
 
 
-    public void add(String command, String clientId,  long duration) {
+    public void add(String command, ClientIdentification clientId, long duration) {
         try {
-            timer(command, clientId).record(duration, TimeUnit.MILLISECONDS);
+            timer(command, clientId.toString()).record(duration, TimeUnit.MILLISECONDS);
         } catch( Exception ex) {
             logger.debug("Failed to create timer", ex);
         }

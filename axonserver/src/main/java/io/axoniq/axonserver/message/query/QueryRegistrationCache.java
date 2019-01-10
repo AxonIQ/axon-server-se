@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -33,12 +34,12 @@ public class QueryRegistrationCache {
         this.queryHandlerSelector = queryHandlerSelector;
     }
 
-    public void remove(String clientId) {
+    public void remove(ClientIdentification clientId) {
         registrationsPerQuery.forEach((k, v) -> v.removeClient(clientId));
         registrationsPerQuery.entrySet().removeIf(v -> v.getValue().isEmpty());
     }
 
-    public void remove(QueryDefinition queryDefinition, String clientId) {
+    public void remove(QueryDefinition queryDefinition, ClientIdentification clientId) {
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
         if( queryInformation != null) {
             queryInformation.removeClient(clientId);
@@ -70,9 +71,9 @@ public class QueryRegistrationCache {
         return (registrationsPerQuery.containsKey(def)) ?  registrationsPerQuery.get(def).handlers.values() : emptySet();
     }
 
-    private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName, NavigableSet<String> queryHandlers) {
+    private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName, NavigableSet<ClientIdentification> queryHandlers) {
         if (queryHandlers.isEmpty()) return null;
-        String client = queryHandlerSelector.select(queryDefinition, componentName, queryHandlers);
+        ClientIdentification client = queryHandlerSelector.select(queryDefinition, componentName, queryHandlers);
         if( client == null) return null;
         return registrationsPerQuery.get(queryDefinition).getHandler(client);
     }
@@ -89,20 +90,20 @@ public class QueryRegistrationCache {
         return all;
     }
 
-    public List<QueryRegistration> getForClient(String client) {
+    public List<QueryRegistration> getForClient(ClientIdentification client) {
         return registrationsPerQuery.entrySet().stream()
                                     .map(e -> new QueryRegistration(e.getKey(),
                                                                     e.getValue().getHandler(client)))
-                                    .filter(r -> r.queryHandler != null && r.queryHandler.getClientName().equals(client))
+                                    .filter(r -> r.queryHandler != null && r.queryHandler.getClient().equals(client))
                                     .collect(Collectors.toList());
     }
 
     public QueryHandler find(String context, QueryRequest request, String client) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
-        return registrationsPerQuery.get(queryDefinition).getHandler(client);
+        return registrationsPerQuery.get(queryDefinition).getHandler(new ClientIdentification(context,client));
     }
 
-    public Set<String> getClients() {
+    public Set<ClientIdentification> getClients() {
         return registrationsPerQuery.values().stream().flatMap(q -> q.handlers.keySet().stream()).collect(toSet());
     }
 
@@ -129,9 +130,9 @@ public class QueryRegistrationCache {
     }
 
     private class QueryInformation {
-        private final Map<String,QueryHandler> handlers = new ConcurrentHashMap<>();
+        private final Map<ClientIdentification,QueryHandler> handlers = new ConcurrentHashMap<>();
         private final Set<String> resultNames = new CopyOnWriteArraySet<>();
-        public void removeClient(String clientId) {
+        public void removeClient(ClientIdentification clientId) {
             handlers.remove(clientId);
         }
 
@@ -145,17 +146,17 @@ public class QueryRegistrationCache {
         }
 
         public QueryInformation addHandler(QueryHandler queryHandler) {
-            handlers.put(queryHandler.getClientName(), queryHandler);
+            handlers.put(queryHandler.getClient(), queryHandler);
             return this;
         }
 
-        public QueryHandler getHandler(String client) {
+        public QueryHandler getHandler(ClientIdentification client) {
             return handlers.get(client);
         }
 
-        public Map<String, NavigableSet<String>> getHandlersPerComponent() {
-            Map<String,NavigableSet<String>> map = new HashMap<>();
-            handlers.values().forEach(queryHandler -> map.computeIfAbsent(queryHandler.getComponentName(), c -> new TreeSet<>()).add(queryHandler.getClientName()));
+        public Map<String, NavigableSet<ClientIdentification>> getHandlersPerComponent() {
+            Map<String,NavigableSet<ClientIdentification>> map = new HashMap<>();
+            handlers.values().forEach(queryHandler -> map.computeIfAbsent(queryHandler.getComponentName(), c -> new TreeSet<>()).add(queryHandler.getClient()));
             return map;
         }
     }

@@ -65,6 +65,7 @@ public class HttpStreamingQuery {
     private class Sender {
         private final SseEmitter sseEmitter;
         private final StreamObserver<QueryEventsRequest> querySender;
+        private volatile boolean closed;
 
         public Sender( SseEmitter sseEmitter, EventStore eventStore, String context, String query) {
             this.sseEmitter = sseEmitter;
@@ -72,6 +73,7 @@ public class HttpStreamingQuery {
                 @Override
                 public void onNext(QueryEventsResponse queryEventsResponse) {
                     try {
+                        if( closed) return;
                         switch (queryEventsResponse.getDataCase()) {
                             case COLUMNS:
                                 emitColumns(queryEventsResponse.getColumns());
@@ -87,6 +89,7 @@ public class HttpStreamingQuery {
                         }
                     } catch (Exception exception) {
                         logger.warn("Failed to write to emitter", exception);
+                        closed = true;
                         stop();
                     }
                 }

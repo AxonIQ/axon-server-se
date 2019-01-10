@@ -11,6 +11,7 @@ import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
@@ -55,19 +56,13 @@ public class CommandDispatcher {
     @EventListener
     public void on(SubscriptionEvents.SubscribeCommand event) {
         CommandSubscription request = event.getRequest();
-        registrations.add(event.getContext(), request.getCommand(), event.getHandler());
-        event.getHandler().confirm(request.getMessageId());
+        registrations.add( request.getCommand(), event.getHandler());
     }
 
     @EventListener
     public void on(SubscriptionEvents.UnsubscribeCommand event) {
         CommandSubscription request = event.getRequest();
-        CommandHandler commandHandler = registrations.remove(event.getContext(),
-                                                             request.getCommand(),
-                                                             request.getClientId());
-        if (commandHandler != null) {
-            commandHandler.confirm(request.getMessageId());
-        }
+        registrations.remove(event.clientIdentification(),request.getCommand());
     }
 
     @EventListener
@@ -77,30 +72,29 @@ public class CommandDispatcher {
 
     public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if( proxied) {
-            String client = request.getClient();
-            CommandHandler handler = registrations.findByClientAndCommand(client, request.getCommand());
+            CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
             dispatchToCommandHandler(context, request, handler, responseObserver);
         } else {
             commandCounter.increment();
-            CommandHandler commandHandler = registrations.getNode(context, request.wrapped(), request.getRoutingKey());
+            CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
             dispatchToCommandHandler(context, request, commandHandler, responseObserver);
         }
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        handleDisconnection(event.getClient(), event.isProxied());
+        handleDisconnection(event.clientIdentification(), event.isProxied());
     }
 
     @EventListener
     public void on(TopologyEvents.CommandHandlerDisconnected event){
-        handleDisconnection(event.getClient(), event.isProxied());
+        handleDisconnection(event.clientIdentification(), event.isProxied());
     }
 
-    private void handleDisconnection(String client, boolean proxied){
+    private void handleDisconnection(ClientIdentification client, boolean proxied){
         cleanupRegistrations(client);
         if(!proxied) {
-            getCommandQueues().move(client, this::redispatch);
+            getCommandQueues().move(client.toString(), this::redispatch);
         }
         handlePendingCommands(client);
     }
@@ -119,7 +113,7 @@ public class CommandDispatcher {
 
         logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClient());
         commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(), responseObserver, commandHandler.getClient(), commandHandler.getComponentName()));
-        commandQueues.put(commandHandler.queueName(), new WrappedCommand(context, commandHandler.getClient(), command));
+        commandQueues.put(commandHandler.queueName(), new WrappedCommand( commandHandler.getClient(), command));
     }
 
 
@@ -137,7 +131,7 @@ public class CommandDispatcher {
 
     }
 
-    private void cleanupRegistrations(String client) {
+    private void cleanupRegistrations(ClientIdentification client) {
         registrations.remove(client);
     }
 
@@ -146,11 +140,12 @@ public class CommandDispatcher {
     }
 
     private String redispatch(WrappedCommand command) {
-        Command request = command.command().wrapped();
+        SerializedCommand request = command.command();
         CommandInformation commandInformation = commandCache.remove(request.getMessageIdentifier());
         if( commandInformation == null) return null;
 
-        CommandHandler client = registrations.getNode(command.context(), request, ProcessingInstructionHelper.routingKey(request.getProcessingInstructionsList()));
+        CommandHandler client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
+                                                                   request.getRoutingKey());
         if (client == null) {
             commandInformation.getResponseConsumer().accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                     .setMessageIdentifier(request.getMessageIdentifier()).setRequestIdentifier(request.getMessageIdentifier())
@@ -167,8 +162,8 @@ public class CommandDispatcher {
         return client.queueName();
     }
 
-    private void handlePendingCommands(String client) {
-        List<String> messageIds = commandCache.entrySet().stream().filter(e -> e.getValue().getClientId().equals(client)).map(Map.Entry::getKey).collect(Collectors.toList());
+    private void handlePendingCommands(ClientIdentification client) {
+        List<String> messageIds = commandCache.entrySet().stream().filter(e -> e.getValue().checkClient(client)).map(Map.Entry::getKey).collect(Collectors.toList());
 
         messageIds.forEach(m -> {
             CommandInformation ci = commandCache.remove(m);

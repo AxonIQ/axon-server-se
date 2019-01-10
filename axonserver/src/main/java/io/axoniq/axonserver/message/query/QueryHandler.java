@@ -1,8 +1,10 @@
 package io.axoniq.axonserver.message.query;
 
 
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 
@@ -12,32 +14,36 @@ import java.util.Objects;
  * Author: marc
  */
 public abstract class QueryHandler<T>  {
-    private final String clientName;
+    private final ClientIdentification client;
     private final String componentName;
     protected final StreamObserver<T> streamObserver;
 
-    protected QueryHandler(StreamObserver<T> streamObserver, String clientName, String componentName) {
-        this.clientName = clientName;
+    protected QueryHandler(StreamObserver<T> streamObserver, ClientIdentification client, String componentName) {
+        this.client = client;
         this.streamObserver = streamObserver;
         this.componentName = componentName;
     }
 
     public abstract void dispatch(SubscriptionQueryRequest query);
 
-    public String getClientName() {
-        return clientName;
+    public ClientIdentification getClient() {
+        return client;
     }
 
     public String getComponentName() {
         return componentName;
     }
 
-    public String toString() {
-        return clientName;
+    public String queueName() {
+        return client.toString();
     }
 
-    public void enqueue(String context, QueryRequest request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
-        queryQueue.put(clientName, new WrappedQuery(context, request, timeout));
+    public String toString() {
+        return client.toString();
+    }
+
+    public void enqueue(SerializedQuery request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
+        queryQueue.put(queueName(), new WrappedQuery(client, request, timeout));
     }
 
     @Override
@@ -49,11 +55,15 @@ public abstract class QueryHandler<T>  {
             return false;
         }
         QueryHandler<?> that = (QueryHandler<?>) o;
-        return Objects.equals(clientName, that.clientName);
+        return Objects.equals(client, that.client);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(clientName);
+        return Objects.hash(client);
+    }
+
+    public String getClientId() {
+        return client.getClient();
     }
 }
