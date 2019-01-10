@@ -92,6 +92,8 @@ public class MessagingClusterServer implements SmartLifecycle{
             serverBuilder.addService(ServerInterceptors.intercept(dataSynchronizerMaster, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
             serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration),
                                                                   new ContextInterceptor()));
+        } else {
+            serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new ContextInterceptor()));
         }
         if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);

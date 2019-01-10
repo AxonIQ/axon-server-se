@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.message.event;
+package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.grpc.GrpcMetadataKeys;
 import io.grpc.CallOptions;
@@ -29,7 +29,7 @@ public class ContextAddingInterceptor implements ClientInterceptor {
             @Override
             public void start(Listener<R> responseListener, Metadata headers) {
                 String context = contextSupplier.get();
-                if( context != null) headers.put(GrpcMetadataKeys.AXONDB_CONTEXT_MD_KEY, context);
+                if( context != null) headers.put(GrpcMetadataKeys.CONTEXT_MD_KEY, context);
                 super.start(responseListener, headers);
             }
         };

@@ -14,10 +14,10 @@ import io.grpc.StatusRuntimeException;
  * Author: marc
  */
 public class AuthenticationInterceptor implements ServerInterceptor{
-    private final AxonServerAccessController axonHubAccessController;
+    private final AxonServerAccessController axonServerAccessController;
 
-    public AuthenticationInterceptor(AxonServerAccessController axonHubAccessController) {
-        this.axonHubAccessController = axonHubAccessController;
+    public AuthenticationInterceptor(AxonServerAccessController axonServerAccessController) {
+        this.axonServerAccessController = axonServerAccessController;
     }
 
     @Override
@@ -27,8 +27,12 @@ public class AuthenticationInterceptor implements ServerInterceptor{
         String context = GrpcMetadataKeys.CONTEXT_KEY.get();
 
         if( token == null) {
+            metadata.get(GrpcMetadataKeys.AXONDB_TOKEN_KEY);
+        }
+
+        if( token == null) {
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING, "Token missing");
-        } else if( ! axonHubAccessController.allowed( serverCall.getMethodDescriptor().getFullMethodName(), context, token)) {
+        } else if( ! axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(), context, token)) {
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token for " + serverCall.getMethodDescriptor().getFullMethodName());
         }
 

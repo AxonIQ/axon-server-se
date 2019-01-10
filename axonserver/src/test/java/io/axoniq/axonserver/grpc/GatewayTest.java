@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
@@ -23,7 +24,7 @@ public class GatewayTest {
 
     @Before
     public void setUp() throws Exception {
-        accessController = mock(AxonServerAccessController.class);
+        accessController = mock(AxonServerStandardAccessController.class);
         routingConfiguration = new MessagingPlatformConfiguration(null);
         routingConfiguration.setPort(7023);
         routingConfiguration.setAccesscontrol(new AccessControlConfiguration());

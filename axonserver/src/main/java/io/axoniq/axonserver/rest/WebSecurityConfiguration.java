@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -157,9 +158,9 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                 throws IOException, ServletException {
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 final HttpServletRequest request = (HttpServletRequest) servletRequest;
-                String token = request.getHeader(AxonServerAccessController.TOKEN_PARAM);
+                String token = request.getHeader(AxonServerStandardAccessController.TOKEN_PARAM);
                 if (token == null) {
-                    token = request.getParameter(AxonServerAccessController.TOKEN_PARAM);
+                    token = request.getParameter(AxonServerStandardAccessController.TOKEN_PARAM);
                 }
 
                 if ( isLocalRequest(request)) {
@@ -190,7 +191,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                         HttpServletResponse httpServletResponse = (HttpServletResponse)servletResponse;
                         httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_TOKEN_MISSING.getHttpCode().value());
                         try (ServletOutputStream outputStream = httpServletResponse.getOutputStream() ) {
-                            outputStream.println("Missing header: " + AxonServerAccessController.TOKEN_PARAM);
+                            outputStream.println("Missing header: " + AxonServerStandardAccessController.TOKEN_PARAM);
                         }
                         return;
                     }

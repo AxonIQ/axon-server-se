@@ -22,7 +22,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
-import io.axoniq.axonserver.message.event.ContextAddingInterceptor;
+import io.axoniq.axonserver.enterprise.cluster.internal.ContextAddingInterceptor;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.grpc.CallOptions;
 import io.grpc.Channel;

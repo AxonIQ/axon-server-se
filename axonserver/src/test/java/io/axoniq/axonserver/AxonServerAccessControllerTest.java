@@ -22,11 +22,6 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class AxonServerAccessControllerTest {
     private AxonServerAccessController testSubject;
-    @Mock
-    private FeatureChecker limits;
-
-    @Mock
-    private AccessController accessController;
 
     @Mock
     private MessagingPlatformConfiguration messagingPlatformConfiguration;
@@ -35,14 +30,10 @@ public class AxonServerAccessControllerTest {
 
     @Before
     public void setup() {
-        testSubject = new AxonServerAccessController(accessController, pathMappingRepository, messagingPlatformConfiguration, limits);
-        when(accessController.authorize(eq("1"), any(),any(), eq(true))).thenReturn(true);
-        when(accessController.authorize(eq("2"), any(),any(), eq(false))).thenReturn(false);
-        when(accessController.validToken("1")).thenReturn(true);
+        testSubject = new AxonServerStandardAccessController( pathMappingRepository, messagingPlatformConfiguration);
         AccessControlConfiguration accessControlConfiguation = new AccessControlConfiguration();
-        accessControlConfiguation.setToken("3");
+        accessControlConfiguation.setToken("1");
         when(messagingPlatformConfiguration.getAccesscontrol()).thenReturn(accessControlConfiguation);
-        when(limits.isEnterprise()).thenReturn(true);
     }
     @Test
     public void allowed() {
@@ -53,34 +44,15 @@ public class AxonServerAccessControllerTest {
     public void notAllowed() {
         assertFalse(testSubject.allowed("/v1/commands", "default", "2"));
     }
-    @Test
-    public void allowedDevelopment() {
-        when(limits.isEnterprise()).thenReturn(false);
-        assertTrue(testSubject.allowed("/v1/commands", "default", "3"));
-    }
-    @Test
-    public void notAllowedDevelopment() {
-        when(limits.isEnterprise()).thenReturn(false);
-        assertFalse(testSubject.allowed("/v1/commands", "default", "4"));
-    }
 
     @Test
     public void validToken() {
         assertTrue(testSubject.validToken("1"));
     }
+
     @Test
     public void invalidToken() {
         assertFalse(testSubject.validToken("2"));
     }
 
-    @Test
-    public void validTokenDevelopment() {
-        when(limits.isEnterprise()).thenReturn(false);
-        assertTrue(testSubject.validToken("3"));
-    }
-    @Test
-    public void invalidTokenDevelopment() {
-        when(limits.isEnterprise()).thenReturn(false);
-        assertFalse(testSubject.validToken("4"));
-    }
 }
