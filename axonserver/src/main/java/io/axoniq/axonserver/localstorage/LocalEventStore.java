@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
@@ -53,7 +54,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Value("${axoniq.axonserver.query.timeout:300000}")
     private long timeout = 300000;
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
-    private long newPermitsTimeout;
+    private long newPermitsTimeout=120000;
+    @Value("${axoniq.axonserver.max-events-per-transaction:32767}")
+    private int maxEventCount = Short.MAX_VALUE;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
         this.eventStoreFactory = eventStoreFactory;
@@ -89,10 +92,20 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                    StreamObserver<Confirmation> responseObserver) {
         return new StreamObserver<InputStream>() {
             private final List<SerializedEvent> eventList = new ArrayList<>();
+            private final AtomicBoolean closed = new AtomicBoolean();
             @Override
             public void onNext(InputStream event) {
                 try {
-                    eventList.add(new SerializedEvent(event));
+                    if( eventList.size() < maxEventCount) {
+                        eventList.add(new SerializedEvent(event));
+                    } else {
+                        if( closed.compareAndSet(false, true)) {
+                            responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
+                                                                                "Maximum number of events in transaction exceeded: "
+                                                                                        + maxEventCount));
+                        }
+                    }
+
                 } catch (Exception e) {
                     responseObserver.onError(GrpcExceptionBuilder.build(e));
                 }
