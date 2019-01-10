@@ -60,7 +60,7 @@ class ReplicatorPeer {
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();
-            snapshotManager.streamSnapshotChunks(nextIndex(), lastAppliedIndex)
+            snapshotManager.streamSnapshotData(nextIndex(), lastAppliedIndex)
                            .buffer(SNAPSHOT_CHUNKS_BUFFER_SIZE)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override

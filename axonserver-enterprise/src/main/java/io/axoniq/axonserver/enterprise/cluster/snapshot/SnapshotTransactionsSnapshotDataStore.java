@@ -9,16 +9,25 @@ import io.axoniq.axonserver.localstorage.TransactionInformation;
 import reactor.core.publisher.Flux;
 
 /**
+ * Snapshot data store for snapshot transactions data.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
-public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataProvider {
+public class SnapshotTransactionsSnapshotDataStore implements SnapshotDataStore {
 
     private static final String SNAPSHOT_TYPE = "snapshotsTransaction";
 
     private final String context;
     private final LocalEventStore localEventStore;
 
-    public SnapshotTransactionsSnapshotDataProvider(String context, LocalEventStore localEventStore) {
+    /**
+     * Creates Snapshot Transaction Snapshot Data Store for streaming/applying snapshot transaction data.
+     *
+     * @param context         application context
+     * @param localEventStore event store used retrieving/saving snapshot transactions
+     */
+    public SnapshotTransactionsSnapshotDataStore(String context, LocalEventStore localEventStore) {
         this.context = context;
         this.localEventStore = localEventStore;
     }
@@ -29,8 +38,9 @@ public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataPro
     }
 
     @Override
-    public Flux<SerializedObject> provide(long from, long to) {
-        return Flux.fromIterable(() -> localEventStore.snapshotTransactionsIterator(context, from, to))
+    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+        return Flux.fromIterable(() -> localEventStore.snapshotTransactionsIterator(context, fromEventSequence,
+                                                                                    toEventSequence))
                    .map(transactionWithToken -> SerializedObject.newBuilder()
                                                                 .setType(SNAPSHOT_TYPE)
                                                                 .setData(transactionWithToken.toByteString())
@@ -38,12 +48,12 @@ public class SnapshotTransactionsSnapshotDataProvider implements SnapshotDataPro
     }
 
     @Override
-    public boolean canConsume(String type) {
+    public boolean canApplySnapshotData(String type) {
         return type.equals(SNAPSHOT_TYPE);
     }
 
     @Override
-    public void consume(SerializedObject serializedObject) {
+    public void applySnapshotData(SerializedObject serializedObject) {
         try {
             TransactionWithToken transactionWithToken = TransactionWithToken.parseFrom(serializedObject.getData());
             localEventStore.syncSnapshots(context, new TransactionInformation(0), transactionWithToken);

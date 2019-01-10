@@ -5,27 +5,35 @@ import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 /**
+ * Axon Server implementation of {@link SnapshotManager}.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
 public class AxonServerSnapshotManager implements SnapshotManager {
 
-    private final List<SnapshotDataProvider> snapshotDataProviders;
+    private final List<SnapshotDataStore> snapshotDataStores;
 
-    public AxonServerSnapshotManager(List<SnapshotDataProvider> snapshotDataProviders) {
-        this.snapshotDataProviders = snapshotDataProviders;
+    /**
+     * Creates Axon Server Snapshot Manager with given list of {@code snapshotDataStores}.
+     *
+     * @param snapshotDataStores snapshot data stores for streaming and applying snapshot data
+     */
+    public AxonServerSnapshotManager(List<SnapshotDataStore> snapshotDataStores) {
+        this.snapshotDataStores = new ArrayList<>(snapshotDataStores);
+        this.snapshotDataStores.sort(Comparator.comparingInt(SnapshotDataStore::order));
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotChunks(long fromEventSequence, long toEventSequence) {
-        snapshotDataProviders.sort(Comparator.comparingInt(SnapshotDataProvider::order));
-
+    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
         Flux<SerializedObject> stream = Flux.empty();
-        for (SnapshotDataProvider snapshotDataProvider : snapshotDataProviders) {
-            stream = stream.concatWith(snapshotDataProvider.provide(fromEventSequence, toEventSequence));
+        for (SnapshotDataStore snapshotDataProvider : snapshotDataStores) {
+            stream = stream.concatWith(snapshotDataProvider.streamSnapshotData(fromEventSequence, toEventSequence));
         }
         return stream;
     }
@@ -33,14 +41,15 @@ public class AxonServerSnapshotManager implements SnapshotManager {
     @Override
     public Mono<Void> applySnapshotData(SerializedObject serializedObject) {
         return Mono.fromRunnable(
-                () -> snapshotDataProviders
+                () -> snapshotDataStores
                         .stream()
-                        .filter(snapshotDataConsumer -> snapshotDataConsumer.canConsume(serializedObject.getType()))
-                        .forEach(snapshotDataConsumer -> snapshotDataConsumer.consume(serializedObject)));
+                        .filter(snapshotDataConsumer -> snapshotDataConsumer
+                                .canApplySnapshotData(serializedObject.getType()))
+                        .forEach(snapshotDataConsumer -> snapshotDataConsumer.applySnapshotData(serializedObject)));
     }
 
     @Override
     public void clear() {
-        snapshotDataProviders.forEach(SnapshotDataProvider::clear);
+        snapshotDataStores.forEach(SnapshotDataStore::clear);
     }
 }

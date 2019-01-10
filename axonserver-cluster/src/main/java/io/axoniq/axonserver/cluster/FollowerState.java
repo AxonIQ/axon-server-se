@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.cluster.Scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.FollowerConfiguration;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
@@ -19,8 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Clock;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;

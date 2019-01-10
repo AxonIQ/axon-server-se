@@ -12,18 +12,26 @@ import reactor.core.publisher.Flux;
 import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaLoadBalancingStrategy;
 
 /**
+ * Snapshot data store for {@link LoadBalancingStrategy} data.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
-public class LoadBalanceStrategySnapshotDataProvider implements SnapshotDataProvider {
+public class LoadBalanceStrategySnapshotDataStore implements SnapshotDataStore {
 
     private final LoadBalanceStrategyRepository loadBalanceStrategyRepository;
 
-    public LoadBalanceStrategySnapshotDataProvider(LoadBalanceStrategyRepository loadBalanceStrategyRepository) {
+    /**
+     * Creates Load Balance Strategy Snapshot Data Store for streaming/applying load balance strategy data.
+     *
+     * @param loadBalanceStrategyRepository the repository for retrieving/saving load balance strategies
+     */
+    public LoadBalanceStrategySnapshotDataStore(LoadBalanceStrategyRepository loadBalanceStrategyRepository) {
         this.loadBalanceStrategyRepository = loadBalanceStrategyRepository;
     }
 
     @Override
-    public Flux<SerializedObject> provide(long from, long to) {
+    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
         return Flux.fromIterable(loadBalanceStrategyRepository.findAll())
                    .map(ProtoConverter::createLoadBalanceStrategy)
                    .map(this::toSerializedObject);
@@ -35,12 +43,12 @@ public class LoadBalanceStrategySnapshotDataProvider implements SnapshotDataProv
     }
 
     @Override
-    public boolean canConsume(String type) {
+    public boolean canApplySnapshotData(String type) {
         return LoadBalancingStrategy.class.getName().equals(type);
     }
 
     @Override
-    public void consume(SerializedObject serializedObject) {
+    public void applySnapshotData(SerializedObject serializedObject) {
         try {
             LoadBalanceStrategy loadBalanceStrategy = LoadBalanceStrategy.parseFrom(serializedObject.getData());
             LoadBalancingStrategy loadBalancingStrategyEntity = createJpaLoadBalancingStrategy(loadBalanceStrategy);
@@ -52,7 +60,7 @@ public class LoadBalanceStrategySnapshotDataProvider implements SnapshotDataProv
 
     @Override
     public void clear() {
-        // TODO: 12/31/2018 should we delete load balance strategies???
+        loadBalanceStrategyRepository.deleteAll();
     }
 
     private <V> SerializedObject toSerializedObject(LoadBalanceStrategy loadBalanceStrategy) {

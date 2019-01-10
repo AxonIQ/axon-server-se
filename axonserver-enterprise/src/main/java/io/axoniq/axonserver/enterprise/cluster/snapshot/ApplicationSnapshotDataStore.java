@@ -13,14 +13,23 @@ import java.util.List;
 import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaApplication;
 
 /**
+ * Snapshot data store for {@link Application} data.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
-public class ApplicationSnapshotDataProvider implements SnapshotDataProvider {
+public class ApplicationSnapshotDataStore implements SnapshotDataStore {
 
     private final String context;
     private final ApplicationController applicationController;
 
-    public ApplicationSnapshotDataProvider(String context, ApplicationController applicationController) {
+    /**
+     * Creates Application Snapshot Data Store for streaming/applying {@link Application} data.
+     *
+     * @param context               the application context
+     * @param applicationController the application controller used for retrieving/saving applications
+     */
+    public ApplicationSnapshotDataStore(String context, ApplicationController applicationController) {
         this.context = context;
         this.applicationController = applicationController;
     }
@@ -31,7 +40,7 @@ public class ApplicationSnapshotDataProvider implements SnapshotDataProvider {
     }
 
     @Override
-    public Flux<SerializedObject> provide(long from, long to) {
+    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
         List<Application> applications = applicationController.getApplicationsForContext(context);
 
         return Flux.fromIterable(applications)
@@ -40,12 +49,12 @@ public class ApplicationSnapshotDataProvider implements SnapshotDataProvider {
     }
 
     @Override
-    public boolean canConsume(String type) {
+    public boolean canApplySnapshotData(String type) {
         return Application.class.getName().equals(type);
     }
 
     @Override
-    public void consume(SerializedObject serializedObject) {
+    public void applySnapshotData(SerializedObject serializedObject) {
         try {
             io.axoniq.axonserver.grpc.internal.Application applicationMessage = io.axoniq.axonserver.grpc.internal.Application
                     .parseFrom(serializedObject.getData());
