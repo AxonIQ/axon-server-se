@@ -1,14 +1,13 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.connector.EventConnector;
-import io.axoniq.axonserver.connector.UnitOfWork;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.*;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -40,7 +39,8 @@ public class EventDispatcher implements AxonServerClientService {
     private static final String EVENTS_METRIC_NAME = "axon.events.count";
     private static final String SNAPSHOTS_METRIC_NAME = "axon.snapshots.count";
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
-    public static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "Error on connection from event store: {}";
+
+    static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "Error on connection from event store: {}";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
     public static final MethodDescriptor<GetEventsRequest, InputStream> METHOD_LIST_EVENTS =
             EventStoreGrpc.getListEventsMethod().toBuilder(
@@ -66,7 +66,7 @@ public class EventDispatcher implements AxonServerClientService {
     private final EventStoreLocator eventStoreClient;
     private final ContextProvider contextProvider;
     private final MetricCollector clusterMetrics;
-    private final Map<String, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
+    private final Map<ClientIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Counter eventsCounter;
     private final Counter snapshotCounter;
 
@@ -195,7 +195,7 @@ public class EventDispatcher implements AxonServerClientService {
         Map<String, Iterable<Long>> trackers = new HashMap<>();
         trackingEventProcessors.forEach((client, infos) -> {
             List<Long> status = infos.stream().map(EventTrackerInfo::getLastToken).collect(Collectors.toList());
-            trackers.put(client, status);
+            trackers.put(client.toString(), status);
         });
         return trackers;
     }
@@ -296,7 +296,7 @@ public class EventDispatcher implements AxonServerClientService {
         });
     }
 
-    public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
+    private void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
                                        StreamObserver<InputStream> responseObserver) {
         listAggregateSnapshots(contextProvider.getContext(), request, responseObserver);
     }
@@ -306,11 +306,13 @@ public class EventDispatcher implements AxonServerClientService {
     private static class EventTrackerInfo {
         private final StreamObserver<InputStream> responseObserver;
         private final String client;
+        private final String context;
         private final AtomicLong lastToken;
 
-        public EventTrackerInfo(StreamObserver<InputStream> responseObserver, String client, long lastToken) {
+        public EventTrackerInfo(StreamObserver<InputStream> responseObserver, String client, String context, long lastToken) {
             this.responseObserver = responseObserver;
             this.client = client;
+            this.context = context;
             this.lastToken = new AtomicLong(lastToken);
         }
 
@@ -326,7 +328,11 @@ public class EventDispatcher implements AxonServerClientService {
             return lastToken.get();
         }
 
-        public void incrementLastToken() {
+        public String getContext() {
+            return context;
+        }
+
+        void incrementLastToken() {
             lastToken.incrementAndGet();
         }
     }
@@ -339,7 +345,7 @@ public class EventDispatcher implements AxonServerClientService {
         volatile StreamObserver<GetEventsRequest> eventStoreRequestObserver;
         volatile EventTrackerInfo trackerInfo;
 
-        public GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, EventStore eventStore,
+        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, EventStore eventStore,
                                               String context) {
             this.responseObserver = responseObserver;
             this.eventStore = eventStore;
@@ -363,7 +369,7 @@ public class EventDispatcher implements AxonServerClientService {
 
         private boolean registerEventTracker(GetEventsRequest getEventsRequest) {
             if( eventStoreRequestObserver == null) {
-                trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClientId(), getEventsRequest.getTrackingToken()-1);
+                trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClientId(), context,getEventsRequest.getTrackingToken()-1);
                 try {
                     eventStoreRequestObserver =
                             eventStore.listEvents(context, new StreamObserver<InputStream>() {
@@ -399,7 +405,8 @@ public class EventDispatcher implements AxonServerClientService {
                     return false;
                 }
 
-                trackingEventProcessors.computeIfAbsent(trackerInfo.client, key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
+                trackingEventProcessors.computeIfAbsent(new ClientIdentification(trackerInfo.context,trackerInfo.client),
+                                                        key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
                 logger.info("Starting tracking event processor for {}:{} - {}",
                             getEventsRequest.getClientId(),
                             getEventsRequest.getComponentName(),
@@ -417,11 +424,12 @@ public class EventDispatcher implements AxonServerClientService {
 
         private void removeTrackerInfo() {
             if (trackerInfo != null) {
-                trackingEventProcessors.computeIfPresent(trackerInfo.client, (c,streams) -> {
-                    logger.debug("{}: {} streams", trackerInfo.client, streams.size());
-                    streams.remove(trackerInfo);
-                    return streams.isEmpty() ? null : streams;
-                });
+                trackingEventProcessors.computeIfPresent(new ClientIdentification(trackerInfo.context,trackerInfo.client),
+                                                         (c,streams) -> {
+                                                                logger.debug("{}: {} streams", trackerInfo.client, streams.size());
+                                                                streams.remove(trackerInfo);
+                                                                return streams.isEmpty() ? null : streams;
+                                                            });
             }
         }
 
