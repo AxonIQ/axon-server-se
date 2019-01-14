@@ -2,22 +2,18 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
-import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
-import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- *
+ * Unit tests for {@link RaftNode}.
  *
  * @author Sara Pellegrini
  * @since 4.1
