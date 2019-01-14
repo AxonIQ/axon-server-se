@@ -46,10 +46,10 @@ public interface RaftConfiguration {
     }
 
     /**
-     * Define if the log compaction is enable.
-     * If true, the log entries files will be deleted when they become obsolete.
+     * Define if the log compaction is enabled.
+     * If true, the log entry files will be deleted when they become obsolete.
      *
-     * @return true if the log compaction is enable, false otherwise
+     * @return {@code true} if the log compaction is enable, {@code false} otherwise
      */
     default boolean enableLogCompaction() {
         return false;
