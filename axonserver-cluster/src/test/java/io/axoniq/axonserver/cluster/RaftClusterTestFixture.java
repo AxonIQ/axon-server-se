@@ -4,7 +4,10 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
+import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,8 +32,16 @@ public class RaftClusterTestFixture {
     private Map<String, Set<String>> communicationProblems = new ConcurrentHashMap<>();
     private Map<String, Map<String, Supplier<Integer>>> communicationDelay = new ConcurrentHashMap<>();
     private Supplier<Integer> defaultDelay = () -> ThreadLocalRandom.current().nextInt(1, 5);
+    private final SnapshotManager snapshotManager;
+    private final Scheduler scheduler;
 
     public RaftClusterTestFixture(String... hostNames) {
+        this(new FakeSnapshotManager(), new DefaultScheduler(), hostNames);
+    }
+
+    public RaftClusterTestFixture(SnapshotManager snapshotManager, Scheduler scheduler, String... hostNames) {
+        this.snapshotManager = snapshotManager;
+        this.scheduler = scheduler;
         for (String hostName : hostNames) {
             spawnNew(hostName);
         }
@@ -57,7 +68,7 @@ public class RaftClusterTestFixture {
     public RaftNode spawnNew(String hostName) {
         StubRaftGroup raftGroup = new StubRaftGroup(hostName);
         clusterGroups.put(hostName, raftGroup);
-        RaftNode raftNode = new RaftNode(hostName, raftGroup, new FakeSnapshotManager());
+        RaftNode raftNode = new RaftNode(hostName, raftGroup, scheduler, snapshotManager);
         clusterNodes.put(hostName, raftNode);
         return raftNode;
     }

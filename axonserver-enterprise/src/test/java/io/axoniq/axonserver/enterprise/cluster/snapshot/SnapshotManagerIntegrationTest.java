@@ -64,7 +64,7 @@ import static org.mockito.Mockito.*;
 @DataJpaTest
 @SpringBootTest(classes = {ApplicationRepository.class})
 @EntityScan(basePackages = {"io.axoniq.platform", "io.axoniq.axonserver.component.processor.balancing.jpa"})
-public class SnapshotIntegrationTest {
+public class SnapshotManagerIntegrationTest {
 
     private static final String CONTEXT = "junit";
 

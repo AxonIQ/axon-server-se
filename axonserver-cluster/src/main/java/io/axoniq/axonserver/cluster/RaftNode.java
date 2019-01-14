@@ -1,6 +1,9 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
+import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
+import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
@@ -22,7 +25,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -40,7 +42,7 @@ public class RaftNode {
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
     private volatile Future<?> applyTask;
-    private volatile ScheduledFuture<?> scheduledLogCleaning;
+    private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
     private final Scheduler scheduler;
 
@@ -57,7 +59,7 @@ public class RaftNode {
         updateState(null, stateFactory.idleState(nodeId));
     }
 
-    private ScheduledFuture<?> scheduleLogCleaning() {
+    private ScheduledRegistration scheduleLogCleaning() {
         return scheduler.scheduleWithFixedDelay(
                 () -> raftGroup.localLogEntryStore().clearOlderThan(1,
                                                                     TimeUnit.HOURS,
@@ -108,7 +110,7 @@ public class RaftNode {
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers));
-//        scheduledLogCleaning = scheduleLogCleaning();
+        scheduledLogCleaning = scheduleLogCleaning();
         logger.info("{}: Node started.", groupId());
     }
 
@@ -141,7 +143,7 @@ public class RaftNode {
             applyTask = null;
         }
         if (scheduledLogCleaning != null) {
-            scheduledLogCleaning.cancel(true);
+            scheduledLogCleaning.cancel();
             scheduledLogCleaning = null;
         }
         registrations.forEach(Registration::cancel);

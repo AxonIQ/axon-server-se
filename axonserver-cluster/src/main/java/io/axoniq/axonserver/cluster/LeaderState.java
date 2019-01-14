@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
+import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
