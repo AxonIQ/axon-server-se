@@ -44,4 +44,14 @@ public interface RaftConfiguration {
     default int maxEntriesPerBatch() {
         return 10;
     }
+
+    /**
+     * Define if the log compaction is enabled.
+     * If true, the log entry files will be deleted when they become obsolete.
+     *
+     * @return {@code true} if the log compaction is enable, {@code false} otherwise
+     */
+    default boolean isLogCompactionEnabled() {
+        return false;
+    }
 }

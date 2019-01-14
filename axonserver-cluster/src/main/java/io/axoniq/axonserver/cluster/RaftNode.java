@@ -64,9 +64,33 @@ public class RaftNode {
                 () -> raftGroup.localLogEntryStore().clearOlderThan(1,
                                                                     TimeUnit.HOURS,
                                                                     () -> raftGroup.logEntryProcessor().lastAppliedIndex()),
-                0,
+                1,
                 1,
                 TimeUnit.HOURS);
+    }
+
+    /**
+     * Checks if a log cleaning task is scheduled, cancels the current task and schedules a new one.
+     * This ensures that the next cleaning is performed one hour later.
+     *
+     * @return {@code true} if the scheduled log cleaning task is restarted, {@code false} if no scheduled log cleaning task was found.
+     */
+    public boolean restartLogCleaning() {
+        if (stopLogCleaning()){
+            scheduledLogCleaning = scheduleLogCleaning();
+            return true;
+        }
+        return false;
+    }
+
+
+    private boolean stopLogCleaning(){
+        if (scheduledLogCleaning != null) {
+            scheduledLogCleaning.cancel();
+            scheduledLogCleaning = null;
+            return true;
+        }
+        return false;
     }
 
     private void updateConfig(Entry entry){
@@ -110,7 +134,9 @@ public class RaftNode {
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers));
-        scheduledLogCleaning = scheduleLogCleaning();
+        if (raftGroup.raftConfiguration().isLogCompactionEnabled()){
+            scheduledLogCleaning = scheduleLogCleaning();
+        }
         logger.info("{}: Node started.", groupId());
     }
 
@@ -142,10 +168,7 @@ public class RaftNode {
             applyTask.cancel(true);
             applyTask = null;
         }
-        if (scheduledLogCleaning != null) {
-            scheduledLogCleaning.cancel();
-            scheduledLogCleaning = null;
-        }
+        stopLogCleaning();
         registrations.forEach(Registration::cancel);
         logger.info("{}: Node stopped.", groupId());
     }
