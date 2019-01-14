@@ -134,7 +134,7 @@ public class RaftNode {
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers));
-        if (raftGroup.raftConfiguration().enableLogCompaction()){
+        if (raftGroup.raftConfiguration().isLogCompactionEnabled()){
             scheduledLogCleaning = scheduleLogCleaning();
         }
         logger.info("{}: Node started.", groupId());

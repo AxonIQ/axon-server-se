@@ -51,7 +51,7 @@ public interface RaftConfiguration {
      *
      * @return {@code true} if the log compaction is enable, {@code false} otherwise
      */
-    default boolean enableLogCompaction() {
+    default boolean isLogCompactionEnabled() {
         return false;
     }
 }

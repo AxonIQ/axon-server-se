@@ -29,7 +29,7 @@ public class RaftNodeTest {
         when(logEntryStore.lastLog()).thenReturn(new TermIndex(0,0));
         when(logEntryStore.createIterator(anyLong())).thenReturn(mock(EntryIterator.class));
         RaftConfiguration raftConfiguration = mock(RaftConfiguration.class);
-        when(raftConfiguration.enableLogCompaction()).thenReturn(true);
+        when(raftConfiguration.isLogCompactionEnabled()).thenReturn(true);
         when(raftConfiguration.minElectionTimeout()).thenReturn(150);
         when(raftConfiguration.maxElectionTimeout()).thenReturn(300);
         when(raftConfiguration.groupId()).thenReturn("myGroupId");
