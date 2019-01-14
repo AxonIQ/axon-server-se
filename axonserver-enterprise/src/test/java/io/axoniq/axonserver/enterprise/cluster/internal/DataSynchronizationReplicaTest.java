@@ -146,7 +146,7 @@ public class DataSynchronizationReplicaTest {
     @Test
     public void masterDisconnected() {
         testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
-        testSubject.on(new ClusterEvents.MasterDisconnected(Topology.DEFAULT_CONTEXT, false));
+        testSubject.on(new ClusterEvents.MasterDisconnected(Topology.DEFAULT_CONTEXT, "demo", false));
         assertTrue(completed.get());
         assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
     }

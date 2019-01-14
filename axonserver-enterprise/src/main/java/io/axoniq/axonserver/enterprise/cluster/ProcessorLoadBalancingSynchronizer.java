@@ -64,9 +64,11 @@ public class ProcessorLoadBalancingSynchronizer {
 
     @EventListener
     public void on(LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived event) {
-        repository.deleteAll();
-        repository.flush();
-        event.processorsStrategy().getProcessorList().forEach(processor -> repository.save(mapping.map(processor)));
+        synchronized (repository) {
+            repository.deleteAll();
+            repository.flush();
+            event.processorsStrategy().getProcessorList().forEach(processor -> repository.save(mapping.map(processor)));
+        }
         applicationController.updateModelVersion(ProcessorLoadBalancing.class, event.processorsStrategy().getVersion());
     }
 

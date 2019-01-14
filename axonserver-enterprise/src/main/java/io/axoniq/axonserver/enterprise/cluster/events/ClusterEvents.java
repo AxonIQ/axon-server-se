@@ -95,14 +95,20 @@ public class ClusterEvents {
     public static class MasterDisconnected extends TopologyEvents.TopologyBaseEvent{
 
         private final String contextName;
+        private final String oldMaster;
 
-        public MasterDisconnected(String contextName, boolean forwarded) {
+        public MasterDisconnected(String contextName, String oldMaster, boolean forwarded) {
             super(forwarded);
             this.contextName = contextName;
+            this.oldMaster = oldMaster;
         }
 
         public String getContextName() {
             return contextName;
+        }
+
+        public String oldMaster() {
+            return oldMaster;
         }
     }
 

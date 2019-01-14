@@ -141,13 +141,7 @@ public class DataSynchronizationReplica {
             ReplicaConnection old = connectionPerContext.remove(context);
             if( old != null) {
                 old.error("No longer alive");
-                applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
-//                old.error("Trying to reconnect");
-//                ReplicaConnection replicaConnection = new ReplicaConnection(
-//                        old.node,
-//                        context);
-//                connectionPerContext.put(context, replicaConnection);
-//                replicaConnection.start();
+                applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, old.node, false));
             }
         });
     }
@@ -225,7 +219,7 @@ public class DataSynchronizationReplica {
                 public void onError(Throwable cause) {
                     ManagedChannelHelper.checkShutdownNeeded(node, cause);
                     logger.warn("Received error from {}: {}", node, cause.getMessage());
-                    applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, false));
+                    applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, node, false));
                 }
 
                 @Override

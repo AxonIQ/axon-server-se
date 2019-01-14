@@ -36,7 +36,6 @@ public class ApplicationController {
         this.hasher = hasher;
     }
 
-    @Async
     public List<Application> getApplications() {
         return applicationRepository.findAll();
     }

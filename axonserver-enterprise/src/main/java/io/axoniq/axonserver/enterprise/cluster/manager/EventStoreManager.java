@@ -149,10 +149,12 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     public void on(ClusterEvents.MasterDisconnected masterDisconnected) {
         logger.info("Master disconnected: {}", masterDisconnected.getContextName());
         logger.debug("Scheduling on disconnected");
-        masterPerContext.remove(masterDisconnected.getContextName());
-        if( task == null || task.isDone()) {
-            task =scheduledExecutorService.schedule(() -> startLeaderElection(
-                    masterDisconnected.getContextName()), 1, TimeUnit.SECONDS);
+        if( masterDisconnected.oldMaster() == null || masterDisconnected.oldMaster().equals(masterPerContext.get(masterDisconnected.getContextName()))) {
+            masterPerContext.remove(masterDisconnected.getContextName());
+            if( task == null || task.isDone()) {
+                task =scheduledExecutorService.schedule(() -> startLeaderElection(
+                        masterDisconnected.getContextName()), 1, TimeUnit.SECONDS);
+            }
         }
     }
 

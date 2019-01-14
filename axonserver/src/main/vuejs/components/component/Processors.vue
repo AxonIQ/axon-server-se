@@ -226,9 +226,12 @@
                 axios.get("v1/processors/loadbalance/strategies").then(response => {
                     this.loadBalancingStrategies = response.data;
                 });
-                axios.get("v1/components/" + this.component + "/processors/loadbalance/strategies?context=" + this.context).then(response => {
-                    this.processorsLBStrategies = response.data;
-                });
+                if( this.hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING') ) {
+                    axios.get("v1/components/" + this.component + "/processors/loadbalance/strategies?context="
+                                      + this.context).then(response => {
+                        this.processorsLBStrategies = response.data;
+                    });
+                }
             },
             startProcessor(processor) {
                 if (confirm("Start processor " + processor.name + "?")) {
