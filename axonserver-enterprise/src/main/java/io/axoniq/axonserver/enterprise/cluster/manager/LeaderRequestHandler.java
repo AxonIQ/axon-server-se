@@ -15,7 +15,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class LeaderRequestHandler {

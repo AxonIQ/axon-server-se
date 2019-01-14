@@ -3,7 +3,7 @@ package io.axoniq.axonserver.connector;
 import java.util.Map;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface Event {
     Map<String, Object> getMetaData();

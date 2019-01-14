@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 public class SamplePageDefinition implements Page {

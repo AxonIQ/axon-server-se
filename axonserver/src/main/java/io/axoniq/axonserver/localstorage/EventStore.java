@@ -14,7 +14,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventStore {
 

@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 import static io.axoniq.platform.util.StringUtils.getOrDefault;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @Controller
 public class ApplicationController {

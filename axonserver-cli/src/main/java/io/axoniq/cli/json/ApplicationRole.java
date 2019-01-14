@@ -3,7 +3,7 @@ package io.axoniq.cli.json;
 import java.util.Date;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ApplicationRole {
     private String role;

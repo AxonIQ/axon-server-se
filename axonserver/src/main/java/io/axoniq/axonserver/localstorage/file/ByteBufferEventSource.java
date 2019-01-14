@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 
 import java.nio.ByteBuffer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ByteBufferEventSource implements EventSource {
 

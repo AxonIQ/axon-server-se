@@ -5,7 +5,7 @@ import javax.persistence.*;
 import java.util.Date;
 
 /**
- * Created by marc on 7/13/2017.
+ * @author Marc Gathier
  */
 @Entity
 public class ApplicationRole {

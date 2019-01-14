@@ -3,7 +3,7 @@ package io.axoniq.sample;
 import org.axonframework.commandhandling.TargetAggregateIdentifier;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class BatchCommand {
     @TargetAggregateIdentifier

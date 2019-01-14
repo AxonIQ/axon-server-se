@@ -4,7 +4,7 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.command.Command;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WrappedCommand {
     private final String context;

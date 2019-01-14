@@ -6,7 +6,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class NoOpEventTransformer extends EventTransformer {
 

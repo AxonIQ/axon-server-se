@@ -6,16 +6,11 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamEventStore extends SegmentBasedEventStore {
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());

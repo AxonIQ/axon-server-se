@@ -20,7 +20,7 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public interface EventStore {

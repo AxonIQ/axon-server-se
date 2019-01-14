@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchronizerImplBase implements

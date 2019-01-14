@@ -9,7 +9,7 @@ import org.mockito.runners.*;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class CommandMetricsRegistryTest {

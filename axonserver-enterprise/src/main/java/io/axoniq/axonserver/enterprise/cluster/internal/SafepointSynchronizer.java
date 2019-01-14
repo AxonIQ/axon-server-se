@@ -11,7 +11,7 @@ import org.springframework.stereotype.Controller;
 import java.util.Optional;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class SafepointSynchronizer {

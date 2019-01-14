@@ -9,7 +9,7 @@ import io.axoniq.axonserver.localstorage.query.QueryResult;
 import io.axoniq.axonserver.localstorage.query.result.BooleanExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class NotExpression implements Expression, PipeExpression {
 

@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * Subscriptions are stored in the {@link CommandRegistrationCache}.
  * Running commands are stored in the {@link CommandCache}.
  *
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("CommandDispatcher")
 public class CommandDispatcher {

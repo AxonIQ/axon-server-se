@@ -6,7 +6,7 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DirectCommandHandler extends CommandHandler<CommandProviderInbound> {
     public DirectCommandHandler(StreamObserver<CommandProviderInbound> responseObserver, String client, String componentName) {

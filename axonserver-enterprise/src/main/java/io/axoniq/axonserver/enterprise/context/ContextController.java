@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class ContextController {

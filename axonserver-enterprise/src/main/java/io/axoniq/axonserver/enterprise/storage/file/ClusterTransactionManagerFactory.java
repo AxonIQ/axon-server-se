@@ -7,7 +7,7 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterTransactionManagerFactory implements StorageTransactionManagerFactory {
 

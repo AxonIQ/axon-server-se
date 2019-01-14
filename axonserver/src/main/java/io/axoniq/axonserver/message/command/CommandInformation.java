@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandInformation {
     private final String command;

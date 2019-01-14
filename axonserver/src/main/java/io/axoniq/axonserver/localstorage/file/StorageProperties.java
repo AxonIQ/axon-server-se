@@ -5,7 +5,7 @@ import io.axoniq.axonserver.KeepNames;
 import java.io.File;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class StorageProperties {

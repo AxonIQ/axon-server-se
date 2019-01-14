@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.Collection;
 
 /**
- * Created by marc on 7/17/2017.
+ * @author Marc Gathier
  */
 @Component
 public class AxonServerAccessController {

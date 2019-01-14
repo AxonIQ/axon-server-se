@@ -8,7 +8,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @Component
 @ConditionalOnMissingClass("org.mindrot.jbcrypt.BCrypt")

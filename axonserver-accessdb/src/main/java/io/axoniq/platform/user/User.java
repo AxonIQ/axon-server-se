@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @Table(name="users")

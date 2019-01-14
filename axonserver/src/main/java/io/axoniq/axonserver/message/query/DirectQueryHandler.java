@@ -6,7 +6,7 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DirectQueryHandler extends QueryHandler<QueryProviderInbound> {
 

@@ -14,7 +14,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TestMessagingClusterService implements MessagingClusterServiceInterface {
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();

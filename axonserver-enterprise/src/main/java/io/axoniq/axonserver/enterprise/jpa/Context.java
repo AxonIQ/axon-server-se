@@ -14,7 +14,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.PreRemove;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity(name = "Context")
 public class Context implements Serializable {

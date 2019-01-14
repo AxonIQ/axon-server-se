@@ -4,7 +4,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import org.springframework.util.StringUtils;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WrappedEvent implements ProcessedEvent {
 

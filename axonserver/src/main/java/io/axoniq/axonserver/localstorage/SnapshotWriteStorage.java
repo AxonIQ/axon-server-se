@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SnapshotWriteStorage {
 

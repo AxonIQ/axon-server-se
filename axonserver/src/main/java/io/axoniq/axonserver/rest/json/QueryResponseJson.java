@@ -4,7 +4,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.platform.KeepNames;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class QueryResponseJson {

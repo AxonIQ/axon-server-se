@@ -30,7 +30,7 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @AutoConfigureBefore(AxonServerFreeConfiguration.class)

@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ValidationResult {
     private final long segment;

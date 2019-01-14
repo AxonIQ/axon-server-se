@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandDispatcher {
     @FunctionalInterface

@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 /**
  * Reads messages for a specific client from a queue and sends them to the client using gRPC.
  * Only reads messages when there are permits left.
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     private static final Logger LOG = LoggerFactory.getLogger(GrpcFlowControlledDispatcherListener.class);

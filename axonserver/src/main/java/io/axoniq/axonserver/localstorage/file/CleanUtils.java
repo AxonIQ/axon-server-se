@@ -12,7 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  * Copied code from Tomcat to clean buffer: org.apache.tomcat.util.buf.ByteBufferUtils
  */
 public class CleanUtils {

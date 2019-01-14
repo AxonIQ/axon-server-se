@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.PostConstruct;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @ConfigurationProperties(prefix = "axoniq.axonserver")

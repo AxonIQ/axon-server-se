@@ -8,7 +8,7 @@ import io.axoniq.axonserver.localstorage.query.result.NumericExpressionResult;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CountExpression extends AbstractAggregationFunction {
 

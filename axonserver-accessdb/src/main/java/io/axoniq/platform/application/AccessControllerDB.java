@@ -9,7 +9,7 @@ import java.util.Optional;
 import static io.axoniq.platform.application.ApplicationController.PREFIX_LENGTH;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @Controller
 public class AccessControllerDB {

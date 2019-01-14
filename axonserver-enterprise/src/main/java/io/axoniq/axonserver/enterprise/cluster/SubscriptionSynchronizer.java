@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Ensures that subscriptions from this AxonHub node are known on all connected AxonHub nodes
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class SubscriptionSynchronizer {

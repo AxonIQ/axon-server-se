@@ -4,7 +4,7 @@ import io.axoniq.axonserver.grpc.internal.User;
 import io.axoniq.axonserver.grpc.internal.Users;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class UserSynchronizationEvents {
 

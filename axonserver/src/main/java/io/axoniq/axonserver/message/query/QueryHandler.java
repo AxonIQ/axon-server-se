@@ -9,7 +9,7 @@ import io.grpc.stub.StreamObserver;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class QueryHandler<T>  {
     private final String clientName;

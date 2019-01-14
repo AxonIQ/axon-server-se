@@ -11,7 +11,7 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AlternateLocationEventStore extends SecondaryEventStore {
 

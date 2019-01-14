@@ -34,7 +34,7 @@ import java.util.concurrent.ExecutionException;
 import static java.time.temporal.ChronoField.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Import(KafkaEventConnector.Config.class)
 public class KafkaEventConnector implements EventConnector {

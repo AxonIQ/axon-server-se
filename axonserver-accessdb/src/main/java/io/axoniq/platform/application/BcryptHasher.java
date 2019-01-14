@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @Component
 @ConditionalOnClass(BCrypt.class)

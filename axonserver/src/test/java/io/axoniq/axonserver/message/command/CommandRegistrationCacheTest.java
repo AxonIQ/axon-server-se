@@ -10,7 +10,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandRegistrationCacheTest {
 

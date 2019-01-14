@@ -6,7 +6,7 @@ import io.grpc.stub.StreamObserver;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>> {
     protected final StreamObserver<T> observer;

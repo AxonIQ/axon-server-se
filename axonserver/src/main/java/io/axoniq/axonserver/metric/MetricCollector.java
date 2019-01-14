@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.internal.Metric;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface MetricCollector extends Function<String, ClusterMetric>  {
 

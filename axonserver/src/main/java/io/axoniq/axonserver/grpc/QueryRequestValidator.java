@@ -7,7 +7,7 @@ import io.axoniq.axonserver.message.query.WrappedQuery;
 import org.slf4j.Logger;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface QueryRequestValidator {
     default QueryRequest validate(WrappedQuery message, QueryDispatcher queryDispatcher, Logger logger) {

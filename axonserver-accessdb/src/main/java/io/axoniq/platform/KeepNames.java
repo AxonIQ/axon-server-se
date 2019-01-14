@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  * Annotation for obfuscator to indicate that for this class the class and method names should be kept.
  */
 @Inherited

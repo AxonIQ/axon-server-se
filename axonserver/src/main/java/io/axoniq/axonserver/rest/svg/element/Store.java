@@ -10,7 +10,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Store implements Box {
     private static final Dimension STORE_SIZE = new Dimension(64, 32);

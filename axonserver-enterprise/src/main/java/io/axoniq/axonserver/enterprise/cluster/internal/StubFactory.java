@@ -5,7 +5,7 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface StubFactory {
     MessagingClusterServiceInterface messagingClusterServiceStub(MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode);

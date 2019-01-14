@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface NodeSelectionStrategy {
     String selectNode(String clientName, String componentName, Collection<String> activeNodes);

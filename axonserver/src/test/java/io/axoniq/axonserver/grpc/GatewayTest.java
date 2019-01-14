@@ -13,7 +13,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class GatewayTest {
     private Gateway testSubject;

@@ -23,7 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventWriteStorageClusterTest {
 

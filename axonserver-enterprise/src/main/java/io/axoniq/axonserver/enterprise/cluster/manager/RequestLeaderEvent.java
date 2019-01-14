@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RequestLeaderEvent  {
 

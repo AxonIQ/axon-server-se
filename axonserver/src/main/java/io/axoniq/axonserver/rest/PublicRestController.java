@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController("PublicRestController")
 @RequestMapping("/v1/public")

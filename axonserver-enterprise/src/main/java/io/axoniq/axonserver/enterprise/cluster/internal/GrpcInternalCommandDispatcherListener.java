@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Reads messages for a specific messagingServerName from a queue and sends them to the messagingServerName using gRPC.
  * Only reads messages when there are permits left.
- * Author: marc
+ * @author Marc Gathier
  */
 public class GrpcInternalCommandDispatcherListener extends GrpcFlowControlledDispatcherListener<ConnectorResponse, WrappedCommand> {
     private static final Logger logger = LoggerFactory.getLogger(GrpcInternalCommandDispatcherListener.class);

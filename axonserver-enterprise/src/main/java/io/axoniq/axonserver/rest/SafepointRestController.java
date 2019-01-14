@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController
 @CrossOrigin

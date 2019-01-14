@@ -31,7 +31,7 @@ import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class DataSynchronizationMasterTest {

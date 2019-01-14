@@ -13,7 +13,7 @@ import javax.persistence.Id;
 import javax.persistence.OneToMany;
 
 /**
- * Created by marc on 7/13/2017.
+ * @author Marc Gathier
  */
 @Entity
 public class Application {

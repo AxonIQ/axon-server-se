@@ -40,7 +40,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = AxonServerEnterprise.class)

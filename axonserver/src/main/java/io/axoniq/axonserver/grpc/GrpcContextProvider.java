@@ -4,7 +4,7 @@ import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Controller;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class GrpcContextProvider implements ContextProvider {

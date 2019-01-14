@@ -15,7 +15,7 @@ import io.axoniq.axonserver.message.query.WrappedQuery;
  * Updates the message with a new message id and adds the original message id in the processing instructions, as one query may
  * lead to multiple messages to be sent to other AxonHub nodes.
  * Also adds the target client to the processing instructions, so the target AxonHub node knows where to send the request to.
- * Author: marc
+ * @author Marc Gathier
  */
 public class ProxyQueryHandler extends QueryHandler<ConnectorResponse> {
     private final String messagingServerName;

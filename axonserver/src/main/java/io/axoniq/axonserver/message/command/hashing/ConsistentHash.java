@@ -17,7 +17,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ConsistentHash {
     private final SortedMap<String, ConsistentHashMember> hashToMember;

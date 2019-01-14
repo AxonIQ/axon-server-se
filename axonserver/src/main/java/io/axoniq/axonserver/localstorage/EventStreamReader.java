@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventStreamReader {
     private final EventStore datafileManagerChain;

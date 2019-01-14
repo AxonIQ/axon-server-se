@@ -3,7 +3,7 @@ package io.axoniq.axonserver.grpc;
 import io.grpc.BindableService;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface AxonServerClientService extends BindableService {
 

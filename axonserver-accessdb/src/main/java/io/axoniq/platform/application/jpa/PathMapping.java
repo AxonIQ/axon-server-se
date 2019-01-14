@@ -4,7 +4,7 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 
 /**
- * Created by marc on 7/17/2017.
+ * @author Marc Gathier
  */
 @Entity
 public class PathMapping {

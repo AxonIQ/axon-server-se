@@ -3,7 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterEvent {
 

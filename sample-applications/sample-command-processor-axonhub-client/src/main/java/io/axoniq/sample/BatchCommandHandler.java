@@ -4,7 +4,7 @@ import org.axonframework.commandhandling.CommandHandler;
 import org.springframework.stereotype.Controller;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class BatchCommandHandler {

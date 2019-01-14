@@ -21,7 +21,7 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MetricsRestControllerTest {
     private MetricsRestController testSubject;

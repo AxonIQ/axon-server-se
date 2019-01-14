@@ -3,7 +3,7 @@ package io.axoniq.axonserver.topology;
 import io.axoniq.axonserver.message.event.EventStore;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventStoreLocator {
 

@@ -3,7 +3,7 @@ package io.axoniq.platform.application;
 import io.axoniq.platform.application.jpa.Application;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ApplicationWithToken {
     private final String tokenString;

@@ -2,16 +2,10 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.grpc.Context;
-import io.grpc.Contexts;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
-import io.grpc.StatusRuntimeException;
+import io.grpc.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AuthenticationInterceptor implements ServerInterceptor{
     private final AxonServerAccessController axonHubAccessController;

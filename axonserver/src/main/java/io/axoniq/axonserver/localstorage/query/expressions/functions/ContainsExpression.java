@@ -6,7 +6,7 @@ import io.axoniq.axonserver.localstorage.query.expressions.binary.AbstractBoolea
 import io.axoniq.axonserver.localstorage.query.result.ListExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ContainsExpression extends AbstractBooleanExpression {
 

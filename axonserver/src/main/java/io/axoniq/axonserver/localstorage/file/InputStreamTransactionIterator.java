@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.NoSuchElementException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamTransactionIterator implements TransactionIterator {
 

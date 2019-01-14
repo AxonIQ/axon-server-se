@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface StorageTransactionManager {
 

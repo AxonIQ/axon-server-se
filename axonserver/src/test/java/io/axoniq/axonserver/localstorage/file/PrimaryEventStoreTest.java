@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PrimaryEventStoreTest {
     @ClassRule

@@ -11,7 +11,7 @@ import java.util.Date;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ProtoConverter {
 

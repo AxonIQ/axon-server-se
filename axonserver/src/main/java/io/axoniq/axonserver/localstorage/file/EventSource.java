@@ -3,7 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventSource extends AutoCloseable {
 

@@ -8,7 +8,7 @@ import io.axoniq.axonserver.metric.ClusterMetric;
 import java.util.NavigableSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MetricsBasedQueryHandlerSelector implements QueryHandlerSelector {
     private final QueryMetricsRegistry metricsRegistry;

@@ -99,7 +99,7 @@ import javax.annotation.PreDestroy;
  * Maintains a list of clients connected to connected service.
  *
  * When connection lost, already sent commands are returned to caller with error status
- * Author: marc
+ * @author Marc Gathier
  */
 @Service("MessagingClusterService")
 public class MessagingClusterService extends MessagingClusterServiceGrpc.MessagingClusterServiceImplBase {

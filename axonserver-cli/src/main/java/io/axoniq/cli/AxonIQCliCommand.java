@@ -32,7 +32,7 @@ import javax.net.ssl.SSLContext;
 
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AxonIQCliCommand {
     protected static CommandLine processCommandLine(String name, String[] args, Option... options) {

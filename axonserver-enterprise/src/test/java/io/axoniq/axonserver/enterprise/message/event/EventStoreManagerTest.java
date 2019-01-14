@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class EventStoreManagerTest {

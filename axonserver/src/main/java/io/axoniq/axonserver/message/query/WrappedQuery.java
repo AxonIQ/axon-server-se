@@ -4,7 +4,7 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WrappedQuery {
     private final QueryRequest queryRequest;

@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("EventDispatcher")
 public class EventDispatcher implements AxonServerClientService {

@@ -3,11 +3,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
-import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
-import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
-import io.axoniq.axonserver.grpc.command.CommandResponse;
-import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
+import io.axoniq.axonserver.grpc.command.*;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.grpc.stub.StreamObserver;
@@ -17,12 +13,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import javax.annotation.PreDestroy;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service("CommandService")
 public class CommandService extends CommandServiceGrpc.CommandServiceImplBase implements AxonServerClientService {

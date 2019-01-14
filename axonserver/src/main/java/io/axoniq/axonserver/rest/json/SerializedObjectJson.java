@@ -6,7 +6,7 @@ import io.axoniq.platform.KeepNames;
 import io.axoniq.platform.util.StringUtils;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class SerializedObjectJson {

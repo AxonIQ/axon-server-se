@@ -9,7 +9,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventByteBufferIterator extends EventIterator {
 

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Controller;
 
 
 /**
- * Created by marc on 7/17/2017.
+ * @author Marc Gathier
  */
 @Controller("InternalAuthenticationInterceptor")
 public class InternalAuthenticationInterceptor implements ServerInterceptor {

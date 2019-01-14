@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class MetaDataJson extends HashMap<String,Object> {

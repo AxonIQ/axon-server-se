@@ -7,7 +7,7 @@ import java.net.UnknownHostException;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MessagingPlatformConfigurationTest {
     private MessagingPlatformConfiguration testSubject;

@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SimpleAxonServerNode implements AxonServerNode {
 

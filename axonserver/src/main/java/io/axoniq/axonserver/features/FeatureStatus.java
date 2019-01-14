@@ -3,7 +3,7 @@ package io.axoniq.axonserver.features;
 import io.axoniq.platform.KeepNames;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class FeatureStatus {

@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("MessagingClusterServer")
 public class MessagingClusterServer implements SmartLifecycle{

@@ -6,7 +6,7 @@ import org.springframework.stereotype.Controller;
 import java.util.Collection;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @Controller
 public class ApplicationModelController {

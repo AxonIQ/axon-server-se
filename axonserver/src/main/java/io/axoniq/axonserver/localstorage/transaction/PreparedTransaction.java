@@ -5,7 +5,7 @@ import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PreparedTransaction {
     private final long token;

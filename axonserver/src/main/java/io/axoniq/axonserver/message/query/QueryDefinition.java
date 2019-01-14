@@ -6,7 +6,7 @@ import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class QueryDefinition {

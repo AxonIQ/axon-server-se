@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventExpressionResult implements AbstractMapExpressionResult {
     private final EventWithToken event;

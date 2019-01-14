@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ManagedChannelHelper {
     private static final Logger logger = LoggerFactory.getLogger(ManagedChannelHelper.class);

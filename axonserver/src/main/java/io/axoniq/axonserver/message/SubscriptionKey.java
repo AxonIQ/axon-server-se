@@ -5,7 +5,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SubscriptionKey {
     private final String sessionId;

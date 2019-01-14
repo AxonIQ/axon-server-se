@@ -8,7 +8,7 @@ import io.axoniq.axonserver.message.command.CommandHandler;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ProxyCommandHandler extends CommandHandler<ConnectorResponse> {
     private static final Confirmation confirmationBase = Confirmation.newBuilder().setSuccess(true).build();

@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import java.util.Iterator;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface TransactionIterator extends Iterator<TransactionWithToken>, AutoCloseable {
 

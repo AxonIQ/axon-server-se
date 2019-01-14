@@ -8,7 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class BooleanExpressionResult implements ExpressionResult {

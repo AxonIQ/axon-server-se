@@ -3,7 +3,7 @@ package io.axoniq.cli.json;
 import java.util.Set;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class User {
     private String userName;

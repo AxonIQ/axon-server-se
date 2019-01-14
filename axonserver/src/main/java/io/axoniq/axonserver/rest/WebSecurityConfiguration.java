@@ -37,7 +37,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.sql.DataSource;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @EnableWebSecurity

@@ -3,7 +3,7 @@ package io.axoniq.axonserver.config;
 import java.net.UnknownHostException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface SystemInfoProvider {
 

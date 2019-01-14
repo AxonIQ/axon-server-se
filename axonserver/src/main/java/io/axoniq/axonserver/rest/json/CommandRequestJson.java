@@ -12,7 +12,7 @@ import java.util.UUID;
 import javax.validation.constraints.NotNull;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class CommandRequestJson {

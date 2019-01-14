@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class QueryRestControllerTest {
     private QueryRestController testSubject;

@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class CommandCache extends ConcurrentHashMap<String, CommandInformation> {

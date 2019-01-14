@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 @ConditionalOnProperty(value = "axoniq.axonserver.cluster.enabled", havingValue = "true")

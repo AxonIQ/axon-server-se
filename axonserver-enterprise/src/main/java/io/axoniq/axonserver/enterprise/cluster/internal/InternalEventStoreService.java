@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class InternalEventStoreService implements BindableService {

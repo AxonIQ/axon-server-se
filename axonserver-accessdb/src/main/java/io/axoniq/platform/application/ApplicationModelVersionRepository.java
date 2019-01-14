@@ -4,7 +4,7 @@ import io.axoniq.platform.application.jpa.ApplicationModelVersion;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface ApplicationModelVersionRepository extends JpaRepository<ApplicationModelVersion, String> {
 }

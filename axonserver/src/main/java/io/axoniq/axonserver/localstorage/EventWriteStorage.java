@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventWriteStorage {
     private static final Logger logger = LoggerFactory.getLogger(EventWriteStorage.class);

@@ -4,13 +4,7 @@ import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.TopologyEvents.QueryHandlerDisconnected;
-import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
-import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
-import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.grpc.query.QueryServiceGrpc;
-import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
-import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.grpc.query.*;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;
@@ -21,12 +15,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import javax.annotation.PreDestroy;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service("QueryService")
 public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implements AxonServerClientService {

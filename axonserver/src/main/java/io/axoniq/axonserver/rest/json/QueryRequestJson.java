@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class QueryRequestJson {

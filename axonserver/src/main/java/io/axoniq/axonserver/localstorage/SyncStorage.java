@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SyncStorage {
 

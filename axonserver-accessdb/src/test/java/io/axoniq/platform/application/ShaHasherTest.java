@@ -6,7 +6,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ShaHasherTest {
     @Test

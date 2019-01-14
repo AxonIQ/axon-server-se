@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class DataSynchronizationReplica {

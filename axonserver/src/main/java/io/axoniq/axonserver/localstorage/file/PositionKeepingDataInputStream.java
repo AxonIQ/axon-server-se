@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PositionKeepingDataInputStream {
     private int position = 0;

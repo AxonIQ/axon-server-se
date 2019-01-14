@@ -5,18 +5,8 @@ import io.axoniq.axonserver.EventProcessorEvents.ProcessorStatusRequest;
 import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
 import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.grpc.control.ClientIdentification;
-import io.axoniq.axonserver.grpc.control.NodeInfo;
-import io.axoniq.axonserver.grpc.control.PauseEventProcessor;
-import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
+import io.axoniq.axonserver.grpc.control.*;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
-import io.axoniq.axonserver.grpc.control.PlatformInfo;
-import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
-import io.axoniq.axonserver.grpc.control.ReleaseEventProcessorSegment;
-import io.axoniq.axonserver.grpc.control.RequestEventProcessorInfo;
-import io.axoniq.axonserver.grpc.control.RequestReconnect;
-import io.axoniq.axonserver.grpc.control.StartEventProcessor;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
@@ -26,17 +16,12 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service("PlatformService")
 public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase implements AxonServerClientService {

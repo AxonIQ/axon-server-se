@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.localstorage.transformation;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface ProcessedEvent {
 

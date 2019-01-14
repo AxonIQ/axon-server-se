@@ -8,7 +8,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DispatchEvents {
     @KeepNames

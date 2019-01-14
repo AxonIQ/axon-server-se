@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @ConditionalOnProperty(name = "axoniq.axonserver.storage", havingValue = "jdbc")
 @Component

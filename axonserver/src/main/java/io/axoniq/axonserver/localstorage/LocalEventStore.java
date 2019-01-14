@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {

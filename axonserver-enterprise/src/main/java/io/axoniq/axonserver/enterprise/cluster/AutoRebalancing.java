@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class AutoRebalancing  {

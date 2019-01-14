@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @NamedQuery(name = "SnapshotEventEntry.findByTimestamp", query = "select e from SnapshotEventEntry e where e.timeStamp >= :lastTimeStamp order by e.timeStamp asc, e.eventIdentifier")

@@ -10,7 +10,7 @@ import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @org.springframework.web.bind.annotation.RestController
 @RequestMapping("/cmd")

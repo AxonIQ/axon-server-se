@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterTransactionManager implements StorageTransactionManager {
     private static final Logger logger = LoggerFactory.getLogger(ClusterTransactionManager.class);

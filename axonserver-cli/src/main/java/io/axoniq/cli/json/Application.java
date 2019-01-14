@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Application {
 

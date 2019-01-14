@@ -4,7 +4,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.PatternOptionBuilder;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandOptions {
     public static final Option ADDRESS = Option.builder("S").hasArg().longOpt("server").desc("Server to send command to (default http://localhost:8024)")

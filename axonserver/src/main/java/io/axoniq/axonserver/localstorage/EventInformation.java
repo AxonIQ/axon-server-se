@@ -4,7 +4,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventInformation {
 

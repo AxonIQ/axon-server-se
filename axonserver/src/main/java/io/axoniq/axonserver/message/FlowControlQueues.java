@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FlowControlQueues<T> {
     private static final Logger logger = LoggerFactory.getLogger(FlowControlQueues.class);

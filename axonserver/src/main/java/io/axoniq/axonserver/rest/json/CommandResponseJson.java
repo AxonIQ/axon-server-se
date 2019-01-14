@@ -4,7 +4,7 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.platform.KeepNames;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class CommandResponseJson {

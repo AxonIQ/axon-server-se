@@ -5,7 +5,7 @@ import io.axoniq.axonserver.KeepNames;
 import java.util.Map;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class StatusInfo {

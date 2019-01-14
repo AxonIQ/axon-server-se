@@ -7,7 +7,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RegisterUser extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {

@@ -3,7 +3,7 @@ package io.axoniq.platform.user;
 import javax.persistence.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @Table(name="user_roles")

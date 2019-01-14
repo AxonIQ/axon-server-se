@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PositionInfo implements Serializable, Comparable<PositionInfo> {
 

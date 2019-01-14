@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(SpringRunner.class)
 @DataJpaTest

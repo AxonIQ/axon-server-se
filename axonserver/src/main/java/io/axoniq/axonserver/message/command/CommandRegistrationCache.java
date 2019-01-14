@@ -16,7 +16,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("CommandRegistrationCache")
 public class CommandRegistrationCache {

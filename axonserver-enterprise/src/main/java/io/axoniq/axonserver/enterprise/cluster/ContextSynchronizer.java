@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class ContextSynchronizer {

@@ -12,7 +12,7 @@ import io.grpc.MethodDescriptor;
 import java.util.function.Supplier;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ContextAddingInterceptor implements ClientInterceptor {
 

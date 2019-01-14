@@ -13,7 +13,7 @@ import java.util.Map;
 import static io.axoniq.cli.CommandOptions.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RegisterContext extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {

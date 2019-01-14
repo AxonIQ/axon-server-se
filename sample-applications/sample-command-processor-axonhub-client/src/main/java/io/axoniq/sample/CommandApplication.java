@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Bean;
 import java.lang.management.ManagementFactory;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @SpringBootApplication
 public class CommandApplication {

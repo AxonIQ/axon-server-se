@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.internal.Metric;
 import java.util.Collections;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DefaultMetricCollector implements MetricCollector {
 

@@ -5,7 +5,7 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import javax.sql.DataSource;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class JdbcEventStore extends JdbcAbstractStore{
 

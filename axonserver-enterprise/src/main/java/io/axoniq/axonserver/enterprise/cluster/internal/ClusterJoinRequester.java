@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class ClusterJoinRequester {
