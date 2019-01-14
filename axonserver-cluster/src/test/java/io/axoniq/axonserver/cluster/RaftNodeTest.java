@@ -17,21 +17,21 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
+ *
+ *
  * @author Sara Pellegrini
- * @since 4.0
+ * @since 4.1
  */
 public class RaftNodeTest {
 
     private RaftNode testSubject;
-    private FakeScheduler scheduler;
-
 
     @Test
     public void rescheduleLogCompaction() {
         SnapshotManager snapshotManager = mock(SnapshotManager.class);
         LogEntryStore logEntryStore = mock(LogEntryStore.class);
         when(logEntryStore.lastLog()).thenReturn(new TermIndex(0,0));
-        when(logEntryStore.createIterator(anyLong())).thenReturn(new FakeEntryIterator());
+        when(logEntryStore.createIterator(anyLong())).thenReturn(mock(EntryIterator.class));
         RaftConfiguration raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.enableLogCompaction()).thenReturn(true);
         when(raftConfiguration.minElectionTimeout()).thenReturn(150);

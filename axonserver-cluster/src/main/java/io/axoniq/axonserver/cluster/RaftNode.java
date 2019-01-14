@@ -70,10 +70,10 @@ public class RaftNode {
     }
 
     /**
-     * Checks if a log cleaning task is scheduled, cancel the current task and schedule a new one.
-     * This ensure that the next cleaning is performed one hour later.
+     * Checks if a log cleaning task is scheduled, cancels the current task and schedules a new one.
+     * This ensures that the next cleaning is performed one hour later.
      *
-     * @return true if the scheduled log cleaning task is restarted, false if no scheduled log cleaning task was found.
+     * @return {@code true} if the scheduled log cleaning task is restarted, {@code false} if no scheduled log cleaning task was found.
      */
     public boolean restartLogCleaning() {
         if (stopLogCleaning()){
