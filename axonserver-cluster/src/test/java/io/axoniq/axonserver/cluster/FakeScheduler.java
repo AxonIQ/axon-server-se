@@ -92,7 +92,9 @@ public class FakeScheduler implements Scheduler {
         };
 
         registration.set(schedule(runnable, initialDelay, timeUnit));
-        return new DefaultScheduledRegistration(clock, registration.get()::cancel, registration.get()::getDelay );
+        return new DefaultScheduledRegistration(clock,
+                                                () -> registration.get().cancel(),
+                                                unit -> registration.get().getDelay(unit) );
     }
 
     @Override
