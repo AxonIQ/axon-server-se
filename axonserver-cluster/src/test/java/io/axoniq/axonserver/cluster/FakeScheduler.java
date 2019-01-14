@@ -4,23 +4,12 @@ import io.axoniq.axonserver.cluster.scheduler.DefaultScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.time.temporal.TemporalAccessor;
-import java.time.temporal.TemporalField;
 import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.TreeSet;
-import java.util.concurrent.Delayed;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Integer.compare;
@@ -103,23 +92,7 @@ public class FakeScheduler implements Scheduler {
         };
 
         registration.set(schedule(runnable, initialDelay, timeUnit));
-
-        return new ScheduledRegistration() {
-            @Override
-            public long getDelay(TimeUnit unit) {
-                return registration.get().getDelay(unit);
-            }
-
-            @Override
-            public long getElapsed(TimeUnit unit) {
-                return registration.get().getElapsed(unit);
-            }
-
-            @Override
-            public void cancel() {
-                registration.get().cancel();
-            }
-        };
+        return new DefaultScheduledRegistration(clock, registration.get()::cancel, registration.get()::getDelay );
     }
 
     @Override
