@@ -1,15 +1,12 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.grpc.SerializedQuery;
-import io.axoniq.axonserver.grpc.internal.ForwardedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.micrometer.core.instrument.Counter;
@@ -47,19 +44,6 @@ public class QueryDispatcher {
         this.queryCounter = queryMetricsRegistry.counter(QUERY_COUNTER_NAME);
     }
 
-    @EventListener
-    public void on(SubscriptionEvents.UnsubscribeQuery event) {
-        QuerySubscription unsubscribe = event.getUnsubscribe();
-        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), unsubscribe);
-        registrationCache.remove(queryDefinition, event.clientIdentification());
-    }
-
-    @EventListener
-    public void on(SubscriptionEvents.SubscribeQuery event) {
-        QuerySubscription subscription = event.getSubscription();
-        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), subscription);
-        registrationCache.add(queryDefinition, subscription.getResultName(), event.getQueryHandler());
-    }
 
 
     public void handleResponse(QueryResponse queryResponse, String client, boolean proxied) {

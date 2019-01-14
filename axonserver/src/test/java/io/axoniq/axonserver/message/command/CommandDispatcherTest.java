@@ -2,14 +2,12 @@ package io.axoniq.axonserver.message.command;
 
 import com.google.common.collect.Sets;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
-import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.Topology;
@@ -52,20 +50,6 @@ public class CommandDispatcherTest {
         dummyRegistrations.put(new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),"component"),
                 commands);
         when( registrations.getAll()).thenReturn(dummyRegistrations);
-    }
-
-    @Test
-    public void registerCommandHandler()  {
-        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
-        CommandHandler commandHandler = new DirectCommandHandler(countingStreamObserver, new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),  "component");
-        CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1234")
-                .build();
-
-        commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(Topology.DEFAULT_CONTEXT, subscribeRequest, commandHandler));
-
-        CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1235")
-                .build();
-        commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(Topology.DEFAULT_CONTEXT, unsubscribeRequest, false));
     }
 
     @Test
@@ -113,26 +97,6 @@ public class CommandDispatcherTest {
         assertNotEquals("", responseObserver.responseList.get(0).getErrorCode());
         Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
 
-    }
-
-
-    @Test
-    public void subscribe() {
-        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
-        CommandSubscription subscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1236")
-                .build();
-        CommandHandler handler = new DirectCommandHandler(countingStreamObserver, new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"), "component");
-        commandDispatcher.on(new SubscriptionEvents.SubscribeCommand(Topology.DEFAULT_CONTEXT, subscribeRequest, handler));
-        Mockito.verify(registrations, Mockito.times(1)).add(eq("command"), anyObject());
-    }
-
-    @Test
-    public void unsubscribe() {
-        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
-        CommandSubscription unsubscribeRequest = CommandSubscription.newBuilder().setCommand("command").setClientId("client").setMessageId("1235")
-                .build();
-        commandDispatcher.on(new SubscriptionEvents.UnsubscribeCommand(Topology.DEFAULT_CONTEXT, unsubscribeRequest, false));
-        Mockito.verify(registrations, Mockito.times(1)).remove(eq(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client")), anyObject());
     }
 
     @Test

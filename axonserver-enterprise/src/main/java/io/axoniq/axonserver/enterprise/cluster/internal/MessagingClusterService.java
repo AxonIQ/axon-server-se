@@ -1,18 +1,18 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdate;
-import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ProcessorStatusRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
-import io.axoniq.axonserver.MetricsEvents;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
-import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
-import io.axoniq.axonserver.TopologyEvents.QueryHandlerDisconnected;
-import io.axoniq.axonserver.UserSynchronizationEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.RequestToBeCoordinatorReceived;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
@@ -23,14 +23,16 @@ import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.grpc.ProtoConverter;
+import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
+import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.axonserver.grpc.internal.Applications;
@@ -209,14 +211,29 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     }
 
     @EventListener
-    public void on(UserSynchronizationEvents.UserReceived event) {
-        if( event.isProxied()) return;
-
+    public void on(UserEvents.UserUpdated event) {
+        io.axoniq.axonserver.grpc.internal.User protoUser = UserProtoConverter.mergeUser(event.getUser());
         connections.forEach((name, responseObserver) -> {
             try {
+
                 responseObserver.publish(ConnectorResponse.newBuilder()
-                                                         .setUser(event.getUser())
+                                                         .setUser(protoUser)
                                                          .build());
+            } catch (Exception ex) {
+                logger.debug("Error sending application to {} - {}", name, ex.getMessage());
+            }
+        });
+    }
+
+    @EventListener
+    public void on(UserEvents.UserDeleted event) {
+        io.axoniq.axonserver.grpc.internal.User protoUser = UserProtoConverter.deleteUser(event.getName());
+        connections.forEach((name, responseObserver) -> {
+            try {
+
+                responseObserver.publish(ConnectorResponse.newBuilder()
+                                                          .setUser(protoUser)
+                                                          .build());
             } catch (Exception ex) {
                 logger.debug("Error sending application to {} - {}", name, ex.getMessage());
             }
@@ -461,7 +478,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                                            Application.class));
                         applicationController.getApplications().forEach(app ->
                                                                                 applicationsBuilder.addApplication(
-                                                                                        ProtoConverter
+                                                                                        ApplicationProtoConverter
                                                                                                 .createApplication(
                                                                                                         app,
                                                                                                         Action.MERGE)));
@@ -472,9 +489,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         Users.Builder usersBuilder = Users.newBuilder().setVersion(applicationModelController
                                                                                            .getModelVersion(User.class));
                         userController.getUsers().forEach(user ->
-                                                                  usersBuilder.addUser(ProtoConverter.createUser(
-                                                                          user,
-                                                                          Action.MERGE))
+                                                                  usersBuilder.addUser(UserProtoConverter.mergeUser(user))
                         );
                         responseObserver.onNext(ConnectorResponse.newBuilder().setUsers(usersBuilder).build());
                         break;
@@ -504,8 +519,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         break;
                     case CLIENT_EVENT_PROCESSOR_STATUS:
                         eventPublisher.publishEvent(
-                                new EventProcessorStatusUpdate(connectorCommand.getClientEventProcessorStatus(),
-                                                               true));
+                                new EventProcessorStatusUpdate(ClientEventProcessorStatusProtoConverter.fromProto(connectorCommand.getClientEventProcessorStatus()),
+                                    true));
                         break;
                     case START_CLIENT_EVENT_PROCESSOR:
                         ClientEventProcessor startProcessor = connectorCommand.getStartClientEventProcessor();

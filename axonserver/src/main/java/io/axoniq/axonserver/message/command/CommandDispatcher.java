@@ -1,16 +1,11 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
-import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
-import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.micrometer.core.instrument.Counter;
@@ -53,22 +48,6 @@ public class CommandDispatcher {
         metricRegistry.gauge(ACTIVE_COMMANDS_GAUGE, commandCache, ConcurrentHashMap::size);
     }
 
-    @EventListener
-    public void on(SubscriptionEvents.SubscribeCommand event) {
-        CommandSubscription request = event.getRequest();
-        registrations.add( request.getCommand(), event.getHandler());
-    }
-
-    @EventListener
-    public void on(SubscriptionEvents.UnsubscribeCommand event) {
-        CommandSubscription request = event.getRequest();
-        registrations.remove(event.clientIdentification(),request.getCommand());
-    }
-
-    @EventListener
-    public void on(DispatchEvents.DispatchCommand dispatchCommand) {
-        dispatch(dispatchCommand.getContext(), dispatchCommand.getRequest(), dispatchCommand.getResponseObserver(), dispatchCommand.isProxied());
-    }
 
     public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if( proxied) {

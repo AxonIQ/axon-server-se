@@ -1,13 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.LoadBalancingStrategiesReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.LoadBalancingStrategyReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived;
-import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
-import io.axoniq.axonserver.UserSynchronizationEvents;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.LoadBalancingStrategiesReceived;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.LoadBalancingStrategyReceived;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
+import io.axoniq.axonserver.enterprise.cluster.UserSynchronizationEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
@@ -15,7 +13,6 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.ClusterFlowControlStreamObserver;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
@@ -37,7 +34,6 @@ import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.QueryComplete;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -99,7 +95,7 @@ public class RemoteConnection  {
         logger.debug("Connecting to: {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
         try {
             InetAddress[] addresses = InetAddress.getAllByName(clusterNode.getInternalHostName());
-            logger.debug("Connect to {}", addresses);
+            logger.debug("Connect to {}", addresses[0]);
         } catch (UnknownHostException e) {
             if (!String.valueOf(e.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
                 logger.warn("Unknown host: {}", clusterNode.getInternalHostName());

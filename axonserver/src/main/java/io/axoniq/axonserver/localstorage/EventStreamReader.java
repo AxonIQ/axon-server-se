@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import org.springframework.boot.actuate.health.Health;
 
 import java.util.concurrent.CompletableFuture;

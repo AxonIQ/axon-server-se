@@ -145,7 +145,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public boolean isClustered() {
-        return Feature.CLUSTERING.enabled(limits) && messagingPlatformConfiguration.getCluster().isEnabled();
+        return Feature.CLUSTERING.enabled(limits);
     }
 
     private void checkCurrentNodeSaved() {

@@ -76,7 +76,7 @@ public class SerializedCommandResponse extends SerializedMessage<CommandResponse
                                             ExtensionRegistryLite extensionRegistryLite)
                     throws InvalidProtocolBufferException {
                 try {
-                    return new SerializedCommandResponse(codedInputStream.readByteArray());
+                    return new SerializedCommandResponse(CommandResponse.parseFrom(codedInputStream));
                 } catch (IOException e) {
                     throw new InvalidProtocolBufferException(e);
                 }

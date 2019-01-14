@@ -3,6 +3,7 @@ package io.axoniq.platform.application;
 import io.axoniq.platform.application.jpa.Application;
 import io.axoniq.platform.application.jpa.ApplicationModelVersion;
 import io.axoniq.platform.application.jpa.ApplicationRole;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
@@ -35,6 +36,7 @@ public class ApplicationController {
         this.hasher = hasher;
     }
 
+    @Async
     public List<Application> getApplications() {
         return applicationRepository.findAll();
     }

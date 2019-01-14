@@ -29,7 +29,7 @@ public class FlowControlledStreamObserver<T> implements StreamObserver<T> {
 
     @Override
     public void onNext(T value) {
-        if (permitsLeft.decrementAndGet() > 0) {
+        if (permitsLeft.getAndDecrement() > 0) {
             synchronized (delegate) {
                 delegate.onNext(value);
             }
@@ -49,7 +49,7 @@ public class FlowControlledStreamObserver<T> implements StreamObserver<T> {
     }
 
     public void addPermits(long count){
-        long old = permitsLeft.getAndAdd(count);
+        long old = permitsLeft.getAndUpdate(o -> Math.max(0, o) + count);
         logger.debug("Adding {} permits, #permits was: {}", count, old);
     }
 }

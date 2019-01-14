@@ -1,8 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
@@ -173,12 +172,10 @@ public class CommandService implements AxonServerClientService {
         SerializedCommand request = new SerializedCommand(command);
         String clientId = command.getClientId();
         if( logger.isTraceEnabled()) logger.trace("{}: Received command: {}", clientId, request);
-        commandDispatcher.on(new DispatchEvents.DispatchCommand(contextProvider.getContext(),
-                                                                       request,
-                                                                       commandResponse -> safeReply(clientId,
+        commandDispatcher.dispatch(contextProvider.getContext(), request, commandResponse -> safeReply(clientId,
                                                                                                     commandResponse,
                                                                                                     responseObserver),
-                                                                       false));
+                                                                       false);
     }
 
     private void safeReply(String clientId, SerializedCommandResponse commandResponse, StreamObserver<SerializedCommandResponse> responseObserver) {

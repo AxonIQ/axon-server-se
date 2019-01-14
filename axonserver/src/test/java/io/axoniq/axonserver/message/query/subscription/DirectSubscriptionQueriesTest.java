@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.query.subscription;
 
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryCanceled;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryRequested;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.message.query.subscription.DirectSubscriptionQueries.ContextSubscriptionQuery;
 import org.junit.*;

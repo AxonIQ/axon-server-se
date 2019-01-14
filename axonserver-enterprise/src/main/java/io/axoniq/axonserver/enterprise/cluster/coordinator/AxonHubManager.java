@@ -36,8 +36,6 @@ public class AxonHubManager {
 
     private final String thisNodeName;
 
-    private final Boolean clusterEnabled;
-
     private final Iterable<Context> dynamicContexts;
 
     private final ApplicationEventPublisher eventPublisher;
@@ -58,7 +56,7 @@ public class AxonHubManager {
                           ApplicationEventPublisher applicationEventPublisher) {
         this(
                 messagingPlatformConfiguration.getName(),
-                messagingPlatformConfiguration.getCluster().isEnabled(),
+                true,
                 () -> contextController.getContexts().iterator(),
                 applicationEventPublisher,
                 coordinatorElectionProcess);
@@ -70,7 +68,6 @@ public class AxonHubManager {
                           ApplicationEventPublisher applicationEventPublisher,
                           CoordinatorElectionProcess electionProcess) {
         this.thisNodeName = thisNodeName;
-        this.clusterEnabled = clusterEnabled;
         this.dynamicContexts = dynamicContexts;
         this.eventPublisher = applicationEventPublisher;
         this.electionProcess = electionProcess;
@@ -168,7 +165,7 @@ public class AxonHubManager {
         if (!context.isMessagingMember(thisNodeName)) {
             return;
         }
-        if (!clusterEnabled) {
+        if (context.getMessagingNodes().size() == 1) {
             coordinatorPerContext.put(context.getName(), thisNodeName);
             return;
         }

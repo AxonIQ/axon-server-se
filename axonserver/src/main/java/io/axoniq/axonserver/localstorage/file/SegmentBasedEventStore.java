@@ -4,7 +4,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -544,14 +543,16 @@ public abstract class SegmentBasedEventStore implements EventStore {
     protected void renameFileIfNecessary(long segment) {
         File dataFile = storageProperties.oldDataFile(context, segment);
         if( dataFile.exists()) {
-            dataFile.renameTo(storageProperties.dataFile(context, segment));
+            if( ! dataFile.renameTo(storageProperties.dataFile(context, segment)) ) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + dataFile.getAbsolutePath() + " to " + storageProperties.dataFile(context, segment) );
+            }
             File indexFile = storageProperties.oldIndex(context, segment);
-            if( indexFile.exists()) {
-                indexFile.renameTo(storageProperties.index(context, segment));
+            if( indexFile.exists() && ! indexFile.renameTo(storageProperties.index(context, segment)) ) {
+                    throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + indexFile.getAbsolutePath() + " to " + storageProperties.index(context, segment) );
             }
             File bloomFile = storageProperties.oldBloomFilter(context, segment);
-            if( bloomFile.exists()) {
-                bloomFile.renameTo(storageProperties.bloomFilter(context, segment));
+            if( bloomFile.exists() && ! bloomFile.renameTo(storageProperties.bloomFilter(context, segment))) {
+                    throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + bloomFile.getAbsolutePath() + " to " + storageProperties.bloomFilter(context, segment) );
             }
         }
     }

@@ -11,7 +11,7 @@ import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
+import io.axoniq.axonserver.enterprise.cluster.internal.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.message.command.CommandDispatcher;

@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ProcessorStatusRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PauseEventProcessor;

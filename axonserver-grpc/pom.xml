@@ -113,18 +113,6 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>generate-classes-for-internal-protobuf-api</id>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>compile-custom</goal>
-                        </goals>
-                        <configuration>
-                            <additionalProtoPathElements>
-                                <additionalProtoPathElement>${project.build.directory}/proto</additionalProtoPathElement>
-                            </additionalProtoPathElements>
-                        </configuration>
-                    </execution>
-                    <execution>
                         <id>generate-classes-for-public-protobuf-api</id>
                         <goals>
                             <goal>compile</goal>

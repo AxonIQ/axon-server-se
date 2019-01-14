@@ -20,6 +20,7 @@ import org.springframework.data.util.CloseableIterator;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
@@ -217,7 +218,7 @@ public abstract class JdbcAbstractStore implements EventStore {
                     try {
                         return readEventWithToken(resultSet);
                     } catch (SQLException e) {
-                        throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+                        throw new NoSuchElementException(e.getMessage());
                     }
                 }
             };

@@ -6,6 +6,13 @@
     <artifactId>axonserver-parent</artifactId>
     <packaging>pom</packaging>
     <version>4.0.2-SNAPSHOT</version>
+    <dependencies>
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <version>4.1.0</version>
+        </dependency>
+    </dependencies>
 
     <name>AxonIQ AxonServer</name>
 
@@ -15,12 +22,12 @@
         <module>sample-applications/sample-command-processor-axonhub-client</module>
         <module>sample-applications/sample-command-processor-axonserver-client</module>
         <module>axonserver-accessdb</module>
+        <module>axonserver-internal-grpc</module>
         <module>axonserver-grpc</module>
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
         <module>axonserver-cli</module>
-        <module>plugins/axonserver-rabbitmq-connector</module>
-        <module>plugins/axonserver-kafka-connector</module>
+        <module>axonserver-compatibility-tests</module>
     </modules>
 
     <properties>

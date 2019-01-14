@@ -1,12 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster.events;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ModelVersion;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import org.springframework.context.ApplicationEvent;
 
 import java.util.List;
 

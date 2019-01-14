@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.message.query;
 
 
-import io.axoniq.axonserver.SubscriptionEvents;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -45,23 +44,6 @@ public class QueryDispatcherTest {
     public void setup() {
         QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(Metrics.globalRegistry, new DefaultMetricCollector());
         queryDispatcher = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry);
-    }
-
-    @Test
-    public void subscribeExpectConfirmation() {
-        CountingStreamObserver<QueryProviderInbound> inboundStreamObserver = new CountingStreamObserver<>();
-
-        QueryHandler queryHandler = new DirectQueryHandler(inboundStreamObserver,new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"), "componentName");
-        queryDispatcher.on(new SubscriptionEvents.SubscribeQuery(Topology.DEFAULT_CONTEXT,
-                                                                 QuerySubscription.newBuilder()
-                                                                                  .setQuery("test")
-                                                                                  .setResultName("testResult")
-                                                                                  .setComponentName("testComponent")
-                                                                                  .setMessageId("testMessageId")
-                                                                                  .setNrOfHandlers(1).build(), queryHandler));
-        assertEquals(0, inboundStreamObserver.count );
-        verify(registrationCache, times(1)).add(eq(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test")),
-                                                any(), any());
     }
 
     @Test

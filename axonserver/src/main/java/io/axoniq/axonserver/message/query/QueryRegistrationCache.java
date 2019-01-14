@@ -1,7 +1,10 @@
 package io.axoniq.axonserver.message.query;
 
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -32,6 +35,20 @@ public class QueryRegistrationCache {
 
     public QueryRegistrationCache(QueryHandlerSelector queryHandlerSelector) {
         this.queryHandlerSelector = queryHandlerSelector;
+    }
+
+    @EventListener
+    public void on(SubscriptionEvents.UnsubscribeQuery event) {
+        QuerySubscription unsubscribe = event.getUnsubscribe();
+        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), unsubscribe);
+        remove(queryDefinition, event.clientIdentification());
+    }
+
+    @EventListener
+    public void on(SubscriptionEvents.SubscribeQuery event) {
+        QuerySubscription subscription = event.getSubscription();
+        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), subscription);
+        add(queryDefinition, subscription.getResultName(), event.getQueryHandler());
     }
 
     public void remove(ClientIdentification clientId) {

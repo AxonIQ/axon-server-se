@@ -24,6 +24,18 @@
             <artifactId>axonserver</artifactId>
             <version>${project.parent.version}</version>
             <classifier>lib</classifier>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.axoniq.axonserver</groupId>
+                    <artifactId>axonserver-grpc</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-internal-grpc</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
 
         <dependency>

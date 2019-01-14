@@ -1,8 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
@@ -16,6 +15,8 @@ import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -108,10 +109,10 @@ public class CommandServiceTest {
     @Test
     public void dispatch() {
         doAnswer(invocationOnMock -> {
-            DispatchEvents.DispatchCommand dispatchCommand = (DispatchEvents.DispatchCommand) invocationOnMock.getArguments()[0];
-            dispatchCommand.getResponseObserver().accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
+            Consumer<SerializedCommandResponse> responseConsumer= (Consumer<SerializedCommandResponse>) invocationOnMock.getArguments()[2];
+            responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
-        }).when(commandDispatcher).on(isA(DispatchEvents.DispatchCommand.class));
+        }).when(commandDispatcher).dispatch(any(), any(), any(), anyBoolean());
         CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.count);

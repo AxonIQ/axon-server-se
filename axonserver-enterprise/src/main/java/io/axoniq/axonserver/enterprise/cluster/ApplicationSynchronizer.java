@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.grpc.ProtoConverter;
+import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.platform.application.ApplicationController;
 import io.axoniq.platform.application.ApplicationModelController;
 import io.axoniq.platform.application.jpa.Application;
@@ -32,7 +32,7 @@ public class ApplicationSynchronizer {
         try {
             switch (application.getAction()) {
                 case MERGE:
-                    applicationController.synchronize(ProtoConverter
+                    applicationController.synchronize(ApplicationProtoConverter
                                                               .createJpaApplication(application));
                     break;
                 case DELETE:
@@ -52,7 +52,7 @@ public class ApplicationSynchronizer {
             if( applicationModelController.getModelVersion(Application.class) < event.getApplications().getVersion()) {
                 applicationController.clearApplications();
                 event.getApplications().getApplicationList().forEach(app -> applicationController
-                        .synchronize(ProtoConverter.createJpaApplication(app)));
+                        .synchronize(ApplicationProtoConverter.createJpaApplication(app)));
                 applicationModelController.updateModelVersion(Application.class, event.getApplications().getVersion());
             }
         }

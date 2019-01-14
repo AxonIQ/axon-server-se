@@ -4,6 +4,7 @@ import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
+import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
@@ -79,7 +80,7 @@ public class PublicRestController {
         ExtendedClusterNode node = mapExtended(clusterController.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
-        node.setClustered(clusterConfiguration.isEnabled());
+        node.setClustered(Feature.CLUSTERING.enabled(limits));
         return node;
     }
 

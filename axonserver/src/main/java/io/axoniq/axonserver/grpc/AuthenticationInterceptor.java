@@ -27,7 +27,10 @@ public class AuthenticationInterceptor implements ServerInterceptor{
         String context = GrpcMetadataKeys.CONTEXT_KEY.get();
 
         if( token == null) {
-            metadata.get(GrpcMetadataKeys.AXONDB_TOKEN_KEY);
+            token = metadata.get(GrpcMetadataKeys.AXONDB_TOKEN_KEY);
+        }
+        if( context == null) {
+            context = metadata.get(GrpcMetadataKeys.AXONDB_CONTEXT_MD_KEY);
         }
 
         if( token == null) {

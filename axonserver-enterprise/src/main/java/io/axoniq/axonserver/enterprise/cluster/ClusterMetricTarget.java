@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.internal.Metric;
 import io.axoniq.axonserver.grpc.internal.NodeMetrics;
+import io.axoniq.axonserver.metric.AxonServerMetric;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
@@ -27,10 +27,11 @@ public class ClusterMetricTarget implements MetricCollector {
 
     private final Map<String, Collection<Metric>> clusterMetricMap = new ConcurrentHashMap<>();
 
-    public Iterable<Metric> getAll() {
+    public Iterable<AxonServerMetric> getAll() {
         return clusterMetricMap.entrySet().stream()
                                .map(Map.Entry::getValue)
                                .flatMap(Collection::stream)
+                               .map(GrpcBackedMetric::new)
                                .collect(Collectors.toList());
     }
 

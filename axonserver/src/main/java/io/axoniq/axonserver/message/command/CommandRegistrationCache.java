@@ -1,10 +1,13 @@
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.hashing.ConsistentHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -131,6 +134,19 @@ public class CommandRegistrationCache {
         if( !found) return null;
         return commandHandlersPerClientContext.get(clientIdentification);
     }
+
+    @EventListener
+    public void on(SubscriptionEvents.SubscribeCommand event) {
+        CommandSubscription request = event.getRequest();
+        add( request.getCommand(), event.getHandler());
+    }
+
+    @EventListener
+    public void on(SubscriptionEvents.UnsubscribeCommand event) {
+        CommandSubscription request = event.getRequest();
+        remove(event.clientIdentification(),request.getCommand());
+    }
+
 
     public static class RegistrationEntry {
         private final String command;

@@ -10,7 +10,7 @@ import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
+import io.axoniq.axonserver.enterprise.cluster.internal.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.AssertUtils;

@@ -105,6 +105,10 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
         return confirmation;
     }
 
+    public SerializedCommand getSerializedCommand() {
+        return serializedCommand;
+    }
+
     public static class Builder extends com.google.protobuf.GeneratedMessageV3.Builder<Builder> {
         private SerializedCommand serializedCommand;
         private Confirmation confirmation;

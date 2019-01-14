@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyRepository;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterService;
