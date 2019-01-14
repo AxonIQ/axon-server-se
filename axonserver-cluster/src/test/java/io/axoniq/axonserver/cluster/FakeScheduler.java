@@ -4,16 +4,28 @@ import io.axoniq.axonserver.cluster.scheduler.DefaultScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.temporal.TemporalAccessor;
+import java.time.temporal.TemporalField;
 import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.concurrent.Delayed;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Integer.compare;
+import static java.time.Duration.between;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * {@link Scheduler} implementation for test purposes. It allows for manual moving time forward.
@@ -77,25 +89,37 @@ public class FakeScheduler implements Scheduler {
     @Override
     public ScheduledRegistration scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
                                                         TimeUnit timeUnit) {
-        List<ScheduledTask> newlyAddedTasks = new ArrayList<>(1001);
-        Instant trigger = clock.instant().plusMillis(timeUnit.toMillis(initialDelay));
-        newlyAddedTasks.add(new ScheduledTask(command, trigger));
-        for (int i = 0; i < 1_000; i++) { // TODO: 1/11/2019 think of better approach than adding next 1000 triggers
-            trigger = trigger.plusMillis(timeUnit.toMillis(delay));
-            newlyAddedTasks.add(new ScheduledTask(command, trigger));
-        }
-        tasks.addAll(newlyAddedTasks);
-        return new DefaultScheduledRegistration(clock,
-                                                () -> tasks.removeAll(newlyAddedTasks),
-                                                unit -> {
-                                                    for (ScheduledTask newlyAddedTask : newlyAddedTasks) {
-                                                        if (tasks.contains(newlyAddedTask)) {
-                                                            return getDelay(newlyAddedTask.scheduledTime, unit);
-                                                        }
-                                                    }
-                                                    // all passed
-                                                    return 0L;
-                                                });
+        AtomicReference<ScheduledRegistration> registration = new AtomicReference<>();
+        Runnable runnable = new Runnable() {
+
+            private Instant next = clock.instant().plusMillis(timeUnit.toMillis(initialDelay));
+
+            @Override
+            public void run() {
+                command.run();
+                next = next.plusMillis(timeUnit.toMillis(delay));
+                registration.set(schedule(this, between(clock.instant(), next).toMillis(), MILLISECONDS));
+            }
+        };
+
+        registration.set(schedule(runnable, initialDelay, timeUnit));
+
+        return new ScheduledRegistration() {
+            @Override
+            public long getDelay(TimeUnit unit) {
+                return registration.get().getDelay(unit);
+            }
+
+            @Override
+            public long getElapsed(TimeUnit unit) {
+                return registration.get().getElapsed(unit);
+            }
+
+            @Override
+            public void cancel() {
+                registration.get().cancel();
+            }
+        };
     }
 
     @Override
@@ -129,7 +153,7 @@ public class FakeScheduler implements Scheduler {
      * @param delayInMillis for how long to move the time wheel in millis
      */
     public void timeElapses(long delayInMillis) {
-        timeElapses(delayInMillis, TimeUnit.MILLISECONDS);
+        timeElapses(delayInMillis, MILLISECONDS);
     }
 
     /**
