@@ -2,7 +2,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.concurrent.ExecutionException;
  * Author: marc
  */
 public class SyncStorage {
-
 
     private final EventStore datafileManagerChain;
 

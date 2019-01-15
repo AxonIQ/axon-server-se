@@ -115,7 +115,9 @@ public class CommandRegistrationCache {
      * @return a command handler for the command (or null of none found)
      */
     public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
-        String client = consistentHashPerContext.get(context)
+        ConsistentHash hash = consistentHashPerContext.get(context);
+        if( hash == null) return null;
+        String client = hash
                                                 .getMember(routingKey, request.getName())
                                                 .map(ConsistentHash.ConsistentHashMember::getClient)
                                                 .orElse(null);

@@ -21,7 +21,6 @@
         <module>axonserver</module>
         <module>sample-applications/sample-command-processor-axonhub-client</module>
         <module>sample-applications/sample-command-processor-axonserver-client</module>
-        <module>axonserver-accessdb</module>
         <module>axonserver-internal-grpc</module>
         <module>axonserver-grpc</module>
         <module>axonserver-enterprise</module>

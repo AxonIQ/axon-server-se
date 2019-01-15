@@ -64,6 +64,12 @@
             <artifactId>jaxb-runtime</artifactId>
             <version>2.3.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>
@@ -268,10 +274,6 @@
                         </executions>
                         <configuration>
                             <excludes>
-                                <exclude>
-                                    <groupId>io.axoniq.axonserver</groupId>
-                                    <artifactId>axonserver-accessdb</artifactId>
-                                </exclude>
                                 <exclude>
                                     <groupId>io.axoniq.axonserver</groupId>
                                     <artifactId>axonserver</artifactId>

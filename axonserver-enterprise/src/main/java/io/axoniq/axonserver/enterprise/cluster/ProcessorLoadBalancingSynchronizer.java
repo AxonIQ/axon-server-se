@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
@@ -13,7 +14,6 @@ import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.GetProcessorsLBStrategyRequest;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorsLBStrategy;
-import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
@@ -27,13 +27,13 @@ import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.RE
 @Controller
 public class ProcessorLoadBalancingSynchronizer {
 
-    private final ApplicationModelController applicationController;
+    private final ModelVersionController applicationController;
     private final ProcessorLoadBalancingRepository repository;
     private final Converter<ProcessorLBStrategy, ProcessorLoadBalancing> mapping;
     private final Publisher<ConnectorResponse> publisher;
 
     @Autowired
-    public ProcessorLoadBalancingSynchronizer(ApplicationModelController applicationController,
+    public ProcessorLoadBalancingSynchronizer(ModelVersionController applicationController,
                                               ProcessorLoadBalancingRepository repository,
                                               MessagingClusterService clusterService) {
         this(applicationController, repository,
@@ -43,7 +43,7 @@ public class ProcessorLoadBalancingSynchronizer {
         clusterService.onConnectorCommand(REQUEST_PROCESSOR_LOAD_BALANCING_STRATEGIES, this::onRequestProcessorsStrategies);
     }
 
-    ProcessorLoadBalancingSynchronizer(ApplicationModelController applicationController,
+    ProcessorLoadBalancingSynchronizer(ModelVersionController applicationController,
                                        ProcessorLoadBalancingRepository repository,
                                        Publisher<ConnectorResponse> publisher,
                                        Converter<ProcessorLBStrategy, ProcessorLoadBalancing> mapping) {

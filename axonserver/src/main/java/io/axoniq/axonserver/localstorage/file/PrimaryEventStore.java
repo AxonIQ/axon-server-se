@@ -5,6 +5,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
@@ -13,6 +14,7 @@ import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.util.CloseableIterator;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +26,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.CompletableFuture;
@@ -260,6 +263,48 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
 
         initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(context)));
+    }
+
+    @Override
+    public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
+
+        return new CloseableIterator<SerializedEventWithToken>() {
+
+            @Override
+            public void close() {
+                if( eventIterator != null) eventIterator.close();
+            }
+
+            long nextToken = start;
+            EventIterator eventIterator;
+
+            @Override
+            public boolean hasNext() {
+                return nextToken <= getLastToken();
+            }
+
+            @Override
+            public SerializedEventWithToken next() {
+                if( eventIterator == null) {
+                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
+                }
+                SerializedEventWithToken event = null;
+                if( eventIterator.hasNext() ) {
+                    event = eventIterator.next().getSerializedEventWithToken();
+                } else {
+                    eventIterator.close();
+                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
+                    if( eventIterator.hasNext()) {
+                        event = eventIterator.next().getSerializedEventWithToken();
+                    }
+                }
+                if( event != null) {
+                    nextToken = event.getToken() + 1;
+                    return event;
+                }
+                throw new NoSuchElementException("No event for token " + nextToken);
+            }
+        };
     }
 
     @Override

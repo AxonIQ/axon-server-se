@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.platform.KeepNames;
 
 import java.util.HashMap;
 import java.util.Map;

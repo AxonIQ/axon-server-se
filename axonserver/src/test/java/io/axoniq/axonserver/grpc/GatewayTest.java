@@ -2,6 +2,8 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
@@ -11,8 +13,6 @@ import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.PathMapping;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;

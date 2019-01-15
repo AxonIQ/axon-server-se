@@ -1,5 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
@@ -61,11 +66,6 @@ import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.topology.EventStoreLocator;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserController;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -115,7 +115,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final ClusterController clusterController;
     private final UserController userController;
     private final ApplicationController applicationController;
-    private final ApplicationModelController applicationModelController;
+    private final ModelVersionController applicationModelController;
     private final ContextController contextController;
     private final EventStoreLocator eventStoreManager;
     private final ApplicationEventPublisher eventPublisher;
@@ -141,7 +141,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             ClusterController clusterController,
             UserController userController,
             ApplicationController applicationController,
-            ApplicationModelController applicationModelController,
+            ModelVersionController applicationModelController,
             ContextController contextController,
             EventStoreLocator eventStoreManager,
             ApplicationEventPublisher eventPublisher) {

@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.enterprise.component.processor.balancing.stategy;
 
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 import io.axoniq.axonserver.grpc.ProcessorLoadBalancingProtoConverter;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
-import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Controller;
@@ -21,16 +21,16 @@ import java.util.Optional;
 @Primary
 public class ProcessorLoadBalancingController  {
 
-    private final ApplicationModelController applicationController;
+    private final ModelVersionController modelVersionController;
 
     private final ProcessorLoadBalancingRepository repository;
 
     private final ApplicationEventPublisher eventPublisher;
 
-    public ProcessorLoadBalancingController(ApplicationModelController applicationController,
+    public ProcessorLoadBalancingController(ModelVersionController modelVersionController,
                                             ProcessorLoadBalancingRepository repository,
                                             ApplicationEventPublisher eventPublisher) {
-        this.applicationController = applicationController;
+        this.modelVersionController = modelVersionController;
         this.repository = repository;
         this.eventPublisher = eventPublisher;
     }
@@ -45,7 +45,7 @@ public class ProcessorLoadBalancingController  {
     }
 
     private void sync(ProcessorLoadBalancing loadBalancing){
-        applicationController.incrementModelVersion(ProcessorLoadBalancing.class);
+        modelVersionController.incrementModelVersion(ProcessorLoadBalancing.class);
         ProcessorLBStrategy processorLBStrategy = new ProcessorLoadBalancingProtoConverter().unmap(loadBalancing);
         eventPublisher.publishEvent(new LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived(processorLBStrategy, false));
     }

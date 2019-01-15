@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.platform.KeepNames;
-import io.axoniq.platform.util.StringUtils;
+import io.axoniq.axonserver.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +29,7 @@ public class CommandRequestJson {
         Command.Builder builder = Command.newBuilder()
                                          .setName(name)
                                          .setMessageIdentifier(StringUtils.getOrDefault(messageIdentifier,
-                                                                                UUID.randomUUID().toString()))
+                                                                                        UUID.randomUUID().toString()))
                                          .setTimestamp(timestamp);
         if( payload != null) {
             builder.setPayload(payload.asSerializedObject());

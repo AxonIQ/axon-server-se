@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.rest.json;
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.SerializedObject;
-import io.axoniq.platform.KeepNames;
-import io.axoniq.platform.util.StringUtils;
+import io.axoniq.axonserver.util.StringUtils;
 
 /**
  * Author: marc

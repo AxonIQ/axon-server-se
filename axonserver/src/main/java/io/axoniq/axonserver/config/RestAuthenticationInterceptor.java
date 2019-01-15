@@ -4,7 +4,7 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.util.StringUtils;
+import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;

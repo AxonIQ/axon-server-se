@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.query.DefaultQueries;
 import io.axoniq.axonserver.component.query.Query;
@@ -11,7 +12,6 @@ import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.rest.json.QueryRequestJson;
 import io.axoniq.axonserver.rest.json.QueryResponseJson;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.KeepNames;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;

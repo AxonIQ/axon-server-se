@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.platform.application.jpa.Application;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -18,10 +18,10 @@ import org.springframework.stereotype.Controller;
 public class ApplicationSynchronizer {
     private final Logger logger = LoggerFactory.getLogger(ApplicationSynchronizer.class);
     private final ApplicationController applicationController;
-    private final ApplicationModelController applicationModelController;
+    private final ModelVersionController applicationModelController;
 
     public ApplicationSynchronizer(ApplicationController applicationController,
-                                   ApplicationModelController applicationModelController) {
+                                   ModelVersionController applicationModelController) {
         this.applicationController = applicationController;
         this.applicationModelController = applicationModelController;
     }

@@ -63,20 +63,20 @@ public class EventDispatcher implements AxonServerClientService {
                     InputStreamMarshaller.inputStreamMarshaller(), ProtoUtils.marshaller(Confirmation.getDefaultInstance()))
                           .build();
 
-    private final EventStoreLocator eventStoreClient;
+    private final EventStoreLocator eventStoreLocator;
     private final ContextProvider contextProvider;
     private final MetricCollector clusterMetrics;
     private final Map<ClientIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Counter eventsCounter;
     private final Counter snapshotCounter;
 
-    public EventDispatcher(EventStoreLocator eventStoreClient,
+    public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
                            MeterRegistry meterRegistry,
                            MetricCollector clusterMetrics) {
         this.contextProvider = contextProvider;
         this.clusterMetrics = clusterMetrics;
-        this.eventStoreClient = eventStoreClient;
+        this.eventStoreLocator = eventStoreLocator;
         eventsCounter = meterRegistry.counter(EVENTS_METRIC_NAME);
         snapshotCounter = meterRegistry.counter(SNAPSHOTS_METRIC_NAME);
     }
@@ -87,7 +87,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public StreamObserver<InputStream> appendEvent(String context, StreamObserver<Confirmation> responseObserver) {
-        EventStore eventStore = eventStoreClient.getEventStore(context);
+        EventStore eventStore = eventStoreLocator.getEventStore(context);
 
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
@@ -156,7 +156,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
-        EventStore eventStore = eventStoreClient.getEventStore(context);
+        EventStore eventStore = eventStoreLocator.getEventStore(context);
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                     NO_EVENT_STORE_CONFIGURED + context));
@@ -168,7 +168,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
-        List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected.getClient());
+        List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected.clientIdentification());
         logger.debug("application disconnected: {}, eventsStreams: {}", applicationDisconnected.getClient(), eventsStreams);
 
         if( eventsStreams != null) {
@@ -245,7 +245,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
-        EventStore eventStore = eventStoreClient.getEventStore(context);
+        EventStore eventStore = eventStoreLocator.getEventStore(context);
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                     NO_EVENT_STORE_CONFIGURED + context));

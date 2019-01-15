@@ -27,7 +27,7 @@ public class ApplicationProtoConverterTest {
 
     @Test
     public void createApplication() throws Exception {
-        io.axoniq.platform.application.jpa.Application jpaApplication = ApplicationProtoConverter
+        io.axoniq.axonserver.access.jpa.Application jpaApplication = ApplicationProtoConverter
                 .createJpaApplication(application);
         assertEquals("Description", jpaApplication.getDescription());
         assertEquals("1234", jpaApplication.getHashedToken());

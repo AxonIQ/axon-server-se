@@ -1,5 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
@@ -16,9 +19,6 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.platform.user.UserController;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
@@ -55,7 +55,7 @@ public class MessagingClusterServiceTest {
     private ContextController contextController;
 
     @Mock
-    private ApplicationModelController applicationModelController;
+    private ModelVersionController applicationModelController;
 
     @Mock
     private EventStoreManager eventStoreManager;

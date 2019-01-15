@@ -52,11 +52,11 @@ public class CommandDispatcher {
     public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if( proxied) {
             CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
-            dispatchToCommandHandler(context, request, handler, responseObserver);
+            dispatchToCommandHandler( request, handler, responseObserver);
         } else {
             commandCounter.increment();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
-            dispatchToCommandHandler(context, request, commandHandler, responseObserver);
+            dispatchToCommandHandler( request, commandHandler, responseObserver);
         }
     }
 
@@ -78,9 +78,10 @@ public class CommandDispatcher {
         handlePendingCommands(client);
     }
 
-    private void dispatchToCommandHandler(String context, SerializedCommand command, CommandHandler commandHandler,
+    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
                                           Consumer<SerializedCommandResponse> responseObserver) {
         if (commandHandler == null) {
+            logger.warn("No Handler for command: {}", command.getName() );
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                    .setMessageIdentifier(command.getMessageIdentifier())
                                                    .setRequestIdentifier(command.getMessageIdentifier())

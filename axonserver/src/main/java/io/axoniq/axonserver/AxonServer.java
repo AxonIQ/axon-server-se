@@ -13,11 +13,9 @@ import javax.annotation.PreDestroy;
 /**
  * Author: marc
  */
-@SpringBootApplication(scanBasePackages = "io.axoniq")
+@SpringBootApplication
 @EnableAsync
 @EnableScheduling
-@EnableJpaRepositories("io.axoniq")
-@EntityScan("io.axoniq")
 public class AxonServer {
     public static void main(String[] args) {
         System.setProperty("spring.config.name", "axonserver");

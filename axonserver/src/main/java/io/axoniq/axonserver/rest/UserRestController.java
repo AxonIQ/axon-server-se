@@ -1,14 +1,14 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.jpa.UserRole;
+import io.axoniq.axonserver.access.role.RoleController;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.platform.role.Role;
-import io.axoniq.platform.role.RoleController;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserController;
-import io.axoniq.platform.user.UserRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;

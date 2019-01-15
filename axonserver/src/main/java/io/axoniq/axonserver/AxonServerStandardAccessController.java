@@ -1,9 +1,9 @@
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.PathMapping;
+import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.platform.application.PathMappingRepository;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.PathMapping;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;

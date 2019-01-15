@@ -100,6 +100,26 @@ public class CommandDispatcherTest {
     }
 
     @Test
+    public void dispatchUnknownContext() {
+        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        Command request = Command.newBuilder()
+                                 .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
+                                 .setName("Command")
+                                 .setMessageIdentifier("12")
+                                 .build();
+        when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(null);
+
+        commandDispatcher.dispatch("UnknownContext", new SerializedCommand(request), response -> {
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }, false);
+        assertEquals(1, responseObserver.count);
+        assertEquals("AXONIQ-4000", responseObserver.responseList.get(0).getErrorCode());
+        Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
+
+    }
+
+    @Test
     public void dispatchProxied() throws Exception {
         CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
         Command request = Command.newBuilder()

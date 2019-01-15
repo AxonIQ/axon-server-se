@@ -1,10 +1,8 @@
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.platform.application.AccessController;
-import io.axoniq.platform.application.PathMappingRepository;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;

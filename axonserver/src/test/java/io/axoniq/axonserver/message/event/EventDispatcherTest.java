@@ -1,8 +1,10 @@
 package io.axoniq.axonserver.message.event;
 
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -17,7 +19,6 @@ import org.mockito.runners.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -36,7 +37,7 @@ public class EventDispatcherTest {
     private EventStore eventStoreClient;
 
     @Mock
-    private EventStoreLocator eventStoreManager;
+    private EventStoreLocator eventStoreLocator;
 
     @Mock
     private StreamObserver<InputStream> appendEventConnection;
@@ -44,8 +45,9 @@ public class EventDispatcherTest {
     @Before
     public void setUp() {
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
-        when(eventStoreManager.getEventStore(any())).thenReturn(eventStoreClient);
-        testSubject = new EventDispatcher(eventStoreManager, () -> Topology.DEFAULT_CONTEXT,
+        when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
+        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
+        testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
                                           Metrics.globalRegistry,
                                           new DefaultMetricCollector());
     }
@@ -87,7 +89,8 @@ public class EventDispatcherTest {
     }
 
     @Test
-    public void listAggregateEvents() {
+    public void listAggregateEventsNoEventStore() {
+        testSubject.listAggregateEvents("OtherContext", GetAggregateEventsRequest.newBuilder().build(), new CountingStreamObserver<>());
     }
 
     @Test
@@ -117,9 +120,11 @@ public class EventDispatcherTest {
             return eventStoreResponseStream;
         });
         StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(responseObserver);
-        inputStream.onNext(GetEventsRequest.newBuilder().build());
+        inputStream.onNext(GetEventsRequest.newBuilder().setClientId("sampleClient").build());
         assertEquals(1, responseObserver.count);
         assertTrue(responseObserver.completed);
+        testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "myComponent", "sampleClient"));
+        assertTrue(testSubject.eventTrackerStatus().isEmpty());
     }
 
 

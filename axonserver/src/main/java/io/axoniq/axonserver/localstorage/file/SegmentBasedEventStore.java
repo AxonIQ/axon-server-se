@@ -262,44 +262,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     @Override
     public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
-
-        return new CloseableIterator<SerializedEventWithToken>() {
-
-            @Override
-            public void close() {
-                if( eventIterator != null) eventIterator.close();
-            }
-
-            long nextToken = start;
-            EventIterator eventIterator;
-
-            @Override
-            public boolean hasNext() {
-                return nextToken <= getLastToken();
-            }
-
-            @Override
-            public SerializedEventWithToken next() {
-                if( eventIterator == null) {
-                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
-                }
-                SerializedEventWithToken event = null;
-                if( eventIterator.hasNext() ) {
-                    event = eventIterator.next().getSerializedEventWithToken();
-                } else {
-                    eventIterator.close();
-                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
-                    if( eventIterator.hasNext()) {
-                        event = eventIterator.next().getSerializedEventWithToken();
-                    }
-                }
-                if( event != null) {
-                    nextToken = event.getToken() + 1;
-                    return event;
-                }
-                throw new NoSuchElementException("No event for token " + nextToken);
-            }
-        };
+        throw new UnsupportedOperationException("Operation only supported on primary event store");
     }
 
     public void validate(int maxSegments) {

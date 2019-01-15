@@ -1,14 +1,10 @@
 package io.axoniq.axonserver.enterprise;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.features.Feature;
-import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.platform.application.AccessController;
-import io.axoniq.platform.application.PathMappingRepository;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationRole;
-import io.axoniq.platform.application.jpa.PathMapping;
+import io.axoniq.axonserver.access.application.AccessController;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.PathMapping;
+import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 

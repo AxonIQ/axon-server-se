@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
@@ -14,7 +15,6 @@ import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.GetLBStrategiesRequest;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.LoadBalancingStrategies;
-import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
@@ -29,13 +29,13 @@ import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.RE
 @Controller @Transactional
 public class LoadBalancingStrategySynchronizer {
 
-    private final ApplicationModelController applicationController;
+    private final ModelVersionController applicationController;
     private final LoadBalanceStrategyRepository repository;
     private final Converter<LoadBalanceStrategy, LoadBalancingStrategy> mapping;
     private final Publisher<ConnectorResponse> publisher;
 
     @Autowired
-    public LoadBalancingStrategySynchronizer(ApplicationModelController applicationController,
+    public LoadBalancingStrategySynchronizer(ModelVersionController applicationController,
                                              LoadBalanceStrategyRepository repository,
                                              MessagingClusterService clusterService) {
         this(applicationController, repository,
@@ -45,7 +45,7 @@ public class LoadBalancingStrategySynchronizer {
         clusterService.onConnectorCommand(REQUEST_LOAD_BALANCING_STRATEGIES, this::onRequestLBStrategies);
     }
 
-    LoadBalancingStrategySynchronizer(ApplicationModelController applicationController,
+    LoadBalancingStrategySynchronizer(ModelVersionController applicationController,
                                       LoadBalanceStrategyRepository repository,
                                       Publisher<ConnectorResponse> publisher,
                                       Converter<LoadBalanceStrategy, LoadBalancingStrategy> mapping) {

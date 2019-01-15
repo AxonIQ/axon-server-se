@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.component.processor.balancing.stategy;
 
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyHolder;
 import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents;
@@ -7,7 +8,6 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.Process
 import io.axoniq.axonserver.grpc.LoadBalancingStrategyProtoConverter;
 import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
-import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Sort;
@@ -27,7 +27,7 @@ public class LoadBalanceStrategyController implements LoadBalanceStrategyHolder 
 
     private final ProcessorLoadBalancingController processorLoadBalancingController;
 
-    private final ApplicationModelController applicationController;
+    private final ModelVersionController applicationController;
 
     private final LoadBalanceStrategyRepository repository;
 
@@ -35,7 +35,7 @@ public class LoadBalanceStrategyController implements LoadBalanceStrategyHolder 
 
     public LoadBalanceStrategyController(
             ProcessorLoadBalancingController processorLoadBalancingController,
-            ApplicationModelController applicationController,
+            ModelVersionController applicationController,
             LoadBalanceStrategyRepository repository,
             ApplicationEventPublisher eventPublisher) {
         this.processorLoadBalancingController = processorLoadBalancingController;

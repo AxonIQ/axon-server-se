@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.platform.KeepNames;
 
 /**
  * Author: marc

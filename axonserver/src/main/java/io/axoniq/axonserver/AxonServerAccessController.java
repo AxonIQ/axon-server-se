@@ -1,7 +1,8 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.PathMapping;
+
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.PathMapping;
 
 import java.util.Collection;
 

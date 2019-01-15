@@ -41,7 +41,8 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * Component that handles the actual interaction with the event store
+ * @author Marc Gathier
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
@@ -102,20 +103,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             private final AtomicBoolean closed = new AtomicBoolean();
             @Override
             public void onNext(InputStream event) {
-                try {
-                    if( eventList.size() < maxEventCount) {
+                if (checkMaxEventCount()) {
+                    try {
                         eventList.add(new SerializedEvent(event));
-                    } else {
-                        if( closed.compareAndSet(false, true)) {
-                            responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
-                                                                                "Maximum number of events in transaction exceeded: "
-                                                                                        + maxEventCount));
-                        }
+                    } catch (Exception e) {
+                        responseObserver.onError(GrpcExceptionBuilder.build(e));
                     }
-
-                } catch (Exception e) {
-                    responseObserver.onError(GrpcExceptionBuilder.build(e));
                 }
+            }
+
+            private boolean checkMaxEventCount() {
+                if (eventList.size() < maxEventCount) {
+                    return true;
+                }
+                if (closed.compareAndSet(false, true)) {
+                    responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
+                                                                        "Maximum number of events in transaction exceeded: "
+                                                                                + maxEventCount));
+                }
+                return false;
             }
 
             @Override
@@ -125,6 +131,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
             @Override
             public void onCompleted() {
+                if( closed.get()) return;
+
                 workersMap.get(context).eventWriteStorage.store(eventList).whenComplete((result, exception) -> {
                     if( exception != null) {
                         if( isClientException(exception)) {
@@ -360,11 +368,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotDatafileManagerChain.contains(syncRequest);
     }
 
-    public long getLastCommitted(String context, EventType eventType) {
-        if( EventType.EVENT.equals(eventType)) return getLastCommittedToken(context);
-
-        return getLastCommittedSnapshot(context);
+    Set<EventStreamController> eventStreamControllers(String context) {
+        return workersMap.get(context).eventStreamControllers();
     }
+
 
     private class Workers {
         private final EventWriteStorage eventWriteStorage;
@@ -437,6 +444,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         eventStreamControllerSet.remove(controller);
                     }
             });
+        }
+
+        Set<EventStreamController> eventStreamControllers() {
+            return eventStreamControllerSet;
         }
     }
 }

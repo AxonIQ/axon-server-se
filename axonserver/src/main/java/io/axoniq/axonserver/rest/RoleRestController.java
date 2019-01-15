@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.platform.role.Role;
-import io.axoniq.platform.role.RoleController;
+import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.access.role.RoleController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

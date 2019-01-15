@@ -172,10 +172,15 @@ public class CommandService implements AxonServerClientService {
         SerializedCommand request = new SerializedCommand(command);
         String clientId = command.getClientId();
         if( logger.isTraceEnabled()) logger.trace("{}: Received command: {}", clientId, request);
-        commandDispatcher.dispatch(contextProvider.getContext(), request, commandResponse -> safeReply(clientId,
-                                                                                                    commandResponse,
-                                                                                                    responseObserver),
-                                                                       false);
+        try {
+            commandDispatcher.dispatch(contextProvider.getContext(), request, commandResponse -> safeReply(clientId,
+                                                                                                           commandResponse,
+                                                                                                           responseObserver),
+                                       false);
+        } catch(Exception ex) {
+            logger.warn("Dispatching failed with unexpected error", ex);
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
+        }
     }
 
     private void safeReply(String clientId, SerializedCommandResponse commandResponse, StreamObserver<SerializedCommandResponse> responseObserver) {

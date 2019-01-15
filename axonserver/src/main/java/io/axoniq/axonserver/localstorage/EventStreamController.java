@@ -82,13 +82,13 @@ public class EventStreamController {
                     if( ! sendFromStream(serializedEventWithToken)) break;
 
                 }
+                processingBacklog.set(false);
 
                 if( remainingPermits.get() > 0) {
                     closeIterator();
                 }
                 this.eventListener = eventWriteStorage.registerEventListener(this::sendFromWriter);
-                processingBacklog.set(false);
-                logger.debug("Done processing backlog at: {}", currentTrackingToken.get());
+                logger.info("Done processing backlog at: {}", currentTrackingToken.get());
             }
         } catch(Exception ex) {
             processingBacklog.set(false);

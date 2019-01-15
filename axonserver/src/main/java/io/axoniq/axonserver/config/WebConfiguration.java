@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
-import io.axoniq.platform.KeepNames;
 import org.springframework.boot.web.servlet.error.DefaultErrorAttributes;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.context.annotation.Bean;

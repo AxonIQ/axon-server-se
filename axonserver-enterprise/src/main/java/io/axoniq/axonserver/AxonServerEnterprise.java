@@ -19,11 +19,9 @@ import javax.annotation.PreDestroy;
 /**
  * Author: marc
  */
-@SpringBootApplication(scanBasePackages = "io.axoniq")
+@SpringBootApplication
 @EnableAsync
 @EnableScheduling
-@EnableJpaRepositories("io.axoniq")
-@EntityScan("io.axoniq")
 @Import(PluginImportSelector.class)
 public class AxonServerEnterprise {
     private static final Logger log = LoggerFactory.getLogger(AxonServerEnterprise.class);

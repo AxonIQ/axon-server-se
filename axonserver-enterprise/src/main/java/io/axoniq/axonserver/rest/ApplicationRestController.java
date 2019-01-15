@@ -1,5 +1,10 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
+import io.axoniq.axonserver.access.application.ApplicationWithToken;
+import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.access.role.RoleController;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -8,11 +13,6 @@ import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.axonserver.rest.json.ApplicationJSON;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationNotFoundException;
-import io.axoniq.platform.application.ApplicationWithToken;
-import io.axoniq.platform.role.Role;
-import io.axoniq.platform.role.RoleController;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;

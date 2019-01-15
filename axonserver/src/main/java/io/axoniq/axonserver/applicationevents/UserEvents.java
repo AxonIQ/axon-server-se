@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.applicationevents;
 
-import io.axoniq.platform.user.User;
-import org.springframework.context.ApplicationEvent;
+
+import io.axoniq.axonserver.access.jpa.User;
 
 /**
  * Author: marc
