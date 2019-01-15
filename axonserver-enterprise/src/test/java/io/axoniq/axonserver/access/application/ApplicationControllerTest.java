@@ -1,18 +1,13 @@
 package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.AxonServer;
-import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.access.jpa.Application;
 import io.axoniq.axonserver.access.jpa.ApplicationRole;
-import io.axoniq.axonserver.access.modelversion.ApplicationModelVersionRepository;
 import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import org.junit.*;
-import org.junit.runner.RunWith;
+import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -57,7 +52,7 @@ public class ApplicationControllerTest {
         testSubject.registerUpdateListener("sample", app -> updateListenerCalled.set(true));
         long modelVersion = versionRepository.getModelVersion(Application.class);
         assertNotEquals( "Token already returned", testSubject.updateJson(new Application("Test1", "TEST1", null,
-                null, new ApplicationRole("READ", "default", null))).getTokenString());
+                                                                                          null, new ApplicationRole("READ", "default", null))).getTokenString());
         Assert.assertEquals(modelVersion+1, versionRepository.getModelVersion(Application.class));
         assertTrue(updateListenerCalled.get());
     }
