@@ -98,6 +98,11 @@ public class FakeScheduler implements Scheduler {
     }
 
     @Override
+    public void execute(Runnable command) {
+        command.run();
+    }
+
+    @Override
     public void shutdownNow() {
         tasks.clear();
     }
