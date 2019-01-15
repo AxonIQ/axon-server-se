@@ -44,11 +44,7 @@ public class ClusterBackupInfoRestController {
     @GetMapping("/log/filenames")
     public List<String> getFilenames(@RequestParam(value = "context", defaultValue = DEFAULT_CONTEXT) String context) {
         LogEntryStore logEntryStore = grpcRaftController.getRaftGroup(context).localLogEntryStore();
-        if (logEntryStore instanceof FileSegmentLogEntryStore) {
-            return ((FileSegmentLogEntryStore)logEntryStore).getBackupFilenames().collect(Collectors.toList());
-        }
-        return Collections.emptyList();
-
+        return logEntryStore.getBackupFilenames().collect(Collectors.toList());
     }
 
     /**
@@ -57,6 +53,7 @@ public class ClusterBackupInfoRestController {
      * to extend the temporal windows suitable to perform a consistent backup of log entry files.
      *
      * @return the full path to the export file
+     *
      * @throws SQLException if a database access error occurs
      */
     @PostMapping("/createControlDbBackup")
@@ -68,5 +65,4 @@ public class ClusterBackupInfoRestController {
                               .forEach(c -> grpcRaftController.getRaftGroup(c).localNode().restartLogCleaning());
         }
     }
-
 }
