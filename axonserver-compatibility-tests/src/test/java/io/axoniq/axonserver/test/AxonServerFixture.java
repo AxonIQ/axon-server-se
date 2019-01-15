@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.test;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
@@ -18,8 +20,6 @@ import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.PathMapping;
 import io.grpc.stub.StreamObserver;
 
 import java.net.UnknownHostException;
@@ -28,9 +28,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Author: marc
