@@ -47,9 +47,9 @@ public interface LogEntryStore {
     Registration registerLogRollbackListener(Consumer<Entry> listener);
 
     /**
-     * Returns the list of files that needs to be backed up.
+     * Returns the stream of filenames that are available for backing up.
      *
-     * @return the full name of files that should be backed up
+     * @return the stream of the full name of files available for backing up
      */
     default Stream<String> getBackupFilenames(){
         return Stream.empty();
