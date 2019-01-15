@@ -20,7 +20,7 @@ import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManager;
-import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataProvider;
+import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.grpc.cluster.Node;
 
@@ -41,7 +41,10 @@ public class GrpcRaftGroup implements RaftGroup {
     public GrpcRaftGroup(String localNodeId, String groupId,
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
                          RaftProperties storageOptions,
-                         Function<String, List<SnapshotDataProvider>> snapshotDataProvidersFactory) {
+                         Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory) {
+        raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
+        raftStateController.init();
+        logEntryProcessor = new LogEntryProcessor(raftStateController);
         LogEntryTransformerFactory eventTransformerFactory = new DefaultLogEntryTransformerFactory();
         IndexManager indexManager = new IndexManager(storageOptions, groupId);
         PrimaryLogEntryStore primary = new PrimaryLogEntryStore(groupId,
@@ -52,7 +55,7 @@ public class GrpcRaftGroup implements RaftGroup {
         primary.initSegments(Long.MAX_VALUE);
 
         localLogEntryStore = new FileSegmentLogEntryStore(groupId, primary);
-        raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
+
         raftConfiguration = new RaftConfiguration() {
 
             private final MembersStore membersStore = new JpaMembersStore(this::groupId, nodeRepository);
@@ -103,10 +106,8 @@ public class GrpcRaftGroup implements RaftGroup {
             }
         };
 
-        List<SnapshotDataProvider> dataProviders = snapshotDataProvidersFactory.apply(groupId);
+        List<SnapshotDataStore> dataProviders = snapshotDataProvidersFactory.apply(groupId);
         localNode = new RaftNode(localNodeId, this, new AxonServerSnapshotManager(dataProviders));
-        logEntryProcessor = new LogEntryProcessor(raftStateController);
-        raftStateController.init();
 
     }
 

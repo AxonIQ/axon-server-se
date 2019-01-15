@@ -64,7 +64,7 @@ import static org.mockito.Mockito.*;
 @DataJpaTest
 @SpringBootTest(classes = {ApplicationRepository.class})
 @EntityScan(basePackages = {"io.axoniq.platform", "io.axoniq.axonserver.component.processor.balancing.jpa"})
-public class SnapshotIntegrationTest {
+public class SnapshotManagerIntegrationTest {
 
     private static final String CONTEXT = "junit";
 
@@ -131,7 +131,7 @@ public class SnapshotIntegrationTest {
         processorLoadBalancingRepository.save(processorLoadBalancing2);
 
         List<io.axoniq.axonserver.grpc.cluster.SerializedObject> snapshotChunks =
-                leaderSnapshotManager.streamSnapshotChunks(0, 95)
+                leaderSnapshotManager.streamSnapshotData(0, 95)
                                      .collectList()
                                      .block();
 
@@ -149,7 +149,7 @@ public class SnapshotIntegrationTest {
         }
 
         assertEquals(2, processorLoadBalancingRepository.findAll().size());
-        clearRepositories();
+        followerSnapshotManager.clear();
         assertEquals(1, processorLoadBalancingRepository.findAll().size());
         followerSnapshotManager.applySnapshotData(snapshotChunks)
                                .block();
@@ -174,12 +174,6 @@ public class SnapshotIntegrationTest {
                 .findByContext(CONTEXT);
         assertEquals(1, processorLoadBalancingList.size());
         assertProcessorLoadBalancing(processorLoadBalancing1, processorLoadBalancingList.get(0));
-    }
-
-    private void clearRepositories() {
-        followerSnapshotManager.clear();
-        userRepository.deleteAll();
-        loadBalanceStrategyRepository.deleteAll();
     }
 
     private EventStore eventStore(EmbeddedDBProperties embeddedDBProperties) {
@@ -211,20 +205,20 @@ public class SnapshotIntegrationTest {
 
         LocalEventStore localEventStore = new LocalEventStore(eventStoreFactory);
         localEventStore.initContext(CONTEXT, false);
-        EventTransactionsSnapshotDataProvider eventTransactionsSnapshotDataProvider =
-                new EventTransactionsSnapshotDataProvider(CONTEXT, localEventStore);
-        SnapshotTransactionsSnapshotDataProvider snapshotTransactionsSnapshotDataProvider =
-                new SnapshotTransactionsSnapshotDataProvider(CONTEXT, localEventStore);
+        EventTransactionsSnapshotDataStore eventTransactionsSnapshotDataProvider =
+                new EventTransactionsSnapshotDataStore(CONTEXT, localEventStore);
+        SnapshotTransactionsSnapshotDataStore snapshotTransactionsSnapshotDataProvider =
+                new SnapshotTransactionsSnapshotDataStore(CONTEXT, localEventStore);
         ApplicationController applicationController = new ApplicationController(applicationRepository, new ShaHasher());
-        ApplicationSnapshotDataProvider applicationSnapshotDataProvider =
-                new ApplicationSnapshotDataProvider(CONTEXT, applicationController);
-        UserSnapshotDataProvider userSnapshotDataProvider = new UserSnapshotDataProvider(userRepository);
-        LoadBalanceStrategySnapshotDataProvider loadBalanceStrategySnapshotDataProvider =
-                new LoadBalanceStrategySnapshotDataProvider(loadBalanceStrategyRepository);
-        ProcessorLoadBalancingSnapshotDataProvider processorLoadBalancingSnapshotDataProvider =
-                new ProcessorLoadBalancingSnapshotDataProvider(CONTEXT, processorLoadBalancingRepository);
+        ApplicationSnapshotDataStore applicationSnapshotDataProvider =
+                new ApplicationSnapshotDataStore(CONTEXT, applicationController);
+        UserSnapshotDataStore userSnapshotDataProvider = new UserSnapshotDataStore(userRepository);
+        LoadBalanceStrategySnapshotDataStore loadBalanceStrategySnapshotDataProvider =
+                new LoadBalanceStrategySnapshotDataStore(loadBalanceStrategyRepository);
+        ProcessorLoadBalancingSnapshotDataStore processorLoadBalancingSnapshotDataProvider =
+                new ProcessorLoadBalancingSnapshotDataStore(CONTEXT, processorLoadBalancingRepository);
 
-        List<SnapshotDataProvider> dataProviders = new ArrayList<>();
+        List<SnapshotDataStore> dataProviders = new ArrayList<>();
         dataProviders.add(eventTransactionsSnapshotDataProvider);
         dataProviders.add(snapshotTransactionsSnapshotDataProvider);
         dataProviders.add(applicationSnapshotDataProvider);

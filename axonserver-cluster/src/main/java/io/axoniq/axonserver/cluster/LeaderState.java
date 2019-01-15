@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
+import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -12,6 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
@@ -75,6 +77,13 @@ public class LeaderState extends AbstractMembershipState {
                                                        this::appendConfigurationChange);
     }
 
+
+    private CompletableFuture<Void> appendLeaderElected(){
+        LeaderElected leaderElected = LeaderElected.newBuilder().setLeaderId(me()).build();
+        CompletableFuture<Entry> entry = raftGroup().localLogEntryStore().createEntry(currentTerm(), leaderElected);
+        return waitCommitted(entry);
+    }
+
     private CompletableFuture<Void> appendConfigurationChange(UnaryOperator<List<Node>> changeOperation) {
         CompletableFuture<Entry> entry = accept(changeOperation);
         return waitCommitted(entry);
@@ -108,6 +117,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        appendLeaderElected();
         scheduler.set(schedulerFactory().get());
         scheduleStepDownTimeoutChecker();
         replicators = new Replicators();
@@ -303,10 +313,9 @@ public class LeaderState extends AbstractMembershipState {
                 updateCommit = true;
             }
 
-            if (updateCommit &&
-                    raftGroup().localLogEntryStore().getEntry(nextCommitCandidate).getTerm() == raftGroup()
-                            .localElectionStore().currentTerm()) {
-                raftGroup().logEntryProcessor().markCommitted(nextCommitCandidate);
+            Entry entry = raftGroup().localLogEntryStore().getEntry(nextCommitCandidate);
+            if (updateCommit && entry.getTerm() == raftGroup().localElectionStore().currentTerm()) {
+                raftGroup().logEntryProcessor().markCommitted(entry.getIndex(), entry.getTerm());
             }
         }
 
@@ -378,7 +387,6 @@ public class LeaderState extends AbstractMembershipState {
                                                                matchIndexCallback,
                                                                scheduler.get().clock(),
                                                                raftGroup(),
-                                                               () -> changeStateTo(stateFactory().followerState()),
                                                                snapshotManager());
             replicatorPeer.start();
             replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);

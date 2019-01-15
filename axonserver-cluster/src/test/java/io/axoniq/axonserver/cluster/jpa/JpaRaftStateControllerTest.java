@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.cluster.jpa;
 
-import io.axoniq.axonserver.cluster.jpa.JpaRaftStateController;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import org.junit.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,14 +47,14 @@ public class JpaRaftStateControllerTest {
 
     @Test
     public void updateLastApplied()  {
-        testSubject.updateLastApplied(100);
-        assertEquals(100, testSubject.lastApplied());
+        testSubject.updateLastApplied(100, 1);
+        assertEquals(100, testSubject.lastAppliedIndex());
         testSubject.sync();
     }
 
     @Test
     public void updateCommitIndex()  {
-        testSubject.updateCommitIndex(100);
+        testSubject.updateCommit(100, 1);
         assertEquals(100, testSubject.commitIndex());
         testSubject.sync();
     }

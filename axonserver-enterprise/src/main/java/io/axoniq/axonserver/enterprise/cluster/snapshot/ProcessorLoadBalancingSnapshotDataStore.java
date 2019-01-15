@@ -12,14 +12,23 @@ import reactor.core.publisher.Flux;
 import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaProcessorLoadBalancing;
 
 /**
+ * Snapshot data store for {@link ProcessorLoadBalancing} data.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
-public class ProcessorLoadBalancingSnapshotDataProvider implements SnapshotDataProvider {
+public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStore {
 
     private final String context;
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
-    public ProcessorLoadBalancingSnapshotDataProvider(
+    /**
+     * Creates Processor Load Balancing Snapshot Data Store for streaming/applying processor load balancing data.
+     *
+     * @param context                          application context
+     * @param processorLoadBalancingRepository the repository for retrieving/saving processor load balancing data
+     */
+    public ProcessorLoadBalancingSnapshotDataStore(
             String context, ProcessorLoadBalancingRepository processorLoadBalancingRepository) {
         this.context = context;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
@@ -31,19 +40,19 @@ public class ProcessorLoadBalancingSnapshotDataProvider implements SnapshotDataP
     }
 
     @Override
-    public Flux<SerializedObject> provide(long from, long to) {
+    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
         return Flux.fromIterable(processorLoadBalancingRepository.findByContext(context))
                    .map(ProtoConverter::createProcessorLBStrategy)
                    .map(this::toSerializedObject);
     }
 
     @Override
-    public boolean canConsume(String type) {
+    public boolean canApplySnapshotData(String type) {
         return ProcessorLoadBalancing.class.getName().equals(type);
     }
 
     @Override
-    public void consume(SerializedObject serializedObject) {
+    public void applySnapshotData(SerializedObject serializedObject) {
         try {
             ProcessorLBStrategy processorLBStrategy = ProcessorLBStrategy.parseFrom(serializedObject.getData());
             ProcessorLoadBalancing processorLoadBalancingEntity = createJpaProcessorLoadBalancing(processorLBStrategy);

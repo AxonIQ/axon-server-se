@@ -54,7 +54,7 @@ public class LogEntryProcessorTest {
         testSubject.applyEntries(entryIteratorFunction, e -> entryCounter.incrementAndGet());
         assertEquals(0, entryCounter.get());
 
-        testSubject.markCommitted(2);
+        testSubject.markCommitted(2,1);
         testSubject.applyEntries(entryIteratorFunction, e -> entryCounter.incrementAndGet());
         assertEquals(2, entryCounter.get());
     }

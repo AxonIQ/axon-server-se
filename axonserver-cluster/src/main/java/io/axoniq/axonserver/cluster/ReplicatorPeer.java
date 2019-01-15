@@ -59,8 +59,8 @@ class ReplicatorPeer {
             offset = 0;
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
-            long lastIncludedTerm = currentTerm();
-            snapshotManager.streamSnapshotChunks(nextIndex(), lastAppliedIndex)
+            long lastIncludedTerm = lastAppliedTerm();
+            snapshotManager.streamSnapshotData(nextIndex(), lastAppliedIndex)
                            .buffer(SNAPSHOT_CHUNKS_BUFFER_SIZE)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override
@@ -306,7 +306,6 @@ class ReplicatorPeer {
     private volatile boolean running;
     private final Clock clock;
     private final RaftGroup raftGroup;
-    private final Runnable transitToFollower;
     private ReplicatorPeerState currentState;
     private final SnapshotManager snapshotManager;
 
@@ -314,14 +313,12 @@ class ReplicatorPeer {
                           Consumer<Long> matchIndexCallback,
                           Clock clock,
                           RaftGroup raftGroup,
-                          Runnable transitToFollower,
                           SnapshotManager snapshotManager) {
         this.raftPeer = raftPeer;
         this.matchIndexCallback = matchIndexCallback;
         this.clock = clock;
         lastMessageReceived.set(clock.millis());
         this.raftGroup = raftGroup;
-        this.transitToFollower = transitToFollower;
         this.snapshotManager = snapshotManager;
         changeStateTo(new IdleReplicatorPeerState());
     }
@@ -386,6 +383,10 @@ class ReplicatorPeer {
 
     private long lastAppliedIndex() {
         return raftGroup.logEntryProcessor().lastAppliedIndex();
+    }
+
+    private long lastAppliedTerm() {
+        return raftGroup.logEntryProcessor().lastAppliedTerm();
     }
 
     private void setMatchIndex(long newMatchIndex) {

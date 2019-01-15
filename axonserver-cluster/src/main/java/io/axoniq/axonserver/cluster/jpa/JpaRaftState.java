@@ -18,7 +18,11 @@ public class JpaRaftState {
 
     private long commitIndex;
 
-    private long lastApplied;
+    private long commitTerm;
+
+    private long lastAppliedIndex;
+
+    private long lastAppliedTerm;
 
     public JpaRaftState() {
     }
@@ -59,11 +63,27 @@ public class JpaRaftState {
         this.commitIndex = commitIndex;
     }
 
-    public long getLastApplied() {
-        return lastApplied;
+    public long getLastAppliedIndex() {
+        return lastAppliedIndex;
     }
 
-    public void setLastApplied(long lastApplied) {
-        this.lastApplied = lastApplied;
+    public void setLastAppliedIndex(long lastAppliedIndex) {
+        this.lastAppliedIndex = lastAppliedIndex;
+    }
+
+    public long commitTerm() {
+        return commitTerm;
+    }
+
+    public void setCommitTerm(long commitTerm) {
+        this.commitTerm = commitTerm;
+    }
+
+    public long lastAppliedTerm() {
+        return lastAppliedTerm;
+    }
+
+    public void setLastAppliedTerm(long lastAppliedTerm) {
+        this.lastAppliedTerm = lastAppliedTerm;
     }
 }

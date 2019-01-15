@@ -11,13 +11,21 @@ import reactor.core.publisher.Flux;
 import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaUser;
 
 /**
+ * Snapshot data store for {@link User} data.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
-public class UserSnapshotDataProvider implements SnapshotDataProvider {
+public class UserSnapshotDataStore implements SnapshotDataStore {
 
     private final UserRepository userRepository;
 
-    public UserSnapshotDataProvider(UserRepository userRepository) {
+    /**
+     * Creates User Snapshot Data Store for streaming/applying user data.
+     *
+     * @param userRepository the repository for retrieving/saving users
+     */
+    public UserSnapshotDataStore(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
@@ -27,19 +35,19 @@ public class UserSnapshotDataProvider implements SnapshotDataProvider {
     }
 
     @Override
-    public Flux<SerializedObject> provide(long from, long to) {
+    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
         return Flux.fromIterable(userRepository.findAll())
                    .map(ProtoConverter::createUser)
                    .map(this::toSerializedObject);
     }
 
     @Override
-    public boolean canConsume(String type) {
+    public boolean canApplySnapshotData(String type) {
         return User.class.getName().equals(type);
     }
 
     @Override
-    public void consume(SerializedObject serializedObject) {
+    public void applySnapshotData(SerializedObject serializedObject) {
         try {
             io.axoniq.axonserver.grpc.internal.User userMessage = io.axoniq.axonserver.grpc.internal.User.parseFrom(
                     serializedObject.getData());
@@ -52,7 +60,8 @@ public class UserSnapshotDataProvider implements SnapshotDataProvider {
 
     @Override
     public void clear() {
-        // TODO: 12/31/2018 should we clear users???
+        // TODO: 1/10/2019 do we create users per context?
+        userRepository.deleteAll();
     }
 
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.User user) {

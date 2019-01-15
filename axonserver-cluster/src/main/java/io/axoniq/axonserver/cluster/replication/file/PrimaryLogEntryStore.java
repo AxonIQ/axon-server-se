@@ -341,7 +341,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         lastToken.set(0);
     }
 
-    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastCommittedIndexSupplier) {
+    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
         File storageDir  = new File(storageProperties.getStorage(getType()));
         String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
         String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
@@ -349,7 +349,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         Stream.of(logFiles, indexFiles)
               .flatMap(Stream::of)
               .filter(name -> !readBuffers.containsKey(getSegment(name))) // filter out opened files
-              .filter(name -> getSegment(name) < getFirstFile(lastCommittedIndexSupplier.get(), storageDir)) // filter out non-committed files
+              .filter(name -> getSegment(name) < getFirstFile(lastAppliedIndexSupplier.get() - 1, storageDir)) // filter out non-applied files
               .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
               .map(File::new)
               .filter(f -> f.lastModified() <= filter) // filter out files older than <time>

@@ -1,13 +1,14 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.cluster.Scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.FollowerConfiguration;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
+import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotSuccess;
@@ -18,8 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Clock;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -109,12 +108,9 @@ public class FollowerState extends AbstractMembershipState {
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
             if (request.getCommitIndex() > logEntryProcessor.commitIndex()) {
-                if (request.getEntriesCount() == 0) {
-                    logEntryProcessor.markCommitted(request.getCommitIndex());
-                } else {
-                    logEntryProcessor.markCommitted(min(request.getCommitIndex(),
-                                                        request.getEntries(request.getEntriesCount() - 1).getIndex()));
-                }
+                long commit = min(request.getCommitIndex(), logEntryStore.lastLogIndex());
+                Entry entry = logEntryStore.getEntry(commit);
+                logEntryProcessor.markCommitted(entry.getIndex(), entry.getTerm());
             }
 
             long last = lastLogIndex();
@@ -182,7 +178,7 @@ public class FollowerState extends AbstractMembershipState {
                          .block();
 
         if (request.getDone()) {
-            raftGroup().logEntryProcessor().updateLastApplied(request.getLastIncludedIndex());
+            raftGroup().logEntryProcessor().updateLastApplied(request.getLastIncludedIndex(), request.getLastIncludedTerm());
         }
 
         return InstallSnapshotResponse.newBuilder()

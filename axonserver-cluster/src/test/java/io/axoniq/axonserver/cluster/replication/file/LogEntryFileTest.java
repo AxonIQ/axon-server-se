@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster.replication.file;
 
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
+import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import org.junit.*;
@@ -47,6 +48,8 @@ public class LogEntryFileTest {
                     case NEWCONFIGURATION:
                         builder.setNewConfiguration(Config.parseFrom(bytes));
                         break;
+                    case LEADERELECTED:
+                        builder.setLeaderElected(LeaderElected.parseFrom(bytes));
                     case DATA_NOT_SET:
                         break;
                 }

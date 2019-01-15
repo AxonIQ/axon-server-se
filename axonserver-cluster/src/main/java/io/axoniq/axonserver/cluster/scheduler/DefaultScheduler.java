@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.cluster;
+package io.axoniq.axonserver.cluster.scheduler;
 
 import java.time.Clock;
 import java.util.concurrent.Executors;
@@ -7,17 +7,28 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Implements the {@link Scheduler} by wrapping the {@link ScheduledExecutorService}.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
 public class DefaultScheduler implements Scheduler {
 
     private final ScheduledExecutorService scheduledExecutorService;
     private final Clock clock = Clock.systemUTC();
 
+    /**
+     * Creates the Default Scheduler, uses {@link Executors#newSingleThreadScheduledExecutor()}.
+     */
     public DefaultScheduler() {
         this(Executors.newSingleThreadScheduledExecutor());
     }
 
+    /**
+     * Creates the Default Scheduler using provided {@code scheduledExecutorService}.
+     *
+     * @param scheduledExecutorService used for scheduling purposes
+     */
     public DefaultScheduler(ScheduledExecutorService scheduledExecutorService) {
         this.scheduledExecutorService = scheduledExecutorService;
     }
@@ -27,31 +38,17 @@ public class DefaultScheduler implements Scheduler {
         return clock;
     }
 
-    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
-                                                     TimeUnit timeUnit) {
-        return scheduledExecutorService.scheduleWithFixedDelay(command, initialDelay, delay, timeUnit);
+    public ScheduledRegistration scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
+                                                        TimeUnit timeUnit) {
+        ScheduledFuture<?> schedule =
+                scheduledExecutorService.scheduleWithFixedDelay(command, initialDelay, delay, timeUnit);
+        return new DefaultScheduledRegistration(clock, schedule);
     }
 
     @Override
     public ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit) {
         ScheduledFuture<?> schedule = scheduledExecutorService.schedule(command, delay, timeUnit);
-        return new ScheduledRegistration() {
-            @Override
-            public long getDelay(TimeUnit unit) {
-                return schedule.getDelay(unit);
-            }
-
-            @Override
-            public long getElapsed(TimeUnit unit) {
-                long millisElapsed = timeUnit.toMillis(delay) - getDelay(TimeUnit.MILLISECONDS);
-                return unit.convert(millisElapsed, TimeUnit.MILLISECONDS);
-            }
-
-            @Override
-            public void cancel() {
-                schedule.cancel(true);
-            }
-        };
+        return new DefaultScheduledRegistration(clock, schedule);
     }
 
     @Override
