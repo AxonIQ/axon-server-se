@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.message.query;
 
-import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.QueryDefinition;
@@ -25,12 +24,16 @@ public class MetricsBasedQueryHandlerSelectorTest {
 
     @Mock
     private QueryMetricsRegistry queryMetricsRegistry;
+    private ClientIdentification client1;
+    private ClientIdentification client2;
 
     @Before
     public void setUp()  {
         selector = new MetricsBasedQueryHandlerSelector(queryMetricsRegistry);
-        handlers.add(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client1"));
-        handlers.add(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client2"));
+        client1 = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1");
+        handlers.add(client1);
+        client2 = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2");
+        handlers.add(client2);
     }
 
     @Test
@@ -43,8 +46,8 @@ public class MetricsBasedQueryHandlerSelectorTest {
     public void selectBasedOnCount() {
         FakeClusterMetric clusterMetric1 = new FakeClusterMetric(15);
         FakeClusterMetric clusterMetric2 = new FakeClusterMetric(5);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "default/client1")).thenReturn(clusterMetric1);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "default/client2")).thenReturn(clusterMetric2);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client1.toString())).thenReturn(clusterMetric1);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client2.toString())).thenReturn(clusterMetric2);
         ClientIdentification selected = selector.select(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "component1", handlers);
         Assert.assertEquals("client2", selected.getClient());
     }
@@ -52,8 +55,8 @@ public class MetricsBasedQueryHandlerSelectorTest {
     public void selectBasedOnMean() {
         FakeClusterMetric clusterMetric1 = new FakeClusterMetric(1500, 0.1);
         FakeClusterMetric clusterMetric2 = new FakeClusterMetric(500, 0.2);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "default/client1")).thenReturn(clusterMetric1);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "default/client2")).thenReturn(clusterMetric2);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client1.toString())).thenReturn(clusterMetric1);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client2.toString())).thenReturn(clusterMetric2);
 
         ClientIdentification selected = selector.select(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "component1", handlers);
         Assert.assertEquals("client1", selected.getClient());

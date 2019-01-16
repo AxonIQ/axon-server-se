@@ -51,15 +51,16 @@ public class QueryServiceTest {
         requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2).setClientId("name").build()).build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
-        queryQueue.put("default/name", new WrappedQuery( new ClientIdentification(Topology.DEFAULT_CONTEXT,"name"),
-                                                 new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
+        ClientIdentification name = new ClientIdentification(Topology.DEFAULT_CONTEXT, "name");
+        queryQueue.put(name.toString(), new WrappedQuery(name,
+                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
                                                                      QueryRequest.newBuilder()
                                                                                  .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
                                                                                  .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put("default/name", new WrappedQuery(new ClientIdentification(Topology.DEFAULT_CONTEXT,"name"),
-                                                new SerializedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
+        queryQueue.put(name.toString(), new WrappedQuery(name,
+                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
         verify(queryDispatcher).removeFromCache(any());

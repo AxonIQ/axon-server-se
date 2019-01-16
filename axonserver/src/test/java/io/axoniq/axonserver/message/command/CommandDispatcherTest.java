@@ -67,14 +67,16 @@ public class CommandDispatcherTest {
                 .setMessageIdentifier("12")
                 .build();
         CountingStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound, new ClientIdentification( Topology.DEFAULT_CONTEXT, "client"),"component");
+        ClientIdentification client = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
+        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
+                                                               client, "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), anyObject(), anyObject())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }, false);
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get("default/client").size());
+        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
         assertEquals(0, responseObserver.count);
         Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
 
@@ -158,13 +160,14 @@ public class CommandDispatcherTest {
     @Test
     public void handleResponse() {
         AtomicBoolean responseHandled = new AtomicBoolean(false);
+        ClientIdentification client = new ClientIdentification(Topology.DEFAULT_CONTEXT, "Client");
         CommandInformation commandInformation = new CommandInformation("TheCommand", (r) -> responseHandled.set(true),
-                                                                       new ClientIdentification(Topology.DEFAULT_CONTEXT, "Client"), "Component");
+                                                                       client, "Component");
         when(commandCache.remove(any(String.class))).thenReturn(commandInformation);
 
         commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()), false);
         assertTrue(responseHandled.get());
-        assertEquals(1, metricsRegistry.commandMetric("TheCommand", "default/Client", "Component").getCount());
+        assertEquals(1, metricsRegistry.commandMetric("TheCommand", client.toString(), "Component").getCount());
 
     }
 }

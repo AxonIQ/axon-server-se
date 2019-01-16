@@ -25,9 +25,10 @@ public class CommandMetricsRegistryTest {
 
     @Test
     public void add() {
-        testSubject.add("Command", new ClientIdentification(Topology.DEFAULT_CONTEXT,"Client1"), 1);
+        ClientIdentification client1 = new ClientIdentification(Topology.DEFAULT_CONTEXT, "Client1");
+        testSubject.add("Command", client1, 1);
 
-        assertEquals(1L, testSubject.commandMetric("Command", "default/Client1", null).getCount());
+        assertEquals(1L, testSubject.commandMetric("Command", client1.toString(), null).getCount());
     }
 
 }

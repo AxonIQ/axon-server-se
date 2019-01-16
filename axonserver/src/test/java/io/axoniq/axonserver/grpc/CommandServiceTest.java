@@ -49,9 +49,10 @@ public class CommandServiceTest {
         requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
-        commandQueue.put("default/name", new WrappedCommand(new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                    "name"),
-                                                    new SerializedCommand(Command.newBuilder().build())));
+        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                             "name");
+        commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
+                                                            new SerializedCommand(Command.newBuilder().build())));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);
     }
