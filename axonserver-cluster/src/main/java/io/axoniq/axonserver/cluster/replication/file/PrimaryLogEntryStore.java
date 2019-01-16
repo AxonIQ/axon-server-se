@@ -56,7 +56,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         File storageDir  = new File(storageProperties.getStorage(getType()));
         FileUtils.checkCreateDirectory(storageDir);
         eventTransformer = eventTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
-        initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir);
+        initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir, false);
     }
 
     public CompletableFuture<Long> write(long term, int type, byte[] bytes) {
@@ -97,7 +97,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         return positionsPerSegmentMap.get(segment).get(nextIndex);
     }
 
-    private void initLatestSegment(long lastInitialized, long nextToken, File storageDir) {
+    private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, boolean clear) {
         long first = getFirstFile(lastInitialized, storageDir);
         WritableEntrySource buffer = getOrOpenDatafile(first);
         indexManager.remove(first);
@@ -116,9 +116,13 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         }
 
         buffer.putInt(buffer.position(), 0);
+
         WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
         writePositionRef.set(writePosition);
         synchronizer.init(writePosition);
+
+        if( clear)
+            buffer.clearFromPosition();
 
         if( next != null) {
             next.initSegments(first);
@@ -225,7 +229,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
             next.rollback(token);
         }
 
-        initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(getType())));
+        initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(getType())), true);
     }
 
     @Override
