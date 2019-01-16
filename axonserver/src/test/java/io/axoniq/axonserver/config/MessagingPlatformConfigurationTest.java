@@ -12,8 +12,8 @@ import static org.junit.Assert.*;
 public class MessagingPlatformConfigurationTest {
     private MessagingPlatformConfiguration testSubject;
 
-    @Before
-    public void init() {
+    @Test
+    public void getHostname() {
         testSubject = new MessagingPlatformConfiguration(new SystemInfoProvider() {
             @Override
             public int getPort() {
@@ -25,17 +25,42 @@ public class MessagingPlatformConfigurationTest {
                 return "test.axoniq.io";
             }
         });
-    }
-
-    @Test
-    public void getHostname() {
         assertEquals("test.axoniq.io", testSubject.getHostname());
     }
 
     @Test
     public void getHostnameWithDomainSet() {
+        testSubject = new MessagingPlatformConfiguration(new SystemInfoProvider() {
+            @Override
+            public int getPort() {
+                return 0;
+            }
+
+            @Override
+            public String getHostName() throws UnknownHostException {
+                return "test.axoniq.io";
+            }
+        });
         testSubject.setDomain("axoniq.io");
         assertEquals("test", testSubject.getHostname());
         assertEquals("test.axoniq.io", testSubject.getFullyQualifiedHostname());
+    }
+
+    @Test
+    public void getHostnameWithBlankDomain() {
+        testSubject = new MessagingPlatformConfiguration(new SystemInfoProvider() {
+            @Override
+            public int getPort() {
+                return 0;
+            }
+
+            @Override
+            public String getHostName() throws UnknownHostException {
+                return "test";
+            }
+        });
+        testSubject.setDomain("");
+        assertEquals("test", testSubject.getFullyQualifiedHostname());
+        assertEquals("test", testSubject.getFullyQualifiedInternalHostname());
     }
 }

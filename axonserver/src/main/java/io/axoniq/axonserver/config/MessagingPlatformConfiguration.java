@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -124,10 +125,10 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getHostname() {
-        if( hostname == null) {
+        if( StringUtils.isEmpty(hostname )) {
             try {
                 hostname = systemInfoProvider.getHostName();
-                if( domain != null && hostname.endsWith("." + domain)) {
+                if(!StringUtils.isEmpty(domain) && hostname.endsWith("." + domain)) {
                         hostname = hostname.substring(0, hostname.length() - domain.length() - 1);
                 }
             } catch (UnknownHostException e) {
@@ -150,7 +151,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalHostname() {
-        if( internalHostname == null) {
+        if( StringUtils.isEmpty(internalHostname)) {
             internalHostname = getHostname();
         }
         return internalHostname;
@@ -161,7 +162,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if( internalDomain == null) {
+        if( StringUtils.isEmpty(internalDomain)) {
             internalDomain = getDomain();
         }
         return internalDomain;
@@ -180,13 +181,13 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getFullyQualifiedHostname() {
-        if( getDomain() != null ) return getHostname() + "." + getDomain();
+        if( ! StringUtils.isEmpty(getDomain())) return getHostname() + "." + getDomain();
 
         return getHostname();
     }
 
     public String getFullyQualifiedInternalHostname() {
-        if( getInternalDomain() != null) return getInternalHostname() + "." + getInternalDomain();
+        if( ! StringUtils.isEmpty(getInternalDomain()) ) return getInternalHostname() + "." + getInternalDomain();
 
         return getInternalHostname();
     }

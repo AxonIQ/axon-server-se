@@ -8,4 +8,7 @@ public class StringUtils {
         return org.springframework.util.StringUtils.isEmpty(value) ? defaultValue : value;
     }
 
+    public static boolean isEmpty(String value) {
+        return org.springframework.util.StringUtils.isEmpty(value);
+    }
 }
