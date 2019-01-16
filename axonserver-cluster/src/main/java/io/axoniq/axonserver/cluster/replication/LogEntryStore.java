@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public interface LogEntryStore {
 
@@ -44,5 +45,14 @@ public interface LogEntryStore {
     Registration registerLogAppendListener(Consumer<Entry> listener);
 
     Registration registerLogRollbackListener(Consumer<Entry> listener);
+
+    /**
+     * Returns the stream of filenames that are available for backing up.
+     *
+     * @return the stream of the full name of files available for backing up
+     */
+    default Stream<String> getBackupFilenames(){
+        return Stream.empty();
+    }
 
 }

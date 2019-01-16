@@ -8,6 +8,8 @@ import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,7 +52,12 @@ public class BackupInfoRestController {
                 .collect(Collectors.toList());
     }
 
-    @PostMapping("/createControlDbBackup")
+    /**
+     * Makes a safe export of controlDB and returns the location of the the full path to the export file.
+     *
+     * @return the full path to the export file
+     * @throws SQLException if a database access error occurs
+     */
     public String createControlDbBackup() throws SQLException {
         File path = new File(controlDbBackupLocation);
         if( ! path.exists() && ! path.mkdirs()) {
