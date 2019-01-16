@@ -387,8 +387,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
                         CommandHandler commandHandler = commandHandlerPerContextClient
                                 .computeIfAbsent(new ClientIdentification(connectorCommand.getSubscribeCommand().getContext(),
-                                                                          command.getClientId()), contextClient -> new
-                                        ProxyCommandHandler(responseObserver, new ClientIdentification(contextClient.getContext(),contextClient.getClient()),
+                                                                          command.getClientId()), clientIdentification -> new
+                                        ProxyCommandHandler(responseObserver, clientIdentification,
                                                             command.getComponentName(),
                                                             messagingServerName));
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(commandHandler.getClient().getContext(),
@@ -619,9 +619,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void updateClientStatus(ClientStatus clientStatus) {
+            ClientIdentification clientIdentification = new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName());
             if( clientStatus.getConnected()) {
 
-                if( clients.add(new ClientIdentification(clientStatus.getClientName(), clientStatus.getContext())) ){
+                if( clients.add(clientIdentification) ){
                     // unknown client
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
@@ -629,11 +630,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                        messagingServerName));
                 }
             } else {
-                if( clients.remove(new ClientIdentification(clientStatus.getClientName(), clientStatus.getContext()))) {
+                if( clients.remove(clientIdentification)) {
                     // known client
                     logger.info("Client disconnected: {}", clientStatus.getClientName());
-                    commandHandlerPerContextClient.remove(new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName()));
-                    queryHandlerPerContextClient.remove(new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName()));
+                    commandHandlerPerContextClient.remove(clientIdentification);
+                    queryHandlerPerContextClient.remove(clientIdentification);
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
                                                                                        clientStatus.getClientName(),

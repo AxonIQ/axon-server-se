@@ -49,6 +49,6 @@ public class ClientIdentification implements Comparable<ClientIdentification> {
 
     @Override
     public String toString() {
-        return context + "/" + client;
+        return client + "." + context;
     }
 }

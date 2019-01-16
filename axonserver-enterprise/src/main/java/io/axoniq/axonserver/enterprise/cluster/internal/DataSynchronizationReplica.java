@@ -219,7 +219,8 @@ public class DataSynchronizationReplica {
                 public void onError(Throwable cause) {
                     ManagedChannelHelper.checkShutdownNeeded(node, cause);
                     logger.warn("Received error from {}: {}", node, cause.getMessage());
-                    applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, node, false));
+                    DataSynchronizationReplica.this.connectionPerContext.remove(context);
+                    // applicationEventPublisher.publishEvent(new ClusterEvents.MasterDisconnected(context, node, false));
                 }
 
                 @Override
@@ -368,10 +369,10 @@ public class DataSynchronizationReplica {
 
         public void complete() {
             try {
+                completed = true;
                 expectedSnapshotToken.set(Long.MAX_VALUE);
                 expectedEventToken.set(Long.MAX_VALUE);
                 streamObserver.onCompleted();
-                completed = true;
             } catch (RuntimeException cause) {
                 logger.debug("{}: Failed to complete with error", context, cause);
             }

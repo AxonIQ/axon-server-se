@@ -37,7 +37,7 @@
             if( this.subscription) this.subscription.unsubscribe();
         }, methods: {
             loadComponentInstances(){
-                axios.get("v1/components/"+this.component+"/instances?context=" + this.context).then(response => {
+                axios.get("v1/components/"+encodeURI(this.component)+"/instances?context=" + this.context).then(response => {
                     this.instances = response.data;
                 });
             }
