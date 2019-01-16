@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -55,7 +56,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     @Override
-    public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+    public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
             logger.trace("{}: Received term {} which is greater or equals than mine {}. Moving to Follower...",
                          groupId(),
@@ -67,11 +68,11 @@ public class CandidateState extends AbstractMembershipState {
                      groupId(),
                      request.getTerm(),
                      currentTerm());
-        return appendEntriesFailure();
+        return appendEntriesFailure(request.getRequestId());
     }
 
     @Override
-    public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
+    public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request));
             logger.trace("{}: Request for vote received from {} in term {}. {} voted {}",
@@ -87,7 +88,7 @@ public class CandidateState extends AbstractMembershipState {
                      request.getCandidateId(),
                      request.getTerm(),
                      me());
-        return requestVoteResponse(false);
+        return requestVoteResponse(request.getRequestId(), false);
     }
 
     @Override
@@ -104,7 +105,7 @@ public class CandidateState extends AbstractMembershipState {
                      groupId(),
                      request.getTerm(),
                      currentTerm());
-        return installSnapshotFailure();
+        return installSnapshotFailure(request.getRequestId());
     }
 
     @Override
@@ -132,13 +133,12 @@ public class CandidateState extends AbstractMembershipState {
             resetElectionTimeout();
             currentElection.set(new MajorityElection(this::clusterSize));
             currentElection.get().registerVoteReceived(me(), true);
-            RequestVoteRequest request = requestVote();
             Collection<RaftPeer> raftPeers = otherPeers();
             if (raftPeers.isEmpty() && !currentConfiguration().isEmpty()) {
                 currentElection.set(null);
                 changeStateTo(stateFactory().leaderState());
             } else {
-                raftPeers.forEach(node -> requestVote(request, node));
+                raftPeers.forEach(node -> requestVote(requestVote(), node));
             }
         } catch (Exception ex) {
             logger.warn("Failed to start election", ex);
@@ -148,6 +148,7 @@ public class CandidateState extends AbstractMembershipState {
     private RequestVoteRequest requestVote() {
         TermIndex lastLog = lastLog();
         return RequestVoteRequest.newBuilder()
+                                 .setRequestId(UUID.randomUUID().toString())
                                  .setGroupId(groupId())
                                  .setCandidateId(me())
                                  .setTerm(currentTerm())
@@ -157,13 +158,15 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void requestVote(RequestVoteRequest request, RaftPeer node) {
-        RaftNode me = raftGroup().localNode();
-        node.requestVote(request).thenAccept(response -> me.onVoteResponse(response));
+        node.requestVote(request).thenAccept(response -> {
+            synchronized (raftGroup().localNode()){
+                onVoteResponse(response);
+            }
+        });
     }
 
-    @Override
-    public void onVoteResponse(RequestVoteResponse response) {
-        String voter = ""; //TODO add data in response
+    private void onVoteResponse(RequestVoteResponse response) {
+        String voter = response.getResponseHeader().getNodeId();
         logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
             updateCurrentTerm(response.getTerm());

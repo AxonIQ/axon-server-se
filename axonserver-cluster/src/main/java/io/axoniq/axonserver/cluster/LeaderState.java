@@ -139,20 +139,20 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.trace("{}: Received appendEntries request. Rejecting the request.", groupId());
-        return appendEntriesFailure();
+        return appendEntriesFailure(request.getRequestId());
     }
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         logger.warn("{}: Request for vote received from {} in term {}. Rejecting the request", groupId(),
                     request.getCandidateId(), request.getTerm());
-        return requestVoteResponse(false);
+        return requestVoteResponse(request.getRequestId(),false);
     }
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         logger.trace("{}: Received installSnapshot request. Rejecting the request.", groupId());
-        return installSnapshotFailure();
+        return installSnapshotFailure(request.getRequestId());
     }
 
     @Override

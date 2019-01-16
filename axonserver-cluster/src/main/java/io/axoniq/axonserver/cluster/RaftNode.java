@@ -238,8 +238,4 @@ public class RaftNode {
         return state.get().currentGroupMembers();
     }
 
-    public synchronized void onVoteResponse(RequestVoteResponse requestVoteResponse){
-        this.state.get().onVoteResponse(requestVoteResponse);
-
-    }
 }

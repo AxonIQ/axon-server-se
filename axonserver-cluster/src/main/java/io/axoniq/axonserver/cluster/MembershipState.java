@@ -32,12 +32,6 @@ public interface MembershipState extends ClusterConfiguration{
 
     InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request);
 
-    default void onVoteResponse(RequestVoteResponse voteResponse){}
-
-    default void onInstallSnapshotResponse(InstallSnapshotResponse installSnapshotResponse){}
-
-    default void onAppendEntryResponse(AppendEntriesResponse appendEntriesResponse){}
-
     default boolean isLeader() {
         return false;
     }
