@@ -15,7 +15,6 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
 import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.EventType;
@@ -133,28 +132,25 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @EventListener
     public void on(ClusterEvents.MasterStepDown masterStepDown) {
-        logger.info("Master stepped down: {}", masterStepDown.getContextName());
+        logger.info("{}: Master stepped down", masterStepDown.getContextName());
         masterPerContext.remove(masterStepDown.getContextName());
         if( !masterStepDown.isForwarded()) {
             localEventStore.cancel(masterStepDown.getContextName());
         }
-        logger.debug("Scheduling on step down");
-        if( task == null || task.isDone()) {
-            task =scheduledExecutorService.schedule(() -> startLeaderElection(
-                    masterStepDown.getContextName()), 1, TimeUnit.SECONDS);
-        }
+        rescheduleElection(masterStepDown.getContextName());
     }
 
     @EventListener
     public void on(ClusterEvents.MasterDisconnected masterDisconnected) {
-        logger.info("Master disconnected: {}", masterDisconnected.getContextName());
-        logger.debug("Scheduling on disconnected");
-        if( masterDisconnected.oldMaster() == null || masterDisconnected.oldMaster().equals(masterPerContext.get(masterDisconnected.getContextName()))) {
-            masterPerContext.remove(masterDisconnected.getContextName());
-            if( task == null || task.isDone()) {
-                task =scheduledExecutorService.schedule(() -> startLeaderElection(
-                        masterDisconnected.getContextName()), 1, TimeUnit.SECONDS);
-            }
+        logger.info("{}: Master {} disconnected", masterDisconnected.getContextName(),masterDisconnected.oldMaster());
+        masterPerContext.remove(masterDisconnected.getContextName());
+        rescheduleElection(masterDisconnected.getContextName());
+    }
+
+    private void rescheduleElection(String contextName) {
+        if (task == null || task.isDone()) {
+            task = scheduledExecutorService.schedule(() -> startLeaderElection(
+                    contextName), (long) (Math.random() * 1000), TimeUnit.MILLISECONDS);
         }
     }
 
@@ -241,7 +237,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                                                         masterPerContext.get(context.getName()), true));
         } else {
             logger.debug("Scheduling initial leader election");
-            task = scheduledExecutorService.schedule(() -> startLeaderElection(context.getName()), 1, TimeUnit.SECONDS);
+            rescheduleElection(context.getName());
         }
     }
 
@@ -250,15 +246,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                           Charset.defaultCharset()).asInt();
 
     }
-    private void startLeaderElection(String contextName) {
-//        if (isNotEligible(contextName)) {
-//                logger.warn("{}: Not eligible as leader as safepoint = {} after lastToken = {}",
-//                             contextName,
-//                             syncStatusController.getSafePoint(EventType.EVENT, contextName),
-//                             localEventStore.getLastToken(contextName));
-//            return; //If I'm not eligible I do not request to be the master
-//        }
 
+    private void startLeaderElection(String contextName) {
         logger.debug("Start leader election for {}: master: {}", contextName, masterPerContext.get(contextName));
         if( ! running || masterPerContext.containsKey(contextName)) return;
         Context context = context(contextName);
@@ -304,23 +293,16 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                                                           false));
                 } else {
                     logger.debug("Rescheduling as no master found");
-                    task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName),
-                                                             1,
-                                                             TimeUnit.SECONDS);
+                    rescheduleElection(contextName);
                 }
             } catch (InterruptedException e) {
                 logger.debug("Interrupted while waiting for responses", e);
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
                 logger.warn("Rescheduling on exception during leader election", e);
-                task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName), 1, TimeUnit.SECONDS);
+                rescheduleElection(contextName);
             }
         }
-    }
-
-    private boolean isNotEligible(String context) {
-
-        return syncStatusController.getSafePoint(EventType.EVENT, context) > localEventStore.getLastToken(context) + 1;
     }
 
     public int getNrOrMasterContexts(String name) {
@@ -353,9 +335,13 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                public void onError(Throwable throwable) {
                                    countdownLatch.countDown();
                                    ManagedChannelHelper.checkShutdownNeeded(node.getName(), throwable);
-                                   logger.warn("Error while requesting to become leader for {}: {}", node.getName(), throwable.getMessage());
-                                   if( logger.isDebugEnabled()) {
-                                       logger.debug("Stacktrace", throwable);
+                                   if( ! masterPerContext.containsKey(nodeContextInfo.getContext()) ) {
+                                       logger.warn("Error while requesting to become leader for {}: {}",
+                                                   node.getName(),
+                                                   throwable.getMessage());
+                                       if (logger.isDebugEnabled()) {
+                                           logger.debug("Stacktrace", throwable);
+                                       }
                                    }
                                }
 

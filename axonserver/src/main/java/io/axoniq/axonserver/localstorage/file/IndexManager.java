@@ -75,11 +75,11 @@ public class IndexManager {
             return Collections.emptySortedSet();
         }
 
-        IllegalAccessError lastError = new IllegalAccessError();
+        RuntimeException lastError = new RuntimeException();
         for(int retry = 0 ; retry < 3; retry++ ) {
             try (Index idx = getIndex(segment)) {
                 return idx.getPositions(aggregateId);
-            } catch (IllegalAccessError ex) {
+            } catch (RuntimeException ex) {
                 lastError = ex;
             }
         }
