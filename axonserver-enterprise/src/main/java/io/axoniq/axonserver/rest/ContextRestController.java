@@ -12,11 +12,20 @@ import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.validation.Valid;
 
 /**
  * Author: marc
@@ -96,9 +105,23 @@ public class ContextRestController {
 
     @PostMapping(path ="context")
     public void addContext(@RequestBody @Valid ContextJSON contextJson) {
-        if(!Feature.MULTI_CONTEXT.enabled(limits)) throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "License does not allow creating contexts");
+        if (!Feature.MULTI_CONTEXT.enabled(limits)) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                 "License does not allow creating contexts");
+        }
+        if( contextJson.getNodes() == null || contextJson.getNodes().isEmpty()) {
+            throw new MessagingPlatformException(ErrorCode.SELECT_NODES_FOR_CONTEXT,
+                                                 "Add at least one node to context");
+        }
+        if (!contextJson.getContext().matches("[a-zA-Z][a-zA-Z_-]*")) {
+            throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                                                 "Invalid context name");
+
+        }
         contextController.canAddContext(contextJson.getNodes());
-        applicationEventPublisher.publishEvent(contextController.addContext(contextJson.getContext(), contextJson.getNodes(), false));
+        applicationEventPublisher.publishEvent(contextController.addContext(contextJson.getContext(),
+                                                                            contextJson.getNodes(),
+                                                                            false));
     }
 
 }

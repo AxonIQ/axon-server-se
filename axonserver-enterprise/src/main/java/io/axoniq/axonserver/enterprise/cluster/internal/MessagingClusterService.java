@@ -212,6 +212,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
     @EventListener
     public void on(UserEvents.UserUpdated event) {
+        if( event.isProxied()) return;
         io.axoniq.axonserver.grpc.internal.User protoUser = UserProtoConverter.mergeUser(event.getUser());
         connections.forEach((name, responseObserver) -> {
             try {
@@ -227,6 +228,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
     @EventListener
     public void on(UserEvents.UserDeleted event) {
+        if( event.isProxied()) return;
+
         io.axoniq.axonserver.grpc.internal.User protoUser = UserProtoConverter.deleteUser(event.getName());
         connections.forEach((name, responseObserver) -> {
             try {

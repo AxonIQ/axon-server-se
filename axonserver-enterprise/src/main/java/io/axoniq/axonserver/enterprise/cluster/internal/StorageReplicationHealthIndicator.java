@@ -4,14 +4,12 @@ import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * Author: marc
  */
 @Component
-@ConditionalOnProperty(value = "axoniq.axonserver.cluster.enabled", havingValue = "true")
 public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
     private final DataSynchronizationMaster dataSynchronizationMaster;
     private final DataSynchronizationReplica dataSynchronizationReplica;

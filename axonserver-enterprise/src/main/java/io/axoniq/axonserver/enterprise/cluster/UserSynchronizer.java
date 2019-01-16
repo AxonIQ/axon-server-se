@@ -38,7 +38,7 @@ public class UserSynchronizer {
                     break;
                 case DELETE:
                     userController.deleteUser(event.getUser().getName());
-                    eventPublisher.publishEvent(new UserEvents.UserDeleted(event.getUser().getName()));
+                    eventPublisher.publishEvent(new UserEvents.UserDeleted(event.getUser().getName(), true));
                     break;
                 default:
                     break;
@@ -64,7 +64,7 @@ public class UserSynchronizer {
     private void mergeUser(io.axoniq.axonserver.grpc.internal.User user) {
         User mergeUser = UserProtoConverter.createJpaUser(user);
         userController.syncUser(mergeUser);
-        eventPublisher.publishEvent(new UserEvents.UserUpdated(mergeUser));
+        eventPublisher.publishEvent(new UserEvents.UserUpdated(mergeUser, true));
     }
 
     @EventListener

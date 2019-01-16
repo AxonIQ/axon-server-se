@@ -57,7 +57,7 @@ public class UserRestController {
             }
         }
         User updatedUser = userController.updateUser(userJson.userName, userJson.password, userJson.roles);
-        eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser));
+        eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false));
     }
 
     @GetMapping("public/users")
@@ -74,7 +74,7 @@ public class UserRestController {
     public void dropUser(@PathVariable("name") String name) {
         try {
             userController.deleteUser(name);
-            eventPublisher.publishEvent(new UserEvents.UserDeleted(name));
+            eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false));
         } catch (Exception exception) {
             logger.info("Delete user {} failed - {}", name, exception.getMessage());
             throw new MessagingPlatformException(ErrorCode.OTHER, exception.getMessage());

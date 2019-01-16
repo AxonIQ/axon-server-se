@@ -314,7 +314,7 @@ public class DataSynchronizationReplica {
         }
 
         private void rollback(EventType eventType, SerializedTransactionWithToken syncRequest) {
-            logger.warn("{}: Rollback {} to {}", context, eventType, syncRequest.getToken()-1);
+            logger.debug("{}: Rollback {} to {}", context, eventType, syncRequest.getToken()-1);
             if( EventType.EVENT.equals(eventType)) {
                 localEventStore.rollbackEvents(context, syncRequest.getToken()-1);
                 logger.debug("{}: Last event is {}", context, localEventStore.getLastToken(context));
