@@ -41,29 +41,29 @@ public class CommandMetricsRegistry {
 
     public void add(String command, ClientIdentification clientId, long duration) {
         try {
-            timer(command, clientId.toString()).record(duration, TimeUnit.MILLISECONDS);
+            timer(command, clientId).record(duration, TimeUnit.MILLISECONDS);
         } catch( Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
-    private Timer timer(String command, String clientId) {
+    private Timer timer(String command, ClientIdentification clientId) {
         String metricName = metricName(command, clientId);
         return timerMap.computeIfAbsent(metricName, name ->
                 meterRegistry.timer(name));
     }
 
-    private static String metricName(String command, String clientId) {
-        return String.format("axon.command.%s.%s", command, clientId);
+    private static String metricName(String command, ClientIdentification clientId) {
+        return String.format("axon.command.%s.%s", command, clientId.metricName());
     }
 
-    private ClusterMetric clusterMetric(String command, String clientId){
+    private ClusterMetric clusterMetric(String command, ClientIdentification clientId){
         String metricName = metricName(command, clientId);
         return new CompositeMetric(new SnapshotMetric(timer(command, clientId).takeSnapshot()), new Metrics(metricName, clusterMetrics));
     }
 
-    public CommandMetric commandMetric(String command, String clientId, String componentName) {
-        return new CommandMetric(command,clientId, componentName, clusterMetric(command, clientId).size());
+    public CommandMetric commandMetric(String command, ClientIdentification clientId, String componentName) {
+        return new CommandMetric(command,clientId.metricName(), componentName, clusterMetric(command, clientId).size());
     }
 
     public Counter counter(String commandCounterName) {

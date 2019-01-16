@@ -51,4 +51,8 @@ public class ClientIdentification implements Comparable<ClientIdentification> {
     public String toString() {
         return client + "." + context;
     }
+
+    public String metricName() {
+        return client + "." + context;
+    }
 }

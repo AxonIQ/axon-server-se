@@ -46,8 +46,8 @@ public class MetricsBasedQueryHandlerSelectorTest {
     public void selectBasedOnCount() {
         FakeClusterMetric clusterMetric1 = new FakeClusterMetric(15);
         FakeClusterMetric clusterMetric2 = new FakeClusterMetric(5);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client1.toString())).thenReturn(clusterMetric1);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client2.toString())).thenReturn(clusterMetric2);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client1)).thenReturn(clusterMetric1);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client2)).thenReturn(clusterMetric2);
         ClientIdentification selected = selector.select(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "component1", handlers);
         Assert.assertEquals("client2", selected.getClient());
     }
@@ -55,8 +55,8 @@ public class MetricsBasedQueryHandlerSelectorTest {
     public void selectBasedOnMean() {
         FakeClusterMetric clusterMetric1 = new FakeClusterMetric(1500, 0.1);
         FakeClusterMetric clusterMetric2 = new FakeClusterMetric(500, 0.2);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client1.toString())).thenReturn(clusterMetric1);
-        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client2.toString())).thenReturn(clusterMetric2);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client1)).thenReturn(clusterMetric1);
+        Mockito.when(queryMetricsRegistry.clusterMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), client2)).thenReturn(clusterMetric2);
 
         ClientIdentification selected = selector.select(new QueryDefinition(Topology.DEFAULT_CONTEXT, "request"), "component1", handlers);
         Assert.assertEquals("client1", selected.getClient());

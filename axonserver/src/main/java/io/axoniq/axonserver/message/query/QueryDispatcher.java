@@ -53,7 +53,7 @@ public class QueryDispatcher {
             if( queryInformation.forward(client, queryResponse) <= 0) {
                 queryCache.remove(queryInformation.getKey());
                 if (!proxied) {
-                    queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client).toString(),
+                    queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client),
                                              System.currentTimeMillis() - queryInformation.getTimestamp());
 
                 }
@@ -79,7 +79,7 @@ public class QueryDispatcher {
                 queryCache.remove(queryInformation.getKey());
             }
             if (!proxied) {
-                queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client).toString(), System.currentTimeMillis() - queryInformation.getTimestamp());
+                queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client), System.currentTimeMillis() - queryInformation.getTimestamp());
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);

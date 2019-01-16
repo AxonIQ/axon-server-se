@@ -20,7 +20,7 @@ public class MetricsBasedQueryHandlerSelector implements QueryHandlerSelector {
 
     @Override
     public ClientIdentification select(QueryDefinition queryDefinition, String componentName, NavigableSet<ClientIdentification> queryHandlers) {
-        return queryHandlers.stream().map(h -> new QueryHandlerWithHistogram(h, metricsRegistry.clusterMetric(queryDefinition, h.toString())))
+        return queryHandlers.stream().map(h -> new QueryHandlerWithHistogram(h, metricsRegistry.clusterMetric(queryDefinition, h)))
                 .min(this::compareMean)
                 .map(q -> q.handler)
                 .orElse(null);

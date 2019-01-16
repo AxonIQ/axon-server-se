@@ -167,7 +167,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()), false);
         assertTrue(responseHandled.get());
-        assertEquals(1, metricsRegistry.commandMetric("TheCommand", client.toString(), "Component").getCount());
+        assertEquals(1, metricsRegistry.commandMetric("TheCommand", client, "Component").getCount());
 
     }
 }

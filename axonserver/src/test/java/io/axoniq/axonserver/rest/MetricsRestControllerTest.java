@@ -90,7 +90,7 @@ public class MetricsRestControllerTest {
         assertEquals(queryClient.toString(), queries.get(0).getClientId());
         assertEquals(0, queries.get(0).getCount());
 
-        queryMetricsRegistry.add(new QueryDefinition("context", "query"), queryClient.toString(), 50);
+        queryMetricsRegistry.add(new QueryDefinition("context", "query"), queryClient, 50);
 
         queries = testSubject.getQueryMetrics();
         assertEquals(1, queries.size());
