@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
+import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -239,6 +240,7 @@ public class LeaderState extends AbstractMembershipState {
         private final Set<String> nonVotingReplica = new CopyOnWriteArraySet<>();
         private final List<Registration> registrations = new ArrayList<>();
         private final Map<String, ReplicatorPeer> replicatorPeerMap = new ConcurrentHashMap<>();
+        private final Map<String, ScheduledRegistration> scheduledReplications = new ConcurrentHashMap<>();
 
         void stop() {
             logger.info("{}: Stop replication thread", groupId());
@@ -259,25 +261,32 @@ public class LeaderState extends AbstractMembershipState {
             registrations.forEach(Registration::cancel);
         }
 
-        void start() {
+        private void start() {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
-
                 otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateMatchIndex)));
-
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
-
-                Scheduler schedulerInstance = scheduler.get();
-                if (schedulerInstance != null) {
-                    replicatorPeerMap.values()
-                                     .forEach(replicatorPeer -> schedulerInstance
-                                             .scheduleWithFixedDelay(replicatorPeer::sendNextMessage,
-                                                                     0,
-                                                                     raftGroup().raftConfiguration().heartbeatTimeout(),
-                                                                     MILLISECONDS));
-                }
+                scheduleReplication(0);
             } catch (RuntimeException re) {
                 logger.warn("Replication thread completed exceptionally", re);
+            }
+        }
+
+        private void scheduleReplication(long delayMillis) {
+            Scheduler schedulerInstance = scheduler.get();
+            if (schedulerInstance != null) {
+                scheduledReplications.values()
+                                     .forEach(Registration::cancel);
+                replicatorPeerMap.forEach((nodeId, replicatorPeer) -> {
+                                     ScheduledRegistration schedule = schedulerInstance.schedule(() -> {
+                                         if (replicatorPeer.sendNextMessage() > 0) {
+                                             scheduleReplication(0);
+                                         } else {
+                                             scheduleReplication(raftGroup().raftConfiguration().heartbeatTimeout());
+                                         }
+                                     }, delayMillis, MILLISECONDS);
+                                     scheduledReplications.put(nodeId, schedule);
+                                 });
             }
         }
 
@@ -308,11 +317,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-            Scheduler schedulerInstance = scheduler.get();
-            if (schedulerInstance != null) {
-                replicatorPeerMap.values()
-                                 .forEach(replicatorPeer -> schedulerInstance.execute(replicatorPeer::sendNextMessage));
-            }
+            scheduleReplication(0);
         }
 
         private long lastMessageTimeFromMajority() {
