@@ -71,7 +71,7 @@ public class FakeScheduler implements Scheduler {
         ScheduledTask task = new ScheduledTask(command, triggerTime);
         tasks.add(task);
         return new DefaultScheduledRegistration(clock,
-                                                () -> tasks.remove(task),
+                                                b -> tasks.remove(task),
                                                 unit -> getDelay(triggerTime, unit));
     }
 
@@ -93,7 +93,7 @@ public class FakeScheduler implements Scheduler {
 
         registration.set(schedule(runnable, initialDelay, timeUnit));
         return new DefaultScheduledRegistration(clock,
-                                                () -> registration.get().cancel(),
+                                                mayInterruptIfRunning -> registration.get().cancel(mayInterruptIfRunning),
                                                 unit -> registration.get().getDelay(unit) );
     }
 
