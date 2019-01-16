@@ -50,7 +50,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: metrics,info,health,loggers
+        include: metrics,info,health,loggers,prometheus,env
 
 
 info:
