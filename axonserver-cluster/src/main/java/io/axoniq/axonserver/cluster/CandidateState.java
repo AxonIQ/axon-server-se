@@ -91,7 +91,7 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     @Override
-    public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+    public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
             logger.trace(
                     "{}: Received install snapshot with term {} which is greater than mine {}. Moving to Follower...",
@@ -157,10 +157,13 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void requestVote(RequestVoteRequest request, RaftPeer node) {
-        node.requestVote(request).thenAccept(response -> onVoteResponse(node.nodeId(), response));
+        RaftNode me = raftGroup().localNode();
+        node.requestVote(request).thenAccept(response -> me.onVoteResponse(response));
     }
 
-    private synchronized void onVoteResponse(String voter, RequestVoteResponse response) {
+    @Override
+    public void onVoteResponse(RequestVoteResponse response) {
+        String voter = ""; //TODO add data in response
         logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
             updateCurrentTerm(response.getTerm());

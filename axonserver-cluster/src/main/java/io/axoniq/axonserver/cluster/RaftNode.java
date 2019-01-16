@@ -237,4 +237,9 @@ public class RaftNode {
     public List<Node> currentGroupMembers(){
         return state.get().currentGroupMembers();
     }
+
+    public synchronized void onVoteResponse(RequestVoteResponse requestVoteResponse){
+        this.state.get().onVoteResponse(requestVoteResponse);
+
+    }
 }
