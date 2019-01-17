@@ -22,8 +22,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -55,7 +57,7 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
-    private final Set<String> nodes = new CopyOnWriteArraySet<>();
+    private final Set<String> nodes = Collections.synchronizedSet(new LinkedHashSet<>());
     private volatile Replicators replicators;
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
@@ -280,7 +282,6 @@ public class LeaderState extends AbstractMembershipState {
                                                      raftGroup().raftConfiguration().heartbeatTimeout(),
                                                      MILLISECONDS);
                             s.scheduleWithFixedDelay(this::scheduleReplication, 0, 10, MILLISECONDS);
-//                            s.execute(this::scheduleReplication);
                         });
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
 
@@ -298,7 +299,6 @@ public class LeaderState extends AbstractMembershipState {
                     nodesIterator.remove();
                     replicatorPeerMap.get(node).sendNextMessage();
                 }
-//                schedulerInstance.execute(this::scheduleReplication);
             }
         }
 
@@ -329,8 +329,6 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-//            replicatorPeerMap.values()
-//                             .forEach(peer -> scheduler.get().execute(peer::sendNextMessage));
             nodes.addAll(replicatorPeerMap.keySet());
         }
 
