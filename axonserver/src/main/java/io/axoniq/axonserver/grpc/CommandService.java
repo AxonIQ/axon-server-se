@@ -21,36 +21,43 @@ import org.springframework.stereotype.Service;
 
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
 
 import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
- * Author: marc
+ * GRPC service to handle command bus requests from Axon Application
+ * Client can sent two requests:
+ * dispatch: sends a singe command to AxonServer
+ * openStream: used by application providing command handlers, maintains an open bi directional connection between the application and AxonServer
+ * @author: Marc Gathier
  */
 @Service("CommandService")
 public class CommandService implements AxonServerClientService {
 
-    public static final MethodDescriptor<Command, SerializedCommandResponse> METHOD_DISPATCH =
+    private static final MethodDescriptor<Command, SerializedCommandResponse> METHOD_DISPATCH =
             CommandServiceGrpc.getDispatchMethod().toBuilder(ProtoUtils.marshaller(Command.getDefaultInstance()),
-                    ProtoUtils.marshaller(SerializedCommandResponse.getDefaultInstance()))
-                          .build();
+                                                             ProtoUtils.marshaller(SerializedCommandResponse
+                                                                                           .getDefaultInstance()))
+                              .build();
 
-    public static final MethodDescriptor<CommandProviderOutbound, SerializedCommandProviderInbound> METHOD_OPEN_STREAM =
-            CommandServiceGrpc.getOpenStreamMethod().toBuilder(ProtoUtils.marshaller(CommandProviderOutbound.getDefaultInstance()),
-                                                               ProtoUtils.marshaller(SerializedCommandProviderInbound.getDefaultInstance()))
-                .build();
+    private static final MethodDescriptor<CommandProviderOutbound, SerializedCommandProviderInbound> METHOD_OPEN_STREAM =
+            CommandServiceGrpc.getOpenStreamMethod().toBuilder(ProtoUtils.marshaller(CommandProviderOutbound
+                                                                                             .getDefaultInstance()),
+                                                               ProtoUtils.marshaller(SerializedCommandProviderInbound
+                                                                                             .getDefaultInstance()))
+                              .build();
 
 
     private final CommandDispatcher commandDispatcher;
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
-
-    @Value("${axoniq.axonserver.command-threads:1}")
-    private final int processingThreads = 1;
     private final Set<GrpcFlowControlledDispatcherListener> dispatcherListenerSet = new CopyOnWriteArraySet<>();
+    @Value("${axoniq.axonserver.command-threads:1}")
+    private int processingThreads = 1;
 
     public CommandService(CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
@@ -70,37 +77,39 @@ public class CommandService implements AxonServerClientService {
     @Override
     public final ServerServiceDefinition bindService() {
         return ServerServiceDefinition.builder(CommandServiceGrpc.SERVICE_NAME)
-                                              .addMethod(
-                                                      METHOD_OPEN_STREAM,
-                                                      asyncBidiStreamingCall(this::openStream))
-                                              .addMethod(
-                                                      METHOD_DISPATCH,
-                                                      asyncUnaryCall(this::dispatch))
-                                              .build();
+                                      .addMethod(
+                                              METHOD_OPEN_STREAM,
+                                              asyncBidiStreamingCall(this::openStream))
+                                      .addMethod(
+                                              METHOD_DISPATCH,
+                                              asyncUnaryCall(this::dispatch))
+                                      .build();
     }
 
 
-    public StreamObserver<CommandProviderOutbound> openStream(StreamObserver<SerializedCommandProviderInbound> responseObserver) {
+    public StreamObserver<CommandProviderOutbound> openStream(
+            StreamObserver<SerializedCommandProviderInbound> responseObserver) {
         String context = contextProvider.getContext();
         SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver = new SendingStreamObserver<>(
                 responseObserver);
         return new ReceivingStreamObserver<CommandProviderOutbound>(logger) {
-            private volatile String client;
-            private volatile GrpcCommandDispatcherListener listener;
-            private volatile CommandHandler commandHandler;
+            private AtomicReference<ClientIdentification> clientRef = new AtomicReference<>();
+            private AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
+            private AtomicReference<CommandHandler> commandHandlerRef = new AtomicReference<>();
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
                 switch (commandFromSubscriber.getRequestCase()) {
                     case SUBSCRIBE:
-                        checkInitClient(commandFromSubscriber.getSubscribe().getClientId(), commandFromSubscriber.getSubscribe().getComponentName());
+                        checkInitClient(commandFromSubscriber.getSubscribe().getClientId(),
+                                        commandFromSubscriber.getSubscribe().getComponentName());
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(context,
                                                                                             commandFromSubscriber
                                                                                                     .getSubscribe()
-                                                                                            , commandHandler));
+                                , commandHandlerRef.get()));
                         break;
                     case UNSUBSCRIBE:
-                        if (client != null) {
+                        if (clientRef.get() != null) {
                             eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(context,
                                                                                                   commandFromSubscriber
                                                                                                           .getUnsubscribe(),
@@ -108,17 +117,12 @@ public class CommandService implements AxonServerClientService {
                         }
                         break;
                     case FLOW_CONTROL:
-                        if (this.listener == null) {
-                            listener = new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
-                                                                         new ClientIdentification(context, commandFromSubscriber.getFlowControl()
-                                                                                                                                .getClientId()).toString(),
-                                                                         wrappedResponseObserver, processingThreads);
-                            dispatcherListenerSet.add(listener);
-                        }
-                        listener.addPermits(commandFromSubscriber.getFlowControl().getPermits());
+                        flowControl(commandFromSubscriber.getFlowControl());
                         break;
                     case COMMAND_RESPONSE:
-                        commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber.getCommandResponse()),false);
+                        commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber
+                                                                                               .getCommandResponse()),
+                                                         false);
                         break;
 
                     case REQUEST_NOT_SET:
@@ -126,29 +130,41 @@ public class CommandService implements AxonServerClientService {
                 }
             }
 
-            private void checkInitClient(String clientId, String component) {
-                if( this.client == null) {
-                    client = clientId;
-                    commandHandler = new DirectCommandHandler(
-                            wrappedResponseObserver, new ClientIdentification(context, client), component);
+            private void flowControl(FlowControl flowControl) {
+                clientRef.compareAndSet(null, new ClientIdentification(context, flowControl.getClientId()));
+                if (listenerRef.compareAndSet(null,
+                                              new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
+                                                                                clientRef.get().toString(),
+                                                                                wrappedResponseObserver,
+                                                                                processingThreads))) {
+                    dispatcherListenerSet.add(listenerRef.get());
                 }
+                listenerRef.get().addPermits(flowControl.getPermits());
+            }
+
+            private void checkInitClient(String clientId, String component) {
+                clientRef.compareAndSet(null, new ClientIdentification(context, clientId));
+                commandHandlerRef.compareAndSet(null, new DirectCommandHandler(wrappedResponseObserver,
+                                                                               clientRef.get(), component));
             }
 
             @Override
             protected String sender() {
-                return client;
+                return clientRef.toString();
             }
 
             @Override
             public void onError(Throwable cause) {
-                logger.warn("{}: Error on connection from subscriber - {}", client, cause.getMessage());
+                logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
                 cleanup();
             }
 
             private void cleanup() {
-                if( client != null) {
-                    eventPublisher.publishEvent(new CommandHandlerDisconnected(context, client));
+                if (clientRef.get() != null) {
+                    eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get().getContext(),
+                                                                               clientRef.get().getClient()));
                 }
+                GrpcCommandDispatcherListener listener = listenerRef.get();
                 if (listener != null) {
                     listener.cancel();
                     dispatcherListenerSet.remove(listener);
@@ -157,12 +173,12 @@ public class CommandService implements AxonServerClientService {
 
             @Override
             public void onCompleted() {
-                logger.debug("{}: Connection to subscriber closed by subscriber", client);
+                logger.debug("{}: Connection to subscriber closed by subscriber", clientRef);
                 cleanup();
                 try {
                     responseObserver.onCompleted();
-                } catch( RuntimeException cause) {
-                    logger.warn("{}: Error completing connection to subscriber - {}", client, cause.getMessage());
+                } catch (RuntimeException cause) {
+                    logger.warn("{}: Error completing connection to subscriber - {}", clientRef, cause.getMessage());
                 }
             }
         };
@@ -171,19 +187,22 @@ public class CommandService implements AxonServerClientService {
     public void dispatch(Command command, StreamObserver<SerializedCommandResponse> responseObserver) {
         SerializedCommand request = new SerializedCommand(command);
         String clientId = command.getClientId();
-        if( logger.isTraceEnabled()) logger.trace("{}: Received command: {}", clientId, request);
+        if (logger.isTraceEnabled()) {
+            logger.trace("{}: Received command: {}", clientId, request);
+        }
         try {
             commandDispatcher.dispatch(contextProvider.getContext(), request, commandResponse -> safeReply(clientId,
                                                                                                            commandResponse,
                                                                                                            responseObserver),
                                        false);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             logger.warn("Dispatching failed with unexpected error", ex);
             responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
 
-    private void safeReply(String clientId, SerializedCommandResponse commandResponse, StreamObserver<SerializedCommandResponse> responseObserver) {
+    private void safeReply(String clientId, SerializedCommandResponse commandResponse,
+                           StreamObserver<SerializedCommandResponse> responseObserver) {
         try {
             responseObserver.onNext(commandResponse);
             responseObserver.onCompleted();

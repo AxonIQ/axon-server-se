@@ -20,15 +20,20 @@ import org.springframework.stereotype.Controller;
  */
 @Controller("GrpcStubFactory")
 public class GrpcStubFactory implements StubFactory {
+    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
+
+    public GrpcStubFactory(MessagingPlatformConfiguration messagingPlatformConfiguration) {
+        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+    }
+
     @Override
-    public MessagingClusterServiceInterface messagingClusterServiceStub(MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
+    public MessagingClusterServiceInterface messagingClusterServiceStub(ClusterNode clusterNode) {
         ManagedChannel managedChannel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, clusterNode);
-        return messagingClusterServiceStub(messagingPlatformConfiguration, managedChannel);
+        return messagingClusterServiceStub(managedChannel);
     }
 
     @NotNull
-    private MessagingClusterServiceInterface messagingClusterServiceStub(
-            MessagingPlatformConfiguration messagingPlatformConfiguration, ManagedChannel managedChannel) {
+    private MessagingClusterServiceInterface messagingClusterServiceStub(ManagedChannel managedChannel) {
         MessagingClusterServiceGrpc.MessagingClusterServiceStub stub = MessagingClusterServiceGrpc.newStub(managedChannel)
                                                                                                   .withInterceptors(new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken()));
         return new MessagingClusterServiceInterface() {
@@ -56,15 +61,14 @@ public class GrpcStubFactory implements StubFactory {
     }
 
     @Override
-    public MessagingClusterServiceInterface messagingClusterServiceStub(
-            MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
+    public MessagingClusterServiceInterface messagingClusterServiceStub( String host, int port) {
         ManagedChannel managedChannel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, host, port);
-        return messagingClusterServiceStub(messagingPlatformConfiguration, managedChannel);
+        return messagingClusterServiceStub( managedChannel);
     }
 
     @Override
     public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-            MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
+            ClusterNode clusterNode) {
         ManagedChannel managedChannel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, clusterNode);
         DataSynchronizerGrpc.DataSynchronizerStub stub = DataSynchronizerGrpc.newStub(managedChannel)
                 .withInterceptors(new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken()));

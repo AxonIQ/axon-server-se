@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.FlowControl;
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
@@ -52,7 +51,6 @@ public class DataSynchronizationReplica {
     private final Logger logger = LoggerFactory.getLogger(DataSynchronizationReplica.class);
 
     private final Map<String, ReplicaConnection> connectionPerContext = new ConcurrentHashMap<>();
-    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final StubFactory stubFactory;
     private final LocalEventStore localEventStore;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -60,13 +58,11 @@ public class DataSynchronizationReplica {
     private final Clock clock;
 
     public DataSynchronizationReplica(ClusterController clusterController,
-                                      MessagingPlatformConfiguration messagingPlatformConfiguration,
                                       StubFactory stubFactory,
                                       LocalEventStore localEventStore,
                                       ApplicationEventPublisher applicationEventPublisher,
                                       SyncStatusController safepointRepository, Clock clock) {
         this.clusterController = clusterController;
-        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.stubFactory = stubFactory;
         this.localEventStore = localEventStore;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -115,7 +111,7 @@ public class DataSynchronizationReplica {
 
     @EventListener
     public void on(ContextEvents.NodeRolesUpdated nodeRolesUpdated) {
-        if( nodeRolesUpdated.getNode().getName().equals(messagingPlatformConfiguration.getName()) &&
+        if( nodeRolesUpdated.getNode().getName().equals(clusterController.getName()) &&
             !nodeRolesUpdated.getNode().isStorage()) {
             ReplicaConnection old = connectionPerContext.remove(nodeRolesUpdated.getName());
             if( old != null) old.complete();
@@ -169,12 +165,11 @@ public class DataSynchronizationReplica {
         public ReplicaConnection(String node, String context) {
             this.node = node;
             this.context = context;
-            this.flowControl = messagingPlatformConfiguration.getCommandFlowControl();
+            this.flowControl = clusterController.getCommandFlowControl();
         }
 
         public void start() {
             DataSychronizationServiceInterface stub = stubFactory.dataSynchronizationServiceStub(
-                    messagingPlatformConfiguration,
                     clusterController.getNode(node));
             logger.info("{}: starting replication with {}", context, node);
 
@@ -237,7 +232,7 @@ public class DataSynchronizationReplica {
                                                                                                      .newBuilder()
                                                                                                      .setContext(context)
                                                                                                      .setNodeName(
-                                                                                                             messagingPlatformConfiguration
+                                                                                                             clusterController
                                                                                                                      .getName())
                                                                                                      .setEventToken(
                                                                                                              Math.min(safepointRepository.getSafePoint(EventType.EVENT, context), localEventStore.getLastToken(context) + 1))

@@ -37,7 +37,7 @@ public class ClusterFlowControlStreamObserverTest {
 
     @Test
     public void onNextCommand() {
-        testSubject.initCommandFlowControl(messagingPlatformConfiguration);
+        testSubject.initCommandFlowControl(messagingPlatformConfiguration.getName(), messagingPlatformConfiguration.getCommandFlowControl());
         testSubject.onNext(ConnectorCommand.newBuilder().setCommandResponse(ForwardedCommandResponse.newBuilder().build()).build());
         assertEquals(3, delegate.count);
         assertEquals( COMMAND_RESPONSE, delegate.responseList.get(1).getRequestCase());
@@ -48,7 +48,7 @@ public class ClusterFlowControlStreamObserverTest {
     }
     @Test
     public void onNextQuery() {
-        testSubject.initQueryFlowControl(messagingPlatformConfiguration);
+        testSubject.initQueryFlowControl(messagingPlatformConfiguration.getName(), messagingPlatformConfiguration.getQueryFlowControl());
         testSubject.onNext(ConnectorCommand.newBuilder().setQueryResponse(QueryResponse.newBuilder().build()).build());
         assertEquals(3, delegate.count);
         assertEquals( QUERY_RESPONSE, delegate.responseList.get(1).getRequestCase());
@@ -59,8 +59,8 @@ public class ClusterFlowControlStreamObserverTest {
     }
     @Test
     public void onNextOther() {
-        testSubject.initQueryFlowControl(messagingPlatformConfiguration);
-        testSubject.initCommandFlowControl(messagingPlatformConfiguration);
+        testSubject.initQueryFlowControl(messagingPlatformConfiguration.getName(), messagingPlatformConfiguration.getQueryFlowControl());
+        testSubject.initCommandFlowControl(messagingPlatformConfiguration.getName(), messagingPlatformConfiguration.getCommandFlowControl());
         assertEquals(2, delegate.count);
         testSubject.onNext(ConnectorCommand.newBuilder().setDeleteNode(DeleteNode.newBuilder().build()).build());
         assertEquals(3, delegate.count);
@@ -70,7 +70,7 @@ public class ClusterFlowControlStreamObserverTest {
 
     @Test
     public void initCommandFlowControl() {
-        testSubject.initCommandFlowControl(messagingPlatformConfiguration);
+        testSubject.initCommandFlowControl(messagingPlatformConfiguration.getName(), messagingPlatformConfiguration.getCommandFlowControl());
         assertEquals(1, delegate.count);
         assertEquals( FLOW_CONTROL, delegate.responseList.get(0).getRequestCase());
         assertEquals( 1, delegate.responseList.get(0).getFlowControl().getPermits());
@@ -79,7 +79,7 @@ public class ClusterFlowControlStreamObserverTest {
 
     @Test
     public void initQueryFlowControl() {
-        testSubject.initQueryFlowControl(messagingPlatformConfiguration);
+        testSubject.initQueryFlowControl(messagingPlatformConfiguration.getName(), messagingPlatformConfiguration.getQueryFlowControl());
         assertEquals(1, delegate.count);
         assertEquals( FLOW_CONTROL, delegate.responseList.get(0).getRequestCase());
         assertEquals( 1, delegate.responseList.get(0).getFlowControl().getPermits());

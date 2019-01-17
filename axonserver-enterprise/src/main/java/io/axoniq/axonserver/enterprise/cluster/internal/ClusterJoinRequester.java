@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -24,17 +23,14 @@ import java.util.concurrent.Future;
 @Component
 public class ClusterJoinRequester {
     private final ClusterController clusterController;
-    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final EventStoreManager eventStoreManager;
     private final StubFactory stubFactory;
     private static final Logger logger = LoggerFactory.getLogger(ClusterJoinRequester.class);
 
     public ClusterJoinRequester(ClusterController clusterController,
-                                MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 Optional<EventStoreManager> eventStoreManager,
                                 StubFactory stubFactory) {
         this.clusterController = clusterController;
-        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.eventStoreManager = eventStoreManager.orElse(null);
         this.stubFactory = stubFactory;
     }
@@ -50,7 +46,6 @@ public class ClusterJoinRequester {
         }
         eventStoreManager.stop();
         MessagingClusterServiceInterface stub = stubFactory.messagingClusterServiceStub(
-                    messagingPlatformConfiguration,
                     host,
                     port);
         logger.debug("Sending join request: {}", clusterController.getMe().toNodeInfo());
@@ -73,7 +68,7 @@ public class ClusterJoinRequester {
                     stub.closeChannel();
                     connectResponse.getNodesList().forEach(nodeInfo ->
                                                            {
-                                                               if( ! nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName()))
+                                                               if( ! nodeInfo.getNodeName().equals(clusterController.getName()))
                                                                    clusterController.addConnection(nodeInfo, connectResponse.getGeneration());
                                                            });
                     clusterController.setGeneration(connectResponse.getGeneration());

@@ -86,22 +86,11 @@ public class DataSynchronizationReplicaTest {
         messagingPlatformConfiguration.getCommandFlowControl().setThreshold(10);
         messagingPlatformConfiguration.getCommandFlowControl().setInitialPermits(20);
         messagingPlatformConfiguration.getCommandFlowControl().setNewPermits(20);
+        when(clusterController.getCommandFlowControl()).thenReturn(messagingPlatformConfiguration.getCommandFlowControl());
         StubFactory stubFactory = new StubFactory() {
             @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-                return null;
-            }
-
-            @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
-                return null;
-            }
-
-            @Override
             public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
+                    ClusterNode clusterNode) {
                 return responseObserver -> {
                     inboundStream.set(responseObserver);
                     return new StreamObserver<SynchronizationReplicaOutbound>() {
@@ -123,7 +112,7 @@ public class DataSynchronizationReplicaTest {
                 };
             }
         };
-        testSubject = new DataSynchronizationReplica(clusterController, messagingPlatformConfiguration, stubFactory, localEventStore,
+        testSubject = new DataSynchronizationReplica(clusterController, stubFactory, localEventStore,
                                                      applicationEventPublisher, safepointRespository, clock);
     }
 

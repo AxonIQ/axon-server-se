@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.config.ClusterConfiguration;
+import io.axoniq.axonserver.config.FlowControl;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
@@ -34,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -68,7 +68,6 @@ public class ClusterController implements SmartLifecycle {
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String,ClusterNode> nodeMap = new ConcurrentHashMap<>();
     private volatile boolean running;
-    private final Map<String, Long> deletedNodes = new ConcurrentHashMap<>();
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              EntityManager entityManager,
@@ -250,17 +249,11 @@ public class ClusterController implements SmartLifecycle {
             return;
         }
 
-        if( deletedNodes.containsKey(clusterNode.getName())) {
-            return;
-        }
         synchronized (remoteConnections) {
-            RemoteConnection remoteConnection = new RemoteConnection(getMe(), clusterNode,
-                                                                     applicationEventPublisher,
+            RemoteConnection remoteConnection = new RemoteConnection(this, clusterNode,
                                                                      stubFactory,
                                                                      queryDispatcher,
-                                                                     commandDispatcher,
-                                                                     modelVersionController,
-                                                                     messagingPlatformConfiguration);
+                                                                     commandDispatcher);
             remoteConnections.put(clusterNode.getName(), remoteConnection);
 
             if (connect) {
@@ -494,11 +487,9 @@ public class ClusterController implements SmartLifecycle {
         Set<String> oldContexts = getMyContextsNames();
         for(ClusterRestController.ContextRoleJSON contextRoleJSON : contexts) {
             mergeContext(clusterNode, contextRoleJSON.getName(), contextRoleJSON.isStorage(), contextRoleJSON.isMessaging());
-            if( contextRoleJSON.isStorage()) {
-                if( ! oldStorageContexts.remove(contextRoleJSON.getName()) ) {
+            if( contextRoleJSON.isStorage() && ! oldStorageContexts.remove(contextRoleJSON.getName()) ) {
                     applicationEventPublisher.publishEvent(new ContextEvents.NodeRolesUpdated(contextRoleJSON.getName(),
                                                                                               new NodeRoles(getName(),contextRoleJSON.isMessaging(), contextRoleJSON.isStorage()), false));
-                }
             }
             oldContexts.remove(contextRoleJSON.getName());
         }
@@ -528,5 +519,25 @@ public class ClusterController implements SmartLifecycle {
 
     public void setGeneration(long generation) {
         modelVersionController.updateModelVersion(ClusterNode.class, generation);
+    }
+
+    public long currentGeneration() {
+        return modelVersionController.getModelVersion(ClusterNode.class);
+    }
+
+    public FlowControl getCommandFlowControl() {
+        return messagingPlatformConfiguration.getCommandFlowControl();
+    }
+
+    public FlowControl getQueryFlowControl() {
+        return messagingPlatformConfiguration.getQueryFlowControl();
+    }
+
+    public void publishEvent(Object event) {
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public long getConnectionWaitTime() {
+        return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
     }
 }

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.Group;
@@ -49,26 +48,26 @@ public class ClusterFlowControlStreamObserver extends SendingStreamObserver<Conn
         }
     }
 
-    public void initCommandFlowControl(MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        remainingCommandPermits.set(messagingPlatformConfiguration.getCommandFlowControl().getInitialPermits()-
-                messagingPlatformConfiguration.getCommandFlowControl().getThreshold());
-        this.newCommandPermits = messagingPlatformConfiguration.getCommandFlowControl().getNewPermits();
+    public void initCommandFlowControl(String name, io.axoniq.axonserver.config.FlowControl flowControl) {
+        remainingCommandPermits.set(flowControl.getInitialPermits()-
+                                            flowControl.getThreshold());
+        this.newCommandPermits = flowControl.getNewPermits();
         newCommandPermitsRequest = ConnectorCommand.newBuilder().setFlowControl(
-                InternalFlowControl.newBuilder().setNodeName(messagingPlatformConfiguration.getName())
+                InternalFlowControl.newBuilder().setNodeName(name)
                         .setGroup(Group.COMMAND)
-                        .setPermits(messagingPlatformConfiguration.getCommandFlowControl().getNewPermits()).build()).build();
+                        .setPermits(flowControl.getNewPermits()).build()).build();
         onNext(ConnectorCommand.newBuilder().setFlowControl(InternalFlowControl.newBuilder(newCommandPermitsRequest.getFlowControl())
-                .setPermits(messagingPlatformConfiguration.getCommandFlowControl().getInitialPermits()).build()).build());
+                .setPermits(flowControl.getInitialPermits()).build()).build());
     }
-    public void initQueryFlowControl(MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        remainingQueryPermits.set(messagingPlatformConfiguration.getQueryFlowControl().getInitialPermits()-
-                messagingPlatformConfiguration.getQueryFlowControl().getThreshold());
-        this.newQueryPermits = messagingPlatformConfiguration.getQueryFlowControl().getNewPermits();
+    public void initQueryFlowControl(String name, io.axoniq.axonserver.config.FlowControl flowControl) {
+        remainingQueryPermits.set(flowControl.getInitialPermits()-
+                                          flowControl.getThreshold());
+        this.newQueryPermits = flowControl.getNewPermits();
         newQueryPermitsRequest = ConnectorCommand.newBuilder().setFlowControl(
-                InternalFlowControl.newBuilder().setNodeName(messagingPlatformConfiguration.getName())
+                InternalFlowControl.newBuilder().setNodeName(name)
                         .setGroup(Group.QUERY)
-                        .setPermits(messagingPlatformConfiguration.getQueryFlowControl().getNewPermits()).build()).build();
+                        .setPermits(flowControl.getNewPermits()).build()).build();
         onNext(ConnectorCommand.newBuilder().setFlowControl(InternalFlowControl.newBuilder(newQueryPermitsRequest.getFlowControl())
-                .setPermits(messagingPlatformConfiguration.getQueryFlowControl().getInitialPermits()).build()).build());
+                .setPermits(flowControl.getInitialPermits()).build()).build());
     }
 }

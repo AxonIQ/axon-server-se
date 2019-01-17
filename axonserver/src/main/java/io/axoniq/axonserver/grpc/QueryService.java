@@ -25,10 +25,15 @@ import org.springframework.stereotype.Service;
 
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
 
 /**
- * Author: marc
+ * GRPC service to handle query bus requests from Axon Application
+ * Client can sent two requests:
+ * query: sends a singe query to AxonServer
+ * openStream: used by application providing query handlers, maintains an open bi directional connection between the application and AxonServer
+ * @author Marc Gathier
  */
 @Service("QueryService")
 public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implements AxonServerClientService {
@@ -43,7 +48,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private int processingThreads = 1;
 
 
-    public QueryService(QueryDispatcher queryDispatcher, ContextProvider contextProvider, ApplicationEventPublisher eventPublisher) {
+    public QueryService(QueryDispatcher queryDispatcher, ContextProvider contextProvider,
+                        ApplicationEventPublisher eventPublisher) {
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
@@ -64,9 +70,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                 inboundStreamObserver);
 
         return new ReceivingStreamObserver<QueryProviderOutbound>(logger) {
-            private volatile GrpcQueryDispatcherListener listener;
-            private volatile ClientIdentification client;
-            private volatile QueryHandler queryHandler;
+            private AtomicReference<GrpcQueryDispatcherListener> listener = new AtomicReference<>();
+            private AtomicReference<ClientIdentification> client = new AtomicReference<>();
+            private AtomicReference<QueryHandler> queryHandler = new AtomicReference<>();
 
             @Override
             protected void consume(QueryProviderOutbound queryProviderOutbound) {
@@ -74,19 +80,15 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     case SUBSCRIBE:
                         QuerySubscription subscription = queryProviderOutbound
                                 .getSubscribe();
-                        if (client == null) {
-                            client = new ClientIdentification(context,subscription.getClientId());
-                            queryHandler = new DirectQueryHandler(wrappedQueryProviderInboundObserver, client,
-                                                                  subscription.getComponentName());
-                        }
+                        checkInitClient(subscription.getClientId(), subscription.getComponentName());
                         eventPublisher.publishEvent(
                                 new SubscriptionEvents.SubscribeQuery(context,
                                                                       queryProviderOutbound
                                                                               .getSubscribe(),
-                                                                      queryHandler));
+                                                                      queryHandler.get()));
                         break;
                     case UNSUBSCRIBE:
-                        if (client != null) {
+                        if (client.get() != null) {
                             eventPublisher.publishEvent(
                                     new SubscriptionEvents.UnsubscribeQuery(context,
                                                                             queryProviderOutbound
@@ -95,24 +97,17 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         }
                         break;
                     case FLOW_CONTROL:
-                        if (this.listener == null) {
-                            listener = new GrpcQueryDispatcherListener(queryDispatcher,
-                                                                       new ClientIdentification(context, queryProviderOutbound.getFlowControl()
-                                                                                            .getClientId()).toString(),
-                                                                       wrappedQueryProviderInboundObserver, processingThreads);
-                            dispatcherListenerSet.add(listener);
-                        }
-                        listener.addPermits(queryProviderOutbound.getFlowControl().getPermits());
+                        flowControl(queryProviderOutbound.getFlowControl());
                         break;
-
                     case QUERY_RESPONSE:
-                        queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(), client.getClient(), false);
+                        queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
+                                                       client.get().getClient(),
+                                                       false);
                         break;
-
                     case QUERY_COMPLETE:
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
-                                                                          client.getClient(),
-                                                                          false);
+                                                       client.get().getClient(),
+                                                       false);
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
                         SubscriptionQueryResponse response = queryProviderOutbound.getSubscriptionQueryResponse();
@@ -121,6 +116,25 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     case REQUEST_NOT_SET:
                         break;
                 }
+            }
+
+            private void flowControl(FlowControl flowControl) {
+                client.compareAndSet(null, new ClientIdentification(context,
+                                                                    flowControl.getClientId()));
+                if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
+                                                                                 client.get().toString(),
+                                                                                 wrappedQueryProviderInboundObserver,
+                                                                                 processingThreads))) {
+                    dispatcherListenerSet.add(listener.get());
+                }
+                listener.get().addPermits(flowControl.getPermits());
+            }
+
+            private void checkInitClient(String clientId, String componentName) {
+                client.compareAndSet(null, new ClientIdentification(context, clientId));
+                queryHandler.compareAndSet(null,
+                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver, client.get(),
+                                                                  componentName));
             }
 
             @Override
@@ -136,12 +150,12 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             }
 
             private void cleanup() {
-                if( client != null) {
-                    eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client.getClient()));
+                if (client.get() != null) {
+                    eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client.get().getClient()));
                 }
-                if (listener != null) {
-                    dispatcherListenerSet.remove(listener);
-                    listener.cancel();
+                if (listener.get() != null) {
+                    dispatcherListenerSet.remove(listener.get());
+                    listener.get().cancel();
                 }
             }
 
@@ -151,21 +165,22 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
                 try {
                     inboundStreamObserver.onCompleted();
-                } catch( RuntimeException cause) {
+                } catch (RuntimeException cause) {
                     logger.warn("{}: Error completing connection to subscriber - {}", client, cause.getMessage());
                 }
-
             }
         };
     }
 
     @Override
     public void query(QueryRequest request, StreamObserver<QueryResponse> responseObserver) {
-        if( logger.isTraceEnabled()) logger.trace("{}: Received query: {}", request.getClientId(), request);
+        if (logger.isTraceEnabled()) {
+            logger.trace("{}: Received query: {}", request.getClientId(), request);
+        }
         GrpcQueryResponseConsumer responseConsumer = new GrpcQueryResponseConsumer(responseObserver);
         queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
-                                                                     responseConsumer::onNext,
-                                                                     result -> responseConsumer.onCompleted());
+                              responseConsumer::onNext,
+                              result -> responseConsumer.onCompleted());
     }
 
     @Override

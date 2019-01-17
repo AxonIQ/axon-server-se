@@ -10,7 +10,6 @@ import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.enterprise.cluster.internal.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.AssertUtils;
@@ -55,7 +54,7 @@ public class EventStoreManagerTest {
         StubFactory stubFactory =  new StubFactory() {
             @Override
             public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode node) {
+                    ClusterNode node) {
                 return new TestMessagingClusterService() {
                     @Override
                     public void requestLeader(NodeContextInfo nodeContextInfo,
@@ -74,18 +73,6 @@ public class EventStoreManagerTest {
                         confirmationStreamObserver.onError(new RuntimeException("Failed to check node: " + node.getName()));
                     }
                 };
-            }
-
-            @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
-                return null;
-            }
-
-            @Override
-            public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-                return null;
             }
         };
         testSubject = new EventStoreManager( messagingPlatformConfiguration,

@@ -318,7 +318,6 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                      AtomicBoolean approved) {
         logger.debug("Request become leader: {}", node.getName());
         MessagingClusterServiceInterface stub = stubFactory.messagingClusterServiceStub(
-                messagingPlatformConfiguration,
                 node);
         stub.requestLeader(nodeContextInfo,
                            new StreamObserver<Confirmation>() {
