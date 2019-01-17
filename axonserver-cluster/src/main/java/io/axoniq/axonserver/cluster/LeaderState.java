@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -41,6 +42,7 @@ import java.util.stream.Stream;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Author: marc
@@ -53,6 +55,7 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
+    private final Set<String> nodes = new CopyOnWriteArraySet<>();
     private volatile Replicators replicators;
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
@@ -243,7 +246,6 @@ public class LeaderState extends AbstractMembershipState {
         private final Set<String> nonVotingReplica = new CopyOnWriteArraySet<>();
         private final List<Registration> registrations = new ArrayList<>();
         private final Map<String, ReplicatorPeer> replicatorPeerMap = new ConcurrentHashMap<>();
-        private final Map<String, ScheduledRegistration> scheduledReplications = new ConcurrentHashMap<>();
 
         void stop() {
             logger.info("{}: Stop replication thread", groupId());
@@ -271,27 +273,30 @@ public class LeaderState extends AbstractMembershipState {
                     registrations.add(registerPeer(peer, this::updateMatchIndex));
 
                 });
+                Optional.ofNullable(scheduler.get())
+                        .ifPresent(s -> {
+                            s.scheduleWithFixedDelay(this::notifySenders,
+                                                     0,
+                                                     raftGroup().raftConfiguration().heartbeatTimeout(),
+                                                     MILLISECONDS);
+                            s.scheduleWithFixedDelay(this::scheduleReplication, 0, 10, MILLISECONDS);
+                        });
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
-                replicatorPeerMap.values()
-                                 .forEach(peer -> scheduleReplication(peer,100, NANOSECONDS));
+
             } catch (RuntimeException re) {
                 logger.warn("Replication thread completed exceptionally", re);
             }
         }
 
-        private void scheduleReplication(ReplicatorPeer replicatorPeer, long delay, TimeUnit unit) {
+        private void scheduleReplication() {
             Scheduler schedulerInstance = scheduler.get();
             if (schedulerInstance != null) {
-                ScheduledRegistration schedule = schedulerInstance.schedule(() -> {
-                    if (replicatorPeer.sendNextMessage() > 0) {
-                        scheduleReplication(replicatorPeer, 100, NANOSECONDS);
-                    } else {
-                        scheduleReplication(replicatorPeer,
-                                            raftGroup().raftConfiguration().heartbeatTimeout(),
-                                            MILLISECONDS);
-                    }
-                }, delay, unit);
-                scheduledReplications.put(replicatorPeer.nodeId(), schedule);
+                Iterator<String> nodesIterator = nodes.iterator();
+                if (nodesIterator.hasNext()) {
+                    String node = nodesIterator.next();
+                    nodesIterator.remove();
+                    replicatorPeerMap.get(node).sendNextMessage();
+                }
             }
         }
 
@@ -322,15 +327,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-            replicatorPeerMap.values()
-                             .forEach(peer -> {
-                                 ScheduledRegistration schedule = scheduledReplications.get(peer.nodeId());
-                                 long leftNanos = schedule.getDelay(NANOSECONDS);
-                                 if (leftNanos > 100) {
-                                     schedule.cancel();
-                                     scheduleReplication(peer, 100, NANOSECONDS);
-                                 }
-                             });
+            nodes.addAll(replicatorPeerMap.keySet());
         }
 
         private long lastMessageTimeFromMajority() {
@@ -360,14 +357,12 @@ public class LeaderState extends AbstractMembershipState {
             if (!node.getNodeId().equals(me())) {
                 RaftPeer raftPeer = raftGroup().peer(node);
                 registrations.add(registerPeer(raftPeer, this::updateMatchIndex));
-                scheduleReplication(replicatorPeerMap.get(node.getNodeId()), 100, NANOSECONDS);
             }
         }
 
         public void removeNode(String nodeId) {
             ReplicatorPeer removed = replicatorPeerMap.remove(nodeId);
             if (removed != null) {
-                scheduledReplications.get(removed.nodeId()).cancel();
                 removed.stop();
             }
         }
