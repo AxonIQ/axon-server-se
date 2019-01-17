@@ -19,16 +19,19 @@ public class ClusterEvents {
     public static class AxonServerInstanceConnected extends TopologyEvents.TopologyBaseEvent {
 
         private final RemoteConnection remoteConnection;
+        private final long generation;
         private final List<ModelVersion> modelVersionsList;
         private final List<ContextRole> contextsList;
         private final List<io.axoniq.axonserver.grpc.internal.NodeInfo> nodesList;
 
         public AxonServerInstanceConnected(RemoteConnection remoteConnection,
+                                           long generation,
                                            List<ModelVersion> modelVersionsList,
                                            List<ContextRole> contextsList,
                                            List<NodeInfo> nodesList){
             super(false);
             this.remoteConnection = remoteConnection;
+            this.generation = generation;
             this.modelVersionsList = modelVersionsList;
             this.contextsList = contextsList;
             this.nodesList = nodesList;
@@ -52,6 +55,10 @@ public class ClusterEvents {
 
         public List<io.axoniq.axonserver.grpc.internal.NodeInfo> getNodesList() {
             return nodesList;
+        }
+
+        public long getGeneration() {
+            return generation;
         }
     }
 
@@ -220,14 +227,26 @@ public class ClusterEvents {
 
     public static class AxonServerNodeDeleted extends TopologyEvents.TopologyBaseEvent {
         private final String node;
+        private final long generation;
 
-        public AxonServerNodeDeleted(String name) {
+        public AxonServerNodeDeleted(String name, long generation) {
             super(false);
             this.node =name;
+            this.generation = generation;
         }
 
         public String node() {
             return node;
+        }
+
+        public long getGeneration() {
+            return generation;
+        }
+    }
+    public static class ClusterUpdatedNotification extends TopologyEvents.TopologyBaseEvent {
+
+        public ClusterUpdatedNotification() {
+            super(false);
         }
     }
 }

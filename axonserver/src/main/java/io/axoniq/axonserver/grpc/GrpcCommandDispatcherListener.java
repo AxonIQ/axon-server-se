@@ -20,7 +20,11 @@ public class GrpcCommandDispatcherListener extends GrpcFlowControlledDispatcherL
 
     @Override
     protected boolean send(WrappedCommand message) {
-        inboundStream.onNext(SerializedCommandProviderInbound.newBuilder().setCommand(message.command()).build());
+        try {
+            inboundStream.onNext(SerializedCommandProviderInbound.newBuilder().setCommand(message.command()).build());
+        } catch( Exception ex) {
+            logger.warn("Could not send command to {}", queueName, ex);
+        }
         return true;
     }
 

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.TestSystemInfoProvider;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -66,6 +67,9 @@ public class ClusterControllerTest {
     @Mock
     private QueryDispatcher queryDispatcher;
 
+    @Mock
+    private ModelVersionController modelVersionController;
+
     @Before
     public void setUp()  {
         Context context = new Context(Topology.DEFAULT_CONTEXT);
@@ -115,7 +119,9 @@ public class ClusterControllerTest {
 
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
                                             stubFactory,
-                                            nodeSelectionStrategy, queryDispatcher, commandDispatcher, eventPublisher, limits);
+                                            nodeSelectionStrategy, queryDispatcher, commandDispatcher,
+                                            modelVersionController,
+                                            eventPublisher, limits);
     }
 
     @Test
@@ -151,7 +157,7 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 5);
 
         Collection<RemoteConnection> nodes = testSubject.getRemoteConnections();
         assertEquals(1, nodes.size());
@@ -186,13 +192,13 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 10);
         assertEquals(2, testSubject.nodes().count());
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 11);
         assertEquals(2, testSubject.nodes().count());
     }
 
@@ -211,12 +217,12 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 10);
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("deletedNode")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 11);
 
 
         testSubject.sendDeleteNode("deletedNode");

@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
@@ -29,7 +30,7 @@ public class SubscriptionSynchronizer {
     private final CommandRegistrationCache commandRegistrationCache;
     private final QueryRegistrationCache queryRegistrationCache;
     private final ClusterController clusterController;
-    private final Map<String, ContextComponent> connectedClients = new ConcurrentHashMap<>();
+    private final Map<ClientIdentification, ContextComponent> connectedClients = new ConcurrentHashMap<>();
 
     public SubscriptionSynchronizer(CommandRegistrationCache commandRegistrationCache,
                                     QueryRegistrationCache queryRegistrationCache,
@@ -43,9 +44,9 @@ public class SubscriptionSynchronizer {
     public void on(ClusterEvents.AxonServerInstanceConnected event) {
 
         connectedClients.forEach((key, value) ->
-                                         event.getRemoteConnection().clientStatus(value.getContext(),
+                                         event.getRemoteConnection().clientStatus(key.getContext(),
                                                                                   value.getComponent(),
-                                                                                  key,
+                                                                                  key.getClient(),
                                                                                   true));
 
         commandRegistrationCache.getAll().forEach((member, commands) -> {
@@ -130,7 +131,7 @@ public class SubscriptionSynchronizer {
             clusterController.activeConnections().forEach(remoteConnection -> remoteConnection
                     .clientStatus(event.getContext(), event.getComponentName(),
                                   event.getClient(), false));
-            connectedClients.remove(event.getClient());
+            connectedClients.remove(event.clientIdentification());
         }
     }
 
@@ -168,7 +169,7 @@ public class SubscriptionSynchronizer {
                                                                                                 event.getComponentName(),
                                                                                                 event.getClient(),
                                                                                                 true));
-            connectedClients.put(event.getClient(), new ContextComponent(event.getContext(), event.getComponentName()));
+            connectedClients.put(event.clientIdentification(), new ContextComponent(event.getContext(), event.getComponentName()));
         }
     }
 

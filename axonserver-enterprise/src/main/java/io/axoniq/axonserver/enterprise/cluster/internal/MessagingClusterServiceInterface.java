@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
@@ -15,7 +16,9 @@ public interface MessagingClusterServiceInterface {
             StreamObserver<ConnectorResponse> responseObserver);
 
     void join(NodeInfo request,
-              StreamObserver<NodeInfo> responseObserver);
+              StreamObserver<ConnectResponse> responseObserver);
 
     void requestLeader(NodeContextInfo nodeContextInfo, StreamObserver<Confirmation> confirmationStreamObserver);
+
+    void closeChannel();
 }

@@ -113,7 +113,7 @@ public class ContextRestController {
             throw new MessagingPlatformException(ErrorCode.SELECT_NODES_FOR_CONTEXT,
                                                  "Add at least one node to context");
         }
-        if (!contextJson.getContext().matches("[a-zA-Z][a-zA-Z_-]*")) {
+        if (!contextJson.getContext().matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
             throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
                                                  "Invalid context name");
 

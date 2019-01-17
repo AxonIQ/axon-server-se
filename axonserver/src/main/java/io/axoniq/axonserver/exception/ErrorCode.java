@@ -45,6 +45,7 @@ public enum ErrorCode {
     // Command handling errors
     NO_HANDLER_FOR_COMMAND("AXONIQ-4000", Status.UNAVAILABLE, HttpStatus.INTERNAL_SERVER_ERROR),
     CONNECTION_TO_HANDLER_LOST("AXONIQ-4001", Status.UNAVAILABLE, HttpStatus.INTERNAL_SERVER_ERROR),
+    COMMAND_TIMEOUT("AXONIQ-4002", Status.UNAVAILABLE, HttpStatus.INTERNAL_SERVER_ERROR),
 
     // Query handling errors
     NO_HANDLER_FOR_QUERY("AXONIQ-5000", Status.NOT_FOUND, HttpStatus.BAD_REQUEST, true),

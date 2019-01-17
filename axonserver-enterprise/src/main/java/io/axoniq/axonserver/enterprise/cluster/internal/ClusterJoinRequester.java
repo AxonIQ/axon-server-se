@@ -5,7 +5,7 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -39,8 +39,8 @@ public class ClusterJoinRequester {
         this.stubFactory = stubFactory;
     }
 
-    public Future<Void> addNode(String host, int port) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
+    public Future<ConnectResponse> addNode(String host, int port) {
+        CompletableFuture<ConnectResponse> future = new CompletableFuture<>();
         logger.debug("Connecting to: {}:{}", host, port);
         try {
             InetAddress.getAllByName(host);
@@ -54,13 +54,11 @@ public class ClusterJoinRequester {
                     host,
                     port);
         logger.debug("Sending join request: {}", clusterController.getMe().toNodeInfo());
-        stub.join(clusterController.getMe().toNodeInfo(), new StreamObserver<NodeInfo>() {
+        stub.join(clusterController.getMe().toNodeInfo(), new StreamObserver<ConnectResponse>() {
+            private ConnectResponse connectResponse;
                 @Override
-                public void onNext(NodeInfo nodeInfo) {
-                    if (!messagingPlatformConfiguration.getName().equals(nodeInfo.getNodeName())) {
-                        clusterController.addConnection(nodeInfo, true);
-                        eventStoreManager.start();
-                    }
+                public void onNext(ConnectResponse connectResponse) {
+                    this.connectResponse = connectResponse;
                 }
 
                 @Override
@@ -72,7 +70,15 @@ public class ClusterJoinRequester {
 
                 @Override
                 public void onCompleted() {
-                    future.complete(null);
+                    stub.closeChannel();
+                    connectResponse.getNodesList().forEach(nodeInfo ->
+                                                           {
+                                                               if( ! nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName()))
+                                                                   clusterController.addConnection(nodeInfo, connectResponse.getGeneration());
+                                                           });
+                    clusterController.setGeneration(connectResponse.getGeneration());
+                    eventStoreManager.start();
+                    future.complete(connectResponse);
                 }
             });
         return future;

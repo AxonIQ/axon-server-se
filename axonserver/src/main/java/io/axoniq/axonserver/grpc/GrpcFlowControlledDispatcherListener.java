@@ -1,10 +1,8 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -24,7 +22,7 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     protected final StreamObserver<I> inboundStream;
     private final AtomicLong permitsLeft = new AtomicLong(0);
     private final FlowControlQueues<T> queues;
-    private final String queueName;
+    protected final String queueName;
     private Future<?>[] futures;
     private volatile boolean running = true;
 

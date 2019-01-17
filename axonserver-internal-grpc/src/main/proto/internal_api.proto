@@ -26,7 +26,7 @@ service MessagingClusterService {
     // Node sends a request to join an existing cluster
     // Input is the information on the joining node
     // Response is a list of nodes already in the cluster
-    rpc Join( NodeInfo ) returns (stream NodeInfo) {}
+    rpc Join( NodeInfo ) returns (ConnectResponse) {}
 
 
     rpc RequestToBeCoordinator(NodeContext) returns (io.axoniq.axonserver.grpc.Confirmation) {}
@@ -39,7 +39,7 @@ message NodeContext {
 
 message ConnectorCommand {
     oneof request {
-        NodeInfo connect = 1;
+        ConnectRequest connect = 1;
         InternalCommandSubscription subscribe_command = 2;
         InternalCommandSubscription unsubscribe_command = 3;
         ForwardedCommandResponse command_response = 4;
@@ -47,7 +47,7 @@ message ConnectorCommand {
         InternalQuerySubscription unsubscribe_query = 6;
         io.axoniq.axonserver.grpc.query.QueryResponse query_response = 7;
         InternalFlowControl flow_control = 8;
-        NodeInfo delete_node = 9;
+        DeleteNode delete_node = 9;
         GetApplicationsRequest request_applications = 10;
         NodeMetrics metrics = 11;
         QueryComplete query_complete = 12;
@@ -73,6 +73,11 @@ message ConnectorCommand {
 message ForwardedCommandResponse {
     string request_identifier = 1;
     bytes response = 2;
+}
+
+message DeleteNode {
+    string node_name = 1;
+    int64 generation = 2;
 }
 
 message ClientStatus {
@@ -109,6 +114,11 @@ message InternalCommandSubscription {
 message InternalQuerySubscription {
     io.axoniq.axonserver.grpc.query.QuerySubscription query = 1;
     string context = 2;
+}
+
+message ConnectRequest {
+    NodeInfo nodeInfo = 1;
+    int64 generation = 2;
 }
 
 message ConnectorResponse {
@@ -152,6 +162,8 @@ message ConnectResponse {
     repeated ContextRole contexts = 2;
     repeated NodeInfo nodes = 3;
     repeated ModelVersion model_versions = 4;
+    int64 generation = 5;
+    bool deleted = 6;
 }
 
 message ModelVersion {
@@ -175,6 +187,7 @@ message ContextUpdate {
     string name = 1;
     repeated NodeRole nodes = 3;
     ContextAction action = 4;
+    int64 generation = 5;
 }
 
 enum ContextAction {

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
@@ -48,6 +49,8 @@ public class ContextControllerTest {
 
     @Mock
     private ClusterController clusterController;
+    @Mock
+    private ModelVersionController modelVersionController;
 
 
     @Before
@@ -71,7 +74,7 @@ public class ContextControllerTest {
         entityManager.persist(node1);
         entityManager.persist(node2);
         entityManager.flush();
-        testSubject = new ContextController(entityManager, clusterController, eventPublisher);
+        testSubject = new ContextController(entityManager, clusterController, eventPublisher, modelVersionController);
     }
 
     @Test
@@ -128,7 +131,7 @@ public class ContextControllerTest {
         ClusterNode node2 = new ClusterNode("node2", null, null, null, null, null);
         when(remoteConnection.getClusterNode()).thenReturn(node2);
 
-        ClusterEvents.AxonServerInstanceConnected axonhubInstanceConnected = new ClusterEvents.AxonServerInstanceConnected(remoteConnection, Collections.emptyList(),
+        ClusterEvents.AxonServerInstanceConnected axonhubInstanceConnected = new ClusterEvents.AxonServerInstanceConnected(remoteConnection, 10, Collections.emptyList(),
                                                                                                                            Collections
                                                                                                                              .singletonList(
                                                                                                                                      ContextRole.newBuilder().setName("test1").build()), Collections.emptyList());

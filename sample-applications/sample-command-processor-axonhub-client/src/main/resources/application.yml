@@ -6,6 +6,7 @@ axoniq:
     servers: localhost:8124,localhost:8125,localhost:8126
     command-threads: 4
     query-threads: 4
+    token: this-is-token-for-demo2
 
 logging:
   level:

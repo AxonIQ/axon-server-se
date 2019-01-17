@@ -102,7 +102,7 @@ public class CommandDispatcher {
         if (toPublisher != null) {
             logger.debug("Sending response to: {}", toPublisher);
             if (!proxied) {
-                metricRegistry.add(toPublisher.getCommand(), toPublisher.getClientId(), System.currentTimeMillis() - toPublisher.getTimestamp());
+                metricRegistry.add(toPublisher.getRequestIdentifier(), toPublisher.getClientId(), System.currentTimeMillis() - toPublisher.getTimestamp());
             }
             toPublisher.getResponseConsumer().accept(commandResponse);
         } else {

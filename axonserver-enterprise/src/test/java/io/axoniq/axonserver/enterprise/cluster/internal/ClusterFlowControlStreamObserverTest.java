@@ -3,9 +3,9 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
 import io.axoniq.axonserver.grpc.internal.Group;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import org.junit.*;
@@ -62,9 +62,9 @@ public class ClusterFlowControlStreamObserverTest {
         testSubject.initQueryFlowControl(messagingPlatformConfiguration);
         testSubject.initCommandFlowControl(messagingPlatformConfiguration);
         assertEquals(2, delegate.count);
-        testSubject.onNext(ConnectorCommand.newBuilder().setDeleteNode(NodeInfo.newBuilder().build()).build());
+        testSubject.onNext(ConnectorCommand.newBuilder().setDeleteNode(DeleteNode.newBuilder().build()).build());
         assertEquals(3, delegate.count);
-        testSubject.onNext(ConnectorCommand.newBuilder().setDeleteNode(NodeInfo.newBuilder().build()).build());
+        testSubject.onNext(ConnectorCommand.newBuilder().setDeleteNode(DeleteNode.newBuilder().build()).build());
         assertEquals(4, delegate.count);
     }
 
