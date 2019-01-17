@@ -1,15 +1,10 @@
 package io.axoniq.cli;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import io.axoniq.cli.json.RestResponse;
 import org.apache.commons.cli.CommandLine;
 import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * Author: marc

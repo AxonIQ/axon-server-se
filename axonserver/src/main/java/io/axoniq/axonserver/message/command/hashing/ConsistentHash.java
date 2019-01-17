@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.command.hashing;
 
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import org.springframework.util.Assert;
 
 import java.util.Collections;

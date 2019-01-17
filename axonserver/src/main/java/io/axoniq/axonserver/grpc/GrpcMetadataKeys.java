@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.grpc.Context;
 import io.grpc.Metadata;
 

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.grpc.stub.StreamObserver;
 
 /**

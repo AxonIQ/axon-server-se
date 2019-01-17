@@ -2,7 +2,6 @@ package io.axoniq.axonserver.enterprise.cluster.manager;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.EventType;

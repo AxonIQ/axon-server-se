@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.access.jpa;
 
-import io.axoniq.axonserver.access.jpa.User;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;

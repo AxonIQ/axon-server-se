@@ -13,7 +13,6 @@ import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdate;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 

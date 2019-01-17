@@ -17,8 +17,12 @@ import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import org.springframework.data.util.CloseableIterator;
 
-import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -27,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import javax.sql.DataSource;
 
 /**
  * Author: marc

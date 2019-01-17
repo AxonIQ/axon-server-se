@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.messaging.event;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.internal.ContextAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -22,7 +23,6 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
-import io.axoniq.axonserver.enterprise.cluster.internal.ContextAddingInterceptor;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.grpc.CallOptions;
 import io.grpc.Channel;

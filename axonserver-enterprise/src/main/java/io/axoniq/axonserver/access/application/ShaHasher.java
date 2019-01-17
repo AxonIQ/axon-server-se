@@ -3,9 +3,9 @@ package io.axoniq.axonserver.access.application;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.stereotype.Component;
 
-import javax.xml.bind.DatatypeConverter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import javax.xml.bind.DatatypeConverter;
 
 /**
  * Created by marc on 7/14/2017.

@@ -2,9 +2,9 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

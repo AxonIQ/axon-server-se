@@ -1,10 +1,7 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy.Factory;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyHolder;
-import io.axoniq.axonserver.component.processor.balancing.strategy.NoLoadBalanceStrategy;
 import io.axoniq.axonserver.component.processor.balancing.strategy.ProcessorLoadBalanceStrategy;
 import io.axoniq.axonserver.serializer.Printable;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 import java.util.Set;
 
 /**

@@ -10,7 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.axoniq.cli.CommandOptions.*;
+import static io.axoniq.cli.CommandOptions.CONTEXT;
+import static io.axoniq.cli.CommandOptions.NODES;
 
 /**
  * Author: marc
