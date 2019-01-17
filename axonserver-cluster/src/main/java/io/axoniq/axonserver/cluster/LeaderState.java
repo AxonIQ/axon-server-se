@@ -280,6 +280,7 @@ public class LeaderState extends AbstractMembershipState {
                                                      raftGroup().raftConfiguration().heartbeatTimeout(),
                                                      MILLISECONDS);
                             s.scheduleWithFixedDelay(this::scheduleReplication, 0, 10, MILLISECONDS);
+//                            s.execute(this::scheduleReplication);
                         });
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
 
@@ -297,6 +298,7 @@ public class LeaderState extends AbstractMembershipState {
                     nodesIterator.remove();
                     replicatorPeerMap.get(node).sendNextMessage();
                 }
+//                schedulerInstance.execute(this::scheduleReplication);
             }
         }
 
@@ -327,6 +329,8 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
+//            replicatorPeerMap.values()
+//                             .forEach(peer -> scheduler.get().execute(peer::sendNextMessage));
             nodes.addAll(replicatorPeerMap.keySet());
         }
 
