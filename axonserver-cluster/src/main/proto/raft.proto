@@ -13,31 +13,38 @@ service LogReplicationService {
     rpc InstallSnapshot( stream InstallSnapshotRequest) returns (stream InstallSnapshotResponse) {}
 }
 
-
+message ResponseHeader {
+    string requestId = 1;
+    string responseId = 2;
+    string nodeId = 3;
+}
 
 message RequestVoteRequest {
-    string groupId = 1;
-    uint64 term = 2;
-    string candidateId = 3;
-    uint64 lastLogTerm = 4;
-    uint64 lastLogIndex = 5;
+    string requestId = 1;
+    string groupId = 2;
+    uint64 term = 3;
+    string candidateId = 4;
+    uint64 lastLogTerm = 5;
+    uint64 lastLogIndex = 6;
 }
 
 message RequestVoteResponse {
-    string groupId = 1;
-    uint64 term = 2; // term for candidate to update itself
-    bool voteGranted = 3;
+    ResponseHeader responseHeader = 1;
+    string groupId = 2;
+    uint64 term = 3; // term for candidate to update itself
+    bool voteGranted = 4;
     // shouldShutdown?
 }
 
 message AppendEntriesRequest {
-    string groupId = 1;
-    uint64 term = 2; // Leader's term
-    string leaderId = 3;
-    uint64 prevLogTerm = 4;
-    uint64 prevLogIndex = 5;
-    repeated Entry entries = 6;
-    uint64 commitIndex = 7;
+    string requestId = 1;
+    string groupId = 2;
+    uint64 term = 3; // Leader's term
+    string leaderId = 4;
+    uint64 prevLogTerm = 5;
+    uint64 prevLogIndex = 6;
+    repeated Entry entries = 7;
+    uint64 commitIndex = 8;
 }
 
 message Entry {
@@ -51,11 +58,12 @@ message Entry {
 }
 
 message AppendEntriesResponse {
-    string groupId = 1;
-    uint64 term = 2;
+    ResponseHeader responseHeader = 1;
+    string groupId = 2;
+    uint64 term = 3;
     oneof result {
-        AppendEntrySuccess success = 3;
-        AppendEntryFailure failure = 4;
+        AppendEntrySuccess success = 4;
+        AppendEntryFailure failure = 5;
     }
 
 }
@@ -71,15 +79,16 @@ message AppendEntryFailure {
 
 
 message InstallSnapshotRequest {
-    string groupId = 1;
-    uint64 term = 2; // Leader's term
-    string leaderId = 3;
-    uint64 lastIncludedTerm= 4;
-    uint64 lastIncludedIndex = 5;
-    Config lastConfig = 6;
-    uint32 offset = 7; // starts from 0
-    bool done = 8;
-    repeated SerializedObject data = 9;
+    string requestId = 1;
+    string groupId = 2;
+    uint64 term = 3; // Leader's term
+    string leaderId = 4;
+    uint64 lastIncludedTerm= 5;
+    uint64 lastIncludedIndex = 6;
+    Config lastConfig = 7;
+    uint32 offset = 8; // starts from 0
+    bool done = 9;
+    repeated SerializedObject data = 10;
 }
 
 message SerializedObject {
@@ -89,11 +98,12 @@ message SerializedObject {
 }
 
 message InstallSnapshotResponse {
-    string groupId = 1;
-    uint64 term = 2;
+    ResponseHeader responseHeader = 1;
+    string groupId = 2;
+    uint64 term = 3;
     oneof result {
-        InstallSnapshotSuccess success = 3;
-        InstallSnapshotFailure failure = 4;
+        InstallSnapshotSuccess success = 4;
+        InstallSnapshotFailure failure = 5;
     }
 }
 

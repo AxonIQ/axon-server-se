@@ -11,9 +11,11 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -246,32 +248,42 @@ public abstract class AbstractMembershipState implements MembershipState {
         return randomValueSupplier.apply(min, max);
     }
 
-    protected AppendEntriesResponse appendEntriesFailure() {
+    protected AppendEntriesResponse appendEntriesFailure(String requestId) {
         AppendEntryFailure failure = AppendEntryFailure.newBuilder()
                                                        .setLastAppliedIndex(lastAppliedIndex())
                                                        .setLastAppliedEventSequence(lastAppliedEventSequence())
                                                        .build();
         return AppendEntriesResponse.newBuilder()
+                                    .setResponseHeader(responseHeader(requestId))
                                     .setGroupId(groupId())
                                     .setTerm(currentTerm())
                                     .setFailure(failure)
                                     .build();
     }
 
-    protected InstallSnapshotResponse installSnapshotFailure() {
+    protected InstallSnapshotResponse installSnapshotFailure(String requestId) {
         return InstallSnapshotResponse.newBuilder()
+                                      .setResponseHeader(responseHeader(requestId))
                                       .setGroupId(groupId())
                                       .setTerm(currentTerm())
                                       .setFailure(InstallSnapshotFailure.newBuilder().build())
                                       .build();
     }
 
-    protected RequestVoteResponse requestVoteResponse(boolean voteGranted) {
+    protected RequestVoteResponse requestVoteResponse(String requestId, boolean voteGranted) {
         return RequestVoteResponse.newBuilder()
+                                  .setResponseHeader(responseHeader(requestId))
                                   .setGroupId(groupId())
                                   .setVoteGranted(voteGranted)
                                   .setTerm(currentTerm())
                                   .build();
+    }
+
+    protected ResponseHeader responseHeader(String requestId){
+        return ResponseHeader.newBuilder()
+                             .setRequestId(requestId)
+                             .setResponseId(UUID.randomUUID().toString())
+                             .setNodeId(me()).build();
     }
 
     protected CurrentConfiguration currentConfiguration(){
