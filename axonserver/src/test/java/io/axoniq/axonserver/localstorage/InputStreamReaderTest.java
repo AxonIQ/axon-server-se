@@ -65,6 +65,7 @@ public class InputStreamReaderTest {
     }
 
     @Test
+    @Ignore
     public void readEventsWhileWriting() throws InterruptedException {
         AtomicLong counter = new AtomicLong();
         EventStreamController controller = testSubject.createController(eventWithToken -> counter.incrementAndGet(),
