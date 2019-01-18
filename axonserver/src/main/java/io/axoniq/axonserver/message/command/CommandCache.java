@@ -20,7 +20,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     private final long defaultQueryTimeout;
 
     @Autowired
-    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:15000}") long defaultQueryTimeout) {
+    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultQueryTimeout) {
         this.defaultQueryTimeout = defaultQueryTimeout;
     }
 

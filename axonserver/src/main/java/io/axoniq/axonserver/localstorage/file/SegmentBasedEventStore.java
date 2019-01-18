@@ -25,7 +25,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -297,8 +296,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     protected ValidationResult validateSegment(long segment) {
         logger.debug("{}: Validating {} segment: {}", type.getContext(), type.getEventType(), segment);
-        Iterator<SerializedTransactionWithToken> iterator = getTransactions(segment, segment, true);
-        try {
+        try (TransactionIterator iterator = getTransactions(segment, segment, true)) {
             SerializedTransactionWithToken last = null;
             while (iterator.hasNext()) {
                 last = iterator.next();

@@ -274,9 +274,19 @@ public class ClusterController implements SmartLifecycle {
                 axonHubInstanceConnected.getNodesList().forEach(nodeInfo -> addConnection(nodeInfo,
                                                                                           axonHubInstanceConnected
                                                                                                   .getGeneration()));
+                if( currentGeneration() < axonHubInstanceConnected.getGeneration()) {
+                    setGeneration(axonHubInstanceConnected.getGeneration());
+                }
             }
-            modelVersionController.updateModelVersion(ClusterNode.class, axonHubInstanceConnected.getGeneration());
         }
+    }
+
+    @Transactional
+    public long joinConnection(NodeInfo request) {
+        long nextGeneration  = currentGeneration() + 1;
+        addConnection(request, nextGeneration);
+        setGeneration(nextGeneration);
+        return nextGeneration;
     }
 
     @Transactional
@@ -540,4 +550,5 @@ public class ClusterController implements SmartLifecycle {
     public long getConnectionWaitTime() {
         return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
     }
+
 }

@@ -167,9 +167,11 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
             }
 
             indexManager.remove(segment);
-            FileUtils.delete(storageProperties.dataFile(context, segment));
-            FileUtils.delete(storageProperties.index(context, segment));
-            FileUtils.delete(storageProperties.bloomFilter(context, segment));
+            if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+                ! FileUtils.delete(storageProperties.index(context, segment)) ||
+                ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
+            }
         }
     }
 

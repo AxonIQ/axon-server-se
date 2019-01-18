@@ -265,8 +265,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         try {
             checkConnection(request.getInternalHostName());
             checkMasterForAllStorageContexts(request.getContextsList());
-            long newGeneration = applicationModelController.incrementModelVersion(ClusterNode.class);
-            clusterController.addConnection(request, newGeneration);
+            long newGeneration = clusterController.joinConnection(request);
             ConnectResponse connectResponse = ConnectResponse.newBuilder().setGeneration(newGeneration)
                     .addAllNodes(clusterController.nodes().map(n -> n.toNodeInfo()).collect(Collectors.toList())).build();
             logger.debug("Join response: {}", connectResponse);

@@ -8,6 +8,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.topology.Topology;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -52,8 +54,8 @@ public class ClusterRestController {
             throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER, "This node is already a member of a cluster");
         }
 
-        if( jsonClusterNode.contexts != null && ! jsonClusterNode.contexts.isEmpty()) {
-            clusterController.setMyContexts(jsonClusterNode.contexts);
+        if( jsonClusterNode.contexts == null || jsonClusterNode.contexts.isEmpty()) {
+            jsonClusterNode.setContexts(Collections.singletonList(new ContextRoleJSON(Topology.DEFAULT_CONTEXT)));
         }
         try {
             clusterJoinRequester.addNode(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort).get();
@@ -211,6 +213,15 @@ public class ClusterRestController {
         private String name;
         private boolean storage;
         private boolean messaging;
+
+        public ContextRoleJSON(String name) {
+            this.name = name;
+            this.storage = true;
+            this.messaging = true;
+        }
+
+        public ContextRoleJSON() {
+        }
 
         public String getName() {
             return name;
