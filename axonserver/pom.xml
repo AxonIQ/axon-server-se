@@ -400,12 +400,6 @@
                                     <artifactItems>
                                         <artifactItem>
                                             <groupId>io.axoniq.axonserver</groupId>
-                                            <artifactId>axonserver-accessdb</artifactId>
-                                            <type>jar</type>
-                                            <overWrite>true</overWrite>
-                                        </artifactItem>
-                                        <artifactItem>
-                                            <groupId>io.axoniq.axonserver</groupId>
                                             <artifactId>axonserver-grpc</artifactId>
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
