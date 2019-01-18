@@ -105,11 +105,11 @@ public class Gateway implements SmartLifecycle {
         try {
             server.start();
 
-            logger.info("gRPC Gateway started on port: {} - {}", routingConfiguration.getPort(), sslMessage);
+            logger.info("Axon Server Gateway started on port: {} - {}", routingConfiguration.getPort(), sslMessage);
 
             started = true;
         } catch (IOException e) {
-            logger.error("Starting GRPC gateway failed - {}", e.getMessage(), e);
+            logger.error("Starting Axon Server Gateway failed - {}", e.getMessage(), e);
         }
     }
 
@@ -125,6 +125,6 @@ public class Gateway implements SmartLifecycle {
 
     @Override
     public int getPhase() {
-        return 10;
+        return 200;
     }
 }

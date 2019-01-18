@@ -61,7 +61,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final Map<String,String> masterPerContext = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("storage-manager-selector"));
     private volatile boolean running;
-    private volatile ScheduledFuture<?> task;
+    private final Map<String,ScheduledFuture<?>> tasks = new ConcurrentHashMap<>();
 
     private final Iterable<Context> dynamicContexts;
     private final boolean needsValidation;
@@ -148,9 +148,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     private void rescheduleElection(String contextName) {
+        ScheduledFuture<?> task = tasks.get(contextName);
         if (task == null || task.isDone()) {
-            task = scheduledExecutorService.schedule(() -> startLeaderElection(
-                    contextName), (long) (Math.random() * 1000), TimeUnit.MILLISECONDS);
+            tasks.put(contextName, scheduledExecutorService.schedule(() -> startLeaderElection(
+                    contextName), (long) (Math.random() * 1000), TimeUnit.MILLISECONDS));
         }
     }
 
@@ -227,7 +228,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         if (!context.isStorageMember(nodeName)) return;
         logger.debug("Init context: {}", context.getName());
         localEventStore.initContext(context.getName(), validating);
-        if (!clustered) {
+        if (!clustered || context.getStorageNodes().size() == 1) {
             masterPerContext.put(context.getName(), nodeName);
             return;
         }

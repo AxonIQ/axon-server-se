@@ -107,11 +107,11 @@ public class MessagingClusterServer implements SmartLifecycle{
         try {
             server.start();
 
-            logger.info("gRPC Messaging Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
+            logger.info("Axon Server Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
 
             started = true;
         } catch (IOException e) {
-            logger.error("Starting gRPC Messaging Cluster Server gateway failed - {}", e.getMessage(), e);
+            logger.error("Starting Axon Server Cluster Server failed - {}", e.getMessage(), e);
         }
     }
 
