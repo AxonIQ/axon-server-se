@@ -16,6 +16,7 @@
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver</artifactId>
             <version>${project.parent.version}</version>
+            <classifier>lib</classifier>
         </dependency>
 
         <dependency>
