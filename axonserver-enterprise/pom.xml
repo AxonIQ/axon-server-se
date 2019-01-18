@@ -194,6 +194,12 @@
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
                                         </artifactItem>
+                                        <artifactItem>
+                                            <groupId>io.axoniq.axonserver</groupId>
+                                            <artifactId>axonserver-internal-grpc</artifactId>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                        </artifactItem>
                                     </artifactItems>
                                 </configuration>
                             </execution>
@@ -277,10 +283,6 @@
                                 <exclude>
                                     <groupId>io.axoniq.axonserver</groupId>
                                     <artifactId>axonserver</artifactId>
-                                </exclude>
-                                <exclude>
-                                    <groupId>io.axoniq.axonserver</groupId>
-                                    <artifactId>axonserver-grpc</artifactId>
                                 </exclude>
                                 <exclude>
                                     <groupId>io.axoniq.axondb</groupId>
