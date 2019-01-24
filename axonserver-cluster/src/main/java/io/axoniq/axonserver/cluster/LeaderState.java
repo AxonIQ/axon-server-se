@@ -4,7 +4,6 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
-import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -22,10 +21,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -34,8 +31,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -43,8 +40,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * Author: marc
@@ -57,7 +52,7 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
-    private final Set<String> nodes = Collections.synchronizedSet(new LinkedHashSet<>());
+    private final CopyOnWriteArrayList<String> nodes = new CopyOnWriteArrayList<>();
     private volatile Replicators replicators;
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
@@ -271,10 +266,7 @@ public class LeaderState extends AbstractMembershipState {
         private void start() {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
-                otherPeersStream().forEach(peer -> {
-                    registrations.add(registerPeer(peer, this::updateMatchIndex));
-
-                });
+                otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateMatchIndex)));
                 Optional.ofNullable(scheduler.get())
                         .ifPresent(s -> {
                             s.scheduleWithFixedDelay(this::notifySenders,
@@ -329,7 +321,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-            nodes.addAll(replicatorPeerMap.keySet());
+            nodes.addAllAbsent(replicatorPeerMap.keySet());
         }
 
         private long lastMessageTimeFromMajority() {

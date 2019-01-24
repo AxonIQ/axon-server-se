@@ -86,7 +86,7 @@ public class RaftServerTest {
             RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
 
 
-            CompletableFuture<Void>[] futures = new CompletableFuture[250000];
+            CompletableFuture<Void>[] futures = new CompletableFuture[250];
             Thread.currentThread().setPriority(5);
             AtomicInteger successCount = new AtomicInteger();
                 long before = System.currentTimeMillis();
