@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Author: marc
  */
+@Ignore
 public class EventStreamReaderTest {
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();

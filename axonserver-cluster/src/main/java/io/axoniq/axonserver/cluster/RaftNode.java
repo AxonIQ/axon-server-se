@@ -237,4 +237,5 @@ public class RaftNode {
     public List<Node> currentGroupMembers(){
         return state.get().currentGroupMembers();
     }
+
 }

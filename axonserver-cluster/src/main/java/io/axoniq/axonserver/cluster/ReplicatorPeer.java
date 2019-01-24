@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -72,6 +73,7 @@ class ReplicatorPeer {
                                public void onNext(List<SerializedObject> serializedObjects) {
                                    InstallSnapshotRequest.Builder requestBuilder =
                                            InstallSnapshotRequest.newBuilder()
+                                                                 .setRequestId(UUID.randomUUID().toString())
                                                                  .setGroupId(groupId())
                                                                  .setTerm(currentTerm())
                                                                  .setLeaderId(me())
@@ -99,6 +101,7 @@ class ReplicatorPeer {
                                public void onComplete() {
                                    done = true;
                                    send(InstallSnapshotRequest.newBuilder()
+                                                              .setRequestId(UUID.randomUUID().toString())
                                                               .setGroupId(groupId())
                                                               .setTerm(currentTerm())
                                                               .setLeaderId(me())
@@ -212,6 +215,7 @@ class ReplicatorPeer {
                     TermIndex previous = entryIterator.previous();
                     logger.trace("{}: Send request {} to {}: {}", groupId(), sent, raftPeer.nodeId(), entry.getIndex());
                     send(AppendEntriesRequest.newBuilder()
+                                             .setRequestId(UUID.randomUUID().toString())
                                              .setGroupId(groupId())
                                              .setPrevLogIndex(previous == null ? 0 : previous.getIndex())
                                              .setPrevLogTerm(previous == null ? 0 : previous.getTerm())
@@ -260,6 +264,7 @@ class ReplicatorPeer {
 
         public void sendHeartbeat(TermIndex lastTermIndex, long commitIndex) {
             AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
+                                                                 .setRequestId(UUID.randomUUID().toString())
                                                                  .setCommitIndex(commitIndex)
                                                                  .setLeaderId(me())
                                                                  .setGroupId(raftGroup.raftConfiguration().groupId())

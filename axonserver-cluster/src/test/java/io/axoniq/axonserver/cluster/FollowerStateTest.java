@@ -18,6 +18,7 @@ import org.junit.*;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 
 import static org.junit.Assert.*;
@@ -117,6 +118,7 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT + 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setRequestId(UUID.randomUUID().toString())
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(1L)
@@ -135,6 +137,7 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT - 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setRequestId(UUID.randomUUID().toString())
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(1L)
@@ -154,6 +157,7 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT + 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setRequestId(UUID.randomUUID().toString())
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(0L)
@@ -173,6 +177,7 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT + 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setRequestId(UUID.randomUUID().toString())
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(2L)
@@ -211,6 +216,7 @@ public class FollowerStateTest {
     @Test
     public void testAppendFailsDueToNonMatchingPrevLogs() throws IOException {
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
+                                                           .setRequestId(UUID.randomUUID().toString())
                                                            .setTerm(0L)
                                                            .setCommitIndex(1L)
                                                            .setPrevLogIndex(1L)
@@ -252,6 +258,7 @@ public class FollowerStateTest {
         followerState.appendEntries(firstAppend());
 
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
+                                                           .setRequestId(UUID.randomUUID().toString())
                                                            .setTerm(0L)
                                                            .setCommitIndex(1L)
                                                            .setPrevLogIndex(1L)
@@ -290,6 +297,7 @@ public class FollowerStateTest {
     @Test
     public void testSuccessfulInstallSnapshot() {
         InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder()
+                                                               .setRequestId(UUID.randomUUID().toString())
                                                                .setLeaderId("node1")
                                                                .setGroupId("defaultGroup")
                                                                .setTerm(0L)
@@ -316,6 +324,7 @@ public class FollowerStateTest {
     @Test
     public void testApplyingLastUpdatedIndexOnLastSnapshotChunk() {
         InstallSnapshotRequest request = InstallSnapshotRequest.newBuilder()
+                                                               .setRequestId(UUID.randomUUID().toString())
                                                                .setLeaderId("node1")
                                                                .setGroupId("defaultGroup")
                                                                .setTerm(0L)
@@ -340,6 +349,7 @@ public class FollowerStateTest {
 
     private AppendEntriesRequest firstAppend(long term) {
         return AppendEntriesRequest.newBuilder()
+                                   .setRequestId(UUID.randomUUID().toString())
                                    .setTerm(term)
                                    .setCommitIndex(0L)
                                    .setPrevLogIndex(0L)

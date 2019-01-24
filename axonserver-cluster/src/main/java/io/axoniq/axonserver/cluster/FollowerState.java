@@ -70,7 +70,7 @@ public class FollowerState extends AbstractMembershipState {
             //1. Reply false if term < currentTerm
             if (request.getTerm() < currentTerm()) {
                 logger.debug("{}: term before current term {}", groupId(), currentTerm());
-                return appendEntriesFailure();
+                return appendEntriesFailure(request.getRequestId());
             }
 
             heardFromLeader = true;
@@ -89,7 +89,7 @@ public class FollowerState extends AbstractMembershipState {
                              request.getPrevLogTerm(),
                              request.getPrevLogIndex(),
                              logEntryStore.lastLogIndex());
-                return appendEntriesFailure();
+                return appendEntriesFailure(request.getRequestId());
             }
 
             //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -103,7 +103,7 @@ public class FollowerState extends AbstractMembershipState {
             } catch (IOException e) {
                 logger.warn("{}: append failed", groupId(), e);
                 stop();
-                return appendEntriesFailure();
+                return appendEntriesFailure(request.getRequestId());
             }
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -120,6 +120,7 @@ public class FollowerState extends AbstractMembershipState {
                 logger.trace("{}: Updated last to {}", groupId(), last);
             }
             return AppendEntriesResponse.newBuilder()
+                                        .setResponseHeader(responseHeader(request.getRequestId()))
                                         .setGroupId(groupId())
                                         .setTerm(currentTerm())
                                         .setSuccess(buildAppendEntrySuccess(last))
@@ -127,7 +128,7 @@ public class FollowerState extends AbstractMembershipState {
                                         .build();
         } catch (Exception ex) {
             logger.error("{}: failed to append events", groupId(), ex);
-            return appendEntriesFailure();
+            return appendEntriesFailure(request.getRequestId());
         }
     }
 
@@ -140,7 +141,7 @@ public class FollowerState extends AbstractMembershipState {
                          groupId(),
                          request.getCandidateId(),
                          me());
-            return requestVoteResponse(false);
+            return requestVoteResponse(request.getRequestId(), false);
         }
 
         updateCurrentTerm(request.getTerm());
@@ -148,7 +149,7 @@ public class FollowerState extends AbstractMembershipState {
         if (voteGranted) {
             rescheduleElection(request.getTerm());
         }
-        return requestVoteResponse(voteGranted);
+        return requestVoteResponse(request.getRequestId(), voteGranted);
     }
 
     @Override
@@ -158,7 +159,7 @@ public class FollowerState extends AbstractMembershipState {
         // Reply immediately if term < currentTerm
         if (request.getTerm() < currentTerm()) {
             logger.warn("{}: term before current term {}", groupId(), currentTerm());
-            return installSnapshotFailure();
+            return installSnapshotFailure(request.getRequestId());
         }
 
         rescheduleElection(request.getTerm());
@@ -182,6 +183,7 @@ public class FollowerState extends AbstractMembershipState {
         }
 
         return InstallSnapshotResponse.newBuilder()
+                                      .setResponseHeader(responseHeader(request.getRequestId()))
                                       .setTerm(currentTerm())
                                       .setGroupId(groupId())
                                       .setSuccess(buildInstallSnapshotSuccess(request.getOffset()))
