@@ -248,8 +248,9 @@ public abstract class AbstractMembershipState implements MembershipState {
         return randomValueSupplier.apply(min, max);
     }
 
-    protected AppendEntriesResponse appendEntriesFailure(String requestId) {
+    protected AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause) {
         AppendEntryFailure failure = AppendEntryFailure.newBuilder()
+                                                       .setCause(failureCause)
                                                        .setLastAppliedIndex(lastAppliedIndex())
                                                        .setLastAppliedEventSequence(lastAppliedEventSequence())
                                                        .build();

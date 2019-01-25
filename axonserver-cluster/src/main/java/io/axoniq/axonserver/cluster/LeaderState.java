@@ -139,7 +139,7 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.trace("{}: Received appendEntries request. Rejecting the request.", groupId());
-        return appendEntriesFailure(request.getRequestId());
+        return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
     @Override

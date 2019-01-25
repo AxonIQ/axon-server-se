@@ -69,8 +69,9 @@ public class FollowerState extends AbstractMembershipState {
 
             //1. Reply false if term < currentTerm
             if (request.getTerm() < currentTerm()) {
-                logger.debug("{}: term before current term {}", groupId(), currentTerm());
-                return appendEntriesFailure(request.getRequestId());
+                String failureCause = String.format("%s: term before current term %s", groupId(), currentTerm());
+                logger.debug(failureCause);
+                return appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             heardFromLeader = true;
@@ -84,12 +85,14 @@ public class FollowerState extends AbstractMembershipState {
 
             //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
             if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
-                logger.trace("{}: previous term/index missing {}/{} last log {}",
-                             groupId(),
-                             request.getPrevLogTerm(),
-                             request.getPrevLogIndex(),
-                             logEntryStore.lastLogIndex());
-                return appendEntriesFailure(request.getRequestId());
+                String failureCause = String.format("%s: previous term/index missing %s/%s last log %s",
+                                                    groupId(),
+                                                    request.getPrevLogTerm(),
+                                                    request.getPrevLogIndex(),
+                                                    logEntryStore.lastLogIndex());
+
+                logger.trace(failureCause);
+                return appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -101,9 +104,10 @@ public class FollowerState extends AbstractMembershipState {
                 }
                 logEntryStore.appendEntry(request.getEntriesList());
             } catch (IOException e) {
-                logger.warn("{}: append failed", groupId(), e);
+                String failureCause = String.format("%s: append failed for IOException: %s",e.getMessage(), groupId());
+                logger.warn(failureCause, e);
                 stop();
-                return appendEntriesFailure(request.getRequestId());
+                return appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -127,8 +131,9 @@ public class FollowerState extends AbstractMembershipState {
                                         .setTerm(currentTerm())
                                         .build();
         } catch (Exception ex) {
-            logger.error("{}: failed to append events", groupId(), ex);
-            return appendEntriesFailure(request.getRequestId());
+            String failureCause = String.format("%s: failed to append events: %s",  groupId(), ex.getStackTrace());
+            logger.error(failureCause, ex);
+            return appendEntriesFailure(request.getRequestId(), failureCause);
         }
     }
 

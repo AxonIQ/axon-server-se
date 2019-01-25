@@ -25,6 +25,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     private final CurrentConfiguration currentConfiguration;
     private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
 
+
     public DefaultStateFactory(RaftGroup raftGroup,
                                BiConsumer<MembershipState, MembershipState> transitionHandler,
                                SnapshotManager snapshotManager) {
@@ -36,6 +37,10 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
 
+    }
+
+    private MembershipStateFactory stateFactory(){
+        return raftGroup.localNode().stateFactory();
     }
 
     @Override
@@ -52,7 +57,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                           .snapshotManager(snapshotManager)
                           .currentConfiguration(currentConfiguration)
                           .registerConfigurationListenerFn(registerConfigurationListener)
-                          .stateFactory(this)
+                          .stateFactory(stateFactory())
                           .build();
     }
 
@@ -65,7 +70,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                             .snapshotManager(snapshotManager)
                             .currentConfiguration(currentConfiguration)
                             .registerConfigurationListenerFn(registerConfigurationListener)
-                            .stateFactory(this)
+                            .stateFactory(stateFactory())
                             .build();
     }
 
@@ -78,7 +83,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                              .snapshotManager(snapshotManager)
                              .currentConfiguration(currentConfiguration)
                              .registerConfigurationListenerFn(registerConfigurationListener)
-                             .stateFactory(this)
+                             .stateFactory(stateFactory())
                              .build();
     }
 }

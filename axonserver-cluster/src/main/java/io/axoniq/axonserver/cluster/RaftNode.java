@@ -45,6 +45,7 @@ public class RaftNode {
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
     private final Scheduler scheduler;
+    private final List<Consumer> messagesListeners = new CopyOnWriteArrayList<>();
 
     public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
         this(nodeId, raftGroup, new DefaultScheduler(), snapshotManager);
@@ -105,9 +106,8 @@ public class RaftNode {
             logger.info("{}: Updating state from {} to {}", groupId(), toString(currentState), toString(newState));
             stateChangeListeners.forEach(stateChangeListeners -> {
                 try {
-                    stateChangeListeners.accept(new StateChanged(toString(currentState),
-                                                                 toString(newState),
-                                                                 groupId()));
+                    StateChanged change = new StateChanged(groupId(), nodeId, toString(currentState), toString(newState));
+                    stateChangeListeners.accept(change);
                 } catch (Exception ex) {
                     logger.warn("{}: Failed to handle event", groupId(), ex);
                     throw new RuntimeException("Transition to " + toString(newState) + " failed", ex);
@@ -146,17 +146,26 @@ public class RaftNode {
 
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.trace("{}: Received AppendEntries request in state {} {}", groupId(), state.get(), request);
-        return state.get().appendEntries(request);
+        messagesListeners.forEach(consumer -> consumer.accept(request));
+        AppendEntriesResponse response = state.get().appendEntries(request);
+        messagesListeners.forEach(consumer -> consumer.accept(response));
+        return response;
     }
 
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         logger.trace("{}: Received RequestVote request in state {} {}", groupId(), state.get(), request);
-        return state.get().requestVote(request);
+        messagesListeners.forEach(consumer -> consumer.accept(request));
+        RequestVoteResponse response = state.get().requestVote(request);
+        messagesListeners.forEach(consumer -> consumer.accept(response));
+        return response;
     }
 
     public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         logger.trace("{}: Received InstallSnapshot request in state {} {}", groupId(), state.get(), request);
-        return state.get().installSnapshot(request);
+        messagesListeners.forEach(consumer -> consumer.accept(request));
+        InstallSnapshotResponse response = state.get().installSnapshot(request);
+        messagesListeners.forEach(consumer -> consumer.accept(response));
+        return response;
     }
 
     public void stop() {
@@ -236,6 +245,15 @@ public class RaftNode {
 
     public List<Node> currentGroupMembers(){
         return state.get().currentGroupMembers();
+    }
+
+    public MembershipStateFactory stateFactory() {
+        return stateFactory;
+    }
+
+    public Registration registerMessageListener(Consumer messageConsumer){
+        this.messagesListeners.add(messageConsumer);
+        return () -> this.messagesListeners.remove(messageConsumer);
     }
 
 }
