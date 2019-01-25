@@ -24,14 +24,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class RaftNode {
 
-    private final ExecutorService executor = Executors.newCachedThreadPool(new AxonThreadFactory("Apply"));
+    private final ExecutorService executor;
 
     private static final Logger logger = LoggerFactory.getLogger(RaftNode.class);
 
@@ -41,7 +40,7 @@ public class RaftNode {
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
-    private volatile Future<?> applyTask;
+    private volatile ScheduledRegistration applyTask;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
     private final Scheduler scheduler;
@@ -55,6 +54,7 @@ public class RaftNode {
         this.raftGroup = raftGroup;
         this.registerEntryConsumer(this::updateConfig);
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState, snapshotManager));
+        executor = Executors.newCachedThreadPool(new AxonThreadFactory("Apply-" + nodeId));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId));
     }
@@ -131,9 +131,9 @@ public class RaftNode {
             return;
         }
         updateState(state.get(), stateFactory.followerState());
-        applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
+        applyTask = scheduler.scheduleWithFixedDelay( () -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
-                                                          this::applyEntryConsumers));
+                                                          this::applyEntryConsumers), 0, 5, TimeUnit.MILLISECONDS);
         if (raftGroup.raftConfiguration().isLogCompactionEnabled()){
             scheduledLogCleaning = scheduleLogCleaning();
         }

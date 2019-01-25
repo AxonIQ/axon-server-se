@@ -24,12 +24,10 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -50,7 +48,8 @@ public class LeaderState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
-    private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
+    //private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
+    private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private volatile Replicators replicators;
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
@@ -195,18 +194,19 @@ public class LeaderState extends AbstractMembershipState {
 
     private CompletableFuture<Void> waitCommitted(CompletableFuture<Entry> entryFuture) {
         CompletableFuture<Void> appendEntryDone = new CompletableFuture<>();
-        if (replicators == null) {
-            appendEntryDone.completeExceptionally(new RuntimeException("Step down in progress"));
-            return appendEntryDone;
-        }
+//        if (replicators == null) {
+//            appendEntryDone.completeExceptionally(new RuntimeException("Step down in progress"));
+//            return appendEntryDone;
+//        }
         entryFuture.whenComplete((e, failure) -> {
             if (failure != null) {
+                logger.warn("Storing entry failed", failure);
                 appendEntryDone.completeExceptionally(failure);
             } else {
+                pendingEntries.put(e.getIndex(), appendEntryDone);
                 if (replicators != null) {
                     replicators.notifySenders();
                 }
-                pendingEntries.put(e.getIndex(), appendEntryDone);
                 replicators.updateMatchIndex(e.getIndex());
             }
         });
@@ -215,20 +215,35 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void applied(Entry e) {
-        Map.Entry<Long, CompletableFuture<Void>> first = pendingEntries.pollFirstEntry();
-        boolean found = false;
-        while (first != null && first.getKey() <= e.getIndex()) {
-            first.getValue().complete(null);
-            found = e.getIndex() == first.getKey();
-            first = pendingEntries.pollFirstEntry();
+        try {
+            CompletableFuture<Void> completableFuture = pendingEntries.remove(e.getIndex());
+            int retries = 5;
+            while( completableFuture == null && retries-- > 0) {
+                logger.info("waiting for {}", e.getIndex());
+                Thread.sleep(1);
+                completableFuture = pendingEntries.remove(e.getIndex());
+            }
+            if( completableFuture != null) {
+                completableFuture.complete(null);
+            }
+        } catch (InterruptedException e1) {
+            Thread.currentThread().interrupt();
+            logger.debug("interrupted in apply");
         }
-
-        if (!found && logger.isTraceEnabled()) {
-            logger.trace("{}: entry not found when applied {} - {}", groupId(), e.getIndex(), pendingEntries.keySet());
-        }
-        if (first != null) {
-            pendingEntries.put(first.getKey(), first.getValue());
-        }
+//        Map.Entry<Long, CompletableFuture<Void>> first = pendingEntries.pollFirstEntry();
+//        boolean found = false;
+//        while (first != null && first.getKey() <= e.getIndex()) {
+//            first.getValue().complete(null);
+//            found = e.getIndex() == first.getKey();
+//            first = pendingEntries.pollFirstEntry();
+//        }
+//
+//        if (!found && logger.isInfoEnabled()) {
+//            logger.info("{}: entry not found when applied {} - {}", groupId(), e.getIndex(), pendingEntries.keySet());
+//        }
+//        if (first != null) {
+//            pendingEntries.put(first.getKey(), first.getValue());
+//        }
     }
 
     @Override
@@ -295,7 +310,6 @@ public class LeaderState extends AbstractMembershipState {
                                 }
                             }
                         } finally {
-                            System.out.println("rescheduling...");
                             schedulerInstance.schedule(this::replicate,
                                                        raftGroup().raftConfiguration().heartbeatTimeout(),
                                                        MILLISECONDS);
