@@ -5,7 +5,6 @@ import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
-import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
@@ -22,15 +21,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class RaftNode {
-
-    private final ExecutorService executor;
 
     private static final Logger logger = LoggerFactory.getLogger(RaftNode.class);
 
@@ -39,7 +34,6 @@ public class RaftNode {
     private final MembershipStateFactory stateFactory;
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
-    private final List<Registration> registrations = new CopyOnWriteArrayList<>();
     private volatile ScheduledRegistration applyTask;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
@@ -54,7 +48,6 @@ public class RaftNode {
         this.raftGroup = raftGroup;
         this.registerEntryConsumer(this::updateConfig);
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState, snapshotManager));
-        executor = Executors.newCachedThreadPool(new AxonThreadFactory("Apply-" + nodeId));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId));
     }
@@ -132,7 +125,7 @@ public class RaftNode {
         }
         updateState(state.get(), stateFactory.followerState());
         applyTask = scheduler.scheduleWithFixedDelay( () -> raftGroup.logEntryProcessor()
-                                                   .start(raftGroup.localLogEntryStore()::createIterator,
+                                                   .apply(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers), 0, 5, TimeUnit.MILLISECONDS);
         if (raftGroup.raftConfiguration().isLogCompactionEnabled()){
             scheduledLogCleaning = scheduleLogCleaning();
@@ -163,13 +156,11 @@ public class RaftNode {
         logger.info("{}: Stopping the node...", groupId());
         updateState(state.get(), stateFactory.idleState(nodeId));
         logger.info("{}: Moved to idle state", groupId());
-        raftGroup.logEntryProcessor().stop();
         if (applyTask != null) {
             applyTask.cancel(true);
             applyTask = null;
         }
         stopLogCleaning();
-        registrations.forEach(Registration::cancel);
         logger.info("{}: Node stopped.", groupId());
     }
 

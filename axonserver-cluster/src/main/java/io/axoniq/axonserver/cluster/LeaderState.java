@@ -48,7 +48,6 @@ public class LeaderState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
-    //private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private volatile Replicators replicators;
 
@@ -194,10 +193,6 @@ public class LeaderState extends AbstractMembershipState {
 
     private CompletableFuture<Void> waitCommitted(CompletableFuture<Entry> entryFuture) {
         CompletableFuture<Void> appendEntryDone = new CompletableFuture<>();
-//        if (replicators == null) {
-//            appendEntryDone.completeExceptionally(new RuntimeException("Step down in progress"));
-//            return appendEntryDone;
-//        }
         entryFuture.whenComplete((e, failure) -> {
             if (failure != null) {
                 logger.warn("Storing entry failed", failure);
@@ -230,20 +225,6 @@ public class LeaderState extends AbstractMembershipState {
             Thread.currentThread().interrupt();
             logger.debug("interrupted in apply");
         }
-//        Map.Entry<Long, CompletableFuture<Void>> first = pendingEntries.pollFirstEntry();
-//        boolean found = false;
-//        while (first != null && first.getKey() <= e.getIndex()) {
-//            first.getValue().complete(null);
-//            found = e.getIndex() == first.getKey();
-//            first = pendingEntries.pollFirstEntry();
-//        }
-//
-//        if (!found && logger.isInfoEnabled()) {
-//            logger.info("{}: entry not found when applied {} - {}", groupId(), e.getIndex(), pendingEntries.keySet());
-//        }
-//        if (first != null) {
-//            pendingEntries.put(first.getKey(), first.getValue());
-//        }
     }
 
     @Override
@@ -283,7 +264,6 @@ public class LeaderState extends AbstractMembershipState {
                 otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateMatchIndex)));
                 replicate();
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
-
             } catch (RuntimeException re) {
                 logger.warn("Replication thread completed exceptionally", re);
             }

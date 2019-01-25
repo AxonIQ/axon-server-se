@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -20,25 +19,21 @@ public class LogEntryProcessor {
     private final AtomicBoolean applyRunning = new AtomicBoolean(false);
     private final ProcessorStore processorStore;
     private final List<Consumer<Entry>> logAppliedListeners = new CopyOnWriteArrayList<>();
-    private volatile Thread commitListenerThread;
-    private volatile boolean running  = true;
 
     public LogEntryProcessor(ProcessorStore processorStore) {
         this.processorStore = processorStore;
     }
 
-
-    public void start(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
-        commitListenerThread = Thread.currentThread();
-            int retries = 3;
-            while (running && retries > 0) {
-                int applied = applyEntries(entryIteratorSupplier, consumer);
-                if (applied > 0) {
-                    retries = 0;
-                } else {
-                    retries--;
-                }
+    public void apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
+        int retries = 3;
+        while (retries > 0) {
+            int applied = applyEntries(entryIteratorSupplier, consumer);
+            if (applied > 0) {
+                retries = 0;
+            } else {
+                retries--;
             }
+        }
     }
 
     public int applyEntries(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
@@ -69,9 +64,6 @@ public class LogEntryProcessor {
     public void markCommitted(long committedIndex, long term) {
         if( committedIndex > processorStore.commitIndex()) {
             processorStore.updateCommit(committedIndex, term);
-            if( commitListenerThread != null) {
-                LockSupport.unpark(commitListenerThread);
-            }
         }
     }
 
@@ -93,10 +85,6 @@ public class LogEntryProcessor {
 
     public void updateLastApplied(long index, long term) {
         processorStore.updateLastApplied(index, term);
-    }
-
-    public void stop() {
-        running = false;
     }
 
     public Registration registerLogAppliedListener(Consumer<Entry> listener){
