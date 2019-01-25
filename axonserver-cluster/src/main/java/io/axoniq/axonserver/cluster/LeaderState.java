@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -31,8 +30,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -52,7 +51,6 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
-    private final CopyOnWriteArrayList<String> nodes = new CopyOnWriteArrayList<>();
     private volatile Replicators replicators;
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
@@ -243,6 +241,7 @@ public class LeaderState extends AbstractMembershipState {
         private final Set<String> nonVotingReplica = new CopyOnWriteArraySet<>();
         private final List<Registration> registrations = new ArrayList<>();
         private final Map<String, ReplicatorPeer> replicatorPeerMap = new ConcurrentHashMap<>();
+        private final AtomicBoolean replicationRunning = new AtomicBoolean(false);
 
         void stop() {
             logger.info("{}: Stop replication thread", groupId());
@@ -267,14 +266,7 @@ public class LeaderState extends AbstractMembershipState {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
                 otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateMatchIndex)));
-                Optional.ofNullable(scheduler.get())
-                        .ifPresent(s -> {
-                            s.scheduleWithFixedDelay(this::notifySenders,
-                                                     0,
-                                                     raftGroup().raftConfiguration().heartbeatTimeout(),
-                                                     MILLISECONDS);
-                            s.scheduleWithFixedDelay(this::scheduleReplication, 0, 10, MILLISECONDS);
-                        });
+                replicate();
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
 
             } catch (RuntimeException re) {
@@ -282,13 +274,34 @@ public class LeaderState extends AbstractMembershipState {
             }
         }
 
-        private void scheduleReplication() {
-            Scheduler schedulerInstance = scheduler.get();
-            if (schedulerInstance != null && nodes.size() > 0) {
-                String node = nodes.get(0);
-                nodes.remove(0);
-                replicatorPeerMap.get(node).sendNextMessage();
+        private void replicate() {
+            if (!replicationRunning.compareAndSet(false, true)) {
+                // it's fine, replication is already in progress
+                return;
             }
+            Optional.ofNullable(scheduler.get())
+                    .ifPresent(schedulerInstance -> {
+                        try {
+                            int runsWithoutChanges = 0;
+                            while (runsWithoutChanges < 3) {
+                                int sent = 0;
+                                for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
+                                    sent += raftPeer.sendNextMessage();
+                                }
+                                if (sent == 0) {
+                                    runsWithoutChanges++;
+                                } else {
+                                    runsWithoutChanges = 0;
+                                }
+                            }
+                        } finally {
+                            System.out.println("rescheduling...");
+                            schedulerInstance.schedule(this::replicate,
+                                                       raftGroup().raftConfiguration().heartbeatTimeout(),
+                                                       MILLISECONDS);
+                            replicationRunning.set(false);
+                        }
+                    });
         }
 
         private void updateMatchIndex(long matchIndex) {
@@ -318,7 +331,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-            nodes.addAllAbsent(replicatorPeerMap.keySet());
+            replicate();
         }
 
         private long lastMessageTimeFromMajority() {
