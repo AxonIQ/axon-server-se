@@ -284,13 +284,10 @@ public class LeaderState extends AbstractMembershipState {
 
         private void scheduleReplication() {
             Scheduler schedulerInstance = scheduler.get();
-            if (schedulerInstance != null) {
-                Iterator<String> nodesIterator = nodes.iterator();
-                if (nodesIterator.hasNext()) {
-                    String node = nodesIterator.next();
-                    nodesIterator.remove();
-                    replicatorPeerMap.get(node).sendNextMessage();
-                }
+            if (schedulerInstance != null && nodes.size() > 0) {
+                String node = nodes.get(0);
+                nodes.remove(0);
+                replicatorPeerMap.get(node).sendNextMessage();
             }
         }
 
