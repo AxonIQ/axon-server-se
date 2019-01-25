@@ -40,7 +40,8 @@ public class DefaultStateFactory implements MembershipStateFactory {
     }
 
     private MembershipStateFactory stateFactory(){
-        return raftGroup.localNode().stateFactory();
+        MembershipStateFactory stateFactory = raftGroup.localNode().stateFactory();
+        return stateFactory != null ? stateFactory : this;
     }
 
     @Override

@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
+import java.util.Date;
+
 /**
  * Author: marc
  */
@@ -10,11 +12,14 @@ public class StateChanged {
     private final String from;
     private final String to;
 
+    private final Date changeDate;
+
     public StateChanged(String groupId, String nodeId, String from, String to) {
         this.nodeId = nodeId;
         this.from = from;
         this.to = to;
         this.groupId = groupId;
+        this.changeDate = new Date();
     }
 
     @Override
@@ -24,6 +29,7 @@ public class StateChanged {
                 ", nodeId='" + nodeId + '\'' +
                 ", from='" + from + '\'' +
                 ", to='" + to + '\'' +
+                ", changeDate=" + changeDate +
                 '}';
     }
 
