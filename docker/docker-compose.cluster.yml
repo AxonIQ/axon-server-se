@@ -1,0 +1,106 @@
+version: '3.7'
+
+services:
+  axonserver-enterprise-1:
+    image: axonserver-enterprise
+    hostname: axonserver-enterprise-1
+    environment:
+      - AXONIQ_AXONSERVER_EVENT_STORAGE=/eventstorage
+      - AXONIQ_AXONSERVER_CONTROLDB-PATH=/controldb
+      - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-1
+      - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-1
+      - AXONIQ_AXONSERVER_CLUSTER_ENABLED=true
+    volumes:
+      - axonserver-enterprise-1-eventstore:/eventstorage
+      - axonserver-enterprise-1-controldb:/controldb
+    ports:
+      - '8024:8024'
+      - '8124:8124'
+      - '8224:8224'
+    deploy:
+      replicas: 1
+  axonserver-enterprise-2:
+    image: axonserver-enterprise
+    hostname: axonserver-enterprise-2
+    environment:
+      - AXONIQ_AXONSERVER_EVENT_STORAGE=/eventstorage
+      - AXONIQ_AXONSERVER_CONTROLDB-PATH=/controldb
+      - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-2
+      - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-2
+      - AXONIQ_AXONSERVER_CLUSTER_ENABLED=true
+      - SERVER_PORT=8025
+      - AXONIQ_AXONSERVER_PORT=8125
+      - AXONIQ_AXONSERVER_INTERNAL-PORT=8225
+    volumes:
+      - axonserver-enterprise-2-eventstore:/eventstorage
+      - axonserver-enterprise-2-controldb:/controldb
+    ports:
+      - '8025:8025'
+      - '8125:8125'
+      - '8225:8225'
+    deploy:
+      replicas: 1
+  axonserver-enterprise-3:
+    image: axonserver-enterprise
+    hostname: axonserver-enterprise-3
+    environment:
+      - AXONIQ_AXONSERVER_EVENT_STORAGE=/eventstorage
+      - AXONIQ_AXONSERVER_CONTROLDB-PATH=/controldb
+      - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-3
+      - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-3
+      - AXONIQ_AXONSERVER_CLUSTER_ENABLED=true
+      - SERVER_PORT=8026
+      - AXONIQ_AXONSERVER_PORT=8126
+      - AXONIQ_AXONSERVER_INTERNAL-PORT=8226
+    volumes:
+      - axonserver-enterprise-3-eventstore:/eventstorage
+      - axonserver-enterprise-3-controldb:/controldb
+    ports:
+      - '8026:8026'
+      - '8126:8126'
+      - '8226:8226'
+    deploy:
+      replicas: 1
+
+  axonserver-cli-init-cluster:
+    image: axonserver-cli
+    command: init-cluster -S http://axonserver-enterprise-1:8024
+    restart: on-failure
+    depends_on:
+      - axonserver-enterprise-1
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  axonserver-cli-register-node2:
+    image: axonserver-cli
+    command: register-node -S http://axonserver-enterprise-2:8025 -h axonserver-enterprise-1 -p 8224 -c default
+    restart: on-failure
+    depends_on:
+      - axonserver-cli-init-cluster
+      - axonserver-enterprise-2
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  axonserver-cli-register-node3:
+    image: axonserver-cli
+    command: register-node -S http://axonserver-enterprise-3:8026 -h axonserver-enterprise-1 -p 8224 -c default
+    restart: on-failure
+    depends_on:
+      - axonserver-cli-init-cluster
+      - axonserver-enterprise-3
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  axonserver-enterprise-1-eventstore:
+  axonserver-enterprise-1-controldb:
+  axonserver-enterprise-2-eventstore:
+  axonserver-enterprise-2-controldb:
+  axonserver-enterprise-3-eventstore:
+  axonserver-enterprise-3-controldb:

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>axonserver-parent</artifactId>
         <groupId>io.axoniq.axonserver</groupId>
@@ -155,6 +156,17 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <configuration>
+                    <skip>false</skip>
+                    <to>
+                        <image>axonserver-enterprise</image>
+                    </to>
+                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -331,7 +343,9 @@
                             <images>
                                 <image>
                                     <alias>axonserver-enterprise</alias>
-                                    <name>${gcloud.registry}/${gcloud.project.name}/axonserver-enterprise:${project.version}</name>
+                                    <name>
+                                        ${gcloud.registry}/${gcloud.project.name}/axonserver-enterprise:${project.version}
+                                    </name>
 
                                     <build>
                                         <from>openjdk:8-jdk-alpine</from>
@@ -340,13 +354,16 @@
                                             <inline>
                                                 <files>
                                                     <file>
-                                                        <source>${project.build.directory}/${project.artifactId}-${project.version}-exec.jar</source>
+                                                        <source>
+                                                            ${project.build.directory}/${project.artifactId}-${project.version}-exec.jar
+                                                        </source>
                                                     </file>
                                                 </files>
                                                 <dependencySets>
                                                     <dependencySet>
                                                         <includes>
-                                                            <include>io.axoniq.axonserver:axonserver-cli:jar:exec</include>
+                                                            <include>io.axoniq.axonserver:axonserver-cli:jar:exec
+                                                            </include>
                                                         </includes>
                                                         <outputDirectory>.</outputDirectory>
                                                         <outputFileNameMapping>axoniq-cli.jar</outputFileNameMapping>
