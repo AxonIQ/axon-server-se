@@ -30,8 +30,11 @@ $ docker images
 
 ## Axon Enterprise Cluster (`docker-compose`)
 
-The [docker-compose.cluster.yml](docker-compose.cluster.yml) file configures three node Axon Enterprise server cluster.
-It uses Docker images we created with Jib (`axonserver-enterprise`, `axonserver-cli`) to initiate the cluster with `node 1` as a leader and register two more nodes.
+The [docker-compose.cluster.yml](docker-compose.cluster.yml) file configures three Axon Enterprise server nodes.
+It uses Docker images we created with Jib (`axonserver-enterprise`) to create three nodes `node 1`, `node 2` and `node 3`.
+
+The [docker-compose.cluster.cli.yml](docker-compose.cluster.cli.yml) file initiate the cluster.
+It uses Docker images we created with Jib (`axonserver-cli`) to initiate the cluster with `node 1` as a leader and register two more nodes (`node 2` and `node 3`).
 
 The [docker-compose.cluster.sample-application.yml](docker-compose.cluster.sample-application.yml) files configures sample application to run against our Axon cluster.
 It uses Docker images we created with Jib (`sample-command-processor-axonserver-client`) to run the application container. Additionally, application is configured to use `postgres` DB container.
@@ -39,22 +42,30 @@ It uses Docker images we created with Jib (`sample-command-processor-axonserver-
 The [docker-compose.cluster.monitoring.yml](docker-compose.cluster.monitoring.yml) files configures Prometheus, Grafana and Alert manager to run against our Axon cluster and collect metrics.
 
 ### Run it
-**Only cluster:**
+
+You can combine different compose files to construct cluster that fits your needs best:
+ - [only cluster](#cluster)
+ - [cluster with sample application](#cluster-with-sample-application)
+ - cluster with metrics
+ - [cluster with sample application and metrics](#cluster-with-sample-application-and-prometheus-metrics)
+ - ...
+
+#### Cluster
 ```bash
-$ docker-compose -f docker/docker-compose.cluster.yml up -d
+$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml up -d
 ```
 ![Dashoard - cluster](dashboard-cluster.png)
 
-**or cluster with sample application:**
+#### Cluster with sample application
 ```bash
-$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.sample-application.yml up -d
+$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml -f docker/docker-compose.cluster.sample-application.yml up -d
 ```
 
 ![Dashoard - cluster - app](dashboard-cluster-app.png)
 
-**or cluster with Prometheus metrics and sample application:**
+#### Cluster with sample application and Prometheus metrics
 ```bash
-$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.monitoring.yml -f docker/docker-compose.cluster.sample-application.yml up -d
+$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml -f docker/docker-compose.cluster.sample-application.yml -f docker/docker-compose.cluster.monitoring.yml  up -d
 ```
 
  - Cluster is available here: [http://localhost:8024/#overview](http://localhost:8024/#overview).
@@ -70,14 +81,44 @@ Grafana password: `nimda`
 
 This command will stop and remove all containers (and named volumes `-v`) defined in the compose files:
 ```bash
-$ docker-compose -f docker/docker-compose.cluster.yml down -v
+$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml down -v
 ```
 or
 ```bash
-$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.sample-application.yml down -v
+$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml -f docker/docker-compose.cluster.sample-application.yml down -v
 ```
 or
 ```bash
-$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.monitoring.yml -f docker/docker-compose.cluster.sample-application.yml down -v
+$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml -f docker/docker-compose.cluster.sample-application.yml -f docker/docker-compose.cluster.monitoring.yml  down -v
 ```
 > NOTE: `-v` option will remove your persisted named volumes once the containers are removed. You can choose to exclude this option in order to backup/manage your volumes later.
+
+## Axon Enterprise Cluster (Docker stack on Kubernetes - *experimental*)
+
+You typically use docker-compose for local development because it can build and works only on a single docker engine. Docker stack and docker service commands require a `Docker Swarm (configured by defaut)` or `Kubernetes cluster`, and they are step towards production.
+
+[Docker Desktop](https://www.docker.com/products/docker-desktop) comes with Kubernetes and the Compose controller built-in, and enabling it is as simple as ticking a box in the settings.
+
+Now, we can use our Docker Compose files and native Docker API for [`stacks`](https://docs.docker.com/engine/reference/commandline/stack/) to manage applications/services on local Kubernetes cluster.
+
+```bash
+$ docker stack deploy --orchestrator=kubernetes -c docker/docker-compose.cluster.yml -c docker/docker-compose.cluster.sample-application.yml -c docker/docker-compose.cluster.cli.yml test-stack
+```
+Explore resources via `kubectl`
+```bash
+$ kubectl get all
+```
+![Kubernetes resources](kubernetes-resources.png)
+
+You can access Kubernetes Dashboard by running the following command:
+
+```bash
+$ kubectl proxy
+```
+Kubectl will make Dashboard available at [http://localhost:8001/api/v1/namespaces/kube-system/services/kubernetes-dashboard/proxy](http://localhost:8001/api/v1/namespaces/kube-system/services/kubernetes-dashboard/proxy)
+
+To remove resources:
+```bash
+$ docker stack rm --orchestrator=kubernetes test
+```
+> Persistent volumes will not be removed.

@@ -1,0 +1,20 @@
+version: '3.7'
+
+services:
+  axonserver-cli-init-cluster:
+    image: axonserver-cli
+    command: init-cluster -S http://axonserver-enterprise-1:8024
+    restart: on-failure
+  axonserver-cli-register-node2:
+    image: axonserver-cli
+    command: register-node -S http://axonserver-enterprise-2:8025 -h axonserver-enterprise-1 -p 8224 -c default
+    restart: on-failure
+    depends_on:
+      - axonserver-cli-init-cluster
+  axonserver-cli-register-node3:
+    image: axonserver-cli
+    command: register-node -S http://axonserver-enterprise-3:8026 -h axonserver-enterprise-1 -p 8224 -c default
+    restart: on-failure
+    depends_on:
+      - axonserver-cli-init-cluster
+

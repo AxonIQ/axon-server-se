@@ -22,7 +22,5 @@ services:
       - POSTGRES_PASSWORD=thepassword
     volumes:
       - postgres-datadir:/var/lib/postgresql/data
-    deploy:
-      replicas: 1
 volumes:
   postgres-datadir:

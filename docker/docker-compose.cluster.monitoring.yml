@@ -3,6 +3,7 @@ version: '3.7'
 services:
   prometheus:
     image: prom/prometheus
+    hostname: prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus/alert.rules:/etc/prometheus/alert.rules
@@ -16,6 +17,7 @@ services:
       - 9090:9090
   alertmanager:
     image: prom/alertmanager
+    hostname: alertmanager
     ports:
       - 9093:9093
     volumes:
@@ -25,6 +27,7 @@ services:
       - '--storage.path=/alertmanager'
   grafana:
     image: grafana/grafana
+    hostname: grafana
     ports:
       - 3000:3000
     environment:
@@ -36,6 +39,7 @@ services:
     image: giantswarm/tiny-tools
     entrypoint: /bin/sh import.sh
     working_dir: /opt/grafana-import-dashboards
+    restart: on-failure
     volumes:
       - ./grafana:/opt/grafana-import-dashboards
     depends_on:

@@ -17,8 +17,6 @@ services:
       - '8024:8024'
       - '8124:8124'
       - '8224:8224'
-    deploy:
-      replicas: 1
   axonserver-enterprise-2:
     image: axonserver-enterprise
     hostname: axonserver-enterprise-2
@@ -38,8 +36,6 @@ services:
       - '8025:8025'
       - '8125:8125'
       - '8225:8225'
-    deploy:
-      replicas: 1
   axonserver-enterprise-3:
     image: axonserver-enterprise
     hostname: axonserver-enterprise-3
@@ -59,44 +55,6 @@ services:
       - '8026:8026'
       - '8126:8126'
       - '8226:8226'
-    deploy:
-      replicas: 1
-
-  axonserver-cli-init-cluster:
-    image: axonserver-cli
-    command: init-cluster -S http://axonserver-enterprise-1:8024
-    restart: on-failure
-    depends_on:
-      - axonserver-enterprise-1
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
-  axonserver-cli-register-node2:
-    image: axonserver-cli
-    command: register-node -S http://axonserver-enterprise-2:8025 -h axonserver-enterprise-1 -p 8224 -c default
-    restart: on-failure
-    depends_on:
-      - axonserver-cli-init-cluster
-      - axonserver-enterprise-2
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
-  axonserver-cli-register-node3:
-    image: axonserver-cli
-    command: register-node -S http://axonserver-enterprise-3:8026 -h axonserver-enterprise-1 -p 8224 -c default
-    restart: on-failure
-    depends_on:
-      - axonserver-cli-init-cluster
-      - axonserver-enterprise-3
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
 volumes:
   axonserver-enterprise-1-eventstore:
   axonserver-enterprise-1-controldb:
