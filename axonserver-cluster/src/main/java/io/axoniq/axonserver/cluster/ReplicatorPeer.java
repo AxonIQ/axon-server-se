@@ -160,7 +160,7 @@ class ReplicatorPeer {
                     logger.info("{}: Install snapshot - Replica has higher term: {}",
                                 groupId(),
                                 installSnapshotResponse.getTerm());
-                    updateCurrentTerm(installSnapshotResponse.getTerm());
+                    updateCurrentTerm.accept(installSnapshotResponse.getTerm());
                 }
             }
         }
@@ -179,9 +179,7 @@ class ReplicatorPeer {
 
         @Override
         public void start() {
-            long commitIndex = raftGroup.logEntryProcessor().commitIndex();
-            TermIndex lastTermIndex = raftGroup.localLogEntryStore().lastLog();
-            sendHeartbeat(lastTermIndex, commitIndex);
+            sendHeartbeat();
             registration = raftPeer.registerAppendEntriesResponseListener(this::handleResponse);
         }
 
@@ -230,8 +228,7 @@ class ReplicatorPeer {
 
                 long now = clock.millis();
                 if (sent == 0 && now - lastMessageSent.get() > raftGroup.raftConfiguration().heartbeatTimeout()) {
-                    sendHeartbeat(raftGroup.localLogEntryStore().lastLog(),
-                                  raftGroup.logEntryProcessor().commitIndex());
+                    sendHeartbeat();
                 }
             } catch (RuntimeException ex) {
                 logger.warn("{}: Sending nextEntries to {} failed", groupId(), raftPeer.nodeId(), ex);
@@ -245,7 +242,7 @@ class ReplicatorPeer {
             if (appendEntriesResponse.hasFailure()) {
                 if (currentTerm() < appendEntriesResponse.getTerm()) {
                     logger.info("{}: Replica has higher term: {}", groupId(), appendEntriesResponse.getTerm());
-                    updateCurrentTerm(appendEntriesResponse.getTerm());
+                    updateCurrentTerm.accept(appendEntriesResponse.getTerm());
                     return;
                 }
                 logger.info("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}, currentMatchIndex = {}",
@@ -255,14 +252,16 @@ class ReplicatorPeer {
                             appendEntriesResponse.getFailure().getLastAppliedIndex(),
                             matchIndex());
                 setMatchIndex(appendEntriesResponse.getFailure().getLastAppliedIndex());
-                nextIndex.set(appendEntriesResponse.getFailure().getLastAppliedIndex() + 1);
+                nextIndex.set(matchIndex.get() + 1);
                 updateEntryIterator();
             } else {
                 setMatchIndex(appendEntriesResponse.getSuccess().getLastLogIndex());
             }
         }
 
-        public void sendHeartbeat(TermIndex lastTermIndex, long commitIndex) {
+        public void sendHeartbeat() {
+            long commitIndex = raftGroup.logEntryProcessor().commitIndex();
+            TermIndex lastTermIndex = raftGroup.localLogEntryStore().lastLog();
             AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
                                                                  .setRequestId(UUID.randomUUID().toString())
                                                                  .setCommitIndex(commitIndex)
@@ -313,15 +312,18 @@ class ReplicatorPeer {
     private final RaftGroup raftGroup;
     private ReplicatorPeerState currentState;
     private final SnapshotManager snapshotManager;
+    private final Consumer<Long> updateCurrentTerm;
 
     public ReplicatorPeer(RaftPeer raftPeer,
                           Consumer<Long> matchIndexCallback,
                           Clock clock,
                           RaftGroup raftGroup,
-                          SnapshotManager snapshotManager) {
+                          SnapshotManager snapshotManager,
+                          Consumer<Long> updateCurrentTerm) {
         this.raftPeer = raftPeer;
         this.matchIndexCallback = matchIndexCallback;
         this.clock = clock;
+        this.updateCurrentTerm = updateCurrentTerm;
         lastMessageReceived.set(clock.millis());
         this.raftGroup = raftGroup;
         this.snapshotManager = snapshotManager;
@@ -345,10 +347,6 @@ class ReplicatorPeer {
     public void stop() {
         running = false;
         changeStateTo(new IdleReplicatorPeerState());
-    }
-
-    public long getMatchIndex() {
-        return matchIndex.get();
     }
 
     public long lastMessageReceived() {
@@ -376,10 +374,6 @@ class ReplicatorPeer {
 
     private long currentTerm() {
         return raftGroup.localElectionStore().currentTerm();
-    }
-
-    private void updateCurrentTerm(long term) {
-        raftGroup.localElectionStore().updateCurrentTerm(term);
     }
 
     private String me() {

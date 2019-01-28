@@ -241,6 +241,12 @@ public class LeaderState extends AbstractMembershipState {
         return me();
     }
 
+    @Override
+    protected void updateCurrentTerm(long term) {
+        super.updateCurrentTerm(term);
+        appendLeaderElected();
+    }
+
     private class Replicators {
 
         private volatile boolean running = true;
@@ -323,7 +329,7 @@ public class LeaderState extends AbstractMembershipState {
             int majority = (int) Math.ceil((otherNodesCount() + 1.1) / 2f);
             Stream<Long> matchIndeces = Stream.concat(Stream.of(raftGroup().localLogEntryStore().lastLogIndex()),
                                                       replicatorPeerMap.values().stream()
-                                                                       .map(peer -> peer.getMatchIndex()));
+                                                                       .map(ReplicatorPeer::matchIndex));
             return matchIndeces.filter(p -> p >= nextCommitCandidate).count() >= majority;
         }
 
@@ -387,7 +393,8 @@ public class LeaderState extends AbstractMembershipState {
                                                                matchIndexCallback,
                                                                scheduler.get().clock(),
                                                                raftGroup(),
-                                                               snapshotManager());
+                                                               snapshotManager(),
+                                                               LeaderState.this::updateCurrentTerm);
             replicatorPeer.start();
             replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
             return () -> {
