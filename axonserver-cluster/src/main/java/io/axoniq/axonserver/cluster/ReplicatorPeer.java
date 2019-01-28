@@ -146,9 +146,9 @@ class ReplicatorPeer {
         }
 
         public void handleResponse(InstallSnapshotResponse installSnapshotResponse) {
-            lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
             logger.trace("{}: Install snapshot - received response: {}", groupId(), installSnapshotResponse);
             if (installSnapshotResponse.hasSuccess()) {
+                lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
                 lastReceivedOffset = installSnapshotResponse.getSuccess().getLastReceivedOffset();
                 if (done) {
                     logger.trace("{}: Install snapshot confirmation received: {}", groupId(), installSnapshotResponse);
@@ -237,7 +237,6 @@ class ReplicatorPeer {
         }
 
         public void handleResponse(AppendEntriesResponse appendEntriesResponse) {
-            lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
             logger.trace("{}: Received response from {}: {}", groupId(), raftPeer.nodeId(), appendEntriesResponse);
             if (appendEntriesResponse.hasFailure()) {
                 if (currentTerm() < appendEntriesResponse.getTerm()) {
@@ -255,6 +254,7 @@ class ReplicatorPeer {
                 nextIndex.set(matchIndex.get() + 1);
                 updateEntryIterator();
             } else {
+                lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
                 setMatchIndex(appendEntriesResponse.getSuccess().getLastLogIndex());
             }
         }
