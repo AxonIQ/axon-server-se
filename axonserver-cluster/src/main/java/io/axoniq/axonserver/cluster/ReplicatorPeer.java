@@ -328,6 +328,10 @@ class ReplicatorPeer {
         changeStateTo(new IdleReplicatorPeerState());
     }
 
+    public String nodeId() {
+        return raftPeer.nodeId();
+    }
+
     private void changeStateTo(ReplicatorPeerState newState) {
         if (currentState != null) {
             currentState.stop();

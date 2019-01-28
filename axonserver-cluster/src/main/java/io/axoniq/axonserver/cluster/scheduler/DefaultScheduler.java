@@ -52,6 +52,11 @@ public class DefaultScheduler implements Scheduler {
     }
 
     @Override
+    public void execute(Runnable command) {
+        scheduledExecutorService.execute(command);
+    }
+
+    @Override
     public void shutdownNow() {
         scheduledExecutorService.shutdownNow();
     }
