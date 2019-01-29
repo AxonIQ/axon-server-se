@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -56,14 +57,20 @@ public class CandidateState extends AbstractMembershipState {
         }
     }
 
+    private  <R> R handleAsFollower(Function<MembershipState, R> handler, String cause) {
+        MembershipState followerState = stateFactory().followerState();
+        changeStateTo(followerState, cause);
+        return handler.apply(followerState);
+    }
+
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
-            logger.trace("{}: Received term {} which is greater or equals than mine {}. Moving to Follower...",
-                         groupId(),
-                         request.getTerm(),
-                         currentTerm());
-            return handleAsFollower(follower -> follower.appendEntries(request));
+            logger.info("{}: Received term {} which is greater or equals than mine {}. Moving to Follower...",
+                         groupId(), request.getTerm(), currentTerm());
+            String message = format("%s received AppendEntriesRequest with greater or equals term (%s >= %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getLeaderId());
+            return handleAsFollower(follower -> follower.appendEntries(request), message);
         }
         logger.trace("{}: Received term {} is smaller than mine {}. Rejecting the request.",
                      groupId(),
@@ -75,8 +82,10 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (request.getTerm() > currentTerm()) {
-            RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request));
-            logger.trace("{}: Request for vote received from {} in term {}. {} voted {}",
+            String message = format("%s received RequestVoteRequest with greater term (%s > %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getCandidateId());
+            RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request), message);
+            logger.info("{}: Request for vote received from {} in term {}. {} voted {} (handled as follower)",
                          groupId(),
                          request.getCandidateId(),
                          request.getTerm(),
@@ -84,7 +93,7 @@ public class CandidateState extends AbstractMembershipState {
                          vote != null && vote.getVoteGranted());
             return vote;
         }
-        logger.trace("{}: Request for vote received from {} in term {}. {} voted rejected",
+        logger.info("{}: Request for vote received from {} in term {}. {} voted rejected",
                      groupId(),
                      request.getCandidateId(),
                      request.getTerm(),
@@ -100,7 +109,9 @@ public class CandidateState extends AbstractMembershipState {
                     groupId(),
                     request.getTerm(),
                     currentTerm());
-            return handleAsFollower(follower -> follower.installSnapshot(request));
+            String message = format("%s received InstallSnapshotRequest with greater term (%s > %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getLeaderId());
+            return handleAsFollower(follower -> follower.installSnapshot(request), message);
         }
         String cause = format("%s: Received term (%s) is smaller or equal than mine (%s). Rejecting the request.",
                                      groupId(), request.getTerm(), currentTerm());
@@ -126,17 +137,20 @@ public class CandidateState extends AbstractMembershipState {
     private void startElection() {
         try {
             synchronized (this) {
-                updateCurrentTerm(currentTerm() + 1);
+                long newTerm = currentTerm() + 1;
+                String cause = format("%s is starting a new election, so increases its term from %s to %s",
+                                      me(), currentTerm(), newTerm);
+                updateCurrentTerm(newTerm, cause);
                 markVotedFor(me());
             }
-            logger.trace("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
+            logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
             resetElectionTimeout();
             currentElection.set(new MajorityElection(this::clusterSize));
             currentElection.get().registerVoteReceived(me(), true);
             Collection<RaftPeer> raftPeers = otherPeers();
             if (raftPeers.isEmpty() && !currentConfiguration().isEmpty()) {
                 currentElection.set(null);
-                changeStateTo(stateFactory().leaderState());
+                changeStateTo(stateFactory().leaderState(), "No other nodes in the raft group.");
             } else {
                 raftPeers.forEach(node -> requestVote(requestVote(), node));
             }
@@ -169,8 +183,10 @@ public class CandidateState extends AbstractMembershipState {
         String voter = response.getResponseHeader().getNodeId();
         logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
-            updateCurrentTerm(response.getTerm());
-            changeStateTo(stateFactory().followerState());
+            String message = format("%s received RequestVoteResponse with greater term (%s > %s) from %s",
+                                    me(), response.getTerm(), currentTerm(), voter);
+            updateCurrentTerm(response.getTerm(), message);
+            changeStateTo(stateFactory().followerState(), message);
             return;
         }
         //The candidate can receive a response with lower term if the voter is receiving regular heartbeat from a leader.
@@ -183,7 +199,8 @@ public class CandidateState extends AbstractMembershipState {
             election.registerVoteReceived(voter, response.getVoteGranted());
             if (election.isWon()) {
                 this.currentElection.set(null);
-                changeStateTo(stateFactory().leaderState());
+                String message = format("%s won the election for context %s {%s}", me(), groupId(), election);
+                changeStateTo(stateFactory().leaderState(), message);
             }
         }
     }

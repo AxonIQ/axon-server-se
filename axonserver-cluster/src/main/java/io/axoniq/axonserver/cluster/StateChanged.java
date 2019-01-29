@@ -11,14 +11,18 @@ public class StateChanged {
     private final String nodeId;
     private final String from;
     private final String to;
+    private final String cause;
+    private final Long currentTerm;
 
     private final Date changeDate;
 
-    public StateChanged(String groupId, String nodeId, String from, String to) {
+    public StateChanged(String groupId, String nodeId, String from, String to, String cause, Long currentTerm) {
         this.nodeId = nodeId;
         this.from = from;
         this.to = to;
         this.groupId = groupId;
+        this.cause = cause;
+        this.currentTerm = currentTerm;
         this.changeDate = new Date();
     }
 
@@ -29,6 +33,8 @@ public class StateChanged {
                 ", nodeId='" + nodeId + '\'' +
                 ", from='" + from + '\'' +
                 ", to='" + to + '\'' +
+                ", cause='" + cause + '\'' +
+                ", currentTerm=" + currentTerm +
                 ", changeDate=" + changeDate +
                 '}';
     }

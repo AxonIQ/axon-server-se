@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Math.min;
+import static java.lang.String.format;
 
 public class FollowerState extends AbstractMembershipState {
 
@@ -65,7 +66,9 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         try {
-            updateCurrentTerm(request.getTerm());
+            String cause = format("%s: %s received AppendEntriesRequest with term = %s from %s",
+                                  groupId(), me(), request.getTerm(), request.getLeaderId());
+            updateCurrentTerm(request.getTerm(), cause);
 
             //1. Reply false if term < currentTerm
             if (request.getTerm() < currentTerm()) {
@@ -148,8 +151,9 @@ public class FollowerState extends AbstractMembershipState {
                          me());
             return requestVoteResponse(request.getRequestId(), false);
         }
-
-        updateCurrentTerm(request.getTerm());
+        String cause = format("%s: %s received RequestVoteRequest with term = %s from %s",
+                              groupId(), me(), request.getTerm(), request.getCandidateId());
+        updateCurrentTerm(request.getTerm(), cause);
         boolean voteGranted = voteGrantedFor(request);
         if (voteGranted) {
             rescheduleElection(request.getTerm());
@@ -159,7 +163,9 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        updateCurrentTerm(request.getTerm());
+        String cause = format("%s: %s received InstallSnapshotRequest with term = %s from %s",
+                              groupId(), me(), request.getTerm(), request.getLeaderId());
+        updateCurrentTerm(request.getTerm(), cause);
 
         // Reply immediately if term < currentTerm
         if (request.getTerm() < currentTerm()) {
@@ -212,8 +218,9 @@ public class FollowerState extends AbstractMembershipState {
     private void checkMessageReceived() {
         long now = scheduler.get().clock().millis();
         if (nextTimeout.get() < now) {
-            logger.warn("{}: Timeout in follower state: {}", groupId(), (now - nextTimeout.get()));
-            changeStateTo(stateFactory().candidateState());
+            String message = format("%s: Timeout in follower state: %s ms.", groupId(), (now - nextTimeout.get()));
+            logger.warn(message);
+            changeStateTo(stateFactory().candidateState(), message);
         } else {
             scheduleElectionTimeoutChecker();
         }
@@ -221,8 +228,9 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void forceStepDown() {
-        logger.warn("{}: Forced step down", groupId());
-        changeStateTo(stateFactory().candidateState());
+        String cause = format("Forced transition from Follower to Candidate for %s in context %s",me(), groupId());
+        logger.warn(cause);
+        changeStateTo(stateFactory().candidateState(), cause);
     }
 
     private void rescheduleElection(long term) {

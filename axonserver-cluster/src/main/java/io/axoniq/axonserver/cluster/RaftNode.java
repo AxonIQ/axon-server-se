@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
@@ -27,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class RaftNode {
@@ -44,6 +46,7 @@ public class RaftNode {
     private volatile Future<?> applyTask;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
+    private final List<BiConsumer<Long,String>> termChangeListeners = new CopyOnWriteArrayList<>();
     private final Scheduler scheduler;
     private final List<Consumer> messagesListeners = new CopyOnWriteArrayList<>();
 
@@ -55,9 +58,10 @@ public class RaftNode {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
         this.registerEntryConsumer(this::updateConfig);
-        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState, snapshotManager));
+        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
+                                                                      this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
-        updateState(null, stateFactory.idleState(nodeId));
+        updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
     }
 
     private ScheduledRegistration scheduleLogCleaning() {
@@ -100,23 +104,35 @@ public class RaftNode {
         }
     }
 
-    private synchronized void updateState(MembershipState currentState, MembershipState newState) {
+    private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
+        String newStateName = toString(newState);
+        String currentStateName = toString(currentState);
         if( state.compareAndSet(currentState, newState)) {
             Optional.ofNullable(currentState).ifPresent(MembershipState::stop);
-            logger.info("{}: Updating state from {} to {}", groupId(), toString(currentState), toString(newState));
+            logger.info("{}: Updating state from {} to {} ({})", groupId(), currentStateName, newStateName, cause);
             stateChangeListeners.forEach(stateChangeListeners -> {
                 try {
-                    StateChanged change = new StateChanged(groupId(), nodeId, toString(currentState), toString(newState));
+                    StateChanged change = new StateChanged(groupId(), nodeId, currentStateName, newStateName, cause,
+                                                           raftGroup.localElectionStore().currentTerm());
                     stateChangeListeners.accept(change);
                 } catch (Exception ex) {
                     logger.warn("{}: Failed to handle event", groupId(), ex);
-                    throw new RuntimeException("Transition to " + toString(newState) + " failed", ex);
+                    throw new RuntimeException("Transition to " + newStateName + " failed", ex);
                 }
             });
-            logger.info("{}: Updated state to {}", groupId(), toString(newState));
+            logger.info("{}: Updated state to {}", groupId(), newStateName);
             newState.start();
         } else {
-            logger.warn("{}: transition to {} failed, invalid current state", groupId(), toString(newState));
+            logger.warn("{}: transition to {} failed, invalid current state", groupId(), newStateName);
+        }
+    }
+
+    private void updateTerm(Long newTerm, String cause){
+        ElectionStore electionStore = raftGroup.localElectionStore();
+        if (newTerm > electionStore.currentTerm()) {
+            electionStore.updateCurrentTerm(newTerm);
+            electionStore.markVotedFor(null);
+            termChangeListeners.forEach(consumer -> consumer.accept(newTerm, cause));
         }
     }
 
@@ -130,7 +146,7 @@ public class RaftNode {
             logger.warn("{}: Node is already started!", groupId());
             return;
         }
-        updateState(state.get(), stateFactory.followerState());
+        updateState(state.get(), stateFactory.followerState(), "Node started");
         applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
                                                    .start(raftGroup.localLogEntryStore()::createIterator,
                                                           this::applyEntryConsumers));
@@ -142,6 +158,10 @@ public class RaftNode {
 
     public void registerStateChangeListener(Consumer<StateChanged> stateChangedConsumer) {
         stateChangeListeners.add(stateChangedConsumer);
+    }
+
+    public void registerTermChangeListener(BiConsumer<Long,String> termChangedConsumer) {
+        termChangeListeners.add(termChangedConsumer);
     }
 
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
@@ -170,7 +190,7 @@ public class RaftNode {
 
     public void stop() {
         logger.info("{}: Stopping the node...", groupId());
-        updateState(state.get(), stateFactory.idleState(nodeId));
+        updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
         logger.info("{}: Moved to idle state", groupId());
         raftGroup.logEntryProcessor().stop();
         if (applyTask != null) {

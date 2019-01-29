@@ -38,7 +38,7 @@ public class FollowerStateTest {
     private static final long LAST_APPLIED_EVENT_SEQUENCE = 2L;
 
     private int electionTimeout = 160;
-    private BiConsumer<MembershipState, MembershipState> transitionHandler;
+    private StateTransitionHandler transitionHandler;
     private FakeScheduler fakeScheduler;
     private FollowerState followerState;
     private LogEntryStore logEntryStore;
@@ -49,11 +49,14 @@ public class FollowerStateTest {
 
     @Before
     public void setup() {
-        transitionHandler = mock(BiConsumer.class);
+        transitionHandler = mock(StateTransitionHandler.class);
 
         logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
         logEntryProcessor = spy(new LogEntryProcessor(new InMemoryProcessorStore()));
+
+        BiConsumer<Long,String> termUpdateHandler =
+                (term, cause) -> electionStore.updateCurrentTerm(Math.max(term, electionStore.currentTerm()));
 
         raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.groupId()).thenReturn("defaultGroup");
@@ -77,12 +80,14 @@ public class FollowerStateTest {
 
         followerState = spy(FollowerState.builder()
                                          .transitionHandler(transitionHandler)
+                                         .termUpdateHandler(termUpdateHandler)
                                          .raftGroup(raftGroup)
                                          .schedulerFactory(() -> fakeScheduler)
                                          .randomValueSupplier((min, max) -> electionTimeout)
                                          .snapshotManager(snapshotManager)
                                          .stateFactory(new DefaultStateFactory(raftGroup,
                                                                                transitionHandler,
+                                                                               termUpdateHandler,
                                                                                snapshotManager))
                                          .build());
         followerState.start();
@@ -96,7 +101,7 @@ public class FollowerStateTest {
     @Test
     public void testTransitionToCandidateState() {
         fakeScheduler.timeElapses(electionTimeout + 1);
-        verify(transitionHandler).accept(any(), any(CandidateState.class));
+        verify(transitionHandler).updateState(any(), any(CandidateState.class), any());
     }
 
     @Test
@@ -318,7 +323,7 @@ public class FollowerStateTest {
         verify(snapshotManager).applySnapshotData(request.getDataList());
 
         fakeScheduler.timeElapses(electionTimeout + 1);
-        verify(transitionHandler).accept(any(), any(CandidateState.class));
+        verify(transitionHandler).updateState(any(), any(CandidateState.class), any());
     }
 
     @Test

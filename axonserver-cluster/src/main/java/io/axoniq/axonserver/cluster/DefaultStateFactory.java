@@ -19,7 +19,8 @@ import java.util.function.Supplier;
 public class DefaultStateFactory implements MembershipStateFactory {
 
     private final RaftGroup raftGroup;
-    private final BiConsumer<MembershipState, MembershipState> transitionHandler;
+    private final StateTransitionHandler transitionHandler;
+    private final BiConsumer<Long, String> termUpdateHandler;
     private final Supplier<Scheduler> schedulerFactory;
     private final SnapshotManager snapshotManager;
     private final CurrentConfiguration currentConfiguration;
@@ -27,10 +28,12 @@ public class DefaultStateFactory implements MembershipStateFactory {
 
 
     public DefaultStateFactory(RaftGroup raftGroup,
-                               BiConsumer<MembershipState, MembershipState> transitionHandler,
+                               StateTransitionHandler transitionHandler,
+                               BiConsumer<Long, String> termUpdateHandler,
                                SnapshotManager snapshotManager) {
         this.raftGroup = raftGroup;
         this.transitionHandler = transitionHandler;
+        this.termUpdateHandler = termUpdateHandler;
         this.snapshotManager = snapshotManager;
         this.schedulerFactory = DefaultScheduler::new;
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
@@ -55,6 +58,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                           .raftGroup(raftGroup)
                           .schedulerFactory(schedulerFactory)
                           .transitionHandler(transitionHandler)
+                          .termUpdateHandler(termUpdateHandler)
                           .snapshotManager(snapshotManager)
                           .currentConfiguration(currentConfiguration)
                           .registerConfigurationListenerFn(registerConfigurationListener)
@@ -68,6 +72,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                             .raftGroup(raftGroup)
                             .schedulerFactory(schedulerFactory)
                             .transitionHandler(transitionHandler)
+                            .termUpdateHandler(termUpdateHandler)
                             .snapshotManager(snapshotManager)
                             .currentConfiguration(currentConfiguration)
                             .registerConfigurationListenerFn(registerConfigurationListener)
@@ -81,6 +86,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                              .raftGroup(raftGroup)
                              .schedulerFactory(schedulerFactory)
                              .transitionHandler(transitionHandler)
+                             .termUpdateHandler(termUpdateHandler)
                              .snapshotManager(snapshotManager)
                              .currentConfiguration(currentConfiguration)
                              .registerConfigurationListenerFn(registerConfigurationListener)

@@ -36,4 +36,11 @@ public class MajorityElection implements Election {
         }
         return won;
     }
+
+    @Override
+    public String toString() {
+        return "MajorityElection{" +
+                "votes=" + votes +
+                '}';
+    }
 }

@@ -17,7 +17,10 @@ import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import static java.lang.String.format;
 
 /**
  * @author Milan Savic
@@ -145,22 +148,24 @@ class ReplicatorPeer {
             lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 
-        public void handleResponse(InstallSnapshotResponse installSnapshotResponse) {
-            logger.trace("{}: Install snapshot - received response: {}", groupId(), installSnapshotResponse);
-            if (installSnapshotResponse.hasSuccess()) {
+        public void handleResponse(InstallSnapshotResponse response) {
+            logger.trace("{}: Install snapshot - received response: {}", groupId(), response);
+            if (response.hasSuccess()) {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
-                lastReceivedOffset = installSnapshotResponse.getSuccess().getLastReceivedOffset();
+                lastReceivedOffset = response.getSuccess().getLastReceivedOffset();
                 if (done) {
-                    logger.trace("{}: Install snapshot confirmation received: {}", groupId(), installSnapshotResponse);
+                    logger.trace("{}: Install snapshot confirmation received: {}", groupId(), response);
                     setMatchIndex(lastAppliedIndex);
                     changeStateTo(new AppendEntryState());
                 }
             } else {
-                if (currentTerm() < installSnapshotResponse.getTerm()) {
+                if (currentTerm() < response.getTerm()) {
                     logger.info("{}: Install snapshot - Replica has higher term: {}",
                                 groupId(),
-                                installSnapshotResponse.getTerm());
-                    updateCurrentTerm.accept(installSnapshotResponse.getTerm());
+                                response.getTerm());
+                    String cause = format("%s: %s received InstallSnapshotResponse with term = %s from %s",
+                                          groupId(), me(), response.getTerm(), response.getResponseHeader().getNodeId());
+                    updateCurrentTerm.accept(response.getTerm(), cause);
                 }
             }
         }
@@ -236,26 +241,28 @@ class ReplicatorPeer {
             return sent;
         }
 
-        public void handleResponse(AppendEntriesResponse appendEntriesResponse) {
-            logger.trace("{}: Received response from {}: {}", groupId(), raftPeer.nodeId(), appendEntriesResponse);
-            if (appendEntriesResponse.hasFailure()) {
-                if (currentTerm() < appendEntriesResponse.getTerm()) {
-                    logger.info("{}: Replica has higher term: {}", groupId(), appendEntriesResponse.getTerm());
-                    updateCurrentTerm.accept(appendEntriesResponse.getTerm());
+        public void handleResponse(AppendEntriesResponse response) {
+            logger.trace("{}: Received response from {}: {}", groupId(), raftPeer.nodeId(), response);
+            if (response.hasFailure()) {
+                if (currentTerm() < response.getTerm()) {
+                    logger.info("{}: Replica has higher term: {}", groupId(), response.getTerm());
+                    String cause = format("%s: %s received AppendEntriesResponse with term = %s from %s",
+                                          groupId(), me(), response.getTerm(), response.getResponseHeader().getNodeId());
+                    updateCurrentTerm.accept(response.getTerm(), cause);
                     return;
                 }
                 logger.info("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}, currentMatchIndex = {}",
                             groupId(),
                             raftPeer.nodeId(),
                             nextIndex,
-                            appendEntriesResponse.getFailure().getLastAppliedIndex(),
+                            response.getFailure().getLastAppliedIndex(),
                             matchIndex());
-                setMatchIndex(appendEntriesResponse.getFailure().getLastAppliedIndex());
+                setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(matchIndex.get() + 1);
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
-                setMatchIndex(appendEntriesResponse.getSuccess().getLastLogIndex());
+                setMatchIndex(response.getSuccess().getLastLogIndex());
             }
         }
 
@@ -312,14 +319,14 @@ class ReplicatorPeer {
     private final RaftGroup raftGroup;
     private ReplicatorPeerState currentState;
     private final SnapshotManager snapshotManager;
-    private final Consumer<Long> updateCurrentTerm;
+    private final BiConsumer<Long, String> updateCurrentTerm;
 
     public ReplicatorPeer(RaftPeer raftPeer,
                           Consumer<Long> matchIndexCallback,
                           Clock clock,
                           RaftGroup raftGroup,
                           SnapshotManager snapshotManager,
-                          Consumer<Long> updateCurrentTerm) {
+                          BiConsumer<Long, String> updateCurrentTerm) {
         this.raftPeer = raftPeer;
         this.matchIndexCallback = matchIndexCallback;
         this.clock = clock;

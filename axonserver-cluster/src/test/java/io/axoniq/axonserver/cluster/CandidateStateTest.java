@@ -15,6 +15,8 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
 
+import java.util.function.BiConsumer;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -60,10 +62,11 @@ public class CandidateStateTest {
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
 
-
+        BiConsumer<Long, String> termUpdateHandler = (term, cause) -> electionStore.updateCurrentTerm(term);
         candidateState = CandidateState.builder()
                                        .raftGroup(raftGroup)
                                        .transitionHandler(transitionHandler)
+                                       .termUpdateHandler(termUpdateHandler)
                                        .snapshotManager(new FakeSnapshotManager())
                                        .schedulerFactory(() -> fakeScheduler)
                                        .randomValueSupplier((min, max) -> electionTimeout)

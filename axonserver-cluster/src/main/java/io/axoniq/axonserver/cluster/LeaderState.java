@@ -41,6 +41,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -171,8 +172,9 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     public void forceStepDown() {
-        logger.info("{}: StepDown forced", groupId());
-        changeStateTo(stateFactory().followerState());
+        String message = format("%s: Forced Step Down of %s.", groupId(), me());
+        logger.info(message);
+        changeStateTo(stateFactory().followerState(), message);
     }
 
     private void checkStepdown() {
@@ -182,8 +184,9 @@ public class LeaderState extends AbstractMembershipState {
         long now = scheduler.get().clock().millis();
         long lastReceived = replicators.lastMessageTimeFromMajority();
         if (now - lastReceived > maxElectionTimeout()) {
-            logger.info("{}: StepDown as no messages received for {}ms", groupId(), (now - lastReceived));
-            changeStateTo(stateFactory().followerState());
+            String message = format("%s: StepDown as no messages received for %s ms.", groupId(), (now - lastReceived));
+            logger.info(message);
+            changeStateTo(stateFactory().followerState(), message);
         } else {
             logger.trace("{}: Reschedule checkStepdown after {}ms",
                          groupId(),
@@ -243,8 +246,8 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
-    protected void updateCurrentTerm(long term) {
-        super.updateCurrentTerm(term);
+    protected void updateCurrentTerm(long term, String cause) {
+        super.updateCurrentTerm(term, cause);
         appendLeaderElected();
     }
 
