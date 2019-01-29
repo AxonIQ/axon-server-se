@@ -131,6 +131,7 @@ public class LeaderState extends AbstractMembershipState {
         pendingEntries.forEach((index, completableFuture) -> completableFuture
                 .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
         pendingEntries.clear();
+        logger.info("{}: {} steps down from Leader role.", groupId(), me());
         if (scheduler.get() != null) {
             scheduler.getAndSet(null).shutdownNow();
         }
@@ -152,7 +153,7 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         logger.trace("{}: Received installSnapshot request. Rejecting the request.", groupId());
-        return installSnapshotFailure(request.getRequestId());
+        return installSnapshotFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
     @Override

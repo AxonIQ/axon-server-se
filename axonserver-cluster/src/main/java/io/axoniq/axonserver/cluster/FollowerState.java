@@ -163,8 +163,10 @@ public class FollowerState extends AbstractMembershipState {
 
         // Reply immediately if term < currentTerm
         if (request.getTerm() < currentTerm()) {
-            logger.warn("{}: term before current term {}", groupId(), currentTerm());
-            return installSnapshotFailure(request.getRequestId());
+            String failureCause = String.format("%s: term (%s) is before current term (%s)",
+                                                groupId(), request.getTerm(), currentTerm());
+            logger.warn(failureCause);
+            return installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
         rescheduleElection(request.getTerm());

@@ -113,6 +113,7 @@ message InstallSnapshotSuccess {
 }
 
 message InstallSnapshotFailure {
+    string cause = 1;
 }
 
 message Config {

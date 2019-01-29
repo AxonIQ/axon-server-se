@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.cluster.election;
 
 import io.axoniq.axonserver.cluster.MinMajority;
-import io.axoniq.axonserver.cluster.election.Election;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,7 @@ public class MajorityElection implements Election {
 
     private final Supplier<Integer> minMajority;
     private final Map<String, Boolean> votes = new ConcurrentHashMap<>();
+    private final Logger log = LoggerFactory.getLogger(MajorityElection.class);
 
     public MajorityElection(Supplier<Integer> votersSize) {
         this.minMajority = new MinMajority(votersSize);
@@ -28,6 +30,10 @@ public class MajorityElection implements Election {
     @Override
     public boolean isWon() {
         long voteGranted = votes.values().stream().filter(granted -> granted).count();
-        return voteGranted >= minMajority.get();
+        boolean won = voteGranted >= minMajority.get();
+        if (won && log.isInfoEnabled()){
+            log.info("Election is won with following votes: {}", votes);
+        }
+        return won;
     }
 }

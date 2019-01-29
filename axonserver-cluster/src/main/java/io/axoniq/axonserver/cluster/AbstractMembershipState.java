@@ -262,12 +262,14 @@ public abstract class AbstractMembershipState implements MembershipState {
                                     .build();
     }
 
-    protected InstallSnapshotResponse installSnapshotFailure(String requestId) {
+    protected InstallSnapshotResponse installSnapshotFailure(String requestId, String cause) {
         return InstallSnapshotResponse.newBuilder()
                                       .setResponseHeader(responseHeader(requestId))
                                       .setGroupId(groupId())
                                       .setTerm(currentTerm())
-                                      .setFailure(InstallSnapshotFailure.newBuilder().build())
+                                      .setFailure(InstallSnapshotFailure.newBuilder()
+                                                                        .setCause(cause)
+                                                                        .build())
                                       .build();
     }
 

@@ -2,8 +2,8 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.CandidateConfiguration;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
-import io.axoniq.axonserver.cluster.election.MajorityElection;
 import io.axoniq.axonserver.cluster.election.Election;
+import io.axoniq.axonserver.cluster.election.MajorityElection;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -101,11 +102,10 @@ public class CandidateState extends AbstractMembershipState {
                     currentTerm());
             return handleAsFollower(follower -> follower.installSnapshot(request));
         }
-        logger.trace("{}: Received term {} is smaller or equal than mine {}. Rejecting the request.",
-                     groupId(),
-                     request.getTerm(),
-                     currentTerm());
-        return installSnapshotFailure(request.getRequestId());
+        String cause = format("%s: Received term (%s) is smaller or equal than mine (%s). Rejecting the request.",
+                                     groupId(), request.getTerm(), currentTerm());
+        logger.trace(cause);
+        return installSnapshotFailure(request.getRequestId(), cause);
     }
 
     @Override
