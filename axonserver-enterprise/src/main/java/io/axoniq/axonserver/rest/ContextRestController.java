@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import javax.validation.Valid;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController
 @CrossOrigin

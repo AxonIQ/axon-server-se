@@ -7,10 +7,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
-import java.util.stream.IntStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @org.springframework.web.bind.annotation.RestController
 @RequestMapping("/cmd")
@@ -25,7 +24,13 @@ public class RestController {
     @RequestMapping("echo")
     public Future<String> echo(@RequestParam(value="text") String text) {
         CompletableFuture<String> result = new CompletableFuture<>();
-        commandGateway.send(new EchoCommand(UUID.randomUUID().toString(), text)).whenComplete((r, t) -> result.complete(String.valueOf(r)));
+        commandGateway.send(new EchoCommand(UUID.randomUUID().toString(), text)).whenComplete((r, t) -> {
+            if( t != null) {
+                result.complete(t.getCause().getMessage());
+            } else {
+                result.complete(String.valueOf(r));
+            }
+        });
         return result;
     }
 }

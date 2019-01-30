@@ -4,7 +4,7 @@ import io.axoniq.axonserver.localstorage.query.Expression;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MultiplyExpression extends AbstractArithmeticExpression {
 

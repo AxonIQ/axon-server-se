@@ -1,52 +1,71 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ByteBufferEventSource implements EventSource {
 
 
     private final EventTransformer eventTransformer;
+    private final Runnable onClose;
     private final ByteBuffer buffer;
     private final boolean main;
+    private final AtomicInteger duplicatesCount = new AtomicInteger();
+    private final String path;
 
-    public ByteBufferEventSource(ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+    public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+        this.path = path;
         byte version = buffer.get();
         int flags = buffer.getInt();
         this.eventTransformer = eventTransformerFactory.get(version, flags, storageProperties);
         this.buffer = buffer;
         this.main = true;
+        this.onClose = null;
     }
 
-    public ByteBufferEventSource(ByteBuffer buffer, EventTransformer eventTransformer) {
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer, Runnable onClose) {
+        this.path = path;
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
+        this.onClose = onClose;
         this.main = false;
     }
 
-    public Event readEvent() {
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer) {
+        this.path = path;
+        this.buffer = buffer;
+        this.eventTransformer = eventTransformer;
+        this.onClose = null;
+        this.main = true;
+    }
+
+    public SerializedEvent readEvent() {
         int size = buffer.getInt();
         byte[] bytes = new byte[size];
         buffer.get(bytes);
-        return eventTransformer.readEvent(bytes);
+        return new SerializedEvent(eventTransformer.readEvent(bytes));
     }
 
     public ByteBufferEventSource duplicate() {
-        return new ByteBufferEventSource(buffer.duplicate(), eventTransformer);
+        duplicatesCount.incrementAndGet();
+        return new ByteBufferEventSource(path, buffer.duplicate(), eventTransformer, duplicatesCount::decrementAndGet);
     }
 
     @Override
     protected void finalize() {
-        CleanUtils.cleanDirectBuffer(buffer, main, 60);
+        if( main) {
+            CleanUtils.cleanDirectBuffer(buffer, () -> duplicatesCount.get() == 0, 60, path);
+        }
     }
 
-    public Event readEvent(int position) {
+    public SerializedEvent readEvent(int position) {
         buffer.position(position);
         return readEvent();
     }
@@ -70,6 +89,15 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     public void clean(long delay) {
-        CleanUtils.cleanDirectBuffer(getBuffer(), true, delay);
+        if( main ) {
+            CleanUtils.cleanDirectBuffer(getBuffer(), () -> duplicatesCount.get() == 0, delay, path);
+        }
+    }
+
+    @Override
+    public void close() {
+        if( onClose != null) {
+            onClose.run();
+        }
     }
 }

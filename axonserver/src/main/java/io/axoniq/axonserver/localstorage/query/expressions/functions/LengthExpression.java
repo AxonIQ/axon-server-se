@@ -7,7 +7,7 @@ import io.axoniq.axonserver.localstorage.query.result.NullExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.NumericExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LengthExpression implements Expression {
 

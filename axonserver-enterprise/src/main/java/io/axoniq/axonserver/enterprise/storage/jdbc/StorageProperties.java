@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import javax.sql.DataSource;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @ConfigurationProperties(prefix = "axoniq.axonserver.storage.jdbc")
 @Configuration

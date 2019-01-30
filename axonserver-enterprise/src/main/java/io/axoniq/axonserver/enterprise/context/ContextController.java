@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
@@ -19,7 +20,7 @@ import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class ContextController {
@@ -29,7 +30,8 @@ public class ContextController {
     public ContextController(
             EntityManager entityManager,
             ClusterController clusterController,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            ModelVersionController modelVersionController) {
         this.entityManager = entityManager;
         this.clusterController = clusterController;
     }

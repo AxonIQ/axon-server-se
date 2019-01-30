@@ -2,7 +2,7 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.util.AssertUtils;
 import org.junit.*;
-import org.junit.rules.*;
+import org.junit.rules.TemporaryFolder;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamReaderTest {
     @ClassRule
@@ -80,6 +80,3 @@ public class InputStreamReaderTest {
         AssertUtils.assertWithin(5000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(10000, counter.get()));
         if( ! task.isDone()) task.cancel(true);
     }
-
-
-}

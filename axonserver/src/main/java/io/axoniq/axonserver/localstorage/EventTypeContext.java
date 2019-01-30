@@ -3,7 +3,7 @@ package io.axoniq.axonserver.localstorage;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventTypeContext {
 

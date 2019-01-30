@@ -7,7 +7,7 @@ import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class NullExpressionResult implements ExpressionResult {

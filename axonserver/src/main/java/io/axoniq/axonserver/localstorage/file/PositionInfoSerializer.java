@@ -9,7 +9,7 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PositionInfoSerializer implements Serializer<SortedSet<PositionInfo>> {
     private static final PositionInfoSerializer positionInfoSerializer = new PositionInfoSerializer();

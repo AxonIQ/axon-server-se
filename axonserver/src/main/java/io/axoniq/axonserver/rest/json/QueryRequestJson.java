@@ -1,17 +1,17 @@
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
-import io.axoniq.platform.KeepNames;
-import io.axoniq.platform.util.StringUtils;
+import io.axoniq.axonserver.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class QueryRequestJson {

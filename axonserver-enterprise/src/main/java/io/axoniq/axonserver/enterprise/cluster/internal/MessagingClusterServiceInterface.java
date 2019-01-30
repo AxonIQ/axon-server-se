@@ -6,7 +6,7 @@ import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface MessagingClusterServiceInterface {
     StreamObserver<ConnectorCommand> openStream(
@@ -15,4 +15,5 @@ public interface MessagingClusterServiceInterface {
     void join(NodeInfo request,
               StreamObserver<NodeInfo> responseObserver);
 
+    void closeChannel();
 }

@@ -5,7 +5,7 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @Cacheable(false)

@@ -5,10 +5,10 @@
     <parent>
 		<groupId>io.axoniq.axonserver</groupId>
 		<artifactId>axonserver-parent</artifactId>
-        <version>4.0.1-SNAPSHOT</version>
+        <version>4.1-SNAPSHOT</version>
     </parent>
     <artifactId>axonserver</artifactId>
-    <name>AxonServer - Free edition</name>
+    <name>AxonServer - Standard edition</name>
 
     <properties>
         <timestamp>${maven.build.timestamp}</timestamp>
@@ -24,7 +24,7 @@
         <gcloud.project.name>axoniq-platform</gcloud.project.name>
         <gcloud.registry>eu.gcr.io</gcloud.registry>
         <docker.certspath>${env.HOMEDRIVE}${env.HOMEPATH}/.docker/machine/certs</docker.certspath>
-        <mapdb.version>3.0.5</mapdb.version>
+        <mapdb.version>3.0.7</mapdb.version>
         <jackson.version>2.9.4</jackson.version>
     </properties>
 
@@ -32,11 +32,6 @@
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver-connector-api</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.axoniq.axonserver</groupId>
-            <artifactId>axonserver-accessdb</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
@@ -240,38 +235,6 @@
             </extension>
         </extensions>
         <plugins>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
-                <configuration>
-                    <shadedArtifactAttached>true</shadedArtifactAttached>
-                    <artifactSet>
-                        <includes>
-                            <include>io.axoniq.axonserver:*</include>
-                            <include>io.axoniq.axondb:*</include>
-                        </includes>
-                        <excludes>
-                            <exclude>io.axoniq.axonserver:axonserver-cli:*</exclude>
-                            <exclude>io.axoniq.axonserver:axonserver-connector-api:*</exclude>
-                        </excludes>
-                    </artifactSet>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>package-lib</id>
-                        <configuration>
-                            <shadedClassifierName>lib</shadedClassifierName>
-                        </configuration>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -381,173 +344,6 @@
     </build>
 
     <profiles>
-        <profile>
-            <!--
-               We perform obfuscation if the obfuscator is present. This is required to ensure compliance with
-               our current single dev license for Allatori. Obfuscation is done on Frans' machine prior to
-               external release.
-            -->
-            <id>obfuscate</id>
-            <activation>
-                <file>
-                    <exists>${allatori-jar.full-path}</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>copy-controldb</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>io.axoniq.axonserver</groupId>
-                                            <artifactId>axonserver-accessdb</artifactId>
-                                            <type>jar</type>
-                                            <overWrite>true</overWrite>
-                                        </artifactItem>
-                                        <artifactItem>
-                                            <groupId>io.axoniq.axonserver</groupId>
-                                            <artifactId>axonserver-grpc</artifactId>
-                                            <type>jar</type>
-                                            <overWrite>true</overWrite>
-                                        </artifactItem>
-                                        <artifactItem>
-                                            <groupId>io.axoniq.axondb</groupId>
-                                            <artifactId>query-parser</artifactId>
-                                            <type>jar</type>
-                                            <overWrite>true</overWrite>
-                                        </artifactItem>
-                                    </artifactItems>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>copy-and-filter-allatori-config</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>copy-resources</goal>
-                                </goals>
-                                <configuration>
-                                    <outputDirectory>${basedir}/target</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>${basedir}/allatori</directory>
-                                            <filtering>true</filtering>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-and-filter-installers</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>copy-resources</goal>
-                                </goals>
-                                <configuration>
-                                    <outputDirectory>${basedir}/target</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>${basedir}/src/main/installers</directory>
-                                            <filtering>true</filtering>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- Running Allatori -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>${exec.plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>run-allatori</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <executable>java</executable>
-                            <arguments>
-                                <argument>-Xms128m</argument>
-                                <argument>-Xmx512m</argument>
-                                <argument>-jar</argument>
-                                <argument>${allatori-jar.full-path}</argument>
-                                <argument>${basedir}/target/allatori.xml</argument>
-                            </arguments>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <version>2.0.2.RELEASE</version>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>repackage</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <excludes>
-                                <exclude>
-                                    <groupId>io.axoniq.axonserver</groupId>
-                                    <artifactId>axonserver-accessdb</artifactId>
-                                </exclude>
-                                <exclude>
-                                    <groupId>io.axoniq.axonserver</groupId>
-                                    <artifactId>axonserver-grpc</artifactId>
-                                </exclude>
-                                <exclude>
-                                    <groupId>io.axoniq.axondb</groupId>
-                                    <artifactId>query-parser</artifactId>
-                                </exclude>
-                            </excludes>
-                            <layout>ZIP</layout>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>build-helper-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>attach-allatori</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>attach-artifact</goal>
-                                </goals>
-                                <configuration>
-                                    <artifacts>
-                                        <artifact>
-                                            <file>${basedir}/target/allatori-log-${project.parent.version}.xml</file>
-                                            <type>xml</type>
-                                            <classifier>allatori</classifier>
-                                        </artifact>
-                                    </artifacts>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
         <profile>
             <id>docker</id>
             <build>

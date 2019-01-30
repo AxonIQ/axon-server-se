@@ -3,7 +3,7 @@ package io.axoniq.axonserver.localstorage.query.result;
 import java.time.Instant;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TimestampExpressionResult extends NumericExpressionResult{
 

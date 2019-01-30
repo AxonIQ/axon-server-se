@@ -6,7 +6,7 @@ import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.NumericExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class NumericLiteral implements Expression {
     private final String alias;

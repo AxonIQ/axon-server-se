@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
-import io.axoniq.platform.KeepNames;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class CommandResponseJson {

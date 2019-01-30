@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class LicenseInfo {

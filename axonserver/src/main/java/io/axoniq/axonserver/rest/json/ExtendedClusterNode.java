@@ -6,7 +6,7 @@ import io.axoniq.axonserver.topology.AxonServerNode;
 import java.util.Collection;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class ExtendedClusterNode implements AxonServerNode {

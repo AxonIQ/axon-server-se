@@ -6,7 +6,7 @@ import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LtExpression extends AbstractBooleanExpression {
 

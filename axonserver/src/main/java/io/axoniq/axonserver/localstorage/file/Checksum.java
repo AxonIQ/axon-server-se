@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Checksum {
     private final CRC32 crc32;
@@ -24,9 +24,9 @@ public class Checksum {
     }
 
     public Checksum update(ByteBuffer buffer, int position, int size) {
-        for( int i = 0 ; i < size ; i++) {
-            crc32.update( buffer.get(position+i));
-        }
+        byte[] bytes = new byte[size];
+        ((ByteBuffer) buffer.duplicate().position(position)).get(bytes);
+            crc32.update( bytes);
         return this;
     }
 

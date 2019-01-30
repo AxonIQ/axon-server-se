@@ -1,19 +1,16 @@
 package io.axoniq.axonserver.rest.json;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationContext;
-import io.axoniq.platform.application.jpa.ApplicationContextRole;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.ApplicationRole;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static io.axoniq.platform.util.StringUtils.getOrDefault;
-
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class ApplicationJSON {
@@ -31,7 +28,7 @@ public class ApplicationJSON {
     public ApplicationJSON(Application application) {
         name = application.getName();
         description = application.getDescription();
-        roles = application.getContexts().stream().map(ApplicationRoleJSON::new).collect(Collectors.toList());
+        roles = application.getRoles().stream().map(ApplicationRoleJSON::new).collect(Collectors.toList());
     }
 
     public String getName() {
@@ -69,46 +66,32 @@ public class ApplicationJSON {
     public Application toApplication() {
         return new Application(name, description, null, token,
                                roles.stream().map(ApplicationRoleJSON::toApplicationRole)
-                                    .toArray(ApplicationContext[]::new));
-    }
-
-    public io.axoniq.axonserver.grpc.internal.Application asProto() {
-        return io.axoniq.axonserver.grpc.internal.Application.newBuilder()
-                                                             .setName(name)
-                                                             .setDescription(getOrDefault(description, ""))
-                                                             .setToken(getOrDefault(token, UUID.randomUUID().toString()))
-                                                             .addAllRolesPerContext(
-                                                                     roles.stream().map(ApplicationRoleJSON::asApplicationContextRole).collect(
-                                                                             Collectors.toList())
-                                                             )
-                .build();
+                                    .toArray(ApplicationRole[]::new));
     }
 
     @KeepNames
     public static class ApplicationRoleJSON {
-
-        private List<String> roles;
+        private String role;
 
         private String context;
+
+        private Date endDate;
 
         public ApplicationRoleJSON() {
 
         }
-
-        public ApplicationRoleJSON(ApplicationContext applicationRole) {
-            roles = applicationRole.getRoles()
-                                   .stream()
-                                   .map(ApplicationContextRole::getRole)
-                                   .collect(Collectors.toList());
+        public ApplicationRoleJSON(ApplicationRole applicationRole) {
+            role = applicationRole.getRole();
             context = applicationRole.getContext();
+            endDate = applicationRole.getEndDate();
         }
 
-        public List<String> getRoles() {
-            return roles;
+        public String getRole() {
+            return role;
         }
 
-        public void setRoles(List<String> role) {
-            this.roles = role;
+        public void setRole(String role) {
+            this.role = role;
         }
 
         public String getContext() {
@@ -119,17 +102,16 @@ public class ApplicationJSON {
             this.context = context;
         }
 
-        public ApplicationContext toApplicationRole() {
-            return new ApplicationContext(context, roles.stream()
-                                                        .map(ApplicationContextRole::new)
-                                                        .collect(Collectors.toList()));
+        public Date getEndDate() {
+            return endDate;
         }
 
-        public io.axoniq.axonserver.grpc.internal.ApplicationContextRole asApplicationContextRole() {
-            return io.axoniq.axonserver.grpc.internal.ApplicationContextRole.newBuilder()
-                                                                            .setContext(context)
-                                                                            .addAllRoles(roles)
-                                                                            .build();
+        public void setEndDate(Date endDate) {
+            this.endDate = endDate;
+        }
+
+        public ApplicationRole toApplicationRole() {
+            return new ApplicationRole(role, context, endDate);
         }
     }
 }

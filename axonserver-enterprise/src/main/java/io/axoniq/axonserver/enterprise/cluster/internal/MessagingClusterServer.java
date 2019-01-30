@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.ContextInterceptor;
@@ -23,7 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("MessagingClusterServer")
 public class MessagingClusterServer implements SmartLifecycle{
@@ -37,8 +38,8 @@ public class MessagingClusterServer implements SmartLifecycle{
     private final LeaderElectionService leaderElectionService;
     private final GrpcRaftGroupService grpcRaftGroupService;
     private final GrpcRaftConfigService grpcRaftConfigService;
-    private final FeatureChecker limits;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final FeatureChecker limits;
     private Server server;
 
     public MessagingClusterServer(MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -116,6 +117,8 @@ public class MessagingClusterServer implements SmartLifecycle{
                                                                   new ContextInterceptor()));
             serverBuilder.addService(ServerInterceptors.intercept(grpcRaftGroupService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
             serverBuilder.addService(ServerInterceptors.intercept(grpcRaftConfigService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
+        } else {
+            serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new ContextInterceptor()));
         }
         if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);
@@ -129,11 +132,11 @@ public class MessagingClusterServer implements SmartLifecycle{
         try {
             server.start();
 
-            logger.info("AxonServer replication server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
+            logger.info("Axon Server Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
             applicationEventPublisher.publishEvent(new ReplicationServerStarted());
             started = true;
         } catch (IOException e) {
-            logger.error("Starting AxonServer replication server failed - {}", e.getMessage(), e);
+            logger.error("Starting Axon Server Cluster Server failed - {}", e.getMessage(), e);
         }
     }
 

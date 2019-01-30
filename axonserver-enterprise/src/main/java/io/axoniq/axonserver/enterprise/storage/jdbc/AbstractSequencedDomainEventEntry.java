@@ -11,7 +11,7 @@ import javax.persistence.Lob;
 import javax.persistence.MappedSuperclass;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @MappedSuperclass
 public abstract class AbstractSequencedDomainEventEntry {

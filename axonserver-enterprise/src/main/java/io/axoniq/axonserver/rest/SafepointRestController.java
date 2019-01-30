@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController
 @CrossOrigin
@@ -26,7 +26,7 @@ public class SafepointRestController {
     public long safepoint(@RequestParam(value = "type", defaultValue = "EVENT", required = false) String type,
                           @RequestParam(value = "context", defaultValue = "default", required = false) String context) {
         return safepointRepository.findById(new Safepoint.SafepointKey(context, type))
-                                  .map(Safepoint::getToken)
+                                  .map(Safepoint::safePoint)
                                   .orElse(-1L);
     }
 

@@ -1,0 +1,167 @@
+package io.axoniq.axonserver.rest;
+
+import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.AxonServerStandardAccessController;
+import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.config.SystemInfoProvider;
+import org.junit.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * Author: marc
+ */
+public class WebSecurityConfigurationTest {
+    private WebSecurityConfiguration.TokenAuthenticationFilter testSubject;
+    private AtomicInteger statusCodeHolder = new AtomicInteger();
+    private ServletResponse response = new MockHttpServletResponse(){
+        @Override
+        public void setStatus(int status) {
+            statusCodeHolder.set(status);
+        }
+    };
+
+    @Before
+    public void setUp() {
+        MessagingPlatformConfiguration messagingPlatformConfiguration = new MessagingPlatformConfiguration(new SystemInfoProvider() {
+            @Override
+            public int getPort() {
+                return 0;
+            }
+
+            @Override
+            public String getHostName() throws UnknownHostException {
+                return null;
+            }
+        });
+        messagingPlatformConfiguration.getAccesscontrol().setToken("123456");
+        PathMappingRepository pathMappingRepository = mock(PathMappingRepository.class);
+        AxonServerAccessController accessController =  new AxonServerStandardAccessController(pathMappingRepository, messagingPlatformConfiguration);
+        testSubject = new WebSecurityConfiguration.TokenAuthenticationFilter(accessController);
+        SecurityContextHolder.getContext().setAuthentication(null);
+    }
+
+    @Test
+    public void filterValidToken() throws IOException, ServletException {
+        ServletRequest request = new MockHttpServletRequest() {
+            @Override
+            public String getHeader(String name) {
+                if( name.equals(AxonServerAccessController.TOKEN_PARAM)) {
+                    return "123456";
+                }
+                return super.getHeader(name);
+            }
+        };
+        FilterChain filterChain = new MockFilterChain();
+        testSubject.doFilter(request, response, filterChain);
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        Authentication authentication = SecurityContextHolder.getContext()
+                                                             .getAuthentication();
+        assertEquals(1, authentication.getAuthorities().size());
+    }
+
+    @Test
+    public void filterValidTokenParameter() throws IOException, ServletException {
+        ServletRequest request = new MockHttpServletRequest() {
+            @Override
+            public String getParameter(String name) {
+                if( name.equals(AxonServerAccessController.TOKEN_PARAM)) {
+                    return "123456";
+                }
+                return super.getParameter(name);
+            }
+        };
+        FilterChain filterChain = new MockFilterChain();
+        testSubject.doFilter(request, response, filterChain);
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        Authentication authentication = SecurityContextHolder.getContext()
+                                                             .getAuthentication();
+        assertEquals(1, authentication.getAuthorities().size());
+    }
+
+    @Test
+    public void filterInvalidToken() throws IOException, ServletException {
+        ServletRequest request = new MockHttpServletRequest() {
+            @Override
+            public String getHeader(String name) {
+                if( name.equals(AxonServerAccessController.TOKEN_PARAM)) {
+                    return "1234567";
+                }
+                return super.getHeader(name);
+            }
+        };
+        FilterChain filterChain = new MockFilterChain();
+        testSubject.doFilter(request, response, filterChain);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(403, statusCodeHolder.get());
+    }
+
+    @Test
+    public void filterNoToken() throws IOException, ServletException {
+        ServletRequest request = new MockHttpServletRequest() {
+            @Override
+            public String getHeader(String name) {
+                if( name.equals(HttpHeaders.USER_AGENT)) {
+                    return "wget";
+                }
+                return super.getHeader(name);
+            }
+        };
+        FilterChain filterChain = new MockFilterChain();
+        testSubject.doFilter(request, response, filterChain);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(403, statusCodeHolder.get());
+    }
+
+    @Test
+    public void filterInvalidTokenLocalRequest() throws IOException, ServletException {
+        ServletRequest request = new MockHttpServletRequest() {
+            @Override
+            public String getHeader(String name) {
+                if( name.equals(AxonServerAccessController.TOKEN_PARAM)) {
+                    return "1234567";
+                }
+                return super.getHeader(name);
+            }
+
+            @Override
+            public String getLocalAddr() {
+                return "localhost";
+            }
+
+            @Override
+            public String getRemoteAddr() {
+                return "localhost";
+            }
+
+            @Override
+            public String getRequestURI() {
+                return "/v1/context";
+            }
+        };
+        FilterChain filterChain = new MockFilterChain();
+        testSubject.doFilter(request, response, filterChain);
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(0, statusCodeHolder.get());
+        Authentication authentication = SecurityContextHolder.getContext()
+                                                             .getAuthentication();
+        assertEquals(1, authentication.getAuthorities().size());
+    }
+
+}

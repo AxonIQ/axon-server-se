@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController
 @RequestMapping("/snapshot")

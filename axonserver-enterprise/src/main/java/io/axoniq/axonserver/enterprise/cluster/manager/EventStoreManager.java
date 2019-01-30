@@ -23,7 +23,7 @@ import java.nio.charset.Charset;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final Logger logger = LoggerFactory.getLogger(EventStoreManager.class);
@@ -126,6 +126,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     public void stop(Runnable runnable) {
         runnable.run();
         running = false;
+        runnable.run();
     }
 
     @Override
@@ -146,7 +147,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         return masterProvider.apply(context);
     }
 
-    public boolean isMaster(String context) {
+    private boolean isMaster(String context) {
         return isMaster(nodeName, context);
     }
 

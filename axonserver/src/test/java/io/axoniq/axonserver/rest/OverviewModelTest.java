@@ -15,7 +15,7 @@ import static org.hibernate.validator.internal.util.CollectionHelper.asSet;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class OverviewModelTest {
 

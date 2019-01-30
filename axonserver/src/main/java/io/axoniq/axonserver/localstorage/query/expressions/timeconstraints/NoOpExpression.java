@@ -6,7 +6,7 @@ import io.axoniq.axonserver.localstorage.query.Pipeline;
 import io.axoniq.axonserver.localstorage.query.QueryResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  * At this moment this is a NoOp. Time constraint is already applied at the source.
  */
 public class NoOpExpression implements PipeExpression {

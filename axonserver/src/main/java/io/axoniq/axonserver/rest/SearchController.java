@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController
 @CrossOrigin

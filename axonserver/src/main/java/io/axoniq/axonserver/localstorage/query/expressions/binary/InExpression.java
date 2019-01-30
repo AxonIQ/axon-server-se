@@ -9,7 +9,7 @@ import io.axoniq.axonserver.localstorage.query.result.BooleanExpressionResult;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InExpression extends AbstractBooleanExpression {
 

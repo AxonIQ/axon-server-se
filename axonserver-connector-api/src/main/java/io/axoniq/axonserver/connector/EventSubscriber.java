@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.connector;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventSubscriber {
 }

@@ -12,7 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TestMessagingClusterService implements MessagingClusterServiceInterface {
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -61,7 +61,7 @@ public class TestMessagingClusterService implements MessagingClusterServiceInter
     }
 
     @Override
-    public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
+    public void join(NodeInfo request, StreamObserver<ConnectResponse> responseObserver) {
 
     }
 

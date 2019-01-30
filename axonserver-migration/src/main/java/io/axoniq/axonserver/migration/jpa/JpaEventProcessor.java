@@ -12,7 +12,7 @@ import javax.persistence.PersistenceContext;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 @Profile({"migrate-from-jpa"})

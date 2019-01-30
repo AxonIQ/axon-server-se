@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
@@ -21,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service("QueryMetricsRegistry")
 public class QueryMetricsRegistry {
@@ -35,7 +36,7 @@ public class QueryMetricsRegistry {
         this.clusterMetrics = clusterMetricTarget;
     }
 
-    public void add(QueryDefinition query, String clientId, long duration) {
+    public void add(QueryDefinition query, ClientIdentification clientId, long duration) {
         try {
             timer(query, clientId).record(duration, TimeUnit.MILLISECONDS);
         } catch( Exception ex) {
@@ -43,24 +44,24 @@ public class QueryMetricsRegistry {
         }
     }
 
-    public ClusterMetric clusterMetric(QueryDefinition query, String clientId){
+    public ClusterMetric clusterMetric(QueryDefinition query, ClientIdentification clientId){
         String metricName = metricName(query, clientId);
         return new CompositeMetric(new SnapshotMetric(timer(query, clientId).takeSnapshot()), new Metrics(metricName, clusterMetrics));
     }
 
 
-    private Timer timer(QueryDefinition query, String clientId) {
+    private Timer timer(QueryDefinition query, ClientIdentification clientId) {
         String metricName = metricName(query, clientId);
         return timerMap.computeIfAbsent(metricName, meterRegistry::timer);
     }
 
-    private String metricName(QueryDefinition query, String clientId) {
-        return String.format( "axon.query.%s.%s", query.getQueryName(), clientId);
+    private String metricName(QueryDefinition query, ClientIdentification clientId) {
+        return String.format( "axon.query.%s.%s", query.getQueryName(), clientId.metricName());
     }
 
-    public QueryMetric queryMetric(QueryDefinition query, String clientId, String componentName){
+    public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
         ClusterMetric clusterMetric = clusterMetric(query, clientId);
-        return new QueryMetric(query, clientId, componentName, clusterMetric.size());
+        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.size());
     }
 
     public Counter counter(String name) {

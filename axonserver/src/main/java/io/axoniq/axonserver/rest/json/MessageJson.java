@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.ErrorMessage;
-import io.axoniq.platform.KeepNames;
 
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class MessageJson {

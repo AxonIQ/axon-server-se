@@ -1,6 +1,6 @@
 package net.axoniq.axonserver.connectors.kafka;
 
-import io.axoniq.axonserver.connector.Event;
+import io.axoniq.axonserver.connector.ConnectorEvent;
 import io.axoniq.axonserver.connector.EventConnector;
 import io.axoniq.axonserver.connector.UnitOfWork;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutionException;
 import static java.time.temporal.ChronoField.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Import(KafkaEventConnector.Config.class)
 public class KafkaEventConnector implements EventConnector {
@@ -67,7 +67,7 @@ public class KafkaEventConnector implements EventConnector {
     }
 
     @Override
-    public void publish(Event event) {
+    public void publish(ConnectorEvent event) {
         Map<String, Object> headers = event.getMetaData();
         Message<byte[]> message = new GenericMessage<>(event.getPayload(), headers);
         kafkaTemplate.send( message);
@@ -122,11 +122,11 @@ public class KafkaEventConnector implements EventConnector {
     }
 
     private class KafkaUnitOfWork implements UnitOfWork {
-        private List<Event> events = new ArrayList<>();
+        private List<ConnectorEvent> events = new ArrayList<>();
 
         @Override
-        public void publish(Event event) {
-            events.add(event);
+        public void publish(List<? extends ConnectorEvent> newEvents) {
+            events.addAll(newEvents);
         }
 
         @Override
@@ -148,7 +148,7 @@ public class KafkaEventConnector implements EventConnector {
             kafkaTemplate.flush();
         }
 
-        private Message<byte[]> createMessage(Event event) {
+        private Message<byte[]> createMessage(ConnectorEvent event) {
             Map<String, Object> headers = new HashMap<>();
             headers.put("kafka_messageKey", event.getIdentifier());
             event.getMetaData().forEach((k, v) -> headers.put("axon-metadata-" + k, v));

@@ -5,7 +5,7 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ForwardingStreamObserver<T> implements StreamObserver<T> {
 

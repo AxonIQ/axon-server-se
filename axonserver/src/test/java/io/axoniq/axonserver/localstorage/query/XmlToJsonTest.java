@@ -15,7 +15,7 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class XmlToJsonTest {
     private String xmlDocument = "<io.axoniq.axondb.performancetest.axonapp.DataAddedToDummyEvt><index>12692</index><id>beff70ef-3160-499b-8409-5bd5646f52f3</id><tracker>175143</tracker><test>" +

@@ -11,7 +11,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AxonServerGroup implements Box {
     private final Rectangle rectangle;

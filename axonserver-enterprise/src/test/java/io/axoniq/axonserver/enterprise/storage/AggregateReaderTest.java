@@ -3,17 +3,18 @@ package io.axoniq.axonserver.enterprise.storage;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.AggregateReader;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SnapshotReader;
 import io.axoniq.axonserver.localstorage.SnapshotWriteStorage;
 import org.junit.*;
-import org.junit.rules.*;
+import org.junit.rules.TemporaryFolder;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AggregateReaderTest {
 
@@ -93,7 +94,7 @@ public class AggregateReaderTest {
     public void readEventsWithSnapshot() {
         List<Event> events = new ArrayList<>();
         testSubject.readEvents("55", true, 0, event -> {
-            events.add(event);
+            events.add(event.asEvent());
         });
 
         Assert.assertEquals(25, events.size());
@@ -104,7 +105,7 @@ public class AggregateReaderTest {
     public void readEventsWithSnapshotBeforeMin() {
         List<Event> events = new ArrayList<>();
         testSubject.readEvents("55", true, 90, event -> {
-            events.add(event);
+            events.add(event.asEvent()  );
         });
 
         Assert.assertEquals(10, events.size());

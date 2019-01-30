@@ -2,6 +2,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.TransactionInformation;
+import org.springframework.data.util.CloseableIterator;
 
 import java.util.Iterator;
 import java.util.LinkedList;

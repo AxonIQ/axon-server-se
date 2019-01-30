@@ -10,7 +10,7 @@ import io.axoniq.axonserver.localstorage.query.result.StringExpressionResult;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ConcatExpression implements Expression {
     private final String alias;

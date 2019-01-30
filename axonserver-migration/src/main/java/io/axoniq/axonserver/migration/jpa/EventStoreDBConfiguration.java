@@ -18,7 +18,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @Profile({"migrate-from-jpa"})

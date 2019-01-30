@@ -1,13 +1,12 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
@@ -17,11 +16,13 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.function.Consumer;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandServiceTest {
     private CommandService testSubject;
@@ -43,12 +44,15 @@ public class CommandServiceTest {
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<CommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
+        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
         requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
-        commandQueue.put("name", new WrappedCommand(Topology.DEFAULT_CONTEXT, Command.newBuilder().build()));
+        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                             "name");
+        commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
+                                                            new SerializedCommand(Command.newBuilder().build())));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);
     }
@@ -106,11 +110,11 @@ public class CommandServiceTest {
     @Test
     public void dispatch() {
         doAnswer(invocationOnMock -> {
-            DispatchEvents.DispatchCommand dispatchCommand = (DispatchEvents.DispatchCommand) invocationOnMock.getArguments()[0];
-            dispatchCommand.getResponseObserver().accept(CommandResponse.newBuilder().build());
+            Consumer<SerializedCommandResponse> responseConsumer= (Consumer<SerializedCommandResponse>) invocationOnMock.getArguments()[2];
+            responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
-        }).when(commandDispatcher).on(isA(DispatchEvents.DispatchCommand.class));
-        CountingStreamObserver<CommandResponse> responseObserver = new CountingStreamObserver<>();
+        }).when(commandDispatcher).dispatch(any(), any(), any(), anyBoolean());
+        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.count);
     }

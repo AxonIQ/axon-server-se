@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ManagedChannelHelper {
     private static final Logger logger = LoggerFactory.getLogger(ManagedChannelHelper.class);
@@ -83,7 +83,7 @@ public class ManagedChannelHelper {
     public static void checkShutdownNeeded(String name, Throwable throwable) {
         if( throwable instanceof StatusRuntimeException) {
             StatusRuntimeException sre = (StatusRuntimeException)throwable;
-            if( sre.getStatus().getCode().equals(Status.Code.UNAVAILABLE)) {
+            if( sre.getStatus().getCode().equals(Status.Code.UNAVAILABLE) || sre.getStatus().getCode().equals(Status.Code.INTERNAL)) {
                 ManagedChannel channel = channelPerNode.remove(name);
                 if( channel != null) {
                     try {

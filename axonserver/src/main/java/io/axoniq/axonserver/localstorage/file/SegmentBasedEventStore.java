@@ -4,14 +4,17 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.TransactionInformation;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
@@ -23,7 +26,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -41,7 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class SegmentBasedEventStore implements EventStore {
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
@@ -96,7 +98,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, Consumer<Event> eventConsumer) {
+    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber);
         boolean delegate = true;
         if( ! positionInfos.isEmpty()) {
@@ -117,7 +119,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     @Override
     public void streamByAggregateId(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
-                                    int maxResults, Consumer<Event> eventConsumer) {
+                                    int maxResults, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber, maxSequenceNumber, maxResults);
         AtomicInteger toDo = new AtomicInteger(maxResults);
         if( ! positionInfos.isEmpty()) {
@@ -148,17 +150,19 @@ public abstract class SegmentBasedEventStore implements EventStore {
             eventSource.ifPresent(e -> {
                 long minTimestampInSegment = Long.MAX_VALUE;
                 EventInformation eventWithToken;
-                Iterator<EventInformation> iterator = createEventIterator(e,segment,segment);
+                EventIterator iterator = createEventIterator(e,segment,segment);
                 while (iterator.hasNext()) {
                     eventWithToken = iterator.next();
                     minTimestampInSegment = Math.min(minTimestampInSegment, eventWithToken.getEvent().getTimestamp());
                     if (eventWithToken.getToken() >= minToken
                             && eventWithToken.getEvent().getTimestamp() >= minTimestamp
                             && !consumer.test(eventWithToken.asEventWithToken())) {
+                        iterator.close();
                         return;
                     }
                 }
                 if (minToken > segment || minTimestampInSegment < minTimestamp) done.set(true);
+                iterator.close();
             });
             if( done.get()) return;
         }
@@ -189,7 +193,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public Optional<Event> getLastEvent(String aggregateId, long minSequenceNumber) {
+    public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
         for (Long segment : getSegments()) {
             SortedSet<PositionInfo> positionInfos = getPositions(segment, aggregateId);
             if (positionInfos != null ) {
@@ -199,7 +203,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
                 }
                 Optional<EventSource> buffer = getEventSource(segment);
                 if( buffer.isPresent()) {
-                    Event event = buffer.get().readEvent(last.getPosition());
+                    SerializedEvent event = buffer.get().readEvent(last.getPosition());
                     buffer.get().close();
                     return Optional.of(event);
                 }
@@ -214,7 +218,27 @@ public abstract class SegmentBasedEventStore implements EventStore {
     @Override
     public void init(boolean validate) {
         initSegments(Long.MAX_VALUE);
-        if( validate) validate(storageProperties.getValidationSegments());
+        validate(validate ? storageProperties.getValidationSegments() : 2);
+    }
+
+
+    @Override
+    public boolean contains( SerializedTransactionWithToken newTransaction){
+        long token = newTransaction.getToken();
+        long segment = getSegmentFor(token);
+        EventSource eventSource = getEventSource(segment).orElse(null);
+        if( eventSource == null )  {
+            if( next != null) {
+                return next.contains(newTransaction);
+            }
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored");
+        }
+
+        try (TransactionIterator iterator = eventSource.createTransactionIterator(segment, token, false)){
+            return iterator.hasNext() && newTransaction.equals(iterator.next());
+        } catch (Exception e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored", e);
+        }
     }
 
     @Override
@@ -245,6 +269,11 @@ public abstract class SegmentBasedEventStore implements EventStore {
         return -1;
     }
 
+    @Override
+    public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
+        throw new UnsupportedOperationException("Operation only supported on primary event store");
+    }
+
     public void validate(int maxSegments) {
         Stream<Long> segments = getAllSegments();
         List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(Collectors.toList());
@@ -268,13 +297,12 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     protected ValidationResult validateSegment(long segment) {
         logger.debug("{}: Validating {} segment: {}", type.getContext(), type.getEventType(), segment);
-        Iterator<TransactionWithToken> iterator = getTransactions(segment, segment, true);
-        try {
-            TransactionWithToken last = null;
+        try (TransactionIterator iterator = getTransactions(segment, segment, true)) {
+            SerializedTransactionWithToken last = null;
             while (iterator.hasNext()) {
                 last = iterator.next();
             }
-            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEventsCount());
+            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvents().size());
         } catch (Exception ex) {
             return new ValidationResult(segment, ex.getMessage());
         }
@@ -315,7 +343,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public boolean streamEvents(long token, Predicate<EventWithToken> onEvent) {
+    public boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent) {
         logger.debug("Start streaming event from files at {}", token);
         long lastSegment = -1;
         long segment = getSegmentFor(token);
@@ -324,7 +352,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
             EventIterator eventIterator = getEvents(segment, token);
             while (eventIterator.hasNext()) {
                 eventWithToken = eventIterator.next();
-                if (!onEvent.test(eventWithToken.asEventWithToken())) {
+                if (!onEvent.test(eventWithToken.getSerializedEventWithToken())) {
                     eventIterator.close();
                     logger.debug("Stopped streaming event from files at {}, out of permits", eventWithToken.getToken());
                     return false;
@@ -349,17 +377,17 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamTransactions(long token, Predicate<TransactionWithToken> onEvent)  {
+    public void streamTransactions(long token, Predicate<SerializedTransactionWithToken> onEvent)  {
         logger.debug("{}: Start streaming {} transactions at {}", context, type.getEventType(), token);
 
         long lastSegment = -1;
         long segment = getSegmentFor(token);
-        TransactionWithToken eventWithToken = null;
+        SerializedTransactionWithToken eventWithToken = null;
         while (segment > lastSegment) {
             TransactionIterator transactionIterator = getTransactions(segment, token);
             while (transactionIterator.hasNext()) {
                 eventWithToken = transactionIterator.next();
-                token += eventWithToken.getEventsCount();
+                token += eventWithToken.getEvents().size();
                 if( ! onEvent.test(eventWithToken)) {
                     transactionIterator.close();
                     logger.debug("{}: Done streaming {} transactions due to false result", context, type.getEventType());
@@ -387,6 +415,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
               .filter(segment -> segment < lastInitialized)
               .forEach(segments::add);
 
+        segments.forEach(this::renameFileIfNecessary);
         long firstValidIndex = segments.stream().filter(this::indexValid).findFirst().orElse(-1L);
         logger.debug("First valid index: {}", firstValidIndex);
         return segments;
@@ -452,7 +481,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         return reversedPositionInfos;
     }
 
-    private void retrieveEventsForAnAggregate(long segment, SortedSet<PositionInfo> positions, Consumer<Event> onEvent) {
+    private void retrieveEventsForAnAggregate(long segment, SortedSet<PositionInfo> positions, Consumer<SerializedEvent> onEvent) {
         Optional<EventSource> buffer = getEventSource(segment);
         buffer.ifPresent(eventSource -> {
             positions.forEach(positionInfo -> onEvent.accept(eventSource.readEvent(positionInfo.getPosition())));
@@ -489,6 +518,23 @@ public abstract class SegmentBasedEventStore implements EventStore {
                 return;
             }
             n = n.next;
+        }
+    }
+
+    protected void renameFileIfNecessary(long segment) {
+        File dataFile = storageProperties.oldDataFile(context, segment);
+        if( dataFile.exists()) {
+            if( ! dataFile.renameTo(storageProperties.dataFile(context, segment)) ) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + dataFile.getAbsolutePath() + " to " + storageProperties.dataFile(context, segment) );
+            }
+            File indexFile = storageProperties.oldIndex(context, segment);
+            if( indexFile.exists() && ! indexFile.renameTo(storageProperties.index(context, segment)) ) {
+                    throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + indexFile.getAbsolutePath() + " to " + storageProperties.index(context, segment) );
+            }
+            File bloomFile = storageProperties.oldBloomFilter(context, segment);
+            if( bloomFile.exists() && ! bloomFile.renameTo(storageProperties.bloomFilter(context, segment))) {
+                    throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + bloomFile.getAbsolutePath() + " to " + storageProperties.bloomFilter(context, segment) );
+            }
         }
     }
 

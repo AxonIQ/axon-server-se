@@ -3,7 +3,7 @@ package io.axoniq.axonserver.localstorage.file;
 import java.util.Comparator;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WritePosition  implements Comparable<WritePosition> {
 

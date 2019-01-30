@@ -1,16 +1,20 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.config.SystemInfoProvider;
 
 import java.io.File;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class StorageProperties {
 
-    public static final String PATH_FORMAT = "%s/%s/%014d%s";
+    private static final String PATH_FORMAT = "%s/%s/%020d%s";
+    private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
+    private static final String OLD_PATH_FORMAT = "%s/%s/%014d%s";
+    private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
     private String eventsSuffix = ".events";
     private String indexSuffix = ".index";
     private String bloomIndexSuffix = ".bloom";
@@ -28,10 +32,18 @@ public class StorageProperties {
     private int maxBloomFiltersInMemory = 100;
     private long syncInterval = 1000;
 
-    public StorageProperties() {
+    /**
+     * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
+     */
+    private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
+    private final SystemInfoProvider systemInfoProvider;
+
+    public StorageProperties(SystemInfoProvider systemInfoProvider) {
+        this.systemInfoProvider = systemInfoProvider;
     }
 
-    public StorageProperties(String eventsSuffix, String indexSuffix, String bloomIndexSuffix) {
+    public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix, String bloomIndexSuffix) {
+        this(systemInfoProvider);
         this.eventsSuffix = eventsSuffix;
         this.indexSuffix = indexSuffix;
         this.bloomIndexSuffix = bloomIndexSuffix;
@@ -94,7 +106,7 @@ public class StorageProperties {
     }
 
     public File indexTemp(String context, long segment) {
-        return new File(String.format("%s/%s/%014d%s.temp", storage, context, segment, indexSuffix));
+        return new File(String.format(TEMP_PATH_FORMAT, storage, context, segment, indexSuffix));
     }
 
     public File dataFile(String context, long segment) {
@@ -172,4 +184,31 @@ public class StorageProperties {
     public void setSyncInterval(long syncInterval) {
         this.syncInterval = syncInterval;
     }
+
+    public int getReadBufferSize() {
+        return readBufferSize;
+    }
+
+    public void setReadBufferSize(int readBufferSize) {
+        this.readBufferSize = readBufferSize;
+    }
+
+    public File oldDataFile(String context, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, eventsSuffix));
+    }
+    public File oldIndex(String context, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, indexSuffix));
+    }
+    public File oldBloomFilter(String context, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, bloomIndexSuffix));
+    }
+
+    public boolean isCleanerHackEnabled() {
+        return systemInfoProvider.javaOnWindows() && ! systemInfoProvider.javaWithModules();
+    }
+
+    public boolean isUseMmapIndex() {
+        return ! (systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
+    }
+
 }

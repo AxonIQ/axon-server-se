@@ -16,7 +16,7 @@ import javax.persistence.Table;
 import javax.persistence.Transient;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @Table(name = "CONTEXT_CLUSTER_NODE")

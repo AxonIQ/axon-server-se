@@ -37,7 +37,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 public class AxonServerFreeConfiguration {

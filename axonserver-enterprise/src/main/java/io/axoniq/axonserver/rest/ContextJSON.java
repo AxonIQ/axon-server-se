@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class ContextJSON {

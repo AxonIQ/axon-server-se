@@ -7,7 +7,7 @@ import org.springframework.context.annotation.ConditionContext;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MultitierStorageCondition implements Condition {
 

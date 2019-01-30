@@ -44,7 +44,7 @@
             if( this.subscription) this.subscription.unsubscribe();
         }, methods: {
             loadComponentSubscriptionsMetrics(){
-                axios.get("v1/components/"+this.component+"/subscription-query-metric?context=" + this.context).then(response => {
+                axios.get("v1/components/"+encodeURI(this.component)+"/subscription-query-metric?context=" + this.context).then(response => {
                     this.metrics = response.data;
                 });
             }

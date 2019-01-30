@@ -1,25 +1,26 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.grpc.stub.StreamObserver;
 
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>> {
     protected final StreamObserver<T> observer;
-    protected final String client;
+    protected final ClientIdentification client;
     protected final String componentName;
 
-    public CommandHandler(StreamObserver<T> responseObserver, String client, String componentName) {
+    public CommandHandler(StreamObserver<T> responseObserver, ClientIdentification client, String componentName) {
         this.observer = responseObserver;
         this.client = client;
         this.componentName = componentName;
     }
 
-    public String getClient() {
+    public ClientIdentification getClient() {
         return client;
     }
 
@@ -50,12 +51,12 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
         return clientResult;
     }
 
-    public abstract void dispatch( Command request);
+    public abstract void dispatch( SerializedCommand request);
 
     public abstract void confirm( String messageId);
 
     public String queueName() {
-        return client;
+        return client.toString();
     }
 
     public String getMessagingServerName() {

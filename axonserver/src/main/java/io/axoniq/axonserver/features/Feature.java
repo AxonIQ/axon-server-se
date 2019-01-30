@@ -3,7 +3,7 @@ package io.axoniq.axonserver.features;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public enum Feature {
     // Basic

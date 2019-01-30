@@ -6,9 +6,7 @@ axoniq:
     servers: localhost:8124,localhost:8125,localhost:8126
     command-threads: 4
     query-threads: 4
-    nr-of-new-permits: 100000
-    initial-nr-of-permits: 100000
-    new-permits-threshold: 5000
+    token: this-is-token-for-demo2
 
 logging:
   level:
@@ -21,6 +19,10 @@ axon:
       sample:
         mode: tracking
         batch-size: 500
+        initial-segment-count: 4
+        thread-count: 4
+
+
   serializer:
     general: jackson
     messages: jackson

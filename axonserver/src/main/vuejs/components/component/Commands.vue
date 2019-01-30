@@ -28,7 +28,7 @@
             this.loadComponentCommands();
         }, methods: {
             loadComponentCommands(){
-                axios.get("v1/components/"+this.component+"/commands?context=" + this.context).then(response => {
+                axios.get("v1/components/"+encodeURI(this.component)+"/commands?context=" + this.context).then(response => {
                     this.commands = response.data;
                 });
             }

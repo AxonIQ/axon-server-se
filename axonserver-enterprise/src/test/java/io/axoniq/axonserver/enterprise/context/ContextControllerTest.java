@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.AxonServer;
 import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
@@ -21,7 +22,11 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,13 +37,12 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = AxonServerEnterprise.class)
-@EnableAutoConfiguration
-@EntityScan("io.axoniq")
 @DataJpaTest
+@ComponentScan(basePackages = "io.axoniq.axonserver.enterprise.context", lazyInit = true)
+@ContextConfiguration(classes = AxonServerEnterprise.class)
 public class ContextControllerTest {
 
     private ContextController testSubject;
@@ -73,7 +77,7 @@ public class ContextControllerTest {
         entityManager.persist(node1);
         entityManager.persist(node2);
         entityManager.flush();
-        testSubject = new ContextController(entityManager, clusterController, eventPublisher);
+        testSubject = new ContextController(entityManager, clusterController, eventPublisher, modelVersionController);
         when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
             String name = invocationOnMock.getArgument(0).toString();
             return entityManager.find(ClusterNode.class, name);
@@ -142,7 +146,7 @@ public class ContextControllerTest {
         ClusterNode node2 = new ClusterNode("node2", null, null, null, null, null);
         when(remoteConnection.getClusterNode()).thenReturn(node2);
 
-//        ClusterEvents.AxonServerInstanceConnected axonhubInstanceConnected = new ClusterEvents.AxonServerInstanceConnected(remoteConnection, Collections.emptyList(),
+//        ClusterEvents.AxonServerInstanceConnected axonhubInstanceConnected = new ClusterEvents.AxonServerInstanceConnected(remoteConnection, 10, Collections.emptyList(),
 //                                                                                                                           Collections
 //                                                                                                                             .singletonList(
 //                                                                                                                                     ContextRole.newBuilder().setName("test1").build()), Collections.emptyList());

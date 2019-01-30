@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ListContexts extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {

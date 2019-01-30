@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.websocket;
 
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service
 public class ClusterUpdatesListener {

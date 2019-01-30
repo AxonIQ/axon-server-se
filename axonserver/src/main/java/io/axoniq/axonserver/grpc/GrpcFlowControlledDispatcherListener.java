@@ -3,7 +3,6 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -15,16 +14,15 @@ import java.util.stream.IntStream;
 /**
  * Reads messages for a specific client from a queue and sends them to the client using gRPC.
  * Only reads messages when there are permits left.
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class GrpcFlowControlledDispatcherListener<I, T> {
-    private static final Logger LOG = LoggerFactory.getLogger(GrpcFlowControlledDispatcherListener.class);
     private static final ExecutorService executorService = Executors.newCachedThreadPool(new CustomizableThreadFactory("request-dispatcher-"));
 
     protected final StreamObserver<I> inboundStream;
     private final AtomicLong permitsLeft = new AtomicLong(0);
     private final FlowControlQueues<T> queues;
-    private final String queueName;
+    protected final String queueName;
     private Future<?>[] futures;
     private volatile boolean running = true;
 
@@ -39,17 +37,17 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
         try {
             getLogger().debug("Starting listener for {} ", queueName);
             while (running && permitsLeft.get() > 0) {
-                getLogger().debug("waiting for message for {} ", queueName);
+                getLogger().trace("waiting for message for {} ", queueName);
                 T message = queues.take(queueName);
                 if (message != null && send(message)) {
                     long left = permitsLeft.decrementAndGet();
-                    getLogger().debug("{} permits left", left);
+                    getLogger().trace("{} permits left", left);
                 }
             }
             getLogger().debug("Listener stopped as no more permits ({}) left for {} ", permitsLeft.get(), queueName);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            getLogger().info("Processing of messages from {} interrupted", queueName, e);
+            getLogger().trace("Processing of messages from {} interrupted", queueName, e);
         }
     }
 

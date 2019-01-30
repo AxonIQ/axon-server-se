@@ -9,7 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Digester {
 

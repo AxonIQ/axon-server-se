@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamAggregateReaderTest {
 
@@ -63,8 +63,8 @@ public class InputStreamAggregateReaderTest {
     @Test
     public void readEventsWithSnapshot() {
         List<Event> events = new ArrayList<>();
-        testSubject.readEvents("55", true, 0, event -> {
-            events.add(event);
+        testSubject.readEvents("55", true, 0, serialized -> {
+            events.add(serialized.asEvent());
         });
 
         Assert.assertEquals(25, events.size());
@@ -74,8 +74,8 @@ public class InputStreamAggregateReaderTest {
     @Test
     public void readEventsWithSnapshotBeforeMin() {
         List<Event> events = new ArrayList<>();
-        testSubject.readEvents("55", true, 90, event -> {
-            events.add(event);
+        testSubject.readEvents("55", true, 90, serialized -> {
+            events.add(serialized.asEvent());
         });
 
         Assert.assertEquals(10, events.size());

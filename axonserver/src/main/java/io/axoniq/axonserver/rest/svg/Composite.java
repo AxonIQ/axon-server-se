@@ -28,15 +28,13 @@ public interface Composite extends Element {
 
     @Override
     default Dimension dimension() {
-        Integer lastX = stream(items().spliterator(), false)
-                .map(element -> element.position().x() + element.dimension().width())
-                .max(Integer::compareTo)
-                .orElse(0);
+        int lastX = 0;
+        int lastY = 0;
+        for( Element element : items()) {
+            lastX = Math.max(lastX, element.position().x() + element.dimension().width());
+            lastY = Math.max(lastY, element.position().y() + element.dimension().height());
+        }
 
-        Integer lastY = stream(items().spliterator(), false)
-                .map(element -> element.position().y() + element.dimension().height())
-                .max(Integer::compareTo)
-                .orElse(0);
         Position p = position();
         return new Dimension(lastX - p.x(), lastY - p.y());
     }
