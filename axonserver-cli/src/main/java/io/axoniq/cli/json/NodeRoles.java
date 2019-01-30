@@ -43,6 +43,6 @@ public class NodeRoles {
 
     @Override
     public String toString() {
-        return name + (storage ? "[storage]" : "") + (messaging ? "[messaging]" : "");
+        return name;
     }
 }

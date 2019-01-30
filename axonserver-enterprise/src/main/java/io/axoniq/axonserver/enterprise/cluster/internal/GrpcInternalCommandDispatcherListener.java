@@ -1,9 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommand;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.grpc.stub.StreamObserver;
@@ -23,7 +22,11 @@ public class GrpcInternalCommandDispatcherListener extends GrpcFlowControlledDis
 
     @Override
     protected boolean send(WrappedCommand message) {
-        inboundStream.onNext(ConnectorResponse.newBuilder().setCommand(Command.newBuilder(message.command()).addProcessingInstructions(ProcessingInstructionHelper.context(message.context()))).build());
+        inboundStream.onNext(ConnectorResponse.newBuilder().setCommand(
+                ForwardedCommand.newBuilder().setClient(message.client().getClient())
+                                .setContext(message.client().getContext())
+                                .setMessageId(message.command().getMessageIdentifier())
+                                .setCommand(message.command().toByteString())).build());
         return true;
     }
 

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.ContextInterceptor;
@@ -9,6 +10,7 @@ import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +30,7 @@ public class MessagingClusterServer implements SmartLifecycle{
     private final MessagingClusterService messagingClusterService;
     private final DataSynchronizationMaster dataSynchronizerMaster;
     private final InternalEventStoreService internalEventStoreService;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private Server server;
 
@@ -35,11 +38,13 @@ public class MessagingClusterServer implements SmartLifecycle{
                                   MessagingClusterService messagingClusterService,
                                   DataSynchronizationMaster dataSynchronizerMaster,
                                   InternalEventStoreService internalEventStoreService,
+                                  ApplicationEventPublisher applicationEventPublisher,
                                   FeatureChecker limits) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.messagingClusterService = messagingClusterService;
         this.dataSynchronizerMaster = dataSynchronizerMaster;
         this.internalEventStoreService = internalEventStoreService;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
 
@@ -92,6 +97,8 @@ public class MessagingClusterServer implements SmartLifecycle{
             serverBuilder.addService(ServerInterceptors.intercept(dataSynchronizerMaster, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
             serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration),
                                                                   new ContextInterceptor()));
+        } else {
+            serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new ContextInterceptor()));
         }
         if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);
@@ -105,11 +112,12 @@ public class MessagingClusterServer implements SmartLifecycle{
         try {
             server.start();
 
-            logger.info("gRPC Messaging Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
+            logger.info("Axon Server Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
 
+            applicationEventPublisher.publishEvent(new ClusterEvents.InternalServerReady());
             started = true;
         } catch (IOException e) {
-            logger.error("Starting gRPC Messaging Cluster Server gateway failed - {}", e.getMessage(), e);
+            logger.error("Starting Axon Server Cluster Server failed - {}", e.getMessage(), e);
         }
     }
 

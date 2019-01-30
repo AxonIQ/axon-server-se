@@ -24,6 +24,9 @@ public class CountExpression extends AbstractAggregationFunction {
         ExpressionContext scoped = context.scoped(this);
         AtomicLong counter = scoped.computeIfAbsent(alias, AtomicLong::new);
         ExpressionResult expressionResult = expression == null ? input : expression.apply(context, input);
+        if( expressionResult == null) {
+            return new NumericExpressionResult(counter.get());
+        }
         return new NumericExpressionResult(counter.addAndGet(expressionResult.count()));
     }
 

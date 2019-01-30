@@ -1,17 +1,14 @@
 package io.axoniq.axonserver.metric;
 
-import io.axoniq.axonserver.grpc.internal.Metric;
-
-
 /**
  * Created by Sara Pellegrini on 17/04/2018.
  * sara.pellegrini@gmail.com
  */
 public class NodeMetric implements ClusterMetric{
 
-    private final Metric metric;
+    private final AxonServerMetric metric;
 
-    public NodeMetric(Metric metric) {
+    public NodeMetric(AxonServerMetric metric) {
         this.metric = metric;
     }
 

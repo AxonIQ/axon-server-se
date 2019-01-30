@@ -9,6 +9,7 @@ import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
@@ -16,6 +17,7 @@ import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -26,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.nio.charset.Charset;
@@ -54,11 +57,12 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final StubFactory stubFactory;
     private final LifecycleController lifecycleController;
     private final LocalEventStore localEventStore;
+    private final SyncStatusController syncStatusController;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final Map<String,String> masterPerContext = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("storage-manager-selector"));
     private volatile boolean running;
-    private volatile ScheduledFuture<?> task;
+    private final Map<String,ScheduledFuture<?>> tasks = new ConcurrentHashMap<>();
 
     private final Iterable<Context> dynamicContexts;
     private final boolean needsValidation;
@@ -70,6 +74,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     public EventStoreManager(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              StubFactory stubFactory, LifecycleController lifecycleController,
                              LocalEventStore localEventStore,
+                             SyncStatusController syncStatusController,
                              ApplicationEventPublisher applicationEventPublisher,
                              Iterable<Context> dynamicContexts, boolean needsValidation, String nodeName,
                              boolean clustered,
@@ -79,6 +84,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         this.stubFactory = stubFactory;
         this.lifecycleController = lifecycleController;
         this.localEventStore = localEventStore;
+        this.syncStatusController = syncStatusController;
         this.applicationEventPublisher = applicationEventPublisher;
         this.dynamicContexts = dynamicContexts;
         this.needsValidation = needsValidation;
@@ -95,8 +101,9 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              ClusterController clusterController,
                              LifecycleController lifecycleController,
                              LocalEventStore localEventStore,
+                             SyncStatusController syncStatusController,
                              ApplicationEventPublisher applicationEventPublisher) {
-        this(messagingPlatformConfiguration, stubFactory, lifecycleController, localEventStore, applicationEventPublisher,
+        this(messagingPlatformConfiguration, stubFactory, lifecycleController, localEventStore, syncStatusController, applicationEventPublisher,
              () -> contextController.getContexts().iterator(), lifecycleController.isCleanShutdown(), clusterController.getName(), clusterController.isClustered(),
              messagingPlatformConfiguration.getCluster().getConnectionWaitTime(), clusterController::getNode);
     }
@@ -104,7 +111,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     public void start() {
         try {
-            dynamicContexts.forEach(context -> initContext(context, needsValidation));
+            dynamicContexts.forEach(context -> initContext(context, needsValidation, false));
         } catch (RuntimeException t) {
             logger.error("Failed to start storage: {}", t.getMessage(), t);
             lifecycleController.abort();
@@ -113,8 +120,26 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         running = true;
     }
 
-    public void shutdown() {
+    private void stopSchedulerService() {
+        logger.debug("Shutdown scheduler");
         scheduledExecutorService.shutdown();
+    }
+
+    @Scheduled(initialDelayString = "${axoniq.axonserver.leader-election.initial-delay:5000}",
+            fixedDelayString = "${axoniq.axonserver.leader-election.fixed-delay:5000}")
+    public void checkLeaders() {
+        if( ! running) return;
+        dynamicContexts.forEach(c -> {
+            if( c.isStorageMember(nodeName) && ! masterPerContext.containsKey(c.getName())) {
+                logger.warn("{}: rescheduling election from checker", c.getName());
+                rescheduleElection(c.getName());
+            }
+        });
+    }
+
+    @EventListener
+    public void on(ClusterEvents.InternalServerReady event) {
+        dynamicContexts.forEach(this::initLeaderElection);
     }
 
     @EventListener
@@ -126,26 +151,26 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @EventListener
     public void on(ClusterEvents.MasterStepDown masterStepDown) {
-        logger.info("Master stepped down: {}", masterStepDown.getContextName());
+        logger.info("{}: Master stepped down", masterStepDown.getContextName());
         masterPerContext.remove(masterStepDown.getContextName());
         if( !masterStepDown.isForwarded()) {
             localEventStore.cancel(masterStepDown.getContextName());
         }
-        logger.debug("Scheduling on step down");
-        if( task == null || task.isDone()) {
-            task =scheduledExecutorService.schedule(() -> startLeaderElection(
-                    masterStepDown.getContextName()), 1, TimeUnit.SECONDS);
-        }
+        rescheduleElection(masterStepDown.getContextName());
     }
 
     @EventListener
     public void on(ClusterEvents.MasterDisconnected masterDisconnected) {
-        logger.info("Master disconnected: {}", masterDisconnected.getContextName());
-        logger.debug("Scheduling on disconnected");
+        logger.info("{}: Master {} disconnected", masterDisconnected.getContextName(), masterDisconnected.oldMaster());
         masterPerContext.remove(masterDisconnected.getContextName());
-        if( task == null || task.isDone()) {
-            task =scheduledExecutorService.schedule(() -> startLeaderElection(
-                    masterDisconnected.getContextName()), 1, TimeUnit.SECONDS);
+        rescheduleElection(masterDisconnected.getContextName());
+    }
+
+    private void rescheduleElection(String contextName) {
+        ScheduledFuture<?> task = tasks.get(contextName);
+        if (task == null || task.isDone()) {
+            tasks.put(contextName, scheduledExecutorService.schedule(() -> startLeaderElection(
+                    contextName), (long) (Math.random() * 1000), TimeUnit.MILLISECONDS));
         }
     }
 
@@ -174,7 +199,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     @EventListener
     public void on(ContextEvents.ContextCreated contextCreated) {
         Context context = context(contextCreated.getName());
-        initContext(context, false);
+        initContext(context, false, true);
     }
 
     @EventListener
@@ -184,7 +209,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
             Context context = context(contextUpdated.getName());
             logger.debug("{}: storage members {}", context.getName(), context.getStorageNodeNames());
             if (context.isStorageMember(nodeName)) {
-                initContext(context, false);
+                initContext(context, false, true);
             } else {
                 localEventStore.cleanupContext(context.getName());
                 if (isMaster(context.getName())) {
@@ -218,11 +243,16 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         return running;
     }
 
-    private void initContext(Context context, boolean validating) {
+    private void initContext(Context context, boolean validating, boolean leaderElection) {
         if (!context.isStorageMember(nodeName)) return;
         logger.debug("Init context: {}", context.getName());
         localEventStore.initContext(context.getName(), validating);
-        if (!clustered) {
+        if( leaderElection) initLeaderElection(context);
+    }
+
+    private void initLeaderElection(Context context) {
+        if( ! context.isStorageMember(nodeName)) return;
+        if (!clustered || context.getStorageNodes().size() == 1) {
             masterPerContext.put(context.getName(), nodeName);
             return;
         }
@@ -232,7 +262,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                                                         masterPerContext.get(context.getName()), true));
         } else {
             logger.debug("Scheduling initial leader election");
-            task = scheduledExecutorService.schedule(() -> startLeaderElection(context.getName()), 1, TimeUnit.SECONDS);
+            rescheduleElection(context.getName());
         }
     }
 
@@ -241,6 +271,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                           Charset.defaultCharset()).asInt();
 
     }
+
     private void startLeaderElection(String contextName) {
         logger.debug("Start leader election for {}: master: {}", contextName, masterPerContext.get(contextName));
         if( ! running || masterPerContext.containsKey(contextName)) return;
@@ -254,6 +285,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                                          .setMasterSequenceNumber(localEventStore.getLastToken(context.getName()))
                                                          .setHashKey(hash(contextName, nodeName))
                                                          .setNrOfMasterContexts(getNrOrMasterContexts(nodeName))
+                                                         .setEventSafePoint(syncStatusController.getSafePoint(EventType.EVENT, contextName))
+                                                         .setPrevMasterGeneration(syncStatusController.generation(EventType.EVENT, contextName))
                                                          .build();
 
         Set<ClusterNode> storageNodes = context.getStorageNodes();
@@ -279,27 +312,26 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                 if (approved.get() && hasQuorumToChange(storageNodes.size(), responseCount.get())) {
                     logger.info("Become master");
                     masterPerContext.put(context.getName(), nodeName);
+                    syncStatusController.increaseGenerations(contextName);
                     applicationEventPublisher.publishEvent(new ClusterEvents.BecomeMaster(context.getName(),
                                                                                           nodeName,
                                                                                           false));
                 } else {
                     logger.debug("Rescheduling as no master found");
-                    task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName),
-                                                             1,
-                                                             TimeUnit.SECONDS);
+                    rescheduleElection(contextName);
                 }
             } catch (InterruptedException e) {
                 logger.debug("Interrupted while waiting for responses", e);
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
                 logger.warn("Rescheduling on exception during leader election", e);
-                task = scheduledExecutorService.schedule(() -> startLeaderElection(contextName), 1, TimeUnit.SECONDS);
+                rescheduleElection(contextName);
             }
         }
     }
 
-    public int getNrOrMasterContexts(String name) {
-        return masterPerContext.values().stream().mapToInt(master -> master.equals(name) ? 1 : 0).sum();
+    int getNrOrMasterContexts(String name) {
+        return (int)masterPerContext.values().stream().filter(master -> master.equals(name)).count();
     }
 
     private boolean hasQuorumToChange(int nodesInCluster, int responseCount) {
@@ -311,7 +343,6 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                      AtomicBoolean approved) {
         logger.debug("Request become leader: {}", node.getName());
         MessagingClusterServiceInterface stub = stubFactory.messagingClusterServiceStub(
-                messagingPlatformConfiguration,
                 node);
         stub.requestLeader(nodeContextInfo,
                            new StreamObserver<Confirmation>() {
@@ -328,9 +359,13 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                                public void onError(Throwable throwable) {
                                    countdownLatch.countDown();
                                    ManagedChannelHelper.checkShutdownNeeded(node.getName(), throwable);
-                                   logger.warn("Error while requesting to become leader for {}: {}", node.getName(), throwable.getMessage());
-                                   if( logger.isDebugEnabled()) {
-                                       logger.debug("Stacktrace", throwable);
+                                   if( ! masterPerContext.containsKey(nodeContextInfo.getContext()) ) {
+                                       logger.warn("Error while requesting to become leader for {}: {}",
+                                                   node.getName(),
+                                                   throwable.getMessage());
+                                       if (logger.isDebugEnabled()) {
+                                           logger.debug("Stacktrace", throwable);
+                                       }
                                    }
                                }
 
@@ -349,8 +384,16 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     @Override
     public void stop(Runnable runnable) {
         masterFor().forEach(c -> on(new ClusterEvents.MasterStepDown(c, false)));
-        runnable.run();
+        stopSchedulerService();
         running = false;
+        runnable.run();
+    }
+
+    public void stopAllContexts() {
+        dynamicContexts.forEach(c -> {
+            masterPerContext.remove(c.getName());
+            localEventStore.cancel(c.getName());
+        });
     }
 
     @Override
@@ -359,7 +402,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     public Stream<String> masterFor() {
-        return contextsStream().filter(context -> nodeName.equals(masterPerContext.get(context.getName()))).map(Context::getName);
+        return masterPerContext.entrySet().stream().filter(entry-> entry.getValue().equals(nodeName)).map(Map.Entry::getKey);
     }
 
     public EventStore getEventStore(String context) {
@@ -377,9 +420,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         return masterPerContext.get(context);
     }
 
-    public boolean isMaster(String context) {
+    private boolean isMaster(String context) {
         return isMaster(nodeName, context);
     }
+
     public boolean isMaster(String nodeName, String context) {
         String master = masterPerContext.get(context);
         return master != null && master.equals(nodeName);

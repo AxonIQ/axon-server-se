@@ -10,7 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.axoniq.cli.CommandOptions.*;
+import static io.axoniq.cli.CommandOptions.CONTEXT;
+import static io.axoniq.cli.CommandOptions.NODES;
 
 /**
  * Author: marc
@@ -18,27 +19,17 @@ import static io.axoniq.cli.CommandOptions.*;
 public class RegisterContext extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {
         // check args
-        CommandLine commandLine = processCommandLine(args[0], args, CONTEXT, NODES, STORAGE_CONTEXT, MESSAGING_CONTEXT, CommandOptions.TOKEN);
+        CommandLine commandLine = processCommandLine(args[0], args, CONTEXT, NODES, CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/context");
 
         Map<String, NodeRoles> nodeRolesMap = new HashMap<>();
-        String storage = commandLine.getOptionValue(CommandOptions.STORAGE_CONTEXT.getOpt());
-        if( storage != null) {
-            String[] storageNodes = storage.split(",");
+        if( commandLine.hasOption(CommandOptions.NODES.getOpt())) {
+            String[] storageNodes = commandLine.getOptionValues(CommandOptions.NODES.getOpt());
             for (String storageNode : storageNodes) {
-                nodeRolesMap.put(storageNode, new NodeRoles(storageNode, false, true));
+                nodeRolesMap.put(storageNode, new NodeRoles(storageNode, true, true));
             }
         }
-        String messaging = commandLine.getOptionValue(CommandOptions.MESSAGING_CONTEXT.getOpt());
-        if( messaging != null) {
-            String[] messagingNodes = messaging.split(",");
-            for (String messagingNode : messagingNodes) {
-                nodeRolesMap.computeIfAbsent(messagingNode,  m-> new NodeRoles(messagingNode, true, false))
-                          .setMessaging(true);
-            }
-        }
-
 
         ContextNode clusterNode = new ContextNode(commandLine.getOptionValue(CONTEXT.getOpt()), new ArrayList<>(nodeRolesMap.values()));
 

@@ -1,10 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterService;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.grpc.Converter;
 import io.axoniq.axonserver.grpc.ProcessorLoadBalancingProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
@@ -13,7 +14,6 @@ import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.GetProcessorsLBStrategyRequest;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorsLBStrategy;
-import io.axoniq.platform.application.ApplicationModelController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
@@ -27,13 +27,13 @@ import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.RE
 @Controller
 public class ProcessorLoadBalancingSynchronizer {
 
-    private final ApplicationModelController applicationController;
+    private final ModelVersionController applicationController;
     private final ProcessorLoadBalancingRepository repository;
     private final Converter<ProcessorLBStrategy, ProcessorLoadBalancing> mapping;
     private final Publisher<ConnectorResponse> publisher;
 
     @Autowired
-    public ProcessorLoadBalancingSynchronizer(ApplicationModelController applicationController,
+    public ProcessorLoadBalancingSynchronizer(ModelVersionController applicationController,
                                               ProcessorLoadBalancingRepository repository,
                                               MessagingClusterService clusterService) {
         this(applicationController, repository,
@@ -43,7 +43,7 @@ public class ProcessorLoadBalancingSynchronizer {
         clusterService.onConnectorCommand(REQUEST_PROCESSOR_LOAD_BALANCING_STRATEGIES, this::onRequestProcessorsStrategies);
     }
 
-    ProcessorLoadBalancingSynchronizer(ApplicationModelController applicationController,
+    ProcessorLoadBalancingSynchronizer(ModelVersionController applicationController,
                                        ProcessorLoadBalancingRepository repository,
                                        Publisher<ConnectorResponse> publisher,
                                        Converter<ProcessorLBStrategy, ProcessorLoadBalancing> mapping) {
@@ -64,9 +64,11 @@ public class ProcessorLoadBalancingSynchronizer {
 
     @EventListener
     public void on(LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived event) {
-        repository.deleteAll();
-        repository.flush();
-        event.processorsStrategy().getProcessorList().forEach(processor -> repository.save(mapping.map(processor)));
+        synchronized (repository) {
+            repository.deleteAll();
+            repository.flush();
+            event.processorsStrategy().getProcessorList().forEach(processor -> repository.save(mapping.map(processor)));
+        }
         applicationController.updateModelVersion(ProcessorLoadBalancing.class, event.processorsStrategy().getVersion());
     }
 

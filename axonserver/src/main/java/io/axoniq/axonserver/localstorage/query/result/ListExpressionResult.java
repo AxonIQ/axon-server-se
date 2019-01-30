@@ -23,6 +23,19 @@ public class ListExpressionResult implements ExpressionResult {
         this.results = results;
     }
 
+    /**
+     * Returns a list containing the given {@code instance}, or {@code null} if the {@code instance} was {@code null}.
+     *
+     * @param instance The expressionResult to wrap in a list
+     * @return An instance of a ListExpressionResult or null
+     */
+    public static ListExpressionResult asListOrNull(ExpressionResult instance) {
+        if (instance == null) {
+            return null;
+        }
+        return new ListExpressionResult(instance);
+    }
+
     @JsonValue
     @Override
     public List<ExpressionResult> getValue() {
@@ -36,8 +49,23 @@ public class ListExpressionResult implements ExpressionResult {
 
     @Override
     public int compareTo(ExpressionResult o) {
-        // TODO: Fix comparing of lists (first unequal item determines result)
-        return 0;
+        if (o instanceof ListExpressionResult) {
+            ListExpressionResult other = (ListExpressionResult) o;
+            for (int i = 0; i < results.size(); i++) {
+                if (other.count() <= i) {
+                    return -1;
+                }
+                int compare = results.get(i).compareTo(other.results.get(i));
+                if (compare != 0) {
+                    return compare;
+                }
+            }
+            if (other.count() > this.count()) {
+                return 1;
+            }
+            return 0;
+        }
+        return -1;
     }
 
     @Override

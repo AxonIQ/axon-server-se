@@ -12,6 +12,7 @@ import java.util.List;
 public class ContextNode {
     private String context;
     private String master;
+    private String coordinator;
     private List<NodeRoles> nodes = new ArrayList<>();
 
 
@@ -45,5 +46,13 @@ public class ContextNode {
 
     public void setMaster(String master) {
         this.master = master;
+    }
+
+    public String getCoordinator() {
+        return coordinator;
+    }
+
+    public void setCoordinator(String coordinator) {
+        this.coordinator = coordinator;
     }
 }

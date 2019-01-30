@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.enterprise.component.processor.balancing;
 
-import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdated;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdated;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.component.processor.balancing.UpdatedLoadBalance;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
+import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -51,7 +51,7 @@ public class AutoLoadBalancer {
 
     @EventListener
     public void onEventProcessorStatusChange(EventProcessorStatusUpdated event) {
-        ClientEventProcessorStatus status = event.eventProcessorStatus();
+        ClientEventProcessorStatus status = ClientEventProcessorStatusProtoConverter.toProto(event.eventProcessorStatus());
         String context = status.getContext();
         String client = status.getClient();
         if (!componentMap.containsKey(client)) return;

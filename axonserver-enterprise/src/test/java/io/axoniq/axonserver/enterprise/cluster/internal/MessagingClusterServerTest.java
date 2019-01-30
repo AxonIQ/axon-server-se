@@ -8,6 +8,7 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.runners.*;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -28,6 +29,8 @@ public class MessagingClusterServerTest {
     @Mock
     private DataSynchronizationMaster dataSynchronizationMaster;
     private FeatureChecker limits;
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Before
     public void setUp() {
@@ -39,7 +42,9 @@ public class MessagingClusterServerTest {
                 return true;
             }
         };
-        testSubject = new MessagingClusterServer(configuration, clusterService, dataSynchronizationMaster, internalEventStore, limits);
+        testSubject = new MessagingClusterServer(configuration, clusterService, dataSynchronizationMaster, internalEventStore,
+                                                 applicationEventPublisher,
+                                                 limits);
     }
 
     @Test(expected = RuntimeException.class)

@@ -50,8 +50,7 @@
                             return;
                         }
                         if (confirm("Add node " + context.selectedNode + " to context " + context.context)) {
-                            axios.post("v1/context/" + context.context + "/" + context.selectedNode + "?storage="
-                                               + (!!context.storage) + "&messaging=" + (!!context.messaging)).then(
+                            axios.post("v1/context/" + context.context + "/" + context.selectedNode).then(
                                     response => this.loadContexts()
                             )
                         }
@@ -88,11 +87,11 @@
                         }
                         var context = {context: this.newContext.context, nodes: []};
                         for (var i = 0; i < this.newContext.nodes.length; i++) {
-                            if (this.newContext.nodes[i].storage || this.newContext.nodes[i].messaging) {
+                            if (this.newContext.nodes[i].selected) {
                                 context.nodes.push({
                                                        name: this.newContext.nodes[i].name,
-                                                       storage: this.newContext.nodes[i].storage,
-                                                       messaging: this.newContext.nodes[i].messaging
+                                                       storage: true,
+                                                       messaging: true
                                                    });
                             }
                         }
@@ -147,13 +146,6 @@
                 <td>
                     <ul>
                         <li v-for="node in context.nodes"><span class="nodeName">{{node.name}}</span>
-                            <span v-if="!admin && node.messaging" class="messaging">Messaging</span>
-                            <span v-if="!admin && node.storage" class="storage">Storage</span>
-                            <span v-if="admin" class="messaging"><input type="checkbox" v-model="node.messaging"/>Messaging</span>
-                            <span v-if="admin" class="storage"><input type="checkbox"
-                                                                      v-model="node.storage"/>Storage</span>
-                            <span v-if="admin" @click="updateNodeContext(node,context)" title="Update"><i
-                                    class="fas fa-save"></i></span>
                             <span v-if="admin" @click="deleteNodeFromContext(node.name,context)" title="Delete"><i
                                     class="far fa-trash-alt"></i></span></li>
                     </ul>
@@ -161,9 +153,6 @@
                     <select class="nodeName" v-model="context.selectedNode">
                         <option v-for="n in nodes">{{n.name}}</option>
                     </select>
-                    <span class="messaging"><input type="checkbox" v-model="context.messaging"/> Messaging</span>
-                    <span class="storage"><input type="checkbox" v-model="context.storage"/> Storage</span>
-
                     <span @click="addNodeToContext(context)" title="Add"><i class="fas fa-plus"></i></span>
                 </span>
                 </td>
@@ -191,8 +180,7 @@
                         <span>
                             <div v-for="node in newContext.nodes">
                                 <span class="nodeName">{{node.name}}</span>
-                                <input type="checkbox" v-model="node.messaging"/> Messaging
-                                <input type="checkbox" v-model="node.storage"/> Storage
+                                <input type="checkbox" v-model="node.selected"/> Select
                             </div>
                         </span>
                     </li>

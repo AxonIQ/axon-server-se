@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ProxyCommandHandler;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
@@ -38,29 +39,30 @@ public class SubscriptionCountBasedNodeSelectionStrategyTest {
     @Test
     public void selectNodeNoSubscriptions() {
         Collection<String> activeNodes = Collections.emptyList();
-        assertEquals(ME, testSubject.selectNode("client1", "component1", activeNodes));
+        assertEquals(ME, testSubject.selectNode(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client1"), "component1", activeNodes));
     }
 
     @Test
     public void selectNodeWithComponent() {
         Collection<String> activeNodes = Arrays.asList(ME, "server1");
-        commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
-                            new DirectCommandHandler(new CountingStreamObserver<>(), "client1", "component1"));
-        commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
-                new ProxyCommandHandler(new CountingStreamObserver<>(), "client2", "component2", "server1"));
+        commandRegistry.add("command1",
+                            new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                     "client1"), "component1"));
+        commandRegistry.add("command1",
+                new ProxyCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"), "component2",  "server1"));
 
-        assertEquals(ME,testSubject.selectNode("client3", "component2", activeNodes));
-        assertEquals("server1", testSubject.selectNode("client3", "component1", activeNodes) );
+        assertEquals(ME,testSubject.selectNode(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client3"), "component2", activeNodes));
+        assertEquals("server1", testSubject.selectNode(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client3"), "component1", activeNodes) );
     }
     @Test
     public void selectNodeWithoutSubscriptions() {
         Collection<String> activeNodes = Arrays.asList(ME, "server1", "server2");
-        commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
-                new DirectCommandHandler(new CountingStreamObserver<>(), "client1", "component1"));
-        commandRegistry.add(Topology.DEFAULT_CONTEXT, "command1",
-                new ProxyCommandHandler(new CountingStreamObserver<>(), "client2", "component2", "server1"));
+        commandRegistry.add("command1",
+                new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1"), "component1"));
+        commandRegistry.add("command1",
+                new ProxyCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"), "component2", "server1"));
 
-        assertEquals("server2",testSubject.selectNode("client3", "component3", activeNodes) );
+        assertEquals("server2",testSubject.selectNode(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client3"), "component3", activeNodes) );
     }
 
 }

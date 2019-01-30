@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.metric;
 
-import io.axoniq.axonserver.grpc.internal.Metric;
-
 import java.util.Collections;
 
 /**
@@ -10,7 +8,7 @@ import java.util.Collections;
 public class DefaultMetricCollector implements MetricCollector {
 
     @Override
-    public Iterable<Metric> getAll() {
+    public Iterable<AxonServerMetric> getAll() {
         return Collections.emptyList();
     }
 

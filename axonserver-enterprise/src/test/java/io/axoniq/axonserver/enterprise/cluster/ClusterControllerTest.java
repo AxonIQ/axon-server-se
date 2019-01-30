@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.TestSystemInfoProvider;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -11,19 +12,19 @@ import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
@@ -43,10 +44,9 @@ import static org.mockito.Mockito.*;
  * Author: marc
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = AxonServerEnterprise.class)
-@EnableAutoConfiguration
-@EntityScan("io.axoniq")
 @DataJpaTest
+@ComponentScan(basePackages = "io.axoniq.axonserver.enterprise.context", lazyInit = true)
+@ContextConfiguration(classes = AxonServerEnterprise.class)
 public class ClusterControllerTest {
     private ClusterController testSubject;
     @Mock
@@ -58,6 +58,14 @@ public class ClusterControllerTest {
 
     @Autowired
     private EntityManager entityManager;
+    @Mock
+    private CommandDispatcher commandDispatcher;
+
+    @Mock
+    private QueryDispatcher queryDispatcher;
+
+    @Mock
+    private ModelVersionController modelVersionController;
 
     @Before
     public void setUp()  {
@@ -89,26 +97,23 @@ public class ClusterControllerTest {
         StubFactory stubFactory = new StubFactory() {
             @Override
             public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
+                    ClusterNode clusterNode) {
                 return new TestMessagingClusterService();
             }
 
             @Override
             public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
+                    String host, int port) {
                 return new TestMessagingClusterService();
             }
 
-            @Override
-            public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-                return null;
-            }
         };
 
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
                                             stubFactory,
-                                            nodeSelectionStrategy, eventPublisher, limits);
+                                            nodeSelectionStrategy, queryDispatcher, commandDispatcher,
+                                            modelVersionController,
+                                            eventPublisher, limits);
     }
 
     @Test
@@ -144,7 +149,7 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 5);
 
         Collection<RemoteConnection> nodes = testSubject.getRemoteConnections();
         assertEquals(1, nodes.size());
@@ -179,13 +184,13 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 10);
         assertEquals(2, testSubject.nodes().count());
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 11);
         assertEquals(2, testSubject.nodes().count());
     }
 
@@ -204,12 +209,12 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 10);
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("deletedNode")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build(), 11);
 
 
         testSubject.sendDeleteNode("deletedNode");

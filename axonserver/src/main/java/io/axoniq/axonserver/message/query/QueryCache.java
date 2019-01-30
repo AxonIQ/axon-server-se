@@ -18,7 +18,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
 
-    public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:900000}") long defaultQueryTimeout) {
+    public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout) {
         this.defaultQueryTimeout = defaultQueryTimeout;
     }
 
@@ -27,7 +27,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         return super.remove(messagId);
     }
 
-    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-cleanup-rate:300000}")
+    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-cleanup-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;

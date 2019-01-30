@@ -18,11 +18,8 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.ForwardingStreamObserver;
-import io.axoniq.axonserver.message.event.InputStreamMarshaller;
 import io.grpc.BindableService;
-import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
-import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +28,7 @@ import org.springframework.stereotype.Controller;
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
+import static io.axoniq.axonserver.message.event.EventDispatcher.*;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
@@ -41,21 +39,6 @@ public class InternalEventStoreService implements BindableService {
     private final LocalEventStore localEventStore;
     private final ContextProvider contextProvider;
 
-    private static final MethodDescriptor<GetEventsRequest, InputStream> METHOD_LIST_EVENTS =
-            EventStoreGrpc.METHOD_LIST_EVENTS.toBuilder(
-                    ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
-                    InputStreamMarshaller.inputStreamMarshaller())
-                                             .build();
-    private static final MethodDescriptor<GetAggregateSnapshotsRequest, InputStream> METHOD_LIST_AGGREGATE_SNAPSHOTS =
-            EventStoreGrpc.METHOD_LIST_AGGREGATE_SNAPSHOTS .toBuilder(
-                    ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
-                    InputStreamMarshaller.inputStreamMarshaller())
-                                             .build();
-    private static final MethodDescriptor<GetAggregateEventsRequest, InputStream> METHOD_LIST_AGGREGATE_EVENTS =
-            EventStoreGrpc.METHOD_LIST_AGGREGATE_EVENTS.toBuilder(
-                    ProtoUtils.marshaller(GetAggregateEventsRequest.getDefaultInstance()),
-                    InputStreamMarshaller.inputStreamMarshaller())
-                                                       .build();
     private static Logger logger = LoggerFactory.getLogger(InternalEventStoreService.class);
 
     public InternalEventStoreService(LocalEventStore localEventStore,
@@ -68,10 +51,10 @@ public class InternalEventStoreService implements BindableService {
     public final ServerServiceDefinition bindService() {
         return ServerServiceDefinition.builder(EventStoreGrpc.SERVICE_NAME)
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_APPEND_EVENT,
+                                                      METHOD_APPEND_EVENT,
                                                       asyncClientStreamingCall( this::appendEvent))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_APPEND_SNAPSHOT,
+                                                      EventStoreGrpc.getAppendSnapshotMethod(),
                                                       asyncUnaryCall(
                                                               this::appendSnapshot))
                                               .addMethod(
@@ -84,25 +67,25 @@ public class InternalEventStoreService implements BindableService {
                                                       METHOD_LIST_AGGREGATE_SNAPSHOTS,
                                                       asyncServerStreamingCall(this::listAggregateSnapshots))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_READ_HIGHEST_SEQUENCE_NR,
+                                                      EventStoreGrpc.getReadHighestSequenceNrMethod(),
                                                       asyncUnaryCall(this::readHighestSequenceNr))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_GET_FIRST_TOKEN,
+                                                      EventStoreGrpc.getGetFirstTokenMethod(),
                                                       asyncUnaryCall(this::getFirstToken))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_GET_LAST_TOKEN,
+                                                      EventStoreGrpc.getGetLastTokenMethod(),
                                                       asyncUnaryCall(this::getLastToken))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_GET_TOKEN_AT,
+                                                      EventStoreGrpc.getGetTokenAtMethod(),
                                                       asyncUnaryCall(this::getTokenAt))
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_QUERY_EVENTS,
+                                                      EventStoreGrpc.getQueryEventsMethod(),
                                                       asyncBidiStreamingCall(this::queryEvents))
                                               .build();
     }
 
 
-    private StreamObserver<Event> appendEvent(StreamObserver<Confirmation> responseObserver) {
+    private StreamObserver<InputStream> appendEvent(StreamObserver<Confirmation> responseObserver) {
         return localEventStore.createAppendEventConnection(
                 contextProvider.getContext(),
                 new ForwardingStreamObserver<>(logger, responseObserver));

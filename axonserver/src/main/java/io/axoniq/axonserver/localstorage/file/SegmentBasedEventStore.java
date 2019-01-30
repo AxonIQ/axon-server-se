@@ -4,15 +4,16 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
@@ -21,7 +22,15 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -140,17 +149,19 @@ public abstract class SegmentBasedEventStore implements EventStore {
             eventSource.ifPresent(e -> {
                 long minTimestampInSegment = Long.MAX_VALUE;
                 EventInformation eventWithToken;
-                Iterator<EventInformation> iterator = createEventIterator(e,segment,segment);
+                EventIterator iterator = createEventIterator(e,segment,segment);
                 while (iterator.hasNext()) {
                     eventWithToken = iterator.next();
                     minTimestampInSegment = Math.min(minTimestampInSegment, eventWithToken.getEvent().getTimestamp());
                     if (eventWithToken.getToken() >= minToken
                             && eventWithToken.getEvent().getTimestamp() >= minTimestamp
                             && !consumer.test(eventWithToken.asEventWithToken())) {
+                        iterator.close();
                         return;
                     }
                 }
                 if (minToken > segment || minTimestampInSegment < minTimestamp) done.set(true);
+                iterator.close();
             });
             if( done.get()) return;
         }
@@ -206,7 +217,27 @@ public abstract class SegmentBasedEventStore implements EventStore {
     @Override
     public void init(boolean validate) {
         initSegments(Long.MAX_VALUE);
-        if( validate) validate(storageProperties.getValidationSegments());
+        validate(validate ? storageProperties.getValidationSegments() : 2);
+    }
+
+
+    @Override
+    public boolean contains( SerializedTransactionWithToken newTransaction){
+        long token = newTransaction.getToken();
+        long segment = getSegmentFor(token);
+        EventSource eventSource = getEventSource(segment).orElse(null);
+        if( eventSource == null )  {
+            if( next != null) {
+                return next.contains(newTransaction);
+            }
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored");
+        }
+
+        try (TransactionIterator iterator = eventSource.createTransactionIterator(segment, token, false)){
+            return iterator.hasNext() && newTransaction.equals(iterator.next());
+        } catch (Exception e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored", e);
+        }
     }
 
     @Override
@@ -237,6 +268,11 @@ public abstract class SegmentBasedEventStore implements EventStore {
         return -1;
     }
 
+    @Override
+    public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
+        throw new UnsupportedOperationException("Operation only supported on primary event store");
+    }
+
     public void validate(int maxSegments) {
         Stream<Long> segments = getAllSegments();
         List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(Collectors.toList());
@@ -260,13 +296,12 @@ public abstract class SegmentBasedEventStore implements EventStore {
 
     protected ValidationResult validateSegment(long segment) {
         logger.debug("{}: Validating {} segment: {}", type.getContext(), type.getEventType(), segment);
-        Iterator<TransactionWithToken> iterator = getTransactions(segment, segment, true);
-        try {
-            TransactionWithToken last = null;
+        try (TransactionIterator iterator = getTransactions(segment, segment, true)) {
+            SerializedTransactionWithToken last = null;
             while (iterator.hasNext()) {
                 last = iterator.next();
             }
-            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEventsCount());
+            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvents().size());
         } catch (Exception ex) {
             return new ValidationResult(segment, ex.getMessage());
         }
@@ -331,17 +366,17 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamTransactions(long token, Predicate<TransactionWithToken> onEvent)  {
+    public void streamTransactions(long token, Predicate<SerializedTransactionWithToken> onEvent)  {
         logger.debug("{}: Start streaming {} transactions at {}", context, type.getEventType(), token);
 
         long lastSegment = -1;
         long segment = getSegmentFor(token);
-        TransactionWithToken eventWithToken = null;
+        SerializedTransactionWithToken eventWithToken = null;
         while (segment > lastSegment) {
             TransactionIterator transactionIterator = getTransactions(segment, token);
             while (transactionIterator.hasNext()) {
                 eventWithToken = transactionIterator.next();
-                token += eventWithToken.getEventsCount();
+                token += eventWithToken.getEvents().size();
                 if( ! onEvent.test(eventWithToken)) {
                     transactionIterator.close();
                     logger.debug("{}: Done streaming {} transactions due to false result", context, type.getEventType());
@@ -369,6 +404,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
               .filter(segment -> segment < lastInitialized)
               .forEach(segments::add);
 
+        segments.forEach(this::renameFileIfNecessary);
         long firstValidIndex = segments.stream().filter(this::indexValid).findFirst().orElse(-1L);
         logger.debug("First valid index: {}", firstValidIndex);
         return segments;
@@ -471,6 +507,23 @@ public abstract class SegmentBasedEventStore implements EventStore {
                 return;
             }
             n = n.next;
+        }
+    }
+
+    protected void renameFileIfNecessary(long segment) {
+        File dataFile = storageProperties.oldDataFile(context, segment);
+        if( dataFile.exists()) {
+            if( ! dataFile.renameTo(storageProperties.dataFile(context, segment)) ) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + dataFile.getAbsolutePath() + " to " + storageProperties.dataFile(context, segment) );
+            }
+            File indexFile = storageProperties.oldIndex(context, segment);
+            if( indexFile.exists() && ! indexFile.renameTo(storageProperties.index(context, segment)) ) {
+                    throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + indexFile.getAbsolutePath() + " to " + storageProperties.index(context, segment) );
+            }
+            File bloomFile = storageProperties.oldBloomFilter(context, segment);
+            if( bloomFile.exists() && ! bloomFile.renameTo(storageProperties.bloomFilter(context, segment))) {
+                    throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not rename " + bloomFile.getAbsolutePath() + " to " + storageProperties.bloomFilter(context, segment) );
+            }
         }
     }
 

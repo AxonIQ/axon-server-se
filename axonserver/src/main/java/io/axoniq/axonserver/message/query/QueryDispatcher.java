@@ -1,14 +1,13 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.DispatchEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
@@ -45,28 +44,6 @@ public class QueryDispatcher {
         this.queryCounter = queryMetricsRegistry.counter(QUERY_COUNTER_NAME);
     }
 
-    @EventListener
-    public void on(DispatchEvents.DispatchQuery event) {
-        if( event.isProxied()) {
-            dispatchProxied(event.getQuery(),event.getCallback(), event.getOnCompleted());
-        } else {
-            query(event.getContext(), event.getQuery(), event.getCallback(), event.getOnCompleted());
-        }
-    }
-
-    @EventListener
-    public void on(SubscriptionEvents.UnsubscribeQuery event) {
-        QuerySubscription unsubscribe = event.getUnsubscribe();
-        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), unsubscribe);
-        registrationCache.remove(queryDefinition, unsubscribe.getClientId());
-    }
-
-    @EventListener
-    public void on(SubscriptionEvents.SubscribeQuery event) {
-        QuerySubscription subscription = event.getSubscription();
-        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), subscription);
-        registrationCache.add(queryDefinition, subscription.getResultName(), event.getQueryHandler());
-    }
 
 
     public void handleResponse(QueryResponse queryResponse, String client, boolean proxied) {
@@ -76,7 +53,7 @@ public class QueryDispatcher {
             if( queryInformation.forward(client, queryResponse) <= 0) {
                 queryCache.remove(queryInformation.getKey());
                 if (!proxied) {
-                    queryMetricsRegistry.add(queryInformation.getQuery(), client,
+                    queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client),
                                              System.currentTimeMillis() - queryInformation.getTimestamp());
 
                 }
@@ -102,7 +79,7 @@ public class QueryDispatcher {
                 queryCache.remove(queryInformation.getKey());
             }
             if (!proxied) {
-                queryMetricsRegistry.add(queryInformation.getQuery(), client, System.currentTimeMillis() - queryInformation.getTimestamp());
+                queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client), System.currentTimeMillis() - queryInformation.getTimestamp());
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);
@@ -111,12 +88,12 @@ public class QueryDispatcher {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        registrationCache.remove(event.getClient());
+        registrationCache.remove(event.clientIdentification());
     }
 
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected event) {
-        registrationCache.remove(event.getClient());
+        registrationCache.remove(event.clientIdentification());
     }
 
     public void removeFromCache( String messageId) {
@@ -131,10 +108,11 @@ public class QueryDispatcher {
         return (long)queryCounter.count();
     }
 
-    private void query(String context, QueryRequest query, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
+    public void query(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryCounter.increment();
+        QueryRequest query = serializedQuery.query();
         long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
-        Set<? extends QueryHandler> handlers = registrationCache.find(context, query);
+        Set<? extends QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
         if( handlers.isEmpty()) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
@@ -143,25 +121,26 @@ public class QueryDispatcher {
                                          .build());
             onCompleted.accept("NoClient");
         } else {
-            QueryDefinition queryDefinition =new QueryDefinition(context, query.getQuery());
+            QueryDefinition queryDefinition =new QueryDefinition(serializedQuery.context(), query.getQuery());
             int expectedResults = Integer.MAX_VALUE;
             int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
             if( nrOfResults > 0) {
                 expectedResults = Math.min(nrOfResults, expectedResults);
             }
             QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(), queryDefinition,
-                                                                     handlers.stream().map(QueryHandler::getClientName).collect(Collectors.toSet()),
+                                                                     handlers.stream().map(QueryHandler::getClientId).collect(Collectors.toSet()),
                                                                      expectedResults, callback,
                                                                      onCompleted);
             queryCache.put(query.getMessageIdentifier(), queryInformation);
-            handlers.forEach(h -> dispatchOne(h, context, query, timeout));
+            handlers.forEach(h -> dispatchOne(h, serializedQuery, timeout));
         }
     }
 
-    private void dispatchProxied(QueryRequest query, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
+    public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
+        QueryRequest query = serializedQuery.query();
         long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
-        String context = ProcessingInstructionHelper.context(query.getProcessingInstructionsList());
-        String client = ProcessingInstructionHelper.targetClient(query.getProcessingInstructionsList());
+        String context = serializedQuery.context();
+        String client = serializedQuery.client();
         QueryHandler queryHandler = registrationCache.find( context, query, client);
         if( queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
@@ -179,17 +158,17 @@ public class QueryDispatcher {
             }
             String key = query.getMessageIdentifier() + "/" + client;
             QueryInformation queryInformation = new QueryInformation(key,
-                    queryDefinition, Collections.singleton(queryHandler.getClientName()),
+                    queryDefinition, Collections.singleton(queryHandler.getClientId()),
                                                                      expectedResults,
                                                                      callback,
                                                                      onCompleted);
             queryCache.put(key, queryInformation);
-            dispatchOne(queryHandler, context, query, timeout);
+            dispatchOne(queryHandler, serializedQuery, timeout);
         }
     }
 
-    private void dispatchOne(QueryHandler queryHandler, String context, QueryRequest query, long timeout) {
-        queryHandler.enqueue(context, query, queryQueue, timeout);
+    private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
+        queryHandler.enqueue( query, queryQueue, timeout);
     }
 
 

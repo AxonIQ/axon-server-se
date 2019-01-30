@@ -6,9 +6,10 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Wrapper around an EventWithToken that keeps track of the Serialized form of the Event, to prevent unnecessary
@@ -24,8 +25,8 @@ public class SerializedEventWithToken {
         this.token = token;
     }
 
-    public SerializedEventWithToken(long token, Event event, EventTransformer eventTransformer) {
-        this(token, new SerializedEvent(event, eventTransformer));
+    public SerializedEventWithToken(long token, Event event) {
+        this(token, new SerializedEvent(event));
     }
 
     public InputStream asInputStream() {

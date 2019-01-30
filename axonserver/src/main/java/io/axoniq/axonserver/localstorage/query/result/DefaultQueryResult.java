@@ -16,7 +16,9 @@ public class DefaultQueryResult implements QueryResult {
     private final ListExpressionResult sortValues;
 
     public DefaultQueryResult(ExpressionResult result) {
-        this(result, false, null, null);
+        this(result, false,
+             ListExpressionResult.asListOrNull(result.getByIdentifier("token")),
+             ListExpressionResult.asListOrNull(result.getByIdentifier("token")));
     }
 
     private DefaultQueryResult(ExpressionResult value, boolean deleted,

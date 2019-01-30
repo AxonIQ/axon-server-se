@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.axoniq.axonserver</groupId>
         <artifactId>axonserver-parent</artifactId>
-        <version>4.0-M4-SNAPSHOT</version>
+        <version>4.0.2-SNAPSHOT</version>
         <relativePath>../..</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -19,6 +19,7 @@
         <dependency>
             <groupId>org.springframework.amqp</groupId>
             <artifactId>spring-rabbit</artifactId>
+            <version>2.1.2.RELEASE</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

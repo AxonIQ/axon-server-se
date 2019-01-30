@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.websocket;
 
-import io.axoniq.axonserver.UserSynchronizationEvents;
+import io.axoniq.axonserver.applicationevents.UserEvents;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,12 @@ public class WebsocketUserContext {
     }
 
     @EventListener
-    public void on(UserSynchronizationEvents.UserReceived event) {
+    public void on(UserEvents.UserDeleted event) {
+        websocket.convertAndSend("/topic/user", event.getClass().getName());
+    }
+
+    @EventListener
+    public void on(UserEvents.UserUpdated event) {
         websocket.convertAndSend("/topic/user", event.getClass().getName());
     }
 }

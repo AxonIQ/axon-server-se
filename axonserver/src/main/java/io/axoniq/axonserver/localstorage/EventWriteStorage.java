@@ -1,8 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
-import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +28,7 @@ public class EventWriteStorage {
         this.storageTransactionManager = storageTransactionManager;
     }
 
-    public CompletableFuture<Void> store(List<Event> eventList) {
+    public CompletableFuture<Void> store(List<SerializedEvent> eventList) {
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         try {
             validate(eventList);
@@ -44,7 +42,7 @@ public class EventWriteStorage {
                         IntStream.range(0, eventList.size())
                                  .forEach(i -> {
                                      listeners.values()
-                                              .forEach(consumer -> safeForwardEvent(consumer, new SerializedEventWithToken(firstToken + i, eventList.get(i), NoOpEventTransformer.INSTANCE)));
+                                              .forEach(consumer -> safeForwardEvent(consumer, new SerializedEventWithToken(firstToken + i, eventList.get(i))));
                                  });
                     }
                 } else {
@@ -74,7 +72,7 @@ public class EventWriteStorage {
         return lastCommitted.get();
     }
 
-    private void validate(List<Event> eventList) {
+    private void validate(List<SerializedEvent> eventList) {
         storageTransactionManager.reserveSequenceNumbers(eventList);
     }
 

@@ -6,25 +6,32 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
+import org.springframework.data.util.CloseableIterator;
 
-import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import javax.sql.DataSource;
 
 /**
  * Author: marc
@@ -61,7 +68,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
+    public void streamTransactions(long firstToken, Predicate<SerializedTransactionWithToken> transactionConsumer) {
         throw new UnsupportedOperationException();
     }
 
@@ -101,9 +108,9 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(List<Event> eventList) {
+    public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
         long firstToken = lastToken.getAndAdd(eventList.size()) + 1;
-        return new PreparedTransaction(firstToken, eventList.stream().map(WrappedEvent::new).collect(Collectors.toList()));
+        return new PreparedTransaction(firstToken, eventList.stream().map(e -> new WrappedEvent(e, NoOpEventTransformer.INSTANCE)).collect(Collectors.toList()));
     }
 
     @Override
@@ -118,6 +125,7 @@ public abstract class JdbcAbstractStore implements EventStore {
                     insert.setLong(1, firstToken++);
                     insert.setString(2, event.getAggregateIdentifier());
                     insert.setString(3, event.getMessageIdentifier());
+                    // TODO: serialize metadata
                     insert.setNull(4, Types.BLOB);
                     insert.setBytes(5, event.getPayloadBytes());
                     insert.setString(6, event.getPayloadRevision());
@@ -181,6 +189,49 @@ public abstract class JdbcAbstractStore implements EventStore {
         }
     }
 
+    @Override
+    public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
+        try {
+            Connection connection = dataSource.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(readEvents);
+            preparedStatement.setLong(1, start);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            return new CloseableIterator<SerializedEventWithToken>() {
+                @Override
+                public void close() {
+                    try {
+                        resultSet.close();
+                        preparedStatement.close();
+                        connection.close();
+                    } catch (SQLException e) {
+                        // Ignore exceptions on close
+                    }
+                }
+
+                @Override
+                public boolean hasNext() {
+                    try {
+                        return resultSet.next();
+                    } catch (SQLException e) {
+                        throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+                    }
+                }
+
+                @Override
+                public SerializedEventWithToken next() {
+                    try {
+                        return readEventWithToken(resultSet);
+                    } catch (SQLException e) {
+                        throw new NoSuchElementException(e.getMessage());
+                    }
+                }
+            };
+        } catch (SQLException e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+        }
+    }
+
     private SerializedEventWithToken readEventWithToken(ResultSet resultSet) throws SQLException {
         return new SerializedEventWithToken(resultSet.getLong("global_index"),
                                             readEvent(resultSet));
@@ -197,8 +248,7 @@ public abstract class JdbcAbstractStore implements EventStore {
                                                  .setRevision(resultSet.getString("payload_revision"))
                                                  .setType(resultSet.getString("payload_type")))
                      .setTimestamp(resultSet.getLong("time_stamp"))
-                     .setAggregateType(resultSet.getString("type")).build(),
-                NoOpEventTransformer.INSTANCE);
+                     .setAggregateType(resultSet.getString("type")).build());
     }
 
     @Override

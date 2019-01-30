@@ -67,7 +67,7 @@ public class QueryMetricsWebSocket {
                 .entrySet().stream()
                 .flatMap(queryHandlers -> queryHandlers.getValue().stream().map(
                         queryHandler -> queryMetricsRegistry.queryMetric(queryDefinition,
-                                                                         queryHandler.getClientName(),
+                                                                         queryHandler.getClient(),
                                                                          queryHandlers.getKey())));
     }
 }

@@ -1,12 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster.events;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ModelVersion;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import org.springframework.context.ApplicationEvent;
 
 import java.util.List;
 
@@ -20,16 +19,19 @@ public class ClusterEvents {
     public static class AxonServerInstanceConnected extends TopologyEvents.TopologyBaseEvent {
 
         private final RemoteConnection remoteConnection;
+        private final long generation;
         private final List<ModelVersion> modelVersionsList;
         private final List<ContextRole> contextsList;
         private final List<io.axoniq.axonserver.grpc.internal.NodeInfo> nodesList;
 
         public AxonServerInstanceConnected(RemoteConnection remoteConnection,
+                                           long generation,
                                            List<ModelVersion> modelVersionsList,
                                            List<ContextRole> contextsList,
                                            List<NodeInfo> nodesList){
             super(false);
             this.remoteConnection = remoteConnection;
+            this.generation = generation;
             this.modelVersionsList = modelVersionsList;
             this.contextsList = contextsList;
             this.nodesList = nodesList;
@@ -53,6 +55,10 @@ public class ClusterEvents {
 
         public List<io.axoniq.axonserver.grpc.internal.NodeInfo> getNodesList() {
             return nodesList;
+        }
+
+        public long getGeneration() {
+            return generation;
         }
     }
 
@@ -96,14 +102,20 @@ public class ClusterEvents {
     public static class MasterDisconnected extends TopologyEvents.TopologyBaseEvent{
 
         private final String contextName;
+        private final String oldMaster;
 
-        public MasterDisconnected(String contextName, boolean forwarded) {
+        public MasterDisconnected(String contextName, String oldMaster, boolean forwarded) {
             super(forwarded);
             this.contextName = contextName;
+            this.oldMaster = oldMaster;
         }
 
         public String getContextName() {
             return contextName;
+        }
+
+        public String oldMaster() {
+            return oldMaster;
         }
     }
 
@@ -213,16 +225,39 @@ public class ClusterEvents {
         }
     }
 
+    @KeepNames
     public static class AxonServerNodeDeleted extends TopologyEvents.TopologyBaseEvent {
         private final String node;
+        private final long generation;
 
-        public AxonServerNodeDeleted(String name) {
+        public AxonServerNodeDeleted(String name, long generation) {
             super(false);
             this.node =name;
+            this.generation = generation;
         }
 
         public String node() {
             return node;
+        }
+
+        public long getGeneration() {
+            return generation;
+        }
+    }
+
+    @KeepNames
+    public static class ClusterUpdatedNotification extends TopologyEvents.TopologyBaseEvent {
+
+        public ClusterUpdatedNotification() {
+            super(false);
+        }
+    }
+
+    @KeepNames
+    public static class InternalServerReady extends TopologyEvents.TopologyBaseEvent {
+
+        public InternalServerReady() {
+            super(false);
         }
     }
 }

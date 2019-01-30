@@ -1,9 +1,11 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
+import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
@@ -14,7 +16,6 @@ import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.json.UserInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.KeepNames;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,7 +80,7 @@ public class PublicRestController {
         ExtendedClusterNode node = mapExtended(clusterController.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
-        node.setClustered(clusterConfiguration.isEnabled());
+        node.setClustered(Feature.CLUSTERING.enabled(limits));
         return node;
     }
 

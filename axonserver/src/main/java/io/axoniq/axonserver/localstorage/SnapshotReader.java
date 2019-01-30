@@ -18,8 +18,7 @@ public class SnapshotReader {
     public Optional<SerializedEvent> readSnapshot(String aggregateId, long minSequenceNumber) {
             return datafileManagerChain
                     .getLastEvent(aggregateId, minSequenceNumber)
-                    .map(s -> new SerializedEvent(Event.newBuilder(s.asEvent()).setSnapshot(true).build(),
-                                                  s.eventTransformer()));
+                    .map(s -> new SerializedEvent(Event.newBuilder(s.asEvent()).setSnapshot(true).build()));
     }
 
     public void streamByAggregateId(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {

@@ -3,13 +3,14 @@ package io.axoniq.axonserver.enterprise.message.event;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.TestMessagingClusterService;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.internal.NodeContextInfo;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.AssertUtils;
@@ -44,6 +45,9 @@ public class EventStoreManagerTest {
     @Mock
     private LifecycleController lifecycleController;
 
+    @Mock
+    private SyncStatusController syncStatusController;
+
     private List<Context> contexts = new ArrayList<>();
 
     @Before
@@ -51,7 +55,7 @@ public class EventStoreManagerTest {
         StubFactory stubFactory =  new StubFactory() {
             @Override
             public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode node) {
+                    ClusterNode node) {
                 return new TestMessagingClusterService() {
                     @Override
                     public void requestLeader(NodeContextInfo nodeContextInfo,
@@ -71,21 +75,9 @@ public class EventStoreManagerTest {
                     }
                 };
             }
-
-            @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
-                return null;
-            }
-
-            @Override
-            public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-                return null;
-            }
         };
         testSubject = new EventStoreManager( messagingPlatformConfiguration,
-                                            stubFactory, lifecycleController, localEventStore, applicationEventPublisher, () -> contexts.iterator(), false, "me", true, 10, n->new ClusterNode());
+                                            stubFactory, lifecycleController, localEventStore, syncStatusController, applicationEventPublisher, () -> contexts.iterator(), false, "me", true, 10, n->new ClusterNode());
     }
 
     private Context createContext(String name, String... nodes) {
@@ -109,6 +101,7 @@ public class EventStoreManagerTest {
         Context defaultContext = createContext("default", "node2", "node3");
         contexts.add(defaultContext);
         testSubject.start();
+        testSubject.on(new ClusterEvents.InternalServerReady());
         AssertUtils.assertWithin(5, TimeUnit.SECONDS, () -> Assert.assertTrue(testSubject.getEventStore("default") instanceof LocalEventStore));
     }
 
@@ -118,6 +111,7 @@ public class EventStoreManagerTest {
         contexts.add(defaultContext);
 
         testSubject.start();
+        testSubject.on(new ClusterEvents.InternalServerReady());
         AssertUtils.assertWithin(5, TimeUnit.SECONDS, () -> Assert.assertTrue(testSubject.getEventStore("default") instanceof LocalEventStore));
     }
 
@@ -127,6 +121,7 @@ public class EventStoreManagerTest {
         contexts.add(defaultContext);
 
         testSubject.start();
+        testSubject.on(new ClusterEvents.InternalServerReady());
         AssertUtils.assertWithin(5, TimeUnit.SECONDS, () -> Assert.assertTrue(testSubject.getEventStore("default") instanceof LocalEventStore));
     }
 
@@ -136,6 +131,7 @@ public class EventStoreManagerTest {
         contexts.add(defaultContext);
 
         testSubject.start();
+        testSubject.on(new ClusterEvents.InternalServerReady());
         Thread.sleep(2000);
         Assert.assertNull(testSubject.getEventStore("default"));
     }
@@ -146,6 +142,7 @@ public class EventStoreManagerTest {
         contexts.add(defaultContext);
 
         testSubject.start();
+        testSubject.on(new ClusterEvents.InternalServerReady());
         Thread.sleep(2000);
         Assert.assertNull(testSubject.getEventStore("default"));
     }}

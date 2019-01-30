@@ -9,6 +9,7 @@ import io.grpc.Metadata;
  */
 public interface GrpcMetadataKeys {
     Metadata.Key<String> TOKEN_KEY = Metadata.Key.of(AxonServerAccessController.TOKEN_PARAM, Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> AXONDB_TOKEN_KEY = Metadata.Key.of(AxonServerAccessController.AXONDB_TOKEN_PARAM, Metadata.ASCII_STRING_MARSHALLER);
     Metadata.Key<String> INTERNAL_TOKEN_KEY = Metadata.Key.of("AxonIQ-InternalToken", Metadata.ASCII_STRING_MARSHALLER);
     Metadata.Key<String> ERROR_CODE_KEY = Metadata.Key.of("AxonIQ-ErrorCode", Metadata.ASCII_STRING_MARSHALLER);
 

@@ -2,12 +2,13 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -27,7 +28,8 @@ public class InputStreamEventSource implements EventSource {
                                   StorageProperties storageProperties) {
         try {
             logger.debug("Open file {}", dataFile);
-            dataInputStream = new PositionKeepingDataInputStream(new FileInputStream(dataFile));
+            dataInputStream = new PositionKeepingDataInputStream(new BufferedInputStream(new FileInputStream(dataFile),
+                                                                                         storageProperties.getReadBufferSize()));
             byte version = dataInputStream.readByte();
             int modifiers = dataInputStream.readInt();
             eventTransformer = eventTransformerFactory.get(version, modifiers, storageProperties);
@@ -48,7 +50,7 @@ public class InputStreamEventSource implements EventSource {
 
     public SerializedEvent readEvent() throws IOException {
         byte[] bytes = dataInputStream.readEvent();
-        return new SerializedEvent(bytes, eventTransformer);
+        return new SerializedEvent(eventTransformer.readEvent(bytes));
     }
 
     @Override

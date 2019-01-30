@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.features;
 
-import io.axoniq.platform.KeepNames;
+
+import io.axoniq.axonserver.KeepNames;
 
 /**
  * Author: marc

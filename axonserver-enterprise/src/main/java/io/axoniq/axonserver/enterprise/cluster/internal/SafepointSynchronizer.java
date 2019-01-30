@@ -1,10 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.enterprise.cluster.SafepointRepository;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
-import io.axoniq.axonserver.enterprise.jpa.Safepoint;
 import io.axoniq.axonserver.localstorage.EventType;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
@@ -15,19 +12,16 @@ import java.util.Optional;
  */
 @Controller
 public class SafepointSynchronizer {
-    private final SafepointRepository safepointRepository;
+    private final SyncStatusController safepointRepository;
     private final EventStoreManager eventStoreManager;
-    private final LocalEventStore localEventStore;
     private final DataSynchronizationMaster dataSynchronizationMaster;
 
 
-    public SafepointSynchronizer(SafepointRepository safepointRepository,
+    public SafepointSynchronizer(SyncStatusController safepointRepository,
                                  Optional<EventStoreManager> eventStoreManager,
-                                 LocalEventStore localEventStore,
                                  DataSynchronizationMaster dataSynchronizationMaster) {
         this.safepointRepository = safepointRepository;
         this.eventStoreManager = eventStoreManager.orElse(null);
-        this.localEventStore = localEventStore;
         this.dataSynchronizationMaster = dataSynchronizationMaster;
     }
 
@@ -38,11 +32,9 @@ public class SafepointSynchronizer {
     }
 
     private void synchronizeContext(String context) {
-        long eventToken = localEventStore.getLastCommittedToken(context);
-        long snapshotToken = localEventStore.getLastCommittedSnapshot(context);
+        long eventToken = safepointRepository.getSafePoint(EventType.EVENT, context);
+        long snapshotToken = safepointRepository.getSafePoint(EventType.SNAPSHOT, context);
         dataSynchronizationMaster.publishSafepoints(context, eventToken, snapshotToken);
-
-        safepointRepository.save(new Safepoint(EventType.EVENT.name(), context, eventToken));
-        safepointRepository.save(new Safepoint(EventType.SNAPSHOT.name(), context, snapshotToken));
     }
+
 }

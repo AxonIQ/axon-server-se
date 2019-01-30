@@ -6,14 +6,15 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.util.Arrays;
 
 /**
  * Author: marc
  */
 public class WritableEventSource extends ByteBufferEventSource {
     private static final Logger logger = LoggerFactory.getLogger(WritableEventSource.class);
-    public WritableEventSource(ByteBuffer buffer, EventTransformer eventTransformer) {
-        super(buffer, eventTransformer);
+    public WritableEventSource(String file, ByteBuffer buffer, EventTransformer eventTransformer) {
+        super(file, buffer, eventTransformer);
     }
 
     private MappedByteBuffer mappedByteBuffer() {
@@ -43,5 +44,15 @@ public class WritableEventSource extends ByteBufferEventSource {
 
     public void putInt(int position, int value) {
         getBuffer().putInt(position, value);
+    }
+
+    public void clearTo(int endPosition) {
+        int currentPosition = getBuffer().position();
+        byte[] emptyBytes = new byte[1024*8];
+        Arrays.fill(emptyBytes, (byte)0);
+        for( int pos = currentPosition ; pos < endPosition; pos += emptyBytes.length) {
+            getBuffer().put(emptyBytes, 0, Math.min(emptyBytes.length, endPosition - pos));
+        }
+
     }
 }

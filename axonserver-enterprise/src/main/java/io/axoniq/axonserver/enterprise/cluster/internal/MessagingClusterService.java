@@ -1,19 +1,24 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdate;
-import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ProcessorStatusRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
-import io.axoniq.axonserver.MetricsEvents;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
-import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
-import io.axoniq.axonserver.TopologyEvents.QueryHandlerDisconnected;
-import io.axoniq.axonserver.UserSynchronizationEvents;
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
+import io.axoniq.axonserver.access.user.UserController;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
+import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.RequestToBeCoordinatorReceived;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
@@ -21,15 +26,19 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorC
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.CoordinatorStepDown;
 import io.axoniq.axonserver.enterprise.cluster.manager.RequestLeaderEvent;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
+import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.grpc.ProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
+import io.axoniq.axonserver.grpc.SerializedCommandResponse;
+import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.Action;
 import io.axoniq.axonserver.grpc.internal.Applications;
@@ -52,14 +61,12 @@ import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.Users;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
+import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.topology.EventStoreLocator;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationModelController;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserController;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -109,7 +116,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final ClusterController clusterController;
     private final UserController userController;
     private final ApplicationController applicationController;
-    private final ApplicationModelController applicationModelController;
+    private final ModelVersionController applicationModelController;
     private final ContextController contextController;
     private final EventStoreLocator eventStoreManager;
     private final ApplicationEventPublisher eventPublisher;
@@ -135,7 +142,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             ClusterController clusterController,
             UserController userController,
             ApplicationController applicationController,
-            ApplicationModelController applicationModelController,
+            ModelVersionController applicationModelController,
             ContextController contextController,
             EventStoreLocator eventStoreManager,
             ApplicationEventPublisher eventPublisher) {
@@ -205,14 +212,32 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     }
 
     @EventListener
-    public void on(UserSynchronizationEvents.UserReceived event) {
+    public void on(UserEvents.UserUpdated event) {
         if( event.isProxied()) return;
-
+        io.axoniq.axonserver.grpc.internal.User protoUser = UserProtoConverter.mergeUser(event.getUser());
         connections.forEach((name, responseObserver) -> {
             try {
+
                 responseObserver.publish(ConnectorResponse.newBuilder()
-                                                         .setUser(event.getUser())
+                                                         .setUser(protoUser)
                                                          .build());
+            } catch (Exception ex) {
+                logger.debug("Error sending application to {} - {}", name, ex.getMessage());
+            }
+        });
+    }
+
+    @EventListener
+    public void on(UserEvents.UserDeleted event) {
+        if( event.isProxied()) return;
+
+        io.axoniq.axonserver.grpc.internal.User protoUser = UserProtoConverter.deleteUser(event.getName());
+        connections.forEach((name, responseObserver) -> {
+            try {
+
+                responseObserver.publish(ConnectorResponse.newBuilder()
+                                                          .setUser(protoUser)
+                                                          .build());
             } catch (Exception ex) {
                 logger.debug("Error sending application to {} - {}", name, ex.getMessage());
             }
@@ -236,13 +261,15 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
 
     @Override
-    public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
+    public void join(NodeInfo request, StreamObserver<ConnectResponse> responseObserver) {
         try {
             checkConnection(request.getInternalHostName());
             checkMasterForAllStorageContexts(request.getContextsList());
-            clusterController.addConnection(request, true);
-            clusterController.nodes().forEach(clusterNode -> responseObserver
-                    .onNext(clusterNode.toNodeInfo()));
+            long newGeneration = clusterController.joinConnection(request);
+            ConnectResponse connectResponse = ConnectResponse.newBuilder().setGeneration(newGeneration)
+                    .addAllNodes(clusterController.nodes().map(n -> n.toNodeInfo()).collect(Collectors.toList())).build();
+            logger.debug("Join response: {}", connectResponse);
+            responseObserver.onNext(connectResponse);
             responseObserver.onCompleted();
         } catch (Exception mpe) {
             logger.warn("Join request failed", mpe);
@@ -281,11 +308,13 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
 
-        private final CopyOnWriteArraySet<String> clients;
+        private final CopyOnWriteArraySet<ClientIdentification> clients;
         private final SendingStreamObserver<ConnectorResponse> responseObserver;
         private volatile GrpcInternalCommandDispatcherListener commandQueueListener;
         private volatile GrpcInternalQueryDispatcherListener queryQueueListener;
         private volatile String messagingServerName;
+        private final Map<ClientIdentification, CommandHandler> commandHandlerPerContextClient = new ConcurrentHashMap<>();
+        private final Map<ClientIdentification, QueryHandler> queryHandlerPerContextClient = new ConcurrentHashMap<>();
 
         public ConnectorReceivingStreamObserver(SendingStreamObserver<ConnectorResponse> responseObserver) {
             super(logger);
@@ -300,53 +329,63 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 switch (connectorCommand.getRequestCase()) {
                     case CONNECT:
                         try {
-                            messagingServerName = connectorCommand.getConnect().getNodeName();
-                            clusterController.addConnection(connectorCommand.getConnect(), false);
+                            messagingServerName = connectorCommand.getConnect().getNodeInfo().getNodeName();
                             logger.debug("Received connect from: {} - {}",
                                          messagingServerName,
                                          connectorCommand.getConnect());
+                            if( clusterController.addConnection(connectorCommand.getConnect().getNodeInfo(),
+                                                            connectorCommand.getConnect().getGeneration()) ) {
 
-                            ConnectResponse.Builder connectResponseBuilder = ConnectResponse.newBuilder()
-                                                                                            .addAllModelVersions(
-                                                                                                    applicationModelController
-                                                                                                            .getModelVersions()
-                                                                                                            .stream()
-                                                                                                            .map(m -> ModelVersion
-                                                                                                                    .newBuilder()
-                                                                                                                    .setName(
-                                                                                                                            m.getApplicationName())
-                                                                                                                    .setValue(
-                                                                                                                            m.getVersion())
-                                                                                                                    .build())
-                                                                                                            .collect(
-                                                                                                                    Collectors
-                                                                                                                            .toList())
-                                                                                            )
-                                                                                            .addAllContexts(
-                                                                                                    clusterController
-                                                                                                            .getMyContexts()
-                                                                                                            .stream()
-                                                                                                            .map(c -> ContextRole
-                                                                                                                    .newBuilder()
-                                                                                                                    .setName(
-                                                                                                                            c.getContext()
-                                                                                                                             .getName())
-                                                                                                                    .setMessaging(
-                                                                                                                            c.isMessaging())
-                                                                                                                    .setStorage(
-                                                                                                                            c.isStorage())
-                                                                                                                    .build()
-                                                                                                            ).collect(
-                                                                                                            Collectors
-                                                                                                                    .toList()));
+                                ConnectResponse.Builder connectResponseBuilder = ConnectResponse.newBuilder()
+                                                                                                .setGeneration(applicationModelController.getModelVersion(
+                                                                                                        ClusterNode.class))
+                                                                                                .addAllModelVersions(
+                                                                                                        applicationModelController
+                                                                                                                .getModelVersions()
+                                                                                                                .stream()
+                                                                                                                .map(m -> ModelVersion
+                                                                                                                        .newBuilder()
+                                                                                                                        .setName(
+                                                                                                                                m.getApplicationName())
+                                                                                                                        .setValue(
+                                                                                                                                m.getVersion())
+                                                                                                                        .build())
+                                                                                                                .collect(
+                                                                                                                        Collectors
+                                                                                                                                .toList())
+                                                                                                )
+                                                                                                .addAllContexts(
+                                                                                                        clusterController
+                                                                                                                .getMyContexts()
+                                                                                                                .stream()
+                                                                                                                .map(c -> ContextRole
+                                                                                                                        .newBuilder()
+                                                                                                                        .setName(
+                                                                                                                                c.getContext()
+                                                                                                                                 .getName())
+                                                                                                                        .setMessaging(
+                                                                                                                                c.isMessaging())
+                                                                                                                        .setStorage(
+                                                                                                                                c.isStorage())
+                                                                                                                        .build()
+                                                                                                                )
+                                                                                                                .collect(
+                                                                                                                        Collectors
+                                                                                                                                .toList()));
 
-                            clusterController.nodes()
-                                             .filter(c -> !c.getName().equals(messagingServerName))
-                                             .forEach(c -> connectResponseBuilder.addNodes(c.toNodeInfo()));
-                            responseObserver.onNext(ConnectorResponse.newBuilder()
-                                                                     .setConnectResponse(connectResponseBuilder)
-                                                                     .build());
-                            connections.put(messagingServerName, this);
+                                clusterController.nodes()
+                                                 .filter(c -> !c.getName().equals(messagingServerName))
+                                                 .forEach(c -> connectResponseBuilder.addNodes(c.toNodeInfo()));
+                                responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                         .setConnectResponse(connectResponseBuilder)
+                                                                         .build());
+                                connections.put(messagingServerName, this);
+                            } else {
+                                responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                         .setConnectResponse(ConnectResponse.newBuilder()
+                                                                                                            .setDeleted(true))
+                                                                         .build());
+                            }
                         } catch( MessagingPlatformException mpe) {
                             responseObserver.onError(mpe);
                         }
@@ -361,16 +400,15 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         checkClient(connectorCommand.getSubscribeCommand().getContext(),
                                     command.getComponentName(),
                                     command.getClientId());
-                        eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(connectorCommand
-                                                                                                    .getSubscribeCommand()
-                                                                                                    .getContext(),
-                                                                                            command,
-                                                                                            new ProxyCommandHandler(
-                                                                                                    responseObserver,
-                                                                                                    command.getClientId(),
-                                                                                                    command.getComponentName(),
-                                                                                                    messagingServerName)
-                        ));
+
+                        CommandHandler commandHandler = commandHandlerPerContextClient
+                                .computeIfAbsent(new ClientIdentification(connectorCommand.getSubscribeCommand().getContext(),
+                                                                          command.getClientId()), clientIdentification -> new
+                                        ProxyCommandHandler(responseObserver, clientIdentification,
+                                                            command.getComponentName(),
+                                                            messagingServerName));
+                        eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(commandHandler.getClient().getContext(),
+                                                                                            command, commandHandler));
                         break;
                     case UNSUBSCRIBE_COMMAND:
                         logger.debug("UNSUBSCRIBE [{}] [{}] [{}]",
@@ -385,7 +423,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     case COMMAND_RESPONSE:
                         logger.debug("Received command response {} from: {}", connectorCommand.getCommandResponse(),
                                      messagingServerName);
-                        commandDispatcher.handleResponse(connectorCommand.getCommandResponse(),true);
+                        commandDispatcher.handleResponse(new SerializedCommandResponse(connectorCommand.getCommandResponse().getRequestIdentifier(), connectorCommand.getCommandResponse().getResponse().toByteArray()), true);
                         break;
                     case SUBSCRIBE_QUERY:
                         QuerySubscription query = connectorCommand.getSubscribeQuery().getQuery();
@@ -397,15 +435,18 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                     query.getComponentName(),
                                     query.getClientId());
 
+                        ClientIdentification clientIdentification = new ClientIdentification(
+                                connectorCommand.getSubscribeQuery().getContext(),
+                                query.getClientId());
+                        QueryHandler queryHandler = queryHandlerPerContextClient.computeIfAbsent(clientIdentification,
+                                                                                                 contextClient -> new ProxyQueryHandler(responseObserver,
+                                                                                             clientIdentification,
+                                                                                             query.getComponentName(),
+                                                                                             messagingServerName));
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeQuery(connectorCommand
                                                                                                   .getSubscribeQuery()
                                                                                                   .getContext(),
-                                                                                          query
-                                , new ProxyQueryHandler(responseObserver,
-                                                        query.getClientId(),
-                                                        query.getComponentName(),
-                                                        messagingServerName)
-                        ));
+                                                                                          query, queryHandler));
 
                         break;
                     case UNSUBSCRIBE_QUERY:
@@ -444,7 +485,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         handleFlowControl(connectorCommand);
                         break;
                     case DELETE_NODE:
-                        clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
+                        clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName(), connectorCommand.getDeleteNode().getGeneration());
                         break;
                     case REQUEST_APPLICATIONS:
                         Applications.Builder applicationsBuilder = Applications.newBuilder()
@@ -453,7 +494,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                                            Application.class));
                         applicationController.getApplications().forEach(app ->
                                                                                 applicationsBuilder.addApplication(
-                                                                                        ProtoConverter
+                                                                                        ApplicationProtoConverter
                                                                                                 .createApplication(
                                                                                                         app,
                                                                                                         Action.MERGE)));
@@ -464,9 +505,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         Users.Builder usersBuilder = Users.newBuilder().setVersion(applicationModelController
                                                                                            .getModelVersion(User.class));
                         userController.getUsers().forEach(user ->
-                                                                  usersBuilder.addUser(ProtoConverter.createUser(
-                                                                          user,
-                                                                          Action.MERGE))
+                                                                  usersBuilder.addUser(UserProtoConverter.mergeUser(user))
                         );
                         responseObserver.onNext(ConnectorResponse.newBuilder().setUsers(usersBuilder).build());
                         break;
@@ -496,8 +535,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         break;
                     case CLIENT_EVENT_PROCESSOR_STATUS:
                         eventPublisher.publishEvent(
-                                new EventProcessorStatusUpdate(connectorCommand.getClientEventProcessorStatus(),
-                                                               true));
+                                new EventProcessorStatusUpdate(ClientEventProcessorStatusProtoConverter.fromProto(connectorCommand.getClientEventProcessorStatus()),
+                                    true));
                         break;
                     case START_CLIENT_EVENT_PROCESSOR:
                         ClientEventProcessor startProcessor = connectorCommand.getStartClientEventProcessor();
@@ -587,7 +626,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void checkClient(String context, String component, String clientName) {
-            if( clients.add(clientName)) {
+            if( clients.add(new ClientIdentification(context, clientName))) {
                 eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
                                                                                     component,
                                                                                     clientName,
@@ -596,9 +635,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void updateClientStatus(ClientStatus clientStatus) {
+            ClientIdentification clientIdentification = new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName());
             if( clientStatus.getConnected()) {
 
-                if( clients.add(clientStatus.getClientName())) {
+                if( clients.add(clientIdentification) ){
                     // unknown client
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
@@ -606,9 +646,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                                                                                        messagingServerName));
                 }
             } else {
-                if( clients.remove(clientStatus.getClientName())) {
+                if( clients.remove(clientIdentification)) {
                     // known client
                     logger.info("Client disconnected: {}", clientStatus.getClientName());
+                    commandHandlerPerContextClient.remove(clientIdentification);
+                    queryHandlerPerContextClient.remove(clientIdentification);
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(clientStatus.getContext(),
                                                                                        clientStatus.getComponentName(),
                                                                                        clientStatus.getClientName(),
@@ -643,9 +685,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 dispatchListeners.remove(queryQueueListener);
                 queryQueueListener = null;
             }
-            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(null,
+            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(client.getContext(),
                                                                                                         null,
-                                                                                                        client,
+                                                                                                        client.getClient(),
                                                                                                         messagingServerName)));
             eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
         }

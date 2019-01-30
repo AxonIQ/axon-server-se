@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
@@ -44,7 +44,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     @Override
     protected Optional<EventSource> getEventSource(long segment) {
         logger.debug("Get eventsource: {}", segment);
-        InputStreamEventSource eventSource = get(segment);
+        InputStreamEventSource eventSource = get(segment, false);
         logger.trace("result={}", eventSource);
         if( eventSource == null)
             return Optional.empty();
@@ -62,20 +62,20 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(List<Event> eventList) {
+    public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
         throw new UnsupportedOperationException();
     }
 
 
-    private InputStreamEventSource get(long segment) {
-        if( ! segments.contains(segment)) return null;
+    private InputStreamEventSource get(long segment, boolean force) {
+        if( !force && ! segments.contains(segment)) return null;
 
         return new InputStreamEventSource(storageProperties.dataFile(context, segment), eventTransformerFactory, storageProperties);
     }
 
     @Override
     protected void recreateIndex(long segment) {
-        try (InputStreamEventSource is = get(segment);
+        try (InputStreamEventSource is = get(segment, true);
              EventIterator iterator = createEventIterator( is,segment, segment)) {
             Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {

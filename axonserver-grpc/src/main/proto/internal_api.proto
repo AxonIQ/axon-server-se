@@ -42,7 +42,7 @@ message ConnectorCommand {
         NodeInfo connect = 1;
         InternalCommandSubscription subscribe_command = 2;
         InternalCommandSubscription unsubscribe_command = 3;
-        io.axoniq.axonserver.grpc.command.CommandResponse command_response = 4;
+        ForwardedCommandResponse command_response = 4;
         InternalQuerySubscription subscribe_query = 5;
         InternalQuerySubscription unsubscribe_query = 6;
         io.axoniq.axonserver.grpc.query.QueryResponse query_response = 7;
@@ -68,6 +68,11 @@ message ConnectorCommand {
         CommandHandlerStatus command_handler_status = 36;
         QueryHandlerStatus query_handler_status = 37;
     }
+}
+
+message ForwardedCommandResponse {
+    string request_identifier = 1;
+    bytes response = 2;
 }
 
 message ClientStatus {
@@ -109,9 +114,9 @@ message InternalQuerySubscription {
 message ConnectorResponse {
     oneof response {
         Confirmation confirmation = 1;
-        io.axoniq.axonserver.grpc.command.Command command = 2;
+        ForwardedCommand command = 2;
         ConnectResponse connect_response = 3;
-        io.axoniq.axonserver.grpc.query.QueryRequest query = 4;
+        ForwardedQuery query = 4;
         Application application = 5;
         Applications applications = 6;
         User user = 7;
@@ -122,6 +127,19 @@ message ConnectorResponse {
         ProcessorLBStrategy processor_strategy= 12;
         ClientSubscriptionQueryRequest subscription_query_request = 26;
     }
+}
+
+message ForwardedQuery {
+    string client = 1;
+    string context = 2;
+    bytes query = 3;
+}
+
+message ForwardedCommand {
+    string client = 1;
+    string context = 2;
+    string message_id = 3;
+    bytes command = 4;
 }
 
 message ClientSubscriptionQueryRequest {
@@ -317,7 +335,9 @@ message SafepointMessage {
 message TransactionWithToken {
     int64 token = 1;
     int32 version = 2;
-    repeated io.axoniq.axonserver.grpc.event.Event events = 3;
+    repeated bytes events = 3;
+    int64 master_generation = 4;
+    int64 safe_point = 5;
 }
 
 message NodeContextInfo {
@@ -327,6 +347,8 @@ message NodeContextInfo {
     int64 active_since = 4;
     int32 nr_of_master_contexts = 5;
     int32 hash_key = 6;
+    int64 event_safe_point = 7;
+    int64 prev_master_generation = 8;
 }
 
 message Application {

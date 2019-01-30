@@ -1,0 +1,409 @@
+syntax = "proto3";
+package io.axoniq.axonserver.grpc.internal;
+import "common.proto";
+import "command.proto";
+import "query.proto";
+import "event.proto";
+import "control.proto";
+option java_multiple_files = true;
+
+service DataSynchronizer {
+    rpc OpenConnection ( stream SynchronizationReplicaOutbound ) returns (stream SynchronizationReplicaInbound) {
+
+    }
+}
+
+service MessagingClusterService {
+    // Creates a stream between 2 nodes in the cluser
+    // calling side is service provider to called side
+    rpc OpenStream( stream ConnectorCommand ) returns (stream ConnectorResponse) {}
+
+    // Other node requests to become leader for EventStore for a specific context. Respond with positive confirmation
+    // when other node is more up-to-date as this node is.
+    rpc RequestLeader(NodeContextInfo) returns (io.axoniq.axonserver.grpc.Confirmation) {
+    }
+
+    // Node sends a request to join an existing cluster
+    // Input is the information on the joining node
+    // Response is a list of nodes already in the cluster
+    rpc Join( NodeInfo ) returns (ConnectResponse) {}
+
+
+    rpc RequestToBeCoordinator(NodeContext) returns (io.axoniq.axonserver.grpc.Confirmation) {}
+}
+
+message NodeContext {
+    string node_name = 1;
+    string context = 2;
+}
+
+message ConnectorCommand {
+    oneof request {
+        ConnectRequest connect = 1;
+        InternalCommandSubscription subscribe_command = 2;
+        InternalCommandSubscription unsubscribe_command = 3;
+        ForwardedCommandResponse command_response = 4;
+        InternalQuerySubscription subscribe_query = 5;
+        InternalQuerySubscription unsubscribe_query = 6;
+        io.axoniq.axonserver.grpc.query.QueryResponse query_response = 7;
+        InternalFlowControl flow_control = 8;
+        DeleteNode delete_node = 9;
+        GetApplicationsRequest request_applications = 10;
+        NodeMetrics metrics = 11;
+        QueryComplete query_complete = 12;
+        GetUsersRequest request_users = 13;
+        ClientStatus client_status = 14;
+        ClientEventProcessorStatus client_event_processor_status=15;
+        ClientEventProcessor start_client_event_processor = 16;
+        ClientEventProcessor pause_client_event_processor = 17;
+        DBInstanceStatus db_status = 18;
+        ContextUpdate context = 25;
+        io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse subscription_query_response = 26;
+        NodeContextInfo master_confirmation = 30;
+        NodeContext coordinator_confirmation = 31;
+        ClientEventProcessorSegment release_segment = 32;
+        GetLBStrategiesRequest request_load_balancing_strategies = 33;
+        GetProcessorsLBStrategyRequest request_processor_load_balancing_strategies = 34;
+        ClientEventProcessor request_processor_status = 35;
+        CommandHandlerStatus command_handler_status = 36;
+        QueryHandlerStatus query_handler_status = 37;
+    }
+}
+
+message ForwardedCommandResponse {
+    string request_identifier = 1;
+    bytes response = 2;
+}
+
+message DeleteNode {
+    string node_name = 1;
+    int64 generation = 2;
+}
+
+message ClientStatus {
+    string client_name = 1;
+    string component_name = 2;
+    string context = 3;
+    bool connected = 4;
+}
+
+message CommandHandlerStatus {
+    string context = 1;
+    string client_name = 2;
+    bool connected = 3;
+}
+
+message QueryHandlerStatus {
+    string context = 1;
+    string client_name = 2;
+    bool connected = 3;
+}
+
+message DBInstanceStatus {
+    string hub_node = 1;
+    string context = 2;
+    io.axoniq.axonserver.grpc.control.NodeInfo db_instance = 3;
+    bool connected = 4;
+}
+
+message InternalCommandSubscription {
+    io.axoniq.axonserver.grpc.command.CommandSubscription command = 1;
+    string context = 2;
+}
+
+message InternalQuerySubscription {
+    io.axoniq.axonserver.grpc.query.QuerySubscription query = 1;
+    string context = 2;
+}
+
+message ConnectRequest {
+    NodeInfo nodeInfo = 1;
+    int64 generation = 2;
+}
+
+message ConnectorResponse {
+    oneof response {
+        Confirmation confirmation = 1;
+        ForwardedCommand command = 2;
+        ConnectResponse connect_response = 3;
+        ForwardedQuery query = 4;
+        Application application = 5;
+        Applications applications = 6;
+        User user = 7;
+        Users users = 8;
+        LoadBalancingStrategies load_balancing_strategies = 9;
+        ProcessorsLBStrategy processors_strategies = 10;
+        LoadBalanceStrategy load_balancing_strategy = 11;
+        ProcessorLBStrategy processor_strategy= 12;
+        ClientSubscriptionQueryRequest subscription_query_request = 26;
+    }
+}
+
+message ForwardedQuery {
+    string client = 1;
+    string context = 2;
+    bytes query = 3;
+}
+
+message ForwardedCommand {
+    string client = 1;
+    string context = 2;
+    string message_id = 3;
+    bytes command = 4;
+}
+
+message ClientSubscriptionQueryRequest {
+    string client = 1;
+    string context = 2;
+    io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest subscription_query_request = 3;
+}
+
+message ConnectResponse {
+    repeated ContextRole contexts = 2;
+    repeated NodeInfo nodes = 3;
+    repeated ModelVersion model_versions = 4;
+    int64 generation = 5;
+    bool deleted = 6;
+}
+
+message ModelVersion {
+    string name = 1;
+    int64 value = 2;
+}
+
+message ContextRole {
+    string name = 1;
+    bool messaging = 2;
+    bool storage = 3;
+}
+
+message NodeRole {
+    string name = 1;
+    bool messaging = 2;
+    bool storage = 3;
+}
+
+message ContextUpdate {
+    string name = 1;
+    repeated NodeRole nodes = 3;
+    ContextAction action = 4;
+    int64 generation = 5;
+}
+
+enum ContextAction {
+    MERGE_CONTEXT = 0;
+    DELETE_CONTEXT = 1;
+    NODES_UPDATED = 2;
+}
+
+message QueryComplete {
+    string message_id = 1;
+    string client = 2;
+}
+
+message NodeInfo {
+    string node_name = 1;
+    string host_name = 2;
+    string internal_host_name = 3;
+    int32 grpc_port = 4;
+    int32 grpc_internal_port = 5;
+    int32 http_port = 6;
+    int64 active_since = 7;
+    int32 version = 8;
+    repeated ContextRole contexts = 9;
+}
+
+message InternalFlowControl {
+    string node_name = 1;
+    Group group = 2;
+    int64 permits = 3;
+}
+
+enum Group {
+    COMMAND = 0;
+    QUERY = 1;
+}
+
+message GetUsersRequest {
+}
+
+message Users {
+    int64 version = 1;
+    repeated User user = 2;
+}
+
+message Applications {
+    int64 version = 1;
+    repeated Application application = 2;
+}
+
+
+
+message GetApplicationsRequest {
+
+}
+
+message GetLBStrategiesRequest {
+}
+
+message GetProcessorsLBStrategyRequest {
+}
+
+message LoadBalancingStrategies {
+    int64 version = 1;
+    repeated LoadBalanceStrategy strategy = 2;
+}
+
+message ProcessorsLBStrategy{
+    int64 version = 1;
+    repeated ProcessorLBStrategy processor = 2;
+}
+
+message Metrics {
+    int32 request_count = 1;
+    int64 interval = 2;
+}
+
+message ClientEventProcessorStatus {
+    string client = 1;
+    io.axoniq.axonserver.grpc.control.EventProcessorInfo event_processor_info = 2;
+    string context = 3;
+}
+
+message ClientEventProcessor {
+    string client = 1;
+    string processor_name = 2;
+    string context = 3;
+}
+
+message ClientEventProcessorSegment {
+    string client = 1;
+    string processor_name = 2;
+    string context = 3;
+    int32 segment_identifier = 4;
+}
+
+message NodeMetrics {
+    string node = 1;
+    repeated Metric metrics = 2;
+}
+
+message Metric {
+    string name = 1;
+    int64 size = 2;
+    double median = 3;
+    double percentile75 = 4;
+    double percentile95 = 5;
+    double percentile98 = 6;
+    double percentile99 = 7;
+    double percentile999 = 8;
+    int64 max = 9;
+    int64 min = 10;
+    double mean = 11;
+
+    repeated int64 values = 12;
+}
+
+message SynchronizationReplicaOutbound {
+    oneof request {
+        StartSynchronization start = 1;
+        Permits permits = 2;
+        TransactionConfirmation confirmation = 3;
+        Confirmation safepoint_confirmation = 4;
+    }
+
+}
+
+message SynchronizationReplicaInbound {
+    oneof request {
+        TransactionWithToken event = 1;
+        TransactionWithToken snapshot = 2;
+        SafepointMessage safepoint = 3;
+    }
+
+}
+message StartSynchronization {
+    int64 event_token = 1;
+    int64 snaphshot_token = 2;
+    string context = 3;
+    int64 permits = 4;
+    string node_name = 5;
+}
+
+message Permits {
+    int64 permits = 1;
+}
+
+message TransactionConfirmation {
+    int64 token = 1;
+    string type = 2;
+}
+
+message SafepointMessage {
+    int64 token = 1;
+    string context = 2;
+    string type = 3;
+}
+
+message TransactionWithToken {
+    int64 token = 1;
+    int32 version = 2;
+    repeated bytes events = 3;
+    int64 master_generation = 4;
+    int64 safe_point = 5;
+}
+
+message NodeContextInfo {
+    string node_name = 1;
+    string context = 2;
+    int64 master_sequence_number = 3;
+    int64 active_since = 4;
+    int32 nr_of_master_contexts = 5;
+    int32 hash_key = 6;
+    int64 event_safe_point = 7;
+    int64 prev_master_generation = 8;
+}
+
+message Application {
+    string name = 1;
+    string description = 2;
+    string hashed_token = 3;
+    repeated ApplicationRole roles = 4;
+    Action action = 5;
+    bool fine_grained_access_control = 6;
+    string token_prefix = 7;
+}
+
+message User {
+    string name = 1;
+    string password = 2;
+    repeated string roles = 3;
+    Action action = 4;
+}
+
+message ApplicationRole {
+    string name = 1;
+    int64 end_date = 2;
+    string context = 3;
+}
+
+message LoadBalanceStrategy {
+    string name = 1;
+    string factoryBean = 2;
+    string label = 3;
+    Action action = 4;
+}
+
+message ProcessorLBStrategy {
+    string component = 1;
+    string processor = 2;
+    string context = 3;
+    string strategy = 4;
+    Action action = 5;
+}
+
+enum Action {
+    MERGE = 0;
+    DELETE = 1;
+    RENEW = 2;
+}

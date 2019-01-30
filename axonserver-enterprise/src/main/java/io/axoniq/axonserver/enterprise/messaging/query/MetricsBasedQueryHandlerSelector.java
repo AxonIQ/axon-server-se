@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.messaging.query;
 
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
@@ -18,7 +19,7 @@ public class MetricsBasedQueryHandlerSelector implements QueryHandlerSelector {
     }
 
     @Override
-    public String select(QueryDefinition queryDefinition, String componentName, NavigableSet<String> queryHandlers) {
+    public ClientIdentification select(QueryDefinition queryDefinition, String componentName, NavigableSet<ClientIdentification> queryHandlers) {
         return queryHandlers.stream().map(h -> new QueryHandlerWithHistogram(h, metricsRegistry.clusterMetric(queryDefinition, h)))
                 .min(this::compareMean)
                 .map(q -> q.handler)
@@ -27,7 +28,7 @@ public class MetricsBasedQueryHandlerSelector implements QueryHandlerSelector {
 
 //    private int comparePercentile95(QueryHandlerWithHistogram queryHandlerWithSnapshot, QueryHandlerWithHistogram queryHandlerWithSnapshot1) {
 //        if( queryHandlerWithSnapshot.snapshot == null) {
-//            if( queryHandlerWithSnapshot1.snapshot == null) return queryHandlerWithSnapshot.handler.getClientName().compareTo(queryHandlerWithSnapshot1.handler.getClientName());
+//            if( queryHandlerWithSnapshot1.snapshot == null) return queryHandlerWithSnapshot.handler.getClient().compareTo(queryHandlerWithSnapshot1.handler.getClient());
 //            return 1;
 //        }
 //
@@ -36,7 +37,7 @@ public class MetricsBasedQueryHandlerSelector implements QueryHandlerSelector {
 //        if( p == 0) {
 //            p = Long.compare(queryHandlerWithSnapshot.histogram.getCount(), queryHandlerWithSnapshot1.histogram.getCount());
 //        }
-//        if( p == 0) p = queryHandlerWithSnapshot.handler.getClientName().compareTo(queryHandlerWithSnapshot1.handler.getClientName());
+//        if( p == 0) p = queryHandlerWithSnapshot.handler.getClient().compareTo(queryHandlerWithSnapshot1.handler.getClient());
 //        return p;
 //    }
     private int compareMean(QueryHandlerWithHistogram queryHandlerWithSnapshot, QueryHandlerWithHistogram queryHandlerWithSnapshot1) {
@@ -60,21 +61,21 @@ public class MetricsBasedQueryHandlerSelector implements QueryHandlerSelector {
 
 //    private int compareCount(QueryHandlerWithHistogram queryHandlerWithSnapshot, QueryHandlerWithHistogram queryHandlerWithSnapshot1) {
 //        if( queryHandlerWithSnapshot.histogram == null) {
-//            if( queryHandlerWithSnapshot1.histogram == null) return queryHandlerWithSnapshot.handler.getClientName().compareTo(queryHandlerWithSnapshot1.handler.getClientName());
+//            if( queryHandlerWithSnapshot1.histogram == null) return queryHandlerWithSnapshot.handler.getClient().compareTo(queryHandlerWithSnapshot1.handler.getClient());
 //            return 1;
 //        }
 //        if( queryHandlerWithSnapshot1.histogram == null) return -1;
 //
 //        int  p = Long.compare(queryHandlerWithSnapshot.histogram.getCount(), queryHandlerWithSnapshot1.histogram.getCount());
-//        if( p == 0) p = queryHandlerWithSnapshot.handler.getClientName().compareTo(queryHandlerWithSnapshot1.handler.getClientName());
+//        if( p == 0) p = queryHandlerWithSnapshot.handler.getClient().compareTo(queryHandlerWithSnapshot1.handler.getClient());
 //        return p;
 //    }
 
     private class QueryHandlerWithHistogram  {
-        private final String handler;
+        private final ClientIdentification handler;
         private final ClusterMetric clusterMetric;
 
-        private QueryHandlerWithHistogram(String handler, ClusterMetric clusterMetric) {
+        private QueryHandlerWithHistogram(ClientIdentification handler, ClusterMetric clusterMetric) {
             this.handler = handler;
             this.clusterMetric = clusterMetric;
         }

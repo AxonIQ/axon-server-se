@@ -62,7 +62,7 @@ public class MetricsRestController {
     private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition, Map<String, Set<QueryHandler>> handlersPerComponent) {
         return handlersPerComponent.entrySet().stream()
                 .map(queryHandlers -> queryHandlers.getValue().stream().map(queryHandler ->
-                        queryMetricsRegistry.queryMetric(queryDefinition, queryHandler.getClientName(), queryHandlers.getKey())
+                        queryMetricsRegistry.queryMetric(queryDefinition, queryHandler.getClient(), queryHandlers.getKey())
                 ).collect(Collectors.toList()))
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());

@@ -1,9 +1,10 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.DispatchEvents;
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.query.DefaultQueries;
 import io.axoniq.axonserver.component.query.Query;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
@@ -11,7 +12,6 @@ import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.rest.json.QueryRequestJson;
 import io.axoniq.axonserver.rest.json.QueryResponseJson;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.KeepNames;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
@@ -73,18 +73,14 @@ public class QueryRestController {
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestBody @Valid QueryRequestJson query) {
         SseEmitter sseEmitter = new SseEmitter();
-        DispatchEvents.DispatchQuery dispachQuery = new DispatchEvents.DispatchQuery(context,
-                                                                                     query.asQueryRequest(),
-                                                                                     r -> {
-                                                                                         try {
-                                                                                             sseEmitter.send(SseEmitter.event().data(new QueryResponseJson(r)));
-                                                                                         } catch (IOException e) {
-                                                                                             logger.debug("Error while emitting query response", e);
-                                                                                         }
-                                                                                     },
-                                                                                     completed->sseEmitter.complete(),
-                                                                                     false);
-        queryDispatcher.on(dispachQuery);
+        queryDispatcher.query(new SerializedQuery(context, query.asQueryRequest()), r -> {
+                                  try {
+                                      sseEmitter.send(SseEmitter.event().data(new QueryResponseJson(r)));
+                                  } catch (IOException e) {
+                                      logger.debug("Error while emitting query response", e);
+                                  }
+                              },
+                              completed->sseEmitter.complete());
         return sseEmitter;
     }
 

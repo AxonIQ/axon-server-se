@@ -67,13 +67,18 @@ public class TestMessagingClusterService implements MessagingClusterServiceInter
     }
 
     @Override
-    public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
+    public void join(NodeInfo request, StreamObserver<ConnectResponse> responseObserver) {
 
     }
 
     @Override
     public void requestLeader(NodeContextInfo nodeContextInfo,
                               StreamObserver<Confirmation> confirmationStreamObserver) {
+
+    }
+
+    @Override
+    public void closeChannel() {
 
     }
 }

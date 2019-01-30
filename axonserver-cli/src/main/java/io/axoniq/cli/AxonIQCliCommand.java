@@ -1,6 +1,5 @@
 package io.axoniq.cli;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
@@ -150,10 +149,12 @@ public class AxonIQCliCommand {
             if (token != null) {
                 httpPost.addHeader("AxonIQ-Access-Token", token);
             }
-            ObjectMapper objectMapper = new ObjectMapper();
-            httpPost.addHeader("Content-Type", "application/json");
-            HttpEntity entity = new ByteArrayEntity(objectMapper.writeValueAsBytes(value));
-            httpPost.setEntity(entity);
+            if( value != null) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                httpPost.addHeader("Content-Type", "application/json");
+                HttpEntity entity = new ByteArrayEntity(objectMapper.writeValueAsBytes(value));
+                httpPost.setEntity(entity);
+            }
 
             CloseableHttpResponse response = httpclient.execute(httpPost);
             if (response.getStatusLine().getStatusCode() != expectedStatusCode) {

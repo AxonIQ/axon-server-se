@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
@@ -12,7 +13,6 @@ import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdate;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,14 +32,17 @@ public class ContextController {
     private final EntityManager entityManager;
     private final ClusterController clusterController;
     private final ApplicationEventPublisher eventPublisher;
+    private final ModelVersionController modelVersionController;
 
     public ContextController(
             EntityManager entityManager,
             ClusterController clusterController,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            ModelVersionController modelVersionController) {
         this.entityManager = entityManager;
         this.clusterController = clusterController;
         this.eventPublisher = eventPublisher;
+        this.modelVersionController = modelVersionController;
     }
 
     public Stream<Context> getContexts() {
@@ -137,10 +140,11 @@ public class ContextController {
             case UNRECOGNIZED:
                 break;
         }
+        modelVersionController.updateModelVersion(ClusterNode.class, context.getGeneration());
         return Collections.emptySet();
     }
 
-    @EventListener
+    //@EventListener
     @Transactional
     public void on(ClusterEvents.AxonServerInstanceConnected axonHubInstanceConnected) {
         String node = axonHubInstanceConnected.getRemoteConnection().getClusterNode().getName();

@@ -2,7 +2,7 @@ package net.axoniq.axonserver.connectors.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
-import io.axoniq.axonserver.connector.Event;
+import io.axoniq.axonserver.connector.ConnectorEvent;
 import io.axoniq.axonserver.connector.EventConnector;
 import io.axoniq.axonserver.connector.UnitOfWork;
 import org.slf4j.Logger;
@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
@@ -58,12 +59,15 @@ public class RabbitMQEventConnector implements EventConnector {
             channel.txSelect();
             return new UnitOfWork() {
                 @Override
-                public void publish(Event event) {
-                    try {
-                        sendMessage(channel, createMessage(event));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                public void publish(List<? extends ConnectorEvent> events) {
+                    events.forEach(event -> {
+                        try {
+
+                            sendMessage(channel, createMessage(event));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
                 }
 
                 @Override
@@ -99,7 +103,7 @@ public class RabbitMQEventConnector implements EventConnector {
 
     }
 
-    private AMQPMessage createMessage(Event event) {
+    private AMQPMessage createMessage(ConnectorEvent event) {
         AMQP.BasicProperties.Builder properties = new AMQP.BasicProperties.Builder();
         Map<String, Object> headers = new HashMap<>();
         event.getMetaData().forEach((k, v) -> headers.put("axon-metadata-" + k, v));
@@ -125,7 +129,7 @@ public class RabbitMQEventConnector implements EventConnector {
     }
 
     @Override
-    public void publish(Event event) {
+    public void publish(ConnectorEvent event) {
         Channel channel = config.connectionFactory().createConnection().createChannel(false);
         try {
             sendMessage(channel, createMessage(event));

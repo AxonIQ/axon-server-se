@@ -10,6 +10,7 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -57,7 +58,8 @@ public class DataSynchronizationMasterTest {
 
             }
         };
-        testSubject = new DataSynchronizationMaster(contextController, eventPublisher);
+        SyncStatusController syncStatusController = mock(SyncStatusController.class);
+        testSubject = new DataSynchronizationMaster(contextController, syncStatusController, eventPublisher);
         when(applicationContext.getBean(eq(LocalEventStore.class))).thenReturn(localEventStore);
         when( localEventStore.streamEventTransactions(any(), anyLong(), any())).thenReturn(new CompletableFuture<>());
         when( localEventStore.streamSnapshotTransactions(any(), anyLong(), any())).thenReturn(new CompletableFuture<>());
@@ -79,7 +81,7 @@ public class DataSynchronizationMasterTest {
         setupConnection(new CountingStreamObserver<>(), "test2");
 
         testSubject.publish(new EventTypeContext("default", EventType.EVENT),
-                            Collections.singletonList(Event.getDefaultInstance()), 100);
+                            Collections.singletonList(new SerializedEvent(Event.getDefaultInstance())), 100);
 
     }
 
@@ -127,7 +129,7 @@ public class DataSynchronizationMasterTest {
             TransactionWithToken transactionWithToken;
             do{
                 transactionWithToken = TransactionWithToken.newBuilder().setToken(token++)
-                                                           .addEvents(Event.newBuilder().build()).build();
+                                                           .addEvents(Event.newBuilder().build().toByteString()).build();
 
             } while( consumer.test(transactionWithToken));
             return new CompletableFuture<>();

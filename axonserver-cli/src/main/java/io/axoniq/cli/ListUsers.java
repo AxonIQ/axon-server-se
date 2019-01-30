@@ -18,10 +18,10 @@ public class ListUsers extends AxonIQCliCommand {
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             User[] users = getJSON(httpclient, url, User[].class, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
-            System.out.printf("%-60s\n", "Name");
+            System.out.printf("%-40s %-20s%n", "Name", "Roles");
 
             for( User user : users) {
-                System.out.printf("%-60s\n", user.getUserName());
+                System.out.printf("%-40s %-20s%n", user.getUserName(), String.join(",",user.getRoles()));
             }
         }
 

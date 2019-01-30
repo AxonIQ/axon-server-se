@@ -3,17 +3,16 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.SafepointRepository;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.grpc.DataSychronizationServiceInterface;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.SafepointMessage;
 import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaInbound;
 import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaOutbound;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -24,7 +23,6 @@ import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,7 +44,7 @@ public class DataSynchronizationReplicaTest {
     @Mock
     private LocalEventStore localEventStore;
     @Mock
-    private SafepointRepository safepointRespository;
+    private SyncStatusController safepointRespository;
     private FakeClock clock = new FakeClock();
 
 
@@ -61,15 +59,13 @@ public class DataSynchronizationReplicaTest {
         ClusterNode myNode = new ClusterNode("me", "host", "host", 0, 0, 0);
         myNode.addContext(new Context(Topology.DEFAULT_CONTEXT), true, true);
         when(clusterController.getMe()).thenReturn(myNode);
-        when(safepointRespository.findById(any())).thenReturn(Optional.empty());
         doAnswer(invocationOnMock -> {
-            TransactionWithToken t = (TransactionWithToken)invocationOnMock.getArguments()[1];
+            SerializedTransactionWithToken t = (SerializedTransactionWithToken)invocationOnMock.getArguments()[1];
 
             return t.getToken() + t.getEventsCount();
         }).when(localEventStore).syncEvents(any(), any());
         doAnswer(invocationOnMock -> {
-            TransactionWithToken t = (TransactionWithToken)invocationOnMock.getArguments()[1];
-
+            SerializedTransactionWithToken t = (SerializedTransactionWithToken)invocationOnMock.getArguments()[1];
             return t.getToken() + t.getEventsCount();
         }).when(localEventStore).syncSnapshots(any(), any());
         ApplicationEventPublisher applicationEventPublisher = new ApplicationEventPublisher() {
@@ -87,25 +83,14 @@ public class DataSynchronizationReplicaTest {
         };
 
         MessagingPlatformConfiguration messagingPlatformConfiguration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
-        messagingPlatformConfiguration.getCommandFlowControl().setThreshold(10);
-        messagingPlatformConfiguration.getCommandFlowControl().setInitialPermits(20);
-        messagingPlatformConfiguration.getCommandFlowControl().setNewPermits(20);
+        messagingPlatformConfiguration.getEventFlowControl().setThreshold(10);
+        messagingPlatformConfiguration.getEventFlowControl().setInitialPermits(20);
+        messagingPlatformConfiguration.getEventFlowControl().setNewPermits(20);
+        when(clusterController.getEventFlowControl()).thenReturn(messagingPlatformConfiguration.getEventFlowControl());
         StubFactory stubFactory = new StubFactory() {
             @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
-                return null;
-            }
-
-            @Override
-            public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
-                return null;
-            }
-
-            @Override
             public DataSychronizationServiceInterface dataSynchronizationServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
+                    ClusterNode clusterNode) {
                 return responseObserver -> {
                     inboundStream.set(responseObserver);
                     return new StreamObserver<SynchronizationReplicaOutbound>() {
@@ -127,7 +112,7 @@ public class DataSynchronizationReplicaTest {
                 };
             }
         };
-        testSubject = new DataSynchronizationReplica(clusterController, messagingPlatformConfiguration, stubFactory, localEventStore,
+        testSubject = new DataSynchronizationReplica(clusterController, stubFactory, localEventStore,
                                                      applicationEventPublisher, safepointRespository, clock);
     }
 
@@ -150,7 +135,7 @@ public class DataSynchronizationReplicaTest {
     @Test
     public void masterDisconnected() {
         testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
-        testSubject.on(new ClusterEvents.MasterDisconnected(Topology.DEFAULT_CONTEXT, false));
+        testSubject.on(new ClusterEvents.MasterDisconnected(Topology.DEFAULT_CONTEXT, "demo", false));
         assertTrue(completed.get());
         assertFalse(testSubject.getConnectionPerContext().containsKey(Topology.DEFAULT_CONTEXT));
     }
@@ -196,6 +181,8 @@ public class DataSynchronizationReplicaTest {
 
     @Test
     public void noMessagesWhileProcessingBacklog() {
+        when(safepointRespository.getSafePoint(any(), any())).thenReturn(1000L);
+
         testSubject.on(new ClusterEvents.MasterConfirmation(Topology.DEFAULT_CONTEXT, "demo", false));
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSafepoint(SafepointMessage.newBuilder()
@@ -215,14 +202,14 @@ public class DataSynchronizationReplicaTest {
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setEvent(TransactionWithToken.newBuilder()
                                                                                               .setToken(1)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(2, sentMessages.size());
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setEvent(TransactionWithToken.newBuilder()
                                                                                               .setToken(2)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(3, sentMessages.size());
@@ -239,7 +226,7 @@ public class DataSynchronizationReplicaTest {
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
                                                                                               .setToken(2)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(1, sentMessages.size());
@@ -251,7 +238,7 @@ public class DataSynchronizationReplicaTest {
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
                                                                                               .setToken(1)
-                                                                                              .addEvents(Event.newBuilder().build())
+                                                                                              .addEvents(Event.newBuilder().build().toByteString())
                                                                                               .build())
                                                                 .build());
         assertEquals(3, sentMessages.size());
@@ -270,11 +257,12 @@ public class DataSynchronizationReplicaTest {
         IntStream.range(0,10).forEach(i ->
         inboundStream.get().onNext(SynchronizationReplicaInbound.newBuilder()
                                                                 .setSnapshot(TransactionWithToken.newBuilder()
-                                                                                                 .setToken(-1)
-                                                                                                 .addEvents(Event.newBuilder().build())
+                                                                                                 .setToken(i+1)
+                                                                                                 .addEvents(Event.newBuilder().build().toByteString())
                                                                                                  .build())
                                                                 .build()));
-        assertEquals(2, sentMessages.size());
+        assertEquals(1, sentMessages.stream().filter(SynchronizationReplicaOutbound::hasPermits).count());
+        assertEquals(1, sentMessages.stream().filter(SynchronizationReplicaOutbound::hasStart).count());
 
     }
 }

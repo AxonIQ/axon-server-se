@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
@@ -7,7 +8,6 @@ import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.internal.DataSynchronizerGrpc;
 import io.axoniq.axonserver.grpc.internal.SafepointMessage;
 import io.axoniq.axonserver.grpc.internal.StartSynchronization;
@@ -18,7 +18,8 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.grpc.StatusRuntimeException;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -48,10 +50,13 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     private final ContextController contextController;
     private final ApplicationEventPublisher eventPublisher;
     private ApplicationContext applicationContext;
+    private final SyncStatusController syncStatusController;
 
     public DataSynchronizationMaster(ContextController contextController,
+                                     SyncStatusController syncStatusController,
                                      ApplicationEventPublisher eventPublisher) {
         this.contextController = contextController;
+        this.syncStatusController = syncStatusController;
         this.eventPublisher = eventPublisher;
     }
 
@@ -67,11 +72,8 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     }
 
     @Override
-    public void publish(EventTypeContext type, List<Event> eventList, long token) {
-        TransactionWithToken transactionWithToken = TransactionWithToken.newBuilder()
-                                                                        .setToken(token)
-                                                                        .addAllEvents(eventList)
-                                                                        .build();
+    public void publish(EventTypeContext type, List<SerializedEvent> eventList, long token) {
+        TransactionWithToken transactionWithToken = getTransactionWithToken(type, new SerializedTransactionWithToken(token, 0, eventList));
         Map<String, Replica> connections = connectionsPerContext.get(type.getContext());
         if( connections == null) {
             logger.trace("No connections found for context {}, cannot synchronize message", type.getContext());
@@ -85,6 +87,19 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             message = SynchronizationReplicaInbound.newBuilder().setEvent(transactionWithToken).build();
             connections.forEach((name,r) -> r.publishEvent(message));
         }
+    }
+
+    private TransactionWithToken getTransactionWithToken(EventTypeContext type, SerializedTransactionWithToken serializedTransactionWithToken) {
+        return TransactionWithToken.newBuilder()
+                                   .setToken(serializedTransactionWithToken.getToken())
+                                   .setVersion(serializedTransactionWithToken.getVersion())
+                                   .addAllEvents(serializedTransactionWithToken.getEvents().stream().map(e -> ByteString
+                                           .copyFrom(e.serializedData())).collect(
+                                           Collectors.toList()))
+                                   .setMasterGeneration(syncStatusController
+                                                                .generation(type.getEventType(), type.getContext()))
+                                   .setSafePoint(syncStatusController.safePoint(type.getEventType(), type.getContext()))
+                                   .build();
     }
 
     @Override
@@ -166,11 +181,12 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             this.replicaInboundStreamObserver = replicaInboundStreamObserver;
         }
 
-        private boolean publish(SynchronizationReplicaInbound message) {
+        private boolean publish(SynchronizationReplicaInbound message, Runnable onSent) {
             if( permits.decrementAndGet() > 0) {
                 try {
                     replicaInboundStreamObserver.onNext(message);
-                } catch( RuntimeException runtimeException) {
+                    onSent.run();
+                } catch( Throwable runtimeException) {
                     logger.warn("{}: Send message to {} failed", context, nodeName, runtimeException);
                     cancel(this);
                     return false;
@@ -203,17 +219,20 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             return null;
         }
 
-        private boolean publishEventFromStream(TransactionWithToken transactionWithToken) {
+        private boolean publishEventFromStream(SerializedTransactionWithToken transactionWithToken) {
             if( transactionWithToken.getToken() < lastEventTransaction.get()) {
                 return true;
             }
-            SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setEvent(transactionWithToken).build();
-            return publish(message);
+            TransactionWithToken extTransactionWithToken = getTransactionWithToken(new EventTypeContext(context, EventType.EVENT), transactionWithToken);
+            SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setEvent(extTransactionWithToken).build();
+            return publish(message, () -> lastEventTransaction.addAndGet(extTransactionWithToken.getEventsCount()));
         }
-        private boolean publishSnapshotFromStream(TransactionWithToken transactionWithToken) {
+
+        private boolean publishSnapshotFromStream(SerializedTransactionWithToken transactionWithToken) {
             if( transactionWithToken.getToken() < lastSnapshotTransaction.get()) return true;
-            SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setSnapshot(transactionWithToken).build();
-            return publish(message);
+            TransactionWithToken extTransactionWithToken = getTransactionWithToken(new EventTypeContext(context, EventType.SNAPSHOT), transactionWithToken);
+            SynchronizationReplicaInbound message = SynchronizationReplicaInbound.newBuilder().setSnapshot(extTransactionWithToken).build();
+            return publish(message, lastSnapshotTransaction::incrementAndGet);
         }
 
         public void publishEvent(SynchronizationReplicaInbound message) {
@@ -222,7 +241,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
                                                            lastEventTransaction.get());
                 return;
             }
-            publish(message);
+            publish(message, () -> lastEventTransaction.addAndGet(message.getEvent().getEventsCount()));
         }
         public void publishSnapshot(SynchronizationReplicaInbound message) {
             if( streamingSnapshots.get() && message.getSnapshot().getToken() > lastSnapshotTransaction.get() + 1000) {
@@ -230,7 +249,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
                                                            lastSnapshotTransaction.get());
                 return;
             }
-            publish(message);
+            publish(message, lastSnapshotTransaction::incrementAndGet);
         }
 
         public String getNodeName() {
@@ -246,19 +265,19 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
         }
 
         public void addPermits(long newPermits) {
-            logger.info("Received new permits {}, {} left", newPermits, permits);
+            logger.debug("Received new permits {}, {} left", newPermits, permits);
             long before = permits.getAndAccumulate(newPermits, (old, inc) -> Math.max(old, 0) + inc);
             if( before <= 0) {
                 logger.debug("restart streaming with {} permits", newPermits);
-                startStreaming(lastEventTransaction.get(), lastSnapshotTransaction.get());
+                startStreaming(lastEventTransaction.get()+1, lastSnapshotTransaction.get()+1);
             }
         }
 
         public void sendMessage(SynchronizationReplicaInbound synchronizationReplicaInbound) {
             try {
                 replicaInboundStreamObserver.onNext(synchronizationReplicaInbound);
-            } catch (StatusRuntimeException sre) {
-                logger.warn("{}: Send message to {} failed", context, nodeName, sre);
+            } catch (Exception ex) {
+                logger.warn("{}: Send message to {} failed", context, nodeName, ex);
                 cancel(this);
             }
         }
@@ -267,6 +286,9 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             replicaInboundStreamObserver.onCompleted();
         }
 
+        public long remainingPermits() {
+            return this.permits.get();
+        }
     }
 
 
@@ -303,11 +325,11 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
                         if (i == EventType.SNAPSHOT) {
                             EventTypeContext snapshotTypeContext = new EventTypeContext(context, EventType.SNAPSHOT);
                             confirmationListeners.get(snapshotTypeContext).accept(confirmation.getToken());
-                            replica.lastSnapshotTransaction.set(confirmation.getToken());
+                            // replica.lastSnapshotTransaction.set(confirmation.getToken());
                         } else if (i == EventType.EVENT) {
                             EventTypeContext eventTypeContext = new EventTypeContext(context, EventType.EVENT);
                             confirmationListeners.get(eventTypeContext).accept(confirmation.getToken());
-                            replica.lastEventTransaction.set(confirmation.getToken());
+                            // replica.lastEventTransaction.set(confirmation.getToken());
                         }
                         break;
                     case SAFEPOINT_CONFIRMATION:
@@ -326,7 +348,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
             @Override
             public void onError(Throwable throwable) {
                 if( replica != null) {
-                    logger.warn("{}: Error on connection from {}", context, replica.nodeName, throwable);
+                    logger.warn("{}: Error on connection from {}", context, replica.nodeName);
                     cancel(replica);
                 }
             }
@@ -344,7 +366,7 @@ public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchron
     private void cancel(Replica replica) {
         Map<String, Replica> connection = connectionsPerContext.get(replica.context);
         if( connection != null) {
-            connection.remove(replica.nodeName);
+            connection.computeIfPresent(replica.nodeName, (n,r) -> replica.equals(r) ? null : r);
             checkQuorum(replica.context);
         }
     }

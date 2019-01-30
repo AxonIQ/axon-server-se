@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.platform.role.Role;
-import io.axoniq.platform.role.RoleController;
+import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.access.role.RoleController;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -10,8 +10,8 @@ import org.mockito.runners.*;
 import java.util.Collection;
 import java.util.List;
 
-import static io.axoniq.platform.role.Role.Type.APPLICATION;
-import static io.axoniq.platform.role.Role.Type.USER;
+import static io.axoniq.axonserver.access.jpa.Role.Type.APPLICATION;
+import static io.axoniq.axonserver.access.jpa.Role.Type.USER;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;

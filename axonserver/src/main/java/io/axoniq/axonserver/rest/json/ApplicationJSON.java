@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.rest.json;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationRole;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.ApplicationRole;
 
 import java.util.ArrayList;
 import java.util.Date;

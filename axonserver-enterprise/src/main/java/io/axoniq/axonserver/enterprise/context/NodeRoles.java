@@ -20,6 +20,10 @@ public class NodeRoles {
         this(contextClusterNode.getClusterNode().getName(), contextClusterNode.isMessaging(), contextClusterNode.isStorage());
     }
 
+    public NodeRoles(String name) {
+        this(name, true,true);
+    }
+
     public NodeRoles(String name, boolean messaging, boolean storage) {
         this.name = name;
         this.messaging = messaging;

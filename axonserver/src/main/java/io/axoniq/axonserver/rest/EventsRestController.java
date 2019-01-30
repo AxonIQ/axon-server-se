@@ -13,7 +13,7 @@ import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.rest.json.MetaDataJson;
 import io.axoniq.axonserver.rest.json.SerializedObjectJson;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.util.StringUtils;
+import io.axoniq.axonserver.util.StringUtils;
 import io.grpc.stub.StreamObserver;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -196,7 +197,7 @@ public class EventsRestController {
                                      @Valid @RequestBody JsonEventList jsonEvents) {
         if( jsonEvents.messages.isEmpty()) throw new IllegalArgumentException("Missing messages");
         CompletableFuture<Void> result = new CompletableFuture<>();
-        StreamObserver<Event> eventInputStream = eventStoreClient.appendEvent(context, new StreamObserver<Confirmation>() {
+        StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context, new StreamObserver<Confirmation>() {
             @Override
             public void onNext(Confirmation confirmation) {
                 result.complete(null);
@@ -213,7 +214,7 @@ public class EventsRestController {
             }
         });
         if( eventInputStream != null) {
-            jsonEvents.messages.forEach(jsonEvent -> eventInputStream.onNext(jsonEvent.asEvent()));
+            jsonEvents.messages.forEach(jsonEvent -> eventInputStream.onNext(new ByteArrayInputStream(jsonEvent.asEvent().toByteArray())));
             eventInputStream.onCompleted();
         }
         return result;

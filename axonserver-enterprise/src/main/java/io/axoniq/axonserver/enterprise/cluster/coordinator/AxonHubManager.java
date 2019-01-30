@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Controller;
 
@@ -20,7 +21,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import static java.util.stream.StreamSupport.stream;
@@ -30,13 +30,11 @@ import static java.util.stream.StreamSupport.stream;
  * sara.pellegrini@gmail.com
  */
 @Controller
-public class AxonHubManager {
+public class AxonHubManager  {
 
     private final Logger logger = LoggerFactory.getLogger(AxonHubManager.class);
 
     private final String thisNodeName;
-
-    private final Boolean clusterEnabled;
 
     private final Iterable<Context> dynamicContexts;
 
@@ -48,7 +46,7 @@ public class AxonHubManager {
 
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("coordinator-selector"));
 
-    private volatile ScheduledFuture<?> task;
+    private final Map<String,ScheduledFuture<?>> tasks = new ConcurrentHashMap<>();
 
 
     @Autowired
@@ -58,7 +56,7 @@ public class AxonHubManager {
                           ApplicationEventPublisher applicationEventPublisher) {
         this(
                 messagingPlatformConfiguration.getName(),
-                messagingPlatformConfiguration.getCluster().isEnabled(),
+                true,
                 () -> contextController.getContexts().iterator(),
                 applicationEventPublisher,
                 coordinatorElectionProcess);
@@ -70,7 +68,6 @@ public class AxonHubManager {
                           ApplicationEventPublisher applicationEventPublisher,
                           CoordinatorElectionProcess electionProcess) {
         this.thisNodeName = thisNodeName;
-        this.clusterEnabled = clusterEnabled;
         this.dynamicContexts = dynamicContexts;
         this.eventPublisher = applicationEventPublisher;
         this.electionProcess = electionProcess;
@@ -89,10 +86,22 @@ public class AxonHubManager {
         return coordinator != null && coordinator.equals(nodeName);
     }
 
-    @PostConstruct
-    public void init() {
+    @EventListener
+    public void init(ClusterEvents.InternalServerReady event) {
         dynamicContexts.forEach(this::initContext);
     }
+
+    @Scheduled(initialDelayString = "${axoniq.axonserver.coordinator-election.initial-delay:5000}",
+            fixedDelayString = "${axoniq.axonserver.coordinator-election.fixed-delay:5000}")
+    public void checkLeaders() {
+        dynamicContexts.forEach(c -> {
+            if( c.isMessagingMember(thisNodeName) && ! coordinatorPerContext.containsKey(c.getName())) {
+                logger.warn("{}: rescheduling election from checker", c.getName());
+                scheduleCoordinationElection(c.getName());
+            }
+        });
+    }
+
 
     @PreDestroy
     public void shutdown() {
@@ -144,12 +153,13 @@ public class AxonHubManager {
     }
 
     private void scheduleCoordinationElection(String context) {
+        ScheduledFuture<?> task = tasks.get(context);
         if (task == null || task.isDone()) {
-            task = scheduledExecutorService.schedule(() -> {
+            tasks.put(context, scheduledExecutorService.schedule(() -> {
                 if( electionProcess.startElection(context(context), () -> coordinatorPerContext.containsKey(context))) {
                     scheduleCoordinationElection(context);
                 }
-            }, 1, TimeUnit.SECONDS);
+            }, 1, TimeUnit.SECONDS));
         }
     }
 
@@ -168,7 +178,7 @@ public class AxonHubManager {
         if (!context.isMessagingMember(thisNodeName)) {
             return;
         }
-        if (!clusterEnabled) {
+        if (context.getMessagingNodes().size() == 1) {
             coordinatorPerContext.put(context.getName(), thisNodeName);
             return;
         }

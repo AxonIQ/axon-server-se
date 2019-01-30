@@ -54,7 +54,7 @@ public class HttpStreamingQuery {
         } catch (Exception e) {
             try {
                 logger.warn("Error while processing query {} - {}", queryString, e.getMessage(), e);
-                sseEmitter.send(SseEmitter.event().name("error").data(e.getMessage()));
+                sseEmitter.send(SseEmitter.event().name("error").data(e.getClass().getName() + ": " + e.getMessage()));
             } catch (IOException ignore) {
                 // ignore exception on sending error to client
             }
@@ -65,6 +65,7 @@ public class HttpStreamingQuery {
     private class Sender {
         private final SseEmitter sseEmitter;
         private final StreamObserver<QueryEventsRequest> querySender;
+        private volatile boolean closed;
 
         public Sender( SseEmitter sseEmitter, EventStore eventStore, String context, String query) {
             this.sseEmitter = sseEmitter;
@@ -72,6 +73,7 @@ public class HttpStreamingQuery {
                 @Override
                 public void onNext(QueryEventsResponse queryEventsResponse) {
                     try {
+                        if( closed) return;
                         switch (queryEventsResponse.getDataCase()) {
                             case COLUMNS:
                                 emitColumns(queryEventsResponse.getColumns());
@@ -87,6 +89,7 @@ public class HttpStreamingQuery {
                         }
                     } catch (Exception exception) {
                         logger.warn("Failed to write to emitter", exception);
+                        closed = true;
                         stop();
                     }
                 }
@@ -132,7 +135,10 @@ public class HttpStreamingQuery {
                 JSONObject values = new JSONObject();
                 row.getValuesMap().forEach((key, qv) -> addToObject(values, key, qv));
                 jsonObject.put("value", values);
+            } else {
+                jsonObject.put("deleted", true);
             }
+
             //SampleCommandHandler
             sseEmitter.send(SseEmitter.event().name("row").data(jsonObject.toString()));
         }

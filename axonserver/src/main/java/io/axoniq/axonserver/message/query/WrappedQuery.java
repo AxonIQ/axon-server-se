@@ -1,25 +1,26 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.SerializedQuery;
+import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
  * Author: marc
  */
 public class WrappedQuery {
-    private final QueryRequest queryRequest;
-    private final String context;
+    private final SerializedQuery queryRequest;
+    private final ClientIdentification client;
     private final long timeout;
     private final long priority;
 
-    public WrappedQuery(String context, QueryRequest queryRequest, long timeout) {
-        this.context = context;
+    public WrappedQuery(ClientIdentification client, SerializedQuery queryRequest, long timeout) {
         this.queryRequest = queryRequest;
         this.timeout = timeout;
-        this.priority = ProcessingInstructionHelper.priority(queryRequest.getProcessingInstructionsList());
+        this.client = client;
+        this.priority = ProcessingInstructionHelper.priority(queryRequest.query().getProcessingInstructionsList());
     }
 
-    public QueryRequest queryRequest() {
+    public SerializedQuery queryRequest() {
         return queryRequest;
     }
 
@@ -31,7 +32,7 @@ public class WrappedQuery {
         return priority;
     }
 
-    public String context() {
-        return context;
+    public ClientIdentification client() {
+        return client;
     }
 }

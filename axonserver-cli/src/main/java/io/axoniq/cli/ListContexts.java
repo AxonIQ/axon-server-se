@@ -19,11 +19,13 @@ public class ListContexts extends AxonIQCliCommand {
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             ContextNode[] contexts = getJSON(httpclient, url, ContextNode[].class, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
-            System.out.printf("%-20s %-60s\n", "Name", "Members");
+            System.out.printf("%-20s %-40s %-20s %-20s%n", "Name", "Members", "Master", "Coordinator");
 
             for( ContextNode context : contexts) {
-                System.out.printf("%-20s %-60s\n", context.getContext(),
-                        context.getNodes() == null? "" : context.getNodes().stream().map(Object::toString).collect(Collectors.joining(",")));
+                System.out.printf("%-20s%-40s %-20s %-20s%n\n", context.getContext(),
+                        context.getNodes() == null? "" : context.getNodes().stream().map(Object::toString).collect(Collectors.joining(",")),
+                                  context.getMaster(),
+                                  context.getCoordinator());
             }
         }
 

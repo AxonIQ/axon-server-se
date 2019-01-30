@@ -2,7 +2,6 @@ package io.axoniq.cli;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * Author: marc
@@ -23,11 +22,14 @@ public class CommandDispatcher {
         executorMap.put("unregister-node", UnregisterNode::run);
         executorMap.put("register-context", RegisterContext::run);
         executorMap.put("delete-context", DeleteContext::run);
+        executorMap.put("add-node-to-context", AddNodeToContext::run);
+        executorMap.put("delete-node-from-context", DeleteNodeFromContext::run);
         executorMap.put("contexts", ListContexts::run);
         executorMap.put("register-user", RegisterUser::run);
         executorMap.put("delete-user", DeleteUser::run);
         executorMap.put("users", ListUsers::run);
         executorMap.put("metrics", Metrics::run);
+        executorMap.put("init-cluster", InitCluster::run);
     }
 
     public static void main(String[] args)  {

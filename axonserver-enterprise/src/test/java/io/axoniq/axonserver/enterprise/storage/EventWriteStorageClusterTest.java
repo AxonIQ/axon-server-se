@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage;
 
+import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.enterprise.cluster.internal.SyncStatusController;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.transaction.ReplicationManager;
@@ -9,6 +11,7 @@ import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
@@ -21,6 +24,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+
+import static org.mockito.Mockito.mock;
 
 /**
  * Author: marc
@@ -35,12 +40,13 @@ public class EventWriteStorageClusterTest {
 
     @Before
     public void setUp() {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties();
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
         embeddedDBProperties.getEvent().setStorage(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(5120 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         fakeReplicationManager = new FakeReplicationManager();
-        ClusterTransactionManagerFactory defaultStorageTransactionManagerFactory = new ClusterTransactionManagerFactory(
+        SyncStatusController syncStatusController = mock(SyncStatusController.class);
+        ClusterTransactionManagerFactory defaultStorageTransactionManagerFactory = new ClusterTransactionManagerFactory( syncStatusController, Collections.emptyList(),
                 fakeReplicationManager);
         EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
                                                                             defaultStorageTransactionManagerFactory);
@@ -59,12 +65,12 @@ public class EventWriteStorageClusterTest {
     public void stepDown() throws ExecutionException, InterruptedException {
         Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(0).setAggregateType(
                 "Demo").setPayload(SerializedObject.newBuilder().build()).build();
-        CompletableFuture<Void> first = testSubject.store(Collections.singletonList(event));
+        CompletableFuture<Void> first = testSubject.store(Collections.singletonList(new SerializedEvent(event)));
 
         event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(1).setAggregateType(
                 "Demo").setPayload(SerializedObject.newBuilder().build()).build();
 
-        CompletableFuture<Void> second = testSubject.store(Collections.singletonList(event));
+        CompletableFuture<Void> second = testSubject.store(Collections.singletonList(new SerializedEvent(event)));
         fakeReplicationManager.completed(0);
         first.get();
         Assert.assertEquals(0, testSubject.getLastCommittedToken());
@@ -91,7 +97,7 @@ public class EventWriteStorageClusterTest {
         }
 
         @Override
-        public void publish(EventTypeContext type, List<Event> eventList, long token) {
+        public void publish(EventTypeContext type, List<SerializedEvent> eventList, long token) {
 
         }
 

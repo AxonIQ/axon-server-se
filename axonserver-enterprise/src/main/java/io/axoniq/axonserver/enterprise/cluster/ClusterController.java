@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.config.ClusterConfiguration;
+import io.axoniq.axonserver.config.FlowControl;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ContextEvents;
@@ -17,6 +19,9 @@ import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.rest.ClusterRestController;
 import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
@@ -53,6 +58,9 @@ public class ClusterController implements SmartLifecycle {
     private final EntityManager entityManager;
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
+    private final QueryDispatcher queryDispatcher;
+    private final CommandDispatcher commandDispatcher;
+    private final ModelVersionController modelVersionController;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -65,6 +73,9 @@ public class ClusterController implements SmartLifecycle {
                              EntityManager entityManager,
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
+                             QueryDispatcher queryDispatcher,
+                             CommandDispatcher commandDispatcher,
+                             ModelVersionController modelVersionController,
                              ApplicationEventPublisher applicationEventPublisher,
                              FeatureChecker limits
     ) {
@@ -72,6 +83,9 @@ public class ClusterController implements SmartLifecycle {
         this.entityManager = entityManager;
         this.stubFactory = stubFactory;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
+        this.queryDispatcher = queryDispatcher;
+        this.commandDispatcher = commandDispatcher;
+        this.modelVersionController = modelVersionController;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
@@ -80,28 +94,47 @@ public class ClusterController implements SmartLifecycle {
     @EventListener
     @Transactional
     public void on(ClusterEvents.AxonServerNodeDeleted nodeDeleted) {
-        deleteNode(nodeDeleted.node());
+        deleteNode(nodeDeleted.node(), nodeDeleted.getGeneration());
     }
 
     @Transactional
-    public void deleteNode(String name) {
+    public void deleteNode(String name, long generation) {
         logger.warn("Delete node: {}", name);
-        RemoteConnection remoteConnection = remoteConnections.remove(name);
-        if (remoteConnection != null) {
-            ClusterNode node = entityManager.find(ClusterNode.class, name);
-            if (node != null) {
-                entityManager.remove(node);
-                entityManager.flush();
+        synchronized (remoteConnections) {
+            if (messagingPlatformConfiguration.getName().equals(name)) {
+                remoteConnections.forEach((node, rc) -> rc.close());
+                remoteConnections.clear();
+
+                List<ClusterNode> otherNodes = entityManager
+                        .createQuery("select c from ClusterNode c where c.name <> :name", ClusterNode.class)
+                        .setParameter("name", name)
+                        .getResultList();
+
+                otherNodes.forEach(node -> {
+                    entityManager.remove(node);
+                    nodeMap.remove(node.getName());
+                    nodeListeners.forEach(listener -> listener
+                            .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED, node)));
+                });
             }
-            remoteConnection.sendDelete(messagingPlatformConfiguration.getName());
-            logger.warn("Send delete node: {} to {}:{}",
-                        messagingPlatformConfiguration.getName(),
-                        remoteConnection.getClusterNode().getInternalHostName(),
-                        remoteConnection.getClusterNode().getGrpcInternalPort());
-            remoteConnection.close();
-            nodeListeners.forEach(listener -> listener
-                    .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED, remoteConnection.getClusterNode())));
+
+            RemoteConnection remoteConnection = remoteConnections.remove(name);
+            if (remoteConnection != null) {
+                ClusterNode node = entityManager.find(ClusterNode.class, name);
+                if (node != null) {
+                    entityManager.remove(node);
+                    entityManager.flush();
+                }
+                remoteConnection.close();
+                nodeListeners.forEach(listener -> listener
+                        .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED,
+                                                 remoteConnection.getClusterNode())));
+                nodeMap.remove(name);
+            }
+
+            modelVersionController.updateModelVersion(ClusterNode.class, generation);
         }
+        applicationEventPublisher.publishEvent(new ClusterEvents.ClusterUpdatedNotification());
     }
 
     @Override
@@ -136,7 +169,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public boolean isClustered() {
-        return Feature.CLUSTERING.enabled(limits) && messagingPlatformConfiguration.getCluster().isEnabled();
+        return Feature.CLUSTERING.enabled(limits);
     }
 
     private void checkCurrentNodeSaved() {
@@ -216,13 +249,16 @@ public class ClusterController implements SmartLifecycle {
             return;
         }
 
-        RemoteConnection remoteConnection = new RemoteConnection(getMe(), clusterNode,
-                                                                 applicationEventPublisher,
-                                                                 stubFactory, messagingPlatformConfiguration);
-        remoteConnections.put(clusterNode.getName(), remoteConnection);
+        synchronized (remoteConnections) {
+            RemoteConnection remoteConnection = new RemoteConnection(this, clusterNode,
+                                                                     stubFactory,
+                                                                     queryDispatcher,
+                                                                     commandDispatcher);
+            remoteConnections.put(clusterNode.getName(), remoteConnection);
 
-        if (connect) {
-            remoteConnection.init();
+            if (connect) {
+                remoteConnection.init();
+            }
         }
     }
 
@@ -233,13 +269,28 @@ public class ClusterController implements SmartLifecycle {
     @EventListener
     @Transactional
     public void on(ClusterEvents.AxonServerInstanceConnected axonHubInstanceConnected) {
-        if (axonHubInstanceConnected.getNodesList() != null) {
-            axonHubInstanceConnected.getNodesList().forEach(nodeInfo -> addConnection(nodeInfo, false));
+        synchronized (entityManager) {
+            if (axonHubInstanceConnected.getNodesList() != null) {
+                axonHubInstanceConnected.getNodesList().forEach(nodeInfo -> addConnection(nodeInfo,
+                                                                                          axonHubInstanceConnected
+                                                                                                  .getGeneration()));
+                if( currentGeneration() < axonHubInstanceConnected.getGeneration()) {
+                    setGeneration(axonHubInstanceConnected.getGeneration());
+                }
+            }
         }
     }
 
     @Transactional
-    public synchronized void addConnection(NodeInfo nodeInfo, boolean updateContexts) {
+    public long joinConnection(NodeInfo request) {
+        long nextGeneration  = currentGeneration() + 1;
+        addConnection(request, nextGeneration);
+        setGeneration(nextGeneration);
+        return nextGeneration;
+    }
+
+    @Transactional
+    public boolean addConnection(NodeInfo nodeInfo, long generation) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same node name");
@@ -248,13 +299,19 @@ public class ClusterController implements SmartLifecycle {
                 && nodeInfo.getGrpcInternalPort() == messagingPlatformConfiguration.getInternalPort()) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same hostname and internal port");
         }
-        ClusterNode node = merge(nodeInfo, updateContexts);
+        ClusterNode node = merge(nodeInfo, generation);
+        if( node == null) {
+            applicationEventPublisher.publishEvent(new ClusterEvents.ClusterUpdatedNotification());
+            return false;
+        }
         if (!remoteConnections.containsKey(node.getName())) {
             startRemoteConnection(node, false);
             nodeListeners.forEach(listener -> listener
-                    .accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node)));
+                        .accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node)));
         }
+        return true;
     }
+
 
     private void checkLimit(String nodeName) {
         if (remoteConnections.containsKey(nodeName)) {
@@ -266,8 +323,9 @@ public class ClusterController implements SmartLifecycle {
         }
     }
 
-    private ClusterNode merge(NodeInfo nodeInfo, boolean updateContexts) {
+    private ClusterNode merge(NodeInfo nodeInfo, long generation) {
         ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
+        long currentGeneration = modelVersionController.getModelVersion(ClusterNode.class);
         if (existing == null) {
             existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
                                                                       nodeInfo.getGrpcInternalPort());
@@ -277,6 +335,10 @@ public class ClusterController implements SmartLifecycle {
                 RemoteConnection remoteConnection = remoteConnections.remove(existing.getName());
                 if (remoteConnection != null) {
                     remoteConnection.close();
+                }
+            } else {
+                if( currentGeneration > generation) {
+                    return null;
                 }
             }
             existing = ClusterNode.from(nodeInfo);
@@ -288,7 +350,7 @@ public class ClusterController implements SmartLifecycle {
             existing.setHttpPort(nodeInfo.getHttpPort());
             existing.setInternalHostName(nodeInfo.getInternalHostName());
         }
-        if( updateContexts) {
+        if( generation > currentGeneration) {
             for (ContextRole context : nodeInfo.getContextsList()) {
                 mergeContext(existing, context.getName(), context.getStorage(), context.getMessaging());
             }
@@ -350,7 +412,7 @@ public class ClusterController implements SmartLifecycle {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No active Axon servers found for context: " + context);
         }
-        String nodeName = nodeSelectionStrategy.selectNode(clientName, componentName, activeNodes);
+        String nodeName = nodeSelectionStrategy.selectNode(new ClientIdentification(context,clientName), componentName, activeNodes);
         if (remoteConnections.containsKey(nodeName)) {
             return remoteConnections.get(nodeName).getClusterNode();
         }
@@ -365,7 +427,7 @@ public class ClusterController implements SmartLifecycle {
 
     public boolean canRebalance(String clientName, String componentName, String context) {
         Context context1 = entityManager.find(Context.class, context);
-        if (context1 == null) {
+        if (context1 == null || context1.getMessagingNodes().size() <= 1) {
             return false;
         }
         List<String> activeNodes = new ArrayList<>();
@@ -379,7 +441,7 @@ public class ClusterController implements SmartLifecycle {
             return false;
         }
 
-        return nodeSelectionStrategy.canRebalance(clientName, componentName, activeNodes);
+        return nodeSelectionStrategy.canRebalance(new ClientIdentification(context,clientName), componentName, activeNodes);
     }
 
 
@@ -389,8 +451,9 @@ public class ClusterController implements SmartLifecycle {
 
     @Transactional
     public void sendDeleteNode(String name) {
-        deleteNode(name);
-        remoteConnections.values().forEach(remoteConnection -> remoteConnection.sendDelete(name));
+        long generation = modelVersionController.incrementModelVersion(ClusterNode.class);
+        remoteConnections.values().forEach(remoteConnection -> remoteConnection.sendDelete(name, generation));
+        deleteNode(name, generation);
     }
 
     public void publish(ConnectorCommand connectorCommand) {
@@ -428,23 +491,16 @@ public class ClusterController implements SmartLifecycle {
     }
 
     @Transactional
-    public void setMyContexts(List<ClusterRestController.ContextRoleJSON> contexts) {
+    public void setMyContexts(List<ContextRole> contexts) {
         ClusterNode clusterNode = getMe();
-        Set<String> oldStorageContexts = getMyStorageContexts();
         Set<String> oldContexts = getMyContextsNames();
-        for(ClusterRestController.ContextRoleJSON contextRoleJSON : contexts) {
-            mergeContext(clusterNode, contextRoleJSON.getName(), contextRoleJSON.isStorage(), contextRoleJSON.isMessaging());
-            if( contextRoleJSON.isStorage()) {
-                if( ! oldStorageContexts.remove(contextRoleJSON.getName()) ) {
-                    applicationEventPublisher.publishEvent(new ContextEvents.NodeRolesUpdated(contextRoleJSON.getName(),
-                                                                                              new NodeRoles(getName(),contextRoleJSON.isMessaging(), contextRoleJSON.isStorage()), false));
-                }
-            }
-            oldContexts.remove(contextRoleJSON.getName());
+        for(ContextRole contextRole : contexts) {
+            mergeContext(clusterNode, contextRole.getName(), contextRole.getStorage(), contextRole.getMessaging());
+            oldContexts.remove(contextRole.getName());
         }
 
-        logger.debug("Leaving storage contexts: {}", oldStorageContexts);
-        oldStorageContexts.forEach(context -> applicationEventPublisher.publishEvent(
+        logger.debug("Leaving storage contexts: {}", oldContexts);
+        oldContexts.forEach(context -> applicationEventPublisher.publishEvent(
                 new ClusterEvents.MasterStepDown(context, true)));
 
 
@@ -464,6 +520,34 @@ public class ClusterController implements SmartLifecycle {
 
     public boolean disconnectedNodes() {
         return remoteConnections.values().stream().anyMatch(r -> !r.isConnected());
+    }
+
+    public void setGeneration(long generation) {
+        modelVersionController.updateModelVersion(ClusterNode.class, generation);
+    }
+
+    public long currentGeneration() {
+        return modelVersionController.getModelVersion(ClusterNode.class);
+    }
+
+    public FlowControl getCommandFlowControl() {
+        return messagingPlatformConfiguration.getCommandFlowControl();
+    }
+
+    public FlowControl getEventFlowControl() {
+        return messagingPlatformConfiguration.getEventFlowControl();
+    }
+
+    public FlowControl getQueryFlowControl() {
+        return messagingPlatformConfiguration.getQueryFlowControl();
+    }
+
+    public void publishEvent(Object event) {
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public long getConnectionWaitTime() {
+        return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
     }
 
 }

@@ -3,7 +3,7 @@
     <parent>
         <artifactId>axonserver-parent</artifactId>
         <groupId>io.axoniq.axonserver</groupId>
-        <version>4.1-SNAPSHOT</version>
+        <version>4.0.4-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -44,7 +44,6 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-transport-native-epoll</artifactId>
-            <version>4.1.25.Final</version>
             <classifier>linux-x86_64</classifier>
         </dependency>
         <dependency>
@@ -105,26 +104,14 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.5.0</version>
+                <version>0.6.1</version>
                 <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:3.0.2:exe:${os.detected.classifier}</protocArtifact>
+                    <protocArtifact>com.google.protobuf:protoc:3.6.1:exe:${os.detected.classifier}</protocArtifact>
                     <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.1.2:exe:${os.detected.classifier}</pluginArtifact>
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.17.1:exe:${os.detected.classifier}</pluginArtifact>
                     <clearOutputDirectory>false</clearOutputDirectory>
                 </configuration>
                 <executions>
-                    <execution>
-                        <id>generate-classes-for-internal-protobuf-api</id>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>compile-custom</goal>
-                        </goals>
-                        <configuration>
-                            <additionalProtoPathElements>
-                                <additionalProtoPathElement>${project.build.directory}/proto</additionalProtoPathElement>
-                            </additionalProtoPathElements>
-                        </configuration>
-                    </execution>
                     <execution>
                         <id>generate-classes-for-public-protobuf-api</id>
                         <goals>

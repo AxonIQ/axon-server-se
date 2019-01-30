@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import org.springframework.boot.actuate.health.Health;
 
 import java.util.concurrent.CompletableFuture;
@@ -25,7 +24,7 @@ public class EventStreamReader {
         return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage);
     }
 
-    public CompletableFuture<Void>  streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
+    public CompletableFuture<Void>  streamTransactions(long firstToken, Predicate<SerializedTransactionWithToken> transactionConsumer) {
         return CompletableFuture.runAsync(() -> datafileManagerChain.streamTransactions(firstToken, transactionConsumer));
     }
 

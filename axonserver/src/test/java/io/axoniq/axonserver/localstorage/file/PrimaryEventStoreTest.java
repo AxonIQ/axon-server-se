@@ -1,22 +1,30 @@
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.junit.*;
 import org.junit.rules.*;
+import org.springframework.data.util.CloseableIterator;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+
+import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
+import static org.junit.Assert.*;
 
 /**
  * Author: marc
@@ -28,7 +36,7 @@ public class PrimaryEventStoreTest {
 
     @Before
     public void setUp() throws IOException {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties();
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
         embeddedDBProperties.getEvent().setStorage(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
@@ -51,10 +59,10 @@ public class PrimaryEventStoreTest {
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<Event> newEvents = new ArrayList<>();
+            List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, 100).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
+                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
             });
                 PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
                 testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
@@ -63,10 +71,10 @@ public class PrimaryEventStoreTest {
         latch.await(5, TimeUnit.SECONDS);
         Thread.sleep(1500);
         testSubject.rollback(9899);
-        Assert.assertEquals(9899, testSubject.getLastToken());
+        assertEquals(9899, testSubject.getLastToken());
 
         testSubject.rollback(859);
-        Assert.assertEquals(899, testSubject.getLastToken());
+        assertEquals(899, testSubject.getLastToken());
     }
 
     @Test
@@ -74,22 +82,61 @@ public class PrimaryEventStoreTest {
         CountDownLatch latch = new CountDownLatch(5);
         IntStream.range(0, 5).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<Event> newEvents = new ArrayList<>();
+            List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, 3).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
+                                                       .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
             });
             PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
             testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 
         latch.await(5, TimeUnit.SECONDS);
-        Thread.sleep(1500);
+        //Thread.sleep(1500);
         testSubject.rollback(2);
-        Assert.assertEquals(2, testSubject.getLastToken());
+        assertEquals(2, testSubject.getLastToken());
+
+        storeEvent();
 
         testSubject.initSegments(Long.MAX_VALUE);
-        Assert.assertEquals(2, testSubject.getLastToken());
+        assertEquals(3, testSubject.getLastToken());
+    }
+
+    private void storeEvent() {
+        CountDownLatch latch = new CountDownLatch(1);
+        SerializedEvent newEvent = new SerializedEvent(Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
+                                                            .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
+        PreparedTransaction preparedTransaction = testSubject.prepareTransaction(Collections.singletonList(newEvent));
+        testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
+    }
+
+    @Test
+    public void testGlobalIterator() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(100);
+        // setup with 10,000 events
+        IntStream.range(0, 100).forEach(j -> {
+            String aggId = UUID.randomUUID().toString();
+            List<SerializedEvent> newEvents = new ArrayList<>();
+            IntStream.range(0, 100).forEach(i -> {
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
+                                                       .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
+            });
+            PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
+            testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
+        });
+
+        latch.await(5, TimeUnit.SECONDS);
+        try (CloseableIterator<SerializedEventWithToken> iterator = testSubject
+                .getGlobalIterator(0)) {
+            SerializedEventWithToken serializedEventWithToken = null;
+            while(iterator.hasNext()) {
+                serializedEventWithToken = iterator.next();
+            }
+
+            assertNotNull(serializedEventWithToken);
+            assertEquals(9999, serializedEventWithToken.getToken());
+
+        }
     }
 
 }

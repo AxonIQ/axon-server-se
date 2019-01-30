@@ -53,7 +53,7 @@ public class FlowControlQueues<T> {
         }
     }
 
-    public void move( String oldFilterValue, Function<T, String> newFilterAssignment) {
+    public void move(String oldFilterValue, Function<T, String> newFilterAssignment) {
         logger.debug("Remove: {}", oldFilterValue);
         BlockingQueue<FilterNode> filterSegment = segments.remove(oldFilterValue);
         if( filterSegment == null) return;

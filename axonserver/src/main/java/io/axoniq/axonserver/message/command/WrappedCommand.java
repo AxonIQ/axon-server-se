@@ -1,28 +1,28 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
  * Author: marc
  */
 public class WrappedCommand {
-    private final String context;
-    private final Command command;
+    private final ClientIdentification client;
+    private final SerializedCommand command;
     private final long priority;
 
-    public WrappedCommand(String context, Command command) {
-        this.context = context;
+    public WrappedCommand(ClientIdentification client, SerializedCommand command) {
+        this.client = client;
         this.command = command;
-        this.priority = ProcessingInstructionHelper.priority(command.getProcessingInstructionsList());
+        this.priority = command.getPriority();
     }
 
-    public Command command() {
+    public SerializedCommand command() {
         return command;
     }
 
-    public String context() {
-        return context;
+    public ClientIdentification client() {
+        return client;
     }
 
     public long priority() {

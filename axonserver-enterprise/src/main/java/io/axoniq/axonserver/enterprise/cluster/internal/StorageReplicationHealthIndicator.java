@@ -4,14 +4,12 @@ import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * Author: marc
  */
 @Component
-@ConditionalOnProperty(value = "axoniq.axonserver.cluster.enabled", havingValue = "true")
 public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
     private final DataSynchronizationMaster dataSynchronizationMaster;
     private final DataSynchronizationReplica dataSynchronizationReplica;
@@ -38,6 +36,7 @@ public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
                     replicas.forEach((n, replica) -> {
                         builder.withDetail(String.format("%s.%s.lastConfirmedEventTransaction", context, n), replica.getLastEventTransaction());
                         builder.withDetail(String.format("%s.%s.lastConfirmedSnapshotTransaction", context, n), replica.getLastSnapshotTransaction());
+                        builder.withDetail(String.format("%s.%s.remainingPermits", context, n), replica.remainingPermits());
                     });
                 }
         );
@@ -49,6 +48,7 @@ public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {
             builder.withDetail(String.format("%s.waitingForSnapshot", context), replicaConnection.getExpectedSnapshotToken());
             builder.withDetail(String.format("%s.waitingEvents", context), replicaConnection.waitingEvents());
             builder.withDetail(String.format("%s.waitingSnapshots", context), replicaConnection.waitingSnapshots());
+            builder.withDetail(String.format("%s.remainingPermits", context), replicaConnection.remainingPermits());
         });
 
         builder.up();

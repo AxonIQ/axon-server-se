@@ -5,7 +5,14 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-parent</artifactId>
     <packaging>pom</packaging>
-    <version>4.1-SNAPSHOT</version>
+    <version>4.0.4-SNAPSHOT</version>
+    <dependencies>
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <version>4.1.0</version>
+        </dependency>
+    </dependencies>
 
     <name>AxonIQ AxonServer</name>
 
@@ -14,11 +21,14 @@
         <module>axonserver</module>
         <module>sample-applications/sample-command-processor-axonhub-client</module>
         <module>sample-applications/sample-command-processor-axonserver-client</module>
-        <module>axonserver-accessdb</module>
+        <module>axonserver-internal-grpc</module>
         <module>axonserver-grpc</module>
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
         <module>axonserver-cli</module>
+        <module>axonserver-compatibility-tests</module>
+        <module>package-axonserver-enterprise</module>
+        <module>axondb-migration</module>
     </modules>
 
     <properties>
@@ -32,22 +42,30 @@
 
         <kotlin.version>1.1.61</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <grpc.version>1.13.1</grpc.version>
-        <netty.tcnative.version>2.0.8.Final</netty.tcnative.version>
+        <grpc.version>1.17.1</grpc.version>
+        <netty.version>4.1.32.Final</netty.version>
+        <netty.tcnative.version>2.0.20.Final</netty.tcnative.version>
         <axonserver.api.version>4.0</axonserver.api.version>
-        <axon.version>4.0</axon.version>
+        <axon.version>4.0.3</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-			<dependency>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-dependencies</artifactId>
-				<version>2.0.2.RELEASE</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>2.1.2.RELEASE</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>io.axoniq</groupId>
                 <artifactId>axon-server-api</artifactId>

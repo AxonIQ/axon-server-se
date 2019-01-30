@@ -1,16 +1,19 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.coordinator.AxonHubManager;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.NodeRoles;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,15 +38,19 @@ import javax.validation.Valid;
 public class ContextRestController {
 
     private final ContextController contextController;
+    private final ClusterController clusterController;
     private final AxonHubManager axonHubManager;
-    private final EventStoreManager eventStoreManager;
+    private final EventStoreLocator eventStoreManager;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
 
-    public ContextRestController( ContextController contextController, AxonHubManager axonHubManager, EventStoreManager eventStoreManager,
-                                  ApplicationEventPublisher applicationEventPublisher,
-                                  FeatureChecker limits) {
+    public ContextRestController(ContextController contextController,
+                                 ClusterController clusterController,
+                                 AxonHubManager axonHubManager, EventStoreLocator eventStoreManager,
+                                 ApplicationEventPublisher applicationEventPublisher,
+                                 FeatureChecker limits) {
         this.contextController = contextController;
+        this.clusterController = clusterController;
         this.axonHubManager = axonHubManager;
         this.eventStoreManager = eventStoreManager;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -54,6 +61,10 @@ public class ContextRestController {
     public List<ContextJSON> getContexts() {
         return contextController.getContexts().map(this::createContextJSON).collect(Collectors.toList());
 
+    }
+    @GetMapping(path = "context/init")
+    public ResponseEntity<RestResponse> initCluster() {
+        return ResponseEntity.ok(new RestResponse(true, null));
     }
 
     private ContextJSON createContextJSON(Context context) {
@@ -100,9 +111,22 @@ public class ContextRestController {
 
     @PostMapping(path ="context")
     public void addContext(@RequestBody @Valid ContextJSON contextJson) {
-        if(!Feature.MULTI_CONTEXT.enabled(limits)) throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "License does not allow creating contexts");
+        if (!Feature.MULTI_CONTEXT.enabled(limits)) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                 "License does not allow creating contexts");
+        }
+        if (!contextJson.getContext().matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
+            throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                                                 "Invalid context name");
+
+        }
         contextController.canAddContext(contextJson.getNodes());
-        applicationEventPublisher.publishEvent(contextController.addContext(contextJson.getContext(), contextJson.getNodes(), false));
+        if( contextJson.getNodes() == null || contextJson.getNodes().isEmpty()) {
+            contextJson.setNodes(clusterController.nodes().map(c -> new NodeRoles(c.getName())).collect(Collectors.toList()));
+        }
+        applicationEventPublisher.publishEvent(contextController.addContext(contextJson.getContext(),
+                                                                            contextJson.getNodes(),
+                                                                            false));
     }
 
 }

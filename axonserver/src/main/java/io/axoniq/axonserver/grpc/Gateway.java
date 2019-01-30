@@ -24,17 +24,17 @@ import java.util.concurrent.TimeUnit;
 public class Gateway implements SmartLifecycle {
     private final Logger logger = LoggerFactory.getLogger(Gateway.class);
     private final List<AxonServerClientService> axonServerClientServices;
-    private final AxonServerAccessController axonHubAccessController;
+    private final AxonServerAccessController axonServerAccessController;
     private boolean started;
     private Server server;
     private final MessagingPlatformConfiguration routingConfiguration;
 
 
-    public Gateway(MessagingPlatformConfiguration routingConfiguration, List<AxonServerClientService> axonServerClientServices,
-                   AxonServerAccessController axonHubAccessController) {
-        this.routingConfiguration = routingConfiguration;
+    public Gateway(MessagingPlatformConfiguration messagingPlatformConfiguration, List<AxonServerClientService> axonServerClientServices,
+                   AxonServerAccessController axonServerAccessController) {
+        this.routingConfiguration = messagingPlatformConfiguration;
         this.axonServerClientServices = axonServerClientServices;
-        this.axonHubAccessController = axonHubAccessController;
+        this.axonServerAccessController = axonServerAccessController;
     }
 
     @Override
@@ -87,7 +87,7 @@ public class Gateway implements SmartLifecycle {
         // Note that the last interceptor is executed first
         List<ServerInterceptor> interceptorList = new ArrayList<>();
         if( routingConfiguration.getAccesscontrol().isEnabled()) {
-            interceptorList.add( new AuthenticationInterceptor(axonHubAccessController));
+            interceptorList.add( new AuthenticationInterceptor(axonServerAccessController));
         }
         interceptorList.add(new ContextInterceptor());
 
@@ -105,11 +105,11 @@ public class Gateway implements SmartLifecycle {
         try {
             server.start();
 
-            logger.info("gRPC Gateway started on port: {} - {}", routingConfiguration.getPort(), sslMessage);
+            logger.info("Axon Server Gateway started on port: {} - {}", routingConfiguration.getPort(), sslMessage);
 
             started = true;
         } catch (IOException e) {
-            logger.error("Starting GRPC gateway failed - {}", e.getMessage(), e);
+            logger.error("Starting Axon Server Gateway failed - {}", e.getMessage(), e);
         }
     }
 
@@ -125,6 +125,6 @@ public class Gateway implements SmartLifecycle {
 
     @Override
     public int getPhase() {
-        return 10;
+        return 200;
     }
 }

@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.message.query.subscription;
 
-import io.axoniq.axonserver.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryCanceled;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryRequestEvent;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequestEvent;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.message.query.subscription.handler.MissingUpdateHandler;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;

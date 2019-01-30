@@ -1,42 +1,46 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.LoadBalancingStrategiesReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.LoadBalancingStrategyReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived;
-import io.axoniq.axonserver.LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived;
-import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
-import io.axoniq.axonserver.UserSynchronizationEvents;
+import io.axoniq.axonserver.access.modelversion.ModelVersionController;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.UserSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.LoadBalancingStrategiesReceived;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.LoadBalancingStrategyReceived;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived;
+import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.ClusterFlowControlStreamObserver;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.ProcessingKey;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
+import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.internal.ConnectRequest;
+import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.DeleteNode;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommand;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
+import io.axoniq.axonserver.grpc.internal.ForwardedQuery;
 import io.axoniq.axonserver.grpc.internal.GetApplicationsRequest;
 import io.axoniq.axonserver.grpc.internal.GetUsersRequest;
 import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.QueryComplete;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDefinition;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +49,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -58,152 +64,112 @@ import java.util.stream.Collectors;
 public class RemoteConnection  {
 
     private static final Logger logger = LoggerFactory.getLogger(RemoteConnection.class);
-    public static final int IGNORE_SAME_ERROR_COUT = 10;
-    private final ClusterNode me;
+    private static final int IGNORE_SAME_ERROR_COUNT = 10;
+    private final ClusterController clusterController;
     private final ClusterNode clusterNode;
-    private final ApplicationEventPublisher applicationEventPublisher;
     private final StubFactory stubFactory;
-    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private volatile boolean connected = false;
-    private volatile long connectionPending;
+    private final QueryDispatcher queryDispatcher;
+    private final CommandDispatcher commandDispatcher;
+    private AtomicBoolean connected = new AtomicBoolean();
+    private AtomicLong connectionPending = new AtomicLong();
     private volatile ClusterFlowControlStreamObserver requestStreamObserver;
     private volatile String errorMessage;
     private final long connectionWaitTime;
-    private final AtomicInteger repeatedErrorCount = new AtomicInteger(IGNORE_SAME_ERROR_COUT);
+    private final AtomicInteger repeatedErrorCount = new AtomicInteger(IGNORE_SAME_ERROR_COUNT);
 
-    public RemoteConnection(ClusterNode me, ClusterNode clusterNode,
-                            ApplicationEventPublisher applicationEventPublisher,
+    public RemoteConnection(ClusterController clusterController, ClusterNode clusterNode,
                             StubFactory stubFactory,
-                            MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        this.me = me;
+                            QueryDispatcher queryDispatcher,
+                            CommandDispatcher commandDispatcher) {
+        this.clusterController = clusterController;
         this.clusterNode = clusterNode;
-        this.applicationEventPublisher = applicationEventPublisher;
         this.stubFactory = stubFactory;
-        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
-        this.connectionWaitTime = messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
+        this.queryDispatcher = queryDispatcher;
+        this.commandDispatcher = commandDispatcher;
+        this.connectionWaitTime = clusterController.getConnectionWaitTime();
     }
 
     public synchronized RemoteConnection init() {
         logger.debug("Connecting to: {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
-        try {
-            InetAddress[] addresses = InetAddress.getAllByName(clusterNode.getInternalHostName());
-            logger.debug("Connect to {}", addresses);
-        } catch (UnknownHostException e) {
-            if (!String.valueOf(e.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
-                logger.warn("Unknown host: {}", clusterNode.getInternalHostName());
-                errorMessage = String.valueOf(e.getMessage());
-                repeatedErrorCount.set(IGNORE_SAME_ERROR_COUT);
-            }
+        if (!validateConnection()) {
             return this;
         }
-        requestStreamObserver = new ClusterFlowControlStreamObserver(stubFactory.messagingClusterServiceStub(messagingPlatformConfiguration, clusterNode)
+        requestStreamObserver = new ClusterFlowControlStreamObserver(stubFactory.messagingClusterServiceStub( clusterNode)
                 .openStream(new ReceivingStreamObserver<ConnectorResponse>(logger) {
                     @Override
                     protected void consume(ConnectorResponse connectorResponse) {
-                        if (!connected) {
-                            logger.debug("Connected to {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
-                            connected = true;
-                            errorMessage = null;
-                            connectionPending = 0;
-                            initFlowControl();
-                        }
+                        checkConnected();
 
-                            switch (connectorResponse.getResponseCase()) {
+                        switch (connectorResponse.getResponseCase()) {
                                 case CONFIRMATION:
                                     break;
 
                                 case COMMAND:
-                                    applicationEventPublisher.publishEvent(
-                                            new DispatchEvents.DispatchCommand(ProcessingInstructionHelper
-                                                                                       .context(connectorResponse
-                                                                                                        .getCommand()
-                                                                                                        .getProcessingInstructionsList()),
-                                                                               connectorResponse.getCommand(),
-                                                                               commandResponse -> publish(
-                                                                                       ConnectorCommand.newBuilder()
-                                                                                                       .setCommandResponse(
-                                                                                                               commandResponse)
-                                                                                                       .build()),
-                                                                               true));
-                                    break;
+                                    ForwardedCommand forwardedCommand = connectorResponse.getCommand();
+                                    commandDispatcher.dispatch(forwardedCommand.getContext(),
+                                                               new SerializedCommand(forwardedCommand.getCommand().toByteArray(),
+                                                                                     forwardedCommand.getClient(),
+                                                                                     forwardedCommand.getMessageId()),
+                                                               commandResponse -> publish(
+                                                                       ConnectorCommand.newBuilder()
+                                                                                       .setCommandResponse(
+                                                                                               ForwardedCommandResponse
+                                                                                                       .newBuilder().setRequestIdentifier(commandResponse.getRequestIdentifier())
+                                                                                                       .setResponse(commandResponse.toByteString()).build())
+                                                                                       .build()),
+                                                               true);
 
+                                    break;
                                 case QUERY:
-                                    applicationEventPublisher.publishEvent(
-                                            new DispatchEvents.DispatchQuery(ProcessingInstructionHelper
-                                                                                     .context(connectorResponse
-                                                                                                      .getQuery()
-                                                                                                      .getProcessingInstructionsList()),
-                                                                             connectorResponse.getQuery(),
-                                                                             queryResponse -> sendQueryResponse(
-                                                                                     connectorResponse.getQuery(),
-                                                                                     queryResponse),
-                                                                             client -> sendQueryComplete(
-                                                                                     connectorResponse.getQuery(),
-                                                                                     client),
-                                                                             true));
+                                    query(connectorResponse.getQuery());
                                     break;
 
                                 case CONNECT_RESPONSE:
-                                    logger.debug("Connected, received response: {}",
-                                                 connectorResponse.getConnectResponse());
-                                    try {
-
-
-                                        applicationEventPublisher
-                                                .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
-                                                        RemoteConnection.this,
-                                                        connectorResponse.getConnectResponse().getModelVersionsList(),
-                                                        connectorResponse.getConnectResponse().getContextsList(),
-                                                        connectorResponse.getConnectResponse().getNodesList()));
-                                    } catch (Exception ex) {
-                                        logger.warn("Failed to process request {}",
-                                                    connectorResponse.getConnectResponse(),
-                                                    ex);
-                                    }
+                                    connectResponse(connectorResponse.getConnectResponse());
                                     break;
 
                                 case APPLICATION:
-                                    applicationEventPublisher
+                                    clusterController
                                             .publishEvent(new ApplicationSynchronizationEvents.ApplicationReceived(
                                                     connectorResponse.getApplication(),
                                                     true));
                                     break;
 
                                 case USER:
-                                    applicationEventPublisher.publishEvent(new UserSynchronizationEvents.UserReceived(
+                                    clusterController.publishEvent(new UserSynchronizationEvents.UserReceived(
                                             connectorResponse.getUser(), true));
                                     break;
 
                                 case APPLICATIONS:
-                                    applicationEventPublisher
+                                    clusterController
                                             .publishEvent(new ApplicationSynchronizationEvents.ApplicationsReceived(
                                                     connectorResponse.getApplications()));
                                     break;
 
                                 case USERS:
-                                    applicationEventPublisher.publishEvent(new UserSynchronizationEvents.UsersReceived(
+                                    clusterController.publishEvent(new UserSynchronizationEvents.UsersReceived(
                                             connectorResponse.getUsers()));
                                     break;
                                 case PROCESSOR_STRATEGY:
-                                    applicationEventPublisher.publishEvent(new ProcessorLoadBalancingStrategyReceived(
+                                    clusterController.publishEvent(new ProcessorLoadBalancingStrategyReceived(
                                       connectorResponse.getProcessorStrategy(), true));
                                     break;
                                 case PROCESSORS_STRATEGIES:
-                                    applicationEventPublisher.publishEvent(new ProcessorsLoadBalanceStrategyReceived(
+                                    clusterController.publishEvent(new ProcessorsLoadBalanceStrategyReceived(
                                             connectorResponse.getProcessorsStrategies()));
                                     break;
                                 case LOAD_BALANCING_STRATEGY:
-                                    applicationEventPublisher.publishEvent(new LoadBalancingStrategyReceived(
+                                    clusterController.publishEvent(new LoadBalancingStrategyReceived(
                                             connectorResponse.getLoadBalancingStrategy(), true));
                                     break;
                                 case LOAD_BALANCING_STRATEGIES:
-                                    applicationEventPublisher.publishEvent(new LoadBalancingStrategiesReceived(
+                                    clusterController.publishEvent(new LoadBalancingStrategiesReceived(
                                             connectorResponse.getLoadBalancingStrategies()));
                                     break;
                                 case SUBSCRIPTION_QUERY_REQUEST:
                                     ClientSubscriptionQueryRequest request = connectorResponse.getSubscriptionQueryRequest();
                                     UpdateHandler handler = new ProxyUpdateHandler(requestStreamObserver::onNext);
-                                    applicationEventPublisher.publishEvent(
+                                    clusterController.publishEvent(
                                             new ProxiedSubscriptionQueryRequest(request.getSubscriptionQueryRequest(),
                                                                                 handler,
                                                                                 request.getClient()));
@@ -213,6 +179,54 @@ public class RemoteConnection  {
                             }
                     }
 
+                    private void checkConnected() {
+                        if (connected.compareAndSet(false, true)) {
+                            logger.debug("Connected to {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
+                            errorMessage = null;
+                            connectionPending.set(0);
+                            initFlowControl();
+                        }
+                    }
+
+                    private void query(ForwardedQuery query) {
+                        SerializedQuery serializedQuery = new SerializedQuery(query.getContext(),
+                                                                              query.getClient(),
+                                                                              query.getQuery().toByteArray());
+                        queryDispatcher.dispatchProxied(serializedQuery,
+                                                                 queryResponse -> sendQueryResponse(
+                                                                         serializedQuery.client(),
+                                                                         queryResponse),
+                                                                 client -> sendQueryComplete(
+                                                                         serializedQuery.getMessageIdentifier(),
+                                                                         client));
+                    }
+
+                    private void connectResponse(ConnectResponse connectResponse) {
+                        logger.debug("Connected, received response: {}",
+                                     connectResponse);
+
+                        try {
+
+                            if(connectResponse.getDeleted()) {
+                                logger.warn("Node {} responded with deleted, deleting node from configuration", clusterNode.getName());
+                                clusterController.publishEvent(new ClusterEvents.AxonServerNodeDeleted(clusterNode.getName(), connectResponse.getGeneration()));
+                            } else {
+                                clusterController
+                                        .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
+                                                RemoteConnection.this,
+                                                connectResponse.getGeneration(),
+                                                connectResponse
+                                                                 .getModelVersionsList(),
+                                                connectResponse.getContextsList(),
+                                                connectResponse.getNodesList()));
+                            }
+                        } catch (Exception ex) {
+                            logger.warn("Failed to process request {}",
+                                        connectResponse,
+                                        ex);
+                        }
+                    }
+
                     @Override
                     protected String sender() {
                         return clusterNode.getName();
@@ -220,27 +234,21 @@ public class RemoteConnection  {
 
                     @Override
                     public void onError(Throwable throwable) {
-                        MessagingPlatformException mpe = GrpcExceptionBuilder.parse(throwable);
-                        if(ErrorCode.NOT_A_MEMBER.equals(mpe.getErrorCode())) {
-                            applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeDeleted(clusterNode.getName()));
-                            return;
-                        }
                         if (!String.valueOf(throwable.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
                             ManagedChannelHelper.checkShutdownNeeded(clusterNode.getName(), throwable);
                             logger.warn("Error on {}:{} - {}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort(), throwable.getMessage());
                             errorMessage = String.valueOf(throwable.getMessage());
-                            repeatedErrorCount.set(IGNORE_SAME_ERROR_COUT);
+                            repeatedErrorCount.set(IGNORE_SAME_ERROR_COUNT);
                         }
                         closeConnection();
                         logger.debug("Connected: {}, connection pending: {}", connected, connectionPending);
                     }
 
                     private void closeConnection() {
-                        if( connected) {
-                            applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(clusterNode.getName()));
+                        if( connected.compareAndSet(true, false)) {
+                            clusterController.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(clusterNode.getName()));
+                            connectionPending.set(0);
                         }
-                        connected = false;
-                        connectionPending = 0;
                     }
 
                     @Override
@@ -249,69 +257,69 @@ public class RemoteConnection  {
                         closeConnection();
                     }
                 }));
-        requestStreamObserver.onNext(ConnectorCommand.newBuilder()
-                .setConnect(NodeInfo.newBuilder()
-                        .setNodeName(messagingPlatformConfiguration.getName())
-                        .setGrpcInternalPort(messagingPlatformConfiguration.getInternalPort())
-                        .setGrpcPort(messagingPlatformConfiguration.getPort())
-                        .setHttpPort(messagingPlatformConfiguration.getHttpPort())
-                        .setVersion(1)
-                        .setHostName(messagingPlatformConfiguration.getFullyQualifiedHostname())
-                        .setInternalHostName(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
-                                    .addAllContexts(me.getContexts().stream().map(context ->
-                                                                                 ContextRole.newBuilder()
-                                                                                            .setName(context.getContext().getName())
-                                                                                            .setMessaging(context.isMessaging())
-                                                                                            .setStorage(context.isStorage())
-                                                                                            .build()).collect(Collectors.toList()))
-                        .build())
-                .build());
+        requestStreamObserver.onNext(ConnectorCommand.newBuilder().setConnect(
+                ConnectRequest.newBuilder().setGeneration(clusterController.currentGeneration())
+                .setNodeInfo(clusterController.getMe().toNodeInfo())).build());
 
         // send master info
-        connectionPending = System.currentTimeMillis();
+        connectionPending.set(System.currentTimeMillis());
         return this;
     }
 
+    private boolean validateConnection() {
+        try {
+            InetAddress[] addresses = InetAddress.getAllByName(clusterNode.getInternalHostName());
+            logger.debug("Connect to {}", addresses[0]);
+        } catch (UnknownHostException e) {
+            if (!String.valueOf(e.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
+                logger.warn("Unknown host: {}", clusterNode.getInternalHostName());
+                errorMessage = String.valueOf(e.getMessage());
+                repeatedErrorCount.set(IGNORE_SAME_ERROR_COUNT);
+            }
+            return false;
+        }
+        return true;
+    }
+
     private void initFlowControl() {
-        requestStreamObserver.initCommandFlowControl(messagingPlatformConfiguration);
-        requestStreamObserver.initQueryFlowControl(messagingPlatformConfiguration);
+        requestStreamObserver.initCommandFlowControl(clusterController.getName(), clusterController.getCommandFlowControl());
+        requestStreamObserver.initQueryFlowControl(clusterController.getName(), clusterController.getQueryFlowControl());
 
     }
 
-    private void sendQueryResponse( QueryRequest query, QueryResponse queryResponse) {
+    private void sendQueryResponse( String client, QueryResponse queryResponse) {
         requestStreamObserver.onNext(ConnectorCommand.newBuilder().setQueryResponse(
                 QueryResponse.newBuilder(queryResponse)
                         .addProcessingInstructions(ProcessingInstruction.newBuilder()
                                 .setKey(ProcessingKey.TARGET_CLIENT)
-                                .setValue(MetaDataValue.newBuilder().setTextValue(ProcessingInstructionHelper.targetClient(query.getProcessingInstructionsList())))
+                                .setValue(MetaDataValue.newBuilder().setTextValue(client))
                         )
         ).build());
     }
 
-    private void sendQueryComplete( QueryRequest query, String client) {
+    private void sendQueryComplete( String client, String requestIdentifier) {
         requestStreamObserver.onNext(ConnectorCommand.newBuilder()
                                                      .setQueryComplete(
                                                              QueryComplete.newBuilder()
-                                                                          .setMessageId(query.getMessageIdentifier())
+                                                                          .setMessageId(requestIdentifier)
                                                                           .setClient(client))
                                                      .build());
     }
 
     public void close() {
-        if (connected) {
-            if( requestStreamObserver != null) requestStreamObserver.onCompleted();
-            connected = false;
+        if (connected.compareAndSet(true, false) && requestStreamObserver != null) {
+            requestStreamObserver.onCompleted();
         }
     }
 
     public boolean isConnected() {
-        return connected;
+        return connected.get();
     }
 
     public void checkConnection() {
-        if( logger.isDebugEnabled() && System.currentTimeMillis() - connectionPending < connectionWaitTime)
+        if( logger.isDebugEnabled() && System.currentTimeMillis() - connectionPending.get() < connectionWaitTime)
             logger.debug("Connection pending to: {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
-        if (!connected && System.currentTimeMillis() - connectionPending > connectionWaitTime) {
+        if (!connected.get() && System.currentTimeMillis() - connectionPending.get() > connectionWaitTime) {
             init();
         }
     }
@@ -375,9 +383,11 @@ public class RemoteConnection  {
                     .build());
     }
 
-    public void sendDelete(String name) {
+    public void sendDelete(String name, long generation) {
         publish(ConnectorCommand.newBuilder()
-                    .setDeleteNode(NodeInfo.newBuilder().setNodeName(name))
+                    .setDeleteNode(DeleteNode.newBuilder()
+                                             .setNodeName(name)
+                                             .setGeneration(generation))
                     .build());
     }
 
@@ -400,7 +410,7 @@ public class RemoteConnection  {
     }
 
     public void publish(ConnectorCommand connectorCommand){
-        if (connected){
+        if (connected.get()){
             requestStreamObserver.onNext(connectorCommand);
         }
     }
