@@ -2,20 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.event.Confirmation;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
-import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
-import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.grpc.event.*;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.ForwardingStreamObserver;
 import io.grpc.BindableService;
@@ -32,7 +19,7 @@ import static io.axoniq.axonserver.message.event.EventDispatcher.*;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class InternalEventStoreService implements BindableService {

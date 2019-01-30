@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 import static junit.framework.TestCase.assertTrue;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LocalEventStoreTest {
     private LocalEventStore testSubject;

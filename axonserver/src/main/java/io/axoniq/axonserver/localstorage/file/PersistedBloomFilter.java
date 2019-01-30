@@ -17,7 +17,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Set;
 
 /**
- * Created by marc on 7/13/2017.
+ * @author Marc Gathier
  */
 public class PersistedBloomFilter {
     private final Logger logger = LoggerFactory.getLogger(PersistedBloomFilter.class);

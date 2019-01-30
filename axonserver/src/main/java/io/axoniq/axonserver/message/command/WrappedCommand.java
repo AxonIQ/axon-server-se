@@ -4,7 +4,7 @@ import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WrappedCommand {
     private final ClientIdentification client;

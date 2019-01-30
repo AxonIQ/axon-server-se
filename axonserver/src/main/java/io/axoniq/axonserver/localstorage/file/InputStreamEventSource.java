@@ -14,7 +14,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamEventSource implements EventSource {
     private static final Logger logger = LoggerFactory.getLogger(InputStreamEventSource.class);

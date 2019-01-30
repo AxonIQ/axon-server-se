@@ -8,12 +8,12 @@ import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCusto
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import javax.validation.constraints.NotNull;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-import javax.validation.constraints.NotNull;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 public class MetricsConfiguration {

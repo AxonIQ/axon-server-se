@@ -7,7 +7,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DirectCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
     public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver, ClientIdentification client, String componentName) {

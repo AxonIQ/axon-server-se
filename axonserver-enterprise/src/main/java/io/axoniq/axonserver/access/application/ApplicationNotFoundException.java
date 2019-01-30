@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.access.application;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ApplicationNotFoundException extends RuntimeException {
     public ApplicationNotFoundException(String name) {

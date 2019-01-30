@@ -10,7 +10,7 @@ import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryHandler;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SubscriptionEvents {
     @KeepNames

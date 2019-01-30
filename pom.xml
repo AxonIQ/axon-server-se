@@ -5,14 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-parent</artifactId>
     <packaging>pom</packaging>
-    <version>4.0.4-SNAPSHOT</version>
-    <dependencies>
-        <dependency>
-            <groupId>com.rabbitmq</groupId>
-            <artifactId>amqp-client</artifactId>
-            <version>4.1.0</version>
-        </dependency>
-    </dependencies>
+    <version>4.1-SNAPSHOT</version>
 
     <name>AxonIQ AxonServer</name>
 

@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SnapshotReader {
     private final EventStore datafileManagerChain;

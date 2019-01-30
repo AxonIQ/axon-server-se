@@ -25,7 +25,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 public class AxonServerFreeConfiguration {

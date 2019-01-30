@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 import static org.mockito.Mockito.mock;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventWriteStorageClusterTest {
 

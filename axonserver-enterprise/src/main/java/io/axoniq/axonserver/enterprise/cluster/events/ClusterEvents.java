@@ -10,7 +10,7 @@ import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterEvents {
 
@@ -78,7 +78,7 @@ public class ClusterEvents {
 
 
     /**
-     * Author: marc
+     * @author Marc Gathier
      */
     @KeepNames
     public static class MasterStepDown extends TopologyEvents.TopologyBaseEvent {
@@ -96,7 +96,7 @@ public class ClusterEvents {
     }
 
     /**
-     * Author: marc
+     * @author Marc Gathier
      */
     @KeepNames
     public static class MasterDisconnected extends TopologyEvents.TopologyBaseEvent{
@@ -120,7 +120,7 @@ public class ClusterEvents {
     }
 
     /**
-     * Author: marc
+     * @author Marc Gathier
      */
     @KeepNames
     public static class MasterConfirmation extends TopologyEvents.TopologyBaseEvent {
@@ -144,7 +144,7 @@ public class ClusterEvents {
     }
 
     /**
-     * Author: marc
+     * @author Marc Gathier
      */
     @KeepNames
     public static class BecomeMaster extends TopologyEvents.TopologyBaseEvent {

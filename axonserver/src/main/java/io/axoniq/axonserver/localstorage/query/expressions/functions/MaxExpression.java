@@ -7,7 +7,7 @@ import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MaxExpression extends AbstractAggregationFunction {
 

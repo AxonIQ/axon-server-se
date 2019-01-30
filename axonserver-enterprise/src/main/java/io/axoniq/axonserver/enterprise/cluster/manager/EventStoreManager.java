@@ -49,7 +49,7 @@ import java.util.stream.Stream;
 import static java.util.stream.StreamSupport.stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final Logger logger = LoggerFactory.getLogger(EventStoreManager.class);

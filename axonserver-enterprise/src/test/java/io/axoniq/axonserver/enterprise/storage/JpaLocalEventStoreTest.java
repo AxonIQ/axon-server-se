@@ -19,7 +19,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class JpaLocalEventStoreTest {
     private LocalEventStore testSubject;

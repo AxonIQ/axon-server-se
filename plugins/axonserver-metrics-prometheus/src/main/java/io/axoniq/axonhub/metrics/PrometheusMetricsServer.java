@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service
 public class PrometheusMetricsServer implements SmartLifecycle {

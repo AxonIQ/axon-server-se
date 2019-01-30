@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Applications;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ApplicationSynchronizationEvents {
 

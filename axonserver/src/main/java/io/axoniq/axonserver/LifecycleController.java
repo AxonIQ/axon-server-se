@@ -6,6 +6,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
@@ -14,11 +16,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class LifecycleController {

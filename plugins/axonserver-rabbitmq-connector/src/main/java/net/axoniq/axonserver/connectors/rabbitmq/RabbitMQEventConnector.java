@@ -24,7 +24,7 @@ import java.util.concurrent.TimeoutException;
 import static java.time.temporal.ChronoField.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Import(Config.class)
 public class RabbitMQEventConnector implements EventConnector {

@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface ContextProvider {
     String getContext();

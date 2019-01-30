@@ -3,7 +3,7 @@ package io.axoniq.cli.json;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @JsonIgnoreProperties(ignoreUnknown=true)
 public class ContextReplyNode {

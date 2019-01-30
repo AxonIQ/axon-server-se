@@ -14,7 +14,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service
 public class GraphiteMetricsServer implements SmartLifecycle{

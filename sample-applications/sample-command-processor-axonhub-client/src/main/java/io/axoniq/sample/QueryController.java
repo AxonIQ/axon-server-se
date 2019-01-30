@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController
 @RequestMapping("/query")

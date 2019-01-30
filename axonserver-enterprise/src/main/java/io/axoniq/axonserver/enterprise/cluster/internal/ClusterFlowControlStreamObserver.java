@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterFlowControlStreamObserver extends SendingStreamObserver<ConnectorCommand> {
 

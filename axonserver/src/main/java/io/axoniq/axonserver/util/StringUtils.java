@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.util;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class StringUtils {
     public static String getOrDefault(String value, String defaultValue) {

@@ -9,7 +9,7 @@ import javax.persistence.Id;
 import javax.persistence.IdClass;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @IdClass(Safepoint.SafepointKey.class)

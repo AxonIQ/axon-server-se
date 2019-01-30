@@ -12,7 +12,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @Table(name="users")

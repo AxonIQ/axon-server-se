@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.localstorage.query;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface Expression {
 

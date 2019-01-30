@@ -7,7 +7,7 @@ import org.springframework.boot.actuate.health.Health;
 import org.springframework.stereotype.Component;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class StorageReplicationHealthIndicator extends AbstractHealthIndicator {

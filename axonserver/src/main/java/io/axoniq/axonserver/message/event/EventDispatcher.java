@@ -6,20 +6,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.event.Confirmation;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
-import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
-import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.grpc.event.*;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
@@ -47,7 +34,7 @@ import java.util.stream.Collectors;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("EventDispatcher")
 public class EventDispatcher implements AxonServerClientService {
@@ -221,8 +208,8 @@ public class EventDispatcher implements AxonServerClientService {
     public final io.grpc.ServerServiceDefinition bindService() {
         return io.grpc.ServerServiceDefinition.builder(EventStoreGrpc.SERVICE_NAME)
                                               .addMethod(
-                                                      METHOD_APPEND_EVENT,
-                                                      asyncClientStreamingCall(this::appendEvent))
+                                                      EventStoreGrpc.METHOD_APPEND_EVENT,
+                                                      asyncClientStreamingCall( this::appendEvent))
                                               .addMethod(
                                                       EventStoreGrpc.getAppendSnapshotMethod(),
                                                       asyncUnaryCall(this::appendSnapshot))

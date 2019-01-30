@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("Gateway")
 public class Gateway implements SmartLifecycle {

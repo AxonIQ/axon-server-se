@@ -36,7 +36,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SecondaryEventStore extends SegmentBasedEventStore {
     private final ScheduledExecutorService scheduledExecutorService;

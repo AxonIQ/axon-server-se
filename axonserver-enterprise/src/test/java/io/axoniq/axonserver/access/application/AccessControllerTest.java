@@ -18,7 +18,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AccessControllerTest {

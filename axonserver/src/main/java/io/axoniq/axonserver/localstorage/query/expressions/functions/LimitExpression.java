@@ -12,7 +12,7 @@ import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LimitExpression implements PipeExpression {
 

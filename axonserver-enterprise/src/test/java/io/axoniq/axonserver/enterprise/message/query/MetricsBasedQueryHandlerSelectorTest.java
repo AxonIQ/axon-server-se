@@ -15,7 +15,7 @@ import java.util.NavigableSet;
 import java.util.TreeSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsBasedQueryHandlerSelectorTest {

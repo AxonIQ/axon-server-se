@@ -3,7 +3,7 @@ package io.axoniq.axonserver.util;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FailingStreamObserver<T> implements StreamObserver<T> {
 

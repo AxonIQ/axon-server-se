@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("QueryCache")
 public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {

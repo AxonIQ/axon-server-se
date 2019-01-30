@@ -1,7 +1,7 @@
 package io.axoniq.cli.json;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class User {
     private String userName;

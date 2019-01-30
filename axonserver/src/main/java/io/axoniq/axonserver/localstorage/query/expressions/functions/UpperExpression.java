@@ -7,7 +7,7 @@ import io.axoniq.axonserver.localstorage.query.result.NullExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.StringExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class UpperExpression implements Expression {
 

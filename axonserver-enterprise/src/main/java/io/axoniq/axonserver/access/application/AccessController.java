@@ -4,11 +4,11 @@ import io.axoniq.axonserver.access.jpa.Application;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 
-import java.util.Objects;
 import javax.annotation.PostConstruct;
+import java.util.Objects;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @Controller
 public class AccessController {

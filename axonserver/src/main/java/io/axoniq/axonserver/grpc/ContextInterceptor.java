@@ -1,15 +1,10 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.topology.Topology;
-import io.grpc.Context;
-import io.grpc.Contexts;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
+import io.grpc.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ContextInterceptor implements ServerInterceptor{
     @Override

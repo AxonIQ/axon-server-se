@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @AutoConfigureBefore(AxonServerFreeConfiguration.class)

@@ -30,7 +30,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @RestController("ApplicationRestController")
 @CrossOrigin

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Controller;
 import java.time.LocalDate;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class StatusChecker {

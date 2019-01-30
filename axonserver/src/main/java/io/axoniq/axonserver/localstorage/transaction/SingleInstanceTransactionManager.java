@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SingleInstanceTransactionManager implements StorageTransactionManager{
     private final EventStore datafileManagerChain;

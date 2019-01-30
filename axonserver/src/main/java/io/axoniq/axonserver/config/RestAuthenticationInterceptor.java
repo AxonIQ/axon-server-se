@@ -11,7 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RestAuthenticationInterceptor implements HandlerInterceptor {
 

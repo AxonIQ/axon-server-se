@@ -10,7 +10,7 @@ import java.util.TreeSet;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RoundRobinQueryHandlerSelectorTest {
     private RoundRobinQueryHandlerSelector testSubject;

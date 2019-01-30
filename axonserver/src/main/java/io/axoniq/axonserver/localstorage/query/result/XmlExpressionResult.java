@@ -16,7 +16,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class XmlExpressionResult implements AbstractMapExpressionResult  {

@@ -9,7 +9,7 @@ import java.nio.MappedByteBuffer;
 import java.util.Arrays;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WritableEventSource extends ByteBufferEventSource {
     private static final Logger logger = LoggerFactory.getLogger(WritableEventSource.class);

@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class DataSynchronizationReplica {

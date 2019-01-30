@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.exception;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MessagingPlatformException extends RuntimeException {
     private final ErrorCode errorCode;

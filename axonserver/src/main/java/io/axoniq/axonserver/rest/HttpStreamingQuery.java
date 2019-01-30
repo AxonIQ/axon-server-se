@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class HttpStreamingQuery {

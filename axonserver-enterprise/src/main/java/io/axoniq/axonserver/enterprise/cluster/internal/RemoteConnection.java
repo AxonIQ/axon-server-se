@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
  * Each subscription made to this node is forwarded to the connected node.
  * <p>
  * Managed by {@link ClusterController}, which will check connection status and try to reconnect lost connections.
- * Author: marc
+ * @author Marc Gathier
  */
 public class RemoteConnection  {
 

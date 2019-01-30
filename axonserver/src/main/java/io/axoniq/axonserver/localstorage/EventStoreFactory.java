@@ -3,7 +3,7 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventStoreFactory {
 

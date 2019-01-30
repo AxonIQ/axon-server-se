@@ -22,7 +22,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController("OverviewModel")
 public class OverviewModel {

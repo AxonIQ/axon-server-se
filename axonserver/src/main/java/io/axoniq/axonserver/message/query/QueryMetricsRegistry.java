@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service("QueryMetricsRegistry")
 public class QueryMetricsRegistry {

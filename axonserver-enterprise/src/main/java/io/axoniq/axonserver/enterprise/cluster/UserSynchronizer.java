@@ -13,7 +13,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class UserSynchronizer {

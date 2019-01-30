@@ -16,7 +16,7 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventStreamController {
     private static final Executor threadPool = Executors.newCachedThreadPool(new CustomizableThreadFactory("event-stream-"){

@@ -5,7 +5,7 @@ import io.axoniq.axonserver.migration.DomainEvent;
 import javax.persistence.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @Table(

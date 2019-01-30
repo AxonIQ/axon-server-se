@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller("ClusterController")
 public class ClusterController implements SmartLifecycle {

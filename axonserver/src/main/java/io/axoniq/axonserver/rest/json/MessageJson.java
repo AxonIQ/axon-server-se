@@ -6,7 +6,7 @@ import io.axoniq.axonserver.grpc.ErrorMessage;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class MessageJson {

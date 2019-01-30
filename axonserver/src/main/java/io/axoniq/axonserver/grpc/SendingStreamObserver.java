@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Wrapper around a GRPC StreamObserver that ensures thread safety for sending messages, as GRPC does not provide this by default.
- * Author: marc
+ * @author Marc Gathier
  */
 public class SendingStreamObserver<T> implements StreamObserver<T> {
     private final StreamObserver<T> delegate;

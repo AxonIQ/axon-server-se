@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class GrpcExceptionBuilder {
     private static final Logger logger = LoggerFactory.getLogger(GrpcExceptionBuilder.class);

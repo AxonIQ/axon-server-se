@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import java.net.UnknownHostException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @ConfigurationProperties(prefix = "axoniq.axonserver")

@@ -7,7 +7,7 @@ import org.axonframework.spring.stereotype.Aggregate;
 
 import static org.axonframework.commandhandling.model.AggregateLifecycle.apply;
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Aggregate
 public class SampleCommandHandler {

@@ -10,7 +10,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandInformation {
     private final String requestIdentifier;

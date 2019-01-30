@@ -4,7 +4,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface SystemInfoProvider {
 

@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.internal.SynchronizationReplicaOutbound;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface DataSychronizationServiceInterface {
     StreamObserver<SynchronizationReplicaOutbound> openConnection(

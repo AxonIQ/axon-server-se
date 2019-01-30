@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.isA;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class QueryServiceTest {
     private QueryService testSubject;

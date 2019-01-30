@@ -9,7 +9,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import javax.annotation.PreDestroy;
 
 /**
- * Author: marc
+ * Main Runner for AxonServer.
+ *
+ *
+ * @@author Marc Gathier
  */
 @SpringBootApplication
 @EnableAsync

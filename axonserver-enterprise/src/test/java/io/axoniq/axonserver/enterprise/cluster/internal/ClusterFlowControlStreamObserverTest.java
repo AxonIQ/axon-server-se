@@ -14,7 +14,7 @@ import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.*;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterFlowControlStreamObserverTest {
     private ClusterFlowControlStreamObserver testSubject;

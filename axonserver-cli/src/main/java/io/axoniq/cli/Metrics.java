@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Metrics extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {

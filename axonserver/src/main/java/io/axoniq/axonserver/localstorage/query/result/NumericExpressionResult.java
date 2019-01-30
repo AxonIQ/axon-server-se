@@ -10,7 +10,7 @@ import java.math.RoundingMode;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class NumericExpressionResult implements ExpressionResult {

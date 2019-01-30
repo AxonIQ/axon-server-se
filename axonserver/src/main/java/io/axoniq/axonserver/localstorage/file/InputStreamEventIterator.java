@@ -8,7 +8,7 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamEventIterator extends EventIterator {
 

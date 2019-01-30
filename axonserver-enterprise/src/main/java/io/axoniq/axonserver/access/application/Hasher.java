@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.access.application;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 public interface Hasher {
     String hash(String token);

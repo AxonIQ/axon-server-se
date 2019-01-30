@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class ListExpressionResult implements ExpressionResult {

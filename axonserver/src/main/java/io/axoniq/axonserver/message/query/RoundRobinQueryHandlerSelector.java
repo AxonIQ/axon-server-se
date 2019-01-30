@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RoundRobinQueryHandlerSelector implements QueryHandlerSelector {
     private final ConcurrentMap<QueryDefinitionComponent, ClientIdentification> lastClientMap = new ConcurrentHashMap<>();

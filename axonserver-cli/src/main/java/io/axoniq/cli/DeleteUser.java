@@ -6,7 +6,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DeleteUser extends AxonIQCliCommand {
 

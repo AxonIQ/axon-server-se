@@ -19,7 +19,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @EnableJpaRepositories(basePackages = "io.axoniq.axonserver.migration.db",

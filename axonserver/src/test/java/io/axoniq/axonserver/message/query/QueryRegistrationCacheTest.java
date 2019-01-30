@@ -19,7 +19,7 @@ import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class QueryRegistrationCacheTest {

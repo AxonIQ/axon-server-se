@@ -6,7 +6,7 @@ import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.StringExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class StringLiteral implements Expression {
     private final String literal;

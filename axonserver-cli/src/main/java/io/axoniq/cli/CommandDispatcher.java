@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandDispatcher {
     @FunctionalInterface

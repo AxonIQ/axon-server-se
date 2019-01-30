@@ -6,7 +6,7 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import java.io.File;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class StorageProperties {
@@ -15,7 +15,6 @@ public class StorageProperties {
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
     private static final String OLD_PATH_FORMAT = "%s/%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
-
     private String eventsSuffix = ".events";
     private String indexSuffix = ".index";
     private String bloomIndexSuffix = ".bloom";

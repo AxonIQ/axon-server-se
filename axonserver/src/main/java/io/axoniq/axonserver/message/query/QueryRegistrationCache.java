@@ -25,7 +25,7 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("QueryRegistrationCache")
 public class QueryRegistrationCache {

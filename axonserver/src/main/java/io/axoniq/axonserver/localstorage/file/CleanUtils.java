@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  * Copied code from Tomcat to clean buffer: org.apache.tomcat.util.buf.ByteBufferUtils
  */
 public class CleanUtils {

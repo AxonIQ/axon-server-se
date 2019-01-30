@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RemoteAxonServerStreamObserver<T> implements StreamObserver<T> {
 

@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import javax.xml.bind.DatatypeConverter;
 
 /**
- * Created by marc on 7/14/2017.
+ * @author Marc Gathier
  */
 @Component
 @ConditionalOnMissingClass("org.mindrot.jbcrypt.BCrypt")

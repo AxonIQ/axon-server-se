@@ -10,7 +10,7 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InternalTokenAddingInterceptor implements ClientInterceptor {
     private final String token;

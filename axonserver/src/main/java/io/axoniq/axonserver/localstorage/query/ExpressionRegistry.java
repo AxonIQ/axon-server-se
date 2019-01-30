@@ -8,7 +8,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ExpressionRegistry {
 

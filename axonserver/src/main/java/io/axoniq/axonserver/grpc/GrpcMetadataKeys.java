@@ -5,7 +5,7 @@ import io.grpc.Context;
 import io.grpc.Metadata;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface GrpcMetadataKeys {
     Metadata.Key<String> TOKEN_KEY = Metadata.Key.of(AxonServerAccessController.TOKEN_PARAM, Metadata.ASCII_STRING_MARSHALLER);

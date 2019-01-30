@@ -5,7 +5,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import java.util.NavigableSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface QueryHandlerSelector {
     ClientIdentification select(QueryDefinition queryDefinition, String componentName, NavigableSet<ClientIdentification> queryHandlers);

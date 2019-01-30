@@ -7,7 +7,7 @@ import io.axoniq.axonserver.message.event.EventStore;
 import javax.annotation.PostConstruct;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DefaultEventStoreLocator implements EventStoreLocator {
     private final LocalEventStore localEventStore;

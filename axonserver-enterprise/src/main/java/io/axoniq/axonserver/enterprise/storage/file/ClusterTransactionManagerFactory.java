@@ -11,7 +11,7 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFa
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterTransactionManagerFactory implements StorageTransactionManagerFactory {
 

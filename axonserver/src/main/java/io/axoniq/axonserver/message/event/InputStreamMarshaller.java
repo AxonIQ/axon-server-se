@@ -6,7 +6,7 @@ import java.io.BufferedInputStream;
 import java.io.InputStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamMarshaller implements MethodDescriptor.Marshaller<InputStream> {
 

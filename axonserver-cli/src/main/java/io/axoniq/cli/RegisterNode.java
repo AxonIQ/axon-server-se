@@ -14,7 +14,7 @@ import static io.axoniq.cli.CommandOptions.INTERNALHOST;
 import static io.axoniq.cli.CommandOptions.INTERNALPORT;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RegisterNode extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {

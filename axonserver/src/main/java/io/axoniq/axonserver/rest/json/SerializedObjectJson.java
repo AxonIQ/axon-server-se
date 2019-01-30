@@ -6,7 +6,7 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.util.StringUtils;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class SerializedObjectJson {

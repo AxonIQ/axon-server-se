@@ -4,7 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class NodeRoles {

@@ -36,7 +36,7 @@ import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController("CommandRestController")
 @RequestMapping("/v1")

@@ -9,7 +9,7 @@ import java.util.LinkedList;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FakeApplicationEventPublisher implements ApplicationEventPublisher {
 

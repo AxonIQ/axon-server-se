@@ -20,7 +20,7 @@ import java.util.Date;
 import static org.junit.Assert.*;
 
 /**
- * Created by marc on 7/13/2017.
+ * @author Marc Gathier
  */
 @RunWith(SpringRunner.class)
 @DataJpaTest

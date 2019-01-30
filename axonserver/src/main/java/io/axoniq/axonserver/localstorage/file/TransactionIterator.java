@@ -4,7 +4,7 @@ import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import org.springframework.data.util.CloseableIterator;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface TransactionIterator extends CloseableIterator<SerializedTransactionWithToken> {
 

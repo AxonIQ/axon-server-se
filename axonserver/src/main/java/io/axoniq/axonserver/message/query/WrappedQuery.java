@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WrappedQuery {
     private final SerializedQuery queryRequest;

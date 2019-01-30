@@ -3,7 +3,7 @@ package io.axoniq.axonserver.connector;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventConnector {
     UnitOfWork createUnitOfWork();

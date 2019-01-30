@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class LeaderRequestHandlerTest {

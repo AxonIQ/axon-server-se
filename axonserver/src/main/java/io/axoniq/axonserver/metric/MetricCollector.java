@@ -3,7 +3,7 @@ package io.axoniq.axonserver.metric;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface MetricCollector extends Function<String, ClusterMetric>  {
 

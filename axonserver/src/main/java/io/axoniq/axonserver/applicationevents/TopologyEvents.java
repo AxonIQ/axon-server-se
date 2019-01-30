@@ -4,7 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TopologyEvents {
 

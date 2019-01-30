@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PrimaryEventStore extends SegmentBasedEventStore {
     private static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);

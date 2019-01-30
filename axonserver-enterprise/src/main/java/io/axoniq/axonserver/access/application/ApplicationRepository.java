@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 /**
- * Created by marc on 7/13/2017.
+ * @author Marc Gathier
  */
 public interface ApplicationRepository extends JpaRepository<Application, Long> {
 

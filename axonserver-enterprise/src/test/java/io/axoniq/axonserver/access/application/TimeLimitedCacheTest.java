@@ -4,7 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TimeLimitedCacheTest {
     @Test

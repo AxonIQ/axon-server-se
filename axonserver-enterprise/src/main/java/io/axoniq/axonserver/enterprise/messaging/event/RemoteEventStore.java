@@ -34,7 +34,7 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RemoteEventStore implements io.axoniq.axonserver.message.event.EventStore {
     private final ClusterNode clusterNode;

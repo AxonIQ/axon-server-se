@@ -19,7 +19,7 @@ import java.util.Collections;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SubscriptionCountBasedNodeSelectionStrategyTest {
 

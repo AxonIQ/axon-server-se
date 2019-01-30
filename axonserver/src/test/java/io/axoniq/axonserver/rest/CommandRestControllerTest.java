@@ -20,7 +20,7 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class CommandRestControllerTest {

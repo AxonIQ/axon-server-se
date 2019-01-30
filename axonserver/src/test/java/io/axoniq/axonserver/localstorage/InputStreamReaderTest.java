@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamReaderTest {
     @ClassRule

@@ -15,7 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import javax.annotation.PreDestroy;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @SpringBootApplication
 @EnableAsync

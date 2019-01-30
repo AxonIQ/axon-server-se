@@ -6,7 +6,7 @@ import io.axoniq.axonserver.enterprise.context.NodeRoles;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ContextEvents {
     @KeepNames

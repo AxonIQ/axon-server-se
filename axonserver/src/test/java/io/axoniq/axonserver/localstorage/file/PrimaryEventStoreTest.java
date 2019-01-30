@@ -27,7 +27,7 @@ import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PrimaryEventStoreTest {
     @ClassRule

@@ -9,7 +9,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @Table(name="user_roles")

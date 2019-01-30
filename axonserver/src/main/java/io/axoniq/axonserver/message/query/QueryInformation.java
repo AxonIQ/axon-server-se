@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class QueryInformation {
 

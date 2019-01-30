@@ -18,7 +18,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class JsonPathExpressionTest {
     private JsonPathExpression testSubject;

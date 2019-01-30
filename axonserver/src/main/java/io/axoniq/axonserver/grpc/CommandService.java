@@ -6,6 +6,10 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.DispatchEvents;
+import io.axoniq.axonserver.SubscriptionEvents;
+import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.grpc.command.*;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
@@ -19,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;

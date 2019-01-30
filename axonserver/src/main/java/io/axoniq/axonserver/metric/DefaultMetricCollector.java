@@ -3,7 +3,7 @@ package io.axoniq.axonserver.metric;
 import java.util.Collections;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DefaultMetricCollector implements MetricCollector {
 

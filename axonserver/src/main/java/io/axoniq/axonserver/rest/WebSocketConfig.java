@@ -17,7 +17,7 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @EnableWebSocketMessageBroker

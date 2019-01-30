@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public enum ErrorCode {
     // Generic errors processing client request

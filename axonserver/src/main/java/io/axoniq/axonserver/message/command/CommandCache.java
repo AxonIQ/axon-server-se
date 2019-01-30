@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class CommandCache extends ConcurrentHashMap<String, CommandInformation> {

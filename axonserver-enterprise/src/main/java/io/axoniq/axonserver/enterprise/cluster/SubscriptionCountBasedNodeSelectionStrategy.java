@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component("SubscriptionCountBasedNodeSelectionStrategy")
 public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectionStrategy {

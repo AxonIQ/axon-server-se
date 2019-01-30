@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
 public class MigrationApplication {

@@ -16,7 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Controller;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller("GrpcStubFactory")
 public class GrpcStubFactory implements StubFactory {

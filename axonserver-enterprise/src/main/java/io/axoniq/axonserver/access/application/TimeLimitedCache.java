@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TimeLimitedCache<T1, T2> {
     final Map<T1, ValueWrapper<T2>> entries = new ConcurrentHashMap<>();

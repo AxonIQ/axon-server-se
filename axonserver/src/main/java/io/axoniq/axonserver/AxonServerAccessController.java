@@ -7,7 +7,7 @@ import io.axoniq.axonserver.access.jpa.PathMapping;
 import java.util.Collection;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface AxonServerAccessController {
     String TOKEN_PARAM = "AxonIQ-Access-Token";

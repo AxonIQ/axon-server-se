@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ByteBufferEventSource implements EventSource {
 

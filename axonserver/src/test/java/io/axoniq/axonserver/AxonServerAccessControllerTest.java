@@ -15,7 +15,7 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AxonServerAccessControllerTest {

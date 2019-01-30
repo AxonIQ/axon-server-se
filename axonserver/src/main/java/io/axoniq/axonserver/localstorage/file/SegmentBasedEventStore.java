@@ -10,6 +10,8 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
+import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
+import io.axoniq.axonserver.localstorage.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
@@ -42,7 +44,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class SegmentBasedEventStore implements EventStore {
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);

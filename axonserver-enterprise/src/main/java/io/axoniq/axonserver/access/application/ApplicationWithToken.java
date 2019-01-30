@@ -4,7 +4,7 @@ package io.axoniq.axonserver.access.application;
 import io.axoniq.axonserver.access.jpa.Application;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ApplicationWithToken {
     private final String tokenString;

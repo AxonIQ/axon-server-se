@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
 public class DataSynchronizationMaster extends DataSynchronizerGrpc.DataSynchronizerImplBase implements

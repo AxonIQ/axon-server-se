@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterTransactionManager implements StorageTransactionManager {
     private static final Logger logger = LoggerFactory.getLogger(ClusterTransactionManager.class);

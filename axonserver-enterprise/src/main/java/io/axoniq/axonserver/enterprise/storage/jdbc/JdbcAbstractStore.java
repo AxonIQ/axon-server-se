@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class JdbcAbstractStore implements EventStore {
 
