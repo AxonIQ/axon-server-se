@@ -208,7 +208,7 @@ public class EventDispatcher implements AxonServerClientService {
     public final io.grpc.ServerServiceDefinition bindService() {
         return io.grpc.ServerServiceDefinition.builder(EventStoreGrpc.SERVICE_NAME)
                                               .addMethod(
-                                                      EventStoreGrpc.METHOD_APPEND_EVENT,
+                                                      METHOD_APPEND_EVENT,
                                                       asyncClientStreamingCall( this::appendEvent))
                                               .addMethod(
                                                       EventStoreGrpc.getAppendSnapshotMethod(),
