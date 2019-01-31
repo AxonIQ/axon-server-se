@@ -16,7 +16,7 @@ Build the application (maven modules) images with [Jib](https://github.com/Googl
 
 From parent/root folder:
 ```bash
-$ mvn install jib:dockerBuild
+$ mvn verify jib:dockerBuild
 ```
 
 > 'Jib' separates your application into multiple layers, splitting dependencies from classes. Now you don’t have to wait for Docker to rebuild your entire Java application - just deploy the layers that changed.
