@@ -22,7 +22,6 @@ public class MajorityStrategy implements VoteStrategy {
     private final Map<String, Boolean> votes = new ConcurrentHashMap<>();
     private final Logger log = LoggerFactory.getLogger(MajorityStrategy.class);
     private final CompletableFuture<Boolean> won;
-//    private final AtomicReference<MonoSink<Boolean>> sink = new AtomicReference<>();
 
     public MajorityStrategy(Supplier<Integer> votersSize) {
         this.minMajority = new MinMajority(votersSize);
