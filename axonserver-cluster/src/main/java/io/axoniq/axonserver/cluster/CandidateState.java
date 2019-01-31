@@ -17,7 +17,6 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;

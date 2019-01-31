@@ -3,6 +3,7 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
+import io.axoniq.axonserver.cluster.election.DefaultElection;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
@@ -20,6 +21,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -174,7 +176,11 @@ public class LeaderState extends AbstractMembershipState {
     public void forceStepDown() {
         String message = format("%s: Forced Step Down of %s.", groupId(), me());
         logger.info(message);
-        changeStateTo(stateFactory().followerState(), message);
+        stepDown(message);
+    }
+
+    private void stepDown(String cause){
+        changeStateTo(stateFactory().followerState(), cause);
     }
 
     private void checkStepdown() {
@@ -247,9 +253,24 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     protected void updateCurrentTerm(long term, String cause) {
+        if (term <= raftGroup().localElectionStore().currentTerm()) return;
         super.updateCurrentTerm(term, cause);
-        appendLeaderElected();
+
+        DefaultElection majorityElection = new DefaultElection(requestVotePrototype(),
+                                                               super::updateCurrentTerm,
+                                                               raftGroup().localElectionStore(),
+                                                               otherPeers());
+
+        majorityElection.result().timeout(Duration.ofMillis(maxElectionTimeout()))
+                        .subscribe(result -> onElectionResult(result.won()),
+                                   error -> onElectionResult(false));
+
     }
+
+    private void onElectionResult(boolean won) {
+        if (won) appendLeaderElected(); else stepDown("Leader not reconfirmed");
+    }
+
 
     private class Replicators {
 
