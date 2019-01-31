@@ -12,13 +12,13 @@ import java.util.function.Supplier;
  * @author Sara Pellegrini
  * @since 4.0
  */
-public class MajorityElection implements Election {
+public class MajorityStrategy implements VoteStrategy {
 
     private final Supplier<Integer> minMajority;
     private final Map<String, Boolean> votes = new ConcurrentHashMap<>();
-    private final Logger log = LoggerFactory.getLogger(MajorityElection.class);
+    private final Logger log = LoggerFactory.getLogger(MajorityStrategy.class);
 
-    public MajorityElection(Supplier<Integer> votersSize) {
+    public MajorityStrategy(Supplier<Integer> votersSize) {
         this.minMajority = new MinMajority(votersSize);
     }
 
@@ -32,7 +32,8 @@ public class MajorityElection implements Election {
         long voteGranted = votes.values().stream().filter(granted -> granted).count();
         boolean won = voteGranted >= minMajority.get();
         if (won && log.isInfoEnabled()){
-            log.info("Election is won with following votes: {}", votes);
+            log.info("Election is won with following votes: {}. MinMajority: {}. Granted votes: {}.",
+                     votes, minMajority.get(), voteGranted);
         }
         return won;
     }

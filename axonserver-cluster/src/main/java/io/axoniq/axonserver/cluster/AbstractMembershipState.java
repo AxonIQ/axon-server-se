@@ -9,6 +9,7 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
 
@@ -287,6 +288,17 @@ public abstract class AbstractMembershipState implements MembershipState {
                              .setRequestId(requestId)
                              .setResponseId(UUID.randomUUID().toString())
                              .setNodeId(me()).build();
+    }
+
+    protected RequestVoteRequest requestVotePrototype() {
+        TermIndex lastLog = lastLog();
+        return RequestVoteRequest.newBuilder()
+                                 .setGroupId(groupId())
+                                 .setCandidateId(me())
+                                 .setTerm(currentTerm()+1)
+                                 .setLastLogIndex(lastLog.getIndex())
+                                 .setLastLogTerm(lastLog.getTerm())
+                                 .build();
     }
 
     protected CurrentConfiguration currentConfiguration(){

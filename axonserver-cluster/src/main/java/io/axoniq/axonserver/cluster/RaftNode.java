@@ -127,7 +127,7 @@ public class RaftNode {
         }
     }
 
-    private void updateTerm(Long newTerm, String cause){
+    private synchronized void updateTerm(Long newTerm, String cause){
         ElectionStore electionStore = raftGroup.localElectionStore();
         if (newTerm > electionStore.currentTerm()) {
             electionStore.updateCurrentTerm(newTerm);
@@ -275,5 +275,6 @@ public class RaftNode {
         this.messagesListeners.add(messageConsumer);
         return () -> this.messagesListeners.remove(messageConsumer);
     }
+
 
 }

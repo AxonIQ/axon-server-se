@@ -2,8 +2,9 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.CandidateConfiguration;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
+import io.axoniq.axonserver.cluster.election.DefaultElection;
 import io.axoniq.axonserver.cluster.election.Election;
-import io.axoniq.axonserver.cluster.election.MajorityElection;
+import io.axoniq.axonserver.cluster.election.Election.Result;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -16,8 +17,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.UUID;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -27,12 +27,11 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * @author Sara Pellegrini
- * @since 4.0
+ * @since 4.1
  */
 public class CandidateState extends AbstractMembershipState {
 
     private static final Logger logger = LoggerFactory.getLogger(CandidateState.class);
-    private final AtomicReference<Election> currentElection = new AtomicReference<>();
     private final ClusterConfiguration clusterConfiguration = new CandidateConfiguration();
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
@@ -135,73 +134,22 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void startElection() {
-        try {
-            synchronized (this) {
-                long newTerm = currentTerm() + 1;
-                String cause = format("%s is starting a new election, so increases its term from %s to %s",
-                                      me(), currentTerm(), newTerm);
-                updateCurrentTerm(newTerm, cause);
-                markVotedFor(me());
-            }
-            logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
-            resetElectionTimeout();
-            currentElection.set(new MajorityElection(this::clusterSize));
-            currentElection.get().registerVoteReceived(me(), true);
-            Collection<RaftPeer> raftPeers = otherPeers();
-            if (raftPeers.isEmpty() && !currentConfiguration().isEmpty()) {
-                currentElection.set(null);
-                changeStateTo(stateFactory().leaderState(), "No other nodes in the raft group.");
-            } else {
-                raftPeers.forEach(node -> requestVote(requestVote(), node));
-            }
-        } catch (Exception ex) {
-            logger.warn("Failed to start election", ex);
-        }
+        if (currentConfiguration().isEmpty()) return;
+
+        Election election = new DefaultElection(requestVotePrototype(),
+                                                this::updateCurrentTerm,
+                                                raftGroup().localElectionStore(),
+                                                otherPeers());
+
+        election.result().subscribe(this::onElectionResult, error -> logger.warn("Failed to run election", error));
+        resetElectionTimeout();
     }
 
-    private RequestVoteRequest requestVote() {
-        TermIndex lastLog = lastLog();
-        return RequestVoteRequest.newBuilder()
-                                 .setRequestId(UUID.randomUUID().toString())
-                                 .setGroupId(groupId())
-                                 .setCandidateId(me())
-                                 .setTerm(currentTerm())
-                                 .setLastLogIndex(lastLog.getIndex())
-                                 .setLastLogTerm(lastLog.getTerm())
-                                 .build();
-    }
-
-    private void requestVote(RequestVoteRequest request, RaftPeer node) {
-        node.requestVote(request).thenAccept(response -> {
-            synchronized (raftGroup().localNode()){
-                onVoteResponse(response);
-            }
-        });
-    }
-
-    private void onVoteResponse(RequestVoteResponse response) {
-        String voter = response.getResponseHeader().getNodeId();
-        logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
-        if (response.getTerm() > currentTerm()) {
-            String message = format("%s received RequestVoteResponse with greater term (%s > %s) from %s",
-                                    me(), response.getTerm(), currentTerm(), voter);
-            updateCurrentTerm(response.getTerm(), message);
-            changeStateTo(stateFactory().followerState(), message);
-            return;
-        }
-        //The candidate can receive a response with lower term if the voter is receiving regular heartbeat from a leader.
-        //In this case, the voter recognizes any request of vote as disruptive, refuses the vote and does't update its term.
-        if (response.getTerm() < currentTerm()) {
-            return;
-        }
-        Election election = this.currentElection.get();
-        if (election != null) {
-            election.registerVoteReceived(voter, response.getVoteGranted());
-            if (election.isWon()) {
-                this.currentElection.set(null);
-                String message = format("%s won the election for context %s {%s}", me(), groupId(), election);
-                changeStateTo(stateFactory().leaderState(), message);
-            }
+    private void onElectionResult(Result result){
+        if (result.won()) {
+            changeStateTo(stateFactory().leaderState(), result.cause());
+        } else {
+            changeStateTo(stateFactory().followerState(), result.cause()); //TODO ???
         }
     }
 

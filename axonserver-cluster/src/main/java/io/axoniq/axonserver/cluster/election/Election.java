@@ -1,14 +1,22 @@
 package io.axoniq.axonserver.cluster.election;
 
+import reactor.core.publisher.Mono;
+
+
 /**
  * @author Sara Pellegrini
- * @since 4.0
+ * @since 4.1
  */
 public interface Election {
 
-    void registerVoteReceived(String voter, boolean granted);
+    Mono<Result> result();
 
-    boolean isWon();
+    interface Result {
+
+        boolean won();
+
+        String cause();
+
+    }
 
 }
-
