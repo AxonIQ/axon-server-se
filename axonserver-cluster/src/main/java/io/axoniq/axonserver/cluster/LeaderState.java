@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.election.DefaultElection;
+import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
@@ -256,10 +257,10 @@ public class LeaderState extends AbstractMembershipState {
         if (term <= raftGroup().localElectionStore().currentTerm()) return;
         super.updateCurrentTerm(term, cause);
 
-        DefaultElection majorityElection = new DefaultElection(requestVotePrototype(),
-                                                               super::updateCurrentTerm,
-                                                               raftGroup().localElectionStore(),
-                                                               otherPeers());
+        Election majorityElection = new DefaultElection(requestVotePrototype(),
+                                                        super::updateCurrentTerm,
+                                                        raftGroup().localElectionStore(),
+                                                        otherPeers());
 
         majorityElection.result().timeout(Duration.ofMillis(maxElectionTimeout()))
                         .subscribe(result -> onElectionResult(result.won()),

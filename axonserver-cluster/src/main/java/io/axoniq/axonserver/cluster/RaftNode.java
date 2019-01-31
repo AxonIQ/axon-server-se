@@ -107,13 +107,13 @@ public class RaftNode {
     private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
         String newStateName = toString(newState);
         String currentStateName = toString(currentState);
+        long term = raftGroup.localElectionStore().currentTerm();
         if( state.compareAndSet(currentState, newState)) {
             Optional.ofNullable(currentState).ifPresent(MembershipState::stop);
             logger.info("{}: Updating state from {} to {} ({})", groupId(), currentStateName, newStateName, cause);
             stateChangeListeners.forEach(stateChangeListeners -> {
                 try {
-                    StateChanged change = new StateChanged(groupId(), nodeId, currentStateName, newStateName, cause,
-                                                           raftGroup.localElectionStore().currentTerm());
+                    StateChanged change = new StateChanged(groupId(), nodeId, currentStateName, newStateName, cause, term);
                     stateChangeListeners.accept(change);
                 } catch (Exception ex) {
                     logger.warn("{}: Failed to handle event", groupId(), ex);
@@ -123,7 +123,8 @@ public class RaftNode {
             logger.info("{}: Updated state to {}", groupId(), newStateName);
             newState.start();
         } else {
-            logger.warn("{}: transition to {} failed, invalid current state", groupId(), newStateName);
+            logger.warn("{}: transition to {} failed, invalid current state (node: {}, term:{}, currentState: {})",
+                        groupId(), newStateName, nodeId, term, currentStateName);
         }
     }
 
@@ -276,5 +277,7 @@ public class RaftNode {
         return () -> this.messagesListeners.remove(messageConsumer);
     }
 
-
+    public RaftGroup raftGroup() {
+        return raftGroup;
+    }
 }

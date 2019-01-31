@@ -28,8 +28,6 @@ public class DefaultElection implements Election {
     private final ElectionStore electionStore;
     private final Collection<RaftPeer> otherNodes;
     private final VoteStrategy voteStrategy;
-    private final Mono<Result> result;
-    private final AtomicReference<MonoSink<Result>> sink = new AtomicReference<>();
 
     public DefaultElection(RequestVoteRequest requestPrototype,
                            BiConsumer<Long, String> termUpdateHandler,
@@ -51,35 +49,32 @@ public class DefaultElection implements Election {
         this.electionStore = electionStore;
         this.otherNodes = otherNodes;
         this.voteStrategy = voteStrategy;
-        this.result = Mono.create(sink::set);
     }
 
     public Mono<Result> result(){
-        String cause = format("%s is starting a new election, so increases its term from %s to %s", me(), currentTerm(), electionTerm());
-        updateCurrentTerm(electionTerm(), cause);
-        electionStore.markVotedFor(me());
-        logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
-        voteStrategy.registerVoteReceived(me(), true);
-        if (otherNodes.isEmpty()) {
-            notifyElectionWon();
-        } else {
-            otherNodes.forEach(node -> requestVote(request(), node));
-        }
-        return result;
+        return Mono.create(sink -> {
+            String cause = format("%s is starting a new election, so increases its term from %s to %s", me(), currentTerm(), electionTerm());
+            updateCurrentTerm(electionTerm(), cause);
+            electionStore.markVotedFor(me());
+            logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
+            voteStrategy.isWon().thenAccept(isWon -> notifyElectionCompleted(isWon, sink));
+            voteStrategy.registerVoteReceived(me(), true);
+            otherNodes.forEach(node -> requestVote(request(), node, sink));
+        });
     }
 
-    private void requestVote(RequestVoteRequest request, RaftPeer node) {
-        node.requestVote(request).thenAccept(this::onVoteResponse);
+    private void requestVote(RequestVoteRequest request, RaftPeer node, MonoSink<Result> sink) {
+        node.requestVote(request).thenAccept(response -> this.onVoteResponse(response, sink));
     }
 
-    private synchronized void onVoteResponse(RequestVoteResponse response){
+    private synchronized void onVoteResponse(RequestVoteResponse response, MonoSink<Result> sink){
         String voter = response.getResponseHeader().getNodeId();
         logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
             String message = format("%s received RequestVoteResponse with greater term (%s > %s) from %s",
                                     me(), response.getTerm(), currentTerm(), voter);
             updateCurrentTerm(response.getTerm(), message);
-            sink.get().success(result(false, message));
+            sink.success(result(false, message));
             return;
         }
 
@@ -89,9 +84,6 @@ public class DefaultElection implements Election {
             return;
         }
         voteStrategy.registerVoteReceived(voter, response.getVoteGranted());
-        if (voteStrategy.isWon()) {
-            notifyElectionWon();
-        }
     }
 
     private RequestVoteRequest request(){
@@ -118,9 +110,11 @@ public class DefaultElection implements Election {
         termUpdateHandler.accept(term, cause);
     }
 
-    private void notifyElectionWon(){
-        String msg = format("%s: Election for term %s won by %s (%s)", groupId(), electionTerm(), me(), voteStrategy);
-        sink.get().success(result(true, msg));
+    private void notifyElectionCompleted(boolean result, MonoSink<Result> sink){
+        String electionResult = result ? "won" : "lost";
+        String msg = format("%s: Election for term %s is %s by %s (%s)",
+                            groupId(), electionTerm(), electionResult, me(), voteStrategy);
+        sink.success(result(result, msg));
     }
 
 

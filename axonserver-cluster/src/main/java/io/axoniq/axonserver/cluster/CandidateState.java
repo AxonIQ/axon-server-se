@@ -148,7 +148,7 @@ public class CandidateState extends AbstractMembershipState {
         if (result.won()) {
             changeStateTo(stateFactory().leaderState(), result.cause());
         } else {
-            changeStateTo(stateFactory().followerState(), result.cause()); //TODO ???
+            changeStateTo(stateFactory().followerState(), result.cause());
         }
     }
 
