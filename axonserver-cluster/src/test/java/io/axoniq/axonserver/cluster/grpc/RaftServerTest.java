@@ -46,7 +46,6 @@ public class RaftServerTest {
 
     @Before
     public void setUp() throws Exception {
-        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
         nodes.forEach(node -> {
             GrpcRaftGroup raftGroup = new GrpcRaftGroup(nodes, node.getNodeId());
@@ -70,11 +69,6 @@ public class RaftServerTest {
 
     private Node node(String id, String hostname, int port) {
         return Node.newBuilder().setNodeId(id).setHost(hostname).setPort(port).build();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
     }
 
     @Test
