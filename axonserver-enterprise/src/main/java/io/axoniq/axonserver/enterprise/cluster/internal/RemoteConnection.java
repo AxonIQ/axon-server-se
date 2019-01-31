@@ -1,15 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.DispatchEvents;
-import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.LoadBalancingStrategiesReceived;
-import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.LoadBalancingStrategyReceived;
-import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.ProcessorLoadBalancingStrategyReceived;
-import io.axoniq.axonserver.enterprise.cluster.events.LoadBalancingSynchronizationEvents.ProcessorsLoadBalanceStrategyReceived;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
@@ -20,11 +13,13 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
-import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommand;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
+import io.axoniq.axonserver.grpc.internal.ForwardedQuery;
 import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -37,7 +32,6 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -123,7 +117,7 @@ public class RemoteConnection  {
                                     try {
 
 
-                                        applicationEventPublisher
+                                        clusterController
                                                 .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
                                                         RemoteConnection.this));
                                     } catch (Exception ex) {
@@ -137,9 +131,9 @@ public class RemoteConnection  {
                                     ClientSubscriptionQueryRequest request = connectorResponse.getSubscriptionQueryRequest();
                                     UpdateHandler handler = new ProxyUpdateHandler(requestStreamObserver::onNext);
                                     clusterController.publishEvent(
-                                            new ProxiedSubscriptionQueryRequest(request.getSubscriptionQueryRequest(),
-                                                                                handler,
-                                                                                request.getClient()));
+                                            new SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest(request.getSubscriptionQueryRequest(),
+                                                                                                        handler,
+                                                                                                        request.getClient()));
                                     break;
                                 default:
                                     break;
@@ -174,19 +168,10 @@ public class RemoteConnection  {
 
                         try {
 
-                            if(connectResponse.getDeleted()) {
-                                logger.warn("Node {} responded with deleted, deleting node from configuration", clusterNode.getName());
-                                clusterController.publishEvent(new ClusterEvents.AxonServerNodeDeleted(clusterNode.getName(), connectResponse.getGeneration()));
-                            } else {
-                                clusterController
-                                        .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
-                                                RemoteConnection.this,
-                                                connectResponse.getGeneration(),
-                                                connectResponse
-                                                                 .getModelVersionsList(),
-                                                connectResponse.getContextsList(),
-                                                connectResponse.getNodesList()));
-                            }
+                            clusterController
+                                    .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
+                                            RemoteConnection.this));
+
                         } catch (Exception ex) {
                             logger.warn("Failed to process request {}",
                                         connectResponse,
@@ -225,19 +210,7 @@ public class RemoteConnection  {
                     }
                 }));
         requestStreamObserver.onNext(ConnectorCommand.newBuilder()
-                .setConnect(NodeInfo.newBuilder()
-                        .setNodeName(messagingPlatformConfiguration.getName())
-                        .setGrpcInternalPort(messagingPlatformConfiguration.getInternalPort())
-                        .setGrpcPort(messagingPlatformConfiguration.getPort())
-                        .setHttpPort(messagingPlatformConfiguration.getHttpPort())
-                        .setVersion(1)
-                        .setHostName(messagingPlatformConfiguration.getFullyQualifiedHostname())
-                        .setInternalHostName(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
-                                    .addAllContexts(me.getContexts().stream().map(context ->
-                                                                                 ContextRole.newBuilder()
-                                                                                            .setName(context.getContext().getName())
-                                                                                            .build()).collect(Collectors.toList()))
-                        .build())
+                .setConnect( clusterController.getMe().toNodeInfo())
                 .build());
 
         // send master info

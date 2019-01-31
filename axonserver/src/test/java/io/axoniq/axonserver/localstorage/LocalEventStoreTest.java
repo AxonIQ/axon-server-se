@@ -66,6 +66,11 @@ public class LocalEventStoreTest {
                     public void cancelPendingTransactions() {
                         pendingTransactions.forEach(p -> p.completeExceptionally(new RuntimeException("Transaction cancelled")));
                     }
+
+                    @Override
+                    public long getLastIndex() {
+                        return datafileManagerChain.lastIndex();
+                    }
                 };
             }
         }, 5);

@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -55,6 +56,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     static final int TX_CHECKSUM_BYTES = 4;
     static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + TransactionInformation.TRANSACTION_INFO_BYTES + NUMBER_OF_EVENTS_BYTES;
     static final byte VERSION = 2;
+    static final byte TRANSACTION_VERSION = 2;
     protected final String context;
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;
@@ -367,12 +369,12 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public Iterator<TransactionWithToken> transactionIterator(long token) {
+    public Iterator<SerializedTransactionWithToken> transactionIterator(long token) {
         return new TransactionWithTokenIterator(token);
     }
 
     @Override
-    public Iterator<TransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+    public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         return new TransactionWithTokenIterator(firstToken, limitToken);
     }
 
@@ -563,8 +565,12 @@ public abstract class SegmentBasedEventStore implements EventStore {
      */
     protected abstract SortedSet<PositionInfo> getPositions(long segment, String aggregateId);
 
+    @Override
+    public byte transactionVersion() {
+        return TRANSACTION_VERSION;
+    }
 
-    private class TransactionWithTokenIterator implements Iterator<TransactionWithToken> {
+    private class TransactionWithTokenIterator implements Iterator<SerializedTransactionWithToken> {
 
         private long currentToken;
         private final Long limitToken;
@@ -588,8 +594,8 @@ public abstract class SegmentBasedEventStore implements EventStore {
         }
 
         @Override
-        public TransactionWithToken next() {
-            TransactionWithToken next = currentTransactionIterator.next();
+        public SerializedTransactionWithToken next() {
+            SerializedTransactionWithToken next = currentTransactionIterator.next();
             currentToken += next.getEventsCount();
             checkPointers();
             return next;

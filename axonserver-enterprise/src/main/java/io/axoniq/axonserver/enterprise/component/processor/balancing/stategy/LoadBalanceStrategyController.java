@@ -1,5 +1,8 @@
 package io.axoniq.axonserver.enterprise.component.processor.balancing.stategy;
 
+import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
+import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyHolder;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Sort;
@@ -46,6 +49,10 @@ public class LoadBalanceStrategyController implements LoadBalanceStrategyHolder 
         }
     }
 
+    @Override
+    public Set<String> getFactoryBeans() {
+        return repository.findAll().stream().map(LoadBalancingStrategy::factoryBean).collect(Collectors.toSet());
+    }
 
     @Override
     public Iterable<LoadBalancingStrategy> findAll() {

@@ -2,7 +2,8 @@ package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.AxonServer;
 import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationRole;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import org.junit.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +15,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 
 import static org.junit.Assert.*;
@@ -35,14 +38,15 @@ public class ApplicationRepositoryTest {
     @Test
     public void testHasRole() {
         assertNotNull(applicationRepository);
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DAY_OF_YEAR, 7);
-        Date endDate1 = cal.getTime();
-        cal.add(Calendar.DAY_OF_YEAR, 7);
-        Date endDate2 = cal.getTime();
 
-        applicationRepository.save(new Application("TestApp", "Description", "1235-567", "1235-5678", new ApplicationRole("READ", "test", endDate1), new ApplicationRole("WRITE", "test", endDate1)));
-        applicationRepository.save(new Application("TestApp2", "Description", "1235-567","1235-5679", new ApplicationRole("WRITE", "test", endDate2)));
+        applicationRepository.save(new Application("TestApp", "Description", "1235-567", "1235-5678",
+                                                   new ApplicationContext("test", Arrays.asList(
+                                                           new ApplicationContextRole("READ"), new ApplicationContextRole("WRITE")
+                                                   ))));
+        applicationRepository.save(new Application("TestApp2", "Description", "1235-567","1235-5679",
+                                                   new ApplicationContext("test", Collections.singletonList(
+                                                           new ApplicationContextRole("WRITE")
+                                                   ))));
         Application app1 = applicationRepository.findFirstByName("TestApp");
         assertNotNull(app1);
         assertTrue(app1.hasRoleForContext("READ", "test"));
@@ -54,7 +58,10 @@ public class ApplicationRepositoryTest {
 
     @Test
     public void testFindWithoutPrefix() {
-        applicationRepository.save(new Application("TestAppWIthoutPrefix", "Description", null, "9999-5678", new ApplicationRole("READ", "test", null), new ApplicationRole("WRITE", "test", null)));
+        applicationRepository.save(new Application("TestAppWIthoutPrefix", "Description", null, "9999-5678",
+                                                   new ApplicationContext("test", Arrays.asList(
+                                                           new ApplicationContextRole("READ"), new ApplicationContextRole("WRITE")
+                                                   ))));
         Application withoutPrefix = applicationRepository.findAllByTokenPrefix(null).stream().filter(a -> a.getName().equals("TestAppWIthoutPrefix")).findFirst().orElse(null);
         assertNotNull(withoutPrefix);
 

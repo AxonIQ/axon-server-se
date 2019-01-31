@@ -36,7 +36,7 @@ public class ClusterMetricSynchronizer {
     }
 
 
-    @Scheduled(fixedRateString = "${axoniq.axonserver.metrics-synchronization-rate}")
+    @Scheduled(fixedRateString = "${axoniq.axonserver.metrics-synchronization-rate:15000}")
     public void shareMetrics() {
         NodeMetrics.Builder metrics = NodeMetrics.newBuilder().setNode(configuration.getName());
         meterRegistry.forEachMeter(meter -> {

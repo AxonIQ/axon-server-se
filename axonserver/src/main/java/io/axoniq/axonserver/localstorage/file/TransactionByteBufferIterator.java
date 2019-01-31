@@ -2,7 +2,6 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -75,7 +74,7 @@ public class TransactionByteBufferIterator implements TransactionIterator {
         for (int idx = 0; idx < nrOfMessages; idx++) {
             events.add(eventSource.readEvent());
         }
-        next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
+        next = new SerializedTransactionWithToken(currentSequenceNumber, version, events, currentTransaction.getIndex());
         currentSequenceNumber += nrOfMessages;
         int chk = reader.getInt(); // checksum
         if (validating) {

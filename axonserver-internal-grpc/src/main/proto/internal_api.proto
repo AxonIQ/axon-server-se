@@ -3,34 +3,84 @@ package io.axoniq.axonserver.grpc.internal;
 import "common.proto";
 import "command.proto";
 import "query.proto";
-import "event.proto";
 import "control.proto";
 option java_multiple_files = true;
-
-service DataSynchronizer {
-    rpc OpenConnection ( stream SynchronizationReplicaOutbound ) returns (stream SynchronizationReplicaInbound) {
-
-    }
-}
 
 service MessagingClusterService {
     // Creates a stream between 2 nodes in the cluser
     // calling side is service provider to called side
     rpc OpenStream( stream ConnectorCommand ) returns (stream ConnectorResponse) {}
 
-    // Other node requests to become leader for EventStore for a specific context. Respond with positive confirmation
-    // when other node is more up-to-date as this node is.
-    rpc RequestLeader(NodeContextInfo) returns (io.axoniq.axonserver.grpc.Confirmation) {
-    }
-
     // Node sends a request to join an existing cluster
     // Input is the information on the joining node
     // Response is a list of nodes already in the cluster
-    rpc Join( NodeInfo ) returns (ConnectResponse) {}
-
-
-    rpc RequestToBeCoordinator(NodeContext) returns (io.axoniq.axonserver.grpc.Confirmation) {}
+    rpc Join( NodeInfo ) returns (stream NodeInfo) {}
 }
+
+/**
+ * Services on config leader
+ */
+service RaftConfigService {
+    rpc InitCluster(ContextNames) returns (Confirmation) {}
+
+    rpc JoinCluster(NodeInfo) returns (Confirmation) {}
+
+    rpc CreateContext(Context) returns (Confirmation) {}
+
+    rpc AddNodeToContext(NodeContext) returns (Confirmation) {}
+
+    rpc DeleteNodeFromContext(NodeContext) returns (Confirmation) {}
+
+    rpc DeleteContext(ContextName) returns (Confirmation) {}
+
+    rpc UpdateApplication(Application) returns (Confirmation) {}
+
+    rpc DeleteApplication(Application) returns (Confirmation) {}
+
+    rpc UpdateUser(User) returns (Confirmation) {}
+
+    rpc DeleteUser(User) returns (Confirmation) {}
+
+    rpc UpdateLoadBalanceStrategy(LoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc DeleteLoadBalanceStrategy(LoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc UpdateProcessorLBStrategy(ProcessorLBStrategy) returns (Confirmation) {}
+
+    rpc DeleteProcessorLBStrategy(ProcessorLBStrategy) returns (Confirmation) {}
+}
+
+/**
+ * Services on context leader/member callled from config leader
+ */
+service RaftGroupService {
+
+    rpc InitContext(Context) returns (Confirmation) {}
+
+    rpc AddServer(Context) returns (Confirmation) {}
+
+    rpc RemoveServer(Context) returns (Confirmation) {}
+
+    rpc MergeAppAuthorization(ContextApplication) returns (Confirmation) {}
+
+    rpc DeleteAppAuthorization(ContextApplication) returns (Confirmation) {}
+
+    rpc MergeUserAuthorization(ContextUser) returns (Confirmation) {}
+
+    rpc DeleteUserAuthorization(ContextUser) returns (Confirmation) {}
+
+    rpc MergeLoadBalanceStrategy(ContextLoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc DeleteLoadBalanceStrategy(ContextLoadBalanceStrategy) returns (Confirmation) {}
+
+    rpc MergeProcessorLBStrategy(ContextProcessorLBStrategy) returns (Confirmation) {}
+
+    rpc DeleteProcessorLBStrategy(ContextProcessorLBStrategy) returns (Confirmation) {}
+
+    rpc GetStatus(Context) returns (stream Context) {}
+}
+
+
 
 message NodeContext {
     string node_name = 1;
@@ -39,7 +89,7 @@ message NodeContext {
 
 message ConnectorCommand {
     oneof request {
-        ConnectRequest connect = 1;
+        NodeInfo connect = 1;
         InternalCommandSubscription subscribe_command = 2;
         InternalCommandSubscription unsubscribe_command = 3;
         ForwardedCommandResponse command_response = 4;
@@ -48,22 +98,15 @@ message ConnectorCommand {
         io.axoniq.axonserver.grpc.query.QueryResponse query_response = 7;
         InternalFlowControl flow_control = 8;
         DeleteNode delete_node = 9;
-        GetApplicationsRequest request_applications = 10;
         NodeMetrics metrics = 11;
         QueryComplete query_complete = 12;
-        GetUsersRequest request_users = 13;
         ClientStatus client_status = 14;
         ClientEventProcessorStatus client_event_processor_status=15;
         ClientEventProcessor start_client_event_processor = 16;
         ClientEventProcessor pause_client_event_processor = 17;
-        DBInstanceStatus db_status = 18;
         ContextUpdate context = 25;
         io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse subscription_query_response = 26;
-        NodeContextInfo master_confirmation = 30;
-        NodeContext coordinator_confirmation = 31;
         ClientEventProcessorSegment release_segment = 32;
-        GetLBStrategiesRequest request_load_balancing_strategies = 33;
-        GetProcessorsLBStrategyRequest request_processor_load_balancing_strategies = 34;
         ClientEventProcessor request_processor_status = 35;
         CommandHandlerStatus command_handler_status = 36;
         QueryHandlerStatus query_handler_status = 37;
@@ -127,14 +170,6 @@ message ConnectorResponse {
         ForwardedCommand command = 2;
         ConnectResponse connect_response = 3;
         ForwardedQuery query = 4;
-        Application application = 5;
-        Applications applications = 6;
-        User user = 7;
-        Users users = 8;
-        LoadBalancingStrategies load_balancing_strategies = 9;
-        ProcessorsLBStrategy processors_strategies = 10;
-        LoadBalanceStrategy load_balancing_strategy = 11;
-        ProcessorLBStrategy processor_strategy= 12;
         ClientSubscriptionQueryRequest subscription_query_request = 26;
     }
 }
@@ -224,35 +259,6 @@ enum Group {
     QUERY = 1;
 }
 
-message GetUsersRequest {
-}
-
-message Users {
-    int64 version = 1;
-    repeated User user = 2;
-}
-
-message Applications {
-    int64 version = 1;
-    repeated Application application = 2;
-}
-
-
-
-message GetApplicationsRequest {
-
-}
-
-message GetLBStrategiesRequest {
-}
-
-message GetProcessorsLBStrategyRequest {
-}
-
-message LoadBalancingStrategies {
-    int64 version = 1;
-    repeated LoadBalanceStrategy strategy = 2;
-}
 
 message ProcessorsLBStrategy{
     int64 version = 1;
@@ -349,49 +355,76 @@ message TransactionWithToken {
     int64 token = 1;
     int32 version = 2;
     repeated bytes events = 3;
-    int64 master_generation = 4;
-    int64 safe_point = 5;
+    int64 index = 4;
 }
 
-message NodeContextInfo {
-    string node_name = 1;
-    string context = 2;
-    int64 master_sequence_number = 3;
-    int64 active_since = 4;
-    int32 nr_of_master_contexts = 5;
-    int32 hash_key = 6;
-    int64 event_safe_point = 7;
-    int64 prev_master_generation = 8;
+/*
+* Sent to members of config cluster to update context
+*/
+message Context {
+    string name = 1;
+    repeated ContextMember members = 2;
+}
+
+message ContextMember {
+    string node_id  = 1;
+    string host = 2;
+    int32 port = 3;
+    State state = 4;
 }
 
 message Application {
     string name = 1;
     string description = 2;
-    string hashed_token = 3;
-    repeated ApplicationRole roles = 4;
-    Action action = 5;
-    bool fine_grained_access_control = 6;
-    string token_prefix = 7;
+    string token_prefix = 3;
+    string token = 4;
+    repeated ApplicationContextRole roles_per_context = 5;
+}
+
+message ApplicationContextRole {
+    string context = 1;
+    repeated string roles = 2;
+}
+
+message Applications {
+    repeated Application applications = 1;
 }
 
 message User {
     string name = 1;
     string password = 2;
     repeated string roles = 3;
-    Action action = 4;
 }
 
-message ApplicationRole {
-    string name = 1;
-    int64 end_date = 2;
-    string context = 3;
+message Users {
+    repeated User users = 1;
+}
+
+message ContextNames {
+    repeated string contexts = 1;
+}
+
+enum State {
+    VOTING = 0;
+    LEADER = 1;
+    NON_VOTING = 2;
+    INITIALIZING = 3;
+}
+
+message ContextConfiguration {
+    string context = 1;
+    repeated NodeInfo nodes = 2;
+}
+
+
+message ContextName {
+    string context = 1;
 }
 
 message LoadBalanceStrategy {
     string name = 1;
     string factoryBean = 2;
     string label = 3;
-    Action action = 4;
 }
 
 message ProcessorLBStrategy {
@@ -399,11 +432,24 @@ message ProcessorLBStrategy {
     string processor = 2;
     string context = 3;
     string strategy = 4;
-    Action action = 5;
 }
 
-enum Action {
-    MERGE = 0;
-    DELETE = 1;
-    RENEW = 2;
+message ContextApplication {
+    string context = 1;
+    Application application = 2;
+}
+
+message ContextUser {
+    string context = 1;
+    User user = 2;
+}
+
+message ContextLoadBalanceStrategy {
+    string context = 1;
+    LoadBalanceStrategy loadBalanceStrategy = 2;
+}
+
+message ContextProcessorLBStrategy {
+    string context = 1;
+    ProcessorLBStrategy processorLBStrategy = 2;
 }

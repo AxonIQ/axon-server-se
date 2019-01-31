@@ -30,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -50,6 +51,7 @@ public class LeaderState extends AbstractMembershipState {
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private volatile Replicators replicators;
+    private final AtomicLong lastConfirmed = new AtomicLong();
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
 
@@ -115,6 +117,7 @@ public class LeaderState extends AbstractMembershipState {
         scheduleStepDownTimeoutChecker();
         replicators = new Replicators();
         replicators.start();
+        lastConfirmed.set(0);
     }
 
     @Override
@@ -162,6 +165,7 @@ public class LeaderState extends AbstractMembershipState {
         scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
     }
 
+    @Override
     public void forceStepDown() {
         logger.info("{}: StepDown forced", groupId());
         changeStateTo(stateFactory().followerState());
@@ -213,6 +217,10 @@ public class LeaderState extends AbstractMembershipState {
         try {
             CompletableFuture<Void> completableFuture = pendingEntries.remove(e.getIndex());
             int retries = 5;
+            if( completableFuture == null && lastConfirmed.get() > e.getIndex()) {
+                logger.info("entry {} already confirmed (last confirmed = {})", e.getIndex(), lastConfirmed);
+                return;
+            }
             while( completableFuture == null && retries-- > 0) {
                 logger.info("waiting for {}", e.getIndex());
                 Thread.sleep(1);
@@ -220,6 +228,7 @@ public class LeaderState extends AbstractMembershipState {
             }
             if( completableFuture != null) {
                 completableFuture.complete(null);
+                lastConfirmed.set(e.getIndex());
             }
         } catch (InterruptedException e1) {
             Thread.currentThread().interrupt();

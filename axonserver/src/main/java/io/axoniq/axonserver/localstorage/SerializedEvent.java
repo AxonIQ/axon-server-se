@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.connector.ConnectorEvent;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -158,5 +159,9 @@ public class SerializedEvent implements ConnectorEvent {
     @Override
     public int hashCode() {
         return Arrays.hashCode(serializedData);
+    }
+
+    public ByteString asByteString() {
+        return ByteString.copyFrom(serializedData);
     }
 }

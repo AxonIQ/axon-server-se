@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationRole;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.junit.*;
@@ -10,6 +11,7 @@ import org.mockito.*;
 import org.mockito.runners.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,7 +45,10 @@ public class AccessControllerTest {
         when(pathMappingRepository.findById(any())).thenReturn(Optional.empty());
         when(pathMappingRepository.findById("path1")).thenReturn(Optional.of(mapping));
         List<Application> applications = new ArrayList<>();
-        applications.add(new Application("Test", "TEST", "12345678", hasher.hash("1234567890"), new ApplicationRole("READ", "default", null)));
+        applications.add(new Application("Test", "TEST", "12345678", hasher.hash("1234567890"),
+                                         new ApplicationContext("default", Collections.singletonList(
+                                                 new ApplicationContextRole("READ")
+                                         ))));
         when(applicationRepository.findAllByTokenPrefix(any())).thenReturn(applications);
 
         testSubject = new AccessControllerDB(applicationRepository, pathMappingRepository, hasher);

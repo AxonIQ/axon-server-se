@@ -2,10 +2,10 @@ package io.axoniq.axonserver.rest.json;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationRole;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,7 +28,7 @@ public class ApplicationJSON {
     public ApplicationJSON(Application application) {
         name = application.getName();
         description = application.getDescription();
-        roles = application.getRoles().stream().map(ApplicationRoleJSON::new).collect(Collectors.toList());
+        roles = application.getContexts().stream().map(ApplicationRoleJSON::new).collect(Collectors.toList());
     }
 
     public String getName() {
@@ -63,36 +63,26 @@ public class ApplicationJSON {
         this.roles = roles;
     }
 
-    public Application toApplication() {
-        return new Application(name, description, null, token,
-                               roles.stream().map(ApplicationRoleJSON::toApplicationRole)
-                                    .toArray(ApplicationRole[]::new));
-    }
 
     @KeepNames
     public static class ApplicationRoleJSON {
-        private String role;
+        private List<String> roles;
 
         private String context;
-
-        private Date endDate;
 
         public ApplicationRoleJSON() {
 
         }
-        public ApplicationRoleJSON(ApplicationRole applicationRole) {
-            role = applicationRole.getRole();
+
+        public ApplicationRoleJSON(ApplicationContext applicationRole) {
+            roles = applicationRole.getRoles()
+                                   .stream()
+                                   .map(ApplicationContextRole::getRole)
+                                   .collect(Collectors.toList());
             context = applicationRole.getContext();
-            endDate = applicationRole.getEndDate();
         }
 
-        public String getRole() {
-            return role;
-        }
 
-        public void setRole(String role) {
-            this.role = role;
-        }
 
         public String getContext() {
             return context;
@@ -102,16 +92,10 @@ public class ApplicationJSON {
             this.context = context;
         }
 
-        public Date getEndDate() {
-            return endDate;
-        }
-
-        public void setEndDate(Date endDate) {
-            this.endDate = endDate;
-        }
-
-        public ApplicationRole toApplicationRole() {
-            return new ApplicationRole(role, context, endDate);
+        public ApplicationContext toApplicationRole() {
+            return new ApplicationContext(context, roles.stream()
+                                                        .map(ApplicationContextRole::new)
+                                                        .collect(Collectors.toList()));
         }
     }
 }

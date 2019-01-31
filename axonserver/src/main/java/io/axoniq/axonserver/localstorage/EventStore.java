@@ -46,7 +46,7 @@ public interface EventStore {
 
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
 
-    PreparedTransaction prepareTransaction(List<SerializedEvent> eventList);
+    PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> eventList);
 
     default boolean replicated() {
         return false;
@@ -100,4 +100,9 @@ public interface EventStore {
      * @return closeable iterator of SerializedEventWithToken
      */
     CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start);
+
+    default byte transactionVersion() {
+        return 0;
+    }
+
 }

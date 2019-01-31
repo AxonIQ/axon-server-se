@@ -1,14 +1,13 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
-import io.axoniq.axonserver.grpc.ProtoConverter;
+import io.axoniq.axonserver.grpc.UserProtoConverter;
+import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserRepository;
 import reactor.core.publisher.Flux;
 
-import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaUser;
 
 /**
  * Snapshot data store for {@link User} data.
@@ -37,7 +36,7 @@ public class UserSnapshotDataStore implements SnapshotDataStore {
     @Override
     public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
         return Flux.fromIterable(userRepository.findAll())
-                   .map(ProtoConverter::createUser)
+                   .map(UserProtoConverter::createUser)
                    .map(this::toSerializedObject);
     }
 
@@ -51,7 +50,7 @@ public class UserSnapshotDataStore implements SnapshotDataStore {
         try {
             io.axoniq.axonserver.grpc.internal.User userMessage = io.axoniq.axonserver.grpc.internal.User.parseFrom(
                     serializedObject.getData());
-            User userEntity = createJpaUser(userMessage);
+            User userEntity = UserProtoConverter.createJpaUser(userMessage);
             userRepository.save(userEntity);
         } catch (InvalidProtocolBufferException e) {
             throw new SnapshotDeserializationException("Unable to deserialize user data.", e);

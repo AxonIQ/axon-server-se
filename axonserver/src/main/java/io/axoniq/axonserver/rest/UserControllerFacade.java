@@ -1,15 +1,17 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.platform.user.User;
+
+import io.axoniq.axonserver.access.jpa.User;
 
 import java.util.List;
+
 
 /**
  * Author: marc
  */
 public interface UserControllerFacade {
 
-    void updateUser(String userName, String password, String[] roles);
+    User updateUser(String userName, String password, String[] roles);
 
     List<User> getUsers();
 

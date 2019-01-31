@@ -20,7 +20,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
 
     @Override
     public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
-        return datafileManagerChain.store(datafileManagerChain.prepareTransaction(new TransactionInformation(0), eventList));
+        return datafileManagerChain.store(datafileManagerChain.prepareTransaction(new TransactionInformation(datafileManagerChain.transactionVersion(), 0), eventList));
     }
 
     @Override

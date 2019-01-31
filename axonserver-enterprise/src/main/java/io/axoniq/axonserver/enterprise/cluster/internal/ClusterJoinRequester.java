@@ -45,16 +45,15 @@ public class ClusterJoinRequester {
             future.completeExceptionally(new MessagingPlatformException(ErrorCode.UNKNOWN_HOST, "Unknown host: " + e.getMessage(), e));
             return future;
         }
-        eventStoreManager.stopAllContexts();
         MessagingClusterServiceInterface stub = stubFactory.messagingClusterServiceStub(
                     host,
                     port);
         logger.debug("Sending join request: {}", nodeInfo);
-        stub.join(nodeInfo, new StreamObserver<ConnectResponse>() {
-            private ConnectResponse connectResponse;
+        stub.join(nodeInfo, new StreamObserver<NodeInfo>() {
+            private NodeInfo newNodeInfo;
                 @Override
-                public void onNext(ConnectResponse connectResponse) {
-                    this.connectResponse = connectResponse;
+                public void onNext(NodeInfo newNodeInfo) {
+                    this.newNodeInfo = newNodeInfo;
                 }
 
                 @Override
@@ -67,19 +66,11 @@ public class ClusterJoinRequester {
                 @Override
                 public void onCompleted() {
                     stub.closeChannel();
-                    connectResponse.getNodesList().forEach(nodeInfo ->
-                                                           {
-                                                               if( ! nodeInfo.getNodeName().equals(clusterController.getName())) {
-                                                                   clusterController.addConnection(nodeInfo,
-                                                                                                   connectResponse
-                                                                                                           .getGeneration());
-                                                               } else {
-                                                                   clusterController.setMyContexts(nodeInfo.getContextsList());
-                                                               }
-                                                           });
-                    clusterController.setGeneration(connectResponse.getGeneration());
-                    eventStoreManager.start();
-                    future.complete(connectResponse);
+                    if (!clusterController.getName().equals(newNodeInfo.getNodeName())) {
+                        clusterController.addConnection(newNodeInfo, true);
+                        eventStoreManager.start();
+                    }
+                    future.complete(null);
                 }
             });
         return future;

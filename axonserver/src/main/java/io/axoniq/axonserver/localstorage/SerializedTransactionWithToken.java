@@ -1,5 +1,8 @@
 package io.axoniq.axonserver.localstorage;
 
+import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.grpc.event.Event;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -9,23 +12,16 @@ import java.util.Objects;
 public class SerializedTransactionWithToken {
 
     private final long token;
-    private final int version;
+    private final byte version;
     private final List<SerializedEvent> events;
-    private final long safePoint;
-    private final long masterGeneration;
+    private final long index;
 
-    public SerializedTransactionWithToken(long token,
-                                          int version, List<SerializedEvent> events) {
-        this(token, version, events, 0, 0);
-    }
-
-    public SerializedTransactionWithToken(long token, int version,
-                                          List<SerializedEvent> events, long safePoint, long masterGeneration) {
+    public SerializedTransactionWithToken(long token, byte version,
+                                          List<SerializedEvent> events, long index) {
         this.token = token;
         this.version = version;
         this.events = events;
-        this.safePoint = safePoint;
-        this.masterGeneration = masterGeneration;
+        this.index = index;
     }
 
     public long getToken() {
@@ -62,11 +58,15 @@ public class SerializedTransactionWithToken {
         return events.size();
     }
 
-    public long getSafePoint() {
-        return safePoint;
+    public TransactionInformation getTransactionInformation() {
+        return new TransactionInformation(version, index);
     }
 
-    public long getMasterGeneration() {
-        return masterGeneration;
+    public long getIndex() {
+        return index;
+    }
+
+    public Event getEvents(int i) {
+        return events.get(i).asEvent();
     }
 }

@@ -11,3 +11,6 @@ spring:
     url:  jdbc:h2:mem:test
 
 
+axoniq:
+  axonserver:
+    metrics-synchronization-rate: 10000

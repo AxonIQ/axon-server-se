@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.AxonServer;
 import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
@@ -16,6 +17,8 @@ import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
@@ -27,7 +30,11 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,10 +54,10 @@ import static org.mockito.Mockito.*;
  * Author: marc
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = AxonServerEnterprise.class)
-@EnableAutoConfiguration
-@EntityScan("io.axoniq")
 @DataJpaTest
+@Transactional
+@ComponentScan(basePackages = "io.axoniq.axonserver.enterprise.jpa", lazyInit = true)
+@ContextConfiguration(classes = AxonServer.class)
 public class ClusterControllerTest {
     private ClusterController testSubject;
     @Mock
@@ -99,13 +106,13 @@ public class ClusterControllerTest {
         StubFactory stubFactory = new StubFactory() {
             @Override
             public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
+                    ClusterNode clusterNode) {
                 return new TestMessagingClusterService();
             }
 
             @Override
             public MessagingClusterServiceInterface messagingClusterServiceStub(
-                    MessagingPlatformConfiguration messagingPlatformConfiguration, String host, int port) {
+                    String host, int port) {
                 return new TestMessagingClusterService();
             }
 
@@ -116,8 +123,11 @@ public class ClusterControllerTest {
         RaftGroupRepositoryManager mockRaftGroupRepositoryManager = mock(RaftGroupRepositoryManager.class);
         when( mockRaftGroupRepositoryManager.findByGroupId(anyString())).thenReturn(Collections.singleton(new JpaRaftGroupNode("default",
                                                                                                                                Node.newBuilder().setNodeId("MyName").build())));
+        CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
+        QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
                                             stubFactory, nodeSelectionStrategy, mockRaftGroupRepositoryManager,
+                                            queryDispatcher, commandDispatcher,
                                             eventPublisher, limits);
     }
 
@@ -184,19 +194,19 @@ public class ClusterControllerTest {
 
     @Test
     public void messagingNodes() {
-        assertEquals(1, testSubject.nodes().count());
+        long initial = testSubject.nodes().count();
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
                 .build(), false);
-        assertEquals(2, testSubject.nodes().count());
+        assertEquals(initial+1, testSubject.nodes().count());
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
                 .build(), false);
-        assertEquals(2, testSubject.nodes().count());
+        assertEquals(initial+1, testSubject.nodes().count());
     }
 
     @Test

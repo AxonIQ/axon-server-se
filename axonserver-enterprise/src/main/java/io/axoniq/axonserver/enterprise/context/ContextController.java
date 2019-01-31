@@ -29,9 +29,7 @@ public class ContextController {
 
     public ContextController(
             EntityManager entityManager,
-            ClusterController clusterController,
-            ApplicationEventPublisher eventPublisher,
-            ModelVersionController modelVersionController) {
+            ClusterController clusterController) {
         this.entityManager = entityManager;
         this.clusterController = clusterController;
     }

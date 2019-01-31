@@ -1,18 +1,30 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
+import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.application.ApplicationRepository;
+import io.axoniq.axonserver.access.application.ShaHasher;
+import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.jpa.UserRole;
+import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyRepository;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
@@ -20,15 +32,6 @@ import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationRepository;
-import io.axoniq.platform.application.ShaHasher;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationContext;
-import io.axoniq.platform.application.jpa.ApplicationContextRole;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserRepository;
-import io.axoniq.platform.user.UserRole;
 import org.junit.*;
 import org.junit.rules.*;
 import org.junit.runner.*;
@@ -36,8 +39,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -58,12 +64,13 @@ import static org.mockito.Mockito.*;
  * @author Milan Savic
  */
 @RunWith(SpringRunner.class)
-@EnableJpaRepositories(basePackages = {"io.axoniq.platform.application",
-        "io.axoniq.platform.user",
-        "io.axoniq.axonserver.component.processor.balancing.jpa"})
 @DataJpaTest
-@SpringBootTest(classes = {ApplicationRepository.class})
-@EntityScan(basePackages = {"io.axoniq.platform", "io.axoniq.axonserver.component.processor.balancing.jpa"})
+@Transactional
+@ComponentScan(basePackages = {
+        "io.axoniq.axonserver.component.processor.balancing.jpa",
+        "io.axoniq.axonserver.access.jpa"
+}, lazyInit = true)
+@ContextConfiguration(classes = AxonServer.class)
 public class SnapshotManagerIntegrationTest {
 
     private static final String CONTEXT = "junit";
@@ -91,6 +98,8 @@ public class SnapshotManagerIntegrationTest {
     @Before
     public void setUp() {
         EmbeddedDBProperties embeddedDBProperties = embeddedDBProperties();
+        List<LoadBalancingStrategy> existingLoadBalancingStrategies = loadBalanceStrategyRepository.findAll();
+        existingLoadBalancingStrategies.forEach(e -> loadBalanceStrategyRepository.delete(e));
         leaderEventStore = eventStore(embeddedDBProperties);
         leaderSnapshotStore = snapshotStore(embeddedDBProperties);
         leaderSnapshotManager = axonServerSnapshotManager(leaderEventStore, leaderSnapshotStore);
@@ -230,7 +239,7 @@ public class SnapshotManagerIntegrationTest {
     }
 
     private EmbeddedDBProperties embeddedDBProperties() {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties();
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
         embeddedDBProperties.getEvent().setStorage(
                 tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
@@ -244,17 +253,16 @@ public class SnapshotManagerIntegrationTest {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<Event> newEvents = new ArrayList<>();
-            IntStream.range(0, numOfEvents).forEach(i -> {
-                newEvents.add(Event.newBuilder()
-                                   .setAggregateIdentifier(aggId)
-                                   .setAggregateSequenceNumber(i)
-                                   .setSnapshot(snapshot)
-                                   .setAggregateType("Demo")
-                                   .setPayload(SerializedObject.newBuilder().build())
-                                   .build());
-            });
-            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(new TransactionInformation(0),
+            List<SerializedEvent> newEvents = new ArrayList<>();
+            IntStream.range(0, numOfEvents).forEach(i -> newEvents.add(new SerializedEvent(Event.newBuilder()
+                                                                                            .setAggregateIdentifier(aggId)
+                                                                                            .setAggregateSequenceNumber(i)
+                                                                                            .setSnapshot(snapshot)
+                                                                                            .setAggregateType("Demo")
+                                                                                            .setPayload(SerializedObject.newBuilder().build())
+                                                                                            .build())));
+            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(new TransactionInformation(eventStore.transactionVersion(),
+                                                                                                               0),
                                                                                     newEvents);
             eventStore.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
@@ -263,8 +271,8 @@ public class SnapshotManagerIntegrationTest {
     }
 
     private void assertEventStores(EventStore eventStore1, EventStore eventStore2, long firstToken, long limitToken) {
-        Iterator<TransactionWithToken> iterator1 = eventStore1.transactionIterator(firstToken, limitToken);
-        Iterator<TransactionWithToken> iterator2 = eventStore2.transactionIterator(firstToken, limitToken);
+        Iterator<SerializedTransactionWithToken> iterator1 = eventStore1.transactionIterator(firstToken, limitToken);
+        Iterator<SerializedTransactionWithToken> iterator2 = eventStore2.transactionIterator(firstToken, limitToken);
 
         while (iterator1.hasNext()) {
             assertTransactions(iterator1.next(), iterator2.next());
@@ -272,7 +280,7 @@ public class SnapshotManagerIntegrationTest {
         assertFalse(iterator2.hasNext());
     }
 
-    private void assertTransactions(TransactionWithToken transaction1, TransactionWithToken transaction2) {
+    private void assertTransactions(SerializedTransactionWithToken transaction1, SerializedTransactionWithToken transaction2) {
         assertEquals(transaction1.getToken(), transaction2.getToken());
         assertEquals(transaction1.getVersion(), transaction2.getVersion());
         assertEquals(transaction1.getEventsCount(), transaction2.getEventsCount());

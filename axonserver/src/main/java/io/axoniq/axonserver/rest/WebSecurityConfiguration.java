@@ -3,7 +3,8 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationRole;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -186,7 +187,8 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                                                            .stream()
                                                            .map(ApplicationContext::getRoles)
                                                            .flatMap(List::stream)
-                                                           .filter(r -> Topology.DEFAULT_CONTEXT.equals(r.getContext()))
+// TODO: filter?
+//                                                           .filter(r -> Topology.DEFAULT_CONTEXT.equals(r.getApplicationContext().getContext()))
                                                            .map(ApplicationContextRole::getRole)
                                                            .collect(Collectors.toSet());
                             SecurityContextHolder.getContext().setAuthentication(

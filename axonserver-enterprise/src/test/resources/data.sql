@@ -1,5 +1,5 @@
-insert into application(id, description, name, hashed_token) values( 1000, 'TEST', 'Test', 'AAAA')
-insert into application(id, description, name, hashed_token) values( 2000, 'TestApplication for Delete', 'Delete', 'BBBB')
+-- insert into application(id, description, name, hashed_token) values( 1000, 'TEST', 'Test', 'AAAA')
+-- insert into application(id, description, name, hashed_token) values( 2000, 'TestApplication for Delete', 'Delete', 'BBBB')
 
 INSERT INTO role (name) VALUES ('TEST_APPLICATION_ROLE')
 INSERT INTO role_types (role_name, types) VALUES ('TEST_APPLICATION_ROLE', 'APPLICATION')

@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
@@ -41,10 +42,14 @@ public class GrpcStubFactory implements StubFactory {
             }
 
             @Override
-            public void join(NodeInfo request, StreamObserver<ConnectResponse> responseObserver) {
+            public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
                 stub.join(request, responseObserver);
             }
 
+            @Override
+            public void closeChannel() {
+                managedChannel.shutdownNow();
+            }
         };
     }
 

@@ -1,17 +1,19 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
+import io.axoniq.axonserver.access.application.ApplicationWithToken;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
+import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.access.role.RoleController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.rest.json.ApplicationJSON;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.ApplicationNotFoundException;
-import io.axoniq.platform.application.ApplicationWithToken;
-import io.axoniq.platform.role.Role;
-import io.axoniq.platform.role.RoleController;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -75,7 +77,7 @@ public class ApplicationRestController {
             }
         }
 
-        raftServiceFactory.getRaftConfigService().updateApplication(application.asProto()).get();
+        raftServiceFactory.getRaftConfigService().updateApplication(ApplicationProtoConverter.createApplication(application)).get();
         return application.getToken();
     }
 
@@ -86,8 +88,9 @@ public class ApplicationRestController {
                                                .collect(Collectors.toSet());
         List<String> roles = application.getRoles()
                                         .stream()
-                                        .map(ApplicationJSON.ApplicationRoleJSON::getRoles)
+                                        .map(r -> r.toApplicationRole().getRoles())
                                         .flatMap(List::stream)
+                                        .map(ApplicationContextRole::getRole)
                                         .distinct()
                                         .collect(Collectors.toList());
         for (String role : roles) {

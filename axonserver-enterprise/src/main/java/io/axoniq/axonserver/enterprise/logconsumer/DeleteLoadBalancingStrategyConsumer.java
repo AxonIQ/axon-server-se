@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyController;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import org.springframework.stereotype.Component;

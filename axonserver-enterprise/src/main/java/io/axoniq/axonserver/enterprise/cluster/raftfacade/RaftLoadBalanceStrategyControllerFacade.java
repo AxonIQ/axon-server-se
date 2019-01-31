@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.enterprise.cluster.raftfacade;
 
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyController;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.grpc.ProtoConverter;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyController;
+import io.axoniq.axonserver.grpc.LoadBalancingStrategyConverter;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.serializer.Printable;
@@ -29,7 +29,8 @@ public class RaftLoadBalanceStrategyControllerFacade implements LoadBalanceStrat
 
     @Override
     public void save(LoadBalancingStrategy loadBalancingStrategy) {
-        raftServiceFactory.getRaftConfigService().updateLoadBalancingStrategy(ProtoConverter.createLoadBalanceStrategy(loadBalancingStrategy));
+        raftServiceFactory.getRaftConfigService().updateLoadBalancingStrategy(LoadBalancingStrategyConverter
+                                                                                      .createLoadBalanceStrategy(loadBalancingStrategy));
     }
 
     @Override
@@ -40,14 +41,14 @@ public class RaftLoadBalanceStrategyControllerFacade implements LoadBalanceStrat
 
     @Override
     public void updateFactoryBean(String strategyName, String factoryBean) {
-        LoadBalanceStrategy current = ProtoConverter.createLoadBalanceStrategy(controller.findByName(strategyName));
+        LoadBalanceStrategy current = LoadBalancingStrategyConverter.createLoadBalanceStrategy(controller.findByName(strategyName));
         raftServiceFactory.getRaftConfigService().updateLoadBalancingStrategy(LoadBalanceStrategy.newBuilder(current).setFactoryBean(factoryBean).build());
 
     }
 
     @Override
     public void updateLabel(String strategyName, String label) {
-        LoadBalanceStrategy current = ProtoConverter.createLoadBalanceStrategy(controller.findByName(strategyName));
+        LoadBalanceStrategy current = LoadBalancingStrategyConverter.createLoadBalanceStrategy(controller.findByName(strategyName));
         raftServiceFactory.getRaftConfigService().updateLoadBalancingStrategy(LoadBalanceStrategy.newBuilder(current).setLabel(label).build());
     }
 

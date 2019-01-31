@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
+
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 
 import java.util.List;
 

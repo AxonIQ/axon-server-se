@@ -1,24 +1,23 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
-import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.TopologyEvents.CommandHandlerDisconnected;
-import io.axoniq.axonserver.TopologyEvents.QueryHandlerDisconnected;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
-import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
@@ -38,6 +37,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
+import io.axoniq.axonserver.message.query.QueryHandler;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,7 +143,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
 
     @Override
-    public void join(NodeInfo request, StreamObserver<ConnectResponse> responseObserver) {
+    public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
         try {
             checkConnection(request.getInternalHostName());
             //TODO: remove? grpcRaftController.join(request);
@@ -198,7 +198,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 switch (connectorCommand.getRequestCase()) {
                     case CONNECT:
                         try {
-                            messagingServerName = connectorCommand.getConnect().getNodeInfo().getNodeName();
+                            messagingServerName = connectorCommand.getConnect().getNodeName();
                             clusterController.addConnection(connectorCommand.getConnect(), false);
                             logger.debug("Received connect from: {} - {}",
                                          messagingServerName,
@@ -316,48 +316,49 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     case QUERY_HANDLER_STATUS:
                         QueryHandlerStatus queryHandlerStatus = connectorCommand.getQueryHandlerStatus();
                         if (!queryHandlerStatus.getConnected()){
-                            eventPublisher.publishEvent(new QueryHandlerDisconnected(queryHandlerStatus.getContext(), queryHandlerStatus.getClientName(), true));
+                            eventPublisher.publishEvent(new TopologyEvents.QueryHandlerDisconnected(queryHandlerStatus.getContext(), queryHandlerStatus.getClientName(), true));
                         }
                         break;
                     case COMMAND_HANDLER_STATUS:
                         CommandHandlerStatus commandHandlerStatus = connectorCommand.getCommandHandlerStatus();
                         if (!commandHandlerStatus.getConnected()){
-                            eventPublisher.publishEvent(new CommandHandlerDisconnected(commandHandlerStatus.getContext(), commandHandlerStatus.getClientName(), true));
+                            eventPublisher.publishEvent(new TopologyEvents.CommandHandlerDisconnected(commandHandlerStatus.getContext(), commandHandlerStatus.getClientName(), true));
                         }
                         break;
                     case CLIENT_EVENT_PROCESSOR_STATUS:
                         eventPublisher.publishEvent(
-                                new EventProcessorStatusUpdate(ClientEventProcessorStatusProtoConverter.fromProto(connectorCommand.getClientEventProcessorStatus()),
-                                    true));
+                                new EventProcessorEvents.EventProcessorStatusUpdate(ClientEventProcessorStatusProtoConverter
+                                                                       .fromProto(connectorCommand.getClientEventProcessorStatus()),
+                                                                                    true));
                         break;
                     case START_CLIENT_EVENT_PROCESSOR:
                         ClientEventProcessor startProcessor = connectorCommand.getStartClientEventProcessor();
                         eventPublisher.publishEvent(
-                                new StartEventProcessorRequest(startProcessor.getClient(),
-                                                               startProcessor.getProcessorName(), true));
+                                new EventProcessorEvents.StartEventProcessorRequest(startProcessor.getClient(),
+                                                                                    startProcessor.getProcessorName(), true));
                         break;
                     case PAUSE_CLIENT_EVENT_PROCESSOR:
                         ClientEventProcessor pauseProcessor = connectorCommand.getPauseClientEventProcessor();
                         eventPublisher.publishEvent(
-                                new PauseEventProcessorRequest(pauseProcessor.getClient(),
-                                                               pauseProcessor.getProcessorName(), true));
+                                new EventProcessorEvents.PauseEventProcessorRequest(pauseProcessor.getClient(),
+                                                                                    pauseProcessor.getProcessorName(), true));
                         break;
                     case RELEASE_SEGMENT:
                         ClientEventProcessorSegment releaseSegment = connectorCommand.getReleaseSegment();
-                        eventPublisher.publishEvent(new ReleaseSegmentRequest(releaseSegment.getClient(),
-                                                                              releaseSegment.getProcessorName(),
-                                                                              releaseSegment.getSegmentIdentifier(),
-                                                                              true));
+                        eventPublisher.publishEvent(new EventProcessorEvents.ReleaseSegmentRequest(releaseSegment.getClient(),
+                                                                                                   releaseSegment.getProcessorName(),
+                                                                                                   releaseSegment.getSegmentIdentifier(),
+                                                                                                   true));
                         break;
                     case REQUEST_PROCESSOR_STATUS:
                         ClientEventProcessor requestStatus = connectorCommand.getRequestProcessorStatus();
-                        eventPublisher.publishEvent(new ProcessorStatusRequest(requestStatus.getClient(),
-                                                                               requestStatus.getProcessorName(),
-                                                                               true));
+                        eventPublisher.publishEvent(new EventProcessorEvents.ProcessorStatusRequest(requestStatus.getClient(),
+                                                                                                    requestStatus.getProcessorName(),
+                                                                                                    true));
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
                             SubscriptionQueryResponse response = connectorCommand.getSubscriptionQueryResponse();
-                            eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response));
+                            eventPublisher.publishEvent(new SubscriptionQueryEvents.SubscriptionQueryResponseReceived(response));
                             break;
                     default:
                         break;

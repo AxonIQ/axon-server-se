@@ -57,7 +57,6 @@ public class ClusterController implements SmartLifecycle {
     private final RaftGroupRepositoryManager raftGroupRepositoryManager;
     private final QueryDispatcher queryDispatcher;
     private final CommandDispatcher commandDispatcher;
-    private final ModelVersionController modelVersionController;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -74,7 +73,6 @@ public class ClusterController implements SmartLifecycle {
                              RaftGroupRepositoryManager raftGroupRepositoryManager,
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
-                             ModelVersionController modelVersionController,
                              ApplicationEventPublisher applicationEventPublisher,
                              FeatureChecker limits
     ) {
@@ -85,7 +83,6 @@ public class ClusterController implements SmartLifecycle {
         this.raftGroupRepositoryManager = raftGroupRepositoryManager;
         this.queryDispatcher = queryDispatcher;
         this.commandDispatcher = commandDispatcher;
-        this.modelVersionController = modelVersionController;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
@@ -94,11 +91,11 @@ public class ClusterController implements SmartLifecycle {
     @EventListener
     @Transactional
     public void on(ClusterEvents.AxonServerNodeDeleted nodeDeleted) {
-        deleteNode(nodeDeleted.node(), nodeDeleted.getGeneration());
+        deleteNode(nodeDeleted.node());
     }
 
     @Transactional
-    public void deleteNode(String name, long generation) {
+    public void deleteNode(String name) {
         logger.warn("Delete node: {}", name);
         synchronized (remoteConnections) {
             if (messagingPlatformConfiguration.getName().equals(name)) {
@@ -132,9 +129,8 @@ public class ClusterController implements SmartLifecycle {
                 nodeMap.remove(name);
             }
 
-            modelVersionController.updateModelVersion(ClusterNode.class, generation);
         }
-        applicationEventPublisher.publishEvent(new ClusterEvents.ClusterUpdatedNotification());
+        applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeDeleted(name));
     }
 
     @Override
@@ -269,7 +265,6 @@ public class ClusterController implements SmartLifecycle {
 
     private ClusterNode merge(NodeInfo nodeInfo) {
         ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
-        long currentGeneration = modelVersionController.getModelVersion(ClusterNode.class);
         if (existing == null) {
             existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
                                                                       nodeInfo.getGrpcInternalPort());
@@ -279,10 +274,6 @@ public class ClusterController implements SmartLifecycle {
                 RemoteConnection remoteConnection = remoteConnections.remove(existing.getName());
                 if (remoteConnection != null) {
                     remoteConnection.close();
-                }
-            } else {
-                if( currentGeneration > generation) {
-                    return null;
                 }
             }
             existing = ClusterNode.from(nodeInfo);
@@ -358,7 +349,7 @@ public class ClusterController implements SmartLifecycle {
 
     public boolean canRebalance(String clientName, String componentName, String context) {
         Context context1 = entityManager.find(Context.class, context);
-        if (context1 == null || context1.getMessagingNodes().size() <= 1) {
+        if (context1 == null || context1.getNodes().size() <= 1) {
             return false;
         }
         List<String> activeNodes = new ArrayList<>();
@@ -403,4 +394,23 @@ public class ClusterController implements SmartLifecycle {
         return nodeMap.computeIfAbsent(name, n -> entityManager.find(ClusterNode.class, n));
     }
 
+    public FlowControl getCommandFlowControl() {
+        return messagingPlatformConfiguration.getCommandFlowControl();
+    }
+
+    public FlowControl getEventFlowControl() {
+        return messagingPlatformConfiguration.getEventFlowControl();
+    }
+
+    public FlowControl getQueryFlowControl() {
+        return messagingPlatformConfiguration.getQueryFlowControl();
+    }
+
+    public void publishEvent(Object event) {
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public long getConnectionWaitTime() {
+        return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
+    }
 }

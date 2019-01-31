@@ -2,7 +2,8 @@ package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.AxonServer;
 import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationRole;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import org.junit.*;
 import org.junit.runner.*;
@@ -14,7 +15,10 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.persistence.EntityManager;
 
 import static org.junit.Assert.*;
 
@@ -23,7 +27,7 @@ import static org.junit.Assert.*;
  */
 @RunWith(SpringRunner.class)
 @DataJpaTest
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Transactional
 @ComponentScan(basePackages = "io.axoniq.axonserver.access", lazyInit = true)
 @ContextConfiguration(classes = AxonServer.class)
 public class ApplicationControllerTest {
@@ -32,13 +36,17 @@ public class ApplicationControllerTest {
     @Autowired
     private ApplicationRepository applicationRepository;
     @Autowired
-    private ModelVersionController versionRepository;
+    private EntityManager entityManager;
     private BcryptHasher hasher =  new BcryptHasher();
 
 
     @Before
     public void setUp() {
-        testSubject = new ApplicationController(applicationRepository, versionRepository, hasher);
+        testSubject = new ApplicationController(applicationRepository, hasher);
+        //-- insert into application(id, description, name, hashed_token) values( 1000, 'TEST', 'Test', 'AAAA')
+        //-- insert into application(id, description, name, hashed_token) values( 2000, 'TestApplication for Delete', 'Delete', 'BBBB')
+        entityManager.persist(new Application("Test", "TEST", null, "AAAA"));
+        entityManager.persist(new Application("Delete", "TestApplication for Delete", null, "BBBB"));
     }
 
     @Test
@@ -50,17 +58,16 @@ public class ApplicationControllerTest {
     public void updateNew() {
         AtomicBoolean updateListenerCalled = new AtomicBoolean(false);
         testSubject.registerUpdateListener("sample", app -> updateListenerCalled.set(true));
-        long modelVersion = versionRepository.getModelVersion(Application.class);
         assertNotEquals( "Token already returned", testSubject.updateJson(new Application("Test1", "TEST1", null,
-                                                                                          null, new ApplicationRole("READ", "default", null))).getTokenString());
-        Assert.assertEquals(modelVersion+1, versionRepository.getModelVersion(Application.class));
+                                                                                          null, new ApplicationContext("default", Collections.singletonList(new ApplicationContextRole("READ"))))).getTokenString());
         assertTrue(updateListenerCalled.get());
     }
 
     @Test
     public void updateExisting() {
         assertEquals("Token already returned", testSubject.updateJson(new Application("Test", "TEST1", null,
-                null, new ApplicationRole("READ", "default", null))).getTokenString());
+                null, new ApplicationContext("default", Collections.singletonList(new ApplicationContextRole("READ")))))
+                                                                              .getTokenString());
     }
 
 
@@ -96,10 +103,5 @@ public class ApplicationControllerTest {
         testSubject.synchronize(new Application("SYNC", "Synched application", null, null));
     }
 
-    @Test
-    public void updateModelVersion() {
-        versionRepository.updateModelVersion(Application.class, 100);
-        Assert.assertEquals(100, versionRepository.getModelVersion(Application.class));
-    }
 
 }

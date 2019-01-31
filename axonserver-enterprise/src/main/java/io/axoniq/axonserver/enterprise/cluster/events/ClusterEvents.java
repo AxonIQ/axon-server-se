@@ -4,6 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
+import org.springframework.context.ApplicationEvent;
 
 import java.util.function.Supplier;
 
@@ -124,4 +125,5 @@ public class ClusterEvents {
             return node;
         }
     }
+
 }

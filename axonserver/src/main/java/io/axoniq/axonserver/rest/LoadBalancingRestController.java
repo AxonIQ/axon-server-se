@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyHolder;
 import io.axoniq.axonserver.component.processor.balancing.strategy.ProcessorLoadBalanceStrategy;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -23,17 +25,12 @@ import java.util.Set;
 @RequestMapping("v1")
 public class LoadBalancingRestController {
 
-    private final ProcessorLoadBalancingControllerFacade processorController;
-
-    private final LoadBalanceStrategyControllerFacade strategyController;
-
-    private final Map<String, Factory> factories;
+    private final LoadBalanceStrategyHolder strategyController;
+    private final ProcessorLoadBalanceStrategy processorLoadBalanceStrategy;
 
     public LoadBalancingRestController(
-            ProcessorLoadBalancingControllerFacade processorController,
-            LoadBalanceStrategyControllerFacade strategyController,
-            Map<String, Factory> factoryMap) {
-        this.processorController = processorController;
+            LoadBalanceStrategyHolder strategyController,
+            ProcessorLoadBalanceStrategy processorLoadBalanceStrategy) {
         this.strategyController = strategyController;
         this.processorLoadBalanceStrategy = processorLoadBalanceStrategy;
     }

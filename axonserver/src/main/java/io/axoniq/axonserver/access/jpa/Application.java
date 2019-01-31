@@ -1,8 +1,9 @@
 package io.axoniq.axonserver.access.jpa;
 
-import java.util.Arrays;
-import java.util.Date;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -11,6 +12,8 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
+
+import static java.util.Arrays.asList;
 
 /**
  * @author Marc Gathier
@@ -32,19 +35,26 @@ public class Application {
     @Column(unique = true)
     private String hashedToken;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    private Set<ApplicationRole> roles = new HashSet<>();
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, mappedBy = "application")
+    private Set<ApplicationContext> contexts = new HashSet<>();
 
     public Application() {
     }
 
-    public Application(String name, String description, String tokenPrefix, String hashedToken, ApplicationRole... roles) {
+    public Application(String name, String description, String tokenPrefix, String hashedToken, ApplicationContext... contexts) {
+        this(name, description, tokenPrefix, hashedToken, asList(contexts));
+    }
+
+    public Application(String name, String description, String tokenPrefix, String hashedToken,
+                       List<ApplicationContext> contexts) {
         this.name = name;
         this.description = description;
         this.tokenPrefix = tokenPrefix;
         this.hashedToken = hashedToken;
-        this.roles.addAll(Arrays.asList(roles));
+        this.contexts.addAll(contexts);
+        this.contexts.forEach(c -> c.setApplication(this));
     }
+
 
     public Application(String name) {
         this.name = name;
@@ -62,8 +72,8 @@ public class Application {
         return tokenPrefix;
     }
 
-    public Set<ApplicationRole> getRoles() {
-        return roles;
+    public Set<ApplicationContext> getContexts() {
+        return contexts;
     }
 
     public void setHashedToken(String hashedToken) {
@@ -71,10 +81,9 @@ public class Application {
     }
 
     public boolean hasRoleForContext(String requiredRole, String context) {
-        Date now = new Date();
-        return roles.stream()
-                .anyMatch(role -> context.equals(role.getContext()) && role.getRole().equals(requiredRole) && (role.getEndDate() == null || role.getEndDate().after(now)));
-
+        return contexts.stream()
+                       .anyMatch(applicationContext -> context.equals(applicationContext.getContext())
+                               && applicationContext.hasRole(requiredRole));
     }
 
     public String getHashedToken() {
@@ -89,8 +98,29 @@ public class Application {
         this.tokenPrefix = tokenPrefix;
     }
 
+    public void addContext(ApplicationContext applicationContext) {
+        contexts.add(applicationContext);
+        applicationContext.setApplication(this);
+    }
+
+    public void removeContext(String context) {
+        for(Iterator<ApplicationContext> contextIterator = contexts.iterator(); contextIterator.hasNext(); ) {
+            ApplicationContext applicationContext = contextIterator.next();
+            if( applicationContext.getContext().equals(context)) {
+                contextIterator.remove();
+                applicationContext.setApplication(null);
+            }
+        }
+    }
+
     public void addRole(String context, String role) {
-        ApplicationRole applicationRole = new ApplicationRole(role, context, null);
-        roles.add(applicationRole);
+        ApplicationContext applicationContext = contexts.stream().filter(c -> c.getContext().equals(context)).findFirst().orElse(null);
+        if( applicationContext == null) {
+            applicationContext = new ApplicationContext(context, Collections.singletonList(new ApplicationContextRole(role)));
+            addContext(applicationContext);
+        } else {
+            applicationContext.addRole( new ApplicationContextRole(role));
+        }
+
     }
 }

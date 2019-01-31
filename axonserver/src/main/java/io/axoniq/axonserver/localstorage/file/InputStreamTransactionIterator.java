@@ -68,6 +68,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             if (size == -1 || size == 0) {
                 return false;
             }
+
             processVersion(reader);
 //            TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder()
 //                                                                                           .setToken(currentSequenceNumber)
@@ -78,7 +79,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             for (int idx = 0; idx < nrOfMessages; idx++) {
                 events.add(eventSource.readEvent());
             }
-            next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
+            next = new SerializedTransactionWithToken(currentSequenceNumber, currentTransaction.getVersion(), events, currentTransaction.getIndex());
             currentSequenceNumber += nrOfMessages;
             int chk = reader.readInt(); // checksum
 //            if (validating) {
@@ -104,7 +105,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
         if (next == null) {
             throw new NoSuchElementException();
         }
-        TransactionWithToken rv = next;
+        SerializedTransactionWithToken rv = next;
         if (!readTransaction()) {
             next = null;
             close();

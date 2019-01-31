@@ -205,7 +205,8 @@ public class LocalEventStoreTest {
 
         countDownLatch.await();
 
-        assertTrue(testSubject.containsEvents(Topology.DEFAULT_CONTEXT, new SerializedTransactionWithToken(last+1, 1, Collections.singletonList(new SerializedEvent(demoEvent)))));
+        assertTrue(testSubject.containsEvents(Topology.DEFAULT_CONTEXT,
+                                              new SerializedTransactionWithToken(last+1, (byte)1, Collections.singletonList(new SerializedEvent(demoEvent)), 1)));
 
 
     }

@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster.raftfacade;
 
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.rest.UserControllerFacade;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserController;
-import io.axoniq.platform.util.StringUtils;
+import io.axoniq.axonserver.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,19 +24,24 @@ public class RaftUserControllerFacade implements UserControllerFacade {
     }
 
     @Override
-    public void updateUser(String userName, String password, String[] roles) {
+    public User updateUser(String userName, String password, String[] roles) {
         try {
-            raftServiceFactory.getRaftConfigService().updateUser(io.axoniq.axonserver.grpc.internal.User.newBuilder()
-                                                                                                        .setName(userName)
-                                                                                                        .setPassword(
-                                                                                                                StringUtils.getOrDefault(password,""))
-                                                                                                        .addAllRoles(Arrays.asList(roles))
-                                                                                                        .build()).get();
+            raftServiceFactory.getRaftConfigService().updateUser(io.axoniq.axonserver.grpc.internal.User
+                                                                                       .newBuilder()
+                                                                                       .setName(userName)
+                                                                                       .setPassword(
+                                                                                               StringUtils
+                                                                                                       .getOrDefault(
+                                                                                                               password,
+                                                                                                               ""))
+                                                                                       .addAllRoles(Arrays.asList(roles))
+                                                                                       .build()).get();
+            return new User(userName, null, roles);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            e.printStackTrace();
+            throw new RuntimeException("Updating user interrupted", e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Updating user failed", e.getCause());
         }
     }
 

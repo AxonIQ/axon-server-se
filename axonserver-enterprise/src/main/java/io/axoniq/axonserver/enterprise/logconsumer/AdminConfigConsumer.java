@@ -40,9 +40,4 @@ public class AdminConfigConsumer implements LogEntryConsumer {
                 }
         }
     }
-
-    @Override
-    public int priority() {
-        return 0;
-    }
 }

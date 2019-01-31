@@ -1,45 +1,102 @@
 package io.axoniq.axonserver.grpc;
 
 
-import io.axoniq.axonserver.grpc.internal.Action;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
 import io.axoniq.axonserver.grpc.internal.Application;
-import io.axoniq.axonserver.grpc.internal.ApplicationRole;
+import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
+import io.axoniq.axonserver.rest.json.ApplicationJSON;
 
-import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
  */
 public class ApplicationProtoConverter {
-
-    public static io.axoniq.axonserver.access.jpa.Application createJpaApplication(Application application) {
-        io.axoniq.axonserver.access.jpa.ApplicationRole[] roles = new io.axoniq.axonserver.access.jpa.ApplicationRole[application.getRolesCount()];
-        for( int i = 0; i < application.getRolesCount(); i++) {
-            ApplicationRole role = application.getRoles(i);
-            roles[i] = new io.axoniq.axonserver.access.jpa.ApplicationRole(role.getName(),
-                    role.getContext(),
-                    role.getEndDate() > 0 ? new Date(role.getEndDate()): null);
-        }
-
-        return new io.axoniq.axonserver.access.jpa.Application(application.getName(),application.getDescription(), application.getTokenPrefix(),
-                application.getHashedToken(), roles);
+    public static ApplicationContextRole createApplicationContextRole(
+            ApplicationJSON.ApplicationRoleJSON applicationContext) {
+        applicationContext.toApplicationRole();
+        List<String> roles = applicationContext.toApplicationRole().getRoles()
+                                               .stream()
+                                               .map(io.axoniq.axonserver.access.jpa.ApplicationContextRole::getRole)
+                                               .collect(Collectors.toList());
+        return ApplicationContextRole.newBuilder()
+                                     .setContext(applicationContext.getContext())
+                                     .addAllRoles(roles)
+                                     .build();
     }
 
-    public static Application createApplication(io.axoniq.axonserver.access.jpa.Application app, Action action) {
-        Application.Builder builder = Application.newBuilder().setName(app.getName()).setAction(action);
-        if( app.getDescription()!= null)
-                builder.setDescription(app.getDescription());
-        if( app.getHashedToken() != null)
-                builder.setHashedToken(app.getHashedToken());
-        if( app.getTokenPrefix() != null)
-            builder.setTokenPrefix(app.getTokenPrefix());
-        app.getRoles().forEach(role ->
-                builder.addRoles(ApplicationRole.newBuilder()
-                        .setName(role.getRole())
-                        .setContext(role.getContext())
-                        .setEndDate(role.getEndDate() != null? role.getEndDate().getTime(): 0)
-                        .build())
-        );
+    public static Application createApplication(ApplicationJSON app) {
+        Application.Builder builder = Application.newBuilder().setName(app.getName());
+        if (app.getDescription() != null) {
+            builder.setDescription(app.getDescription());
+        }
+// TODO
+//        if (app.getHashedToken() != null) {
+//            builder.setToken(app.getHashedToken());
+//        }
+//        if (app.getTokenPrefix() != null) {
+//            builder.setTokenPrefix(app.getTokenPrefix());
+//        }
+        app.getRoles().stream()
+           .map(ApplicationProtoConverter::createApplicationContextRole)
+           .forEach(builder::addRolesPerContext);
         return builder.build();
     }
+
+    public static Application createApplication(io.axoniq.axonserver.access.jpa.Application app) {
+        Application.Builder builder = Application.newBuilder().setName(app.getName());
+        if (app.getDescription() != null) {
+            builder.setDescription(app.getDescription());
+        }
+        if (app.getHashedToken() != null) {
+            builder.setToken(app.getHashedToken());
+        }
+        if (app.getTokenPrefix() != null) {
+            builder.setTokenPrefix(app.getTokenPrefix());
+        }
+        app.getContexts()
+           .stream()
+           .map(ApplicationProtoConverter::createApplicationContextRole)
+           .forEach(builder::addRolesPerContext);
+        return builder.build();
+    }
+
+    public static ApplicationContextRole createApplicationContextRole(ApplicationContext applicationContext) {
+        List<String> roles = applicationContext.getRoles()
+                                               .stream()
+                                               .map(io.axoniq.axonserver.access.jpa.ApplicationContextRole::getRole)
+                                               .collect(Collectors.toList());
+        return ApplicationContextRole.newBuilder()
+                                     .setContext(applicationContext.getContext())
+                                     .addAllRoles(roles)
+                                     .build();
+    }
+
+
+
+    public static io.axoniq.axonserver.access.jpa.Application createJpaApplication(Application application) {
+        List<ApplicationContext> applicationContexts = application.getRolesPerContextList()
+                                                                  .stream()
+                                                                  .map(ApplicationProtoConverter::createJpaApplicationContext)
+                                                                  .collect(Collectors.toList());
+
+        return new io.axoniq.axonserver.access.jpa.Application(application.getName(),
+                                                                  application.getDescription(),
+                                                                  application.getTokenPrefix(),
+                                                                  application.getToken(),
+                                                                  applicationContexts);
+    }
+
+    public static ApplicationContext createJpaApplicationContext(ApplicationContextRole applicationContextRole) {
+        List<io.axoniq.axonserver.access.jpa.ApplicationContextRole> roles =
+                applicationContextRole.getRolesList()
+                                      .stream()
+                                      .map(io.axoniq.axonserver.access.jpa.ApplicationContextRole::new)
+                                      .collect(Collectors.toList());
+
+        return new ApplicationContext(applicationContextRole.getContext(), roles);
+    }
+
+
 }

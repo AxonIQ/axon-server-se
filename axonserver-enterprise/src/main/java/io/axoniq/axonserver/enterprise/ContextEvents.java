@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.enterprise;
 
-import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.platform.KeepNames;
+
+import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 
 /**
  * Author: marc

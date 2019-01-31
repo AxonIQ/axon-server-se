@@ -2,10 +2,10 @@ package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import reactor.core.publisher.Flux;
 
 /**
@@ -43,7 +43,8 @@ public class SnapshotTransactionsSnapshotDataStore implements SnapshotDataStore 
                                                                                     toEventSequence))
                    .map(transactionWithToken -> SerializedObject.newBuilder()
                                                                 .setType(SNAPSHOT_TYPE)
-                                                                .setData(transactionWithToken.toByteString())
+                                                                .setData(SerializedTransactionWithTokenConverter
+                                                                                 .asByteString(transactionWithToken))
                                                                 .build());
     }
 
@@ -56,7 +57,7 @@ public class SnapshotTransactionsSnapshotDataStore implements SnapshotDataStore 
     public void applySnapshotData(SerializedObject serializedObject) {
         try {
             TransactionWithToken transactionWithToken = TransactionWithToken.parseFrom(serializedObject.getData());
-            localEventStore.syncSnapshots(context, new TransactionInformation(0), transactionWithToken);
+            localEventStore.syncSnapshots(context, SerializedTransactionWithTokenConverter.asSerializedTransactionWithToken(transactionWithToken));
         } catch (InvalidProtocolBufferException e) {
             throw new SnapshotDeserializationException("Unable to deserialize events transaction.", e);
         }

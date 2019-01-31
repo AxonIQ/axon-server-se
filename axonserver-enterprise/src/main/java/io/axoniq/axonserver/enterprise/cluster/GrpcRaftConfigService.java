@@ -61,12 +61,12 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()->localRaftConfigService.addNodeToContext(request.getContext(), request.getNode()));
+        wrap(responseObserver, ()->localRaftConfigService.addNodeToContext(request.getContext(), request.getNodeName()));
     }
 
     @Override
     public void deleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()->localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNode()));
+        wrap(responseObserver, ()->localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNodeName()));
     }
 
     @Override

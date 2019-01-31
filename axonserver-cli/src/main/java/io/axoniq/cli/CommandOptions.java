@@ -23,4 +23,5 @@ public class CommandOptions {
     public static final Option USERNAME = Option.builder("u").longOpt("username").required().desc("Username").hasArg().build();
     public static final Option PASSWORD = Option.builder("p").longOpt("password").desc("[Optional] Password for the user").hasArg().build();
     public static final Option SET_TOKEN = Option.builder("T").longOpt("token").desc("use this token for the app").hasArg().build();
+    public static final Option OUTPUT = Option.builder("o").hasArg().longOpt("output").desc("Output format (txt,json)").build();
 }

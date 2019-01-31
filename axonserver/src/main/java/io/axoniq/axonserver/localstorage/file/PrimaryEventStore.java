@@ -357,7 +357,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         ByteBuffer writeBuffer = writePosition.buffer.duplicate().getBuffer();
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(0);
-        writeBuffer.put(VERSION);
+        writeBuffer.put(transactionInformation.getVersion());
         transactionInformation.writeTo(writeBuffer);
         writeBuffer.putShort((short) eventList.size());
         Checksum checksum = new Checksum();

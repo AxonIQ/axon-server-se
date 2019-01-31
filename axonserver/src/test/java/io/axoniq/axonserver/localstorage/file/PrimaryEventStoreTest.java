@@ -3,9 +3,9 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
@@ -59,7 +59,7 @@ public class PrimaryEventStoreTest {
     @Test
     public void transactionsIterator() throws InterruptedException {
         setupEvents(1000, 1000);
-        Iterator<TransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0);
+        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0);
 
         long counter = 0;
         while(transactionWithTokenIterator.hasNext()) {
@@ -90,6 +90,11 @@ public class PrimaryEventStoreTest {
 
         testSubject.initSegments(Long.MAX_VALUE);
         assertEquals(2, testSubject.getLastToken());
+
+        storeEvent();
+
+        testSubject.initSegments(Long.MAX_VALUE);
+        assertEquals(3, testSubject.getLastToken());
     }
 
     private void setupEvents(int numOfTransactions, int numOfEvents) throws InterruptedException {
@@ -98,30 +103,26 @@ public class PrimaryEventStoreTest {
             String aggId = UUID.randomUUID().toString();
             List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, numOfEvents).forEach(i -> {
-                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                                       .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId)
+                                                       .setAggregateSequenceNumber(i)
+                                                       .setAggregateType("Demo")
+                                                       .setPayload(SerializedObject.newBuilder().build()).build()));
             });
-            TransactionInformation transactionInformation = new TransactionInformation(j);
+            TransactionInformation transactionInformation = new TransactionInformation(testSubject.transactionVersion(),
+                                                                                       j);
             PreparedTransaction preparedTransaction = testSubject.prepareTransaction(transactionInformation, newEvents);
             testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 
         latch.await(5, TimeUnit.SECONDS);
-        //Thread.sleep(1500);
-        testSubject.rollback(2);
-        assertEquals(2, testSubject.getLastToken());
-
-        storeEvent();
-
-        testSubject.initSegments(Long.MAX_VALUE);
-        assertEquals(3, testSubject.getLastToken());
     }
 
     private void storeEvent() {
         CountDownLatch latch = new CountDownLatch(1);
         SerializedEvent newEvent = new SerializedEvent(Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
                                                             .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
-        PreparedTransaction preparedTransaction = testSubject.prepareTransaction(Collections.singletonList(newEvent));
+        PreparedTransaction preparedTransaction = testSubject.prepareTransaction(new TransactionInformation(testSubject.transactionVersion(),
+                                                                                                            0), Collections.singletonList(newEvent));
         testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
     }
 
@@ -136,7 +137,8 @@ public class PrimaryEventStoreTest {
                 newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
                                                        .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
             });
-            PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
+            PreparedTransaction preparedTransaction = testSubject.prepareTransaction(new TransactionInformation(testSubject.transactionVersion(),
+                                                                                                                0), newEvents);
             testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 

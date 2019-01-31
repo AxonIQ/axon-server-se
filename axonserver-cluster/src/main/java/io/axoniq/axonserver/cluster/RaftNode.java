@@ -126,7 +126,7 @@ public class RaftNode {
         updateState(state.get(), stateFactory.followerState());
         applyTask = scheduler.scheduleWithFixedDelay( () -> raftGroup.logEntryProcessor()
                                                    .apply(raftGroup.localLogEntryStore()::createIterator,
-                                                          this::applyEntryConsumers), 0, 5, TimeUnit.MILLISECONDS);
+                                                          this::applyEntryConsumers), 0, 1, TimeUnit.MILLISECONDS);
         if (raftGroup.raftConfiguration().isLogCompactionEnabled()){
             scheduledLogCleaning = scheduleLogCleaning();
         }

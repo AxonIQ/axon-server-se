@@ -1,9 +1,7 @@
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyController;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.features.DefaultFeatureChecker;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
@@ -18,16 +16,11 @@ import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MetricCollector;
-import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
-import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
 import io.axoniq.axonserver.rest.UserControllerFacade;
-import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -101,8 +94,8 @@ public class AxonServerFreeConfiguration {
     public UserControllerFacade userControllerFacade(UserController userController) {
         return new UserControllerFacade() {
             @Override
-            public void updateUser(String userName, String password, String[] roles) {
-                userController.updateUser(userName, password, roles);
+            public User updateUser(String userName, String password, String[] roles) {
+                return userController.updateUser(userName, password, roles);
             }
 
             @Override
@@ -116,62 +109,5 @@ public class AxonServerFreeConfiguration {
             }
         };
     }
-
-    @Bean
-    @ConditionalOnMissingBean(LoadBalanceStrategyControllerFacade.class)
-    public LoadBalanceStrategyControllerFacade loadBalanceStrategyControllerFacade(LoadBalanceStrategyController controller) {
-        return new LoadBalanceStrategyControllerFacade() {
-            @Override
-            public Iterable<? extends Printable> findAll() {
-                return controller.findAll();
-            }
-
-            @Override
-            public void save(LoadBalancingStrategy loadBalancingStrategy) {
-                controller.save(loadBalancingStrategy);
-            }
-
-            @Override
-            public void delete(String strategyName) {
-                controller.delete(strategyName);
-            }
-
-            @Override
-            public void updateFactoryBean(String strategyName, String factoryBean) {
-                controller.updateFactoryBean(strategyName, factoryBean);
-            }
-
-            @Override
-            public void updateLabel(String strategyName, String label) {
-                controller.updateLabel(strategyName, label);
-
-            }
-
-            @Override
-            public LoadBalancingStrategy findByName(String strategyName) {
-                return controller.findByName(strategyName);
-            }
-        };
-    }
-
-
-    @Bean
-    @ConditionalOnMissingBean(ProcessorLoadBalancingControllerFacade.class)
-    public ProcessorLoadBalancingControllerFacade processorLoadBalancingControllerFacade(
-            ProcessorLoadBalancingController processorLoadBalancingController) {
-        return new ProcessorLoadBalancingControllerFacade() {
-            @Override
-            public void save(ProcessorLoadBalancing processorLoadBalancing) {
-                processorLoadBalancingController.save(processorLoadBalancing);
-            }
-
-            @Override
-            public List<ProcessorLoadBalancing> findByComponentAndContext(String component, String context) {
-                return processorLoadBalancingController.findByComponentAndContext(component, context);
-            }
-        };
-    }
-
-
 
 }

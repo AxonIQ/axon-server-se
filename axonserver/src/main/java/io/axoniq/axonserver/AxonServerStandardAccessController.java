@@ -1,7 +1,8 @@
 package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationRole;
+import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -9,6 +10,7 @@ import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.Collections;
 
 /**
  * Created by marc on 7/17/2017.
@@ -19,7 +21,9 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     private PathMappingRepository pathMappingRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Application dummyApplication = new Application("Dummy", null, null, null,
-                                                                 new ApplicationRole("ADMIN", Topology.DEFAULT_CONTEXT, null));
+                                                                 new ApplicationContext("ADMIN",
+                                                                                        Collections.singletonList(
+                                                                                                new ApplicationContextRole(Topology.DEFAULT_CONTEXT))));
 
     public AxonServerStandardAccessController(PathMappingRepository pathMappingRepository, MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.pathMappingRepository = pathMappingRepository;

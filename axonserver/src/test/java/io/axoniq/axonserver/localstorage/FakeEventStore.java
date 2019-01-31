@@ -5,6 +5,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.data.util.CloseableIterator;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -54,7 +55,7 @@ public class FakeEventStore implements EventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
+    public PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> eventList) {
         return null;
     }
 
@@ -66,6 +67,16 @@ public class FakeEventStore implements EventStore {
     @Override
     public void streamTransactions(long firstToken, Predicate<SerializedTransactionWithToken> transactionConsumer) {
 
+    }
+
+    @Override
+    public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken) {
+        return null;
+    }
+
+    @Override
+    public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+        return null;
     }
 
     @Override
