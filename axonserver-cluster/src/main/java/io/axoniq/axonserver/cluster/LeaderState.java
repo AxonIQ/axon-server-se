@@ -3,6 +3,8 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
+import io.axoniq.axonserver.cluster.election.DefaultElection;
+import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
@@ -19,6 +21,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -37,6 +40,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -127,6 +131,7 @@ public class LeaderState extends AbstractMembershipState {
         pendingEntries.forEach((index, completableFuture) -> completableFuture
                 .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
         pendingEntries.clear();
+        logger.info("{}: {} steps down from Leader role.", groupId(), me());
         if (scheduler.get() != null) {
             scheduler.getAndSet(null).shutdownNow();
         }
@@ -135,7 +140,7 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.trace("{}: Received appendEntries request. Rejecting the request.", groupId());
-        return appendEntriesFailure(request.getRequestId());
+        return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
     @Override
@@ -148,7 +153,7 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         logger.trace("{}: Received installSnapshot request. Rejecting the request.", groupId());
-        return installSnapshotFailure(request.getRequestId());
+        return installSnapshotFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
     @Override
@@ -167,8 +172,13 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void forceStepDown() {
-        logger.info("{}: StepDown forced", groupId());
-        changeStateTo(stateFactory().followerState());
+        String message = format("%s: Forced Step Down of %s.", groupId(), me());
+        logger.info(message);
+        stepDown(message);
+    }
+
+    private void stepDown(String cause){
+        changeStateTo(stateFactory().followerState(), cause);
     }
 
     private void checkStepdown() {
@@ -178,8 +188,9 @@ public class LeaderState extends AbstractMembershipState {
         long now = scheduler.get().clock().millis();
         long lastReceived = replicators.lastMessageTimeFromMajority();
         if (now - lastReceived > maxElectionTimeout()) {
-            logger.info("{}: StepDown as no messages received for {}ms", groupId(), (now - lastReceived));
-            changeStateTo(stateFactory().followerState());
+            String message = format("%s: StepDown as no messages received for %s ms.", groupId(), (now - lastReceived));
+            logger.info(message);
+            changeStateTo(stateFactory().followerState(), message);
         } else {
             logger.trace("{}: Reschedule checkStepdown after {}ms",
                          groupId(),
@@ -240,6 +251,27 @@ public class LeaderState extends AbstractMembershipState {
     public String getLeader() {
         return me();
     }
+
+    @Override
+    protected void updateCurrentTerm(long term, String cause) {
+        if (term <= raftGroup().localElectionStore().currentTerm()) return;
+        super.updateCurrentTerm(term, cause);
+
+        Election majorityElection = new DefaultElection(requestVotePrototype(),
+                                                        super::updateCurrentTerm,
+                                                        raftGroup().localElectionStore(),
+                                                        otherPeers());
+
+        majorityElection.result().timeout(Duration.ofMillis(maxElectionTimeout()))
+                        .subscribe(result -> onElectionResult(result.won()),
+                                   error -> onElectionResult(false));
+
+    }
+
+    private void onElectionResult(boolean won) {
+        if (won) appendLeaderElected(); else stepDown("Leader not reconfirmed");
+    }
+
 
     private class Replicators {
 
@@ -329,8 +361,8 @@ public class LeaderState extends AbstractMembershipState {
             int majority = (int) Math.ceil((otherNodesCount() + 1.1) / 2f);
             Stream<Long> matchIndices = Stream.concat(Stream.of(raftGroup().localLogEntryStore().lastLogIndex()),
                                                       replicatorPeerMap.values().stream()
-                                                                       .map(ReplicatorPeer::getMatchIndex));
-            return matchIndices.filter(p -> p >= nextCommitCandidate).count() >= majority;
+                                                                       .map(ReplicatorPeer::matchIndex));
+            return matchIndeces.filter(p -> p >= nextCommitCandidate).count() >= majority;
         }
 
         void notifySenders() {
@@ -391,7 +423,8 @@ public class LeaderState extends AbstractMembershipState {
                                                                matchIndexCallback,
                                                                scheduler.get().clock(),
                                                                raftGroup(),
-                                                               snapshotManager());
+                                                               snapshotManager(),
+                                                               LeaderState.this::updateCurrentTerm);
             replicatorPeer.start();
             replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
             return () -> {

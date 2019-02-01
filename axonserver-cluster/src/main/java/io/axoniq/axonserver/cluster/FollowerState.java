@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Math.min;
+import static java.lang.String.format;
 
 public class FollowerState extends AbstractMembershipState {
 
@@ -65,12 +66,15 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         try {
-            updateCurrentTerm(request.getTerm());
+            String cause = format("%s: %s received AppendEntriesRequest with term = %s from %s",
+                                  groupId(), me(), request.getTerm(), request.getLeaderId());
+            updateCurrentTerm(request.getTerm(), cause);
 
             //1. Reply false if term < currentTerm
             if (request.getTerm() < currentTerm()) {
-                logger.debug("{}: term before current term {}", groupId(), currentTerm());
-                return appendEntriesFailure(request.getRequestId());
+                String failureCause = String.format("%s: term before current term %s", groupId(), currentTerm());
+                logger.debug(failureCause);
+                return appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             heardFromLeader = true;
@@ -84,12 +88,14 @@ public class FollowerState extends AbstractMembershipState {
 
             //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
             if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
-                logger.trace("{}: previous term/index missing {}/{} last log {}",
-                             groupId(),
-                             request.getPrevLogTerm(),
-                             request.getPrevLogIndex(),
-                             logEntryStore.lastLogIndex());
-                return appendEntriesFailure(request.getRequestId());
+                String failureCause = String.format("%s: previous term/index missing %s/%s last log %s",
+                                                    groupId(),
+                                                    request.getPrevLogTerm(),
+                                                    request.getPrevLogIndex(),
+                                                    logEntryStore.lastLogIndex());
+
+                logger.trace(failureCause);
+                return appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -101,9 +107,10 @@ public class FollowerState extends AbstractMembershipState {
                 }
                 logEntryStore.appendEntry(request.getEntriesList());
             } catch (IOException e) {
-                logger.warn("{}: append failed", groupId(), e);
+                String failureCause = String.format("%s: append failed for IOException: %s",e.getMessage(), groupId());
+                logger.warn(failureCause, e);
                 stop();
-                return appendEntriesFailure(request.getRequestId());
+                return appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -127,8 +134,9 @@ public class FollowerState extends AbstractMembershipState {
                                         .setTerm(currentTerm())
                                         .build();
         } catch (Exception ex) {
-            logger.error("{}: failed to append events", groupId(), ex);
-            return appendEntriesFailure(request.getRequestId());
+            String failureCause = String.format("%s: failed to append events: %s",  groupId(), ex.getStackTrace());
+            logger.error(failureCause, ex);
+            return appendEntriesFailure(request.getRequestId(), failureCause);
         }
     }
 
@@ -143,8 +151,9 @@ public class FollowerState extends AbstractMembershipState {
                          me());
             return requestVoteResponse(request.getRequestId(), false);
         }
-
-        updateCurrentTerm(request.getTerm());
+        String cause = format("%s: %s received RequestVoteRequest with term = %s from %s",
+                              groupId(), me(), request.getTerm(), request.getCandidateId());
+        updateCurrentTerm(request.getTerm(), cause);
         boolean voteGranted = voteGrantedFor(request);
         if (voteGranted) {
             rescheduleElection(request.getTerm());
@@ -154,12 +163,16 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        updateCurrentTerm(request.getTerm());
+        String cause = format("%s: %s received InstallSnapshotRequest with term = %s from %s",
+                              groupId(), me(), request.getTerm(), request.getLeaderId());
+        updateCurrentTerm(request.getTerm(), cause);
 
         // Reply immediately if term < currentTerm
         if (request.getTerm() < currentTerm()) {
-            logger.warn("{}: term before current term {}", groupId(), currentTerm());
-            return installSnapshotFailure(request.getRequestId());
+            String failureCause = String.format("%s: term (%s) is before current term (%s)",
+                                                groupId(), request.getTerm(), currentTerm());
+            logger.warn(failureCause);
+            return installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
         rescheduleElection(request.getTerm());
@@ -205,8 +218,9 @@ public class FollowerState extends AbstractMembershipState {
     private void checkMessageReceived() {
         long now = scheduler.get().clock().millis();
         if (nextTimeout.get() < now) {
-            logger.warn("{}: Timeout in follower state: {}", groupId(), (now - nextTimeout.get()));
-            changeStateTo(stateFactory().candidateState());
+            String message = format("%s: Timeout in follower state: %s ms.", groupId(), (now - nextTimeout.get()));
+            logger.warn(message);
+            changeStateTo(stateFactory().candidateState(), message);
         } else {
             scheduleElectionTimeoutChecker();
         }
@@ -214,8 +228,9 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void forceStepDown() {
-        logger.warn("{}: Forced step down", groupId());
-        changeStateTo(stateFactory().candidateState());
+        String cause = format("Forced transition from Follower to Candidate for %s in context %s",me(), groupId());
+        logger.warn(cause);
+        changeStateTo(stateFactory().candidateState(), cause);
     }
 
     private void rescheduleElection(long term) {

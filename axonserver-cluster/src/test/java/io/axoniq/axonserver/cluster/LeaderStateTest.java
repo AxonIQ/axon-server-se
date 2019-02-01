@@ -37,7 +37,7 @@ public class LeaderStateTest {
 
     @Before
     public void setup() {
-        BiConsumer<MembershipState, MembershipState> transitionHandler = (old, state) -> stateRef.set(state);
+        StateTransitionHandler transitionHandler = (old, state, cause) -> stateRef.set(state);
 
         RaftConfiguration raftConfiguration = new RaftConfiguration() {
             private List<Node> groupMembers = Arrays.asList(Node.newBuilder().setNodeId("test").build(),
@@ -62,7 +62,7 @@ public class LeaderStateTest {
 
         ElectionStore electionStore = new InMemoryElectionStore();
         LogEntryProcessor logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
-
+        BiConsumer<Long,String> termUpdateHandler = (newTerm, cause) -> electionStore.updateCurrentTerm(newTerm);
         RaftGroup raftGroup = new RaftGroup() {
             @Override
             public LogEntryStore localLogEntryStore() {
@@ -136,10 +136,13 @@ public class LeaderStateTest {
 
         testSubject = LeaderState.builder()
                                  .transitionHandler(transitionHandler)
+                                 .termUpdateHandler(termUpdateHandler)
                                  .raftGroup(raftGroup)
                                  .snapshotManager(new FakeSnapshotManager())
                                  .schedulerFactory(() -> fakeScheduler)
-                                 .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler, new FakeSnapshotManager()))
+                                 .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler,
+                                                                       termUpdateHandler,
+                                                                       new FakeSnapshotManager()))
                                  .build();
     }
 

@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
-import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
@@ -10,6 +9,7 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
 
@@ -32,7 +32,8 @@ import java.util.stream.Stream;
 public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
-    private final BiConsumer<MembershipState, MembershipState> transitionHandler;
+    private final StateTransitionHandler transitionHandler;
+    private final BiConsumer<Long,String> termUpdateHandler;
     private final MembershipStateFactory stateFactory;
     private final Supplier<Scheduler> schedulerFactory;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
@@ -44,18 +45,13 @@ public abstract class AbstractMembershipState implements MembershipState {
         builder.validate();
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
+        this.termUpdateHandler = builder.termUpdateHandler;
         this.stateFactory = builder.stateFactory;
         this.schedulerFactory = builder.schedulerFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
         this.snapshotManager = builder.snapshotManager;
         this.currentConfiguration = builder.currentConfiguration;
         this.registerConfigurationListener = builder.registerConfigurationListener;
-    }
-
-    protected <R> R handleAsFollower(Function<MembershipState, R> handler) {
-        MembershipState followerState = stateFactory().followerState();
-        changeStateTo(followerState);
-        return handler.apply(followerState);
     }
 
     protected int clusterSize() {
@@ -65,7 +61,8 @@ public abstract class AbstractMembershipState implements MembershipState {
     public static abstract class Builder<B extends Builder<B>> {
 
         private RaftGroup raftGroup;
-        private BiConsumer<MembershipState, MembershipState> transitionHandler;
+        private StateTransitionHandler transitionHandler;
+        private BiConsumer<Long, String> termUpdateHandler;
         private MembershipStateFactory stateFactory;
         private Supplier<Scheduler> schedulerFactory;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
@@ -79,8 +76,13 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B transitionHandler(BiConsumer<MembershipState, MembershipState> transitionHandler) {
+        public B transitionHandler(StateTransitionHandler transitionHandler) {
             this.transitionHandler = transitionHandler;
+            return self();
+        }
+
+        public B termUpdateHandler(BiConsumer<Long,String> termUpdateHandler) {
+            this.termUpdateHandler = termUpdateHandler;
             return self();
         }
 
@@ -123,6 +125,9 @@ public abstract class AbstractMembershipState implements MembershipState {
             }
             if (transitionHandler == null) {
                 throw new IllegalStateException("The transitionHandler must be provided");
+            }
+            if (termUpdateHandler == null) {
+                throw new IllegalStateException("The termUpdateHandler must be provided");
             }
             if (stateFactory == null) {
                 throw new IllegalStateException("The stateFactory must be provided");
@@ -200,16 +205,12 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup.lastAppliedEventSequence();
     }
 
-    protected void changeStateTo(MembershipState newState) {
-        transitionHandler.accept(this, newState);
+    protected void changeStateTo(MembershipState newState, String cause) {
+        transitionHandler.updateState(this, newState, cause);
     }
 
-    protected void updateCurrentTerm(long term) {
-        if (term > currentTerm()) {
-            ElectionStore electionStore = raftGroup.localElectionStore();
-            electionStore.updateCurrentTerm(term);
-            electionStore.markVotedFor(null);
-        }
+    protected void updateCurrentTerm(long term, String cause) {
+        this.termUpdateHandler.accept(term, cause);
     }
 
     protected int maxElectionTimeout() {
@@ -248,8 +249,9 @@ public abstract class AbstractMembershipState implements MembershipState {
         return randomValueSupplier.apply(min, max);
     }
 
-    protected AppendEntriesResponse appendEntriesFailure(String requestId) {
+    protected AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause) {
         AppendEntryFailure failure = AppendEntryFailure.newBuilder()
+                                                       .setCause(failureCause)
                                                        .setLastAppliedIndex(lastAppliedIndex())
                                                        .setLastAppliedEventSequence(lastAppliedEventSequence())
                                                        .build();
@@ -261,12 +263,14 @@ public abstract class AbstractMembershipState implements MembershipState {
                                     .build();
     }
 
-    protected InstallSnapshotResponse installSnapshotFailure(String requestId) {
+    protected InstallSnapshotResponse installSnapshotFailure(String requestId, String cause) {
         return InstallSnapshotResponse.newBuilder()
                                       .setResponseHeader(responseHeader(requestId))
                                       .setGroupId(groupId())
                                       .setTerm(currentTerm())
-                                      .setFailure(InstallSnapshotFailure.newBuilder().build())
+                                      .setFailure(InstallSnapshotFailure.newBuilder()
+                                                                        .setCause(cause)
+                                                                        .build())
                                       .build();
     }
 
@@ -284,6 +288,17 @@ public abstract class AbstractMembershipState implements MembershipState {
                              .setRequestId(requestId)
                              .setResponseId(UUID.randomUUID().toString())
                              .setNodeId(me()).build();
+    }
+
+    protected RequestVoteRequest requestVotePrototype() {
+        TermIndex lastLog = lastLog();
+        return RequestVoteRequest.newBuilder()
+                                 .setGroupId(groupId())
+                                 .setCandidateId(me())
+                                 .setTerm(currentTerm()+1)
+                                 .setLastLogIndex(lastLog.getIndex())
+                                 .setLastLogTerm(lastLog.getTerm())
+                                 .build();
     }
 
     protected CurrentConfiguration currentConfiguration(){

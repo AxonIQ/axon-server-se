@@ -73,8 +73,9 @@ message AppendEntrySuccess {
 }
 
 message AppendEntryFailure {
-    uint64 lastAppliedIndex = 1;
-    sint64 lastAppliedEventSequence = 2; // only relevant for storage groups
+    string cause = 1;
+    uint64 lastAppliedIndex = 2;
+    sint64 lastAppliedEventSequence = 3; // only relevant for storage groups
 }
 
 
@@ -112,6 +113,7 @@ message InstallSnapshotSuccess {
 }
 
 message InstallSnapshotFailure {
+    string cause = 1;
 }
 
 message Config {
