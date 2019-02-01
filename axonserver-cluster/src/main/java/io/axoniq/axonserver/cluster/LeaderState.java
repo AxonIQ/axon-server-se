@@ -359,10 +359,10 @@ public class LeaderState extends AbstractMembershipState {
 
         private boolean matchedByMajority(long nextCommitCandidate) {
             int majority = (int) Math.ceil((otherNodesCount() + 1.1) / 2f);
-            Stream<Long> matchIndices = Stream.concat(Stream.of(raftGroup().localLogEntryStore().lastLogIndex()),
+            Stream<Long> matchIndexes = Stream.concat(Stream.of(raftGroup().localLogEntryStore().lastLogIndex()),
                                                       replicatorPeerMap.values().stream()
                                                                        .map(ReplicatorPeer::matchIndex));
-            return matchIndeces.filter(p -> p >= nextCommitCandidate).count() >= majority;
+            return matchIndexes.filter(p -> p >= nextCommitCandidate).count() >= majority;
         }
 
         void notifySenders() {
