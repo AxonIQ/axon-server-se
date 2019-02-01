@@ -4,6 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
+import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
@@ -35,7 +36,7 @@ import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController("CommandRestController")
 @RequestMapping("/v1")
@@ -68,7 +69,7 @@ public class CommandRestController {
     public Future<CommandResponseJson> execute(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
                                                @RequestBody @Valid CommandRequestJson command) {
         CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
-        commandDispatcher.dispatch(context, command.asCommand(), r -> result.complete(new CommandResponseJson(r)), false);
+        commandDispatcher.dispatch(context, new SerializedCommand(command.asCommand()), r -> result.complete(new CommandResponseJson(r.wrapped())), false);
         return result;
     }
 
@@ -117,7 +118,7 @@ public class CommandRestController {
         static JsonClientMapping from(Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
             JsonClientMapping jsonCommandMapping = new JsonClientMapping();
             CommandHandler commandHandler = entry.getKey();
-            jsonCommandMapping.client = commandHandler.getClient();
+            jsonCommandMapping.client = commandHandler.getClient().toString();
             jsonCommandMapping.component = commandHandler.getComponentName();
             jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
 

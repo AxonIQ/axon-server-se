@@ -33,7 +33,7 @@ public class RemoteRaftConfigService implements RaftConfigService {
     @Override
     public void addNodeToContext(String context, String node) {
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder().setNode(node).setContext(context).build(),
+        raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder().setNodeName(node).setContext(context).build(),
                                                new CompletableStreamObserver(completableFuture));
         wait(completableFuture);
     }
@@ -59,7 +59,7 @@ public class RemoteRaftConfigService implements RaftConfigService {
     @Override
     public void deleteNodeFromContext(String context, String node) {
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.deleteNodeFromContext(NodeContext.newBuilder().setNode(node).setContext(context).build(),
+        raftConfigServiceStub.deleteNodeFromContext(NodeContext.newBuilder().setNodeName(node).setContext(context).build(),
                                                new CompletableStreamObserver(completableFuture));
         wait(completableFuture);
     }

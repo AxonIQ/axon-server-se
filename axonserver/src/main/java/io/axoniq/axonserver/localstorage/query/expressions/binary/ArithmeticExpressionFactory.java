@@ -9,7 +9,7 @@ import io.axoniq.axonserver.localstorage.query.expressions.AbstractExpressionFac
 import java.util.Optional;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ArithmeticExpressionFactory extends AbstractExpressionFactory {
     public Optional<AbstractArithmeticExpression> doBuild(QueryElement element, ExpressionRegistry registry) {

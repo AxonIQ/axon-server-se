@@ -26,7 +26,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController("ClusterRestController")
 @RequestMapping("/v1/cluster")

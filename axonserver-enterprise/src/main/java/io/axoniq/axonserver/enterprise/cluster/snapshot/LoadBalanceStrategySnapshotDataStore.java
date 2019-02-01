@@ -2,14 +2,13 @@ package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
-import io.axoniq.axonserver.grpc.ProtoConverter;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyRepository;
+import io.axoniq.axonserver.grpc.LoadBalancingStrategyConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import reactor.core.publisher.Flux;
 
-import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaLoadBalancingStrategy;
 
 /**
  * Snapshot data store for {@link LoadBalancingStrategy} data.
@@ -33,7 +32,7 @@ public class LoadBalanceStrategySnapshotDataStore implements SnapshotDataStore {
     @Override
     public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
         return Flux.fromIterable(loadBalanceStrategyRepository.findAll())
-                   .map(ProtoConverter::createLoadBalanceStrategy)
+                   .map(LoadBalancingStrategyConverter::createLoadBalanceStrategy)
                    .map(this::toSerializedObject);
     }
 
@@ -51,7 +50,7 @@ public class LoadBalanceStrategySnapshotDataStore implements SnapshotDataStore {
     public void applySnapshotData(SerializedObject serializedObject) {
         try {
             LoadBalanceStrategy loadBalanceStrategy = LoadBalanceStrategy.parseFrom(serializedObject.getData());
-            LoadBalancingStrategy loadBalancingStrategyEntity = createJpaLoadBalancingStrategy(loadBalanceStrategy);
+            LoadBalancingStrategy loadBalancingStrategyEntity = LoadBalancingStrategyConverter.createJpaLoadBalancingStrategy(loadBalanceStrategy);
             loadBalanceStrategyRepository.save(loadBalancingStrategyEntity);
         } catch (InvalidProtocolBufferException e) {
             throw new SnapshotDeserializationException("Unable to deserialize load balance strategy data.", e);

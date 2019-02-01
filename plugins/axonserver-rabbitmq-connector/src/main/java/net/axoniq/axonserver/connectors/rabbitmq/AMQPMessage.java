@@ -3,7 +3,7 @@ package net.axoniq.axonserver.connectors.rabbitmq;
 import com.rabbitmq.client.AMQP;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AMQPMessage {
     private final byte[] body;

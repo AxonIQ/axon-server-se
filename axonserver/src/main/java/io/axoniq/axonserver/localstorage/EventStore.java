@@ -1,10 +1,9 @@
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.data.util.CloseableIterator;
 
 import java.util.Iterator;
 import java.util.List;
@@ -15,7 +14,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventStore {
 
@@ -36,18 +35,18 @@ public interface EventStore {
     default void cleanup() {
     }
 
-    boolean streamEvents(long token, Predicate<EventWithToken> onEvent);
+    boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent);
 
-    Optional<Event> getLastEvent(String aggregateId, long minSequenceNumber);
+    Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber);
 
-    default void reserveSequenceNumbers(List<Event> events) {
+    default void reserveSequenceNumbers(List<SerializedEvent> events) {
     }
 
-    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<Event> eventConsumer);
+    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer);
 
-    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<Event> eventConsumer);
+    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
 
-    PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> eventList);
+    PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> eventList);
 
     default boolean replicated() {
         return false;
@@ -60,11 +59,11 @@ public interface EventStore {
      */
     @Deprecated
     void streamTransactions(long firstToken,
-                            Predicate<TransactionWithToken> transactionConsumer);
+                            Predicate<SerializedTransactionWithToken> transactionConsumer);
 
-    Iterator<TransactionWithToken> transactionIterator(long firstToken);
+    Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken);
 
-    Iterator<TransactionWithToken> transactionIterator(long firstToken, long limitToken);
+    Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken);
 
     void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer);
 
@@ -87,6 +86,22 @@ public interface EventStore {
     }
 
     default long lastIndex() {
+        return 0;
+    }
+
+
+    default boolean contains( SerializedTransactionWithToken newTransaction) {
+        return true;
+    }
+
+    /**
+     * Return a closeable iterator to iterate over all events starting at token start.
+     * @param start
+     * @return closeable iterator of SerializedEventWithToken
+     */
+    CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start);
+
+    default byte transactionVersion() {
         return 0;
     }
 

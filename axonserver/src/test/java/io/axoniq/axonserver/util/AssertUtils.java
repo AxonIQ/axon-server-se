@@ -3,7 +3,7 @@ package io.axoniq.axonserver.util;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AssertUtils {
     private AssertUtils() {

@@ -15,7 +15,7 @@ import static io.axoniq.axonserver.localstorage.query.expressions.ResultFactory.
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class XPathExpressionTest {
     private XPathExpression testSubject;

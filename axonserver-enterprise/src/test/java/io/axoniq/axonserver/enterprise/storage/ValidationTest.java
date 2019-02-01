@@ -5,7 +5,7 @@ import org.junit.*;
 import org.junit.rules.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ValidationTest {
     @ClassRule

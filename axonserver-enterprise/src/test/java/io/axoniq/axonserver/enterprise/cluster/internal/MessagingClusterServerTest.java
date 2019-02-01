@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class MessagingClusterServerTest {
@@ -40,6 +40,8 @@ public class MessagingClusterServerTest {
     private GrpcRaftGroupService grpcRaftGroupService;
     @Mock
     private GrpcRaftConfigService grpcRaftConfigService;
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Before
     public void setUp() {

@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.component.instance;
 
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -18,7 +19,7 @@ import java.util.Map;
 public class GenericClients implements Clients {
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final Map<String, Client> clientRegistrations = new HashMap<>();
+    private final Map<ClientIdentification, Client> clientRegistrations = new HashMap<>();
 
     public GenericClients(MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
@@ -31,12 +32,12 @@ public class GenericClients implements Clients {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        this.clientRegistrations.remove(event.getClient());
+        this.clientRegistrations.remove(event.clientIdentification());
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
-        this.clientRegistrations.put(event.getClient(),
+        this.clientRegistrations.put(event.clientIdentification(),
                                      new GenericClient(event.getClient(),
                                                        event.getComponentName(),
                                                        event.getContext(),

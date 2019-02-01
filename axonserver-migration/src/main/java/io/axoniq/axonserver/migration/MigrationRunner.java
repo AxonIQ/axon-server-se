@@ -30,7 +30,7 @@ import java.util.concurrent.TimeoutException;
 import static com.codahale.metrics.MetricRegistry.name;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class MigrationRunner implements CommandLineRunner {

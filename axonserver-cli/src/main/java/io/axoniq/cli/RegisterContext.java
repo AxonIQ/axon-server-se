@@ -13,7 +13,7 @@ import static io.axoniq.cli.CommandOptions.CONTEXT;
 import static io.axoniq.cli.CommandOptions.NODES;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RegisterContext extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {

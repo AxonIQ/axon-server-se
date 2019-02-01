@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @ConfigurationProperties("axon.serializer")
 @Configuration

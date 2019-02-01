@@ -1,12 +1,11 @@
 package io.axoniq.axonserver.component.processor;
 
-import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdate;
-import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
-import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -37,12 +36,7 @@ public class ApplicationProcessorEventsSource {
     }
 
     private void onEventProcessorUpdated(String clientName, String context, PlatformInboundInstruction instruction){
-        ClientEventProcessorStatus processorStatus = ClientEventProcessorStatus
-                .newBuilder()
-                .setClient(clientName)
-                .setContext(context)
-                .setEventProcessorInfo(instruction.getEventProcessorInfo())
-                .build();
+        ClientEventProcessorInfo processorStatus = new ClientEventProcessorInfo(clientName, context, instruction.getEventProcessorInfo());
         applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus, false));
     }
 

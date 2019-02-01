@@ -1,13 +1,14 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
@@ -22,14 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Ensures that subscriptions from this AxonHub node are known on all connected AxonHub nodes
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class SubscriptionSynchronizer {
     private final CommandRegistrationCache commandRegistrationCache;
     private final QueryRegistrationCache queryRegistrationCache;
     private final ClusterController clusterController;
-    private final Map<String, ContextComponent> connectedClients = new ConcurrentHashMap<>();
+    private final Map<ClientIdentification, ContextComponent> connectedClients = new ConcurrentHashMap<>();
 
     public SubscriptionSynchronizer(CommandRegistrationCache commandRegistrationCache,
                                     QueryRegistrationCache queryRegistrationCache,
@@ -43,9 +44,9 @@ public class SubscriptionSynchronizer {
     public void on(ClusterEvents.AxonServerInstanceConnected event) {
 
         connectedClients.forEach((key, value) ->
-                                         event.getRemoteConnection().clientStatus(value.getContext(),
+                                         event.getRemoteConnection().clientStatus(key.getContext(),
                                                                                   value.getComponent(),
-                                                                                  key,
+                                                                                  key.getClient(),
                                                                                   true));
 
         commandRegistrationCache.getAll().forEach((member, commands) -> {
@@ -53,7 +54,7 @@ public class SubscriptionSynchronizer {
                 commands.forEach(command ->
                                          event.getRemoteConnection().subscribeCommand(command.getContext(),
                                                                                       command.getCommand(),
-                                                                                      member.getClient(),
+                                                                                      member.getClient().getClient(),
                                                                                       member.getComponentName()));
             }
         });
@@ -62,7 +63,7 @@ public class SubscriptionSynchronizer {
                 (query, handlersPerComponentMap) -> handlersPerComponentMap.forEach(
                         (component, handlers) -> handlers.forEach(handler -> {
                             if (handler instanceof DirectQueryHandler) {
-                                event.getRemoteConnection().subscribeQuery(query, queryRegistrationCache.getResponseTypes(query), component, handler.getClientName());
+                                event.getRemoteConnection().subscribeQuery(query, queryRegistrationCache.getResponseTypes(query), component, handler.getClient().getClient());
                             }
                         })));
 
@@ -130,7 +131,7 @@ public class SubscriptionSynchronizer {
             clusterController.activeConnections().forEach(remoteConnection -> remoteConnection
                     .clientStatus(event.getContext(), event.getComponentName(),
                                   event.getClient(), false));
-            connectedClients.remove(event.getClient());
+            connectedClients.remove(event.clientIdentification());
         }
     }
 
@@ -168,7 +169,7 @@ public class SubscriptionSynchronizer {
                                                                                                 event.getComponentName(),
                                                                                                 event.getClient(),
                                                                                                 true));
-            connectedClients.put(event.getClient(), new ContextComponent(event.getContext(), event.getComponentName()));
+            connectedClients.put(event.clientIdentification(), new ContextComponent(event.getContext(), event.getComponentName()));
         }
     }
 

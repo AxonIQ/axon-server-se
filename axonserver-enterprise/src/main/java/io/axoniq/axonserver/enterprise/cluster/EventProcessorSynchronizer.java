@@ -1,10 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.EventProcessorEvents;
-import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdate;
-import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
@@ -28,7 +29,8 @@ public class EventProcessorSynchronizer {
     @EventListener(condition = "!#a0.proxied")
     public void onEventProcessorInfo(EventProcessorStatusUpdate evt) {
         ConnectorCommand connectorCommand = ConnectorCommand.newBuilder()
-                                                            .setClientEventProcessorStatus(evt.eventProcessorStatus())
+                                                            .setClientEventProcessorStatus(
+                                                                    ClientEventProcessorStatusProtoConverter.toProto(evt.eventProcessorStatus()))
                                                             .build();
         clusterMessagePublisher.publish(connectorCommand);
     }

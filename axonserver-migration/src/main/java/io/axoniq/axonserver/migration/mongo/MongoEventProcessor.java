@@ -10,7 +10,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 @Profile({"migrate-from-mongo"})

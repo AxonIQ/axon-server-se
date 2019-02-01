@@ -1,10 +1,12 @@
 package io.axoniq.axonserver.connector;
 
+import java.util.List;
+
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface UnitOfWork {
-    void publish(Event event);
+    void publish(List<? extends ConnectorEvent> event);
 
     void commit();
 

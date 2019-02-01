@@ -8,7 +8,7 @@ import java.util.Comparator;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FlowControlQueuesTest {
     private FlowControlQueues<QueueElement> testSubject;

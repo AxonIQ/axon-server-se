@@ -4,7 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class NodeRoles {
@@ -18,6 +18,10 @@ public class NodeRoles {
 
     public NodeRoles(ContextClusterNode contextClusterNode) {
         this(contextClusterNode.getClusterNode().getName(), contextClusterNode.isMessaging(), contextClusterNode.isStorage());
+    }
+
+    public NodeRoles(String name) {
+        this(name, true,true);
     }
 
     public NodeRoles(String name, boolean messaging, boolean storage) {

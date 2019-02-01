@@ -22,10 +22,6 @@
             <field template="*"/>
             <method access="protected+"/>
         </class>
-        <class template="@io.axoniq.platform.KeepNames class *">
-            <field template="*"/>
-            <method access="protected+"/>
-        </class>
         <class template="@javax.persistence.Entity class *">
             <field template="*"/>
             <method access="protected+"/>

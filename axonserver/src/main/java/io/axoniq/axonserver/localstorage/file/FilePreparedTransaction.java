@@ -7,7 +7,7 @@ import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FilePreparedTransaction extends PreparedTransaction {
 

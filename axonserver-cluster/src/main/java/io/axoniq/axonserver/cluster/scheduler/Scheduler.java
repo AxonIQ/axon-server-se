@@ -34,6 +34,13 @@ public interface Scheduler {
     ScheduledRegistration scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit timeUnit);
 
     /**
+     * Executes the given command in the same or different thread (depends on the Scheduler implementation).
+     *
+     * @param command the task to be executed
+     */
+    void execute(Runnable command);
+
+    /**
      * Cancels all scheduled tasks.
      */
     void shutdownNow();

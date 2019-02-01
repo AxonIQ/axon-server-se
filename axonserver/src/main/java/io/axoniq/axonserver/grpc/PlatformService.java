@@ -1,22 +1,12 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ProcessorStatusRequest;
-import io.axoniq.axonserver.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.EventProcessorEvents.StartEventProcessorRequest;
-import io.axoniq.axonserver.TopologyEvents;
-import io.axoniq.axonserver.grpc.control.ClientIdentification;
-import io.axoniq.axonserver.grpc.control.NodeInfo;
-import io.axoniq.axonserver.grpc.control.PauseEventProcessor;
-import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.grpc.control.*;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
-import io.axoniq.axonserver.grpc.control.PlatformInfo;
-import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
-import io.axoniq.axonserver.grpc.control.ReleaseEventProcessorSegment;
-import io.axoniq.axonserver.grpc.control.RequestEventProcessorInfo;
-import io.axoniq.axonserver.grpc.control.RequestReconnect;
-import io.axoniq.axonserver.grpc.control.StartEventProcessor;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
@@ -26,17 +16,14 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
 
 /**
- * Author: marc
+ * GRPC service to track connected applications. Each application will first call the openStream operation with a register
+ * request to retrieve information on which AxonServer node to connect to (Standard edition will always return current node as node
+ * to connect to).
+ * @author Marc Gathier
  */
 @Service("PlatformService")
 public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase implements AxonServerClientService {
@@ -89,20 +76,16 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver = new SendingStreamObserver<>(responseObserver);
         return new ReceivingStreamObserver<PlatformInboundInstruction>(logger) {
             private ClientComponent clientComponent;
-            private volatile ScheduledFuture<?> checkConnectionTask;
             @Override
             protected void consume(PlatformInboundInstruction instruction) {
                 RequestCase requestCase = instruction.getRequestCase();
                 handlers.getOrDefault(requestCase, new ArrayDeque<>())
                         .forEach(consumer -> consumer.accept(clientComponent.client, context, instruction));
-                switch (requestCase) {
-                    case REGISTER:
+
+                if( instruction.hasRegister()) {
                         ClientIdentification client = instruction.getRegister();
                         clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
                         registerClient(clientComponent, sendingStreamObserver);
-                        break;
-                    case REQUEST_NOT_SET:
-                        break;
                 }
             }
 
@@ -113,20 +96,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
             @Override
             public void onError(Throwable throwable) {
-                stopConnectionCheck();
                 deregisterClient(clientComponent);
-            }
-
-            private void stopConnectionCheck() {
-                if( checkConnectionTask != null) {
-                    checkConnectionTask.cancel(true);
-                    checkConnectionTask = null;
-                }
             }
 
             @Override
             public void onCompleted() {
-                stopConnectionCheck();
                 deregisterClient(clientComponent);
             }
         };
@@ -151,7 +125,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
 
-    public void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
+    private void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
                      .filter(e -> e.getKey().client.equals(clientName))
                      .map(Map.Entry::getValue)

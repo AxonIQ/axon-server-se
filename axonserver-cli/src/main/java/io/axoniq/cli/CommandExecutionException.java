@@ -1,7 +1,7 @@
 package io.axoniq.cli;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandExecutionException extends RuntimeException {
 

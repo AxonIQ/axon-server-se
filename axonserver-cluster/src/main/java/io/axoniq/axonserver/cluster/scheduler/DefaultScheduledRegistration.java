@@ -3,6 +3,7 @@ package io.axoniq.axonserver.cluster.scheduler;
 import java.time.Clock;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -14,7 +15,7 @@ import java.util.function.Function;
 public class DefaultScheduledRegistration implements ScheduledRegistration {
 
     private final Clock clock;
-    private final Runnable cancelFunction;
+    private final Consumer<Boolean> cancelFunction;
     private final Function<TimeUnit, Long> delayFunction;
     private final long startMillis;
 
@@ -25,7 +26,7 @@ public class DefaultScheduledRegistration implements ScheduledRegistration {
      * @param scheduledFuture used to cancel the registration and to give information about the delay
      */
     public DefaultScheduledRegistration(Clock clock, ScheduledFuture<?> scheduledFuture) {
-        this(clock, () -> scheduledFuture.cancel(true), scheduledFuture::getDelay);
+        this(clock, scheduledFuture::cancel, scheduledFuture::getDelay);
     }
 
     /**
@@ -35,7 +36,8 @@ public class DefaultScheduledRegistration implements ScheduledRegistration {
      * @param cancelFunction used to cancel the schedule
      * @param delayFunction  used to give information about the delay
      */
-    public DefaultScheduledRegistration(Clock clock, Runnable cancelFunction, Function<TimeUnit, Long> delayFunction) {
+    public DefaultScheduledRegistration(Clock clock, Consumer<Boolean> cancelFunction,
+                                        Function<TimeUnit, Long> delayFunction) {
         this.clock = clock;
         this.cancelFunction = cancelFunction;
         this.delayFunction = delayFunction;
@@ -54,8 +56,13 @@ public class DefaultScheduledRegistration implements ScheduledRegistration {
     }
 
     @Override
+    public void cancel(boolean mayInterruptIfRunning) {
+        cancelFunction.accept(mayInterruptIfRunning);
+    }
+
+    @Override
     public void cancel() {
-        cancelFunction.run();
+        cancel(true);
     }
 
     @Override

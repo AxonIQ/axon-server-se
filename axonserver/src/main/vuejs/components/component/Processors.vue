@@ -182,7 +182,7 @@
             // }
         }, methods: {
             showMoveSegment(tracker) {
-                axios.get("v1/components/" + this.component + "/instances?context=" + this.context).then(response => {
+                axios.get("v1/components/" + encodeURI(this.component) + "/instances?context=" + this.context).then(response => {
                     this.segmentDestinationOptions = response.data
                             .map(instance => instance.name)
                             .filter(instanceName => instanceName !== tracker.clientId);
@@ -196,8 +196,8 @@
                 this.$modal.hide('move-segment');
             },
             moveSegment() {
-                axios.patch("v1/components/" + this.component
-                                    + "/processors/" + this.selected.name
+                axios.patch("v1/components/" + encodeURI(this.component)
+                                    + "/processors/" + encodeURI(this.selected.name)
                                     + "/segments/" + this.movingSegment.segmentId
                                     + "/move?target=" + this.segmentDestination
                                     + "&context=" + this.context).then(
@@ -211,7 +211,7 @@
                 this.selected.trackers = processor.trackers.sort((a, b) => a.segmentId - b.segmentId);
             },
             loadComponentProcessors() {
-                axios.get("v1/components/" + this.component + "/processors?context=" + this.context).then(response => {
+                axios.get("v1/components/" + encodeURI(this.component) + "/processors?context=" + this.context).then(response => {
                     this.processors = response.data;
                     if (this.selected.name) {
                         for (let processor of this.processors) {
@@ -226,13 +226,16 @@
                 axios.get("v1/processors/loadbalance/strategies").then(response => {
                     this.loadBalancingStrategies = response.data;
                 });
-                axios.get("v1/components/" + this.component + "/processors/loadbalance/strategies?context=" + this.context).then(response => {
-                    this.processorsLBStrategies = response.data;
-                });
+                if( this.hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING') ) {
+                    axios.get("v1/components/" + encodeURI(this.component) + "/processors/loadbalance/strategies?context="
+                                      + this.context).then(response => {
+                        this.processorsLBStrategies = response.data;
+                    });
+                }
             },
             startProcessor(processor) {
                 if (confirm("Start processor " + processor.name + "?")) {
-                    axios.patch("v1/components/" + this.component + "/processors/" + processor.name + "/start?context=" + this.context).then(
+                    axios.patch("v1/components/" + encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/start?context=" + this.context).then(
                             response => {
                                 this.enableStatusLoader(processor);
                             }
@@ -241,7 +244,7 @@
             },
             pauseProcessor(processor) {
                 if (confirm("Pause processor " + processor.name + "?")) {
-                    axios.patch("v1/components/" + this.component + "/processors/" + processor.name + "/pause?context=" + this.context).then(
+                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/pause?context=" + this.context).then(
                             response => {
                                 this.enableStatusLoader(processor);
                             }
@@ -258,7 +261,7 @@
                 this.$modal.hide('load-balance');
             },
             loadBalance(){
-                axios.patch("v1/components/" + this.component + "/processors/" + this.loadBalanceProcessor.name +
+                axios.patch("v1/components/" + encodeURI(this.component) + "/processors/" + encodeURI(this.loadBalanceProcessor.name) +
                                     "/loadbalance?context=" + this.context + "&strategy=" + this.loadBalanceStrategy).then(
                         response => {
                             this.enableStatusLoader(this.loadBalanceProcessor);
@@ -277,7 +280,7 @@
             },
             changeLoadBalancingStrategy(processor, strategy){
                 console.log("strategy changed 5: "+ strategy);
-                axios.put("v1/components/" + this.component + "/processors/" + processor +
+                axios.put("v1/components/" + encodeURI(this.component) + "/processors/" + processor +
                                   "/loadbalance?context=" + this.context + "&strategy="+ strategy).then(response => {
                     this.loadLBStrategies();
                 });

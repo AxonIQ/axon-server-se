@@ -12,7 +12,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PluginImportSelector implements ImportSelector {
     private Logger logger = LoggerFactory.getLogger(PluginImportSelector.class);

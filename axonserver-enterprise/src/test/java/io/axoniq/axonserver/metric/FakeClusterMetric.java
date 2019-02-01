@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.metric;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FakeClusterMetric implements ClusterMetric {
 

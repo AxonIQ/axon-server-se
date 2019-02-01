@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.migration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface BaseEvent {
     String getEventIdentifier();

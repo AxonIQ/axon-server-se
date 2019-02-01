@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEventsRequest> {
     private static final Logger logger = LoggerFactory.getLogger(QueryEventsRequestStreamObserver.class);
@@ -84,7 +84,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 pipeLine = new QueryProcessor().buildPipeline(query, this::send);
                 sendColumns(pipeLine);
                 if (queryEventsRequest.getLiveEvents()) {
-                    registration = eventWriteStorage.registerEventListener(event -> pushEventFromStream(event, pipeLine));
+                    registration = eventWriteStorage.registerEventListener(event -> pushEventFromStream(event.asEventWithToken(), pipeLine));
                 }
                 senderService.submit(() -> {
                     eventStreamReader.query(minConnectionToken,

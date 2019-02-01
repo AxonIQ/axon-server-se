@@ -3,26 +3,22 @@ package io.axoniq.axonserver.localstorage.query.expressions.functions;
 import io.axoniq.axonserver.localstorage.query.Expression;
 import io.axoniq.axonserver.localstorage.query.ExpressionContext;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.ListExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.NullExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.NumericExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.StringExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.XmlExpressionResult;
+import io.axoniq.axonserver.localstorage.query.result.*;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 import org.xml.sax.InputSource;
 
-import java.util.ArrayList;
-import java.util.List;
 import javax.xml.namespace.QName;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  * xpath(element, xpath [,resultType])
  */
 public class XPathExpression implements Expression {

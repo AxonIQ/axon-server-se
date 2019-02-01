@@ -3,7 +3,7 @@ package io.axoniq.axonserver.localstorage.query;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class QueryMetadata {
     private List<String> identifyingColumns;

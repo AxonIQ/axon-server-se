@@ -5,7 +5,7 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import java.net.UnknownHostException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TestSystemInfoProvider implements SystemInfoProvider {
 

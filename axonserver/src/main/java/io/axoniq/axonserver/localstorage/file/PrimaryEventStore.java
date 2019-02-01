@@ -2,17 +2,20 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
+import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.util.CloseableIterator;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.CompletableFuture;
@@ -34,10 +38,11 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PrimaryEventStore extends SegmentBasedEventStore {
     private static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
@@ -69,6 +74,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir) {
         long first = getFirstFile(lastInitialized, storageDir);
+        renameFileIfNecessary(first);
         WritableEventSource buffer = getOrOpenDatafile(first);
         FileUtils.delete(storageProperties.index(context, first));
         FileUtils.delete(storageProperties.bloomFilter(context, first));
@@ -136,8 +142,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public FilePreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> origEventList) {
-        List<ProcessedEvent>eventList = eventTransformer.transform(origEventList);
+    public FilePreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> origEventList) {
+        List<ProcessedEvent>eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
+                Collectors.toList());
         int eventSize = eventBlockSize(eventList);
         WritePosition writePosition = claim(eventSize, eventList.size());
         return new FilePreparedTransaction(writePosition, eventSize, eventList, transactionInformation);
@@ -215,9 +222,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void reserveSequenceNumbers(List<Event> events) {
+    public void reserveSequenceNumbers(List<SerializedEvent> events) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
+              .map(SerializedEvent::asEvent)
               .filter(this::isDomainEvent)
               .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(), i -> new MinMaxPair(e.getAggregateIdentifier(), e.getAggregateSequenceNumber())).setMax(e.getAggregateSequenceNumber()));
 
@@ -248,22 +256,72 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void rollback( long token) {
-        if( token >= getLastToken()) {
+        if( token >= getLastToken() ) {
             return;
         }
         synchronizer.shutdown(false);
 
-        for( long segment: getSegments()) {
-            if( segment > token) {
-                removeSegment(segment);
+        if( positionsPerSegmentMap.descendingKeySet().first() < token) {
+            int currentPosition = writePositionRef.get().position;
+            initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(context)));
+            writePositionRef.get().buffer.clearTo(currentPosition);
+        } else {
+
+            for (long segment : getSegments()) {
+                if (segment > token && segment > 0) {
+                    removeSegment(segment);
+                }
             }
-        }
 
-        if( positionsPerSegmentMap.isEmpty() && next != null) {
-            next.rollback(token);
-        }
+            if (positionsPerSegmentMap.isEmpty() && next != null) {
+                next.rollback(token);
+            }
 
-        initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(context)));
+            initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)));
+            writePositionRef.get().buffer.clearTo(writePositionRef.get().buffer.capacity());
+        }
+    }
+
+    @Override
+    public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
+
+        return new CloseableIterator<SerializedEventWithToken>() {
+
+            @Override
+            public void close() {
+                if( eventIterator != null) eventIterator.close();
+            }
+
+            long nextToken = start;
+            EventIterator eventIterator;
+
+            @Override
+            public boolean hasNext() {
+                return nextToken <= getLastToken();
+            }
+
+            @Override
+            public SerializedEventWithToken next() {
+                if( eventIterator == null) {
+                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
+                }
+                SerializedEventWithToken event = null;
+                if( eventIterator.hasNext() ) {
+                    event = eventIterator.next().getSerializedEventWithToken();
+                } else {
+                    eventIterator.close();
+                    eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
+                    if( eventIterator.hasNext()) {
+                        event = eventIterator.next().getSerializedEventWithToken();
+                    }
+                }
+                if( event != null) {
+                    nextToken = event.getToken() + 1;
+                    return event;
+                }
+                throw new NoSuchElementException("No event for token " + nextToken);
+            }
+        };
     }
 
     @Override
@@ -299,7 +357,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         ByteBuffer writeBuffer = writePosition.buffer.duplicate().getBuffer();
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(0);
-        writeBuffer.put(VERSION);
+        writeBuffer.put(transactionInformation.getVersion());
         transactionInformation.writeTo(writeBuffer);
         writeBuffer.putShort((short) eventList.size());
         Checksum checksum = new Checksum();
@@ -355,7 +413,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             buffer.put(VERSION);
             buffer.putInt(storageProperties.getFlags());
-            WritableEventSource writableEventSource = new WritableEventSource(buffer, eventTransformer);
+            WritableEventSource writableEventSource = new WritableEventSource(file.getAbsolutePath(), buffer, eventTransformer);
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {

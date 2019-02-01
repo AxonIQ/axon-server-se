@@ -1,7 +1,7 @@
 package io.axoniq.sample;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FindNumberQuery {
     private String query;

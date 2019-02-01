@@ -3,12 +3,13 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.io.IOException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamEventIterator extends EventIterator {
 
@@ -59,11 +60,10 @@ public class InputStreamEventIterator extends EventIterator {
     }
 
     private void addEvent() throws IOException {
-            int position = reader.position();
-            eventsInTransaction.add(new EventInformation(currentSequenceNumber,
-                                                         position,
-                                                         eventSource.readEvent()));
-            currentSequenceNumber++;
+        int position = reader.position();
+        eventsInTransaction.add(new EventInformation(position,
+                                                     new SerializedEventWithToken(currentSequenceNumber, eventSource.readEvent())));
+        currentSequenceNumber++;
     }
 
     protected boolean readTransaction() {

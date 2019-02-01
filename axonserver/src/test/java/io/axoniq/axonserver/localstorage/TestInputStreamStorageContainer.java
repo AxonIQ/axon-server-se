@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -12,13 +13,14 @@ import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerF
 
 import java.io.File;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.IntStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TestInputStreamStorageContainer {
 
@@ -27,7 +29,7 @@ public class TestInputStreamStorageContainer {
     private EventWriteStorage eventWriter;
 
     public TestInputStreamStorageContainer(File location) throws IOException {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties();
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
         embeddedDBProperties.getEvent().setStorage(location.getAbsolutePath());
         embeddedDBProperties.getEvent().setSegmentSize(256*1024L);
         embeddedDBProperties.getEvent().setForceInterval(10000);
@@ -50,11 +52,11 @@ public class TestInputStreamStorageContainer {
         CountDownLatch countDownLatch = new CountDownLatch(transactions);
         IntStream.range(0, transactions).parallel().forEach(j -> {
             String aggId = prefix + j;
-            List<Event> newEvents = new ArrayList<>();
+            List<SerializedEvent> newEvents = new ArrayList<>();
             IntStream.range(0, transactionSize).forEach(i -> {
-                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i).setAggregateType("Demo").setPayload(
+                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i).setAggregateType("Demo").setPayload(
                         SerializedObject
-                                .newBuilder().build()).build());
+                                .newBuilder().build()).build()));
             });
             eventWriter.store(newEvents).whenComplete((r,t) -> countDownLatch.countDown());
         });

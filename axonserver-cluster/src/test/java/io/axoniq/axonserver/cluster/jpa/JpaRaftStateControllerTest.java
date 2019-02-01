@@ -15,7 +15,6 @@ import static junit.framework.TestCase.assertEquals;
  * Author: marc
  */
 @RunWith(SpringRunner.class)
-@DataJpaTest
 @SpringBootTest(classes = JpaRaftStateRepository.class)
 @EnableAutoConfiguration
 @EntityScan("io.axoniq.axonserver.cluster")
@@ -34,6 +33,7 @@ public class JpaRaftStateControllerTest {
     @Test
     public void markVotedFor() {
         testSubject.markVotedFor("me");
+        testSubject.sync();
         assertEquals("me", testSubject.votedFor());
         assertEquals("me", raftStateRepository.getOne("SampleGroup").getVotedFor());
     }
@@ -41,6 +41,7 @@ public class JpaRaftStateControllerTest {
     @Test
     public void updateCurrentTerm() {
         testSubject.updateCurrentTerm(1);
+        testSubject.sync();
         assertEquals(1, testSubject.currentTerm());
         assertEquals(1, raftStateRepository.getOne("SampleGroup").getCurrentTerm());
     }

@@ -4,7 +4,7 @@ package io.axoniq.sample;
 import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EchoCommand {
     @TargetAggregateIdentifier

@@ -12,7 +12,7 @@ import static io.axoniq.axonserver.localstorage.query.expressions.ResultFactory.
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LeftExpressionTest {
     private LeftExpression testSubject;

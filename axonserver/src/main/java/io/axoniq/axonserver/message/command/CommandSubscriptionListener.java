@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.message.command;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface CommandSubscriptionListener {
     void unsubscribeCommand(String context, String command, String client, String componentName);

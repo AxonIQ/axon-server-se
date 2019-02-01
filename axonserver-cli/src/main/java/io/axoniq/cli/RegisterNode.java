@@ -14,12 +14,13 @@ import static io.axoniq.cli.CommandOptions.INTERNALHOST;
 import static io.axoniq.cli.CommandOptions.INTERNALPORT;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RegisterNode extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {
         // check args
-        CommandLine commandLine = processCommandLine(args[0], args, INTERNALHOST, CommandOptions.INTERNALPORT, CommandOptions.CONTEXTS, CommandOptions.TOKEN);
+        CommandLine commandLine = processCommandLine(args[0], args, INTERNALHOST, CommandOptions.INTERNALPORT, CommandOptions.CONTEXTS,
+                                                     CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/cluster");
         Number port = null;

@@ -12,7 +12,7 @@ import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class MatchExpressionTest {
     private MatchExpression testSubject;

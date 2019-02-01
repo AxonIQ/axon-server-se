@@ -7,7 +7,6 @@ import io.axoniq.axonserver.cluster.election.DefaultElection;
 import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
-import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Config;
@@ -28,17 +27,14 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableMap;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -57,9 +53,9 @@ public class LeaderState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
-    private final NavigableMap<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentSkipListMap<>();
-    private final ExecutorService executor;
+    private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private volatile Replicators replicators;
+    private final AtomicLong lastConfirmed = new AtomicLong();
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
 
@@ -74,7 +70,6 @@ public class LeaderState extends AbstractMembershipState {
 
     private LeaderState(Builder builder) {
         super(builder);
-        executor = Executors.newCachedThreadPool(new AxonThreadFactory("Replicator-" + groupId()));
         clusterConfiguration = new LeaderConfiguration(raftGroup(),
                                                        () -> scheduler.get().clock().millis(),
                                                        this::replicator,
@@ -125,7 +120,8 @@ public class LeaderState extends AbstractMembershipState {
         scheduler.set(schedulerFactory().get());
         scheduleStepDownTimeoutChecker();
         replicators = new Replicators();
-        executor.submit(() -> replicators.start());
+        replicators.start();
+        lastConfirmed.set(0);
     }
 
     @Override
@@ -174,6 +170,7 @@ public class LeaderState extends AbstractMembershipState {
         scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
     }
 
+    @Override
     public void forceStepDown() {
         String message = format("%s: Forced Step Down of %s.", groupId(), me());
         logger.info(message);
@@ -211,18 +208,15 @@ public class LeaderState extends AbstractMembershipState {
 
     private CompletableFuture<Void> waitCommitted(CompletableFuture<Entry> entryFuture) {
         CompletableFuture<Void> appendEntryDone = new CompletableFuture<>();
-        if (replicators == null) {
-            appendEntryDone.completeExceptionally(new RuntimeException("Step down in progress"));
-            return appendEntryDone;
-        }
         entryFuture.whenComplete((e, failure) -> {
             if (failure != null) {
+                logger.warn("Storing entry failed", failure);
                 appendEntryDone.completeExceptionally(failure);
             } else {
-                if (replicators != null) {
-                    replicators.notifySenders(e);
-                }
                 pendingEntries.put(e.getIndex(), appendEntryDone);
+                if (replicators != null) {
+                    replicators.notifySenders();
+                }
                 replicators.updateMatchIndex(e.getIndex());
             }
         });
@@ -231,19 +225,25 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void applied(Entry e) {
-        Map.Entry<Long, CompletableFuture<Void>> first = pendingEntries.pollFirstEntry();
-        boolean found = false;
-        while (first != null && first.getKey() <= e.getIndex()) {
-            first.getValue().complete(null);
-            found = e.getIndex() == first.getKey();
-            first = pendingEntries.pollFirstEntry();
-        }
-
-        if (!found && logger.isTraceEnabled()) {
-            logger.trace("{}: entry not found when applied {} - {}", groupId(), e.getIndex(), pendingEntries.keySet());
-        }
-        if (first != null) {
-            pendingEntries.put(first.getKey(), first.getValue());
+        try {
+            CompletableFuture<Void> completableFuture = pendingEntries.remove(e.getIndex());
+            int retries = 5;
+            if( completableFuture == null && lastConfirmed.get() > e.getIndex()) {
+                logger.info("entry {} already confirmed (last confirmed = {})", e.getIndex(), lastConfirmed);
+                return;
+            }
+            while( completableFuture == null && retries-- > 0) {
+                logger.info("waiting for {}", e.getIndex());
+                Thread.sleep(1);
+                completableFuture = pendingEntries.remove(e.getIndex());
+            }
+            if( completableFuture != null) {
+                completableFuture.complete(null);
+                lastConfirmed.set(e.getIndex());
+            }
+        } catch (InterruptedException e1) {
+            Thread.currentThread().interrupt();
+            logger.debug("interrupted in apply");
         }
     }
 
@@ -275,11 +275,10 @@ public class LeaderState extends AbstractMembershipState {
 
     private class Replicators {
 
-        private volatile boolean running = true;
-        private volatile Thread workingThread;
         private final Set<String> nonVotingReplica = new CopyOnWriteArraySet<>();
         private final List<Registration> registrations = new ArrayList<>();
         private final Map<String, ReplicatorPeer> replicatorPeerMap = new ConcurrentHashMap<>();
+        private final AtomicBoolean replicationRunning = new AtomicBoolean(false);
 
         void stop() {
             logger.info("{}: Stop replication thread", groupId());
@@ -296,41 +295,48 @@ public class LeaderState extends AbstractMembershipState {
             });
             logger.info("{}: last applied: {}", groupId(), raftGroup().logEntryProcessor().lastAppliedIndex());
 
-            running = false;
-            notifySenders(null);
+            notifySenders();
             registrations.forEach(Registration::cancel);
-            workingThread = null;
         }
 
-        void start() {
+        private void start() {
             registrations.add(registerConfigurationListener(this::updateNodes));
-            workingThread = Thread.currentThread();
             try {
-
                 otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateMatchIndex)));
-
+                replicate();
                 logger.info("{}: Start replication thread for {} peers", groupId(), replicatorPeerMap.size());
-
-                int parkTime = raftGroup().raftConfiguration().heartbeatTimeout() / 2;
-                while (running) {
-                    int runsWithoutChanges = 0;
-                    while (running && runsWithoutChanges < 3) {
-                        int sent = 0;
-                        for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
-                            sent += raftPeer.sendNextMessage();
-                        }
-                        if (sent == 0) {
-                            runsWithoutChanges++;
-                        } else {
-                            LockSupport.parkNanos(100);
-                            runsWithoutChanges = 0;
-                        }
-                    }
-                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(parkTime));
-                }
             } catch (RuntimeException re) {
                 logger.warn("Replication thread completed exceptionally", re);
             }
+        }
+
+        private void replicate() {
+            if (!replicationRunning.compareAndSet(false, true)) {
+                // it's fine, replication is already in progress
+                return;
+            }
+            Optional.ofNullable(scheduler.get())
+                    .ifPresent(schedulerInstance -> {
+                        try {
+                            int runsWithoutChanges = 0;
+                            while (runsWithoutChanges < 3) {
+                                int sent = 0;
+                                for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
+                                    sent += raftPeer.sendNextMessage();
+                                }
+                                if (sent == 0) {
+                                    runsWithoutChanges++;
+                                } else {
+                                    runsWithoutChanges = 0;
+                                }
+                            }
+                        } finally {
+                            schedulerInstance.schedule(this::replicate,
+                                                       raftGroup().raftConfiguration().heartbeatTimeout(),
+                                                       MILLISECONDS);
+                            replicationRunning.set(false);
+                        }
+                    });
         }
 
         private void updateMatchIndex(long matchIndex) {
@@ -353,16 +359,14 @@ public class LeaderState extends AbstractMembershipState {
 
         private boolean matchedByMajority(long nextCommitCandidate) {
             int majority = (int) Math.ceil((otherNodesCount() + 1.1) / 2f);
-            Stream<Long> matchIndeces = Stream.concat(Stream.of(raftGroup().localLogEntryStore().lastLogIndex()),
+            Stream<Long> matchIndices = Stream.concat(Stream.of(raftGroup().localLogEntryStore().lastLogIndex()),
                                                       replicatorPeerMap.values().stream()
                                                                        .map(ReplicatorPeer::matchIndex));
             return matchIndeces.filter(p -> p >= nextCommitCandidate).count() >= majority;
         }
 
-        void notifySenders(Entry entry) {
-            if (workingThread != null) {
-                LockSupport.unpark(workingThread);
-            }
+        void notifySenders() {
+            replicate();
         }
 
         private long lastMessageTimeFromMajority() {

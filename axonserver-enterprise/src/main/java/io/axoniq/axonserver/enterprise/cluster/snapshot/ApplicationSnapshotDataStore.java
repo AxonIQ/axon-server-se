@@ -1,16 +1,17 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.jpa.Application;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
-import io.axoniq.axonserver.grpc.ProtoConverter;
+import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.application.jpa.Application;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
 
-import static io.axoniq.axonserver.grpc.ProtoConverter.createJpaApplication;
+import static io.axoniq.axonserver.grpc.ApplicationProtoConverter.createJpaApplication;
+
 
 /**
  * Snapshot data store for {@link Application} data.
@@ -44,7 +45,7 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
         List<Application> applications = applicationController.getApplicationsForContext(context);
 
         return Flux.fromIterable(applications)
-                   .map(ProtoConverter::createApplication)
+                   .map(ApplicationProtoConverter::createApplication)
                    .map(this::toSerializedObject);
     }
 

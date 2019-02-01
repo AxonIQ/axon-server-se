@@ -2,14 +2,13 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SyncStorage {
 
@@ -20,7 +19,7 @@ public class SyncStorage {
         this.datafileManagerChain = datafileManagerChain;
     }
 
-    public void sync(TransactionInformation transactionInformation, List<Event> eventList) {
+    public void sync(TransactionInformation transactionInformation, List<SerializedEvent> eventList) {
             PreparedTransaction preparedTransaction = datafileManagerChain.prepareTransaction(transactionInformation,
                                                                                               eventList);
             try {

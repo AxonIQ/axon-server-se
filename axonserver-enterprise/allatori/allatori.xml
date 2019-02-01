@@ -1,7 +1,6 @@
 <config>
     <input single-jar="@project.build.finalName@.jar">
         <jar in="@project.build.finalName@.jar" out="@project.build.finalName@-obs.jar"/>
-        <jar in="dependency/*.jar" out="dependency/*.jar"/>
     </input>
 
     <keep-names>

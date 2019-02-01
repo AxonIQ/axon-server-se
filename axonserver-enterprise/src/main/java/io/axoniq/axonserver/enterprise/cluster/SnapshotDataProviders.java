@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyRepository;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.EventTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.LoadBalanceStrategySnapshotDataStore;
@@ -9,9 +9,9 @@ import io.axoniq.axonserver.enterprise.cluster.snapshot.ProcessorLoadBalancingSn
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.UserSnapshotDataStore;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyRepository;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.platform.application.ApplicationController;
-import io.axoniq.platform.user.UserRepository;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 

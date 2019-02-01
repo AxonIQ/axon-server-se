@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Application {
 
