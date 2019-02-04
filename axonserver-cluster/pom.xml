@@ -111,7 +111,7 @@
 
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
-            <artifactId>axonserver-grpc</artifactId>
+            <artifactId>axonserver-internal-grpc</artifactId>
             <version>${project.parent.version}</version>
             <scope>test</scope>
         </dependency>
