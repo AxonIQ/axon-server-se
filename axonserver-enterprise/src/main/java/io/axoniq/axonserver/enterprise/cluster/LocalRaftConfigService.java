@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -14,14 +15,17 @@ import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -59,13 +63,16 @@ class LocalRaftConfigService implements RaftConfigService {
         RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
 
         ClusterNode clusterNode = contextController.getNode(node);
-        raftGroupServiceFactory.getRaftGroupService(context).addNodeToContext(context, clusterNode.toNode()).thenApply(
+        String nodeLabel = generateNodeLabel(node);
+        Node raftNode = createNode(clusterNode, nodeLabel);
+        raftGroupServiceFactory.getRaftGroupService(context).addNodeToContext(context, raftNode).thenApply(
                 r -> {
+                    NodeInfoWithLabel newMember = NodeInfoWithLabel.newBuilder().setLabel(nodeLabel).setNode(clusterNode.toNodeInfo()).build();
                     ContextConfiguration contextConfiguration =
                             ContextConfiguration.newBuilder()
                                                 .setContext(context)
                                                 .addAllNodes(
-                                                        Stream.concat(nodes(context),Stream.of(clusterNode.toNodeInfo()))
+                                                        Stream.concat(nodes(context),Stream.of(newMember))
                                                               .collect(Collectors.toList()))
                                                 .build();
                     config.appendEntry(ContextConfiguration.class.getName(),
@@ -74,8 +81,18 @@ class LocalRaftConfigService implements RaftConfigService {
                 });
     }
 
-    private Stream<NodeInfo> nodes(String context) {
-        return contextController.getContext(context).getNodes().stream().map(ClusterNode::toNodeInfo);
+    private String generateNodeLabel(String node) {
+        return node + "-" + UUID.randomUUID();
+    }
+
+    private Node createNode(ClusterNode clusterNode, String nodeLabel) {
+        return Node.newBuilder().setNodeId(nodeLabel).setHost(clusterNode.getInternalHostName()).setPort(clusterNode.getGrpcInternalPort()).build();
+    }
+
+    private Stream<NodeInfoWithLabel> nodes(String context) {
+        return contextController.getContext(context).getAllNodes()
+                                .stream()
+                                .map( ccn -> NodeInfoWithLabel.newBuilder().setNode(ccn.getClusterNode().toNodeInfo()).setLabel(ccn.getClusterNodeLabel()).build());
     }
 
     @Override
@@ -96,9 +113,6 @@ class LocalRaftConfigService implements RaftConfigService {
             ContextConfiguration contextConfiguration =
                         ContextConfiguration.newBuilder()
                                             .setContext(context)
-                                            .addAllNodes(nodes(context)
-                                                                 .filter(n -> nodeNames.contains(n.getNodeName()))
-                                                                 .collect(Collectors.toList()))
                                             .build();
             config.appendEntry(contextConfiguration.getClass().getName(), contextConfiguration.toByteArray()).get();
             if( nodeNames.isEmpty()) {
@@ -118,13 +132,15 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void deleteNodeFromContext(String context, String node) {
         RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
+        Context contextDef = contextController.getContext(context);
+        String nodeLabel = contextDef.getNodeLabel(node);
 
-        raftGroupServiceFactory.getRaftGroupService(context).deleteNode(context, node).thenApply(r -> {
+        raftGroupServiceFactory.getRaftGroupService(context).deleteNode(context, nodeLabel).thenApply(r -> {
                 ContextConfiguration contextConfiguration =
                         ContextConfiguration.newBuilder()
                                             .setContext(context)
                                             .addAllNodes(nodes(context)
-                                                                 .filter(n -> !n.getNodeName().equals(node))
+                                                                 .filter(n -> !n.getNode().getNodeName().equals(node))
                                                                  .collect(Collectors.toList()))
                                             .build();
                 config.appendEntry(ContextConfiguration.class.getName(),
@@ -139,22 +155,33 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void addContext(String context, List<String> nodes) {
         RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
-        List<Node> raftNodes = contextController.getNodes(nodes);
+        List<Node> raftNodes = new ArrayList<>();
+        List<NodeInfoWithLabel> clusterNodes = new ArrayList<>();
+        nodes.forEach(n -> {
+            ClusterNode clusterNode = contextController.getNode(n);
+            String nodeLabel = generateNodeLabel(n);
+            raftNodes.add( createNode(clusterNode, nodeLabel));
+            clusterNodes.add( NodeInfoWithLabel.newBuilder().setNode(clusterNode.toNodeInfo()).setLabel(nodeLabel).build());
+
+        });
         Node target = raftNodes.get(0);
 
         raftGroupServiceFactory.getRaftGroupServiceForNode(target.getNodeId()).initContext(context, raftNodes)
                                              .thenApply(r -> {
                               ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
                                                                                               .setContext(context)
-                                                                                              .addAllNodes(
-                                                                                                      contextController
-                                                                                                              .getNodeInfos(
-                                                                                                                      nodes))
+                                                                                              .addAllNodes(clusterNodes)
                                                                                               .build();
                               config.appendEntry(ContextConfiguration.class.getName(),
                                                              contextConfiguration.toByteArray());
                               return r;
                           });
+    }
+
+    private NodeInfo addContext(NodeInfo toNodeInfo, String context, String nodeLabel) {
+        return NodeInfo.newBuilder(toNodeInfo)
+                                     .addContexts(ContextRole.newBuilder().setNodeLabel(nodeLabel).setName(context))
+                                     .build();
     }
 
     @Override
@@ -167,7 +194,8 @@ class LocalRaftConfigService implements RaftConfigService {
                                                            .collect(Collectors.toList());
         }
 
-        Node node = Node.newBuilder().setNodeId(nodeInfo.getNodeName())
+        String nodeLabel = generateNodeLabel(nodeInfo.getNodeName());
+        Node node = Node.newBuilder().setNodeId(nodeLabel)
                         .setHost(nodeInfo.getInternalHostName())
                         .setPort(nodeInfo.getGrpcInternalPort())
                         .build();
@@ -175,15 +203,17 @@ class LocalRaftConfigService implements RaftConfigService {
             raftGroupServiceFactory.getRaftGroupService(c).addNodeToContext(c, node);
 
             config.appendEntry(ContextConfiguration.class.getName(),
-                                           createContextConfigBuilder(c).addNodes(nodeInfo).build().toByteArray());
+                                           createContextConfigBuilder(c).addNodes(
+                                                   NodeInfoWithLabel.newBuilder().setLabel(nodeLabel).setNode(nodeInfo).build()).build().toByteArray());
         });
     }
 
     @Override
     public void init(List<String> contexts) {
-        RaftGroup configGroup = grpcRaftController.initRaftGroup(GrpcRaftController.ADMIN_GROUP);
+        String adminLabel = generateNodeLabel(messagingPlatformConfiguration.getName());
+        RaftGroup configGroup = grpcRaftController.initRaftGroup(GrpcRaftController.ADMIN_GROUP, adminLabel);
         RaftNode leader = grpcRaftController.waitForLeader(configGroup);
-        Node me = Node.newBuilder().setNodeId(messagingPlatformConfiguration.getName())
+        Node me = Node.newBuilder().setNodeId(adminLabel)
                       .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
                       .setPort(messagingPlatformConfiguration.getInternalPort())
                       .build();
@@ -200,17 +230,23 @@ class LocalRaftConfigService implements RaftConfigService {
                                     .build();
         ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
                                                                         .setContext(GrpcRaftController.ADMIN_GROUP)
-                                                                        .addNodes(nodeInfo)
+                                                                        .addNodes(NodeInfoWithLabel.newBuilder().setNode(nodeInfo).setLabel(adminLabel))
                                                                         .build();
         leader.appendEntry(ContextConfiguration.class.getName(), contextConfiguration.toByteArray());
 
         contexts.forEach(c -> {
-            RaftGroup group = grpcRaftController.initRaftGroup(c);
+            String contextLabel = generateNodeLabel(messagingPlatformConfiguration.getName());
+            RaftGroup group = grpcRaftController.initRaftGroup(c, contextLabel);
             RaftNode groupLeader = grpcRaftController.waitForLeader(group);
-            groupLeader.addNode(me);
+            Node contextMe = Node.newBuilder().setNodeId(contextLabel)
+                          .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
+                          .setPort(messagingPlatformConfiguration.getInternalPort())
+                          .build();
+
+            groupLeader.addNode(contextMe);
             ContextConfiguration groupConfiguration = ContextConfiguration.newBuilder()
                                                                           .setContext(c)
-                                                                          .addNodes(nodeInfo)
+                                                                          .addNodes(NodeInfoWithLabel.newBuilder().setNode(nodeInfo).setLabel(contextLabel))
                                                                           .build();
             leader.appendEntry(ContextConfiguration.class.getName(), groupConfiguration.toByteArray());
         });
@@ -329,7 +365,10 @@ class LocalRaftConfigService implements RaftConfigService {
         ContextConfiguration.Builder groupConfigurationBuilder = ContextConfiguration.newBuilder()
                                                                                      .setContext(c);
         contextController.getContext(c).getAllNodes().forEach(n -> groupConfigurationBuilder
-                .addNodes(n.getClusterNode().toNodeInfo()));
+                .addNodes(NodeInfoWithLabel.newBuilder()
+                                           .setNode(n.getClusterNode().toNodeInfo())
+                                           .setLabel(n.getClusterNodeLabel())
+                                           .build()));
         return groupConfigurationBuilder;
     }
 

@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.AxonServer;
-import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
@@ -24,16 +23,12 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -48,6 +43,7 @@ import javax.persistence.EntityManager;
 import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -91,7 +87,7 @@ public class ClusterControllerTest {
             }
         };
         ClusterNode clusterNode = new ClusterNode("MyName", "LAPTOP-1QH9GIHL.axoniq.io", "LAPTOP-1QH9GIHL.axoniq.net", 8124, 8224, 8024);
-        clusterNode.addContext(context, true, true);
+        clusterNode.addContext(context, "MyName",true, true);
         entityManager.persist(clusterNode);
 
         MessagingPlatformConfiguration messagingPlatformConfiguration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
@@ -185,7 +181,7 @@ public class ClusterControllerTest {
         List<ClusterNode> clusterNodes = new ArrayList<>();
         clusterNodes.add(new ClusterNode("MyName", "hostName", "internalHostName", 0, 0, 0));
         Context context = new Context(Topology.DEFAULT_CONTEXT);
-        clusterNodes.get(0).addContext(context, true, true);
+        clusterNodes.get(0).addContext(context, "MyName", true, true);
         testSubject.start();
         when(nodeSelectionStrategy.selectNode(any(), any(), any())).thenReturn("Dummy");
         ClusterNode node = testSubject.findNodeForClient("client", "component", Topology.DEFAULT_CONTEXT);

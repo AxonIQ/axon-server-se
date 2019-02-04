@@ -210,12 +210,14 @@ message ContextRole {
     string name = 1;
     bool messaging = 2;
     bool storage = 3;
+    string node_label= 4;
 }
 
 message NodeRole {
     string name = 1;
     bool messaging = 2;
     bool storage = 3;
+    string node_label= 4;
 }
 
 message ContextUpdate {
@@ -413,9 +415,13 @@ enum State {
 
 message ContextConfiguration {
     string context = 1;
-    repeated NodeInfo nodes = 2;
+    repeated NodeInfoWithLabel nodes = 2;
 }
 
+message NodeInfoWithLabel {
+    NodeInfo node = 1;
+    string label = 2;
+}
 
 message ContextName {
     string context = 1;

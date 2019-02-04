@@ -2,7 +2,6 @@ package io.axoniq.axonserver.enterprise.jpa;
 
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
@@ -119,11 +118,11 @@ public class ClusterNode implements Serializable, AxonServerNode {
         this.name = name;
     }
 
-    public void addContext(Context context, boolean storage, boolean messaging) {
+    public void addContext(Context context, String clusterNodeLabel, boolean storage, boolean messaging) {
         ContextClusterNode contextClusterNode = contexts.stream()
                                                         .filter(ccn -> ccn.getContext().equals(context))
                                                         .findFirst()
-                                                        .orElse(new ContextClusterNode(context, this));
+                                                        .orElse(new ContextClusterNode(context, this, clusterNodeLabel));
             contextClusterNode.setMessaging(messaging);
             contextClusterNode.setStorage(storage);
     }

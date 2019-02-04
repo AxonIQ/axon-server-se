@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.StateChanged;
 import io.axoniq.axonserver.cluster.grpc.RaftGroupManager;
+import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -27,6 +28,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -72,10 +74,10 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
 
 
     public void start() {
-        Set<String> groups = raftGroupNodeRepository.getMyContexts();
+        Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
             try {
-                createRaftGroup(context, messagingPlatformConfiguration.getName());
+                createRaftGroup(context.getGroupId(), context.getNodeId());
             } catch (Exception ex) {
                 logger.warn("{}: Failed to initialize context", context, ex);
             }
@@ -95,9 +97,9 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     }
 
 
-    public RaftGroup initRaftGroup(String groupId) {
+    public RaftGroup initRaftGroup(String groupId, String nodeLabel) {
         Node node = Node.newBuilder()
-                        .setNodeId(messagingPlatformConfiguration.getName())
+                        .setNodeId(nodeLabel)
                         .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
                         .setPort(messagingPlatformConfiguration.getInternalPort())
                         .build();
@@ -239,5 +241,14 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
 
     public RaftGroup getRaftGroup(String groupId) {
         return raftGroupMap.get(groupId);
+    }
+
+    public String getMyLabel(List<Node> raftNodes) {
+        for (Node node :raftNodes) {
+            if( node.getPort() == messagingPlatformConfiguration.getInternalPort() && node.getHost().equals(messagingPlatformConfiguration.getFullyQualifiedInternalHostname()))
+                return node.getNodeId();
+
+        }
+        throw new RuntimeException("Could not find current node in nodes");
     }
 }

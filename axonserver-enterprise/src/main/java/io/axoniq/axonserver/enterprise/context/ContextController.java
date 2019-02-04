@@ -1,13 +1,12 @@
 package io.axoniq.axonserver.enterprise.context;
 
-import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import org.springframework.context.ApplicationEventPublisher;
+import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,38 +52,33 @@ public class ContextController {
             entityManager.persist(context);
         }
         Set<String> currentNodes = context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).collect(Collectors.toSet());
-        Set<String> newNodes = contextConfiguration.getNodesList().stream().map(NodeInfo::getNodeName).collect(Collectors.toSet());
+        Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();
+        contextConfiguration.getNodesList().forEach(n -> newNodes.put(n.getNode().getNodeName(), n));
 
         Map<String, ClusterNode> clusterInfoMap = new HashMap<>();
-        for (NodeInfo nodeInfo : contextConfiguration.getNodesList()) {
-            ClusterNode clusterNode = clusterController.getNode(nodeInfo.getNodeName());
+        for (NodeInfoWithLabel nodeInfo : contextConfiguration.getNodesList()) {
+            String nodeName = nodeInfo.getNode().getNodeName();
+            ClusterNode clusterNode = clusterController.getNode(nodeName);
             if( clusterNode == null) {
-                clusterNode = clusterController.addConnection(nodeInfo, false);
+                clusterNode = clusterController.addConnection(nodeInfo.getNode(), false);
             }
-            clusterInfoMap.put(nodeInfo.getNodeName(), clusterNode);
+            clusterInfoMap.put(nodeName, clusterNode);
         }
 
         Context finalContext = context;
         currentNodes.forEach(node -> {
-            if( !newNodes.contains(node)) {
+            if( !newNodes.containsKey(node)) {
                 ClusterNode clusterNode = clusterController.getNode(node);
                 if( clusterNode !=null) {
                     clusterNode.removeContext(finalContext.getName());
                 }
             }
             });
-        newNodes.forEach(node -> {
+        newNodes.forEach((node, nodeInfo) -> {
             if( !currentNodes.contains(node)) {
-                clusterInfoMap.computeIfAbsent(node, this::getNode).addContext(finalContext, false, false);
+                clusterInfoMap.computeIfAbsent(node, this::getNode).addContext(finalContext, nodeInfo.getLabel(), false, false);
             }
         });
-
-    }
-
-    public List<Node> getNodes(List<String> nodes) {
-        return nodes.stream().map(clusterController::getNode)
-                    .map(ClusterNode::toNode)
-                    .collect(Collectors.toList());
 
     }
 

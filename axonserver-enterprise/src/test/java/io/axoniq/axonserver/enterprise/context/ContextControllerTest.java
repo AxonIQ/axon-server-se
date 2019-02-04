@@ -8,6 +8,7 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
@@ -54,7 +55,7 @@ public class ContextControllerTest {
     @MockBean
     private GrpcRaftController raftController;
 
-    private List<NodeInfo> initialNodes = new ArrayList<>();
+    private List<NodeInfoWithLabel> initialNodes = new ArrayList<>();
 
     @Before
     public void setUp()  {
@@ -63,10 +64,10 @@ public class ContextControllerTest {
         ClusterNode node1 = new ClusterNode("node1", "node1", "node1", 8124, 8224, 8024);
 
         ClusterNode node2 = new ClusterNode("node2", "node2", "node2", 8124, 8224, 8024);
-        node1.addContext(defaultContext, true, true);
-        node2.addContext(defaultContext, true, true);
-        initialNodes.add(node1.toNodeInfo());
-        initialNodes.add(node2.toNodeInfo());
+        node1.addContext(defaultContext, "node1", true, true);
+        node2.addContext(defaultContext, "node2", true, true);
+        initialNodes.add(nodeInfo(node1));
+        initialNodes.add(nodeInfo(node2));
         entityManager.persist(node1);
         entityManager.persist(node2);
         entityManager.flush();
@@ -75,6 +76,10 @@ public class ContextControllerTest {
             String name = invocationOnMock.getArgument(0).toString();
             return entityManager.find(ClusterNode.class, name);
         });
+    }
+
+    private NodeInfoWithLabel nodeInfo(ClusterNode clusterNode) {
+        return NodeInfoWithLabel.newBuilder().setNode(clusterNode.toNodeInfo()).setLabel(clusterNode.getName()).build();
     }
 
     @Test
@@ -90,8 +95,8 @@ public class ContextControllerTest {
         entityManager.persist(node3);
         entityManager.flush();
 
-        List<NodeInfo> nodes = new ArrayList<>(initialNodes);
-        nodes.add(node3.toNodeInfo());
+        List<NodeInfoWithLabel> nodes = new ArrayList<>(initialNodes);
+        nodes.add(nodeInfo(node3));
 
         testSubject.updateContext(io.axoniq.axonserver.grpc.internal.ContextConfiguration.newBuilder().setContext(Topology.DEFAULT_CONTEXT).addAllNodes(nodes).build());
 
@@ -106,7 +111,8 @@ public class ContextControllerTest {
         Context test1 = new Context("test1");
         entityManager.persist(test1);
 
-        entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList().forEach(n -> n.addContext(test1, true, true));
+        entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList().forEach(n -> n.addContext(test1,
+                                                                                                                              n.getName(), true, true));
         // when delete context test1
         testSubject.deleteContext("test1");
         // expect nodes 1 and node 2 no longer contain context text1
@@ -115,7 +121,7 @@ public class ContextControllerTest {
 
     @Test
     public void deleteNodeFromContext() {
-        List<NodeInfo> nodes = initialNodes.stream().filter(n -> !n.getNodeName().equals("node1")).collect(Collectors.toList());
+        List<NodeInfoWithLabel> nodes = initialNodes.stream().filter(n -> !n.getNode().getNodeName().equals("node1")).collect(Collectors.toList());
 
         testSubject.updateContext(io.axoniq.axonserver.grpc.internal.ContextConfiguration.newBuilder().setContext(Topology.DEFAULT_CONTEXT).addAllNodes(nodes).build());
         ClusterNode node1 = entityManager.find(ClusterNode.class, "node1");

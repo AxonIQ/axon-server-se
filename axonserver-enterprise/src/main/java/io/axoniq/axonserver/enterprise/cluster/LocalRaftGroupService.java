@@ -53,7 +53,7 @@ public class LocalRaftGroupService implements RaftGroupService {
 
     @Override
     public CompletableFuture<Void> initContext(String context, List<Node> raftNodes) {
-        RaftGroup raftGroup = grpcRaftController.initRaftGroup(context);
+        RaftGroup raftGroup = grpcRaftController.initRaftGroup(context, grpcRaftController.getMyLabel(raftNodes));
         RaftNode leader = grpcRaftController.waitForLeader(raftGroup);
         raftNodes.forEach(n -> {
             try {

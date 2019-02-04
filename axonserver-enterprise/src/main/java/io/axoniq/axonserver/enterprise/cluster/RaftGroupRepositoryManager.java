@@ -33,10 +33,18 @@ public class RaftGroupRepositoryManager {
         return raftGroupNodeRepository.save(jpaRaftGroupNode);
     }
 
-    public Set<String> getMyContexts() {
-        return raftGroupNodeRepository.findByNodeId(messagingPlatformConfiguration.getName())
+    public Set<JpaRaftGroupNode> getMyContexts() {
+        return raftGroupNodeRepository.findByHostAndPort(messagingPlatformConfiguration.getFullyQualifiedInternalHostname(),
+                                                         messagingPlatformConfiguration.getInternalPort())
                                       .stream()
-                                      .map(n -> n.getGroupId())
+                                      .collect(Collectors.toSet());
+    }
+
+    public Set<String> getMyContextNames() {
+        return raftGroupNodeRepository.findByHostAndPort(messagingPlatformConfiguration.getFullyQualifiedInternalHostname(),
+                                                         messagingPlatformConfiguration.getInternalPort())
+                                      .stream()
+                                      .map(JpaRaftGroupNode::getGroupId)
                                       .collect(Collectors.toSet());
     }
 

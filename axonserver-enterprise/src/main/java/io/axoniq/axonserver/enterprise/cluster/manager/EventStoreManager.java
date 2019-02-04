@@ -63,7 +63,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              RaftGroupRepositoryManager contextController,
                              LocalEventStore localEventStore) {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
-             () -> contextController.getMyContexts().iterator(),
+             () -> contextController.getMyContextNames().iterator(),
              leaderProvider::getLeader,
              lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
