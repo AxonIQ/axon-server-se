@@ -6,6 +6,7 @@ import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.election.DefaultElection;
 import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
+import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -54,13 +55,21 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
+    private final MatchStrategy matchStrategy;
     private volatile Replicators replicators;
     private final AtomicLong lastConfirmed = new AtomicLong();
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
 
+        private MatchStrategy matchStrategy;
+
         public LeaderState build() {
             return new LeaderState(this);
+        }
+
+        public LeaderState.Builder matchStrategy(MatchStrategy matchStrategy) {
+            this.matchStrategy = matchStrategy;
+            return this;
         }
     }
 
@@ -70,6 +79,7 @@ public class LeaderState extends AbstractMembershipState {
 
     private LeaderState(Builder builder) {
         super(builder);
+        this.matchStrategy = builder.matchStrategy;
         clusterConfiguration = new LeaderConfiguration(raftGroup(),
                                                        () -> scheduler.get().clock().millis(),
                                                        this::replicator,
@@ -346,7 +356,7 @@ public class LeaderState extends AbstractMembershipState {
             if (matchIndex < nextCommitCandidate) {
                 return;
             }
-            for (long index = nextCommitCandidate; index <= matchIndex && matchedByMajority(index); index++) {
+            for (long index = nextCommitCandidate; index <= matchIndex && matchStrategy.match(index, replicatorPeerMap.values()); index++) {
                 nextCommitCandidate = index;
                 updateCommit = true;
             }
