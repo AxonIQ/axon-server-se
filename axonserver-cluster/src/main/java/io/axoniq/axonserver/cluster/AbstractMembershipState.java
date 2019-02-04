@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
+import io.axoniq.axonserver.cluster.election.DefaultElection;
+import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
@@ -9,11 +11,9 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -22,7 +22,6 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -36,6 +35,7 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final BiConsumer<Long,String> termUpdateHandler;
     private final MembershipStateFactory stateFactory;
     private final Supplier<Scheduler> schedulerFactory;
+    private final Supplier<Election> electionFactory;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
     private final SnapshotManager snapshotManager;
     private final CurrentConfiguration currentConfiguration;
@@ -48,14 +48,11 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.termUpdateHandler = builder.termUpdateHandler;
         this.stateFactory = builder.stateFactory;
         this.schedulerFactory = builder.schedulerFactory;
+        this.electionFactory = builder.electionFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
         this.snapshotManager = builder.snapshotManager;
         this.currentConfiguration = builder.currentConfiguration;
         this.registerConfigurationListener = builder.registerConfigurationListener;
-    }
-
-    protected int clusterSize() {
-        return currentConfiguration.size();
     }
 
     public static abstract class Builder<B extends Builder<B>> {
@@ -65,6 +62,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         private BiConsumer<Long, String> termUpdateHandler;
         private MembershipStateFactory stateFactory;
         private Supplier<Scheduler> schedulerFactory;
+        private Supplier<Election> electionFactory;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
         private SnapshotManager snapshotManager;
@@ -93,6 +91,11 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         public B schedulerFactory(Supplier<Scheduler> schedulerFactory) {
             this.schedulerFactory = schedulerFactory;
+            return self();
+        }
+
+        public B electionFactory(Supplier<Election> electionFactory) {
+            this.electionFactory = electionFactory;
             return self();
         }
 
@@ -132,12 +135,20 @@ public abstract class AbstractMembershipState implements MembershipState {
             if (stateFactory == null) {
                 throw new IllegalStateException("The stateFactory must be provided");
             }
+
             if (currentConfiguration == null) {
                 CachedCurrentConfiguration currentConfiguration = new CachedCurrentConfiguration(raftGroup);
                 this.currentConfiguration = currentConfiguration;
                 if (registerConfigurationListener == null){
                     this.registerConfigurationListener = currentConfiguration::registerChangeListener;
                 }
+            }
+
+            if (electionFactory == null) {
+                electionFactory = () -> {
+                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
+                    return new DefaultElection(raftGroup, termUpdateHandler, otherPeers);
+                };
             }
 
             if (registerConfigurationListener == null) {
@@ -237,8 +248,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         return otherNodesId().map(raftGroup::peer);
     }
 
-    protected Collection<RaftPeer> otherPeers() {
-        return otherPeersStream().collect(Collectors.toList());
+    protected Election newElection(){
+        return electionFactory.get();
     }
 
     protected long otherNodesCount() {
@@ -288,17 +299,6 @@ public abstract class AbstractMembershipState implements MembershipState {
                              .setRequestId(requestId)
                              .setResponseId(UUID.randomUUID().toString())
                              .setNodeId(me()).build();
-    }
-
-    protected RequestVoteRequest requestVotePrototype() {
-        TermIndex lastLog = lastLog();
-        return RequestVoteRequest.newBuilder()
-                                 .setGroupId(groupId())
-                                 .setCandidateId(me())
-                                 .setTerm(currentTerm()+1)
-                                 .setLastLogIndex(lastLog.getIndex())
-                                 .setLastLogTerm(lastLog.getTerm())
-                                 .build();
     }
 
     protected CurrentConfiguration currentConfiguration(){
