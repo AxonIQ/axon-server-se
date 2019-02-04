@@ -2,8 +2,6 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.CandidateConfiguration;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
-import io.axoniq.axonserver.cluster.election.DefaultElection;
-import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.election.Election.Result;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
@@ -134,13 +132,7 @@ public class CandidateState extends AbstractMembershipState {
 
     private void startElection() {
         if (currentConfiguration().isEmpty()) return;
-
-        Election election = new DefaultElection(requestVotePrototype(),
-                                                this::updateCurrentTerm,
-                                                raftGroup().localElectionStore(),
-                                                otherPeers());
-
-        election.result().subscribe(this::onElectionResult, error -> logger.warn("Failed to run election", error));
+        newElection().result().subscribe(this::onElectionResult, error -> logger.warn("Failed to run election", error));
         resetElectionTimeout();
     }
 

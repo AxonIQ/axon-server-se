@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster.election;
 
+import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 import static java.lang.String.format;
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * @author Sara Pellegrini
@@ -26,24 +28,38 @@ public class DefaultElection implements Election {
     private final RequestVoteRequest requestPrototype;
     private final BiConsumer<Long, String> termUpdateHandler;
     private final ElectionStore electionStore;
-    private final Collection<RaftPeer> otherNodes;
+    private final Iterable<RaftPeer> otherNodes;
     private final VoteStrategy voteStrategy;
 
-    public DefaultElection(RequestVoteRequest requestPrototype,
-                           BiConsumer<Long, String> termUpdateHandler,
-                           ElectionStore electionStore,
-                           Collection<RaftPeer> otherNodes) {
-        this(requestPrototype,
+    public DefaultElection(RaftGroup raftGroup, BiConsumer<Long, String> termUpdateHandler,
+                           Iterable<RaftPeer> otherNodes) {
+        this(RequestVoteRequest.newBuilder()
+                               .setGroupId(raftGroup.raftConfiguration().groupId())
+                               .setCandidateId(raftGroup.localNode().nodeId())
+                               .setTerm(raftGroup.localElectionStore().currentTerm()+1)
+                               .setLastLogIndex(raftGroup.localLogEntryStore().lastLog().getIndex())
+                               .setLastLogTerm(raftGroup.localLogEntryStore().lastLog().getTerm())
+                               .build(),
              termUpdateHandler,
-             electionStore,
-             otherNodes,
-             new MajorityStrategy(() -> otherNodes.size() + 1));
+             raftGroup.localElectionStore(),
+             otherNodes);
     }
 
     public DefaultElection(RequestVoteRequest requestPrototype,
                            BiConsumer<Long, String> termUpdateHandler,
                            ElectionStore electionStore,
-                           Collection<RaftPeer> otherNodes, VoteStrategy voteStrategy) {
+                           Iterable<RaftPeer> otherNodes) {
+        this(requestPrototype,
+             termUpdateHandler,
+             electionStore,
+             otherNodes,
+             new MajorityStrategy(() -> (int)(stream(otherNodes.spliterator(),false).count() + 1)));
+    }
+
+    public DefaultElection(RequestVoteRequest requestPrototype,
+                           BiConsumer<Long, String> termUpdateHandler,
+                           ElectionStore electionStore,
+                           Iterable<RaftPeer> otherNodes, VoteStrategy voteStrategy) {
         this.requestPrototype = requestPrototype;
         this.termUpdateHandler = termUpdateHandler;
         this.electionStore = electionStore;

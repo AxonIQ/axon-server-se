@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.cluster.FakeStateFactory.FakeState;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
@@ -67,6 +66,7 @@ public class LeaderStateTestWithFakeTransition {
         Node node = Node.newBuilder().setNodeId(nodeId).build();
         raftConfiguration.addNode(node);
         when(raftGroup.peer(nodeId)).thenReturn(peer);
+        when(raftGroup.peer(node)).thenReturn(peer);
         peer.setTerm(1);
     }
 
