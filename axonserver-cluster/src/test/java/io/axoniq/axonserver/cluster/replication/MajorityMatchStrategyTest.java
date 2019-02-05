@@ -14,43 +14,43 @@ import static org.junit.Assert.*;
  */
 public class MajorityMatchStrategyTest {
     private MajorityMatchStrategy testSubject;
-    private List<FakeReplicationPeer> replicationPeers;
+    private List<ReplicatorPeer> replicationPeers;
     private Clock clock = Clock.systemDefaultZone();
 
 
     @Before
     public void setup() {
-        testSubject = new MajorityMatchStrategy(() -> 10L);
         replicationPeers = Arrays.asList(new FakeReplicationPeer(), new FakeReplicationPeer());
+        testSubject = new MajorityMatchStrategy(() -> 10L, () -> replicationPeers.iterator());
 
     }
 
     @Test
     public void match() {
-        replicationPeers.get(0).setMatchIndex(7);
-        replicationPeers.get(1).setMatchIndex(8);
-        assertTrue(testSubject.match(8, replicationPeers));
+        ((FakeReplicationPeer)replicationPeers.get(0)).setMatchIndex(7);
+        ((FakeReplicationPeer)replicationPeers.get(1)).setMatchIndex(8);
+        assertTrue(testSubject.match(8));
     }
 
     @Test
     public void noMatchFromPeers() {
-        replicationPeers.get(0).setMatchIndex(7);
-        replicationPeers.get(1).setMatchIndex(7);
-        assertFalse( testSubject.match(8, replicationPeers));
+        ((FakeReplicationPeer)replicationPeers.get(0)).setMatchIndex(7);
+        ((FakeReplicationPeer)replicationPeers.get(1)).setMatchIndex(7);
+        assertFalse( testSubject.match(8));
     }
 
     @Test
     public void noMatchFromLeader() {
-        replicationPeers.get(0).setMatchIndex(11);
-        replicationPeers.get(1).setMatchIndex(8);
-        assertFalse(testSubject.match(11, replicationPeers));
+        ((FakeReplicationPeer)replicationPeers.get(0)).setMatchIndex(11);
+        ((FakeReplicationPeer)replicationPeers.get(1)).setMatchIndex(8);
+        assertFalse(testSubject.match(11));
     }
 
     @Test
     public void matchFromLeader() {
-        replicationPeers.get(0).setMatchIndex(11);
-        replicationPeers.get(1).setMatchIndex(11);
-        assertTrue(testSubject.match(11, replicationPeers));
+        ((FakeReplicationPeer)replicationPeers.get(0)).setMatchIndex(11);
+        ((FakeReplicationPeer)replicationPeers.get(1)).setMatchIndex(11);
+        assertTrue(testSubject.match(11));
     }
 
     private class FakeReplicationPeer extends ReplicatorPeer {

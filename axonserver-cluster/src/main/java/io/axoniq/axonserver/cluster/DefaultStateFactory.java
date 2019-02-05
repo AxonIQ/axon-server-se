@@ -42,7 +42,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
-        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex());
+        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(), () -> raftGroup.localNode().replicatorPeers());
 
     }
 
