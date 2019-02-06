@@ -50,4 +50,38 @@ public class InMemoryLogEntryStoreTest {
         assertTrue(testSubject.contains(3,1));
         assertTrue(testSubject.contains(4,1));
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateIteratorWithIndex5andFirstIndex5(){
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.clearOlderThan(0, TimeUnit.MILLISECONDS, () -> 6L);
+        testSubject.createIterator(5);
+    }
+
+    @Test
+    public void testCreateIteratorWithIndex5andFirstIndex4(){
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        testSubject.clearOlderThan(0, TimeUnit.MILLISECONDS, () -> 5L);
+        EntryIterator iterator = testSubject.createIterator(5);
+        assertEquals(4, iterator.previous().getIndex());
+        assertEquals(5, iterator.next().getIndex());
+    }
+
+    @Test
+    public void testCreateIteratorWithIndex1andFirstIndex1(){
+        testSubject.createEntry(1,"Type", "Content".getBytes());
+        EntryIterator iterator = testSubject.createIterator(1);
+        assertEquals(1, iterator.next().getIndex());
+    }
+
 }
