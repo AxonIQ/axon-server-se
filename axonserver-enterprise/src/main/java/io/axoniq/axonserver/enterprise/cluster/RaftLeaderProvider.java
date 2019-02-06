@@ -41,6 +41,6 @@ public class RaftLeaderProvider {
     }
     public boolean isLeader(String context) {
         String leader = leaderMap.get(context);
-        return leader != null && (leader.equals(node) || leader.startsWith(node + "-"));
+        return leader != null && leader.equals(node);
     }
 }

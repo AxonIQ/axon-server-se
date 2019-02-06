@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.FlowControl;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
@@ -92,6 +93,11 @@ public class ClusterController implements SmartLifecycle {
     @Transactional
     public void on(ClusterEvents.AxonServerNodeDeleted nodeDeleted) {
         deleteNode(nodeDeleted.node());
+    }
+
+    @EventListener
+    public void on(ContextEvents.ContextUpdated contextUpdated) {
+        nodeMap.clear();
     }
 
     @Transactional
@@ -323,7 +329,7 @@ public class ClusterController implements SmartLifecycle {
         }
 
         List<String> activeNodes = new ArrayList<>();
-        Collection<String> nodesInContext = nodes.stream().map(JpaRaftGroupNode::getNodeId).collect(Collectors.toSet());
+        Collection<String> nodesInContext = nodes.stream().map(JpaRaftGroupNode::getNodeName).collect(Collectors.toSet());
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
             activeNodes.add(messagingPlatformConfiguration.getName());
         }
@@ -412,5 +418,17 @@ public class ClusterController implements SmartLifecycle {
 
     public long getConnectionWaitTime() {
         return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
+    }
+
+    @Transactional
+    public void removeContext(String node, String name) {
+        ClusterNode clusterNode = entityManager.find(ClusterNode.class, node);
+        if( clusterNode !=null) {
+            clusterNode.removeContext(name);
+            nodeMap.remove(node);
+            logger.warn("{}: Removed node {} from context", name, node);
+        }
+
+
     }
 }

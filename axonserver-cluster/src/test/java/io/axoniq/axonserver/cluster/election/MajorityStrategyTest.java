@@ -18,7 +18,7 @@ public class MajorityStrategyTest {
         majorityStrategy.registerVoteReceived("voter1", true);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter3", true);
-        assertTrue(majorityStrategy.isWon().get());
+        assertTrue(majorityStrategy.isWon().get().won());
     }
 
     @Test
@@ -27,7 +27,7 @@ public class MajorityStrategyTest {
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter2", false);
         majorityStrategy.registerVoteReceived("voter3", false);
-        assertFalse(majorityStrategy.isWon().get());
+        assertFalse(majorityStrategy.isWon().get().won());
     }
 
     @Test
@@ -36,7 +36,7 @@ public class MajorityStrategyTest {
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter3", true);
-        assertTrue(majorityStrategy.isWon().get());
+        assertTrue(majorityStrategy.isWon().get().won());
     }
 
     @Test
@@ -45,7 +45,7 @@ public class MajorityStrategyTest {
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter3", false);
-        assertFalse(majorityStrategy.isWon().get());
+        assertFalse(majorityStrategy.isWon().get().won());
     }
 
     @Test
@@ -80,6 +80,6 @@ public class MajorityStrategyTest {
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter3", true);
-        assertTrue(majorityStrategy.isWon().get());
+        assertTrue(majorityStrategy.isWon().get().won());
     }
 }

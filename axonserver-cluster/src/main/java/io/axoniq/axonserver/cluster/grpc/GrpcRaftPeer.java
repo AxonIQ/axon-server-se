@@ -211,8 +211,4 @@ public class GrpcRaftPeer implements RaftPeer {
         return channelMap.computeIfAbsent(node.getNodeId(), n -> NettyChannelBuilder.forAddress(node.getHost(), node.getPort()).usePlaintext().directExecutor().build());
     }
 
-    @Override
-    public Node toNode() {
-        return node;
-    }
 }

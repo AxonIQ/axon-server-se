@@ -161,4 +161,9 @@ public class InMemoryLogEntryStore implements LogEntryStore {
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
     }
+
+    @Override
+    public void delete() {
+        entryMap.clear();
+    }
 }

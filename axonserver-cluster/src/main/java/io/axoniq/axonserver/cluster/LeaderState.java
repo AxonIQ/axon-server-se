@@ -97,6 +97,9 @@ public class LeaderState extends AbstractMembershipState {
         }
         Collection<Node> newConfig = configChange.apply(currentConfiguration().groupMembers());
         Config config = Config.newBuilder().addAllNodes(newConfig).build();
+        if( config.getNodesCount() == 0) {
+            return CompletableFuture.completedFuture(Entry.getDefaultInstance());
+        }
         return raftGroup().localLogEntryStore().createEntry(currentTerm(), config);
     }
 
@@ -145,9 +148,9 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        logger.warn("{}: Request for vote received from {} in term {}. Rejecting the request", groupId(),
-                    request.getCandidateId(), request.getTerm());
-        return requestVoteResponse(request.getRequestId(),false);
+        logger.warn("{}: Request for vote received from {} in term {}. Rejecting the request, {}", groupId(),
+                    request.getCandidateId(), request.getTerm(), member(request.getCandidateId())? "candidate is member" : "candidate is not member");
+        return requestVoteResponse(request.getRequestId(),false, !member(request.getCandidateId()));
     }
 
     @Override
@@ -181,8 +184,13 @@ public class LeaderState extends AbstractMembershipState {
         changeStateTo(stateFactory().followerState(), cause);
     }
 
+    private boolean member(String candidateId) {
+        return currentGroupMembers().stream().anyMatch(n -> n.getNodeId().equals(candidateId));
+    }
+
     private void checkStepdown() {
         if (otherNodesCount() == 0) {
+            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
             return;
         }
         long now = scheduler.get().clock().millis();

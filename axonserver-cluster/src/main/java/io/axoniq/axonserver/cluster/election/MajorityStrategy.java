@@ -3,13 +3,10 @@ package io.axoniq.axonserver.cluster.election;
 import io.axoniq.axonserver.cluster.MinMajority;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -21,7 +18,7 @@ public class MajorityStrategy implements VoteStrategy {
     private final Supplier<Integer> minMajority;
     private final Map<String, Boolean> votes = new ConcurrentHashMap<>();
     private final Logger log = LoggerFactory.getLogger(MajorityStrategy.class);
-    private final CompletableFuture<Boolean> won;
+    private final CompletableFuture<Election.Result> won;
 
     public MajorityStrategy(Supplier<Integer> votersSize) {
         this.minMajority = new MinMajority(votersSize);
@@ -29,23 +26,47 @@ public class MajorityStrategy implements VoteStrategy {
     }
 
     @Override
-    public void registerVoteReceived(String voter, boolean granted) {
+    public void registerVoteReceived(String voter, boolean granted, boolean goAway) {
+        if( goAway) {
+            log.info("Received goAway from {}", voter);
+            won.complete(electionResult(false, true));
+            return;
+        }
         votes.put(voter, granted);
         long votesGranted = votes.values().stream().filter(voteGranted -> voteGranted).count();
         long votesRejected = votes.values().stream().filter(voteGranted -> !voteGranted).count();
 
         if (votesGranted >= minMajority.get()){
             log.info("Election is won with following votes: {}. MinMajority: {}.", votes, minMajority.get());
-            won.complete(true);
+            won.complete(electionResult(true, false));
         } else if (votesRejected >= minMajority.get()) {
             log.info("Election is lost with following votes: {}. MinMajority: {}.", votes, minMajority.get());
-            won.complete(false);
+            won.complete(electionResult(false, false));
         }
 
     }
 
+    private Election.Result electionResult(boolean won, boolean goAway) {
+        return new Election.Result() {
+            @Override
+            public boolean won() {
+                return won;
+            }
+
+            @Override
+            public boolean goAway() {
+                return goAway;
+            }
+
+            @Override
+            public String cause() {
+                return null;
+            }
+        };
+    }
+
     @Override
-    public CompletableFuture<Boolean> isWon() {
+    public CompletableFuture<Election.Result> isWon() {
         return won;
     }
 

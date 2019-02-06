@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.cluster.jpa;
 
 import io.axoniq.axonserver.cluster.ProcessorStore;
-import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 
 /**
@@ -23,6 +22,12 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
             this.raftState = repository.save(new JpaRaftState(groupId));
         }
     }
+
+    @Override
+    public void delete() {
+        repository.deleteById(groupId);
+    }
+
     @Override
     public String votedFor() {
         return raftState.getVotedFor();

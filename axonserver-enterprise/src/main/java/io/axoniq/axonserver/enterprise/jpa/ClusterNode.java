@@ -158,14 +158,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
                 .build();
     }
 
-    public Node toNode() {
-        return Node.newBuilder()
-                   .setNodeId(name)
-                   .setHost(internalHostName)
-                   .setPort(grpcInternalPort)
-                   .build();
-    }
-
     @PreRemove
     public void clearContexts() {
         contexts.forEach(ccn -> ccn.getContext().remove(ccn));

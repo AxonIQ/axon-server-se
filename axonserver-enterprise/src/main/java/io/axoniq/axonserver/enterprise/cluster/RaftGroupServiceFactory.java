@@ -47,4 +47,11 @@ public class RaftGroupServiceFactory {
                                                                                         .createManagedChannel(configuration, node)));
     }
 
+    public RaftGroupService getRaftGroupServiceForNode(ClusterNode clusterNode) {
+        if( configuration.getName().equals(clusterNode.getName())) return localRaftGroupService;
+
+        return new RemoteRaftGroupService( RaftGroupServiceGrpc.newStub(ManagedChannelHelper
+                                                                                .createManagedChannel(configuration, clusterNode)));
+    }
+
 }

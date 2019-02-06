@@ -6,10 +6,13 @@ import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
+import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
@@ -20,6 +23,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase {
+    private final Logger logger = LoggerFactory.getLogger(GrpcRaftGroupService.class);
     private final LocalRaftGroupService localRaftGroupService;
 
     public GrpcRaftGroupService(LocalRaftGroupService localRaftGroupService) {
@@ -28,14 +32,21 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
+        logger.warn("Init context: {}", request);
         try {
             localRaftGroupService.initContext(request.getName(), request.getMembersList()
                     .stream()
-            .map(contextMember -> Node.newBuilder().setNodeId(contextMember.getNodeId()).setHost(contextMember.getHost()).setPort(contextMember.getPort()).build()).collect(
+            .map(contextMember -> Node.newBuilder()
+                                      .setNodeId(contextMember.getNodeId())
+                                      .setHost(contextMember.getHost())
+                                      .setPort(contextMember.getPort())
+                                      .setNodeName(contextMember.getNodeName())
+                                      .build()).collect(
                             Collectors.toList()));
             responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
             responseObserver.onCompleted();
-        } catch (RuntimeException t) {
+        } catch (Throwable t) {
+            logger.warn("Init context failed: {}", request, t);
             responseObserver.onError(t);
         }
     }
@@ -63,6 +74,11 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
         confirm(responseObserver, completable);
     }
 
+    @Override
+    public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext());
+        confirm(responseObserver, completable);
+    }
 
     @Override
     public void mergeAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {

@@ -53,6 +53,13 @@ public class DefaultStateFactory implements MembershipStateFactory {
     }
 
     @Override
+    public RemovedState removedState() {
+        return RemovedState.builder()
+                           .raftGroup(raftGroup)
+                           .build();
+    }
+
+    @Override
     public LeaderState leaderState() {
         return LeaderState.builder()
                           .raftGroup(raftGroup)

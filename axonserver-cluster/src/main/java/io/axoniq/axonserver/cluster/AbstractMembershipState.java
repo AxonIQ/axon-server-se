@@ -275,13 +275,19 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected RequestVoteResponse requestVoteResponse(String requestId, boolean voteGranted) {
+        return requestVoteResponse(requestId, voteGranted, false);
+    }
+
+    protected RequestVoteResponse requestVoteResponse(String requestId, boolean voteGranted, boolean goAway) {
         return RequestVoteResponse.newBuilder()
                                   .setResponseHeader(responseHeader(requestId))
                                   .setGroupId(groupId())
                                   .setVoteGranted(voteGranted)
                                   .setTerm(currentTerm())
+                                  .setGoAway(goAway)
                                   .build();
     }
+
 
     protected ResponseHeader responseHeader(String requestId){
         return ResponseHeader.newBuilder()

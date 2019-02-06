@@ -28,8 +28,7 @@ public class RaftGroupInfoService {
 
     @GetMapping("groups")
     public Set<JpaRaftGroupNode> status(){
-        return raftGroupNodeRepository.findByHostAndPort(messagingPlatformConfiguration.getFullyQualifiedInternalHostname(),
-                                                         messagingPlatformConfiguration.getInternalPort());
+        return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName());
     }
 
     @GetMapping("members/{group}")

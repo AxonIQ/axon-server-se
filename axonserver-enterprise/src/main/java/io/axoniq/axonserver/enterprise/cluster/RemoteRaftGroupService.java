@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
+import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
@@ -13,6 +14,8 @@ import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.User;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -23,6 +26,7 @@ import java.util.stream.Collectors;
  * Author: marc
  */
 public class RemoteRaftGroupService implements RaftGroupService {
+    private static final Logger logger = LoggerFactory.getLogger(RemoteRaftGroupService.class);
 
     private final RaftGroupServiceGrpc.RaftGroupServiceStub stub;
 
@@ -39,7 +43,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                    .setPort(node.getPort())
                                                    .build();
         stub.addServer(Context.newBuilder().setName(context).addMembers(contextMember).build(),
-                       new CompletableStreamObserver(result));
+                       new CompletableStreamObserver(result, logger));
         return result;
     }
 
@@ -48,7 +52,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.removeServer(Context.newBuilder().setName(context)
                                           .addMembers(ContextMember.newBuilder().setNodeId(node).build()).build(),
-                          new CompletableStreamObserver(result));
+                          new CompletableStreamObserver(result, logger));
         return result;
     }
 
@@ -56,14 +60,14 @@ public class RemoteRaftGroupService implements RaftGroupService {
     public CompletableFuture<Void> updateApplication(String context, Application application) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.mergeAppAuthorization(ContextApplication.newBuilder().setContext(context).setApplication(application).build(),
-                                   new CompletableStreamObserver(result));
+                                   new CompletableStreamObserver(result, logger));
         return result;
     }
 
     @Override
     public CompletableFuture<Void> updateUser(String context, User request) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.mergeUserAuthorization(ContextUser.newBuilder().setContext(context).setUser(request).build(), new CompletableStreamObserver(result));
+        stub.mergeUserAuthorization(ContextUser.newBuilder().setContext(context).setUser(request).build(), new CompletableStreamObserver(result, logger));
         return result;
     }
 
@@ -97,11 +101,12 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                                    .setHost(r.getHost())
                                                                            .setPort(r.getPort())
                                                                            .setNodeId(r.getNodeId())
+                                                                                             .setNodeName(r.getNodeName())
                                                                            .build()
                                              ).collect(Collectors.toList()))
                                      .build();
         stub.initContext(
-                    request,new CompletableStreamObserver(result));
+                    request,new CompletableStreamObserver(result, logger));
 
         return result;
     }
@@ -113,7 +118,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                 .setContext(name)
                                                                 .setLoadBalanceStrategy(loadBalancingStrategy)
                                                                 .build(),
-                                      new CompletableStreamObserver(result));
+                                      new CompletableStreamObserver(result, logger));
         return result;
     }
 
@@ -125,7 +130,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                 .setContext(context)
                                                                 .setProcessorLBStrategy(processorLBStrategy)
                                                                 .build(),
-                                      new CompletableStreamObserver(result));
+                                      new CompletableStreamObserver(result, logger));
         return result;
     }
 
@@ -135,7 +140,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
         stub.deleteAppAuthorization(ContextApplication.newBuilder()
                                                       .setApplication(application)
                                                       .setContext(context)
-                                                      .build(), new CompletableStreamObserver(result));
+                                                      .build(), new CompletableStreamObserver(result, logger));
         return result;
     }
 
@@ -145,7 +150,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
         stub.deleteUserAuthorization(ContextUser.newBuilder()
                                                       .setUser(request)
                                                       .setContext(context)
-                                                      .build(), new CompletableStreamObserver(result));
+                                                      .build(), new CompletableStreamObserver(result, logger));
         return result;
     }
 
@@ -156,15 +161,14 @@ public class RemoteRaftGroupService implements RaftGroupService {
         stub.deleteLoadBalanceStrategy(ContextLoadBalanceStrategy.newBuilder()
                                                                  .setLoadBalanceStrategy(loadBalancingStrategy)
                                                                  .setContext(context)
-                                                                 .build(), new CompletableStreamObserver(result));
+                                                                 .build(), new CompletableStreamObserver(result, logger));
         return result;
     }
 
     @Override
     public CompletableFuture<Void> deleteContext(String context) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        //TODO
-        result.completeExceptionally(new NoSuchMethodException("Not implemented yet"));
+        stub.deleteContext(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver(result, logger));
         return result;
     }
 }

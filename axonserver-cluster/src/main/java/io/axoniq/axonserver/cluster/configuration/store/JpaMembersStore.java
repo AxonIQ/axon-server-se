@@ -31,6 +31,7 @@ public class JpaMembersStore implements MembersStore {
         Set<JpaRaftGroupNode> jpaNodes = raftGroupNodeRepository.findByGroupId(this.groupId.get());
         return jpaNodes.stream().map(jpaNode -> Node.newBuilder()
                                                     .setNodeId(jpaNode.getNodeId())
+                                                    .setNodeName(jpaNode.getNodeName())
                                                     .setHost(jpaNode.getHost())
                                                     .setPort(jpaNode.getPort())
                                                     .build())

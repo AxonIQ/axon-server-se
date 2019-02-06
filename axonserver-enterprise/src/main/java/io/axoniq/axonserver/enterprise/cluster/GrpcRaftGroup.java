@@ -76,7 +76,7 @@ public class GrpcRaftGroup implements RaftGroup {
             }
 
             @Override
-            public void clear() {
+            public void delete() {
                 membersStore.set(Collections.emptyList());
             }
 

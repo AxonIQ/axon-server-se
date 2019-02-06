@@ -15,6 +15,8 @@ public interface Election {
 
         boolean won();
 
+        boolean goAway();
+
         String cause();
 
     }

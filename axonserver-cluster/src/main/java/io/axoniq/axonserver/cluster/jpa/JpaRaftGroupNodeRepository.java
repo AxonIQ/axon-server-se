@@ -10,5 +10,5 @@ import java.util.Set;
 public interface JpaRaftGroupNodeRepository extends JpaRepository<JpaRaftGroupNode, JpaRaftGroupNode.Key> {
     Set<JpaRaftGroupNode> findByGroupId(String groupId);
 
-    Set<JpaRaftGroupNode> findByHostAndPort(String host, int port);
+    Set<JpaRaftGroupNode> findByNodeName(String nodeName);
 }

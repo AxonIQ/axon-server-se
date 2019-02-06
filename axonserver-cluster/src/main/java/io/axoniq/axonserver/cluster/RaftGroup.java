@@ -28,4 +28,9 @@ public interface RaftGroup {
         localNode().start();
     }
 
+    default void delete() {
+        localLogEntryStore().delete();
+        raftConfiguration().delete();
+        localElectionStore().delete();
+    }
 }

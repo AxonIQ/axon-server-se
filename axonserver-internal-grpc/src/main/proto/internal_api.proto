@@ -25,6 +25,8 @@ service RaftConfigService {
 
     rpc JoinCluster(NodeInfo) returns (Confirmation) {}
 
+    rpc DeleteNode(NodeName) returns (Confirmation) {}
+
     rpc CreateContext(Context) returns (Confirmation) {}
 
     rpc AddNodeToContext(NodeContext) returns (Confirmation) {}
@@ -56,6 +58,8 @@ service RaftConfigService {
 service RaftGroupService {
 
     rpc InitContext(Context) returns (Confirmation) {}
+
+    rpc DeleteContext(ContextName) returns (Confirmation) {}
 
     rpc AddServer(Context) returns (Confirmation) {}
 
@@ -369,10 +373,11 @@ message Context {
 }
 
 message ContextMember {
-    string node_id  = 1;
+    string node_id = 1;
     string host = 2;
     int32 port = 3;
     State state = 4;
+    string node_name = 5;
 }
 
 message Application {
@@ -425,6 +430,10 @@ message NodeInfoWithLabel {
 
 message ContextName {
     string context = 1;
+}
+
+message NodeName {
+    string node = 1;
 }
 
 message LoadBalanceStrategy {

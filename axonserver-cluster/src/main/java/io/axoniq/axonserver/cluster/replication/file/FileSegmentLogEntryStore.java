@@ -244,6 +244,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public void delete() {
+        primaryEventStore.delete();
+    }
+
+    @Override
     public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
         primaryEventStore.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
     }

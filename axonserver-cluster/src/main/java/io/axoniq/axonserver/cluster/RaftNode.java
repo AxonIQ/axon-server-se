@@ -251,7 +251,7 @@ public class RaftNode {
 
     public CompletableFuture<Void> removeGroup() {
         state.get().stop();
-        raftGroup.raftConfiguration().clear();
+        raftGroup.delete();
         return CompletableFuture.completedFuture(null);
     }
 

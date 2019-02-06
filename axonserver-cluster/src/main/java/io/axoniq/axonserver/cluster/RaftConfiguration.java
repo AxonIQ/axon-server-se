@@ -35,7 +35,7 @@ public interface RaftConfiguration {
         return 15;
     }
 
-    default void clear() {}
+    default void delete() {}
 
     default int flowBuffer() {
         return 100;

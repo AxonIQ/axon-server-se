@@ -38,7 +38,11 @@ public class FakeStateFactory implements MembershipStateFactory {
         return lastStateCreated;
     }
 
-
+    @Override
+    public MembershipState removedState() {
+        lastStateCreated = new FakeState("removed");
+        return lastStateCreated;
+    }
 
     public class FakeState implements MembershipState {
 

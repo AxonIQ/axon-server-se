@@ -17,7 +17,7 @@ public class FakeRaftGroupManager implements RaftGroupManager {
     }
 
     @Override
-    public RaftNode raftNode(String groupId) {
+    public RaftNode raftNode(String groupId, String nodeId) {
         return raftNodes.get(groupId);
     }
 }

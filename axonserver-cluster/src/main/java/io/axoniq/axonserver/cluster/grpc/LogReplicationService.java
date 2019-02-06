@@ -22,7 +22,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             @Override
             public void onNext(AppendEntriesRequest appendEntriesRequest) {
                 if( ! running) return;
-                RaftNode target = raftGroupManager.raftNode(appendEntriesRequest.getGroupId());
+                RaftNode target = raftGroupManager.raftNode(appendEntriesRequest.getGroupId(), appendEntriesRequest.getTargetId());
                 try {
                     synchronized (target) {
                         AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
@@ -58,7 +58,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             @Override
             public void onNext(InstallSnapshotRequest installSnapshotRequest) {
                 if( ! running) return;
-                RaftNode target = raftGroupManager.raftNode(installSnapshotRequest.getGroupId());
+                RaftNode target = raftGroupManager.raftNode(installSnapshotRequest.getGroupId(), null);
                 try {
                     synchronized (target) {
                         InstallSnapshotResponse response = target.installSnapshot(installSnapshotRequest);
