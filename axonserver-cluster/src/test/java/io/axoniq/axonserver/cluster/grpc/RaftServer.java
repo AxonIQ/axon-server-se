@@ -13,7 +13,6 @@ public class RaftServer {
     private final static Logger logger = LoggerFactory.getLogger(RaftServer.class);
 
     private Server server;
-    private boolean started;
     private final RaftServerConfiguration messagingPlatformConfiguration;
     private final LeaderElectionService leaderElectionService;
     private final LogReplicationService logReplicationService;
@@ -24,15 +23,13 @@ public class RaftServer {
         this.logReplicationService = logReplicationService;
     }
 
-    public void stop(Runnable callback) {
+    public void stop() {
         try {
             server.shutdown().awaitTermination(1, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             logger.debug("Interrupted during shutdown of gRPC Messaging Cluster Server", e);
             Thread.currentThread().interrupt();
         }
-        started = false;
-        callback.run();
     }
 
     public void start() {
@@ -58,10 +55,7 @@ public class RaftServer {
         server = serverBuilder.build();
         try {
             server.start();
-
             logger.info("gRPC Messaging Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
-
-            started = true;
         } catch (IOException e) {
             logger.error("Starting gRPC Messaging Cluster Server gateway failed - {}", e.getMessage(), e);
         }

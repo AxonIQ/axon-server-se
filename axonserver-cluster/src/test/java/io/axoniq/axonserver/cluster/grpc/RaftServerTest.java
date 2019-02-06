@@ -103,7 +103,7 @@ public class RaftServerTest {
                 Thread.sleep(100);
         } finally {
             clusterNodes.forEach((id, node) -> node.stop());
-            raftServers.forEach(r -> r.stop(() -> {}));
+            raftServers.forEach(RaftServer::stop);
         }
     }
 
