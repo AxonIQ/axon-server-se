@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -21,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.LongSupplier;
 
 /**
  * Author: marc
@@ -31,6 +32,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     private final List<Consumer<Entry>> appendListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final NavigableMap<Long, Entry> entryMap = new ConcurrentSkipListMap<>();
+    private final NavigableMap<Long, Date> dateMap = new ConcurrentSkipListMap<>();
     private final AtomicLong lastIndex = new AtomicLong(0);
     private final String name;
 
@@ -52,7 +54,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
             tail.clear();
         }
         entries.forEach(entry -> {
-            entryMap.put(entry.getIndex(), entry);
+            addEntry(entry);
             appendListeners.forEach(listener -> listener.accept(entry));
         });
         lastIndex.set(entryMap.lastEntry().getKey());
@@ -75,8 +77,15 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
-        // TODO: 12/31/2018
+    public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
+        long keep = lastAppliedIndexSupplier.getAsLong() - 1;
+        Date date = new Date();
+        date.setTime(date.getTime() - timeUnit.toMillis(time));
+        for (long index : entryMap.keySet()) {
+            if (index >= keep || dateMap.get(index).after(date)) break;
+            entryMap.remove(index);
+            dateMap.remove(index);
+        }
     }
 
     @Override
@@ -130,7 +139,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
                                                                 .setData(ByteString.copyFrom(entryData))
                                                                 .setType(entryType))
                            .build();
-        entryMap.put(index, entry);
+        addEntry(entry);
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
     }
@@ -143,7 +152,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
                            .setTerm(currentTerm)
                            .setNewConfiguration(config)
                            .build();
-        entryMap.put(index, entry);
+        addEntry(entry);
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
 
@@ -157,8 +166,13 @@ public class InMemoryLogEntryStore implements LogEntryStore {
                            .setTerm(currentTerm)
                            .setLeaderElected(leader)
                            .build();
-        entryMap.put(index, entry);
+        addEntry(entry);
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
+    }
+
+    private void addEntry(Entry entry){
+        entryMap.put(entry.getIndex(), entry);
+        dateMap.put(entry.getIndex(), new Date());
     }
 }

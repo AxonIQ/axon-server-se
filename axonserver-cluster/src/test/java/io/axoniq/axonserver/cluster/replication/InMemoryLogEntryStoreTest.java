@@ -4,6 +4,7 @@ import org.junit.*;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 import static io.axoniq.axonserver.cluster.TestUtils.newEntry;
 import static java.util.Arrays.asList;
@@ -37,4 +38,16 @@ public class InMemoryLogEntryStoreTest {
         assertNull( testSubject.getEntry(3));
     }
 
+    @Test
+    public void clearOlderThan() throws IOException {
+        testSubject.appendEntry(asList(newEntry(1, 1),
+                                       newEntry(1, 2),
+                                       newEntry(1, 3),
+                                       newEntry(1, 4)));
+        testSubject.clearOlderThan(0, TimeUnit.MILLISECONDS, () -> 4);
+        assertFalse(testSubject.contains(1,1));
+        assertFalse(testSubject.contains(2,1));
+        assertTrue(testSubject.contains(3,1));
+        assertTrue(testSubject.contains(4,1));
+    }
 }

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 
 public interface LogEntryStore {
@@ -38,7 +38,15 @@ public interface LogEntryStore {
 
     void clear();
 
-    void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier);
+    /**
+     * Performs a log compaction for logs older than the specified time.
+     * All log entries starting from the one preceding the last applied entry will not be deleted.
+     *
+     * @param time the time before which the logs could be deleted
+     * @param timeUnit the time unit
+     * @param lastAppliedIndexSupplier the supplier of the last applied log entry index
+     */
+    void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier);
 
     long lastLogIndex();
 
