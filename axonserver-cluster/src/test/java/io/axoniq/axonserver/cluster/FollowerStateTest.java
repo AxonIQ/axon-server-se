@@ -346,6 +346,7 @@ public class FollowerStateTest {
         assertTrue(response.hasSuccess());
         verify(snapshotManager).applySnapshotData(request.getDataList());
         verify(logEntryProcessor).updateLastApplied(2L, 0L);
+        verify(logEntryProcessor).markCommitted(2L, 0L);
     }
 
     private AppendEntriesRequest firstAppend() {

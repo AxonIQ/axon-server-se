@@ -191,8 +191,12 @@ public class FollowerState extends AbstractMembershipState {
         snapshotManager().applySnapshotData(request.getDataList())
                          .block();
 
+        //When install snapshot request is completed, update commit and last applied indexes.
         if (request.getDone()) {
-            raftGroup().logEntryProcessor().updateLastApplied(request.getLastIncludedIndex(), request.getLastIncludedTerm());
+            long index = request.getLastIncludedIndex();
+            long term = request.getLastIncludedTerm();
+            raftGroup().logEntryProcessor().markCommitted(index, term);
+            raftGroup().logEntryProcessor().updateLastApplied(index, term);
         }
 
         return InstallSnapshotResponse.newBuilder()
