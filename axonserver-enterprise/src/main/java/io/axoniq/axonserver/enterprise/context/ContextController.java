@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
@@ -8,11 +9,11 @@ import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -105,5 +106,12 @@ public class ContextController {
     public void deleteContext(String context) {
         Context contextJpa = entityManager.find(Context.class, context);
         if( contextJpa != null) entityManager.remove(contextJpa);
+    }
+
+    @EventListener
+    @Transactional
+    public void on(ContextEvents.AdminContextDeleted contextDeleted) {
+        List<Context> allContexts = entityManager.createQuery("select c from Context c").getResultList();
+        allContexts.forEach(c -> entityManager.remove(c));
     }
 }

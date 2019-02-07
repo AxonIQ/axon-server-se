@@ -10,6 +10,7 @@ import io.axoniq.axonserver.grpc.internal.ContextNames;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeName;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.User;
@@ -47,6 +48,11 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
                                                                              .stream()
                                                                              .map(ContextMember::getNodeId)
                                                                              .collect(Collectors.toList())));
+    }
+
+    @Override
+    public void deleteNode(NodeName request, StreamObserver<Confirmation> responseObserver) {
+        wrap(responseObserver, () -> localRaftConfigService.deleteNode(request.getNode()));
     }
 
     private void wrap(StreamObserver<Confirmation> responseObserver, Runnable action) {

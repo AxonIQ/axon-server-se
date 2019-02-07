@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
@@ -60,9 +61,9 @@ public class RemoteRaftConfigService implements RaftConfigService {
             completableFuture.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            e.printStackTrace();
+            throw GrpcExceptionBuilder.build(e);
         } catch (ExecutionException e) {
-            e.getCause().printStackTrace();
+            throw GrpcExceptionBuilder.build(e.getCause());
         }
     }
 

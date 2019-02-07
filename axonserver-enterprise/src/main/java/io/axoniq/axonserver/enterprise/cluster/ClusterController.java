@@ -90,12 +90,6 @@ public class ClusterController implements SmartLifecycle {
 
 
     @EventListener
-    @Transactional
-    public void on(ClusterEvents.AxonServerNodeDeleted nodeDeleted) {
-        deleteNode(nodeDeleted.node());
-    }
-
-    @EventListener
     public void on(ContextEvents.ContextUpdated contextUpdated) {
         nodeMap.clear();
     }
@@ -380,10 +374,6 @@ public class ClusterController implements SmartLifecycle {
     @Transactional
     public void sendDeleteNode(String name) {
         deleteNode(name);
-    }
-
-    public void publish(ConnectorCommand connectorCommand) {
-        activeConnections().forEach(remoteConnection -> remoteConnection.publish(connectorCommand));
     }
 
     public void closeConnection(String nodeName) {

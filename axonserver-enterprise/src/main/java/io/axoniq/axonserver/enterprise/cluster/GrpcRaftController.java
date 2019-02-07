@@ -265,5 +265,8 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
 
     public void delete(String context) {
         raftGroupMap.remove(context);
+        if( context.equals(ADMIN_GROUP)) {
+            eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
+        }
     }
 }
