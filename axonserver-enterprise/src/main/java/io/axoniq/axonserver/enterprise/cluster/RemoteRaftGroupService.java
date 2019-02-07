@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
@@ -17,12 +17,14 @@ import io.grpc.stub.StreamObserver;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Author: marc
  */
 public class RemoteRaftGroupService implements RaftGroupService {
+    private static final Function<Confirmation, Void> TO_VOID = x -> null;
 
     private final RaftGroupServiceGrpc.RaftGroupServiceStub stub;
 
@@ -39,7 +41,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                    .setPort(node.getPort())
                                                    .build();
         stub.addServer(Context.newBuilder().setName(context).addMembers(contextMember).build(),
-                       new CompletableStreamObserver(result));
+                       new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
@@ -48,22 +50,22 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.removeServer(Context.newBuilder().setName(context)
                                           .addMembers(ContextMember.newBuilder().setNodeId(node).build()).build(),
-                          new CompletableStreamObserver(result));
+                          new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
     @Override
-    public CompletableFuture<Void> updateApplication(String context, Application application) {
+    public CompletableFuture<Void> updateApplication(ContextApplication application) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.mergeAppAuthorization(ContextApplication.newBuilder().setContext(context).setApplication(application).build(),
-                                   new CompletableStreamObserver(result));
+        stub.mergeAppAuthorization(application,
+                                   new CompletableStreamObserver<>(result));
         return result;
     }
 
     @Override
     public CompletableFuture<Void> updateUser(String context, User request) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.mergeUserAuthorization(ContextUser.newBuilder().setContext(context).setUser(request).build(), new CompletableStreamObserver(result));
+        stub.mergeUserAuthorization(ContextUser.newBuilder().setContext(context).setUser(request).build(), new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
@@ -101,7 +103,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                              ).collect(Collectors.toList()))
                                      .build();
         stub.initContext(
-                    request,new CompletableStreamObserver(result));
+                    request,new CompletableStreamObserver<>(result, TO_VOID));
 
         return result;
     }
@@ -113,7 +115,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                 .setContext(name)
                                                                 .setLoadBalanceStrategy(loadBalancingStrategy)
                                                                 .build(),
-                                      new CompletableStreamObserver(result));
+                                      new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
@@ -125,17 +127,14 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                 .setContext(context)
                                                                 .setProcessorLBStrategy(processorLBStrategy)
                                                                 .build(),
-                                      new CompletableStreamObserver(result));
+                                      new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
     @Override
-    public CompletableFuture<Void> deleteApplication(String context, Application application) {
+    public CompletableFuture<Void> deleteApplication(ContextApplication application) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteAppAuthorization(ContextApplication.newBuilder()
-                                                      .setApplication(application)
-                                                      .setContext(context)
-                                                      .build(), new CompletableStreamObserver(result));
+        stub.deleteAppAuthorization(application, new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
@@ -145,7 +144,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
         stub.deleteUserAuthorization(ContextUser.newBuilder()
                                                       .setUser(request)
                                                       .setContext(context)
-                                                      .build(), new CompletableStreamObserver(result));
+                                                      .build(), new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
@@ -156,7 +155,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
         stub.deleteLoadBalanceStrategy(ContextLoadBalanceStrategy.newBuilder()
                                                                  .setLoadBalanceStrategy(loadBalancingStrategy)
                                                                  .setContext(context)
-                                                                 .build(), new CompletableStreamObserver(result));
+                                                                 .build(), new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 

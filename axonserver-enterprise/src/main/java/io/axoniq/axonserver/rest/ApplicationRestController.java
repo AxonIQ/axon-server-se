@@ -27,9 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 /**
@@ -66,19 +66,11 @@ public class ApplicationRestController {
     }
 
     @PostMapping("applications")
-    public String updateJson(@RequestBody ApplicationJSON application) throws ExecutionException, InterruptedException {
+    public Future<String> updateJson(@RequestBody ApplicationJSON application) throws ExecutionException, InterruptedException {
         checkEdition();
         checkRoles(application);
-        if( application.getToken() == null ) {
-            try{
-                applicationController.get(application.getName());
-            } catch (ApplicationNotFoundException notFound) {
-                application.setToken(UUID.randomUUID().toString());
-            }
-        }
-
-        raftServiceFactory.getRaftConfigService().updateApplication(ApplicationProtoConverter.createApplication(application)).get();
-        return application.getToken();
+        return raftServiceFactory.getRaftConfigService().updateApplication(
+                ApplicationProtoConverter.createApplication(application)).thenApply(Application::getToken);
     }
 
     private void checkRoles(ApplicationJSON application) {

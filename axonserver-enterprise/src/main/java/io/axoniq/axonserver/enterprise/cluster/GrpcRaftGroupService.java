@@ -66,7 +66,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void mergeAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request.getContext(), request.getApplication());
+        CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request);
         confirm(responseObserver, completable);
     }
 
@@ -82,7 +82,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void deleteAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request.getContext(), request.getApplication());
+        CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
         confirm(responseObserver, completable);
     }
 

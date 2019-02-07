@@ -145,6 +145,9 @@ public class ApplicationController {
         deleteListeners.remove(name);
     }
 
+    public String hash(String clearText) {
+        return hasher.hash(clearText);
+    }
 
 
     public void clearApplications() {

@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.User;
@@ -27,7 +27,7 @@ public interface RaftGroupService {
     default void stepDown(String context) {
     }
 
-    CompletableFuture<Void> updateApplication(String context, Application application);
+    CompletableFuture<Void> updateApplication(ContextApplication application);
 
     CompletableFuture<Void> updateUser(String context, User request);
 
@@ -35,7 +35,7 @@ public interface RaftGroupService {
 
     CompletableFuture<Void> updateProcessorLoadBalancing(String context, ProcessorLBStrategy processorLBStrategy);
 
-    CompletableFuture<Void> deleteApplication(String context, Application application);
+    CompletableFuture<Void> deleteApplication(ContextApplication application);
 
     CompletableFuture<Void> deleteUser(String context, User request);
 

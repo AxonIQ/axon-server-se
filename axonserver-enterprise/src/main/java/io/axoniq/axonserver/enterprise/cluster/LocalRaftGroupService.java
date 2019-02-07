@@ -3,8 +3,8 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
@@ -93,9 +93,9 @@ public class LocalRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> updateApplication(String context, Application application) {
-        RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        return raftNode.appendEntry(Application.class.getName(), application.toByteArray());
+    public CompletableFuture<Void> updateApplication(ContextApplication application) {
+        RaftNode raftNode = grpcRaftController.getRaftNode(application.getContext());
+        return raftNode.appendEntry(ContextApplication.class.getName(), application.toByteArray());
     }
 
     @Override
@@ -119,8 +119,8 @@ public class LocalRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteApplication(String context, Application application) {
-        RaftNode raftNode = grpcRaftController.getRaftNode(context);
+    public CompletableFuture<Void> deleteApplication(ContextApplication application) {
+        RaftNode raftNode = grpcRaftController.getRaftNode(application.getContext());
         return raftNode.appendEntry(DELETE_APPLICATION, application.toByteArray());
     }
 

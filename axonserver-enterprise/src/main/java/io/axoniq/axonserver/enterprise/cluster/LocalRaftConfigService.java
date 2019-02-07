@@ -1,27 +1,34 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
+import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.User;
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -42,15 +49,18 @@ class LocalRaftConfigService implements RaftConfigService {
     private final GrpcRaftController grpcRaftController;
     private final ContextController contextController;
     private final RaftGroupServiceFactory raftGroupServiceFactory;
+    private final ApplicationController applicationController;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
 
     public LocalRaftConfigService(GrpcRaftController grpcRaftController, ContextController contextController,
                                   RaftGroupServiceFactory raftGroupServiceFactory,
+                                  ApplicationController applicationController,
                                   MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.grpcRaftController = grpcRaftController;
         this.contextController = contextController;
         this.raftGroupServiceFactory = raftGroupServiceFactory;
+        this.applicationController = applicationController;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
@@ -217,33 +227,81 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public CompletableFuture<Void> updateApplication(Application application) {
+    public CompletableFuture<Application> refreshToken(Application application) {
+        CompletableFuture<Application> result = new CompletableFuture<>();
+        return result;
+    }
+
+    @Override
+    public CompletableFuture<Application> updateApplication(Application application) {
         RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        config.appendEntry(Application.class.getName(), application.toByteArray()).whenComplete(
+        io.axoniq.axonserver.access.jpa.Application storedApplication = null;
+        try {
+            storedApplication = applicationController.get(application
+                                                                                                              .getName());
+        } catch( ApplicationNotFoundException ane) {
+            logger.warn("Application not found {}, creating new", application.getName());
+        }
+        String token = "Token already returned";
+        String hashedToken = null;
+        String tokenPrefix = null;
+        if (storedApplication == null) {
+            if (StringUtils.isEmpty(application.getToken())) {
+                token = UUID.randomUUID().toString();
+                hashedToken = applicationController.hash(token);
+                tokenPrefix = token.substring(0, ApplicationController.PREFIX_LENGTH);
+            } else {
+                token = application.getToken();
+                hashedToken = applicationController.hash(token);
+                tokenPrefix = token.substring(0, Math.min(token.length(), ApplicationController.PREFIX_LENGTH));
+            }
+        } else {
+            hashedToken = storedApplication.getHashedToken();
+            tokenPrefix = storedApplication.getTokenPrefix() == null ? "" : storedApplication.getTokenPrefix();
+        }
+        Application updatedApplication = Application.newBuilder(application)
+                                                    .setToken(hashedToken)
+                                                    .setTokenPrefix(tokenPrefix)
+                                                    .build();
+        Application resultApplication = Application.newBuilder(application).setToken(token).build();
+
+        CompletableFuture<Application> result = new CompletableFuture<>();
+        config.appendEntry(Application.class.getName(), updatedApplication.toByteArray()).whenComplete(
                 (done, throwable) -> {
                     if (throwable != null) {
                         logger.warn("_admin: Failed to add application", throwable);
                         result.completeExceptionally(throwable);
                     } else {
-                        result.complete(null);
+                        result.complete(resultApplication);
                         contextController.getContexts()
-                                                            .filter(c -> !GrpcRaftController.ADMIN_GROUP.equals(c.getName()))
-                                                            .forEach(c -> {
-                                             ApplicationContextRole acr = getRolesPerContext(application,
-                                                                                             c.getName());
-                                             Application.Builder builder = Application.newBuilder(application)
-                                                                                      .clearRolesPerContext();
-                                             if (acr != null) {
-                                                 builder.addRolesPerContext(acr);
-                                             }
-                                                                raftGroupServiceFactory.getRaftGroupService(c.getName())
-                                                                                  .updateApplication(c.getName(), builder.build());
+                                         .forEach(c -> {
+                                             updateApplicationInGroup(updatedApplication, c);
                                          });
                     }
                 }
         );
         return result;
+    }
+
+    private void updateApplicationInGroup(Application updatedApplication, Context c) {
+        try {
+            ApplicationContextRole roles = getRolesPerContext(updatedApplication,
+                                                              c.getName());
+            ContextApplication contextApplication =
+                    ContextApplication.newBuilder()
+                                      .setContext(c.getName())
+                                      .setName(updatedApplication.getName())
+                                      .setHashedToken(updatedApplication.getToken())
+                                      .setTokenPrefix(updatedApplication
+                                                              .getTokenPrefix())
+                                      .addAllRoles(roles == null || roles.getRolesCount() == 0 ?
+                                                           Collections.emptyList() : roles.getRolesList()).build();
+
+            raftGroupServiceFactory.getRaftGroupService(c.getName())
+                                   .updateApplication(contextApplication);
+        } catch (Exception ex) {
+            logger.warn("Failed to update application in context {}", c.getName(), ex);
+        }
     }
 
     @Override
@@ -370,11 +428,10 @@ class LocalRaftConfigService implements RaftConfigService {
                           } else {
                               result.complete(null);
                               contextController.getContexts()
-                                               .filter(c -> !GrpcRaftController.ADMIN_GROUP.equals(c.getName()))
-                                               .forEach(c -> {
-                                                   raftGroupServiceFactory.getRaftGroupService(c.getName())
-                                                                          .deleteApplication(c.getName(), request);
-                                               });
+                                               .forEach(c -> raftGroupServiceFactory.getRaftGroupService(c.getName())
+                                                                                .deleteApplication(ContextApplication.newBuilder()
+                                                                                                           .setContext(c.getName())
+                                                                                                           .setName(request.getName()).build()));
                           }
                       }
               );

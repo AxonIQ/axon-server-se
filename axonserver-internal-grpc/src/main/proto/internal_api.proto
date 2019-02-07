@@ -33,9 +33,11 @@ service RaftConfigService {
 
     rpc DeleteContext(ContextName) returns (Confirmation) {}
 
-    rpc UpdateApplication(Application) returns (Confirmation) {}
+    rpc UpdateApplication(Application) returns (Application) {}
 
     rpc DeleteApplication(Application) returns (Confirmation) {}
+
+    rpc RefreshToken(Application) returns (Application) {}
 
     rpc UpdateUser(User) returns (Confirmation) {}
 
@@ -436,7 +438,10 @@ message ProcessorLBStrategy {
 
 message ContextApplication {
     string context = 1;
-    Application application = 2;
+    string name = 2;
+    string token_prefix = 3;
+    string hashed_token = 4;
+    repeated string roles = 5;
 }
 
 message ContextUser {
