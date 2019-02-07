@@ -73,8 +73,8 @@ public class InMemoryLogEntryStoreTest {
         testSubject.createEntry(1,"Type", "Content".getBytes());
         testSubject.clearOlderThan(0, TimeUnit.MILLISECONDS, () -> 5L);
         EntryIterator iterator = testSubject.createIterator(5);
-        assertEquals(4, iterator.previous().getIndex());
         assertEquals(5, iterator.next().getIndex());
+        assertEquals(4, iterator.previous().getIndex());
     }
 
     @Test
