@@ -10,11 +10,6 @@ service MessagingClusterService {
     // Creates a stream between 2 nodes in the cluser
     // calling side is service provider to called side
     rpc OpenStream( stream ConnectorCommand ) returns (stream ConnectorResponse) {}
-
-    // Node sends a request to join an existing cluster
-    // Input is the information on the joining node
-    // Response is a list of nodes already in the cluster
-    rpc Join( NodeInfo ) returns (stream NodeInfo) {}
 }
 
 /**
@@ -198,10 +193,6 @@ message ClientSubscriptionQueryRequest {
 }
 
 message ConnectResponse {
-    repeated ContextRole contexts = 2;
-    repeated NodeInfo nodes = 3;
-    repeated ModelVersion model_versions = 4;
-    int64 generation = 5;
     bool deleted = 6;
 }
 

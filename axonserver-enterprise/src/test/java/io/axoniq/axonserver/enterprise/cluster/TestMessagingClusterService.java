@@ -4,7 +4,6 @@ import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceI
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.stub.StreamObserver;
 
 import java.util.concurrent.Executors;
@@ -15,7 +14,7 @@ import java.util.concurrent.TimeUnit;
  * @author Marc Gathier
  */
 public class TestMessagingClusterService implements MessagingClusterServiceInterface {
-    ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     @Override
     public StreamObserver<ConnectorCommand> openStream(StreamObserver<ConnectorResponse> responseObserver) {
@@ -58,16 +57,6 @@ public class TestMessagingClusterService implements MessagingClusterServiceInter
             }
         };
         return inputStream;
-    }
-
-    @Override
-    public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
-
-    }
-
-    @Override
-    public void closeChannel() {
-
     }
 
 }

@@ -7,12 +7,9 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
@@ -29,7 +26,6 @@ import io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.Group;
 import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
@@ -45,8 +41,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -55,7 +49,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import javax.annotation.PreDestroy;
 
 /**
@@ -69,7 +62,6 @@ import javax.annotation.PreDestroy;
  * FlowControl
  * And then subscriptions (queries, commands)
  *
- * On connect return the application db version number, so connecting server can see if it is up to date with defined applications.
  * Maintains a list of clients connected to connected service.
  *
  * When connection lost, already sent commands are returned to caller with error status
@@ -81,7 +73,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
     private final ClusterController clusterController;
-    private final GrpcRaftController grpcRaftController;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<String, ConnectorReceivingStreamObserver> connections = new ConcurrentHashMap<>();
     private final Map<RequestCase, Collection<BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>>>> handlers
@@ -93,9 +84,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     @Value("${axoniq.axonserver.cluster.connectionCheckRetryWait:1000}")
     private int connectionCheckRetryWait = 1000;
     @Value("${axoniq.axonserver.cluster.query-threads:1}")
-    private final int queryProcessingThreads = 1;
+    private int queryProcessingThreads = 1;
     @Value("${axoniq.axonserver.cluster.command-threads:1}")
-    private final int commandProcessingThreads = 1;
+    private int commandProcessingThreads = 1;
     private final Set<GrpcFlowControlledDispatcherListener> dispatchListeners = new CopyOnWriteArraySet<>();
 
 
@@ -103,12 +94,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             CommandDispatcher commandDispatcher,
             QueryDispatcher queryDispatcher,
             ClusterController clusterController,
-            GrpcRaftController grpcRaftController,
             ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.clusterController = clusterController;
-        this.grpcRaftController = grpcRaftController;
         this.eventPublisher = eventPublisher;
     }
 
@@ -123,56 +112,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     public void shutdown() {
         dispatchListeners.forEach(GrpcFlowControlledDispatcherListener::cancel);
         dispatchListeners.clear();
-    }
-
-
-    public void sendToAll(ConnectorResponse response, Function<String, String> errorMessage){
-        connections.forEach((name, responseObserver) -> {
-            try {
-                responseObserver.publish(response);
-            } catch (Exception ex) {
-                logger.debug("{} - {}", errorMessage.apply(name), ex.getMessage());
-            }
-        });
-    }
-
-    public void onConnectorCommand(RequestCase requestCase, BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>> consumer){
-        this.handlers.computeIfAbsent(requestCase, rc -> new CopyOnWriteArraySet<>()).add(consumer);
-    }
-
-
-
-    @Override
-    public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
-        try {
-            checkConnection(request.getInternalHostName());
-            //TODO: remove? grpcRaftController.join(request);
-            responseObserver.onCompleted();
-        } catch (Exception mpe) {
-            logger.warn("Join request failed", mpe);
-            responseObserver.onError(GrpcExceptionBuilder.build(mpe));
-        }
-    }
-
-
-    private void checkConnection(String internalHostName)  {
-        int retries  = connectionCheckRetries;
-        while( retries-- > 0) {
-            try {
-                InetAddress.getAllByName(internalHostName);
-                return;
-            } catch (UnknownHostException unknownHost) {
-                if (retries == 0)
-                    throw new MessagingPlatformException(ErrorCode.UNKNOWN_HOST, "Unknown host: " + internalHostName);
-                try {
-                    logger.warn("Failed to resolve hostname {}, retrying in one second", internalHostName);
-                    Thread.sleep(connectionCheckRetryWait);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new MessagingPlatformException(ErrorCode.UNKNOWN_HOST, "Unknown host: " + internalHostName);
-                }
-            }
-        }
     }
 
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
@@ -199,15 +138,24 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     case CONNECT:
                         try {
                             messagingServerName = connectorCommand.getConnect().getNodeName();
-                            clusterController.addConnection(connectorCommand.getConnect(), false);
-                            logger.debug("Received connect from: {} - {}",
-                                         messagingServerName,
-                                         connectorCommand.getConnect());
+                            if( clusterController.connect(messagingServerName) ) {
+                                logger.debug("Received connect from: {} - {}",
+                                             messagingServerName,
+                                             connectorCommand.getConnect());
 
-                            responseObserver.onNext(ConnectorResponse.newBuilder()
-                                                                     .setConnectResponse(ConnectResponse.newBuilder())
-                                                                     .build());
-                            connections.put(messagingServerName, this);
+                                responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                         .setConnectResponse(ConnectResponse
+                                                                                                     .newBuilder())
+                                                                         .build());
+                                connections.put(messagingServerName, this);
+                            } else {
+                                logger.warn("Received connection from unknown node {}, closing connection", messagingServerName);
+                                responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                         .setConnectResponse(ConnectResponse
+                                                                                                     .newBuilder().setDeleted(true))
+                                                                         .build());
+                                responseObserver.onCompleted();
+                            }
                         } catch( MessagingPlatformException mpe) {
                             responseObserver.onError(mpe);
                         }

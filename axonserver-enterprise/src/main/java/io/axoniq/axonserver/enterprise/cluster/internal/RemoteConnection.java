@@ -152,10 +152,13 @@ public class RemoteConnection  {
                                      connectResponse);
 
                         try {
-
-                            clusterController
-                                    .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
-                                            RemoteConnection.this));
+                            if( connectResponse.getDeleted()) {
+                                clusterController.requestDelete(clusterNode.getName());
+                            } else {
+                                clusterController
+                                        .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
+                                                RemoteConnection.this));
+                            }
 
                         } catch (Exception ex) {
                             logger.warn("Failed to process request {}",
