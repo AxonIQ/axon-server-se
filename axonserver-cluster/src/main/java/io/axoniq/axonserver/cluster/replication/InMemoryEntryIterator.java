@@ -6,38 +6,40 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.lang.Math.max;
-
 public class InMemoryEntryIterator implements EntryIterator {
 
     private final LogEntryStore logEntryStore;
-    private final AtomicLong currentIndex = new AtomicLong();
-    private volatile Entry lastEntry = null;
-    private volatile Entry currentEntry = null;
+    private final AtomicLong nextIndex = new AtomicLong();
+    private volatile TermIndex previous;
+    private volatile TermIndex current;
 
     public InMemoryEntryIterator(LogEntryStore logEntryStore, long start) {
         this.logEntryStore = logEntryStore;
-        this.currentIndex.set(max(start,1));
-        lastEntry = logEntryStore.getEntry(start-1);
+        this.nextIndex.set(start);
     }
 
     @Override
     public boolean hasNext() {
-        return currentIndex.get() <= logEntryStore.lastLogIndex();
+        return nextIndex.get() <= logEntryStore.lastLogIndex();
     }
 
     @Override
     public Entry next() {
-        if( currentIndex.get() > logEntryStore.lastLogIndex()) throw new NoSuchElementException();
-        lastEntry = currentEntry;
-        currentEntry = logEntryStore.getEntry(currentIndex.getAndIncrement());
-        return currentEntry;
+        if (!hasNext()) throw new NoSuchElementException();
+        Entry entry = logEntryStore.getEntry(nextIndex.getAndIncrement());
+        previous = current != null ? current : termIndexOf(entry.getIndex()-1);
+        current = new TermIndex(entry);
+        return entry;
     }
 
     @Override
     public TermIndex previous() {
-        if( lastEntry == null) return null;
-        return new TermIndex(lastEntry.getTerm(), lastEntry.getIndex());
+       return previous;
+    }
+
+    private TermIndex termIndexOf(long index){
+        if (index == 0) return new TermIndex();
+        return new TermIndex(logEntryStore.getEntry(index));
     }
 
 }
