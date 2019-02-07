@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 public class RaftNode {
 
@@ -82,6 +83,16 @@ public class RaftNode {
         return false;
     }
 
+    /**
+     * Performs a log compaction for logs older than the specified time.
+     *
+     * @param time the time before which the logs could be deleted.
+     * @param timeUnit the time unit
+     */
+    public void forceLogCleaning(long time, TimeUnit timeUnit){
+        LongSupplier lastAppliedIndexSupplier = () -> raftGroup.logEntryProcessor().lastAppliedIndex();
+        raftGroup.localLogEntryStore().clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
+    }
 
     private boolean stopLogCleaning(){
         if (scheduledLogCleaning != null) {
