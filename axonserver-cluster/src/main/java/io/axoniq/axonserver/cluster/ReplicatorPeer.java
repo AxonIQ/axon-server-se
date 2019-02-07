@@ -15,12 +15,12 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import javax.annotation.Nonnull;
 
 import static java.lang.String.format;
 
@@ -192,7 +192,7 @@ public class ReplicatorPeer {
 
         @Override
         public void stop() {
-            registration.cancel();
+            Optional.ofNullable(registration).ifPresent(Registration::cancel);
         }
 
         @Override
@@ -239,6 +239,7 @@ public class ReplicatorPeer {
                 }
             } catch (RuntimeException ex) {
                 logger.warn("{}: Sending nextEntries to {} failed", groupId(), raftPeer.nodeId(), ex);
+                updateEntryIterator();
             }
             return sent;
         }
@@ -260,7 +261,6 @@ public class ReplicatorPeer {
                             response.getFailure().getLastAppliedIndex(),
                             matchIndex());
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
-                nextIndex.set(matchIndex.get() + 1);
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
@@ -402,7 +402,8 @@ public class ReplicatorPeer {
     }
 
     private void setMatchIndex(long newMatchIndex) {
-        long newValue = matchIndex.updateAndGet(old -> (old < newMatchIndex) ? newMatchIndex : old);
-        matchIndexCallback.accept(newValue);
+        long matchIndexValue = matchIndex.updateAndGet(old -> (old < newMatchIndex) ? newMatchIndex : old);
+        matchIndexCallback.accept(matchIndexValue);
+        nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, matchIndexValue + 1));
     }
 }
