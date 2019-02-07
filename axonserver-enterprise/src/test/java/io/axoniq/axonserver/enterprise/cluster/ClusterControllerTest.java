@@ -118,7 +118,7 @@ public class ClusterControllerTest {
 
         RaftGroupRepositoryManager mockRaftGroupRepositoryManager = mock(RaftGroupRepositoryManager.class);
         when( mockRaftGroupRepositoryManager.findByGroupId(anyString())).thenReturn(Collections.singleton(new JpaRaftGroupNode("default",
-                                                                                                                               Node.newBuilder().setNodeId("MyName").build())));
+                                                                                                                               Node.newBuilder().setNodeId("MyName").setNodeName("MyName").build())));
         CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
         testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,

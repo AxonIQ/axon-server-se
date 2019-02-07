@@ -21,6 +21,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,6 +77,15 @@ public class ContextControllerTest {
             String name = invocationOnMock.getArgument(0).toString();
             return entityManager.find(ClusterNode.class, name);
         });
+        doAnswer(invocationOnMock ->  {
+            String node = invocationOnMock.getArgument(0).toString();
+            String context = invocationOnMock.getArgument(1).toString();
+            ClusterNode clusterNode = entityManager.find(ClusterNode.class, node);
+            if( clusterNode != null) {
+                clusterNode.removeContext(context);
+            }
+            return null;
+        }).when(clusterController).removeContext(anyString(), anyString());
     }
 
     private NodeInfoWithLabel nodeInfo(ClusterNode clusterNode) {
@@ -122,8 +132,9 @@ public class ContextControllerTest {
     @Test
     public void deleteNodeFromContext() {
         List<NodeInfoWithLabel> nodes = initialNodes.stream().filter(n -> !n.getNode().getNodeName().equals("node1")).collect(Collectors.toList());
-
-        testSubject.updateContext(io.axoniq.axonserver.grpc.internal.ContextConfiguration.newBuilder().setContext(Topology.DEFAULT_CONTEXT).addAllNodes(nodes).build());
+        testSubject.updateContext(io.axoniq.axonserver.grpc.internal.ContextConfiguration.newBuilder()
+                                                                                         .setContext(Topology.DEFAULT_CONTEXT)
+                                                                                         .addAllNodes(nodes).build());
         ClusterNode node1 = entityManager.find(ClusterNode.class, "node1");
         assertEquals(0, node1.getContextNames().size());
     }
