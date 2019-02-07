@@ -87,7 +87,11 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
-            if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm())) {
+            // or if the previous index and term are different from those included in the latest snapshot installed
+            if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm()) &&
+                    (logEntryProcessor.lastAppliedIndex() != request.getPrevLogIndex() ||
+                    logEntryProcessor.lastAppliedTerm() != request.getPrevLogTerm())
+            ) {
                 String failureCause = String.format("%s: previous term/index missing %s/%s last log %s",
                                                     groupId(),
                                                     request.getPrevLogTerm(),
