@@ -73,19 +73,6 @@ public class ContextControllerTest {
         entityManager.persist(node2);
         entityManager.flush();
         testSubject = new ContextController(entityManager, clusterController);
-        when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
-            String name = invocationOnMock.getArgument(0).toString();
-            return entityManager.find(ClusterNode.class, name);
-        });
-        doAnswer(invocationOnMock ->  {
-            String node = invocationOnMock.getArgument(0).toString();
-            String context = invocationOnMock.getArgument(1).toString();
-            ClusterNode clusterNode = entityManager.find(ClusterNode.class, node);
-            if( clusterNode != null) {
-                clusterNode.removeContext(context);
-            }
-            return null;
-        }).when(clusterController).removeContext(anyString(), anyString());
     }
 
     private NodeInfoWithLabel nodeInfo(ClusterNode clusterNode) {

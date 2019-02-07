@@ -5,7 +5,6 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -59,14 +56,15 @@ public class ContextController {
             context = new Context(contextConfiguration.getContext());
             entityManager.persist(context);
         }
-        Set<String> currentNodes = context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).collect(Collectors.toSet());
+        Map<String, ClusterNode> currentNodes = new HashMap<>();
+        context.getAllNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
         Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();
         contextConfiguration.getNodesList().forEach(n -> newNodes.put(n.getNode().getNodeName(), n));
 
         Map<String, ClusterNode> clusterInfoMap = new HashMap<>();
         for (NodeInfoWithLabel nodeInfo : contextConfiguration.getNodesList()) {
             String nodeName = nodeInfo.getNode().getNodeName();
-            ClusterNode clusterNode = clusterController.getNode(nodeName);
+            ClusterNode clusterNode = getNode(nodeName);
             if( clusterNode == null) {
                 logger.warn("{}: Creating new connection to {}", contextConfiguration.getContext(), nodeInfo.getNode().getNodeName());
                 clusterNode = clusterController.addConnection(nodeInfo.getNode(), false);
@@ -75,14 +73,14 @@ public class ContextController {
         }
 
         Context finalContext = context;
-        currentNodes.forEach(node -> {
+        currentNodes.forEach((node, clusterNode) -> {
             if( !newNodes.containsKey(node)) {
                 logger.warn("{}: Node not in new configuration {}", contextConfiguration.getContext(), node);
-                clusterController.removeContext(node, finalContext.getName());
+                clusterNode.removeContext(finalContext.getName());
             }
             });
         newNodes.forEach((node, nodeInfo) -> {
-            if( !currentNodes.contains(node)) {
+            if( !currentNodes.containsKey(node)) {
                 logger.warn("{}: Node not in current configuration {}", contextConfiguration.getContext(), node);
                 clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel(), false, false);
             }
@@ -92,14 +90,9 @@ public class ContextController {
     public Iterable<String> getNodes() {
         return entityManager.createQuery("select n.name from ClusterNode n", String.class).getResultList();
     }
-    public List<NodeInfo> getNodeInfos(List<String> nodes) {
-        return nodes.stream().map(clusterController::getNode)
-                    .map(ClusterNode::toNodeInfo)
-                    .collect(Collectors.toList());
-    }
 
     public ClusterNode getNode(String node) {
-        return clusterController.getNode(node);
+        return entityManager.find(ClusterNode.class, node);
     }
 
 

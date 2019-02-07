@@ -409,16 +409,4 @@ public class ClusterController implements SmartLifecycle {
     public long getConnectionWaitTime() {
         return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
     }
-
-    @Transactional
-    public void removeContext(String node, String name) {
-        ClusterNode clusterNode = entityManager.find(ClusterNode.class, node);
-        if( clusterNode !=null) {
-            clusterNode.removeContext(name);
-            nodeMap.remove(node);
-            logger.warn("{}: Removed node {} from context", name, node);
-        }
-
-
-    }
 }
