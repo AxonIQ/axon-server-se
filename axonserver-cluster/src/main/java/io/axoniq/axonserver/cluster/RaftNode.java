@@ -172,26 +172,34 @@ public class RaftNode {
 
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.trace("{}: Received AppendEntries request in state {} {}", groupId(), state.get(), request);
-        messagesListeners.forEach(consumer -> consumer.accept(request));
+        notifyMessage(request);
         AppendEntriesResponse response = state.get().appendEntries(request);
-        messagesListeners.forEach(consumer -> consumer.accept(response));
+        notifyMessage(response);
         return response;
     }
 
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         logger.trace("{}: Received RequestVote request in state {} {}", groupId(), state.get(), request);
-        messagesListeners.forEach(consumer -> consumer.accept(request));
+        notifyMessage(request);
         RequestVoteResponse response = state.get().requestVote(request);
-        messagesListeners.forEach(consumer -> consumer.accept(response));
+        notifyMessage(response);
         return response;
     }
 
     public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         logger.trace("{}: Received InstallSnapshot request in state {} {}", groupId(), state.get(), request);
-        messagesListeners.forEach(consumer -> consumer.accept(request));
+        notifyMessage(request);
         InstallSnapshotResponse response = state.get().installSnapshot(request);
-        messagesListeners.forEach(consumer -> consumer.accept(response));
+        notifyMessage(response);
         return response;
+    }
+
+    private void notifyMessage(Object message){
+            messagesListeners.forEach(consumer -> {
+                try {
+                    consumer.accept(message);
+                } catch (Exception ignore){}
+            });
     }
 
     public void stop() {
