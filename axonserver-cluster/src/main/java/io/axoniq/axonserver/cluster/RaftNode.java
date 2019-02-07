@@ -18,6 +18,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -270,5 +271,9 @@ public class RaftNode {
 
     public RaftGroup raftGroup() {
         return raftGroup;
+    }
+
+    public Iterator<ReplicatorPeer> replicatorPeers() {
+        return state.get().replicatorPeers();
     }
 }

@@ -10,7 +10,7 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
-import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -58,5 +58,9 @@ public interface MembershipState extends ClusterConfiguration{
 
     default List<Node> currentGroupMembers(){
         return emptyList();
+    }
+
+    default Iterator<ReplicatorPeer> replicatorPeers() {
+        throw new UnsupportedOperationException("Operation only supported in leader state");
     }
 }

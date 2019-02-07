@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
+import io.axoniq.axonserver.cluster.replication.MajorityMatchStrategy;
+import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
@@ -25,6 +27,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
     private final SnapshotManager snapshotManager;
     private final CurrentConfiguration currentConfiguration;
     private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
+    private final MatchStrategy matchStrategy;
 
 
     public DefaultStateFactory(RaftGroup raftGroup,
@@ -39,6 +42,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
+        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(), () -> raftGroup.localNode().replicatorPeers());
 
     }
 
@@ -63,6 +67,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
                           .currentConfiguration(currentConfiguration)
                           .registerConfigurationListenerFn(registerConfigurationListener)
                           .stateFactory(stateFactory())
+                          .matchStrategy(matchStrategy)
                           .build();
     }
 

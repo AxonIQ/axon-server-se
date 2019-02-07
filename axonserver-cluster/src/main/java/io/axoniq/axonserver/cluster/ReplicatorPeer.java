@@ -27,7 +27,7 @@ import static java.lang.String.format;
 /**
  * @author Milan Savic
  */
-class ReplicatorPeer {
+public class ReplicatorPeer {
 
 
     private interface ReplicatorPeerState {
