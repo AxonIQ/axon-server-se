@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.access.jpa;
+package io.axoniq.axonserver.access.application;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -12,6 +12,7 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
+import javax.persistence.Table;
 
 import static java.util.Arrays.asList;
 
@@ -19,7 +20,8 @@ import static java.util.Arrays.asList;
  * @author Marc Gathier
  */
 @Entity
-public class Application {
+@Table(name="application")
+public class JpaApplication {
 
     @Id
     @GeneratedValue
@@ -38,15 +40,15 @@ public class Application {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, mappedBy = "application")
     private Set<ApplicationContext> contexts = new HashSet<>();
 
-    public Application() {
+    public JpaApplication() {
     }
 
-    public Application(String name, String description, String tokenPrefix, String hashedToken, ApplicationContext... contexts) {
+    public JpaApplication(String name, String description, String tokenPrefix, String hashedToken, ApplicationContext... contexts) {
         this(name, description, tokenPrefix, hashedToken, asList(contexts));
     }
 
-    public Application(String name, String description, String tokenPrefix, String hashedToken,
-                       List<ApplicationContext> contexts) {
+    public JpaApplication(String name, String description, String tokenPrefix, String hashedToken,
+                          List<ApplicationContext> contexts) {
         this.name = name;
         this.description = description;
         this.tokenPrefix = tokenPrefix;
@@ -56,7 +58,7 @@ public class Application {
     }
 
 
-    public Application(String name) {
+    public JpaApplication(String name) {
         this.name = name;
     }
 

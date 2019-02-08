@@ -7,11 +7,9 @@ import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.User;
 import io.grpc.stub.StreamObserver;
 
 import java.util.List;
@@ -59,13 +57,6 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.mergeAppAuthorization(application,
                                    new CompletableStreamObserver<>(result));
-        return result;
-    }
-
-    @Override
-    public CompletableFuture<Void> updateUser(String context, User request) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.mergeUserAuthorization(ContextUser.newBuilder().setContext(context).setUser(request).build(), new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 
@@ -128,23 +119,6 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                 .setProcessorLBStrategy(processorLBStrategy)
                                                                 .build(),
                                       new CompletableStreamObserver<>(result, TO_VOID));
-        return result;
-    }
-
-    @Override
-    public CompletableFuture<Void> deleteApplication(ContextApplication application) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteAppAuthorization(application, new CompletableStreamObserver<>(result, TO_VOID));
-        return result;
-    }
-
-    @Override
-    public CompletableFuture<Void> deleteUser(String context, User request) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteUserAuthorization(ContextUser.newBuilder()
-                                                      .setUser(request)
-                                                      .setContext(context)
-                                                      .build(), new CompletableStreamObserver<>(result, TO_VOID));
         return result;
     }
 

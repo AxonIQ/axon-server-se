@@ -37,6 +37,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Author: marc
@@ -90,8 +91,8 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(UserControllerFacade.class)
-    public UserControllerFacade userControllerFacade(UserController userController, RaftConfigServiceFactory raftServiceFactory) {
-        return new RaftUserControllerFacade(userController, raftServiceFactory);
+    public UserControllerFacade userControllerFacade(UserController userController, PasswordEncoder passwordEncoder, RaftConfigServiceFactory raftServiceFactory) {
+        return new RaftUserControllerFacade(userController, passwordEncoder, raftServiceFactory);
     }
 
     @Bean

@@ -1,13 +1,12 @@
 package io.axoniq.axonserver.migration;
 
 import io.axoniq.axonserver.LifecycleController;
-import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.jpa.Safepoint;
-import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,14 +163,14 @@ public class AxonDBMigration implements SmartLifecycle {
             " where application.id = application_roles.application_id" +
             " and application_role.id = application_roles.roles_id");
              ResultSet resultSet = ps.executeQuery() ) {
-            Application application = null;
+            JpaApplication application = null;
             while(resultSet.next()) {
                 String applicationName = resultSet.getString(1);
                 if( application == null || ! applicationName.equals(application.getName())) {
                     if( application != null) {
                         entityManager.persist(application);
                     }
-                    application = new Application(applicationName, resultSet.getString(2), null, resultSet.getString(3));
+                    application = new JpaApplication(applicationName, resultSet.getString(2), null, resultSet.getString(3));
                 }
 
                 application.addRole(resultSet.getString(4), resultSet.getString(5));

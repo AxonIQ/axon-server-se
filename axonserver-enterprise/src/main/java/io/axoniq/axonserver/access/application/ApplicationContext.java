@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.access.jpa;
+package io.axoniq.axonserver.access.application;
 
 
 import java.util.List;
@@ -26,7 +26,7 @@ public class ApplicationContext {
 
     @ManyToOne
     @JoinColumn(name="application_id")
-    private Application application;
+    private JpaApplication application;
 
     private String context;
 
@@ -53,11 +53,11 @@ public class ApplicationContext {
                     .anyMatch(role::equals);
     }
 
-    public Application getApplication() {
+    public JpaApplication getApplication() {
         return application;
     }
 
-    public void setApplication(Application application) {
+    public void setApplication(JpaApplication application) {
         this.application = application;
     }
 

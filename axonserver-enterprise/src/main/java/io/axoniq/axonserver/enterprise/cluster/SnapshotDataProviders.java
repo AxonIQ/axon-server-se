@@ -1,8 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.application.JpaContextApplicationController;
 import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ApplicationSnapshotDataStore;
+import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.EventTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.LoadBalanceStrategySnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ProcessorLoadBalancingSnapshotDataStore;
@@ -22,7 +24,7 @@ import static java.util.Arrays.asList;
 
 /**
  * @author Sara Pellegrini
- * @since
+ * @since 4.1
  */
 @Component
 public class SnapshotDataProviders implements Function<String, List<SnapshotDataStore>> {
@@ -35,33 +37,33 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
 
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
+    private final JpaContextApplicationController contextApplicationController;
     private final ApplicationContext applicationContext;
-
-//    private final LocalEventStore localEventStore;
 
     public SnapshotDataProviders(
             ApplicationController applicationController,
             UserRepository userRepository,
             LoadBalanceStrategyRepository loadBalanceStrategyRepository,
             ProcessorLoadBalancingRepository processorLoadBalancingRepository,
-//                                 LocalEventStore localEventStore
+            JpaContextApplicationController contextApplicationController,
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
         this.loadBalanceStrategyRepository = loadBalanceStrategyRepository;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
-//        this.localEventStore = localEventStore;
+        this.contextApplicationController = contextApplicationController;
         this.applicationContext = applicationContext;
     }
 
     public List<SnapshotDataStore> apply(String context){
         LocalEventStore localEventStore = applicationContext.getBean(LocalEventStore.class);
         return asList(new ApplicationSnapshotDataStore(context, applicationController),
+                      new ContextApplicationSnapshotDataStore(context, contextApplicationController),
                       new EventTransactionsSnapshotDataStore(context, localEventStore),
                       new LoadBalanceStrategySnapshotDataStore(loadBalanceStrategyRepository),
                       new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
                       new SnapshotTransactionsSnapshotDataStore(context, localEventStore),
-                      new UserSnapshotDataStore(userRepository));
+                      new UserSnapshotDataStore(context, userRepository));
     }
 
 }

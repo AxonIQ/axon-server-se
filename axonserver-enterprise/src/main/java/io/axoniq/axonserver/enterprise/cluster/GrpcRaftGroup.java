@@ -23,13 +23,14 @@ import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManage
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.grpc.ClientInterceptor;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class GrpcRaftGroup implements RaftGroup {
     private final LogEntryStore localLogEntryStore;
@@ -37,11 +38,14 @@ public class GrpcRaftGroup implements RaftGroup {
     private final RaftConfiguration raftConfiguration;
     private final RaftNode localNode;
     private final LogEntryProcessor logEntryProcessor;
+    private final ClientInterceptor[] interceptors;
 
     public GrpcRaftGroup(String localNodeId, String groupId,
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
                          RaftProperties storageOptions,
-                         Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory) {
+                         Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory,
+                         ClientInterceptor[] interceptors) {
+        this.interceptors = interceptors;
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
         raftStateController.init();
         logEntryProcessor = new LogEntryProcessor(raftStateController);
@@ -136,7 +140,7 @@ public class GrpcRaftGroup implements RaftGroup {
         List<Node> nodes = raftConfiguration.groupMembers();
         for (Node node : nodes) {
             if (node.getNodeId().equals(nodeId)){
-                return new GrpcRaftPeer(node);
+                return new GrpcRaftPeer(node, interceptors);
             }
         }
         throw new IllegalArgumentException(nodeId + " is not member of this group");
@@ -144,7 +148,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public RaftPeer peer(Node node) {
-        return new GrpcRaftPeer(node);
+        return new GrpcRaftPeer(node, interceptors);
     }
 
     @Override

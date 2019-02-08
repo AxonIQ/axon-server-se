@@ -1,23 +1,24 @@
-package io.axoniq.axonserver.enterprise.jpa;
+package io.axoniq.axonserver.access.application;
 
 import java.util.HashSet;
 import java.util.Set;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
-public class JpaRaftGroupApplication {
+public class JpaContextApplication {
 
     @GeneratedValue
     @Id
     private Long id;
 
-    private String groupId;
+    private String context;
 
     private String name;
 
@@ -25,14 +26,14 @@ public class JpaRaftGroupApplication {
 
     private String hashedToken;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private Set<String> roles = new HashSet<>();
 
-    JpaRaftGroupApplication() {
+    JpaContextApplication() {
 
     }
-    public JpaRaftGroupApplication(String groupId, String name) {
-        this.groupId = groupId;
+    public JpaContextApplication(String context, String name) {
+        this.context = context;
         this.name = name;
     }
 
@@ -44,12 +45,12 @@ public class JpaRaftGroupApplication {
         this.id = id;
     }
 
-    public String getGroupId() {
-        return groupId;
+    public String getContext() {
+        return context;
     }
 
-    public void setGroupId(String groupId) {
-        this.groupId = groupId;
+    public void setContext(String context) {
+        this.context = context;
     }
 
     public String getName() {
@@ -83,4 +84,5 @@ public class JpaRaftGroupApplication {
     public void setRoles(Set<String> roles) {
         this.roles = roles;
     }
+
 }

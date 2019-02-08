@@ -5,13 +5,10 @@ import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.role.RoleController;
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,14 +35,11 @@ public class UserRestController {
     private final Logger logger = LoggerFactory.getLogger(UserRestController.class);
     private final UserControllerFacade userController;
     private final RoleController roleController;
-    private final ApplicationEventPublisher eventPublisher;
 
     public UserRestController(UserControllerFacade userController,
-                              RoleController roleController,
-                              ApplicationEventPublisher eventPublisher) {
+                              RoleController roleController) {
         this.userController = userController;
         this.roleController = roleController;
-        this.eventPublisher = eventPublisher;
     }
 
     @PostMapping("users")
@@ -56,8 +50,7 @@ public class UserRestController {
                 if( ! validRoles.contains(role)) throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE, role + ": Role unknown");
             }
         }
-        User updatedUser = userController.updateUser(userJson.userName, userJson.password, userJson.roles);
-        eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false));
+        userController.updateUser(userJson.userName, userJson.password, userJson.roles);
     }
 
     @GetMapping("public/users")
@@ -74,7 +67,6 @@ public class UserRestController {
     public void dropUser(@PathVariable("name") String name) {
         try {
             userController.deleteUser(name);
-            eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false));
         } catch (Exception exception) {
             logger.info("Delete user {} failed - {}", name, exception.getMessage());
             throw new MessagingPlatformException(ErrorCode.OTHER, exception.getMessage());

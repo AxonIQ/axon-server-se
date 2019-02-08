@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.test;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.access.jpa.Application;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;

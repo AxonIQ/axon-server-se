@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.websocket;
 
+import io.axoniq.axonserver.access.application.AppEvents;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,5 +18,9 @@ public class WebsocketApplicationContext {
         this.websocket = websocket;
     }
 
+    @EventListener
+    public void on(AppEvents.AppBaseEvent clusterEvent) {
+        websocket.convertAndSend("/topic/application", clusterEvent.appName());
+    }
 
 }

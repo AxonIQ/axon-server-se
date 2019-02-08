@@ -11,6 +11,7 @@ import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
@@ -23,6 +24,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+/**
+ * @author Marc Gathier
+ * @since 4.1
+ */
 public class GrpcRaftPeer implements RaftPeer {
     private static final Logger logger = LoggerFactory.getLogger(GrpcRaftPeer.class);
     public final Node node;
@@ -31,9 +36,14 @@ public class GrpcRaftPeer implements RaftPeer {
 
     private final AtomicReference<InstallSnapshotStream> installSnapshotStreamRef = new AtomicReference<>();
     private final AtomicReference<Consumer<InstallSnapshotResponse>> installSnapshotResponseListener = new AtomicReference<>();
+    private final ClientInterceptor[] interceptors;
 
     public GrpcRaftPeer(Node node) {
+        this(node, new ClientInterceptor[0]);
+    }
+    public GrpcRaftPeer(Node node, ClientInterceptor[] interceptors) {
         this.node = node;
+        this.interceptors = interceptors;
     }
 
     @Override
@@ -66,7 +76,7 @@ public class GrpcRaftPeer implements RaftPeer {
     }
 
     private LeaderElectionServiceGrpc.LeaderElectionServiceStub createLeaderElectionStub(Node node) {
-        return LeaderElectionServiceGrpc.newStub(getManagedChannel(node));
+        return LeaderElectionServiceGrpc.newStub(getManagedChannel(node)).withInterceptors(interceptors);
     }
 
     @Override
@@ -126,6 +136,7 @@ public class GrpcRaftPeer implements RaftPeer {
         private StreamObserver<InstallSnapshotRequest> initStreamObserver() {
             LogReplicationServiceGrpc.LogReplicationServiceStub stub = LogReplicationServiceGrpc.newStub(
                     getManagedChannel(node));
+            if( interceptors.length > 0) stub  = stub.withInterceptors(interceptors);
             return stub.installSnapshot(new StreamObserver<InstallSnapshotResponse>() {
                 @Override
                 public void onNext(InstallSnapshotResponse installSnapshotResponse) {
@@ -175,7 +186,7 @@ public class GrpcRaftPeer implements RaftPeer {
         private StreamObserver<AppendEntriesRequest> initStreamObserver() {
             LogReplicationServiceGrpc.LogReplicationServiceStub stub = LogReplicationServiceGrpc.newStub(
                     getManagedChannel(node));
-            logger.info("initStreamObserver {}", requestStreamRef);
+            if( interceptors.length > 0) stub  = stub.withInterceptors(interceptors);
             return stub.appendEntries(new StreamObserver<AppendEntriesResponse>() {
                 @Override
                 public void onNext(AppendEntriesResponse appendEntriesResponse) {

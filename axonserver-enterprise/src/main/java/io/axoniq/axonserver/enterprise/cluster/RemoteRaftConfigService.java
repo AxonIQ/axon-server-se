@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
@@ -51,9 +53,9 @@ public class RemoteRaftConfigService implements RaftConfigService {
             completableFuture.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            e.printStackTrace();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getCause().getMessage(), e.getCause());
         }
     }
 
@@ -94,16 +96,16 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public CompletableFuture<Application> updateApplication(Application application) {
-        CompletableFuture<Application> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.updateApplication(application, new CompletableStreamObserver<>(confirmation));
-        return confirmation;
+        CompletableFuture<Application> returnedApplication = new CompletableFuture<>();
+        raftConfigServiceStub.updateApplication(application, new CompletableStreamObserver<>(returnedApplication));
+        return returnedApplication;
     }
 
     @Override
     public CompletableFuture<Application> refreshToken(Application application) {
-        CompletableFuture<Application> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.refreshToken(application, new CompletableStreamObserver<>(confirmation));
-        return confirmation;
+        CompletableFuture<Application> returnedApplication = new CompletableFuture<>();
+        raftConfigServiceStub.refreshToken(application, new CompletableStreamObserver<>(returnedApplication));
+        return returnedApplication;
     }
 
 

@@ -1,8 +1,5 @@
 package io.axoniq.axonserver.access.application;
 
-import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationContext;
-import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.junit.*;
@@ -29,7 +26,7 @@ public class AccessControllerTest {
     @Mock
     private PathMappingRepository pathMappingRepository;
     @Mock
-    private ApplicationRepository applicationRepository;
+    private JpaContextApplicationRepository applicationRepository;
 
 
     @Before
@@ -44,11 +41,12 @@ public class AccessControllerTest {
 
         when(pathMappingRepository.findById(any())).thenReturn(Optional.empty());
         when(pathMappingRepository.findById("path1")).thenReturn(Optional.of(mapping));
-        List<Application> applications = new ArrayList<>();
-        applications.add(new Application("Test", "TEST", "12345678", hasher.hash("1234567890"),
-                                         new ApplicationContext("default", Collections.singletonList(
-                                                 new ApplicationContextRole("READ")
-                                         ))));
+        List<JpaContextApplication> applications = new ArrayList<>();
+        JpaContextApplication app = new JpaContextApplication("default", "Test");
+        app.setHashedToken(hasher.hash("1234567890"));
+        app.setTokenPrefix("12345678");
+        app.setRoles(Collections.singleton("READ"));
+        applications.add(app);
         when(applicationRepository.findAllByTokenPrefix(any())).thenReturn(applications);
 
         testSubject = new AccessControllerDB(applicationRepository, pathMappingRepository, hasher);

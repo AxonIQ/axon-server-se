@@ -7,7 +7,6 @@ import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Service
 public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase {
@@ -70,27 +69,6 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
         confirm(responseObserver, completable);
     }
 
-    @Override
-    public void mergeUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateUser(request.getContext(), request.getUser());
-        confirm(responseObserver, completable);
-    }
-
-    private Node toNode(ContextMember member) {
-        return Node.newBuilder().setPort(member.getPort()).setHost(member.getHost()).setNodeId(member.getNodeId()).build();
-    }
-
-    @Override
-    public void deleteAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
-        confirm(responseObserver, completable);
-    }
-
-    @Override
-    public void deleteUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteUser(request.getContext(), request.getUser());
-        confirm(responseObserver, completable);
-    }
 
     @Override
     public void mergeLoadBalanceStrategy(ContextLoadBalanceStrategy request,
@@ -119,5 +97,8 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
         responseObserver.onCompleted();
     }
 
+    private Node toNode(ContextMember member) {
+        return Node.newBuilder().setPort(member.getPort()).setHost(member.getHost()).setNodeId(member.getNodeId()).build();
+    }
 
 }
