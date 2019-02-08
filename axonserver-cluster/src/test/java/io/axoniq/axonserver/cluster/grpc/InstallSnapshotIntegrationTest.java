@@ -46,7 +46,7 @@ public class InstallSnapshotIntegrationTest {
 
     @Before
     public void setUp() throws Exception {
-        List<Node> nodes = asList(node("node1",7777),node("node2",7778),node("node3",7779));
+        List<Node> nodes = asList(node("node1", 7777), node("node2", 7778), node("node3", 7779));
         raftServers = new HashMap<>();
         clusterNodes = new HashMap<>();
         nodes.forEach(node -> {
@@ -88,18 +88,13 @@ public class InstallSnapshotIntegrationTest {
         CompletableFuture<Void> firstFuture = CompletableFuture.allOf(futures);
         firstFuture.get(25, TimeUnit.SECONDS);
         assertTrue(leader.isLeader());
-        assertWithin(15, TimeUnit.SECONDS,
-                     () -> assertEquals(secondFollower.raftGroup().logEntryProcessor().commitIndex(),
-                                        leader.raftGroup().logEntryProcessor().commitIndex()));
-
+        assertWithin(15, TimeUnit.SECONDS, commitIndexSynchronized(secondFollower, leader));
         assertNotNull(leader.raftGroup().localLogEntryStore().getEntry(2));
         leader.forceLogCleaning(0, MINUTES);
         assertTrue(leader.isLeader());
         assertNull(leader.raftGroup().localLogEntryStore().getEntry(2));
         firstFollower.start();
-        assertWithin(15, TimeUnit.SECONDS,
-                     () -> assertEquals(firstFollower.raftGroup().logEntryProcessor().commitIndex(),
-                                        leader.raftGroup().logEntryProcessor().commitIndex()));
+        assertWithin(15, TimeUnit.SECONDS, commitIndexSynchronized(firstFollower, leader));
         assertTrue(leader.isLeader());
         secondFollower.stop();
         assertFalse(firstFollower.isLeader());
@@ -110,11 +105,7 @@ public class InstallSnapshotIntegrationTest {
         }
         CompletableFuture<Void> secondFuture = CompletableFuture.allOf(futures);
         secondFuture.get(15, TimeUnit.SECONDS);
-
-        assertWithin(15, TimeUnit.SECONDS, () ->
-                assertEquals(firstFollower.raftGroup().logEntryProcessor().commitIndex(),
-                             leader.raftGroup().logEntryProcessor().commitIndex()));
-
+        assertWithin(15, TimeUnit.SECONDS, commitIndexSynchronized(firstFollower, leader));
         assertNotNull(leader.raftGroup().localLogEntryStore().getEntry(entryPerRound * 2L - 3L));
         leader.forceLogCleaning(0, MINUTES);
         assertNull(leader.raftGroup().localLogEntryStore().getEntry(entryPerRound * 2L - 3L));
@@ -124,9 +115,13 @@ public class InstallSnapshotIntegrationTest {
                      () -> assertTrue(secondFollower.raftGroup().logEntryProcessor().commitIndex() <
                                               leader.raftGroup().logEntryProcessor().commitIndex()));
         secondFollower.start();
-        assertWithin(15, TimeUnit.SECONDS, () ->
-                assertEquals(secondFollower.raftGroup().logEntryProcessor().commitIndex(),
-                             leader.raftGroup().logEntryProcessor().commitIndex()));
+        assertWithin(15, TimeUnit.SECONDS, commitIndexSynchronized(firstFollower, leader));
+        assertWithin(15, TimeUnit.SECONDS, commitIndexSynchronized(secondFollower, leader));
+    }
+
+    private Runnable commitIndexSynchronized(RaftNode node, RaftNode other) {
+        return () -> assertEquals(node.raftGroup().logEntryProcessor().commitIndex(),
+                                  other.raftGroup().logEntryProcessor().commitIndex());
     }
 
     @After
@@ -208,6 +203,16 @@ public class InstallSnapshotIntegrationTest {
         @Override
         public void update(List<Node> nodes) {
             initializePeers(nodes);
+        }
+
+        @Override
+        public int minElectionTimeout() {
+            return 1000;
+        }
+
+        @Override
+        public int maxElectionTimeout() {
+            return 2000;
         }
     }
 }
