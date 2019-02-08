@@ -261,6 +261,7 @@ public class ReplicatorPeer {
                             response.getFailure().getLastAppliedIndex(),
                             matchIndex());
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
+                nextIndex.set(matchIndex.get() + 1);
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
