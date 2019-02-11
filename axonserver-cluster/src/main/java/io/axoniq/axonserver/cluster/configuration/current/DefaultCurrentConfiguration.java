@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 
 /**
  * @author Sara Pellegrini
- * @since
+ * @since 4.1
  */
 public class DefaultCurrentConfiguration implements CurrentConfiguration {
 
