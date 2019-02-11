@@ -17,7 +17,7 @@ public class LeaderElectionService extends LeaderElectionServiceGrpc.LeaderElect
 
     @Override
     public void requestVote(RequestVoteRequest request, StreamObserver<RequestVoteResponse> responseObserver) {
-        RaftNode node = raftGroupManager.raftNode(request.getGroupId(), null);
+        RaftNode node = raftGroupManager.raftNode(request.getGroupId());
         if( node != null) {
             try {
                 RequestVoteResponse response = node.requestVote(request);

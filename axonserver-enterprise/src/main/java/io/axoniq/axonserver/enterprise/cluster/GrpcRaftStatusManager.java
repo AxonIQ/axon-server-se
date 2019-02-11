@@ -4,8 +4,6 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.State;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
@@ -15,7 +13,6 @@ import org.springframework.stereotype.Controller;
  */
 @Controller
 public class GrpcRaftStatusManager {
-    private final Logger logger = LoggerFactory.getLogger(GrpcRaftStatusManager.class);
     private final ContextController contextController;
     private final RaftGroupServiceFactory raftServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
@@ -43,9 +40,12 @@ public class GrpcRaftStatusManager {
 
     private void updateLeader(Context context) {
         context.getMembersList().forEach(cm -> {
-            if( State.LEADER.getNumber() == cm.getState().getNumber() && ! cm.getNodeName().equals(raftLeaderProvider.getLeader(context.getName())) ) {
-                    logger.warn("{}: new leader id {}, name {}", context.getName(), cm.getNodeId(), cm.getNodeName());
-                    eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context.getName(), cm.getNodeName(), true));
+            if (State.LEADER.getNumber() == cm.getState().getNumber() && !cm.getNodeName().equals(raftLeaderProvider
+                                                                                                          .getLeader(
+                                                                                                                  context.getName()))) {
+                eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context.getName(),
+                                                                                 cm.getNodeName(),
+                                                                                 true));
             }
         });
     }

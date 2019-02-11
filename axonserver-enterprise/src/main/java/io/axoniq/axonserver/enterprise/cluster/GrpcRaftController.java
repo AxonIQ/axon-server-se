@@ -218,7 +218,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     }
 
     @Override
-    public RaftNode raftNode(String groupId, String nodeId) {
+    public RaftNode getOrCreateRaftNode(String groupId, String nodeId) {
         RaftGroup raftGroup = raftGroupMap.get(groupId);
         if(raftGroup != null) return raftGroup.localNode();
         if( nodeId == null) return null;
