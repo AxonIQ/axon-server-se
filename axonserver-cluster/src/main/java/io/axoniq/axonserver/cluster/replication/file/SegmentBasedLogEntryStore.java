@@ -56,7 +56,7 @@ public abstract class SegmentBasedLogEntryStore {
     }
 
     public long getFirstToken() {
-        if( next != null) return next.getFirstToken();
+        if( next != null && !next.getSegments().isEmpty()) return next.getFirstToken();
         if( getSegments().isEmpty() ) return 0;
         return getSegments().last();
     }
