@@ -67,20 +67,30 @@ class LocalRaftConfigService implements RaftConfigService {
         ClusterNode clusterNode = contextController.getNode(node);
         String nodeLabel = generateNodeLabel(node);
         Node raftNode = createNode(clusterNode, nodeLabel);
-        raftGroupServiceFactory.getRaftGroupService(context).addNodeToContext(context, raftNode).thenApply(
-                r -> {
-                    NodeInfoWithLabel newMember = NodeInfoWithLabel.newBuilder().setLabel(nodeLabel).setNode(clusterNode.toNodeInfo()).build();
-                    ContextConfiguration contextConfiguration =
-                            ContextConfiguration.newBuilder()
-                                                .setContext(context)
-                                                .addAllNodes(
-                                                        Stream.concat(nodes(context),Stream.of(newMember))
-                                                              .collect(Collectors.toList()))
-                                                .build();
-                    config.appendEntry(ContextConfiguration.class.getName(),
-                                       contextConfiguration.toByteArray());
-                    return r;
-                });
+        try {
+            raftGroupServiceFactory.getRaftGroupService(context).addNodeToContext(context, raftNode).thenApply(
+                    r -> {
+                        NodeInfoWithLabel newMember = NodeInfoWithLabel.newBuilder().setLabel(nodeLabel).setNode(clusterNode.toNodeInfo()).build();
+                        ContextConfiguration contextConfiguration =
+                                ContextConfiguration.newBuilder()
+                                                    .setContext(context)
+                                                    .addAllNodes(
+                                                            Stream.concat(nodes(context),Stream.of(newMember))
+                                                                  .collect(Collectors.toList()))
+                                                    .build();
+                        config.appendEntry(ContextConfiguration.class.getName(),
+                                           contextConfiguration.toByteArray());
+                        return r;
+                    }).get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
+        } catch (ExecutionException e) {
+            logger.warn("{}: Failed to add node {}", context, node, e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to execute", e.getCause());
+        } catch (TimeoutException e) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Timeout while adding node to context", e);
+        }
     }
 
     private String generateNodeLabel(String node) {
@@ -104,6 +114,7 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void deleteContext(String context) {
         Collection<String> nodeNames = contextController.getContext(context).getNodeNames();
+        @SuppressWarnings("unchecked")
         CompletableFuture<Void>[] workers = new CompletableFuture[nodeNames.size()];
         int nodeIdx = 0;
         for( String name : nodeNames) {
@@ -127,6 +138,7 @@ class LocalRaftConfigService implements RaftConfigService {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
             logger.warn("Failed to delete context {}", context, e);
             throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to execute", e.getCause());
@@ -141,7 +153,17 @@ class LocalRaftConfigService implements RaftConfigService {
         Context contextDef = contextController.getContext(context);
         String nodeLabel = contextDef.getNodeLabel(node);
 
-        removeNodeFromContext(context, node, nodeLabel);
+        try {
+            removeNodeFromContext(context, node, nodeLabel).get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
+        } catch (ExecutionException e) {
+            logger.warn("{}: Failed to delete node {}", context, node, e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to execute", e.getCause());
+        } catch (TimeoutException e) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Timeout while deleting node from context", e);
+        }
     }
 
     private CompletableFuture<Void> removeNodeFromContext(String context, String node, String nodeLabel) {
@@ -157,20 +179,20 @@ class LocalRaftConfigService implements RaftConfigService {
                 config.appendEntry(ContextConfiguration.class.getName(),
                                    contextConfiguration.toByteArray());
                 return r;
-        }).exceptionally(t -> {
-            logger.warn("{}: Delete node {} failed", context, node, t);
-            return null;
         });
     }
 
     @Override
     public void deleteNode(String name) {
         ClusterNode clusterNode = contextController.getNode(name);
-        List<CompletableFuture<Void>> completableFutures = clusterNode.getContexts().stream().map(contextClusterNode ->
-            removeNodeFromContext(contextClusterNode.getContext().getName(),
-                                  contextClusterNode.getClusterNode().getName(),
-                                  contextClusterNode.getClusterNodeLabel())
-        ).collect(Collectors.toList());
+        List<CompletableFuture<Void>> completableFutures = clusterNode.getContexts()
+                                                                      .stream()
+                                                                      .filter(contextClusterNode -> contextClusterNode.getContext().getAllNodes().size() > 1)
+                                                                      .map(contextClusterNode ->
+                    removeNodeFromContext(contextClusterNode.getContext().getName(),
+                                          contextClusterNode.getClusterNode().getName(),
+                                          contextClusterNode.getClusterNodeLabel())
+                ).collect(Collectors.toList());
 
         try {
             CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]))
@@ -181,9 +203,11 @@ class LocalRaftConfigService implements RaftConfigService {
                              })
                              .get();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            logger.warn("Failed to delete node {}", name, e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to execute", e.getCause());
         }
     }
 
@@ -213,16 +237,11 @@ class LocalRaftConfigService implements RaftConfigService {
                                   return r;
                               }).get();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getCause().getMessage(), e.getCause());
         }
-    }
-
-    private NodeInfo addContext(NodeInfo toNodeInfo, String context, String nodeLabel) {
-        return NodeInfo.newBuilder(toNodeInfo)
-                                     .addContexts(ContextRole.newBuilder().setNodeLabel(nodeLabel).setName(context))
-                                     .build();
     }
 
     @Override
@@ -242,6 +261,7 @@ class LocalRaftConfigService implements RaftConfigService {
                         .setNodeName(nodeInfo.getNodeName())
                         .build();
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
+        contextController.addNode(nodeInfo);
         contexts.forEach(c -> {
 
             Context context = contextController.getContext(c);
@@ -269,9 +289,10 @@ class LocalRaftConfigService implements RaftConfigService {
         try {
             CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0])).get();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getCause().getMessage(), e.getCause());
         }
     }
 

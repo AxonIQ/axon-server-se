@@ -137,8 +137,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 switch (connectorCommand.getRequestCase()) {
                     case CONNECT:
                         try {
-                            messagingServerName = connectorCommand.getConnect().getNodeName();
-                            if( clusterController.connect(messagingServerName) ) {
+                            messagingServerName = connectorCommand.getConnect().getNodeInfo().getNodeName();
+                            if( clusterController.connect(connectorCommand.getConnect().getNodeInfo(), connectorCommand.getConnect().getAdmin()) ) {
                                 logger.debug("Received connect from: {} - {}",
                                              messagingServerName,
                                              connectorCommand.getConnect());

@@ -181,4 +181,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
         contextClusterNode.ifPresent(ContextClusterNode::preDelete);
     }
 
+    public boolean isAdmin() {
+        return getContextNames().contains(GrpcRaftController.ADMIN_GROUP);
+    }
 }

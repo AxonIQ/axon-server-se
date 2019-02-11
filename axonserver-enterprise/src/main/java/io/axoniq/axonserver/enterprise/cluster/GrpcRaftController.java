@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.cluster.LeaderState;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.RemovedState;
@@ -18,6 +17,7 @@ import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -146,17 +146,18 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     }
 
     private void stateChanged(RaftNode node, StateChanged stateChanged) {
-        if( stateChanged.getFrom().equals(LeaderState.class.getSimpleName())
-                && !stateChanged.getTo().equals(LeaderState.class.getSimpleName())) {
+        if( stateChanged.fromLeader() && ! stateChanged.toLeader()) {
             eventPublisher.publishEvent(new ClusterEvents.LeaderStepDown(stateChanged.getGroupId(), false));
-        }
-        if( stateChanged.getTo().equals(LeaderState.class.getSimpleName())
-                && !stateChanged.getFrom().equals(LeaderState.class.getSimpleName())) {
+        } else if( stateChanged.toLeader() && ! stateChanged.fromLeader()) {
             eventPublisher.publishEvent(new ClusterEvents.BecomeLeader(stateChanged.getGroupId(),
                                                                        node::unappliedEntries));
+        } else if( stateChanged.toFollower() && !StringUtils.isEmpty(node.getLeaderName()) ) {
+            eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(), node.getLeaderName(), false));
         }
+
         if( stateChanged.getTo().equals(RemovedState.class.getSimpleName()) ) {
             delete(stateChanged.getGroupId());
+//            eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(), null, false));
         }
 
     }

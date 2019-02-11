@@ -107,12 +107,22 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public CompletableFuture<ConfigChangeResult> addServer(Node node) {
+        logger.warn("Add Server {}", node);
         return clusterConfiguration.addServer(node);
     }
 
     @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
-        return clusterConfiguration.removeServer(nodeId);
+        return clusterConfiguration.removeServer(nodeId).thenApply(configChangeResult -> checkCurrentNodeDeleted(
+                configChangeResult, nodeId));
+    }
+
+    private ConfigChangeResult checkCurrentNodeDeleted(ConfigChangeResult configChangeResult, String nodeId) {
+        logger.warn("Check Current leader deleted: {}", nodeId);
+        if( nodeId.equals(me())) {
+            changeStateTo(stateFactory().removedState(), "Node deleted from group");
+        }
+        return configChangeResult;
     }
 
     @Override

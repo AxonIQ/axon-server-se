@@ -236,11 +236,17 @@ public class ClusterController implements SmartLifecycle {
         return remoteConnections.values();
     }
 
-    public boolean connect(String nodeName) {
+    @Transactional
+    public boolean connect(NodeInfo nodeInfo, boolean admin) {
+        String nodeName = nodeInfo.getNodeName();
         ClusterNode node = getNode(nodeName);
         if (node == null) {
-            return false;
+            if( ! admin) {
+                return false;
+            }
+            addConnection(nodeInfo);
         }
+
 
         if (!remoteConnections.containsKey(nodeName)) {
             startRemoteConnection(node, false);
@@ -252,7 +258,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     @Transactional
-    public synchronized ClusterNode addConnection(NodeInfo nodeInfo, boolean updateContexts) {
+    public synchronized ClusterNode addConnection(NodeInfo nodeInfo) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same node name");

@@ -23,5 +23,4 @@ public interface ClusterConfiguration {
         throw new UnsupportedOperationException();
     }
 
-
 }

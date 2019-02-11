@@ -93,7 +93,12 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     private Node toNode(ContextMember member) {
-        return Node.newBuilder().setPort(member.getPort()).setHost(member.getHost()).setNodeId(member.getNodeId()).build();
+        return Node.newBuilder()
+                   .setPort(member.getPort())
+                   .setHost(member.getHost())
+                   .setNodeId(member.getNodeId())
+                   .setNodeName(member.getNodeName())
+                   .build();
     }
 
     @Override

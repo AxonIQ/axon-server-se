@@ -73,6 +73,15 @@ public class JpaRaftGroupNode {
         this.nodeName = nodeName;
     }
 
+    public Node asNode() {
+        return Node.newBuilder()
+            .setNodeId(getNodeId())
+            .setNodeName(getNodeName())
+            .setHost(getHost())
+            .setPort(getPort())
+            .build();
+    }
+    
     public static class Key implements Serializable {
         private String groupId;
         private String nodeId;

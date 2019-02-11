@@ -271,4 +271,14 @@ public class RaftNode {
     public RaftGroup raftGroup() {
         return raftGroup;
     }
+
+    public String getLeaderName() {
+        String leader = state.get().getLeader();
+        if( leader == null) return null;
+        return currentGroupMembers().stream()
+                                    .filter(node -> node.getNodeId().equals(leader))
+                                    .map(Node::getNodeName)
+                                    .findFirst()
+                                    .orElse(null);
+    }
 }

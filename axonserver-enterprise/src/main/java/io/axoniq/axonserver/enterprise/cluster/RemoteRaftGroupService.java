@@ -37,11 +37,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> addNodeToContext(String context, Node node) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        ContextMember contextMember = ContextMember.newBuilder()
-                                                   .setHost(node.getHost())
-                                                   .setNodeId(node.getNodeId())
-                                                   .setPort(node.getPort())
-                                                   .build();
+        ContextMember contextMember = asContextMember(node);
         stub.addServer(Context.newBuilder().setName(context).addMembers(contextMember).build(),
                        new CompletableStreamObserver(result, logger));
         return result;
@@ -82,6 +78,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
             @Override
             public void onError(Throwable throwable) {
                 // log only
+                logger.debug("Failed to retrieve status");
             }
 
             @Override
@@ -95,20 +92,23 @@ public class RemoteRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> initContext(String context, List<Node> raftNodes) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-            Context request = Context.newBuilder()
-                                     .setName(context)
-                                     .addAllMembers(raftNodes.stream().map(r -> ContextMember.newBuilder()
-                                                                                   .setHost(r.getHost())
-                                                                           .setPort(r.getPort())
-                                                                           .setNodeId(r.getNodeId())
-                                                                                             .setNodeName(r.getNodeName())
-                                                                           .build()
-                                             ).collect(Collectors.toList()))
-                                     .build();
+        Context request = Context.newBuilder()
+                                 .setName(context)
+                                 .addAllMembers(raftNodes.stream().map(this::asContextMember).collect(Collectors.toList()))
+                                 .build();
         stub.initContext(
-                    request,new CompletableStreamObserver(result, logger));
+                request, new CompletableStreamObserver(result, logger));
 
         return result;
+    }
+
+    private ContextMember asContextMember(Node r) {
+        return ContextMember.newBuilder()
+                            .setHost(r.getHost())
+                            .setPort(r.getPort())
+                            .setNodeId(r.getNodeId())
+                            .setNodeName(r.getNodeName())
+                            .build();
     }
 
     @Override

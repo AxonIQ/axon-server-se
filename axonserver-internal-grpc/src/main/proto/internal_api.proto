@@ -88,7 +88,7 @@ message NodeContext {
 
 message ConnectorCommand {
     oneof request {
-        NodeInfo connect = 1;
+        ConnectRequest connect = 1;
         InternalCommandSubscription subscribe_command = 2;
         InternalCommandSubscription unsubscribe_command = 3;
         ForwardedCommandResponse command_response = 4;
@@ -160,7 +160,7 @@ message InternalQuerySubscription {
 
 message ConnectRequest {
     NodeInfo nodeInfo = 1;
-    int64 generation = 2;
+    bool admin = 2;
 }
 
 message ConnectorResponse {

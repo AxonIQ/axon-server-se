@@ -5,6 +5,7 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +68,7 @@ public class ContextController {
             ClusterNode clusterNode = getNode(nodeName);
             if( clusterNode == null) {
                 logger.warn("{}: Creating new connection to {}", contextConfiguration.getContext(), nodeInfo.getNode().getNodeName());
-                clusterNode = clusterController.addConnection(nodeInfo.getNode(), false);
+                clusterNode = clusterController.addConnection(nodeInfo.getNode());
             }
             clusterInfoMap.put(nodeName, clusterNode);
         }
@@ -81,7 +82,7 @@ public class ContextController {
             });
         newNodes.forEach((node, nodeInfo) -> {
             if( !currentNodes.containsKey(node)) {
-                logger.warn("{}: Node not in current configuration {}", contextConfiguration.getContext(), node);
+                logger.debug("{}: Node not in current configuration {}", contextConfiguration.getContext(), node);
                 clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel(), false, false);
             }
         });
@@ -106,5 +107,10 @@ public class ContextController {
     public void on(ContextEvents.AdminContextDeleted contextDeleted) {
         List<Context> allContexts = entityManager.createQuery("select c from Context c").getResultList();
         allContexts.forEach(c -> entityManager.remove(c));
+    }
+
+    @Transactional
+    public void addNode(NodeInfo nodeInfo) {
+        clusterController.addConnection(nodeInfo);
     }
 }

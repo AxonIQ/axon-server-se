@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
@@ -198,7 +199,11 @@ public class RemoteConnection  {
                     }
                 }));
         requestStreamObserver.onNext(ConnectorCommand.newBuilder()
-                .setConnect( clusterController.getMe().toNodeInfo())
+                .setConnect( ConnectRequest.newBuilder()
+                                           .setNodeInfo(clusterController.getMe().toNodeInfo())
+                                           .setAdmin(clusterController.getMe().isAdmin())
+                                           .build())
+
                 .build());
 
         // send master info

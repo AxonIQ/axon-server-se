@@ -160,7 +160,7 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build());
 
         Collection<RemoteConnection> nodes = testSubject.getRemoteConnections();
         assertEquals(1, nodes.size());
@@ -195,13 +195,13 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build());
         assertEquals(initial+1, testSubject.nodes().count());
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build());
         assertEquals(initial+1, testSubject.nodes().count());
     }
 
@@ -220,12 +220,12 @@ public class ClusterControllerTest {
                 .setNodeName("newName")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build());
         testSubject.addConnection(NodeInfo.newBuilder()
                 .setNodeName("deletedNode")
                 .setInternalHostName("newHostName")
                 .setGrpcInternalPort(0)
-                .build(), false);
+                .build());
 
 
         testSubject.sendDeleteNode("deletedNode");
