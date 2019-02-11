@@ -22,7 +22,7 @@ import static java.util.Arrays.asList;
 
 /**
  * @author Sara Pellegrini
- * @since
+ * @since 4.1
  */
 @Component
 public class SnapshotDataProviders implements Function<String, List<SnapshotDataStore>> {
@@ -31,26 +31,18 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
 
     private final UserRepository userRepository;
 
-    private final LoadBalanceStrategyRepository loadBalanceStrategyRepository;
-
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
     private final ApplicationContext applicationContext;
 
-//    private final LocalEventStore localEventStore;
-
     public SnapshotDataProviders(
             ApplicationController applicationController,
             UserRepository userRepository,
-            LoadBalanceStrategyRepository loadBalanceStrategyRepository,
             ProcessorLoadBalancingRepository processorLoadBalancingRepository,
-//                                 LocalEventStore localEventStore
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
-        this.loadBalanceStrategyRepository = loadBalanceStrategyRepository;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
-//        this.localEventStore = localEventStore;
         this.applicationContext = applicationContext;
     }
 
@@ -58,7 +50,6 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
         LocalEventStore localEventStore = applicationContext.getBean(LocalEventStore.class);
         return asList(new ApplicationSnapshotDataStore(context, applicationController),
                       new EventTransactionsSnapshotDataStore(context, localEventStore),
-                      new LoadBalanceStrategySnapshotDataStore(loadBalanceStrategyRepository),
                       new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
                       new SnapshotTransactionsSnapshotDataStore(context, localEventStore),
                       new UserSnapshotDataStore(userRepository));
