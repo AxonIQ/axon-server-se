@@ -121,7 +121,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         protected void validate() {
             if (schedulerFactory == null) {
-                schedulerFactory = DefaultScheduler::new;
+                schedulerFactory = () -> new DefaultScheduler("raftState");
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");

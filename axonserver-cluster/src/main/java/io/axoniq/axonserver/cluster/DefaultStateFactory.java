@@ -38,7 +38,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.transitionHandler = transitionHandler;
         this.termUpdateHandler = termUpdateHandler;
         this.snapshotManager = snapshotManager;
-        this.schedulerFactory = DefaultScheduler::new;
+        this.schedulerFactory = () -> new DefaultScheduler("raftState");
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
