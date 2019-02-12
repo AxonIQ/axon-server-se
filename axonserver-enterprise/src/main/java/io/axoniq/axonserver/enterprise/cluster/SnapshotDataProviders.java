@@ -31,6 +31,8 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
 
     private final UserRepository userRepository;
 
+    private final LoadBalanceStrategyRepository loadBalanceStrategyRepository;
+
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
     private final ApplicationContext applicationContext;
@@ -38,10 +40,12 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
     public SnapshotDataProviders(
             ApplicationController applicationController,
             UserRepository userRepository,
+            LoadBalanceStrategyRepository loadBalanceStrategyRepository,
             ProcessorLoadBalancingRepository processorLoadBalancingRepository,
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
+        this.loadBalanceStrategyRepository = loadBalanceStrategyRepository;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
         this.applicationContext = applicationContext;
     }
@@ -50,6 +54,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
         LocalEventStore localEventStore = applicationContext.getBean(LocalEventStore.class);
         return asList(new ApplicationSnapshotDataStore(context, applicationController),
                       new EventTransactionsSnapshotDataStore(context, localEventStore),
+                      new LoadBalanceStrategySnapshotDataStore(loadBalanceStrategyRepository),
                       new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
                       new SnapshotTransactionsSnapshotDataStore(context, localEventStore),
                       new UserSnapshotDataStore(userRepository));
