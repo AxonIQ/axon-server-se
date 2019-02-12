@@ -1,9 +1,12 @@
 package io.axoniq.axonserver.cluster.scheduler;
 
+import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
+
 import java.time.Clock;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -18,10 +21,19 @@ public class DefaultScheduler implements Scheduler {
     private final Clock clock = Clock.systemUTC();
 
     /**
-     * Creates the Default Scheduler, uses {@link Executors#newSingleThreadScheduledExecutor()}.
+     * Creates the Default Scheduler, uses {@link Executors#newScheduledThreadPool(int)}.
      */
     public DefaultScheduler() {
-        this(Executors.newSingleThreadScheduledExecutor());
+        this(Executors.newScheduledThreadPool(2));
+    }
+
+    /**
+     * Creates the Default Scheduler, uses {@link Executors#newScheduledThreadPool(int, ThreadFactory)}.
+     *
+     * @param threadGroup the prefix used from the thread factory for new threads name.
+     */
+    public DefaultScheduler(String threadGroup) {
+        this(Executors.newScheduledThreadPool(2, new AxonThreadFactory(threadGroup)));
     }
 
     /**
