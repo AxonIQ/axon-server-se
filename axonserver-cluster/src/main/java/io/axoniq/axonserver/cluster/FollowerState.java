@@ -188,7 +188,7 @@ public class FollowerState extends AbstractMembershipState {
 
         if (request.getOffset() == 0) {
             // first segment
-            raftGroup().localLogEntryStore().clear();
+            raftGroup().localLogEntryStore().clear(request.getLastIncludedIndex());
             snapshotManager().clear();
         }
 

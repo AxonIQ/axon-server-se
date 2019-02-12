@@ -72,7 +72,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clear() {
+    public void clear(long lastIndex) {
         entryMap.clear();
     }
 

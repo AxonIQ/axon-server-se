@@ -239,8 +239,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clear() {
-        primaryEventStore.clear();
+    public void clear(long lastIndex) {
+        primaryEventStore.clear(lastIndex);
+        primaryEventStore.init(false);
     }
 
     @Override

@@ -124,7 +124,7 @@ public class PrimaryLogEntryStoreTest {
 
         CompletableFuture.allOf(futures).get(1, TimeUnit.SECONDS);
         Thread.sleep(3000);
-        testSubject.clear();
+        testSubject.clear(0);
         assertEquals(0, testSubject.getSegments().size());
     }
 

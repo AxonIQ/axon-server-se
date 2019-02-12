@@ -136,7 +136,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
                      .map(this::getSegment)
                      .filter(segment -> segment < lastInitialized)
                      .max(Long::compareTo)
-                     .orElse(1L);
+                     .orElse(lastToken.get() + 1);
     }
 
     private PreparedTransaction prepareTransaction(byte[] bytes) {
@@ -183,7 +183,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     @Override
     public void cleanup(int delay) {
-        synchronizer.shutdown(true);
+        synchronizer.shutdown(false);
         readBuffers.forEach((s, source) -> source.clean(delay));
         if( next != null) next.cleanup(delay);
     }
@@ -328,17 +328,24 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         next = secondaryEventStore;
     }
 
-    public void clear() {
+    public void clear(long lastIndex) {
         cleanup(0);
         File storageDir  = new File(storageProperties.getStorage(getType()));
         String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
         String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
-        Stream.of(logFiles, indexFiles)
-              .flatMap(Stream::of)
-              .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
-              .map(File::new)
-              .forEach(FileUtils::delete);
-        lastToken.set(0);
+        Stream<File> fileStream = Stream.of(logFiles, indexFiles)
+                                        .flatMap(Stream::of)
+                                        .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
+                                        .map(File::new);
+        fileStream.forEach(file -> {
+            try {
+                file.delete();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        positionsPerSegmentMap.clear();
+        lastToken.set(lastIndex);
     }
 
     public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
