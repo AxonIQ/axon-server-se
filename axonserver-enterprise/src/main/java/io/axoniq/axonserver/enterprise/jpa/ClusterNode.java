@@ -61,6 +61,13 @@ public class ClusterNode implements Serializable, AxonServerNode {
         this.name = name;
     }
 
+    public ClusterNode(Node node) {
+        this.internalHostName = node.getHost();
+        this.grpcInternalPort = node.getPort();
+        // TODO: Change to node.getNodeName once cluster change is merged
+        this.name = node.getNodeId();
+    }
+
     public String getHostName() {
         return hostName;
     }

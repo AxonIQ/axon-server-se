@@ -10,14 +10,12 @@ import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.grpc.ClientInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -51,6 +49,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final RaftGroupRepositoryManager raftGroupNodeRepository;
     private final RaftProperties raftProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final AxonServerGrpcRaftClientFactory grpcRaftClientFactory;
     private final ApplicationContext applicationContext;
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
@@ -62,6 +61,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                               ApplicationEventPublisher eventPublisher,
                               JpaRaftGroupNodeRepository nodeRepository,
                               SnapshotDataProviders snapshotDataProviders,
+                              AxonServerGrpcRaftClientFactory grpcRaftClientFactory,
                               ApplicationContext applicationContext) {
         this.raftStateRepository = raftStateRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
@@ -70,6 +70,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         this.eventPublisher = eventPublisher;
         this.nodeRepository = nodeRepository;
         this.snapshotDataProviders = snapshotDataProviders;
+        this.grpcRaftClientFactory = grpcRaftClientFactory;
         this.applicationContext = applicationContext;
     }
 
@@ -117,15 +118,12 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
             if( existingRaftGroup != null) return existingRaftGroup;
 
-            ClientInterceptor[] interceptors = {
-                    new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken())
-            };
             RaftGroup raftGroup = new GrpcRaftGroup(localNodeId,
                                                     groupId,
                                                     raftStateRepository,
                                                     nodeRepository,
                                                     raftProperties,
-                                                    snapshotDataProviders, interceptors);
+                                                    snapshotDataProviders, grpcRaftClientFactory);
 
             if (!isAdmin(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
