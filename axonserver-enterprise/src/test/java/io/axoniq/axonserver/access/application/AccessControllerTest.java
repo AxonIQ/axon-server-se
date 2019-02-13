@@ -47,7 +47,7 @@ public class AccessControllerTest {
         app.setTokenPrefix("12345678");
         app.setRoles(Collections.singleton("READ"));
         applications.add(app);
-        when(applicationRepository.findAllByTokenPrefix(any())).thenReturn(applications);
+        when(applicationRepository.findAllByContext(any())).thenReturn(applications);
 
         testSubject = new AccessControllerDB(applicationRepository, pathMappingRepository, hasher);
     }

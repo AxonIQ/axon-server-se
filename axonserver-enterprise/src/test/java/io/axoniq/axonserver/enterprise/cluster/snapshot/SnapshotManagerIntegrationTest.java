@@ -70,7 +70,7 @@ import static org.mockito.Mockito.*;
 @ContextConfiguration(classes = AxonServer.class)
 public class SnapshotManagerIntegrationTest {
 
-    private static final String CONTEXT = "junit";
+    private static final String CONTEXT = "_admin";
 
     @Autowired
     private JpaApplicationRepository applicationRepository;
