@@ -141,6 +141,7 @@ public class GrpcRaftPeer implements RaftPeer {
 
                 @Override
                 public void onError(Throwable throwable) {
+                    logger.debug("Error on InstallSnapshot stream", throwable);
                     requestStreamRef.set(null);
                 }
 
@@ -189,7 +190,7 @@ public class GrpcRaftPeer implements RaftPeer {
 
                 @Override
                 public void onError(Throwable throwable) {
-                    logger.warn("Error on AppendEntries stream", throwable);
+                    logger.debug("Error on AppendEntries stream", throwable);
                     requestStreamRef.set(null);
                 }
 
