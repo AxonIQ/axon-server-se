@@ -80,7 +80,7 @@ public class InstallSnapshotIntegrationTest {
 
         assertEquals(2, followers.size());
         firstFollower.stop();
-        int entryPerRound = 10;
+        int entryPerRound = 1000;
         CompletableFuture[] futures = new CompletableFuture[entryPerRound];
         for (int i = 0; i < futures.length; i++) {
             futures[i] = leader.appendEntry("Test-A-" + i, ("Test-A-" + i).getBytes());
@@ -94,7 +94,7 @@ public class InstallSnapshotIntegrationTest {
         assertTrue(leader.isLeader());
         assertNull(leader.raftGroup().localLogEntryStore().getEntry(2));
         firstFollower.start();
-        assertWithin(15, TimeUnit.SECONDS, commitIndexSynchronized(firstFollower, leader));
+        assertWithin(10, TimeUnit.SECONDS, commitIndexSynchronized(firstFollower, leader));
         assertTrue(leader.isLeader());
         secondFollower.stop();
         assertFalse(firstFollower.isLeader());

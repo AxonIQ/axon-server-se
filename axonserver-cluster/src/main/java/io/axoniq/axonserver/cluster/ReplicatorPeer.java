@@ -295,7 +295,7 @@ public class ReplicatorPeer {
 
         private void updateEntryIterator() {
             LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
-            if (nextIndex() == 1 || nextIndex() - 1 >= logEntryStore.firstLogIndex()) {
+            if (logEntryStore.firstLogIndex() == 1 || nextIndex() - 1 >= logEntryStore.firstLogIndex()) {
                 entryIterator = logEntryStore.createIterator(nextIndex());
             } else {
                 logger.info("{}: follower {} is far behind the log entry. Follower's last applied index: {}.",
@@ -315,7 +315,7 @@ public class ReplicatorPeer {
 
     private final RaftPeer raftPeer;
     private final Consumer<Long> matchIndexCallback;
-    private final AtomicLong nextIndex = new AtomicLong(0);
+    private final AtomicLong nextIndex = new AtomicLong(1);
     private final AtomicLong matchIndex = new AtomicLong(0);
     private final AtomicLong lastMessageSent = new AtomicLong(0);
     private final AtomicLong lastMessageReceived = new AtomicLong();
