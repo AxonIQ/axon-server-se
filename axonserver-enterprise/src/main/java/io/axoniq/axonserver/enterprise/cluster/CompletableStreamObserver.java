@@ -1,24 +1,31 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.grpc.Confirmation;
 import io.grpc.stub.StreamObserver;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
-public class CompletableStreamObserver implements StreamObserver<Confirmation> {
+public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
 
-    private final CompletableFuture<Void> completableFuture;
 
-    public CompletableStreamObserver(CompletableFuture<Void> completableFuture) {
+    private final CompletableFuture<R> completableFuture;
+    private final Function<T, R> converter;
+
+    public CompletableStreamObserver(CompletableFuture<R> completableFuture) {
+        this(completableFuture, result -> (R)result);
+    }
+
+    public CompletableStreamObserver(CompletableFuture<R> completableFuture, Function<T,R> converter) {
         this.completableFuture = completableFuture;
+        this.converter = converter;
     }
 
     @Override
-    public void onNext(Confirmation t) {
-        completableFuture.complete(null);
+    public void onNext(T t) {
+        completableFuture.complete(converter.apply(t));
     }
 
     @Override

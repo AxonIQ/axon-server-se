@@ -19,7 +19,6 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
@@ -32,16 +31,16 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 import static java.util.Collections.singletonList;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller
-public class GrpcRaftController implements SmartLifecycle, ApplicationContextAware, RaftGroupManager {
+public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftController.class);
-    public static final String ADMIN_GROUP = "_admin";
     private final JpaRaftStateRepository raftStateRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Map<String,RaftGroup> raftGroupMap = new ConcurrentHashMap<>();
@@ -50,7 +49,8 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     private final RaftGroupRepositoryManager raftGroupNodeRepository;
     private final RaftProperties raftProperties;
     private final ApplicationEventPublisher eventPublisher;
-    private ApplicationContext applicationContext;
+    private final AxonServerGrpcRaftClientFactory grpcRaftClientFactory;
+    private final ApplicationContext applicationContext;
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
 
@@ -60,7 +60,9 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                               RaftProperties raftProperties,
                               ApplicationEventPublisher eventPublisher,
                               JpaRaftGroupNodeRepository nodeRepository,
-                              SnapshotDataProviders snapshotDataProviders) {
+                              SnapshotDataProviders snapshotDataProviders,
+                              AxonServerGrpcRaftClientFactory grpcRaftClientFactory,
+                              ApplicationContext applicationContext) {
         this.raftStateRepository = raftStateRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
@@ -68,6 +70,8 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         this.eventPublisher = eventPublisher;
         this.nodeRepository = nodeRepository;
         this.snapshotDataProviders = snapshotDataProviders;
+        this.grpcRaftClientFactory = grpcRaftClientFactory;
+        this.applicationContext = applicationContext;
     }
 
 
@@ -119,17 +123,14 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                                                     raftStateRepository,
                                                     nodeRepository,
                                                     raftProperties,
-                                                    snapshotDataProviders);
+                                                    snapshotDataProviders, grpcRaftClientFactory);
 
-            if (!ADMIN_GROUP.equals(groupId)) {
+            if (!isAdmin(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
             }
-            applicationContext.getBeansOfType(LogEntryConsumer.class).forEach((name, bean) -> raftGroup.localNode()
-                                                                                                       .registerEntryConsumer(
-                                                                                                               e -> bean
-                                                                                                                       .consumeLogEntry(
-                                                                                                                               groupId,
-                                                                                                                               e)));
+            applicationContext.getBeansOfType(LogEntryConsumer.class)
+                              .forEach((name, bean) -> raftGroup.localNode()
+                                                                .registerEntryConsumer(e -> bean.consumeLogEntry(groupId,e)));
             raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(),
                                                                                            stateChanged));
 
@@ -189,13 +190,6 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         return 100;
     }
 
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) {
-        this.applicationContext = applicationContext;
-    }
-
-
-
     RaftNode waitForLeader(RaftGroup group) {
         while (! group.localNode().isLeader()) {
             try {
@@ -230,7 +224,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
 
 
     public Iterable<String> getMyContexts() {
-        return raftGroupMap.keySet().stream().filter(groupId -> !groupId.equals(ADMIN_GROUP)).collect(Collectors.toList());
+        return raftGroupMap.keySet().stream().filter(groupId -> !isAdmin(groupId)).collect(Collectors.toList());
     }
 
     public Set<String> raftGroups() {

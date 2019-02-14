@@ -2,6 +2,7 @@ package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.user.UserController;
+import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.features.DefaultFeatureChecker;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
@@ -22,6 +23,7 @@ import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -91,11 +93,13 @@ public class AxonServerFreeConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(UserControllerFacade.class)
-    public UserControllerFacade userControllerFacade(UserController userController) {
+    public UserControllerFacade userControllerFacade(UserController userController, ApplicationEventPublisher eventPublisher) {
         return new UserControllerFacade() {
             @Override
-            public User updateUser(String userName, String password, String[] roles) {
-                return userController.updateUser(userName, password, roles);
+            public void updateUser(String userName, String password, String[] roles) {
+                User updatedUser = userController.updateUser(userName, password, roles);
+                eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false));
+
             }
 
             @Override
@@ -106,6 +110,7 @@ public class AxonServerFreeConfiguration {
             @Override
             public void deleteUser(String name) {
                 userController.deleteUser(name);
+                eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false));
             }
         };
     }

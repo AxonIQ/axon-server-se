@@ -7,11 +7,11 @@ import java.util.List;
 
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface UserControllerFacade {
 
-    User updateUser(String userName, String password, String[] roles);
+    void updateUser(String userName, String password, String[] roles);
 
     List<User> getUsers();
 

@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.access.jpa;
+package io.axoniq.axonserver.access.application;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;

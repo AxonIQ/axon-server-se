@@ -18,7 +18,7 @@ spring:
       leak-detection-threshold: 2000
 
   transaction:
-    default-timeout: 10
+    default-timeout: 1000
 
   h2:
     console:
@@ -51,7 +51,7 @@ logging:
     org.springframework.boot.web.embedded.tomcat.TomcatWebServer: INFO
     org.springframework.http.converter.json.Jackson2ObjectMapperBuilder: ERROR
     org.hibernate.orm.deprecation: ERROR
-    com.zaxxer.hikari: DEBUG
+    com.zaxxer.hikari: ERROR
 
 management:
   security:
