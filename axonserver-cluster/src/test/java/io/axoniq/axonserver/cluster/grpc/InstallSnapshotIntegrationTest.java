@@ -80,7 +80,7 @@ public class InstallSnapshotIntegrationTest {
 
         assertEquals(2, followers.size());
         firstFollower.stop();
-        int entryPerRound = 1000;
+        int entryPerRound = 10;
         CompletableFuture[] futures = new CompletableFuture[entryPerRound];
         for (int i = 0; i < futures.length; i++) {
             futures[i] = leader.appendEntry("Test-A-" + i, ("Test-A-" + i).getBytes());

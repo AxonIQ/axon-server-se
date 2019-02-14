@@ -34,7 +34,10 @@ public class InMemoryEntryIterator implements EntryIterator {
 
     @Override
     public TermIndex previous() {
-       return (previous == null) ? null : new TermIndex(previous);
+        if (current != null && current.getIndex() == 1) {
+            return new TermIndex();
+        }
+        return (previous == null) ? null : new TermIndex(previous);
     }
 
 }
