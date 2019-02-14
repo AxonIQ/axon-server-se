@@ -34,8 +34,22 @@ public class LocalRaftGroupService implements RaftGroupService {
 
     @Override
     public CompletableFuture<Void> addNodeToContext(String context, Node node) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        return raftNode.addNode(node).thenApply(c -> null);
+        raftNode.addNode(node).whenComplete(((configChangeResult, throwable) -> {
+            if(throwable != null) {
+                result.completeExceptionally(throwable);
+            } else {
+                if( configChangeResult.hasFailure()) {
+                    result.completeExceptionally(new RuntimeException(configChangeResult.getFailure().toString()));
+                } else {
+                    result.complete(null);
+                }
+            }
+
+        }));
+
+        return result;
     }
 
     @Override
@@ -45,8 +59,22 @@ public class LocalRaftGroupService implements RaftGroupService {
 
     @Override
     public CompletableFuture<Void> deleteNode(String context, String node) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        return raftNode.removeNode(node).thenApply(c -> null);
+        raftNode.removeNode(node).whenComplete(((configChangeResult, throwable) -> {
+            if(throwable != null) {
+                result.completeExceptionally(throwable);
+            } else {
+                if( configChangeResult.hasFailure()) {
+                    result.completeExceptionally(new RuntimeException(configChangeResult.getFailure().toString()));
+                } else {
+                    result.complete(null);
+                }
+            }
+
+        }));
+
+        return result;
     }
 
     @Override

@@ -5,9 +5,10 @@ import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,9 @@ public class AccessControllerTest {
     private PathMappingRepository pathMappingRepository;
     @Mock
     private JpaContextApplicationRepository applicationRepository;
+
+    @Mock
+    private JpaApplicationRepository centralApplicationRepository;
 
 
     @Before
@@ -49,7 +53,15 @@ public class AccessControllerTest {
         applications.add(app);
         when(applicationRepository.findAllByContext(any())).thenReturn(applications);
 
-        testSubject = new AccessControllerDB(applicationRepository, pathMappingRepository, hasher);
+        List<JpaApplication> centralApplications = new ArrayList<>();
+        String sampleToken = "11111111111111111111111";
+        centralApplications.add(new JpaApplication("Demo", null, ApplicationController.tokenPrefix(sampleToken),
+                                                   hasher.hash(sampleToken),
+                                                   new ApplicationContext("demoContext", Arrays.asList(new ApplicationContextRole("READ")))));
+
+        when(centralApplicationRepository.findAllByTokenPrefix(any())).thenReturn(centralApplications);
+
+        testSubject = new AccessControllerDB(applicationRepository, centralApplicationRepository, pathMappingRepository, hasher);
     }
 
     @Test
@@ -77,4 +89,10 @@ public class AccessControllerTest {
     public void authorizeWithWildcard() throws Exception {
         assertTrue(testSubject.authorize("1234567890", "default","path3/test", true));
     }
+
+    @Test
+    public void authorizeCentral() throws Exception {
+        assertTrue(testSubject.authorize("11111111111111111111111", "demoContext","path3/test", true));
+    }
+
 }

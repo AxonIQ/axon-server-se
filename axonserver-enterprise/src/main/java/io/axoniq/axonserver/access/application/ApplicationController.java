@@ -86,7 +86,7 @@ public class ApplicationController {
         }
     }
 
-    public String tokenPrefix(String token) {
+    public static String tokenPrefix(String token) {
         if( token == null) return null;
         return token.substring(0, Math.min(token.length(), ApplicationController.PREFIX_LENGTH));
     }

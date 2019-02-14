@@ -336,9 +336,8 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
-        Set<JpaRaftGroupNode> nodes = raftGroupRepositoryManager
-                .findByGroupId(context);
-        if (nodes.isEmpty()) {
+        Collection<String> nodesInContext = getNodesInContext(context);
+        if (nodesInContext.isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No AxonServers found for context: " + context);
         }
@@ -347,7 +346,6 @@ public class ClusterController implements SmartLifecycle {
         }
 
         List<String> activeNodes = new ArrayList<>();
-        Collection<String> nodesInContext = nodes.stream().map(JpaRaftGroupNode::getNodeName).collect(Collectors.toSet());
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
             activeNodes.add(messagingPlatformConfiguration.getName());
         }
@@ -363,6 +361,19 @@ public class ClusterController implements SmartLifecycle {
             return remoteConnections.get(nodeName).getClusterNode();
         }
         return getMe();
+    }
+
+    private Collection<String> getNodesInContext(String context) {
+        if( getMe().isAdmin() ) {
+            Context contextJPA = entityManager.find(Context.class, context);
+            if( contextJPA != null) {
+                return contextJPA.getNodeNames();
+            }
+        }
+        Set<JpaRaftGroupNode> nodes = raftGroupRepositoryManager
+                .findByGroupId(context);
+        return nodes.stream().map(JpaRaftGroupNode::getNodeName).collect(Collectors.toSet());
+
     }
 
 

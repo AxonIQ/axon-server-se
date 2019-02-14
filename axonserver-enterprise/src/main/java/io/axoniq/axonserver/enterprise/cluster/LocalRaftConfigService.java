@@ -117,7 +117,9 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     private Stream<NodeInfoWithLabel> nodes(String context) {
-        return contextController.getContext(context).getAllNodes()
+        Context ctx = contextController.getContext(context);
+        if( ctx == null ) return Stream.empty();
+        return ctx.getAllNodes()
                                 .stream()
                                 .map( ccn -> NodeInfoWithLabel.newBuilder().setNode(ccn.getClusterNode().toNodeInfo()).setLabel(ccn.getClusterNodeLabel()).build());
     }

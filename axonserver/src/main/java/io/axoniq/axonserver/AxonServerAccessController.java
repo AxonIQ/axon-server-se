@@ -16,8 +16,6 @@ public interface AxonServerAccessController {
 
     boolean allowed(String fullMethodName, String context, String token);
 
-    boolean validToken(String token);
-
     Collection<PathMapping> getPathMappings();
 
     boolean isRoleBasedAuthentication();

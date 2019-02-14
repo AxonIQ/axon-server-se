@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
@@ -17,20 +18,19 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 @Controller
 public class AccessControllerDB {
 
-    private final JpaContextApplicationRepository applicationRepository;
+    private final JpaContextApplicationRepository contextApplicationRepository;
+    private final JpaApplicationRepository applicationRepository;
     private final PathMappingRepository pathMappingRepository;
     private final Hasher hasher;
 
-    public AccessControllerDB(JpaContextApplicationRepository applicationRepository, PathMappingRepository pathMappingRepository, Hasher hasher) {
+    public AccessControllerDB(JpaContextApplicationRepository contextApplicationRepository,
+                              JpaApplicationRepository applicationRepository,
+                              PathMappingRepository pathMappingRepository,
+                              Hasher hasher) {
+        this.contextApplicationRepository = contextApplicationRepository;
         this.applicationRepository = applicationRepository;
         this.pathMappingRepository = pathMappingRepository;
         this.hasher = hasher;
-    }
-
-    public boolean validToken(String token) {
-        Optional<JpaContextApplication> applicationOptional = applicationRepository.findAll().stream()
-                                                                                   .filter(app -> hasher.checkpw(token, app.getHashedToken())).findFirst();
-        return applicationOptional.isPresent();
     }
 
     public Set<String> getAdminRoles(String token) {
@@ -38,12 +38,23 @@ public class AccessControllerDB {
     }
 
     private Set<String> getRoles(String token, String group) {
-        return applicationRepository.findAllByContext(group)
-                                    .stream()
-                                    .filter(app -> hasher.checkpw(token, app.getHashedToken()))
-                                    .findFirst()
-                                    .map(JpaContextApplication::getRoles)
-                                    .orElse(null);
+        Set<String> roles = contextApplicationRepository.findAllByContext(group)
+                                                        .stream()
+                                                        .filter(app -> hasher.checkpw(token, app.getHashedToken()))
+                                                        .findFirst()
+                                                        .map(JpaContextApplication::getRoles)
+                                                        .orElse(null);
+        if( roles == null) {
+            JpaApplication application = applicationRepository.findAllByTokenPrefix(ApplicationController.tokenPrefix(token))
+                                                           .stream()
+                                                           .filter(app -> hasher.checkpw(token, app.getHashedToken()))
+                                                           .findFirst().orElse(null);
+            if( application != null) {
+                roles = application.getContexts().stream().filter(c -> c.getContext().equals(group)).flatMap(g -> g.getRoles().stream())
+                                   .map(ApplicationContextRole::getRole).collect(Collectors.toSet());
+            }
+        }
+        return roles;
     }
 
     public boolean authorize(String token, String context, String path, boolean fineGrainedAccessControl) {
@@ -63,7 +74,7 @@ public class AccessControllerDB {
                                     .findFirst().orElse(null);
     }
 
-    public Collection<PathMapping> getPathMappins() {
+    public Collection<PathMapping> getPathMappings() {
         return pathMappingRepository.findAll();
     }
 }
