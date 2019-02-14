@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
+import io.axoniq.axonserver.RaftAdminGroup;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
@@ -21,7 +22,7 @@ import javax.persistence.PreRemove;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * @author Marc Gathier
@@ -64,8 +65,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
     public ClusterNode(Node node) {
         this.internalHostName = node.getHost();
         this.grpcInternalPort = node.getPort();
-        // TODO: Change to node.getNodeName once cluster change is merged
-        this.name = node.getNodeId();
+        this.name = node.getNodeName();
     }
 
     public String getHostName() {
@@ -111,7 +111,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
     @Override
     public Collection<String> getStorageContextNames() {
         return contexts.stream().map(ccn -> ccn.getContext().getName())
-                       .filter(n -> !isAdmin(n))
+                       .filter(n -> !RaftAdminGroup.isAdmin(n))
                        .collect(Collectors.toSet());
     }
 
@@ -191,6 +191,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
     }
 
     public boolean isAdmin() {
-        return getContextNames().contains(GrpcRaftController.ADMIN_GROUP);
+        return getContextNames().contains(getAdmin());
     }
 }

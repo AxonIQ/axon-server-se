@@ -33,7 +33,7 @@ public class AdminConfigConsumer implements LogEntryConsumer {
         if( isAdmin(groupId) && entryType(e, ContextConfiguration.class)) {
                 try {
                     ContextConfiguration contextConfiguration = ContextConfiguration.parseFrom(e.getSerializedObject().getData());
-                    logger.warn("{}: received data: {}", groupId, contextConfiguration);
+                    logger.debug("{}: received data: {}", groupId, contextConfiguration);
                     contextController.updateContext(contextConfiguration);
                     eventPublisher.publishEvent(new ContextEvents.ContextUpdated(groupId));
                 } catch (Exception e1) {

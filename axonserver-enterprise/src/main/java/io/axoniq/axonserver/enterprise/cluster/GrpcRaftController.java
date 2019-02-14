@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 import static java.util.Collections.singletonList;
 
@@ -260,7 +261,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
     public void delete(String context) {
         raftGroupMap.remove(context);
-        if( context.equals(ADMIN_GROUP)) {
+        if( context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
         }
     }

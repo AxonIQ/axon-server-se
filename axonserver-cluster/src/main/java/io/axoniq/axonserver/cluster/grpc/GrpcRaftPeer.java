@@ -117,11 +117,9 @@ public class GrpcRaftPeer implements RaftPeer {
             logger.trace("{} Send {}", node.getNodeId(), request);
             requestStreamRef.compareAndSet(null, initStreamObserver());
             StreamObserver<InstallSnapshotRequest> stream = requestStreamRef.get();
-//            synchronized (requestStreamRef.get()) {
             if( stream != null) {
                 stream.onNext(request);
             }
-//            }
         }
 
         private StreamObserver<InstallSnapshotRequest> initStreamObserver() {
@@ -166,11 +164,9 @@ public class GrpcRaftPeer implements RaftPeer {
             requestStreamRef.updateAndGet(current -> current == null ?  initStreamObserver(): current);
 
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
-//            synchronized (requestStreamRef.get()) {
             if( stream != null) {
                 stream.onNext(request);
             }
-//            }
         }
 
         private StreamObserver<AppendEntriesRequest> initStreamObserver() {
@@ -203,10 +199,5 @@ public class GrpcRaftPeer implements RaftPeer {
                 }
             });
         }
-    }
-
-    @Override
-    public Node toNode() {
-        return node;
     }
 }

@@ -67,7 +67,7 @@ public class ContextController {
             String nodeName = nodeInfo.getNode().getNodeName();
             ClusterNode clusterNode = getNode(nodeName);
             if( clusterNode == null) {
-                logger.warn("{}: Creating new connection to {}", contextConfiguration.getContext(), nodeInfo.getNode().getNodeName());
+                logger.debug("{}: Creating new connection to {}", contextConfiguration.getContext(), nodeInfo.getNode().getNodeName());
                 clusterNode = clusterController.addConnection(nodeInfo.getNode());
             }
             clusterInfoMap.put(nodeName, clusterNode);
@@ -76,7 +76,7 @@ public class ContextController {
         Context finalContext = context;
         currentNodes.forEach((node, clusterNode) -> {
             if( !newNodes.containsKey(node)) {
-                logger.warn("{}: Node not in new configuration {}", contextConfiguration.getContext(), node);
+                logger.debug("{}: Node not in new configuration {}", contextConfiguration.getContext(), node);
                 clusterNode.removeContext(finalContext.getName());
             }
             });

@@ -208,7 +208,7 @@ class LocalRaftConfigService implements RaftConfigService {
         try {
             CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]))
                              .thenAccept(r -> {
-                                 RaftNode config = grpcRaftController.getRaftNode(GrpcRaftController.ADMIN_GROUP);
+                                 RaftNode config = grpcRaftController.getRaftNode(getAdmin());
                                  config.appendEntry(DeleteNode.class.getName(),
                                                     DeleteNode.newBuilder().setNodeName(name).build().toByteArray());
                              })
@@ -277,13 +277,10 @@ class LocalRaftConfigService implements RaftConfigService {
 
             Context context = contextController.getContext(c);
             if( context != null) {
-                completableFutures.add(raftGroupServiceFactory.getRaftGroupService(c).addNodeToContext(c, node).thenAccept(v -> {
-
-                adminNode.appendEntry(ContextConfiguration.class.getName(),
-                                   createContextConfigBuilder(c).addNodes(
+                completableFutures.add(raftGroupServiceFactory.getRaftGroupService(c).addNodeToContext(c, node).thenAccept(v -> adminNode.appendEntry(ContextConfiguration.class.getName(),
+                                                                                                                                                      createContextConfigBuilder(c).addNodes(
                                            NodeInfoWithLabel.newBuilder().setLabel(nodeLabel).setNode(nodeInfo).build())
-                                                                .build().toByteArray());
-                }));
+                                                                .build().toByteArray())));
             } else {
                     completableFutures.add(raftGroupServiceFactory.getRaftGroupServiceForNode(ClusterNode.from(nodeInfo))
                                                                   .initContext(c, Collections.singletonList(node))
@@ -467,12 +464,10 @@ class LocalRaftConfigService implements RaftConfigService {
                           } else {
                               result.complete(null);
                               contextController.getContexts()
-                                                                  .filter(c -> !isAdmin(c.getName()))
-                                                                  .forEach(c -> {
-                                                                      raftGroupServiceFactory.getRaftGroupService(c.getName())
-                                                                                                           .updateLoadBalancingStrategy(c.getName(),
-                                                                                                                                        loadBalancingStrategy);
-                                                                  });
+                                               .filter(c -> !isAdmin(c.getName()))
+                                               .forEach(c -> raftGroupServiceFactory.getRaftGroupService(c.getName())
+                                                                                    .updateLoadBalancingStrategy(c.getName(),
+                                                                                                                 loadBalancingStrategy));
                           }
                       }
               );

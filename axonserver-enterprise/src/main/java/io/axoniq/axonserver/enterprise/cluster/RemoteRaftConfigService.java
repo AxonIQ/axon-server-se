@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.Application;
@@ -16,7 +14,6 @@ import io.axoniq.axonserver.grpc.internal.NodeName;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.User;
-import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,14 +107,14 @@ public class RemoteRaftConfigService implements RaftConfigService {
     @Override
     public CompletableFuture<Application> updateApplication(Application application) {
         CompletableFuture<Application> returnedApplication = new CompletableFuture<>();
-        raftConfigServiceStub.updateApplication(application, new CompletableStreamObserver<>(returnedApplication));
+        raftConfigServiceStub.updateApplication(application, new CompletableStreamObserver<>(returnedApplication, logger));
         return returnedApplication;
     }
 
     @Override
     public CompletableFuture<Application> refreshToken(Application application) {
         CompletableFuture<Application> returnedApplication = new CompletableFuture<>();
-        raftConfigServiceStub.refreshToken(application, new CompletableStreamObserver<>(returnedApplication));
+        raftConfigServiceStub.refreshToken(application, new CompletableStreamObserver<>(returnedApplication, logger));
         return returnedApplication;
     }
 

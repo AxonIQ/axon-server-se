@@ -90,7 +90,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                  .addAllMembers(raftNodes.stream().map(this::asContextMember).collect(Collectors.toList()))
                                  .build();
         stub.initContext(
-                request, new CompletableStreamObserver(result, logger, TO_VOID);
+                request, new CompletableStreamObserver(result, logger, TO_VOID));
 
         return result;
     }
