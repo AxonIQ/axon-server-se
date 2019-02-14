@@ -1,9 +1,7 @@
 package io.axoniq.axonserver.enterprise.component.processor.balancing.stategy;
 
-import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Controller;
 
@@ -18,18 +16,10 @@ import java.util.Optional;
 @Primary
 public class ProcessorLoadBalancingController  {
 
-    private final ModelVersionController modelVersionController;
-
     private final ProcessorLoadBalancingRepository repository;
 
-    private final ApplicationEventPublisher eventPublisher;
-
-    public ProcessorLoadBalancingController(ModelVersionController modelVersionController,
-                                            ProcessorLoadBalancingRepository repository,
-                                            ApplicationEventPublisher eventPublisher) {
-        this.modelVersionController = modelVersionController;
+    public ProcessorLoadBalancingController(ProcessorLoadBalancingRepository repository) {
         this.repository = repository;
-        this.eventPublisher = eventPublisher;
     }
 
     public Optional<ProcessorLoadBalancing> findById(TrackingEventProcessor processor) {

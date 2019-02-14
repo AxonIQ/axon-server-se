@@ -1,30 +1,37 @@
 package io.axoniq.axonserver.access.application;
 
-import io.axoniq.axonserver.access.jpa.Application;
+import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.access.jpa.PathMapping;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Controller;
 
-import javax.annotation.PostConstruct;
+import java.util.Collection;
 import java.util.Objects;
+import java.util.Set;
+import javax.annotation.PostConstruct;
 
 /**
  * @author Marc Gathier
+ * Access Controller for AxonServer Enterprise. Uses role based access control, app can have various roles.
+ * Maintains a cache of checked commands for improved performance.
  */
+@Primary
 @Controller
-public class AccessController {
+public class AccessController implements AxonServerAccessController {
 
     private final AccessControllerDB accessControllerDB;
     private TimeLimitedCache<RequestWithToken, Boolean> cache;
 
-    @Value("${axoniq.platform.accesscontrol.cache-ttl:300000}")
+    @Value("${axoniq.axonserver.accesscontrol.cache-ttl:300000}")
     private long timeToLive;
 
-    static class RequestWithToken {
+    private static class RequestWithToken {
         final String request;
         private final String context;
         final String token;
 
-        public RequestWithToken(String request, String context, String token) {
+        private RequestWithToken(String request, String context, String token) {
             this.request = request;
             this.context = context;
             this.token = token;
@@ -55,25 +62,36 @@ public class AccessController {
         cache = new TimeLimitedCache<>(timeToLive);
     }
 
-    public boolean validToken(String token) {
-        return accessControllerDB.validToken(token);
-    }
-
-    public Application getApplicationByToken(String token) {
-        return accessControllerDB.getApplicationByToken(token);
-    }
-
-    public boolean authorize(String token, String context, String path, boolean fineGrainedAccessControl) {
-        RequestWithToken requestWithToken = new RequestWithToken(path,context,token);
+    @Override
+    public boolean allowed(String fullMethodName, String context, String token) {
+        RequestWithToken requestWithToken = new RequestWithToken(fullMethodName,context,token);
         if( cache.get(requestWithToken) != null) {
             return true;
         }
 
-        boolean authorized = accessControllerDB.authorize(token, context, path, fineGrainedAccessControl);
+        boolean authorized = accessControllerDB.authorize(token, context, fullMethodName, isRoleBasedAuthentication());
         if( authorized) {
             cache.put(requestWithToken, Boolean.TRUE);
         }
         return authorized;
+    }
+
+    public boolean validToken(String token) {
+        return accessControllerDB.validToken(token);
+    }
+
+    @Override
+    public Collection<PathMapping> getPathMappings() {
+        return accessControllerDB.getPathMappins();
+    }
+
+    @Override
+    public boolean isRoleBasedAuthentication() {
+        return true;
+    }
+
+    public Set<String> getAdminRoles(String token) {
+        return accessControllerDB.getAdminRoles(token);
     }
 
 }

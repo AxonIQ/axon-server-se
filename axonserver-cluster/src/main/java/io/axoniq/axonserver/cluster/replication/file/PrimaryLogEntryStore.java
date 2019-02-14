@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
+import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 
 /**
@@ -347,7 +347,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         storageDir.delete();
     }
 
-    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
+    public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
         File storageDir  = new File(storageProperties.getStorage(getType()));
         String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
         String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
@@ -355,7 +355,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         Stream.of(logFiles, indexFiles)
               .flatMap(Stream::of)
               .filter(name -> !readBuffers.containsKey(getSegment(name))) // filter out opened files
-              .filter(name -> getSegment(name) < getFirstFile(lastAppliedIndexSupplier.get() - 1, storageDir)) // filter out non-applied files
+              .filter(name -> getSegment(name) < getFirstFile(lastAppliedIndexSupplier.getAsLong() - 1, storageDir)) // filter out non-applied files
               .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
               .map(File::new)
               .filter(f -> f.lastModified() <= filter) // filter out files older than <time>

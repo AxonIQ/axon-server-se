@@ -1,68 +1,69 @@
 package io.axoniq.axonserver.access.application;
 
-import io.axoniq.axonserver.access.jpa.Application;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.springframework.stereotype.Controller;
 
+import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 
-import static io.axoniq.axonserver.access.application.ApplicationController.PREFIX_LENGTH;
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * @author Marc Gathier
+ * Retrieves applications from context_application table and validates access to specific resources.
  */
 @Controller
 public class AccessControllerDB {
 
-    private final ApplicationRepository applicationRepository;
+    private final JpaContextApplicationRepository applicationRepository;
     private final PathMappingRepository pathMappingRepository;
     private final Hasher hasher;
 
-    public AccessControllerDB(ApplicationRepository applicationRepository, PathMappingRepository pathMappingRepository, Hasher hasher) {
+    public AccessControllerDB(JpaContextApplicationRepository applicationRepository, PathMappingRepository pathMappingRepository, Hasher hasher) {
         this.applicationRepository = applicationRepository;
         this.pathMappingRepository = pathMappingRepository;
         this.hasher = hasher;
     }
 
     public boolean validToken(String token) {
-        Optional<Application> applicationOptional = applicationRepository.findAll().stream()
-                                                                         .filter(app -> hasher.checkpw(token, app.getHashedToken())).findFirst();
+        Optional<JpaContextApplication> applicationOptional = applicationRepository.findAll().stream()
+                                                                                   .filter(app -> hasher.checkpw(token, app.getHashedToken())).findFirst();
         return applicationOptional.isPresent();
     }
 
-    public Application getApplicationByToken(String token) {
-        return applicationRepository.findAll()
-                .stream()
-                .filter(app -> hasher.checkpw(token, app.getHashedToken()))
-                .findFirst().orElse(null);
+    public Set<String> getAdminRoles(String token) {
+        return getRoles(token, getAdmin());
+    }
 
+    private Set<String> getRoles(String token, String group) {
+        return applicationRepository.findAllByContext(group)
+                                    .stream()
+                                    .filter(app -> hasher.checkpw(token, app.getHashedToken()))
+                                    .findFirst()
+                                    .map(JpaContextApplication::getRoles)
+                                    .orElse(null);
     }
 
     public boolean authorize(String token, String context, String path, boolean fineGrainedAccessControl) {
-
-        String prefix = token.substring(0, Math.min(PREFIX_LENGTH, token.length()));
-        Optional<Application> applicationOptional = applicationRepository.findAllByTokenPrefix(prefix)
-                                                                         .stream().filter(app -> hasher.checkpw(token, app.getHashedToken())).findFirst();
-
-        if (!applicationOptional.isPresent()) {
-            // Not found based on prefix, check applications without prefix (Migration from AxonDB creates applications without prefix as AxonDB does not store prefix)
-            applicationOptional = applicationRepository.findAllByTokenPrefix(null).stream().filter(app -> hasher
-                    .checkpw(token, app.getHashedToken())).findFirst();
-        }
-
-        if (!applicationOptional.isPresent())
+        Set<String> roles = getRoles(token, context);
+        if (roles == null)
             return false;
 
         if( !fineGrainedAccessControl) return true;
 
         PathMapping mapping = pathMappingRepository.findById(path).orElseGet(() -> findByPrefix(path));
-        return mapping != null && applicationOptional.get().hasRoleForContext(mapping.getRole(), context);
+        return mapping != null && roles.contains(mapping.getRole());
     }
 
     private PathMapping findByPrefix(String path) {
         return pathMappingRepository.findAll().stream().filter(m -> m.getPath().endsWith("*"))
                                     .filter(m -> path.startsWith(m.getPath().substring(0, m.getPath().length() -1)))
                                     .findFirst().orElse(null);
+    }
+
+    public Collection<PathMapping> getPathMappins() {
+        return pathMappingRepository.findAll();
     }
 }

@@ -1,9 +1,9 @@
-package io.axoniq.axonserver.rest.json;
+package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationContext;
-import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
+import io.axoniq.axonserver.access.application.ApplicationContext;
+import io.axoniq.axonserver.access.application.ApplicationContextRole;
+import io.axoniq.axonserver.access.application.JpaApplication;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ public class ApplicationJSON {
     public ApplicationJSON() {
     }
 
-    public ApplicationJSON(Application application) {
+    public ApplicationJSON(JpaApplication application) {
         name = application.getName();
         description = application.getDescription();
         roles = application.getContexts().stream().map(ApplicationRoleJSON::new).collect(Collectors.toList());
@@ -90,6 +90,14 @@ public class ApplicationJSON {
 
         public void setContext(String context) {
             this.context = context;
+        }
+
+        public List<String> getRoles() {
+            return roles;
+        }
+
+        public void setRoles(List<String> roles) {
+            this.roles = roles;
         }
 
         public ApplicationContext toApplicationRole() {

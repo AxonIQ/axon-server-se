@@ -1,10 +1,10 @@
 package io.axoniq.axonserver;
 
 
-import io.axoniq.axonserver.access.jpa.Application;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 
 import java.util.Collection;
+import java.util.Set;
 
 /**
  * @author Marc Gathier
@@ -22,5 +22,5 @@ public interface AxonServerAccessController {
 
     boolean isRoleBasedAuthentication();
 
-    Application getApplication(String token);
+    Set<String> getAdminRoles(String token);
 }

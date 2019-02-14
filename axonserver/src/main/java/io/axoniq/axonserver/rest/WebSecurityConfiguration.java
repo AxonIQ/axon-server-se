@@ -2,13 +2,9 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
-import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationContext;
-import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.topology.Topology;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -28,7 +24,6 @@ import org.springframework.web.filter.GenericFilterBean;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.FilterChain;
@@ -181,19 +176,11 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                                                     Collections.singleton("ADMIN")));
                 } else {
                     if (token != null) {
-                        Application application = accessController.getApplication(token);
-                        if (application != null) {
-                            Set<String> roles = application.getContexts()
-                                                           .stream()
-                                                           .map(ApplicationContext::getRoles)
-                                                           .flatMap(List::stream)
-// TODO: filter?
-//                                                           .filter(r -> Topology.DEFAULT_CONTEXT.equals(r.getApplicationContext().getContext()))
-                                                           .map(ApplicationContextRole::getRole)
-                                                           .collect(Collectors.toSet());
+                        Set<String> roles = accessController.getAdminRoles(token);
+                        if (roles != null && ! roles.isEmpty()) {
                             SecurityContextHolder.getContext().setAuthentication(
                                     new AuthenticationToken(true,
-                                                            application.getName(),
+                                                            "AuthenticatedApp",
                                                             roles));
                         } else {
                             HttpServletResponse httpServletResponse = (HttpServletResponse)servletResponse;

@@ -1,7 +1,16 @@
+# IntelliJ / Eclipse
 .idea
 *.iml
+.settings
+.classpath
+.project
+.factorypath
+
+# Maven
 target
+
 tmp
+tmp-?
 
 # axoniq.license
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml

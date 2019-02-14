@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
@@ -35,8 +36,8 @@ public class RaftGroupServiceFactory {
         if( leader == null) throw new RuntimeException("No leader for " + groupId);
 
         ClusterNode node = clusterController.getNode(leader);
-        return new RemoteRaftGroupService(RaftGroupServiceGrpc.newStub(ManagedChannelHelper
-                .createManagedChannel(configuration, node)));
+        return new RemoteRaftGroupService(RaftGroupServiceGrpc.newStub(ManagedChannelHelper.createManagedChannel(configuration, node))
+                                                              .withInterceptors(new InternalTokenAddingInterceptor(configuration.getAccesscontrol().getInternalToken())));
     }
 
     public RaftGroupService getRaftGroupServiceForNode(String nodeName) {
@@ -44,7 +45,8 @@ public class RaftGroupServiceFactory {
 
         ClusterNode node = clusterController.getNode(nodeName);
         return new RemoteRaftGroupService( RaftGroupServiceGrpc.newStub(ManagedChannelHelper
-                                                                                        .createManagedChannel(configuration, node)));
+                                                                                        .createManagedChannel(configuration, node))
+                                                              .withInterceptors(new InternalTokenAddingInterceptor(configuration.getAccesscontrol().getInternalToken())));
     }
 
     public RaftGroupService getRaftGroupServiceForNode(ClusterNode clusterNode) {

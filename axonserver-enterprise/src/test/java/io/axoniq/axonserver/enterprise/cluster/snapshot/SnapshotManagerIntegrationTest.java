@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.access.application.ApplicationContext;
+import io.axoniq.axonserver.access.application.ApplicationContextRole;
 import io.axoniq.axonserver.access.application.ApplicationController;
-import io.axoniq.axonserver.access.application.ApplicationRepository;
+import io.axoniq.axonserver.access.application.JpaApplication;
+import io.axoniq.axonserver.access.application.JpaApplicationRepository;
 import io.axoniq.axonserver.access.application.ShaHasher;
-import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationContext;
-import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserRepository;
@@ -36,11 +36,8 @@ import org.junit.*;
 import org.junit.rules.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,10 +70,10 @@ import static org.mockito.Mockito.*;
 @ContextConfiguration(classes = AxonServer.class)
 public class SnapshotManagerIntegrationTest {
 
-    private static final String CONTEXT = "junit";
+    private static final String CONTEXT = "_admin";
 
     @Autowired
-    private ApplicationRepository applicationRepository;
+    private JpaApplicationRepository applicationRepository;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -119,8 +116,8 @@ public class SnapshotManagerIntegrationTest {
                 new ApplicationContext(CONTEXT, singletonList(applicationContextRole1));
         ApplicationContext defaultAppContext =
                 new ApplicationContext("default", singletonList(applicationContextRole2));
-        Application app1 = new Application("app1", "app1Desc", "tokenPrefix", "hashedToken1", junitAppContext);
-        Application app2 = new Application("app2", "app2Desc", "tokenPrefix", "hashedToken2", defaultAppContext);
+        JpaApplication app1 = new JpaApplication("app1", "app1Desc", "tokenPrefix", "hashedToken1", junitAppContext);
+        JpaApplication app2 = new JpaApplication("app2", "app2Desc", "tokenPrefix", "hashedToken2", defaultAppContext);
         applicationRepository.save(app1);
         applicationRepository.save(app2);
 
@@ -146,7 +143,7 @@ public class SnapshotManagerIntegrationTest {
 
         assertNotNull(snapshotChunks);
         assertEquals(17, snapshotChunks.size());
-        assertEquals(Application.class.getName(), snapshotChunks.get(0).getType());
+        assertEquals(JpaApplication.class.getName(), snapshotChunks.get(0).getType());
         assertEquals(User.class.getName(), snapshotChunks.get(1).getType());
         assertEquals(LoadBalancingStrategy.class.getName(), snapshotChunks.get(2).getType());
         assertEquals(ProcessorLoadBalancing.class.getName(), snapshotChunks.get(3).getType());
@@ -167,7 +164,7 @@ public class SnapshotManagerIntegrationTest {
         assertEventStores(leaderEventStore, followerEventStore, 0, 95);
         assertEventStores(leaderSnapshotStore, followerSnapshotStore, 0, 9);
 
-        List<Application> applications = applicationRepository.findAllByContextsContext(CONTEXT);
+        List<JpaApplication> applications = applicationRepository.findAllByContextsContext(CONTEXT);
         assertEquals(1, applications.size());
         assertApplications(app1, applications.get(0));
 
@@ -221,7 +218,7 @@ public class SnapshotManagerIntegrationTest {
         ApplicationController applicationController = new ApplicationController(applicationRepository, new ShaHasher());
         ApplicationSnapshotDataStore applicationSnapshotDataProvider =
                 new ApplicationSnapshotDataStore(CONTEXT, applicationController);
-        UserSnapshotDataStore userSnapshotDataProvider = new UserSnapshotDataStore(userRepository);
+        UserSnapshotDataStore userSnapshotDataProvider = new UserSnapshotDataStore(CONTEXT, userRepository);
         LoadBalanceStrategySnapshotDataStore loadBalanceStrategySnapshotDataProvider =
                 new LoadBalanceStrategySnapshotDataStore(loadBalanceStrategyRepository);
         ProcessorLoadBalancingSnapshotDataStore processorLoadBalancingSnapshotDataProvider =
@@ -301,7 +298,7 @@ public class SnapshotManagerIntegrationTest {
         assertEquals(event1.getPayload(), event2.getPayload());
     }
 
-    private void assertApplications(Application app1, Application app2) {
+    private void assertApplications(JpaApplication app1, JpaApplication app2) {
         assertEquals(app1.getName(), app2.getName());
         assertEquals(app1.getDescription(), app2.getDescription());
         assertEquals(app1.getHashedToken(), app2.getHashedToken());

@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
+import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -23,6 +24,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +38,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -52,13 +53,21 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
+    private final MatchStrategy matchStrategy;
     private volatile Replicators replicators;
     private final AtomicLong lastConfirmed = new AtomicLong();
 
     protected static class Builder extends AbstractMembershipState.Builder<Builder> {
 
+        private MatchStrategy matchStrategy;
+
         public LeaderState build() {
             return new LeaderState(this);
+        }
+
+        public LeaderState.Builder matchStrategy(MatchStrategy matchStrategy) {
+            this.matchStrategy = matchStrategy;
+            return this;
         }
     }
 
@@ -68,6 +77,7 @@ public class LeaderState extends AbstractMembershipState {
 
     private LeaderState(Builder builder) {
         super(builder);
+        this.matchStrategy = builder.matchStrategy;
         clusterConfiguration = new LeaderConfiguration(raftGroup(),
                                                        () -> scheduler.get().clock().millis(),
                                                        this::replicator,
@@ -269,6 +279,11 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
+    public Iterator<ReplicatorPeer> replicatorPeers() {
+        return replicators.replicatorPeerMap.values().iterator();
+    }
+
+    @Override
     protected void updateCurrentTerm(long term, String cause) {
         if (term <= raftGroup().localElectionStore().currentTerm()) return;
         super.updateCurrentTerm(term, cause);
@@ -356,7 +371,7 @@ public class LeaderState extends AbstractMembershipState {
             if (matchIndex < nextCommitCandidate) {
                 return;
             }
-            for (long index = nextCommitCandidate; index <= matchIndex && matchedByMajority(index); index++) {
+            for (long index = nextCommitCandidate; index <= matchIndex && matchStrategy.match(index); index++) {
                 nextCommitCandidate = index;
                 updateCommit = true;
             }
@@ -365,14 +380,6 @@ public class LeaderState extends AbstractMembershipState {
             if (updateCommit && entry.getTerm() == raftGroup().localElectionStore().currentTerm()) {
                 raftGroup().logEntryProcessor().markCommitted(entry.getIndex(), entry.getTerm());
             }
-        }
-
-        private boolean matchedByMajority(long nextCommitCandidate) {
-            int majority = (int) Math.ceil((otherNodesCount() + 1.1) / 2f);
-            Stream<Long> matchIndexes = Stream.concat(Stream.of(raftGroup().localLogEntryStore().lastLogIndex()),
-                                                      replicatorPeerMap.values().stream()
-                                                                       .map(ReplicatorPeer::matchIndex));
-            return matchIndexes.filter(p -> p >= nextCommitCandidate).count() >= majority;
         }
 
         void notifySenders() {
