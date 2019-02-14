@@ -127,9 +127,11 @@ public class LeaderState extends AbstractMembershipState {
         appendLeaderElected();
         scheduler.set(schedulerFactory().get());
         scheduleStepDownTimeoutChecker();
-        replicators = new Replicators();
-        replicators.start();
         lastConfirmed.set(0);
+        scheduler.get().execute( () ->  {
+            replicators = new Replicators();
+            replicators.start();
+        });
         logger.info("Leader state started");
     }
 

@@ -125,8 +125,8 @@ public class RaftNode {
                     throw new RuntimeException("Transition to " + newStateName + " failed", ex);
                 }
             });
-            logger.info("{}: Updated state to {}", groupId(), newStateName);
             newState.start();
+            logger.info("{}: Updated state to {}", groupId(), newStateName);
         } else {
             logger.warn("{}: transition to {} failed, invalid current state (node: {}, term:{}, currentState: {})",
                         groupId(), newStateName, nodeId, term, currentStateName);

@@ -116,7 +116,7 @@ public class ReplicatorPeer {
                                                               .setOffset(offset)
                                                               .setDone(done)
                                                               .build());
-                                   logger.info("{}: Sending the last chunk for install snapshot", groupId());
+                                   logger.info("{}: Sending the last chunk for install snapshot to {}", groupId(), raftPeer.nodeId());
                                }
                            });
         }
@@ -200,11 +200,14 @@ public class ReplicatorPeer {
         public int sendNextEntries() {
             int sent = 0;
             try {
-                if (entryIterator == null) {
+                EntryIterator iterator = entryIterator;
+                if (iterator == null) {
                     nextIndex.compareAndSet(0, raftGroup.localLogEntryStore().lastLogIndex() + 1);
                     logger.debug("{}: create entry iterator for {} at {}", groupId(), raftPeer.nodeId(), nextIndex);
-                    updateEntryIterator();
+                    iterator = updateEntryIterator();
                 }
+
+                if (iterator == null) return sent;
 
                 if (!canSend()) {
                     logger.info("{}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
@@ -215,10 +218,10 @@ public class ReplicatorPeer {
                                  raftGroup.localLogEntryStore().lastLogIndex());
                 }
                 while (canSend()
-                        && sent < raftGroup.raftConfiguration().maxEntriesPerBatch() && entryIterator.hasNext()) {
-                    Entry entry = entryIterator.next();
+                        && sent < raftGroup.raftConfiguration().maxEntriesPerBatch() && iterator.hasNext()) {
+                    Entry entry = iterator.next();
                     //
-                    TermIndex previous = entryIterator.previous();
+                    TermIndex previous = iterator.previous();
                     logger.trace("{}: Send request {} to {}: {}", groupId(), sent, raftPeer.nodeId(), entry.getIndex());
                     send(AppendEntriesRequest.newBuilder()
                                              .setRequestId(UUID.randomUUID().toString())
@@ -293,10 +296,11 @@ public class ReplicatorPeer {
             lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 
-        private void updateEntryIterator() {
+        private EntryIterator updateEntryIterator() {
             LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
             if (logEntryStore.firstLogIndex() == 1 || nextIndex() - 1 >= logEntryStore.firstLogIndex()) {
                 entryIterator = logEntryStore.createIterator(nextIndex());
+                return entryIterator;
             } else {
                 logger.info("{}: follower {} is far behind the log entry. Follower's last applied index: {}.",
                                 groupId(),
@@ -304,6 +308,7 @@ public class ReplicatorPeer {
                                 nextIndex());
                 changeStateTo(new InstallSnapshotState());
             }
+            return null;
         }
 
         private boolean canSend() {
