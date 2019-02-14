@@ -351,7 +351,7 @@ public class FollowerStateTest {
         assertEquals("defaultGroup", response.getGroupId());
         assertEquals(0L, response.getTerm());
         assertTrue(response.hasSuccess());
-        verify(logEntryStore).clear();
+        verify(logEntryStore).clear(anyLong());
         verify(raftConfiguration).update(request.getLastConfig().getNodesList());
         verify(snapshotManager).applySnapshotData(request.getDataList());
 

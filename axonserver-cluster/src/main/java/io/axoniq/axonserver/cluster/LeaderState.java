@@ -130,6 +130,7 @@ public class LeaderState extends AbstractMembershipState {
         replicators = new Replicators();
         replicators.start();
         lastConfirmed.set(0);
+        logger.info("Leader state started");
     }
 
     @Override
@@ -143,6 +144,7 @@ public class LeaderState extends AbstractMembershipState {
         if (scheduler.get() != null) {
             scheduler.getAndSet(null).shutdownNow();
         }
+        logger.info("Leader state stopped");
     }
 
     @Override

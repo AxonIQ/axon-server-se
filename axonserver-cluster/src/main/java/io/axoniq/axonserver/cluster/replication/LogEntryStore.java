@@ -54,6 +54,8 @@ public interface LogEntryStore {
 
     long lastLogIndex();
 
+    long firstLogIndex();
+
     Registration registerLogAppendListener(Consumer<Entry> listener);
 
     Registration registerLogRollbackListener(Consumer<Entry> listener);

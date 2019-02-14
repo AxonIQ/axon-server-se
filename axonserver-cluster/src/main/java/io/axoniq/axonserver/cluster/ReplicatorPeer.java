@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -293,13 +294,14 @@ public class ReplicatorPeer {
         }
 
         private void updateEntryIterator() {
-            try {
-                entryIterator = raftGroup.localLogEntryStore().createIterator(nextIndex());
-            } catch (IllegalArgumentException iae) {
+            LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
+            if (nextIndex() == 1 || nextIndex() - 1 >= logEntryStore.firstLogIndex()) {
+                entryIterator = logEntryStore.createIterator(nextIndex());
+            } else {
                 logger.info("{}: follower {} is far behind the log entry. Follower's last applied index: {}.",
-                            groupId(),
-                            raftPeer.nodeId(),
-                            nextIndex());
+                                groupId(),
+                                raftPeer.nodeId(),
+                                nextIndex());
                 changeStateTo(new InstallSnapshotState());
             }
         }

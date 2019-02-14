@@ -333,17 +333,11 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         File storageDir  = new File(storageProperties.getStorage(getType()));
         String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
         String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
-        Stream<File> fileStream = Stream.of(logFiles, indexFiles)
-                                        .flatMap(Stream::of)
-                                        .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
-                                        .map(File::new);
-        fileStream.forEach(file -> {
-            try {
-                file.delete();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
+        Stream.of(logFiles, indexFiles)
+              .flatMap(Stream::of)
+              .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
+              .map(File::new)
+              .forEach(File::delete);
         positionsPerSegmentMap.clear();
         lastToken.set(lastIndex);
     }

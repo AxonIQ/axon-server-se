@@ -10,8 +10,8 @@ public class InMemoryEntryIterator implements EntryIterator {
 
     private final LogEntryStore logEntryStore;
     private final AtomicLong nextIndex = new AtomicLong();
-    private volatile TermIndex previous;
-    private volatile TermIndex current;
+    private volatile Entry previous;
+    private volatile Entry current;
 
     public InMemoryEntryIterator(LogEntryStore logEntryStore, long start) {
         this.logEntryStore = logEntryStore;
@@ -27,19 +27,14 @@ public class InMemoryEntryIterator implements EntryIterator {
     public Entry next() {
         if (!hasNext()) throw new NoSuchElementException();
         Entry entry = logEntryStore.getEntry(nextIndex.getAndIncrement());
-        previous = current != null ? current : termIndexOf(entry.getIndex()-1);
-        current = new TermIndex(entry);
+        previous = current != null ? current : logEntryStore.getEntry(entry.getIndex()-1);
+        current = entry;
         return entry;
     }
 
     @Override
     public TermIndex previous() {
-       return previous;
-    }
-
-    private TermIndex termIndexOf(long index){
-        if (index == 0) return new TermIndex();
-        return new TermIndex(logEntryStore.getEntry(index));
+       return (previous == null) ? null : new TermIndex(previous);
     }
 
 }

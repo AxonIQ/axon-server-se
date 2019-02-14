@@ -217,6 +217,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public long firstLogIndex() {
+        return primaryEventStore.getFirstToken();
+    }
+
+    @Override
     public Registration registerLogAppendListener(Consumer<Entry> listener) {
         appendListeners.add(listener);
         return () -> appendListeners.remove(listener);
@@ -230,8 +235,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
 
     @Override
     public EntryIterator createIterator(long index) {
-        long firstToken = primaryEventStore.getFirstToken();
-        long lowerBound = firstToken == 1 ? firstToken : firstToken + 1;
+        long lowerBound = primaryEventStore.getFirstToken();
         if (index < lowerBound) {
             throw new IllegalArgumentException("Read before start");
         }
