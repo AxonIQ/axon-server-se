@@ -237,7 +237,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         // No implementation as for primary segment store there are no index files, index is kept in memory
     }
 
-    private void removeSegment(long segment) {
+    public void removeSegment(long segment) {
         positionsPerSegmentMap.remove(segment);
         ByteBufferEntrySource eventSource = readBuffers.remove(segment);
         if( eventSource != null) eventSource.clean(0);
@@ -329,18 +329,16 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     public void clear(long lastIndex) {
+        if (next != null ) {
+            next.getSegments().forEach(segment -> next.removeSegment(segment));
+        }
+        getSegments().forEach(this::removeSegment);
         cleanup(0);
-        File storageDir  = new File(storageProperties.getStorage(getType()));
-        String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
-        String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
-        Stream.of(logFiles, indexFiles)
-              .flatMap(Stream::of)
-              .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
-              .map(File::new)
-              .forEach(File::delete);
         positionsPerSegmentMap.clear();
         lastToken.set(lastIndex);
     }
+
+
 
     public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
         File storageDir  = new File(storageProperties.getStorage(getType()));

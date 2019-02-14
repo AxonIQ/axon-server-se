@@ -144,7 +144,7 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         return indexManager.getIndex(segment).getPosition(nextIndex);
     }
 
-    private void removeSegment(long segment) {
+    public void removeSegment(long segment) {
         if( segments.remove(segment)) {
             WeakReference<ByteBufferEntrySource> segmentRef = lruMap.remove(segment);
             if (segmentRef != null) {

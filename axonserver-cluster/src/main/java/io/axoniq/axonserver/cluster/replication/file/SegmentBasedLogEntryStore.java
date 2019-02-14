@@ -211,4 +211,6 @@ public abstract class SegmentBasedLogEntryStore {
     }
 
     protected abstract int getPosition(long segment, long nextIndex);
+
+    protected abstract void removeSegment(long segment);
 }
