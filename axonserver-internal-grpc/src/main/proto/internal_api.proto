@@ -357,7 +357,6 @@ message TransactionWithToken {
     int64 token = 1;
     int32 version = 2;
     repeated bytes events = 3;
-    int64 index = 4;
 }
 
 /*

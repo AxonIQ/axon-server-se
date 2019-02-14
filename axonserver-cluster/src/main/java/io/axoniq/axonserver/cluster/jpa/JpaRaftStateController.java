@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.cluster.jpa;
 
 import io.axoniq.axonserver.cluster.ProcessorStore;
-import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 
 /**
@@ -78,6 +77,6 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     }
 
     public void sync() {
-        raftState = repository.save(raftState);
+        repository.save(raftState);
     }
 }

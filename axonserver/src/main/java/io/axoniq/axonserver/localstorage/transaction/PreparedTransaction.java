@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.localstorage.transaction;
 
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 
 import java.util.List;
@@ -11,12 +10,10 @@ import java.util.List;
 public class PreparedTransaction {
     private final long token;
     private final List<ProcessedEvent> eventList;
-    private final TransactionInformation transactionInformation;
 
-    public PreparedTransaction(long token, List<ProcessedEvent> eventList, TransactionInformation transactionInformation) {
+    public PreparedTransaction(long token, List<ProcessedEvent> eventList) {
         this.token = token;
         this.eventList = eventList;
-        this.transactionInformation = transactionInformation;
     }
 
     public long getToken() {
@@ -27,7 +24,4 @@ public class PreparedTransaction {
         return eventList;
     }
 
-    public TransactionInformation getTransactionInformation() {
-        return transactionInformation;
-    }
 }

@@ -33,16 +33,11 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                     if( logger.isTraceEnabled()) {
                         logger.trace("Index {}: Received Event with index: {} and {} events",
                                     e.getIndex(),
-                                    transactionWithToken.getIndex(),
+                                    transactionWithToken.getToken(),
                                     transactionWithToken.getEventsCount()
                         );
                     }
-                    if (transactionWithToken.getIndex() > localEventStore.getLastEventIndex(groupId)) {
-                        localEventStore.syncEvents(groupId, asSerializedTransactionWithToken(transactionWithToken));
-                    } else {
-                        logger.debug("Index {}: event already applied",
-                                    e.getIndex());
-                    }
+                    localEventStore.syncEvents(groupId, asSerializedTransactionWithToken(transactionWithToken));
                 } catch (InvalidProtocolBufferException e1) {
                     throw new RuntimeException("Error processing entry: " + e.getIndex(), e1);
                 }
@@ -50,12 +45,7 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                 TransactionWithToken transactionWithToken = null;
                 try {
                     transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
-                    if (transactionWithToken.getIndex() > localEventStore.getLastSnapshotIndex(groupId)) {
-                        localEventStore.syncSnapshots(groupId, asSerializedTransactionWithToken(transactionWithToken));
-                    } else {
-                        logger.debug("Index {}: snapshot already applied",
-                                    e.getIndex());
-                    }
+                    localEventStore.syncSnapshots(groupId, asSerializedTransactionWithToken(transactionWithToken));
                 } catch (InvalidProtocolBufferException e1) {
                     throw new RuntimeException("Error processing entry: " + e.getIndex(), e1);
                 }

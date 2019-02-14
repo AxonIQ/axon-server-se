@@ -22,8 +22,7 @@ public class SerializedTransactionWithTokenConverter {
 
         return new SerializedTransactionWithToken(transactionWithToken.getToken(),
                                                   (byte)transactionWithToken.getVersion(),
-                                                  serializedEvents,
-                                                  transactionWithToken.getIndex());
+                                                  serializedEvents);
     }
 
 
@@ -32,7 +31,6 @@ public class SerializedTransactionWithTokenConverter {
                 Collectors.toList());
         return TransactionWithToken.newBuilder().setVersion(transactionWithToken.getVersion())
                 .setToken(transactionWithToken.getToken())
-                .setIndex(transactionWithToken.getIndex())
                 .addAllEvents(events)
                 .build().toByteString();
 

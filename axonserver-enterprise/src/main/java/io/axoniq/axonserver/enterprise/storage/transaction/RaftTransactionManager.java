@@ -28,21 +28,22 @@ public class RaftTransactionManager implements StorageTransactionManager {
     private final Logger logger = LoggerFactory.getLogger(RaftTransactionManager.class);
     private final EventStore datafileManagerChain;
     private final GrpcRaftController clusterController;
-    private final AtomicLong token = new AtomicLong();
+    private final AtomicLong nextTransactionToken = new AtomicLong();
     private final AtomicBoolean allocating = new AtomicBoolean();
     private final AtomicInteger waitingTransactions = new AtomicInteger();
+    private final boolean eventTransactionManager;
 
 
     public RaftTransactionManager(EventStore datafileManagerChain,
                                   GrpcRaftController clusterController) {
         this.datafileManagerChain = datafileManagerChain;
         this.clusterController = clusterController;
+        this.eventTransactionManager = datafileManagerChain.getType().getEventType().equals(EventType.EVENT);
     }
 
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
         waitingTransactions.set(0);
-        token.set(datafileManagerChain.lastIndex());
-        if(EventType.EVENT.equals(datafileManagerChain.getType().getEventType())) {
+        nextTransactionToken.set(datafileManagerChain.getLastToken()+1);
             try (EntryIterator iterator = becomeMaster.getUnappliedEntries().get()) {
                 while (iterator.hasNext()) {
                     Entry entry = iterator.next();
@@ -50,28 +51,33 @@ public class RaftTransactionManager implements StorageTransactionManager {
                         try {
                             TransactionWithToken transactionWithToken = TransactionWithToken
                                     .parseFrom(entry.getSerializedObject().getData());
+                            if( transactionWithToken.getToken() >= nextTransactionToken.get()) {
 
-                            List<SerializedEvent> serializedEvents = transactionWithToken.getEventsList()
-                                    .stream()
-                                    .map(bytes -> new SerializedEvent(bytes.toByteArray()))
-                                    .collect(Collectors.toList());
-                            if( logger.isInfoEnabled()) {
-                                serializedEvents.forEach(e -> logger.info("{}/{} reserve sequence numbers for {} : {}",
-                                                                      entry.getTerm(),
-                                                                      entry.getIndex(),
-                                                                      e.getAggregateIdentifier(),
-                                                                      e.getAggregateSequenceNumber()));
+                                List<SerializedEvent> serializedEvents = transactionWithToken.getEventsList()
+                                                                                             .stream()
+                                                                                             .map(bytes -> new SerializedEvent(
+                                                                                                     bytes.toByteArray()))
+                                                                                             .collect(Collectors
+                                                                                                              .toList());
+                                if (logger.isInfoEnabled()) {
+                                    serializedEvents.forEach(e -> logger
+                                            .info("{}/{} reserve sequence numbers for {} : {}",
+                                                  entry.getTerm(),
+                                                  entry.getIndex(),
+                                                  e.getAggregateIdentifier(),
+                                                  e.getAggregateSequenceNumber()));
+                                }
+                                if( eventTransactionManager) {
+                                    datafileManagerChain.reserveSequenceNumbers(serializedEvents);
+                                }
+                                nextTransactionToken.addAndGet(transactionWithToken.getEventsCount());
                             }
-                            datafileManagerChain.reserveSequenceNumbers(serializedEvents);
-                            token.updateAndGet(old -> Math.max(old, transactionWithToken.getIndex()));
                         } catch (Exception e) {
                             logger.error("failed: {}", e.getMessage());
                         }
                     }
                 }
-            }
         }
-        token.incrementAndGet();
     }
 
     private boolean forMe(Entry entry) {
@@ -79,7 +85,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
     }
 
     public void on(ClusterEvents.LeaderStepDown masterStepDown) {
-        token.set(-1);
+        nextTransactionToken.set(-1);
         logger.error("{}: Step down", datafileManagerChain.getType());
         datafileManagerChain.stepDown();
     }
@@ -106,13 +112,13 @@ public class RaftTransactionManager implements StorageTransactionManager {
                 }
 
                 transactionWithToken =
-                        TransactionWithToken.newBuilder().setIndex(token.getAndIncrement())
+                        TransactionWithToken.newBuilder().setToken(nextTransactionToken.getAndAdd(eventList.size()))
                                             .setVersion(datafileManagerChain.transactionVersion())
                 .addAllEvents(eventsAsByteStrings(eventList)).build();
 
                 if( logger.isTraceEnabled()) {
                     logger.trace("Append transaction: {} with {} events",
-                                 transactionWithToken.getIndex(),
+                                 transactionWithToken.getToken(),
                                  transactionWithToken.getEventsCount());
                 }
                 appendEntryResult = node.appendEntry(
@@ -125,7 +131,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
             appendEntryResult.whenComplete((r, cause) -> {
                 waitingTransactions.decrementAndGet();
                 if (cause == null) {
-                    completableFuture.complete(transactionWithToken.getIndex());
+                    completableFuture.complete(transactionWithToken.getToken());
                 } else {
                     completableFuture.completeExceptionally(cause);
                 }
@@ -165,10 +171,5 @@ public class RaftTransactionManager implements StorageTransactionManager {
     @Override
     public void cancelPendingTransactions() {
 
-    }
-
-    @Override
-    public long getLastIndex() {
-        return datafileManagerChain.lastIndex();
     }
 }

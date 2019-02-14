@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.localstorage.EventStore;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 
 import java.util.List;
@@ -20,7 +19,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
 
     @Override
     public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
-        return datafileManagerChain.store(datafileManagerChain.prepareTransaction(new TransactionInformation(datafileManagerChain.transactionVersion(), 0), eventList));
+        return datafileManagerChain.store(datafileManagerChain.prepareTransaction( eventList));
     }
 
     @Override
@@ -31,10 +30,5 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
     @Override
     public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
         datafileManagerChain.reserveSequenceNumbers(eventList);
-    }
-
-    @Override
-    public long getLastIndex() {
-        return datafileManagerChain.lastIndex();
     }
 }

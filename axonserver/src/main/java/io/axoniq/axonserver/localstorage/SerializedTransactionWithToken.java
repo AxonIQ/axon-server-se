@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.localstorage;
 
-import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.event.Event;
 
 import java.util.List;
@@ -14,14 +13,12 @@ public class SerializedTransactionWithToken {
     private final long token;
     private final byte version;
     private final List<SerializedEvent> events;
-    private final long index;
 
     public SerializedTransactionWithToken(long token, byte version,
-                                          List<SerializedEvent> events, long index) {
+                                          List<SerializedEvent> events) {
         this.token = token;
         this.version = version;
         this.events = events;
-        this.index = index;
     }
 
     public long getToken() {
@@ -56,14 +53,6 @@ public class SerializedTransactionWithToken {
 
     public int getEventsCount() {
         return events.size();
-    }
-
-    public TransactionInformation getTransactionInformation() {
-        return new TransactionInformation(version, index);
-    }
-
-    public long getIndex() {
-        return index;
     }
 
     public Event getEvents(int i) {

@@ -8,7 +8,6 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -54,7 +53,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     private final String tokenAt = String.format("select min(token) from %s where time_stamp >= ?", getTableName());
     private final String minToken = String.format("select min(token) from %s", getTableName());
 
-    private final AtomicLong lastToken = new AtomicLong(-1);
+    private final AtomicLong nextToken = new AtomicLong(0);
     private final EventTypeContext eventTypeContext;
     private final DataSource dataSource;
 
@@ -76,11 +75,6 @@ public abstract class JdbcAbstractStore implements EventStore {
 
     @Override
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void streamTransactions(long firstToken, Predicate<SerializedTransactionWithToken> transactionConsumer) {
         throw new UnsupportedOperationException();
     }
 
@@ -111,7 +105,7 @@ public abstract class JdbcAbstractStore implements EventStore {
                  ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
                     Number last = (Number) resultSet.getObject(1);
-                    if (last != null) lastToken.set(last.longValue());
+                    if (last != null) nextToken.set(last.longValue()+1);
                 }
             }
         } catch (SQLException e) {
@@ -120,10 +114,14 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> eventList) {
-        long firstToken = lastToken.getAndAdd(eventList.size()) + 1;
-        return new PreparedTransaction(firstToken, eventList.stream().map(e -> new WrappedEvent(e, NoOpEventTransformer.INSTANCE)).collect(Collectors.toList()),
-                                       transactionInformation);
+    public PreparedTransaction prepareTransaction( List<SerializedEvent> eventList) {
+        long firstToken = nextToken.getAndAdd(eventList.size());
+        return new PreparedTransaction(firstToken, eventList.stream().map(e -> new WrappedEvent(e, NoOpEventTransformer.INSTANCE)).collect(Collectors.toList()));
+    }
+
+    @Override
+    public long nextToken() {
+        return nextToken.get();
     }
 
     @Override
@@ -159,7 +157,7 @@ public abstract class JdbcAbstractStore implements EventStore {
 
     @Override
     public long getLastToken() {
-        return lastToken.get();
+        return nextToken.get()-1;
     }
 
     @Override
