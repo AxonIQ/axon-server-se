@@ -8,7 +8,9 @@
         <class template="class io.axoniq.axonserver.grpc.Gateway"/>
         <class template="class io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServer"/>
 
-        <class template="@org.springframework.web.bind.annotation.RestController class *"/>
+        <class template="@org.springframework.web.bind.annotation.RestController class *">
+            <method access="public"/>
+        </class>
         <class template="@org.springframework.context.annotation.Configuration class *"/>
         <class template="@org.springframework.stereotype.Component class *"/>
         <class template="@org.springframework.stereotype.Controller class *"/>
@@ -21,7 +23,7 @@
             <field template="*"/>
             <method access="protected+"/>
         </class>
-        <class template="@io.axoniq.platform.KeepNames class *">
+        <class template="class io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode.Key">
             <field template="*"/>
             <method access="protected+"/>
         </class>
