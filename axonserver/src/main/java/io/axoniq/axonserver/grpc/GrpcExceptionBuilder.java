@@ -7,6 +7,9 @@ import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author Marc Gathier
  */
@@ -33,17 +36,27 @@ public class GrpcExceptionBuilder {
             String errorCode = statusRuntimeException.getTrailers().get(GrpcMetadataKeys.ERROR_CODE_KEY);
             ErrorCode standardErrorCode = ErrorCode.find(errorCode);
 
-            return new MessagingPlatformException(standardErrorCode, cleanupDescription(standardErrorCode, statusRuntimeException.getStatus().getDescription()));
+            return new MessagingPlatformException(standardErrorCode, cleanupDescription(standardErrorCode, statusRuntimeException.getStatus().getDescription(), throwable));
         }
-        return new MessagingPlatformException(ErrorCode.OTHER, throwable.getMessage());
+        return new MessagingPlatformException(ErrorCode.OTHER, createMessage(throwable));
+    }
+
+    private static String createMessage(Throwable throwable) {
+        List<String> lines = new ArrayList<>();
+        while( throwable != null) {
+            lines.add( throwable.getMessage());
+            throwable = throwable.getCause();
+        }
+
+        return String.join(" - ", lines);
     }
 
     // Trim AXONIQ error code from message
-    private static String cleanupDescription(ErrorCode standardErrorCode, String description) {
+    private static String cleanupDescription(ErrorCode standardErrorCode, String description, Throwable throwable) {
         String stdPrefix = "[" + standardErrorCode.getCode() + "] ";
         if( description != null && description.startsWith(stdPrefix)) {
             return description.substring(stdPrefix.length());
         }
-        return description;
+        return createMessage(throwable);
     }
 }

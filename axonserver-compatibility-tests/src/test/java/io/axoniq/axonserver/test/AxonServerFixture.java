@@ -60,11 +60,6 @@ public class AxonServerFixture {
             }
 
             @Override
-            public boolean validToken(String token) {
-                return token.equals("1234");
-            }
-
-            @Override
             public Collection<PathMapping> getPathMappings() {
                 return null;
             }
