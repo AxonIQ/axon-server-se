@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -160,24 +161,35 @@ public class GrpcRaftPeer implements RaftPeer {
     private class AppendEntriesStream {
 
         private final AtomicReference<StreamObserver<AppendEntriesRequest>> requestStreamRef = new AtomicReference<>();
+        private final AtomicLong lastMessageReceived = new AtomicLong();
 
         public void onNext(AppendEntriesRequest request) {
             logger.trace("{} Send {}", node.getNodeId(), request);
-            requestStreamRef.updateAndGet(current -> current == null ?  initStreamObserver(): current);
+            requestStreamRef.updateAndGet(current -> current == null || noMessagesReceived() ?  initStreamObserver(): current);
 
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
 //            synchronized (requestStreamRef.get()) {
             if( stream != null) {
+                logger.trace("{} Send {} using {}", node.getNodeId(), request, stream);
                 stream.onNext(request);
+            } else {
+                logger.warn("{}: Not sending AppendEntriesRequest {}", node.getNodeId(), request);
             }
 //            }
         }
 
+        private boolean noMessagesReceived() {
+            return lastMessageReceived.get() < System.currentTimeMillis() - 10000;
+        }
+
+
         private StreamObserver<AppendEntriesRequest> initStreamObserver() {
+            lastMessageReceived.set(System.currentTimeMillis());
             LogReplicationServiceGrpc.LogReplicationServiceStub stub = clientFactory.createLogReplicationServiceStub(node);
             return stub.appendEntries(new StreamObserver<AppendEntriesResponse>() {
                 @Override
                 public void onNext(AppendEntriesResponse appendEntriesResponse) {
+                    lastMessageReceived.set(System.currentTimeMillis());
                     if( appendEntriesResponse.hasFailure()) {
                         requestStreamRef.get().onCompleted();
                         requestStreamRef.set(null);
