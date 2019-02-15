@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.config;
 
 
 import io.axoniq.axonserver.cluster.replication.file.StorageProperties;
+import io.axoniq.axonserver.config.SystemInfoProvider;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,6 +17,12 @@ public class RaftProperties extends StorageProperties {
     private int heartbeatTimeout = 100;
     private int maxEntriesPerBatch = 100;
     private int flowBuffer = 1000;
+
+    private final SystemInfoProvider systemInfoProvider;
+
+    public RaftProperties(SystemInfoProvider systemInfoProvider) {
+        this.systemInfoProvider = systemInfoProvider;
+    }
 
     public int getMinElectionTimeout() {
         return minElectionTimeout;
@@ -55,5 +62,15 @@ public class RaftProperties extends StorageProperties {
 
     public void setFlowBuffer(int flowBuffer) {
         this.flowBuffer = flowBuffer;
+    }
+
+    @Override
+    public boolean isCleanerHackEnabled() {
+        return systemInfoProvider.javaOnWindows() && ! systemInfoProvider.javaWithModules();
+    }
+
+    @Override
+    public boolean isUseMmapIndex() {
+        return ! (systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
     }
 }

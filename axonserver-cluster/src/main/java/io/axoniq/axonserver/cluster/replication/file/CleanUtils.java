@@ -38,7 +38,11 @@ public class CleanUtils {
 
             cleanMethodLocal.invoke(cleanerObject);
         } catch (IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException | IllegalAccessException methodException) {
-            logger.warn("byteBufferUtils.cleaner", methodException);
+            if( logger.isDebugEnabled()) {
+                logger.warn("Unable to configure clean method. If you are running on Windows with a Java version 9 or higher start Axon Server with --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED", methodException);
+            } else {
+                logger.warn("Unable to configure clean method. If you are running on Windows with a Java version 9 or higher start Axon Server with --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED");
+            }
             cleanerMethodLocal = null;
             cleanMethodLocal = null;
         }

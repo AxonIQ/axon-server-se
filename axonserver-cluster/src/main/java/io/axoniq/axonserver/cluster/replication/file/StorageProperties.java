@@ -20,6 +20,8 @@ public class StorageProperties {
     private long numberOfSegments = 1000;
     private long secondaryCleanupDelay = 30000;
     private String logStorageFolder = "log";
+    private boolean useMmapIndex;
+    private boolean cleanerHackEnabled;
 
     public int getSyncInterval() {
         return syncInterval;
@@ -126,4 +128,19 @@ public class StorageProperties {
         return new File(String.format(FILENAME_PATTERN, getStorage(context), segment, indexSuffix + ".temp"));
     }
 
+    public boolean isUseMmapIndex() {
+        return useMmapIndex;
+    }
+
+    public void setUseMmapIndex(boolean useMmapIndex) {
+        this.useMmapIndex = useMmapIndex;
+    }
+
+    public boolean isCleanerHackEnabled() {
+        return cleanerHackEnabled;
+    }
+
+    public void setCleanerHackEnabled(boolean cleanerHackEnabled) {
+        this.cleanerHackEnabled = cleanerHackEnabled;
+    }
 }
