@@ -6,8 +6,6 @@ import io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import reactor.core.publisher.Flux;
 
 /**

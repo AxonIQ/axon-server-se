@@ -55,18 +55,13 @@ public class FakeEventStore implements EventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> eventList) {
+    public PreparedTransaction prepareTransaction( List<SerializedEvent> eventList) {
         return null;
     }
 
     @Override
     public EventTypeContext getType() {
         return new EventTypeContext("FakeContext", eventType);
-    }
-
-    @Override
-    public void streamTransactions(long firstToken, Predicate<SerializedTransactionWithToken> transactionConsumer) {
-
     }
 
     @Override
@@ -92,6 +87,11 @@ public class FakeEventStore implements EventStore {
     @Override
     public long getLastToken() {
         return 10000;
+    }
+
+    @Override
+    public long nextToken() {
+        return 10001;
     }
 
     @Override

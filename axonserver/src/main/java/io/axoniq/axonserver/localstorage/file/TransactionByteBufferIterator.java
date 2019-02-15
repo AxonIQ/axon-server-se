@@ -2,7 +2,6 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 
@@ -19,7 +18,6 @@ public class TransactionByteBufferIterator implements TransactionIterator {
     private final ByteBuffer reader;
     private final ByteBufferEventSource eventSource;
     private long currentSequenceNumber;
-    private TransactionInformation currentTransaction;
     private final boolean validating;
     private SerializedTransactionWithToken next;
 
@@ -41,8 +39,7 @@ public class TransactionByteBufferIterator implements TransactionIterator {
             if (size == -1 || size == 0) {
                 return;
             }
-            byte version = reader.get();
-            currentTransaction = new TransactionInformation(version, reader);
+            reader.get();
             short nrOfMessages = reader.getShort();
 
             if (firstSequence >= currentSequenceNumber + nrOfMessages) {
@@ -63,18 +60,13 @@ public class TransactionByteBufferIterator implements TransactionIterator {
             return false;
         }
         byte version = reader.get();
-        currentTransaction = new TransactionInformation(version, reader);
-//        TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder()
-//                                                                                       .setToken(currentSequenceNumber)
-//                                                                                       .setIndex(currentTransaction.getIndex());
-//
         short nrOfMessages = reader.getShort();
         List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
         int position = reader.position();
         for (int idx = 0; idx < nrOfMessages; idx++) {
             events.add(eventSource.readEvent());
         }
-        next = new SerializedTransactionWithToken(currentSequenceNumber, version, events, currentTransaction.getIndex());
+        next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
         currentSequenceNumber += nrOfMessages;
         int chk = reader.getInt(); // checksum
         if (validating) {
@@ -108,10 +100,5 @@ public class TransactionByteBufferIterator implements TransactionIterator {
     public void close() {
         next = null;
         eventSource.close();
-    }
-
-    @Override
-    public TransactionInformation currentTransaction() {
-        return currentTransaction;
     }
 }
