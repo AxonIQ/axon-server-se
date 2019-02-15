@@ -41,7 +41,7 @@ public class LogEntryFileTest {
                         SerializedObject so = SerializedObject.parseFrom(bytes);
                         TransactionWithToken twt = TransactionWithToken.parseFrom(so.getData());
                         if( index == 173757) {
-                            System.out.println(twt.getIndex() + " " + twt.getEventsCount());
+                            System.out.println(twt.getToken() + " " + twt.getEventsCount());
                         }
                         builder.setSerializedObject(so);
                         break;

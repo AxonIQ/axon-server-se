@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.serializer.Media;
@@ -35,6 +36,7 @@ public class RaftStatusRestController {
         return raftContexts;
     }
 
+    @KeepNames
     private static class RaftContext implements Printable {
 
         private final RaftGroup raftGroup;

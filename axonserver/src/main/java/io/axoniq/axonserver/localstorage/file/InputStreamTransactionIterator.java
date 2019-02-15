@@ -4,7 +4,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,7 +20,6 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     private long currentSequenceNumber;
     private final boolean validating;
     private SerializedTransactionWithToken next;
-    private TransactionInformation currentTransaction;
 
     public InputStreamTransactionIterator(InputStreamEventSource eventSource, long segment, long start, boolean validating) {
         this.eventSource = eventSource;
@@ -57,9 +55,8 @@ public class InputStreamTransactionIterator implements TransactionIterator {
         }
     }
 
-    private void processVersion(PositionKeepingDataInputStream reader) throws IOException {
-        byte version = reader.readByte();
-        currentTransaction = new TransactionInformation(version, reader);
+    private byte processVersion(PositionKeepingDataInputStream reader) throws IOException {
+        return reader.readByte();
     }
 
     private boolean readTransaction() {
@@ -69,26 +66,15 @@ public class InputStreamTransactionIterator implements TransactionIterator {
                 return false;
             }
 
-            processVersion(reader);
-//            TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder()
-//                                                                                           .setToken(currentSequenceNumber)
-//                                                                                           .setIndex(currentTransaction.getIndex());
-
+            byte version = processVersion(reader);
             short nrOfMessages = reader.readShort();
             List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
             for (int idx = 0; idx < nrOfMessages; idx++) {
                 events.add(eventSource.readEvent());
             }
-            next = new SerializedTransactionWithToken(currentSequenceNumber, currentTransaction.getVersion(), events, currentTransaction.getIndex());
+            next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
             currentSequenceNumber += nrOfMessages;
-            int chk = reader.readInt(); // checksum
-//            if (validating) {
-//                Checksum checksum = new Checksum();
-//                checksum.update(reader, position, size);
-//                if( chk != checksum.get()) {
-//                    throw new RuntimeException("Invalid checksum at " + currentSequenceNumber);
-//                }
-//            }
+            reader.readInt(); // checksum
             return true;
         } catch (IOException | RuntimeException io) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);
@@ -119,8 +105,4 @@ public class InputStreamTransactionIterator implements TransactionIterator {
         eventSource.close();
     }
 
-    @Override
-    public TransactionInformation currentTransaction() {
-        return currentTransaction;
-    }
 }

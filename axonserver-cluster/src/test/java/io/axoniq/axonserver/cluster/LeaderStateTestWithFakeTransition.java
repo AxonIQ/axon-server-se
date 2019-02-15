@@ -59,6 +59,7 @@ public class LeaderStateTestWithFakeTransition {
                                  .schedulerFactory(() -> scheduler)
                                  .snapshotManager(new FakeSnapshotManager())
                                  .stateFactory(new FakeStateFactory())
+                                 .termUpdateHandler((l, s) -> {})
                                  .build();
     }
 

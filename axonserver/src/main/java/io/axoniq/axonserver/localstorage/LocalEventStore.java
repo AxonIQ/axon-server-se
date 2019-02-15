@@ -40,7 +40,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
@@ -313,41 +312,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotStreamReader.transactionIterator(fromToken, toToken);
     }
 
-    public Iterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long firstToken) {
-        return workersMap.get(context).eventStreamReader.transactionIterator(firstToken);
-    }
-
-    public Iterator<SerializedTransactionWithToken> snapshotTransactionsIterator(String context, long firstToken) {
-        return workersMap.get(context).snapshotStreamReader.transactionIterator(firstToken);
-    }
-
-    /**
-     * @deprecated use {@link #eventTransactionsIterator(String, long)} or {@link #eventTransactionsIterator(String, long, long)}
-     */
-    @Deprecated
-    public CompletableFuture<Void> streamEventTransactions(String context, long firstToken,
-                                                           Predicate<SerializedTransactionWithToken> transactionConsumer) {
-        return workers(context).eventStreamReader.streamTransactions(firstToken, transactionConsumer);
-    }
-
-    /**
-     * @deprecated use {@link #snapshotTransactionsIterator(String, long)} or {@link #snapshotTransactionsIterator(String, long, long)}
-     */
-    @Deprecated
-    public CompletableFuture<Void> streamSnapshotTransactions(String context, long firstToken,
-                                                              Predicate<SerializedTransactionWithToken> transactionConsumer) {
-        return workers(context).snapshotStreamReader.streamTransactions(firstToken, transactionConsumer);
-    }
-
     public long syncEvents(String context, SerializedTransactionWithToken value) {
         SyncStorage writeStorage = workers(context).eventSyncStorage;
-        writeStorage.sync(value.getTransactionInformation(), value.getEvents());
+        writeStorage.sync(value.getToken(), value.getEvents());
         return value.getToken() + value.getEvents().size();
     }
 
     public long syncSnapshots(String context, SerializedTransactionWithToken value) {
         SyncStorage writeStorage = workers(context).snapshotSyncStorage;
-        writeStorage.sync(value.getTransactionInformation(), value.getEvents());
+        writeStorage.sync(value.getToken(), value.getEvents());
         return value.getToken() + value.getEvents().size();
     }
 
@@ -379,22 +352,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private boolean isClientException(Throwable exception) {
         return exception instanceof MessagingPlatformException
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
-    }
-
-    public long getLastEventIndex(String context) {
-        return workers(context).eventWriteStorage.getLastIndex();
-    }
-
-    public long getLastSnapshotIndex(String context) {
-        return workers(context).snapshotWriteStorage.getLastIndex();
-    }
-
-    public boolean containsEvents(String context, SerializedTransactionWithToken syncRequest) {
-        return workers(context).eventDatafileManagerChain.contains(syncRequest);
-    }
-
-    public boolean containsSnapshots(String context, SerializedTransactionWithToken syncRequest) {
-        return workers(context).snapshotDatafileManagerChain.contains(syncRequest);
     }
 
     Set<EventStreamController> eventStreamControllers(String context) {

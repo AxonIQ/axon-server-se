@@ -7,7 +7,6 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStore;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -54,7 +53,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     static final int VERSION_BYTES = 1;
     static final int FILE_OPTIONS_BYTES = 4;
     static final int TX_CHECKSUM_BYTES = 4;
-    static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + TransactionInformation.TRANSACTION_INFO_BYTES + NUMBER_OF_EVENTS_BYTES;
+    static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
     static final byte VERSION = 2;
     static final byte TRANSACTION_VERSION = 2;
     protected final String context;
@@ -379,30 +378,6 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamTransactions(long token, Predicate<SerializedTransactionWithToken> onEvent)  {
-        logger.debug("{}: Start streaming {} transactions at {}", context, type.getEventType(), token);
-
-        long lastSegment = -1;
-        long segment = getSegmentFor(token);
-        SerializedTransactionWithToken eventWithToken = null;
-        while (segment > lastSegment) {
-            TransactionIterator transactionIterator = getTransactions(segment, token);
-            while (transactionIterator.hasNext()) {
-                eventWithToken = transactionIterator.next();
-                token += eventWithToken.getEvents().size();
-                if( ! onEvent.test(eventWithToken)) {
-                    transactionIterator.close();
-                    logger.debug("{}: Done streaming {} transactions due to false result", context, type.getEventType());
-                    return;
-                }
-            }
-            lastSegment = segment;
-            segment = getSegmentFor(token);
-        }
-        logger.debug("{}: Done streaming event transactions", context);
-    }
-
-    @Override
     public boolean replicated() {
         return true;
     }
@@ -568,6 +543,11 @@ public abstract class SegmentBasedEventStore implements EventStore {
     @Override
     public byte transactionVersion() {
         return TRANSACTION_VERSION;
+    }
+
+    @Override
+    public long nextToken() {
+        return 0;
     }
 
     private class TransactionWithTokenIterator implements Iterator<SerializedTransactionWithToken> {

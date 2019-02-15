@@ -83,6 +83,6 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     }
 
     public void sync() {
-        raftState = repository.save(raftState);
+        repository.save(raftState);
     }
 }

@@ -25,7 +25,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
@@ -258,9 +257,7 @@ public class SnapshotManagerIntegrationTest {
                                                                                             .setAggregateType("Demo")
                                                                                             .setPayload(SerializedObject.newBuilder().build())
                                                                                             .build())));
-            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(new TransactionInformation(eventStore.transactionVersion(),
-                                                                                                               0),
-                                                                                    newEvents);
+            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(newEvents);
             eventStore.store(preparedTransaction).thenAccept(t -> latch.countDown());
         });
 

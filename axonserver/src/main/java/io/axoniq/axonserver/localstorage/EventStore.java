@@ -46,20 +46,13 @@ public interface EventStore {
 
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
 
-    PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> eventList);
+    PreparedTransaction prepareTransaction( List<SerializedEvent> eventList);
 
     default boolean replicated() {
         return false;
     }
 
     EventTypeContext getType();
-
-    /**
-     * @deprecated use {@link #transactionIterator(long)} instead
-     */
-    @Deprecated
-    void streamTransactions(long firstToken,
-                            Predicate<SerializedTransactionWithToken> transactionConsumer);
 
     Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken);
 
@@ -85,11 +78,6 @@ public interface EventStore {
 
     }
 
-    default long lastIndex() {
-        return 0;
-    }
-
-
     default boolean contains( SerializedTransactionWithToken newTransaction) {
         return true;
     }
@@ -105,4 +93,9 @@ public interface EventStore {
         return 0;
     }
 
+    /**
+     * Returns the next token that will be used by the event store. Does not change the token.
+     * @return the next token
+     */
+    long nextToken();
 }
