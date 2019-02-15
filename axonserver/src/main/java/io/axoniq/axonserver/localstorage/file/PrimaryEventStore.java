@@ -7,7 +7,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
@@ -52,7 +51,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     private final Synchronizer synchronizer;
     private final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     private final AtomicLong lastToken = new AtomicLong(-1);
-    private final AtomicLong lastIndex = new AtomicLong(-1);
     private final ConcurrentNavigableMap<Long, Map<String, SortedSet<PositionInfo>>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
     private final Map<String, AtomicLong> sequenceNumbersPerAggregate = new ConcurrentHashMap<>();
     private final Map<Long, ByteBufferEventSource> readBuffers = new ConcurrentHashMap<>();
@@ -95,7 +93,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                                                                 k -> new AtomicLong()).set(event.getEvent()
                                                                                                 .getAggregateSequenceNumber());
                 }
-                lastIndex.updateAndGet(last -> Math.max(last, iterator.getTransactionInformation().getIndex()));
                 sequence++;
             }
             List<EventInformation> pendingEvents = iterator.pendingEvents();
@@ -142,12 +139,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public FilePreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<SerializedEvent> origEventList) {
+    public FilePreparedTransaction prepareTransaction( List<SerializedEvent> origEventList) {
         List<ProcessedEvent>eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
                 Collectors.toList());
         int eventSize = eventBlockSize(eventList);
         WritePosition writePosition = claim(eventSize, eventList.size());
-        return new FilePreparedTransaction(writePosition, eventSize, eventList, transactionInformation);
+        return new FilePreparedTransaction(writePosition, eventSize, eventList);
     }
 
     @Override
@@ -166,7 +163,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     if( execute.getAndSet(false)) {
                         completableFuture.complete(firstToken);
                         lastToken.set(firstToken + eventList.size() -1);
-                        lastIndex.updateAndGet(last -> Math.max(last, preparedTransaction.getTransactionInformation().getIndex()));
                         return true;
                     }
                     return false;
@@ -177,7 +173,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     completableFuture.completeExceptionally(cause);
                 }
             });
-            write(writePosition, eventSize, preparedTransaction.getTransactionInformation(), eventList);
+            write(writePosition, eventSize, eventList);
             synchronizer.notifyWritePositions();
         } catch (RuntimeException cause) {
             completableFuture.completeExceptionally(cause);
@@ -353,12 +349,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private void write(WritePosition writePosition, int eventSize, TransactionInformation transactionInformation, List<ProcessedEvent> eventList) {
+    private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList) {
         ByteBuffer writeBuffer = writePosition.buffer.duplicate().getBuffer();
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(0);
-        writeBuffer.put(transactionInformation.getVersion());
-        transactionInformation.writeTo(writeBuffer);
+        writeBuffer.put(TRANSACTION_VERSION);
         writeBuffer.putShort((short) eventList.size());
         Checksum checksum = new Checksum();
         int eventsPosition = writeBuffer.position();
@@ -402,6 +397,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return writePosition;
     }
 
+    @Override
+    public long nextToken() {
+        return writePositionRef.get().sequence;
+    }
+
     private WritableEventSource getOrOpenDatafile(long segment)  {
         File file= storageProperties.dataFile(context, segment);
         long size = storageProperties.getSegmentSize();
@@ -429,18 +429,13 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return size;
     }
 
-    @Override
-    public long lastIndex() {
-        return lastIndex.get();
-    }
-
     private class MinMaxPair {
 
         private final String key;
         private final long min;
         private volatile long max;
 
-        public MinMaxPair(String key, long min) {
+        MinMaxPair(String key, long min) {
             this.key = key;
             this.min = min;
             this.max = min-1;

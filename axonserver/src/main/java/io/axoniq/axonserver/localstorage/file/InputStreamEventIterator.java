@@ -4,7 +4,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 
 import java.io.IOException;
 
@@ -92,9 +91,7 @@ public class InputStreamEventIterator extends EventIterator {
     }
 
     private void processVersion(PositionKeepingDataInputStream reader) throws IOException {
-        byte version = reader.readByte();
-        transactionInformation = new TransactionInformation(version, reader);
-
+        reader.readByte();
     }
 
 
