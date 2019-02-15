@@ -41,8 +41,7 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
-        return Flux.fromIterable(() -> localEventStore.eventTransactionsIterator(context, fromEventSequence,
-                                                                                 toEventSequence))
+        return Flux.fromIterable(() -> localEventStore.eventTransactionsIterator(context, fromEventSequence))
                    .map(transactionWithToken -> SerializedObject.newBuilder()
                                                                 .setType(SNAPSHOT_TYPE)
                                                                 .setData(SerializedTransactionWithTokenConverter.asByteString(transactionWithToken))

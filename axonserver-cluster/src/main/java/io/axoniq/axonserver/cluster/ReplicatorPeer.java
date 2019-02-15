@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 
 import static java.lang.String.format;
@@ -54,6 +55,7 @@ public class ReplicatorPeer {
 
         private static final int SNAPSHOT_CHUNKS_BUFFER_SIZE = 10;
 
+        private final long lastEventSequence;
         private Registration registration;
         private Subscription subscription;
         private int offset;
@@ -61,13 +63,17 @@ public class ReplicatorPeer {
         private volatile boolean done = false;
         private volatile long lastAppliedIndex;
 
+        private InstallSnapshotState(long lastEventSequence) {
+            this.lastEventSequence = lastEventSequence;
+        }
+
         @Override
         public void start() {
             offset = 0;
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();
-            snapshotManager.streamSnapshotData(nextIndex(), lastAppliedIndex)
+            snapshotManager.streamSnapshotData(lastEventSequence + 1 , 0)
                            .buffer(SNAPSHOT_CHUNKS_BUFFER_SIZE)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override
@@ -187,8 +193,8 @@ public class ReplicatorPeer {
 
         @Override
         public void start() {
-            sendHeartbeat();
             registration = raftPeer.registerAppendEntriesResponseListener(this::handleResponse);
+            sendHeartbeat();
         }
 
         @Override
@@ -266,6 +272,7 @@ public class ReplicatorPeer {
                             matchIndex());
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(matchIndex.get() + 1);
+                lastEventSequence.set(response.getFailure().getLastAppliedEventSequence());
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
@@ -298,7 +305,7 @@ public class ReplicatorPeer {
 
         private EntryIterator updateEntryIterator() {
             LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
-            if (logEntryStore.firstLogIndex() == 1 || nextIndex() - 1 >= logEntryStore.firstLogIndex()) {
+            if (logEntryStore.firstLogIndex() <= 1 || nextIndex() - 1 >= logEntryStore.firstLogIndex()) {
                 entryIterator = logEntryStore.createIterator(nextIndex());
                 return entryIterator;
             } else {
@@ -306,7 +313,7 @@ public class ReplicatorPeer {
                                 groupId(),
                                 raftPeer.nodeId(),
                                 nextIndex());
-                changeStateTo(new InstallSnapshotState());
+                changeStateTo(new InstallSnapshotState(lastEventSequence.get()));
             }
             return null;
         }
@@ -320,6 +327,7 @@ public class ReplicatorPeer {
 
     private final RaftPeer raftPeer;
     private final Consumer<Long> matchIndexCallback;
+    private final AtomicLong lastEventSequence = new AtomicLong(-1);
     private final AtomicLong nextIndex = new AtomicLong(1);
     private final AtomicLong matchIndex = new AtomicLong(0);
     private final AtomicLong lastMessageSent = new AtomicLong(0);
@@ -336,7 +344,8 @@ public class ReplicatorPeer {
                           Clock clock,
                           RaftGroup raftGroup,
                           SnapshotManager snapshotManager,
-                          BiConsumer<Long, String> updateCurrentTerm) {
+                          BiConsumer<Long, String> updateCurrentTerm,
+                          Supplier<Long> lastLogIndex) {
         this.raftPeer = raftPeer;
         this.matchIndexCallback = matchIndexCallback;
         this.clock = clock;
@@ -344,6 +353,7 @@ public class ReplicatorPeer {
         lastMessageReceived.set(clock.millis());
         this.raftGroup = raftGroup;
         this.snapshotManager = snapshotManager;
+        this.nextIndex.set(lastLogIndex.get() + 1);
         changeStateTo(new IdleReplicatorPeerState());
     }
 

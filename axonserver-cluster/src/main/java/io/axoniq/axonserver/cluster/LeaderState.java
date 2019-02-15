@@ -427,7 +427,8 @@ public class LeaderState extends AbstractMembershipState {
                                                                scheduler.get().clock(),
                                                                raftGroup(),
                                                                snapshotManager(),
-                                                               LeaderState.this::updateCurrentTerm);
+                                                               LeaderState.this::updateCurrentTerm,
+                                                               LeaderState.this::lastLogIndex);
             replicatorPeer.start();
             replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
             return () -> {

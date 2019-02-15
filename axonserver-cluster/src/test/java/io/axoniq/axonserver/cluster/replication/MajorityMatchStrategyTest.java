@@ -59,7 +59,7 @@ public class MajorityMatchStrategyTest {
 
         public FakeReplicationPeer() {
             super(null, i -> {}, clock, null, null,
-                  (term,reason) -> {});
+                  (term,reason) -> {}, () -> 1L);
         }
 
         public void setMatchIndex(long matchIndex) {
