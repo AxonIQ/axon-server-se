@@ -29,15 +29,15 @@ public class OverviewModel {
 
     private final Topology clusterController;
     private final Iterable<Application> applications;
-    private final Iterable<AxonServer> axonHubs;
+    private final Iterable<AxonServer> axonServers;
     private final Fonts fonts;
 
     public OverviewModel(Topology clusterController,
                          Iterable<Application> applications,
-                         Iterable<AxonServer> axonHubs) {
+                         Iterable<AxonServer> axonServers) {
         this.clusterController = clusterController;
         this.applications = applications;
-        this.axonHubs = axonHubs;
+        this.axonServers = axonServers;
         this.fonts = new Fonts();
     }
 
@@ -46,9 +46,9 @@ public class OverviewModel {
         boolean multiContext = clusterController.isMultiContext();
         AxonServerBoxMapping hubRegistry = new AxonServerBoxMapping(multiContext, clusterController.getName(), fonts);
 
-        Element hubNodes = new Grouped(new Elements(10, 200, axonHubs, hubRegistry), "axonserverNodes");
+        Element hubNodes = new Grouped(new Elements(10, 200, axonServers, hubRegistry), "axonserverNodes");
         Element clients = new Elements(10, 10, applications, new ApplicationBoxMapping(hubRegistry, fonts));
-        Element popups = new Elements(axonHubs, new AxonServerPopupMapping(hubRegistry, fonts));
+        Element popups = new Elements(axonServers, new AxonServerPopupMapping(hubRegistry, fonts));
 
         Elements components = new Elements(hubNodes, clients, popups);
         Element background = new Clickable(new Rectangle(new Position(0, 0),

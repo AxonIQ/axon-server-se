@@ -19,7 +19,7 @@ import javax.annotation.Nonnull;
 public class AxonServers implements Iterable<AxonServer> {
 
     private final Topology clusterController;
-    private final EventStoreLocator eventStoreManager   ;
+    private final EventStoreLocator eventStoreManager;
 
     public AxonServers(Topology clusterController,
                        EventStoreLocator eventStoreManager) {

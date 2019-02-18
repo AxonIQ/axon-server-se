@@ -14,6 +14,10 @@
         Authentication disabled
     </div>
 
+    <div v-if="!node.adminNode" class="msg warning">
+        This is not an ADMIN node
+    </div>
+
     <div class="column-wrapper">
 
         <div class="column configuration">

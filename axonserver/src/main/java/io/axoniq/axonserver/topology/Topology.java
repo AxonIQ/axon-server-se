@@ -37,4 +37,8 @@ public interface Topology {
     default Iterable<String> getMyContextNames() {
         return getMe().getContextNames();
     }
+
+    default boolean isAdminNode() {
+        return true;
+    }
 }

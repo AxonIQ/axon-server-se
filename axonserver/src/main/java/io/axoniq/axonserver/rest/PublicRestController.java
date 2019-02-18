@@ -81,6 +81,7 @@ public class PublicRestController {
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
         node.setClustered(Feature.CLUSTERING.enabled(limits));
+        node.setAdminNode(clusterController.isAdminNode());
         return node;
     }
 

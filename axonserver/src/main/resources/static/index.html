@@ -19,6 +19,7 @@
         let globals = {
             authenticationEnabled: true,
             admin: false,
+            adminNode: true,
             license: "free",
             features: [],
             hasFeature: function(featureName) {
@@ -95,12 +96,13 @@
                                 this.licenseLoaded = true;
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
-                                    globals.admin = !globals.authenticationEnabled;
+                                    globals.adminNode = response.adminNode;
+                                    globals.admin = !globals.authenticationEnabled && response.adminNode;
                                     this.admin = globals.admin;
                                     if (globals.authenticationEnabled) {
                                         axios.get("v1/public/user").then(
                                                 response => {
-                                                    globals.admin = response.data.roles && response.data.roles.includes('ADMIN');
+                                                    globals.admin = globals.adminNode && response.data.roles && response.data.roles.includes('ADMIN');
                                                     this.admin = globals.admin;
                                                     loadFragment();
                                                 });

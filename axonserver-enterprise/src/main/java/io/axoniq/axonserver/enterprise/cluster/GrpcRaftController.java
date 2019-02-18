@@ -17,6 +17,7 @@ import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,11 +29,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
@@ -264,5 +268,54 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         if( context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
         }
+    }
+
+    public Stream<? extends AxonServerNode> nodes() {
+        Map<Node, Set<String>> contextPerNode = new HashMap<>();
+        raftGroupMap.forEach((context,raftgroup) ->
+                                     raftgroup.raftConfiguration()
+                                              .groupMembers()
+                                              .forEach(node ->
+                                                       {
+                                                           Node nodeWithoutNodeId = Node.newBuilder(node).setNodeId("").build();
+                                                           contextPerNode.computeIfAbsent(nodeWithoutNodeId, n -> new HashSet<>())
+                                                                         .add(context);
+                                                       }));
+        return contextPerNode.entrySet().stream().map(e -> new AxonServerNode() {
+            @Override
+            public String getHostName() {
+                return null;
+            }
+
+            @Override
+            public Integer getGrpcPort() {
+                return null;
+            }
+
+            @Override
+            public String getInternalHostName() {
+                return e.getKey().getHost();
+            }
+
+            @Override
+            public Integer getGrpcInternalPort() {
+                return e.getKey().getPort();
+            }
+
+            @Override
+            public Integer getHttpPort() {
+                return null;
+            }
+
+            @Override
+            public String getName() {
+                return e.getKey().getNodeName();
+            }
+
+            @Override
+            public Collection<String> getContextNames() {
+                return e.getValue();
+            }
+        });
     }
 }

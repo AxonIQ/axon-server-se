@@ -39,7 +39,11 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Stream<? extends AxonServerNode> nodes() {
-        return clusterController.nodes();
+        if( clusterController.isAdminNode()) {
+            return clusterController.nodes();
+        }
+
+        return raftController.nodes();
     }
 
     @Override
@@ -60,5 +64,10 @@ public class ClusterTopology implements Topology {
     @Override
     public Iterable<String> getMyContextNames() {
         return raftController.getMyContexts();
+    }
+
+    @Override
+    public boolean isAdminNode() {
+        return clusterController.isAdminNode();
     }
 }

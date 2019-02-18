@@ -15,6 +15,7 @@ public class ExtendedClusterNode implements AxonServerNode {
     private boolean authentication;
     private boolean clustered;
     private boolean ssl;
+    private boolean adminNode;
 
     public ExtendedClusterNode(AxonServerNode delegate) {
         this.delegate = delegate;
@@ -73,6 +74,14 @@ public class ExtendedClusterNode implements AxonServerNode {
     @Override
     public String getName() {
         return delegate.getName();
+    }
+
+    public void setAdminNode(boolean adminNode) {
+        this.adminNode = adminNode;
+    }
+
+    public boolean isAdminNode() {
+        return adminNode;
     }
 
     @Override

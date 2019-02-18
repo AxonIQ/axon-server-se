@@ -454,4 +454,8 @@ public class ClusterController implements SmartLifecycle {
     public void on(DeleteNode deleteRequested) {
         deleteNode(deleteRequested.getNodeName());
     }
+
+    public boolean isAdminNode() {
+        return getMe().isAdmin();
+    }
 }
