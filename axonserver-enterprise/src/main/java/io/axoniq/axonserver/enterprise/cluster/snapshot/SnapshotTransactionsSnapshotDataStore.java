@@ -41,7 +41,7 @@ public class SnapshotTransactionsSnapshotDataStore implements SnapshotDataStore 
     @Override
     public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         long fromToken = installationContext.fromSnapshotSequence();
-        long toToken = localEventStore.getLastSnapshotIndex(context);
+        long toToken = localEventStore.getLastSnapshot(context);
         return Flux.fromIterable(() -> localEventStore.snapshotTransactionsIterator(context, fromToken, toToken))
                    .map(transactionWithToken -> SerializedObject.newBuilder()
                                                                 .setType(SNAPSHOT_TYPE)
