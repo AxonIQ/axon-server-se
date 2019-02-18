@@ -16,6 +16,7 @@ import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -53,6 +54,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
     private ApplicationContext applicationContext;
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
+    private final LocalEventStore localEventStore;
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -60,7 +62,8 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                               RaftProperties raftProperties,
                               ApplicationEventPublisher eventPublisher,
                               JpaRaftGroupNodeRepository nodeRepository,
-                              SnapshotDataProviders snapshotDataProviders) {
+                              SnapshotDataProviders snapshotDataProviders,
+                              LocalEventStore localEventStore) {
         this.raftStateRepository = raftStateRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
@@ -68,6 +71,7 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
         this.eventPublisher = eventPublisher;
         this.nodeRepository = nodeRepository;
         this.snapshotDataProviders = snapshotDataProviders;
+        this.localEventStore = localEventStore;
     }
 
 
@@ -119,7 +123,8 @@ public class GrpcRaftController implements SmartLifecycle, ApplicationContextAwa
                                                     raftStateRepository,
                                                     nodeRepository,
                                                     raftProperties,
-                                                    snapshotDataProviders);
+                                                    snapshotDataProviders,
+                                                    localEventStore);
 
             if (!ADMIN_GROUP.equals(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

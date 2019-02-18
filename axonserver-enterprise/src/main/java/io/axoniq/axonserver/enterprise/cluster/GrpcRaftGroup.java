@@ -23,6 +23,7 @@ import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManage
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.localstorage.LocalEventStore;
 
 import java.util.Collections;
 import java.util.List;
@@ -32,16 +33,21 @@ import java.util.function.Function;
  * Author: marc
  */
 public class GrpcRaftGroup implements RaftGroup {
+    private final String context;
     private final LogEntryStore localLogEntryStore;
     private final JpaRaftStateController raftStateController;
     private final RaftConfiguration raftConfiguration;
     private final RaftNode localNode;
     private final LogEntryProcessor logEntryProcessor;
+    private final LocalEventStore localEventStore;
 
     public GrpcRaftGroup(String localNodeId, String groupId,
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
                          RaftProperties storageOptions,
-                         Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory) {
+                         Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory,
+                         LocalEventStore localEventStore) {
+        context = groupId;
+        this.localEventStore = localEventStore;
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
         raftStateController.init();
         logEntryProcessor = new LogEntryProcessor(raftStateController);
@@ -154,5 +160,15 @@ public class GrpcRaftGroup implements RaftGroup {
 
     public void syncStore() {
         raftStateController.sync();
+    }
+
+    @Override
+    public long lastAppliedEventSequence() {
+        return localEventStore.getLastToken(context);
+    }
+
+    @Override
+    public long lastAppliedSnapshotSequence() {
+        return localEventStore.getLastSnapshot(context);
     }
 }
