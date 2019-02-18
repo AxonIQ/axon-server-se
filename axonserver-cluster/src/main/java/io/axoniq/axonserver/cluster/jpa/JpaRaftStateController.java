@@ -22,6 +22,12 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
             this.raftState = repository.save(new JpaRaftState(groupId));
         }
     }
+
+    @Override
+    public void delete() {
+        repository.deleteById(groupId);
+    }
+
     @Override
     public String votedFor() {
         return raftState.getVotedFor();

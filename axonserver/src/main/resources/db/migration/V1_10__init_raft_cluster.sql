@@ -1,3 +1,4 @@
+-- add _admin context to all nodes if there is already a node connected to a context (database created with AxonServer 4.0)
 insert into context(name)
   select distinct '_admin'
   from context_cluster_node;
@@ -8,8 +9,11 @@ insert into context_cluster_node( context_name, cluster_node_name, storage, mess
   from cluster_node
   where exists(select 1 from context_cluster_node);
 
-insert into jpa_raft_group_node (group_id, node_id, host, port)
-  select context_cluster_node.context_name, cluster_node.name, cluster_node.internal_host_name, cluster_node.grpc_internal_port
+update context_cluster_node
+  set cluster_node_label = cluster_node_name;
+
+insert into jpa_raft_group_node (group_id, node_id, host, port, node_name)
+  select context_cluster_node.context_name, cluster_node.name, cluster_node.internal_host_name, cluster_node.grpc_internal_port, cluster_node.name
   from cluster_node, context_cluster_node
   where cluster_node.name = context_cluster_node.cluster_node_name;
 

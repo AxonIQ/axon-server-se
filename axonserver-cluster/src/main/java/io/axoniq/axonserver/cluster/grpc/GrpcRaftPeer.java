@@ -215,9 +215,4 @@ public class GrpcRaftPeer implements RaftPeer {
             });
         }
     }
-
-    @Override
-    public Node toNode() {
-        return node;
-    }
 }

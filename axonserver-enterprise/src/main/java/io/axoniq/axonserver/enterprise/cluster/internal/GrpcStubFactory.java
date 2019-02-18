@@ -2,15 +2,8 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.grpc.Confirmation;
-import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.internal.ConnectResponse;
-import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
-import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.ManagedChannel;
-import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Controller;
 
@@ -35,22 +28,7 @@ public class GrpcStubFactory implements StubFactory {
     private MessagingClusterServiceInterface messagingClusterServiceStub(ManagedChannel managedChannel) {
         MessagingClusterServiceGrpc.MessagingClusterServiceStub stub = MessagingClusterServiceGrpc.newStub(managedChannel)
                                                                                                   .withInterceptors(new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken()));
-        return new MessagingClusterServiceInterface() {
-            @Override
-            public StreamObserver<ConnectorCommand> openStream(StreamObserver<ConnectorResponse> responseObserver) {
-                return stub.openStream(responseObserver);
-            }
-
-            @Override
-            public void join(NodeInfo request, StreamObserver<NodeInfo> responseObserver) {
-                stub.join(request, responseObserver);
-            }
-
-            @Override
-            public void closeChannel() {
-                managedChannel.shutdownNow();
-            }
-        };
+        return responseObserver -> stub.openStream(responseObserver);
     }
 
     @Override

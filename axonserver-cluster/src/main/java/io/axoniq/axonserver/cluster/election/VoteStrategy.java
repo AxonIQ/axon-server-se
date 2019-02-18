@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.cluster.election;
 
-import reactor.core.publisher.Mono;
-
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -10,9 +8,13 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface VoteStrategy {
 
-    void registerVoteReceived(String voter, boolean granted);
+    default void registerVoteReceived( String voter, boolean granted) {
+        registerVoteReceived(voter, granted, false);
+    }
 
-    CompletableFuture<Boolean> isWon();
+    void registerVoteReceived(String voter, boolean granted, boolean goAway);
+
+    CompletableFuture<Election.Result> isWon();
 
 }
 

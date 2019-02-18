@@ -13,16 +13,15 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ForwardedCommand;
 import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
 import io.axoniq.axonserver.grpc.internal.ForwardedQuery;
 import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.QueryComplete;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
@@ -39,7 +38,6 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
  * Holds connection to other axonserver platform node. Receives commands and queries from the other node to execute.
@@ -112,19 +110,7 @@ public class RemoteConnection  {
                                     break;
 
                                 case CONNECT_RESPONSE:
-                                    logger.debug("Connected, received response: {}",
-                                                 connectorResponse.getConnectResponse());
-                                    try {
-
-
-                                        clusterController
-                                                .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
-                                                        RemoteConnection.this));
-                                    } catch (Exception ex) {
-                                        logger.warn("Failed to process request {}",
-                                                    connectorResponse.getConnectResponse(),
-                                                    ex);
-                                    }
+                                    connectResponse(connectorResponse.getConnectResponse());
                                     break;
 
                                 case SUBSCRIPTION_QUERY_REQUEST:
@@ -167,10 +153,13 @@ public class RemoteConnection  {
                                      connectResponse);
 
                         try {
-
-                            clusterController
-                                    .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
-                                            RemoteConnection.this));
+                            if( connectResponse.getDeleted()) {
+                                clusterController.requestDelete(clusterNode.getName());
+                            } else {
+                                clusterController
+                                        .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
+                                                RemoteConnection.this));
+                            }
 
                         } catch (Exception ex) {
                             logger.warn("Failed to process request {}",
@@ -210,7 +199,11 @@ public class RemoteConnection  {
                     }
                 }));
         requestStreamObserver.onNext(ConnectorCommand.newBuilder()
-                .setConnect( clusterController.getMe().toNodeInfo())
+                .setConnect( ConnectRequest.newBuilder()
+                                           .setNodeInfo(clusterController.getMe().toNodeInfo())
+                                           .setAdmin(clusterController.getMe().isAdmin())
+                                           .build())
+
                 .build());
 
         // send master info

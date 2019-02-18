@@ -21,5 +21,4 @@ public interface CurrentConfiguration {
     default int size(){
         return groupMembers().size();
     }
-
 }

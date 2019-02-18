@@ -41,4 +41,6 @@ public interface RaftConfigService {
     CompletableFuture<Void> deleteUser(User request);
 
     CompletableFuture<Void> deleteApplication(Application request);
+
+    void deleteNode(String name);
 }

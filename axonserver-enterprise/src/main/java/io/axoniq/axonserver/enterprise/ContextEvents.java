@@ -39,10 +39,10 @@ public class ContextEvents {
     }
 
     @KeepNames
-    public static class ContextDeleted extends TopologyEvents.TopologyBaseEvent {
+    public static class AdminContextDeleted extends TopologyEvents.TopologyBaseEvent {
         private final String context;
 
-        public ContextDeleted(String context) {
+        public AdminContextDeleted(String context) {
             super(false);
             this.context = context;
         }

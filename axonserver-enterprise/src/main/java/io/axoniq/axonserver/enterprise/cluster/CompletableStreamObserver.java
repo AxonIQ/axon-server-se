@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -11,15 +12,17 @@ import java.util.function.Function;
 public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
 
 
+     private final Logger logger;
     private final CompletableFuture<R> completableFuture;
     private final Function<T, R> converter;
 
-    public CompletableStreamObserver(CompletableFuture<R> completableFuture) {
-        this(completableFuture, result -> (R)result);
+    public CompletableStreamObserver(CompletableFuture<R> completableFuture, Logger logger) {
+        this(completableFuture, logger, result -> (R)result);
     }
 
-    public CompletableStreamObserver(CompletableFuture<R> completableFuture, Function<T,R> converter) {
+    public CompletableStreamObserver(CompletableFuture<R> completableFuture, Logger logger, Function<T,R> converter) {
         this.completableFuture = completableFuture;
+        this.logger = logger;
         this.converter = converter;
     }
 
@@ -30,6 +33,7 @@ public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
 
     @Override
     public void onError(Throwable throwable) {
+        logger.warn("Remote action failed", throwable);
         completableFuture.completeExceptionally(throwable);
     }
 

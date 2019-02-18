@@ -29,11 +29,6 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public boolean validToken(String token) {
-        return isTokenFromConfigFile(token);
-    }
-
-    @Override
     public Collection<PathMapping> getPathMappings() {
         return pathMappingRepository.findAll();
     }

@@ -98,7 +98,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 if( throwable != null) {
                     completableFuture.completeExceptionally(throwable);
                 } else {
-                    logger.info("{}: written {}", name, index);
+                    logger.info("{}: written configuration {}", name, index);
                     Entry entry = Entry.newBuilder()
                                        .setTerm(currentTerm)
                                        .setIndex(index)
@@ -127,7 +127,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 if( throwable != null) {
                     completableFuture.completeExceptionally(throwable);
                 } else {
-                    logger.info("{}: written {}", name, index);
+                    logger.info("{}: written leader elected {}", name, index);
                     Entry entry = Entry.newBuilder().setTerm(currentTerm).setIndex(index).setLeaderElected(leader).build();
                     completableFuture.complete(entry);
                     appendListeners.forEach(listener -> listener.accept(entry));
@@ -147,10 +147,10 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
             boolean skip = false;
             if( existingEntry != null ) {
                 if( existingEntry.getTerm() != e.getTerm() ) {
-                    logger.warn("{}: Clear from {}", name, e.getIndex());
+                    logger.debug("{}: Clear from {}", name, e.getIndex());
                     deleteFrom(e.getIndex());
                 } else {
-                    logger.warn("{}: Skip {}", name, e.getIndex());
+                    logger.debug("{}: Skip {}", name, e.getIndex());
                     skip = true;
                 }
             }
@@ -241,6 +241,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     @Override
     public void clear() {
         primaryEventStore.clear();
+    }
+
+    @Override
+    public void delete() {
+        primaryEventStore.delete();
     }
 
     @Override

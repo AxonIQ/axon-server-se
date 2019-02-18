@@ -107,7 +107,7 @@ public class AxonDBMigration implements SmartLifecycle {
                 }
 
                 ClusterNode clusterNode = entityManager.find(ClusterNode.class, node);
-                clusterNode.addContext(context, true, true);
+                clusterNode.addContext(context, clusterNode.getName(), true, true);
             }
 
         }

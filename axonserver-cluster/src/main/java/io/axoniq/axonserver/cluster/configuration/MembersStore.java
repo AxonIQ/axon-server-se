@@ -13,5 +13,4 @@ public interface MembersStore {
     List<Node> get();
 
     void set(List<Node> nodes);
-
 }

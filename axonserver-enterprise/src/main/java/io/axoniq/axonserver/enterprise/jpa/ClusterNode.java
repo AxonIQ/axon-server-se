@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
+import io.axoniq.axonserver.RaftAdminGroup;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
@@ -21,7 +22,7 @@ import javax.persistence.PreRemove;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * @author Marc Gathier
@@ -64,8 +65,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
     public ClusterNode(Node node) {
         this.internalHostName = node.getHost();
         this.grpcInternalPort = node.getPort();
-        // TODO: Change to node.getNodeName once cluster change is merged
-        this.name = node.getNodeId();
+        this.name = node.getNodeName();
     }
 
     public String getHostName() {
@@ -111,7 +111,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
     @Override
     public Collection<String> getStorageContextNames() {
         return contexts.stream().map(ccn -> ccn.getContext().getName())
-                       .filter(n -> !isAdmin(n))
+                       .filter(n -> !RaftAdminGroup.isAdmin(n))
                        .collect(Collectors.toSet());
     }
 
@@ -127,11 +127,11 @@ public class ClusterNode implements Serializable, AxonServerNode {
         this.name = name;
     }
 
-    public void addContext(Context context, boolean storage, boolean messaging) {
+    public void addContext(Context context, String clusterNodeLabel, boolean storage, boolean messaging) {
         ContextClusterNode contextClusterNode = contexts.stream()
                                                         .filter(ccn -> ccn.getContext().equals(context))
                                                         .findFirst()
-                                                        .orElse(new ContextClusterNode(context, this));
+                                                        .orElse(new ContextClusterNode(context, this, clusterNodeLabel));
             contextClusterNode.setMessaging(messaging);
             contextClusterNode.setStorage(storage);
     }
@@ -167,14 +167,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
                 .build();
     }
 
-    public Node toNode() {
-        return Node.newBuilder()
-                   .setNodeId(name)
-                   .setHost(internalHostName)
-                   .setPort(grpcInternalPort)
-                   .build();
-    }
-
     @PreRemove
     public void clearContexts() {
         contexts.forEach(ccn -> ccn.getContext().remove(ccn));
@@ -198,4 +190,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
         contextClusterNode.ifPresent(ContextClusterNode::preDelete);
     }
 
+    public boolean isAdmin() {
+        return getContextNames().contains(getAdmin());
+    }
 }

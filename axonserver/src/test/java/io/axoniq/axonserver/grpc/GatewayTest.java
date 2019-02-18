@@ -117,11 +117,6 @@ public class GatewayTest {
             }
 
             @Override
-            public boolean validToken(String token) {
-                return "1234".equals(token);
-            }
-
-            @Override
             public Collection<PathMapping> getPathMappings() {
                 return null;
             }

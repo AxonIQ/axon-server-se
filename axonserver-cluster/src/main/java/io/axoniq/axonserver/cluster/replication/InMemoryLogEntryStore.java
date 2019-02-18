@@ -171,6 +171,11 @@ public class InMemoryLogEntryStore implements LogEntryStore {
         return CompletableFuture.completedFuture(entry);
     }
 
+    @Override
+    public void delete() {
+        entryMap.clear();
+    }
+
     private void addEntry(Entry entry){
         entryMap.put(entry.getIndex(), entry);
         dateMap.put(entry.getIndex(), new Date());

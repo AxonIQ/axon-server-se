@@ -76,13 +76,9 @@ public class AccessController implements AxonServerAccessController {
         return authorized;
     }
 
-    public boolean validToken(String token) {
-        return accessControllerDB.validToken(token);
-    }
-
     @Override
     public Collection<PathMapping> getPathMappings() {
-        return accessControllerDB.getPathMappins();
+        return accessControllerDB.getPathMappings();
     }
 
     @Override
