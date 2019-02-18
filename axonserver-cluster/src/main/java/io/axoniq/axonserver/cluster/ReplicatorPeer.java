@@ -194,10 +194,12 @@ public class ReplicatorPeer {
 
         private volatile EntryIterator entryIterator;
         private Registration registration;
+        private volatile boolean logCannotSend = true;
 
         @Override
         public void start() {
             registration = raftPeer.registerAppendEntriesResponseListener(this::handleResponse);
+            logCannotSend = true;
             sendHeartbeat();
         }
 
@@ -219,13 +221,14 @@ public class ReplicatorPeer {
 
                 if (iterator == null) return sent;
 
-                if (!canSend()) {
+                if (logCannotSend && !canSend()) {
                     logger.info("{}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
                                  groupId(),
                                  raftPeer.nodeId(),
                                  nextIndex,
                                  matchIndex,
                                  raftGroup.localLogEntryStore().lastLogIndex());
+                    logCannotSend = false;
                 }
                 while (canSend()
                         && sent < raftGroup.raftConfiguration().maxEntriesPerBatch() && iterator.hasNext()) {
@@ -282,6 +285,10 @@ public class ReplicatorPeer {
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
                 setMatchIndex(response.getSuccess().getLastLogIndex());
+            }
+
+            if (canSend()){
+                logCannotSend = true;
             }
         }
 
