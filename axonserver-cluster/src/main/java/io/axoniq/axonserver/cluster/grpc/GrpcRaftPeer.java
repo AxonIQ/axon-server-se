@@ -28,6 +28,7 @@ public class GrpcRaftPeer implements RaftPeer {
     private static final Logger logger = LoggerFactory.getLogger(GrpcRaftPeer.class);
     public final Node node;
     private final GrpcRaftClientFactory clientFactory;
+    private final long maxElectionTimeout;
     private final AtomicReference<AppendEntriesStream> appendEntiesStreamRef = new AtomicReference<>();
     private final AtomicReference<Consumer<AppendEntriesResponse>> appendEntriesResponseListener = new AtomicReference<>();
 
@@ -35,11 +36,13 @@ public class GrpcRaftPeer implements RaftPeer {
     private final AtomicReference<Consumer<InstallSnapshotResponse>> installSnapshotResponseListener = new AtomicReference<>();
 
     public GrpcRaftPeer(Node node) {
-        this(node, new DefaultGrpcRaftClientFactory());
+        this(node, new DefaultGrpcRaftClientFactory(), 5000);
     }
-    public GrpcRaftPeer(Node node, GrpcRaftClientFactory clientFactory) {
+
+    public GrpcRaftPeer(Node node, GrpcRaftClientFactory clientFactory, long maxElectionTimeout) {
         this.node = node;
         this.clientFactory = clientFactory;
+        this.maxElectionTimeout = maxElectionTimeout;
     }
 
     @Override
@@ -118,11 +121,9 @@ public class GrpcRaftPeer implements RaftPeer {
             logger.trace("{} Send {}", node.getNodeId(), request);
             requestStreamRef.compareAndSet(null, initStreamObserver());
             StreamObserver<InstallSnapshotRequest> stream = requestStreamRef.get();
-//            synchronized (requestStreamRef.get()) {
             if( stream != null) {
                 stream.onNext(request);
             }
-//            }
         }
 
         private StreamObserver<InstallSnapshotRequest> initStreamObserver() {
@@ -168,18 +169,16 @@ public class GrpcRaftPeer implements RaftPeer {
             requestStreamRef.updateAndGet(current -> current == null || noMessagesReceived() ?  initStreamObserver(): current);
 
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
-//            synchronized (requestStreamRef.get()) {
             if( stream != null) {
                 logger.trace("{} Send {} using {}", node.getNodeId(), request, stream);
                 stream.onNext(request);
             } else {
                 logger.warn("{}: Not sending AppendEntriesRequest {}", node.getNodeId(), request);
             }
-//            }
         }
 
         private boolean noMessagesReceived() {
-            return lastMessageReceived.get() < System.currentTimeMillis() - 10000;
+            return lastMessageReceived.get() < System.currentTimeMillis() - 2*maxElectionTimeout;
         }
 
 

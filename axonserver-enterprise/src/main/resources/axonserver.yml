@@ -18,7 +18,7 @@ spring:
       leak-detection-threshold: 2000
 
   transaction:
-    default-timeout: 1000
+    default-timeout: 15000
 
   h2:
     console:
@@ -38,6 +38,7 @@ axoniq:
     metrics-interval: 15
     metrics-synchronization-rate: 2500
     connect2contexts: node-contexts
+    keep-alive-time: 2500
 
 logging:
   level:

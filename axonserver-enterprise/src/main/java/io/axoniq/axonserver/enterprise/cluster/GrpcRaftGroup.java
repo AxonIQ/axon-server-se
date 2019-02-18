@@ -140,7 +140,7 @@ public class GrpcRaftGroup implements RaftGroup {
         List<Node> nodes = raftConfiguration.groupMembers();
         for (Node node : nodes) {
             if (node.getNodeId().equals(nodeId)){
-                return new GrpcRaftPeer(node, clientFactory);
+                return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
             }
         }
         throw new IllegalArgumentException(nodeId + " is not member of this group");
@@ -148,7 +148,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public RaftPeer peer(Node node) {
-        return new GrpcRaftPeer(node, clientFactory);
+        return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
     }
 
     @Override
