@@ -42,16 +42,8 @@ public class SnapshotWriteStorage {
         return storageTransactionManager.waitingTransactions();
     }
 
-    public long getLastCommittedToken() {
-        lastCommitted.compareAndSet(-1L, getLastToken());
-        return lastCommitted.get();
-    }
-
     public void rollback(long token) {
         storageTransactionManager.rollback(token);
     }
 
-    public long getLastIndex() {
-        return storageTransactionManager.getLastIndex();
-    }
 }

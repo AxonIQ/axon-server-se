@@ -174,6 +174,10 @@ public class RaftServerTest {
             return "MyGroupId";
         }
 
+        @Override
+        public void delete() {
+
+        }
 //        @Override
 //        public int minElectionTimeout() {
 //            return 1000;

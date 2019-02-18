@@ -1,16 +1,14 @@
 package io.axoniq.axonserver.access.application;
 
-import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationContext;
-import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +27,10 @@ public class AccessControllerTest {
     @Mock
     private PathMappingRepository pathMappingRepository;
     @Mock
-    private ApplicationRepository applicationRepository;
+    private JpaContextApplicationRepository applicationRepository;
+
+    @Mock
+    private JpaApplicationRepository centralApplicationRepository;
 
 
     @Before
@@ -44,14 +45,23 @@ public class AccessControllerTest {
 
         when(pathMappingRepository.findById(any())).thenReturn(Optional.empty());
         when(pathMappingRepository.findById("path1")).thenReturn(Optional.of(mapping));
-        List<Application> applications = new ArrayList<>();
-        applications.add(new Application("Test", "TEST", "12345678", hasher.hash("1234567890"),
-                                         new ApplicationContext("default", Collections.singletonList(
-                                                 new ApplicationContextRole("READ")
-                                         ))));
-        when(applicationRepository.findAllByTokenPrefix(any())).thenReturn(applications);
+        List<JpaContextApplication> applications = new ArrayList<>();
+        JpaContextApplication app = new JpaContextApplication("default", "Test");
+        app.setHashedToken(hasher.hash("1234567890"));
+        app.setTokenPrefix("12345678");
+        app.setRoles(Collections.singleton("READ"));
+        applications.add(app);
+        when(applicationRepository.findAllByContext(any())).thenReturn(applications);
 
-        testSubject = new AccessControllerDB(applicationRepository, pathMappingRepository, hasher);
+        List<JpaApplication> centralApplications = new ArrayList<>();
+        String sampleToken = "11111111111111111111111";
+        centralApplications.add(new JpaApplication("Demo", null, ApplicationController.tokenPrefix(sampleToken),
+                                                   hasher.hash(sampleToken),
+                                                   new ApplicationContext("demoContext", Arrays.asList(new ApplicationContextRole("READ")))));
+
+        when(centralApplicationRepository.findAllByTokenPrefix(any())).thenReturn(centralApplications);
+
+        testSubject = new AccessControllerDB(applicationRepository, centralApplicationRepository, pathMappingRepository, hasher);
     }
 
     @Test
@@ -79,4 +89,10 @@ public class AccessControllerTest {
     public void authorizeWithWildcard() throws Exception {
         assertTrue(testSubject.authorize("1234567890", "default","path3/test", true));
     }
+
+    @Test
+    public void authorizeCentral() throws Exception {
+        assertTrue(testSubject.authorize("11111111111111111111111", "demoContext","path3/test", true));
+    }
+
 }

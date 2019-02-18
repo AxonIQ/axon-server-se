@@ -240,6 +240,7 @@ public class ReplicatorPeer {
                                              .setPrevLogTerm(previous == null ? 0 : previous.getTerm())
                                              .setTerm(currentTerm())
                                              .setLeaderId(me())
+                                             .setTargetId(raftPeer.nodeId())
                                              .setCommitIndex(raftGroup.logEntryProcessor().commitIndex())
                                              .addEntries(entry)
                                              .build());
@@ -294,6 +295,7 @@ public class ReplicatorPeer {
                                                                  .setGroupId(raftGroup.raftConfiguration().groupId())
                                                                  .setTerm(raftGroup.localElectionStore()
                                                                                    .currentTerm())
+                                                                 .setTargetId(raftPeer.nodeId())
                                                                  .setPrevLogTerm(lastTermIndex.getTerm())
                                                                  .setPrevLogIndex(lastTermIndex.getIndex())
                                                                  .build();

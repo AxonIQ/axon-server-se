@@ -27,6 +27,4 @@ public interface StorageTransactionManager {
     default void cancelPendingTransactions() {
 
     }
-
-    long getLastIndex();
 }

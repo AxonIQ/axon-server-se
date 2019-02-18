@@ -32,11 +32,13 @@ public class ContextClusterNode implements Serializable {
 
     private boolean storage;
     private boolean messaging;
+    private String clusterNodeLabel;
 
     public ContextClusterNode() {
     }
 
-    public ContextClusterNode(Context context, ClusterNode clusterNode) {
+    public ContextClusterNode(Context context, ClusterNode clusterNode, String clusterNodeLabel) {
+        this.clusterNodeLabel = clusterNodeLabel;
         this.key = new Key(context, clusterNode);
         context.addClusterNode(this);
         clusterNode.addContext(this);
@@ -60,6 +62,14 @@ public class ContextClusterNode implements Serializable {
 
     public void setMessaging(boolean messaging) {
         this.messaging = messaging;
+    }
+
+    public void setKey(Key key) {
+        this.key = key;
+    }
+
+    public String getClusterNodeLabel() {
+        return clusterNodeLabel;
     }
 
     @Transient

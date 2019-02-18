@@ -2,7 +2,6 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
-import io.axoniq.axonserver.access.jpa.Application;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -28,6 +27,7 @@ import org.junit.*;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -71,7 +71,6 @@ public class GatewayTest {
         testSubject.stop(() -> stopped.set(true));
         assertTrue(stopped.get());
         assertFalse(testSubject.isRunning());
-        Thread.sleep(50);
     }
 
     @Test
@@ -83,7 +82,6 @@ public class GatewayTest {
         assertTrue(testSubject.isRunning());
         testSubject.stop();
         assertFalse(testSubject.isRunning());
-        Thread.sleep(50);
     }
 
     @Test(expected = RuntimeException.class)
@@ -108,7 +106,6 @@ public class GatewayTest {
         testSubject.start();
         assertTrue(testSubject.isRunning());
         testSubject.stop();
-        Thread.sleep(50);
     }
 
     @Test
@@ -116,11 +113,6 @@ public class GatewayTest {
         accessController = new AxonServerAccessController() {
             @Override
             public boolean allowed(String fullMethodName, String context, String token) {
-                return "1234".equals(token);
-            }
-
-            @Override
-            public boolean validToken(String token) {
                 return "1234".equals(token);
             }
 
@@ -135,8 +127,8 @@ public class GatewayTest {
             }
 
             @Override
-            public Application getApplication(String token) {
-                return null;
+            public Set<String> getAdminRoles(String token) {
+                return Collections.emptySet();
             }
         };
 

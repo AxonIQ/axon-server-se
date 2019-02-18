@@ -78,7 +78,7 @@ public class ClusterRestController {
         if( !Feature.CLUSTERING.enabled(limits) ) {
             throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
         }
-        clusterController.sendDeleteNode(name);
+        raftServiceFactory.getRaftConfigService().deleteNode(name);
     }
 
 

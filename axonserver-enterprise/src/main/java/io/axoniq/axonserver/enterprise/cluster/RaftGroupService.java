@@ -1,11 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.User;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,17 +26,11 @@ public interface RaftGroupService {
     default void stepDown(String context) {
     }
 
-    CompletableFuture<Void> updateApplication(String context, Application application);
-
-    CompletableFuture<Void> updateUser(String context, User request);
+    CompletableFuture<Void> updateApplication(ContextApplication application);
 
     CompletableFuture<Void> updateLoadBalancingStrategy(String context, LoadBalanceStrategy loadBalancingStrategy);
 
     CompletableFuture<Void> updateProcessorLoadBalancing(String context, ProcessorLBStrategy processorLBStrategy);
-
-    CompletableFuture<Void> deleteApplication(String context, Application application);
-
-    CompletableFuture<Void> deleteUser(String context, User request);
 
     CompletableFuture<Void> deleteLoadBalancingStrategy(String context, LoadBalanceStrategy loadBalancingStrategy);
 

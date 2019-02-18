@@ -27,4 +27,10 @@ public class InMemoryElectionStore implements ElectionStore {
     public void updateCurrentTerm(long term) {
         this.currentTerm = term;
     }
+
+    @Override
+    public void delete() {
+        votedFor = null;
+        currentTerm = 0;
+    }
 }

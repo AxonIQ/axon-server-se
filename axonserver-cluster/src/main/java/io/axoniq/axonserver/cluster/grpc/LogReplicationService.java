@@ -22,7 +22,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             @Override
             public void onNext(AppendEntriesRequest appendEntriesRequest) {
                 if( ! running) return;
-                RaftNode target = raftGroupManager.raftNode(appendEntriesRequest.getGroupId());
+                RaftNode target = raftGroupManager.getOrCreateRaftNode(appendEntriesRequest.getGroupId(), appendEntriesRequest.getTargetId());
                 try {
                     synchronized (target) {
                         AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);

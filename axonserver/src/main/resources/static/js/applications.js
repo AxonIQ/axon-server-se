@@ -48,6 +48,7 @@ globals.pageView = new Vue(
                             context.roles.push(this.application.workingRoles[r].role);
                         }
 
+                        this.application.workingRoles = null
                         axios.post('v1/applications', this.application).then(response => {
                             this.feedback = application.name + ": Application Token: " + response.data;
                             this.application = {roles: [], workingRoles: []};

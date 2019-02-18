@@ -88,4 +88,10 @@ public class Context implements Serializable {
                 "name='" + name + '\'' +
                 '}';
     }
+
+    public String getNodeLabel(String node) {
+        return nodes.stream().filter(n -> n.getClusterNode().getName().equals(node))
+                    .map(ContextClusterNode::getClusterNodeLabel)
+                    .findFirst().orElse(null);
+    }
 }

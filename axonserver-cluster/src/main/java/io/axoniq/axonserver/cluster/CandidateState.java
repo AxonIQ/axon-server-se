@@ -139,6 +139,8 @@ public class CandidateState extends AbstractMembershipState {
     private void onElectionResult(Result result){
         if (result.won()) {
             changeStateTo(stateFactory().leaderState(), result.cause());
+        } else if( result.goAway()) {
+            changeStateTo(stateFactory().removedState(), result.cause());
         } else {
             changeStateTo(stateFactory().followerState(), result.cause());
         }

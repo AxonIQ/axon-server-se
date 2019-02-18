@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.test;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.access.jpa.Application;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -25,7 +24,9 @@ import io.grpc.stub.StreamObserver;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -59,11 +60,6 @@ public class AxonServerFixture {
             }
 
             @Override
-            public boolean validToken(String token) {
-                return token.equals("1234");
-            }
-
-            @Override
             public Collection<PathMapping> getPathMappings() {
                 return null;
             }
@@ -74,8 +70,8 @@ public class AxonServerFixture {
             }
 
             @Override
-            public Application getApplication(String token) {
-                return null;
+            public Set<String> getAdminRoles(String token) {
+                return Collections.singleton("ADMIN");
             }
         };
 

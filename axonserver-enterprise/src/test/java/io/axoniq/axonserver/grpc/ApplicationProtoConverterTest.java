@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.access.jpa.ApplicationContext;
+import io.axoniq.axonserver.access.application.ApplicationContext;
+import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
 import org.junit.*;
@@ -28,7 +29,7 @@ public class ApplicationProtoConverterTest {
 
     @Test
     public void createApplication() throws Exception {
-        io.axoniq.axonserver.access.jpa.Application jpaApplication = ApplicationProtoConverter
+        JpaApplication jpaApplication = ApplicationProtoConverter
                 .createJpaApplication(application);
         assertEquals("Description", jpaApplication.getDescription());
         assertEquals("Name", jpaApplication.getName());

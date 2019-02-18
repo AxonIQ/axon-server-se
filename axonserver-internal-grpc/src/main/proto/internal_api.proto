@@ -10,11 +10,6 @@ service MessagingClusterService {
     // Creates a stream between 2 nodes in the cluser
     // calling side is service provider to called side
     rpc OpenStream( stream ConnectorCommand ) returns (stream ConnectorResponse) {}
-
-    // Node sends a request to join an existing cluster
-    // Input is the information on the joining node
-    // Response is a list of nodes already in the cluster
-    rpc Join( NodeInfo ) returns (stream NodeInfo) {}
 }
 
 /**
@@ -25,6 +20,8 @@ service RaftConfigService {
 
     rpc JoinCluster(NodeInfo) returns (Confirmation) {}
 
+    rpc DeleteNode(NodeName) returns (Confirmation) {}
+
     rpc CreateContext(Context) returns (Confirmation) {}
 
     rpc AddNodeToContext(NodeContext) returns (Confirmation) {}
@@ -33,9 +30,11 @@ service RaftConfigService {
 
     rpc DeleteContext(ContextName) returns (Confirmation) {}
 
-    rpc UpdateApplication(Application) returns (Confirmation) {}
+    rpc UpdateApplication(Application) returns (Application) {}
 
     rpc DeleteApplication(Application) returns (Confirmation) {}
+
+    rpc RefreshToken(Application) returns (Application) {}
 
     rpc UpdateUser(User) returns (Confirmation) {}
 
@@ -56,6 +55,8 @@ service RaftConfigService {
 service RaftGroupService {
 
     rpc InitContext(Context) returns (Confirmation) {}
+
+    rpc DeleteContext(ContextName) returns (Confirmation) {}
 
     rpc AddServer(Context) returns (Confirmation) {}
 
@@ -89,7 +90,7 @@ message NodeContext {
 
 message ConnectorCommand {
     oneof request {
-        NodeInfo connect = 1;
+        ConnectRequest connect = 1;
         InternalCommandSubscription subscribe_command = 2;
         InternalCommandSubscription unsubscribe_command = 3;
         ForwardedCommandResponse command_response = 4;
@@ -161,7 +162,7 @@ message InternalQuerySubscription {
 
 message ConnectRequest {
     NodeInfo nodeInfo = 1;
-    int64 generation = 2;
+    bool admin = 2;
 }
 
 message ConnectorResponse {
@@ -194,10 +195,6 @@ message ClientSubscriptionQueryRequest {
 }
 
 message ConnectResponse {
-    repeated ContextRole contexts = 2;
-    repeated NodeInfo nodes = 3;
-    repeated ModelVersion model_versions = 4;
-    int64 generation = 5;
     bool deleted = 6;
 }
 
@@ -210,12 +207,14 @@ message ContextRole {
     string name = 1;
     bool messaging = 2;
     bool storage = 3;
+    string node_label= 4;
 }
 
 message NodeRole {
     string name = 1;
     bool messaging = 2;
     bool storage = 3;
+    string node_label= 4;
 }
 
 message ContextUpdate {
@@ -355,7 +354,6 @@ message TransactionWithToken {
     int64 token = 1;
     int32 version = 2;
     repeated bytes events = 3;
-    int64 index = 4;
 }
 
 /*
@@ -367,10 +365,11 @@ message Context {
 }
 
 message ContextMember {
-    string node_id  = 1;
+    string node_id = 1;
     string host = 2;
     int32 port = 3;
     State state = 4;
+    string node_name = 5;
 }
 
 message Application {
@@ -413,12 +412,20 @@ enum State {
 
 message ContextConfiguration {
     string context = 1;
-    repeated NodeInfo nodes = 2;
+    repeated NodeInfoWithLabel nodes = 2;
 }
 
+message NodeInfoWithLabel {
+    NodeInfo node = 1;
+    string label = 2;
+}
 
 message ContextName {
     string context = 1;
+}
+
+message NodeName {
+    string node = 1;
 }
 
 message LoadBalanceStrategy {
@@ -436,7 +443,10 @@ message ProcessorLBStrategy {
 
 message ContextApplication {
     string context = 1;
-    Application application = 2;
+    string name = 2;
+    string token_prefix = 3;
+    string hashed_token = 4;
+    repeated string roles = 5;
 }
 
 message ContextUser {

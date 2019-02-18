@@ -225,6 +225,11 @@ public class RaftClusterTestFixture {
         }
 
         @Override
+        public void delete() {
+
+        }
+
+        @Override
         public List<Node> groupMembers() {
             return nodes.keySet().stream()
                         .map(sn -> Node.newBuilder()

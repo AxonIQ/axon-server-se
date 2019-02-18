@@ -10,8 +10,6 @@ import org.mockito.runners.*;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -41,16 +39,6 @@ public class AxonServerAccessControllerTest {
     @Test
     public void notAllowed() {
         assertFalse(testSubject.allowed("/v1/commands", "default", "2"));
-    }
-
-    @Test
-    public void validToken() {
-        assertTrue(testSubject.validToken("1"));
-    }
-
-    @Test
-    public void invalidToken() {
-        assertFalse(testSubject.validToken("2"));
     }
 
 }

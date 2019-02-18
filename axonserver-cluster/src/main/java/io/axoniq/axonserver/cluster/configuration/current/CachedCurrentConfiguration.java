@@ -66,5 +66,4 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
         listeners.add(newConfigurationConsumer);
         return () -> listeners.remove(newConfigurationConsumer);
     }
-
 }

@@ -69,4 +69,5 @@ public interface LogEntryStore {
         return Stream.empty();
     }
 
+    void delete();
 }

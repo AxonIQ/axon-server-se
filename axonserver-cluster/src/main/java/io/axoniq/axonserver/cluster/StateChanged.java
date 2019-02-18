@@ -47,6 +47,32 @@ public class StateChanged {
         return to;
     }
 
+    public boolean fromLeader() {
+        return from.equals(LeaderState.class.getSimpleName());
+    }
+    public boolean fromFollower() {
+        return from.equals(FollowerState.class.getSimpleName());
+    }
+
+    public boolean fromCandidate() {
+        return from.equals(CandidateState.class.getSimpleName());
+    }
+
+    public boolean toLeader() {
+        return to.equals(LeaderState.class.getSimpleName());
+    }
+    public boolean toFollower() {
+        return to.equals(FollowerState.class.getSimpleName());
+    }
+
+    public boolean toCandidate() {
+        return to.equals(CandidateState.class.getSimpleName());
+    }
+
+    public boolean toRemoved() {
+        return to.equals(RemovedState.class.getSimpleName());
+    }
+
     public String getGroupId() {
         return groupId;
     }

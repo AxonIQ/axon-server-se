@@ -1,16 +1,13 @@
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.access.jpa.Application;
-import io.axoniq.axonserver.access.jpa.ApplicationContext;
-import io.axoniq.axonserver.access.jpa.ApplicationContextRole;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Set;
 
 /**
  * Created by marc on 7/17/2017.
@@ -20,10 +17,6 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
 
     private PathMappingRepository pathMappingRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final Application dummyApplication = new Application("Dummy", null, null, null,
-                                                                 new ApplicationContext("ADMIN",
-                                                                                        Collections.singletonList(
-                                                                                                new ApplicationContextRole(Topology.DEFAULT_CONTEXT))));
 
     public AxonServerStandardAccessController(PathMappingRepository pathMappingRepository, MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.pathMappingRepository = pathMappingRepository;
@@ -32,11 +25,6 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
 
     @Override
     public boolean allowed(String fullMethodName, String context, String token) {
-        return isTokenFromConfigFile(token);
-    }
-
-    @Override
-    public boolean validToken(String token) {
         return isTokenFromConfigFile(token);
     }
 
@@ -51,8 +39,8 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public Application getApplication(String token) {
-        return isTokenFromConfigFile(token) ? dummyApplication: null;
+    public Set<String> getAdminRoles(String token) {
+        return isTokenFromConfigFile(token) ? Collections.singleton("ADMIN"): null;
     }
 
     private boolean isTokenFromConfigFile(String token) {

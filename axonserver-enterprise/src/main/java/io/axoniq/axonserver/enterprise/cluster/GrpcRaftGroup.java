@@ -8,6 +8,7 @@ import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.cluster.configuration.MembersStore;
 import io.axoniq.axonserver.cluster.configuration.store.JpaMembersStore;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
+import io.axoniq.axonserver.cluster.grpc.GrpcRaftClientFactory;
 import io.axoniq.axonserver.cluster.grpc.GrpcRaftPeer;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateController;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class GrpcRaftGroup implements RaftGroup {
     private final String context;
@@ -40,12 +41,15 @@ public class GrpcRaftGroup implements RaftGroup {
     private final RaftNode localNode;
     private final LogEntryProcessor logEntryProcessor;
     private final LocalEventStore localEventStore;
+    private final GrpcRaftClientFactory clientFactory;
 
     public GrpcRaftGroup(String localNodeId, String groupId,
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
                          RaftProperties storageOptions,
                          Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory,
-                         LocalEventStore localEventStore) {
+                         LocalEventStore localEventStore,
+                         GrpcRaftClientFactory clientFactory) {
+        this.clientFactory = clientFactory;
         context = groupId;
         this.localEventStore = localEventStore;
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
@@ -82,7 +86,7 @@ public class GrpcRaftGroup implements RaftGroup {
             }
 
             @Override
-            public void clear() {
+            public void delete() {
                 membersStore.set(Collections.emptyList());
             }
 
@@ -142,7 +146,7 @@ public class GrpcRaftGroup implements RaftGroup {
         List<Node> nodes = raftConfiguration.groupMembers();
         for (Node node : nodes) {
             if (node.getNodeId().equals(nodeId)){
-                return new GrpcRaftPeer(node);
+                return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
             }
         }
         throw new IllegalArgumentException(nodeId + " is not member of this group");
@@ -150,7 +154,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public RaftPeer peer(Node node) {
-        return new GrpcRaftPeer(node);
+        return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
     }
 
     @Override

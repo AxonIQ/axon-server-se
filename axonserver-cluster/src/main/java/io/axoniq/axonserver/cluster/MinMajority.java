@@ -17,6 +17,6 @@ public class MinMajority implements Supplier<Integer> {
     @Override
     public Integer get() {
         int size = clusterSize.get();
-        return (size / 2) + (size % 2 == 0 ? 0 : 1);
+        return (int)Math.ceil((size + 0.1)/ 2f);
     }
 }

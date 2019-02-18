@@ -340,6 +340,12 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
 
 
+    public void delete() {
+        clear();
+        File storageDir  = new File(storageProperties.getStorage(getType()));
+        storageDir.delete();
+    }
+
     public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
         File storageDir  = new File(storageProperties.getStorage(getType()));
         String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());

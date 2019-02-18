@@ -4,7 +4,6 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
@@ -24,8 +23,4 @@ public interface RaftPeer {
     Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener);
 
     String nodeId();
-
-    default Node toNode() {
-        return Node.newBuilder().setNodeId(nodeId()).build();
-    }
 }

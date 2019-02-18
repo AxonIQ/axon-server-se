@@ -24,19 +24,16 @@ public class RaftGroupRepositoryManager {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
-    public JpaRaftGroupNode initRaftGroup(String groupId) {
-        JpaRaftGroupNode jpaRaftGroupNode = new JpaRaftGroupNode();
-        jpaRaftGroupNode.setGroupId(groupId);
-        jpaRaftGroupNode.setNodeId(messagingPlatformConfiguration.getName());
-        jpaRaftGroupNode.setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname());
-        jpaRaftGroupNode.setPort(messagingPlatformConfiguration.getInternalPort());
-        return raftGroupNodeRepository.save(jpaRaftGroupNode);
+    public Set<JpaRaftGroupNode> getMyContexts() {
+        return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
+                                      .stream()
+                                      .collect(Collectors.toSet());
     }
 
-    public Set<String> getMyContexts() {
-        return raftGroupNodeRepository.findByNodeId(messagingPlatformConfiguration.getName())
+    public Set<String> getMyContextNames() {
+        return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
                                       .stream()
-                                      .map(n -> n.getGroupId())
+                                      .map(JpaRaftGroupNode::getGroupId)
                                       .collect(Collectors.toSet());
     }
 
