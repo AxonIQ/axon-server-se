@@ -34,7 +34,7 @@ public class UserSnapshotDataStore implements SnapshotDataStore {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext) {
         return Flux.fromIterable(userRepository.findAll())
                    .map(UserProtoConverter::createUser)
                    .map(this::toSerializedObject);

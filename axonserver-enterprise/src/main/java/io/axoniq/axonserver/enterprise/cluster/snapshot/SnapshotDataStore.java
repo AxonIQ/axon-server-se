@@ -25,11 +25,10 @@ public interface SnapshotDataStore {
     /**
      * Streams snapshot data within given event sequence boundaries.
      *
-     * @param fromEventSequence lower boundary (inclusive) in terms of event sequence of snapshot data
-     * @param toEventSequence   upper boundary (inclusive) in terms of event sequence of snapshot data
+     * @param installationContext provides the information needed to define the boundaries of the stream
      * @return a flux of serialized snapshot data
      */
-    Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence);
+    Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext);
 
     /**
      * Whether this store can apply snapshot data of given {@code type}.

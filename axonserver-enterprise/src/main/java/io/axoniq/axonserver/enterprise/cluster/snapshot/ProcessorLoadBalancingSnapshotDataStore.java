@@ -41,7 +41,7 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext) {
         return Flux.fromIterable(processorLoadBalancingRepository.findByContext(context))
                    .map(ProcessorLBStrategyConverter::createProcessorLBStrategy)
                    .map(this::toSerializedObject);

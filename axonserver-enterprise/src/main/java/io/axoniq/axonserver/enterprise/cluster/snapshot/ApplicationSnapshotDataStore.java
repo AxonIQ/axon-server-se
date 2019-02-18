@@ -41,7 +41,7 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext) {
         List<Application> applications = applicationController.getApplicationsForContext(context);
 
         return Flux.fromIterable(applications)

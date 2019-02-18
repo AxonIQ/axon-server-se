@@ -30,7 +30,7 @@ public class LoadBalanceStrategySnapshotDataStore implements SnapshotDataStore {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext) {
         return Flux.fromIterable(loadBalanceStrategyRepository.findAll())
                    .map(LoadBalancingStrategyConverter::createLoadBalanceStrategy)
                    .map(this::toSerializedObject);
