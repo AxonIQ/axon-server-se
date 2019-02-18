@@ -341,7 +341,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
 
     public void delete() {
-        clear();
+        clear(0);
         File storageDir  = new File(storageProperties.getStorage(getType()));
         storageDir.delete();
     }

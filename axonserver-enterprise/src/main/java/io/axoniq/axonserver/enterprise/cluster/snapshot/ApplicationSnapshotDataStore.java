@@ -47,7 +47,7 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
     @Override
     public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         if(! adminContext) return Flux.empty();
-        List<Application> applications = applicationController.getApplicationsForContext(context);
+        List<JpaApplication> applications = applicationController.getApplicationsForContext(context);
 
         return Flux.fromIterable(applications)
                    .map(ApplicationProtoConverter::createApplication)

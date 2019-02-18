@@ -12,6 +12,7 @@ import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 
@@ -213,6 +214,11 @@ public class InstallSnapshotIntegrationTest {
         @Override
         public int maxElectionTimeout() {
             return 2000;
+        }
+
+        @Override
+        public void delete() {
+
         }
     }
 }
