@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import reactor.core.publisher.Flux;
 
@@ -28,7 +29,7 @@ public interface SnapshotDataStore {
      * @param installationContext provides the information needed to define the boundaries of the stream
      * @return a flux of serialized snapshot data
      */
-    Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext);
+    Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext);
 
     /**
      * Whether this store can apply snapshot data of given {@code type}.

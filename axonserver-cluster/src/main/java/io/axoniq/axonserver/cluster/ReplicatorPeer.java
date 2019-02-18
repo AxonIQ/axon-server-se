@@ -2,6 +2,8 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.cluster.replication.DefaultSnapshotContext;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -55,7 +58,7 @@ public class ReplicatorPeer {
 
         private static final int SNAPSHOT_CHUNKS_BUFFER_SIZE = 10;
 
-        private final long lastEventSequence;
+        private final SnapshotContext snapshotInstallationContext;
         private Registration registration;
         private Subscription subscription;
         private int offset;
@@ -63,8 +66,9 @@ public class ReplicatorPeer {
         private volatile boolean done = false;
         private volatile long lastAppliedIndex;
 
-        private InstallSnapshotState(long lastEventSequence) {
-            this.lastEventSequence = lastEventSequence;
+        public InstallSnapshotState(
+                SnapshotContext snapshotInstallationContext) {
+            this.snapshotInstallationContext = snapshotInstallationContext;
         }
 
         @Override
@@ -73,7 +77,7 @@ public class ReplicatorPeer {
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();
-            snapshotManager.streamSnapshotData(lastEventSequence + 1 , 0)
+            snapshotManager.streamSnapshotData(snapshotInstallationContext)
                            .buffer(SNAPSHOT_CHUNKS_BUFFER_SIZE)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override
@@ -272,7 +276,7 @@ public class ReplicatorPeer {
                             matchIndex());
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(matchIndex.get() + 1);
-                lastEventSequence.set(response.getFailure().getLastAppliedEventSequence());
+                snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
@@ -313,7 +317,7 @@ public class ReplicatorPeer {
                                 groupId(),
                                 raftPeer.nodeId(),
                                 nextIndex());
-                changeStateTo(new InstallSnapshotState(lastEventSequence.get()));
+                changeStateTo(new InstallSnapshotState(snapshotContext.get()));
             }
             return null;
         }
@@ -327,7 +331,7 @@ public class ReplicatorPeer {
 
     private final RaftPeer raftPeer;
     private final Consumer<Long> matchIndexCallback;
-    private final AtomicLong lastEventSequence = new AtomicLong(-1);
+    private final AtomicReference<SnapshotContext> snapshotContext = new AtomicReference<>(new SnapshotContext() {});
     private final AtomicLong nextIndex = new AtomicLong(1);
     private final AtomicLong matchIndex = new AtomicLong(0);
     private final AtomicLong lastMessageSent = new AtomicLong(0);

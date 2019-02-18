@@ -2,12 +2,11 @@ package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import reactor.core.publisher.Flux;
 
 /**
@@ -40,7 +39,7 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         long fromToken = installationContext.fromEventSequence();
         long toToken = localEventStore.getLastEventIndex(context);
         return Flux.fromIterable(() -> localEventStore.eventTransactionsIterator(context, fromToken, toToken))

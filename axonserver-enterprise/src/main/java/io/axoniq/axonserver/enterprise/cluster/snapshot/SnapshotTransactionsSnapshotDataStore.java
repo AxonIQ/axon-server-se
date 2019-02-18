@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
@@ -38,7 +39,7 @@ public class SnapshotTransactionsSnapshotDataStore implements SnapshotDataStore 
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(SnapshotInstallationContext installationContext) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         long fromToken = installationContext.fromSnapshotSequence();
         long toToken = localEventStore.getLastSnapshotIndex(context);
         return Flux.fromIterable(() -> localEventStore.snapshotTransactionsIterator(context, fromToken, toToken))
