@@ -46,7 +46,7 @@ public class RaftNode {
     private final List<Consumer> messagesListeners = new CopyOnWriteArrayList<>();
 
     public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
-        this(nodeId, raftGroup, new DefaultScheduler("raftNode-"+nodeId), snapshotManager);
+        this(nodeId, raftGroup, new DefaultScheduler("raftNode-" + nodeId), snapshotManager);
     }
 
     public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager) {
