@@ -151,8 +151,7 @@ public class FollowerState extends AbstractMembershipState {
     private boolean validPrevTermIndex(long prevIndex, long prevTerm) {
         LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
         LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
-        return logEntryStore.contains(prevIndex, prevTerm) ||
-                (logEntryProcessor.lastAppliedIndex() == prevIndex && logEntryProcessor.lastAppliedTerm() == prevTerm);
+        return logEntryStore.contains(prevIndex, prevTerm) || logEntryProcessor.isLastApplied(prevIndex, prevTerm);
     }
 
     @Override
