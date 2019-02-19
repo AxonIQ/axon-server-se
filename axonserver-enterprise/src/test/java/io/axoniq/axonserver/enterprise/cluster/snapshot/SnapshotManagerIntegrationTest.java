@@ -11,7 +11,6 @@ import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
-import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.config.SystemInfoProvider;
@@ -145,17 +144,18 @@ public class SnapshotManagerIntegrationTest {
                                      .block();
 
         assertNotNull(snapshotChunks);
-        assertEquals(17, snapshotChunks.size());
+        // Only 4 as events/snapshots are not included in _admin snapshot
+        assertEquals(4, snapshotChunks.size());
         assertEquals(JpaApplication.class.getName(), snapshotChunks.get(0).getType());
         assertEquals(User.class.getName(), snapshotChunks.get(1).getType());
         assertEquals(LoadBalancingStrategy.class.getName(), snapshotChunks.get(2).getType());
         assertEquals(ProcessorLoadBalancing.class.getName(), snapshotChunks.get(3).getType());
-        for (int i = 4; i < 14; i++) {
-            assertEquals("eventsTransaction", snapshotChunks.get(i).getType());
-        }
-        for (int i = 14; i < 17; i++) {
-            assertEquals("snapshotsTransaction", snapshotChunks.get(i).getType());
-        }
+//        for (int i = 4; i < 14; i++) {
+//            assertEquals("eventsTransaction", snapshotChunks.get(i).getType());
+//        }
+//        for (int i = 14; i < 17; i++) {
+//            assertEquals("snapshotsTransaction", snapshotChunks.get(i).getType());
+//        }
 
         assertEquals(2, processorLoadBalancingRepository.findAll().size());
         followerSnapshotManager.clear();

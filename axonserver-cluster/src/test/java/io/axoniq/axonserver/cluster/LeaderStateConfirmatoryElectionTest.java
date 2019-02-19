@@ -10,9 +10,7 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Collections;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -41,6 +39,7 @@ public class LeaderStateConfirmatoryElectionTest {
         when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore("Test"));
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.logEntryProcessor()).thenReturn(mock(LogEntryProcessor.class));
+        when(raftGroup.createIterator()).thenReturn(Collections.emptyIterator());
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
         localNode = mock(RaftNode.class);
         when(localNode.nodeId()).thenReturn("node0");

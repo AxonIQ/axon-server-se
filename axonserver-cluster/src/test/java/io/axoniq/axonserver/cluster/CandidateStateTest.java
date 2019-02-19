@@ -5,7 +5,6 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
-import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -15,6 +14,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
 
+import java.util.Collections;
 import java.util.function.BiConsumer;
 
 import static org.junit.Assert.*;
@@ -49,6 +49,7 @@ public class CandidateStateTest {
         when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore("Test"));
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
+        when(raftGroup.createIterator()).thenReturn(Collections.emptyIterator());
         LogEntryProcessor logEntryProcessor = mock(LogEntryProcessor.class);
         when(raftGroup.logEntryProcessor()).thenReturn(logEntryProcessor);
         when(raftGroup.localNode()).thenReturn(localNode);
