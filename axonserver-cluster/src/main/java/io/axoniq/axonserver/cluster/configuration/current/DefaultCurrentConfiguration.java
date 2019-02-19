@@ -20,7 +20,7 @@ public class DefaultCurrentConfiguration implements CurrentConfiguration {
 
     public DefaultCurrentConfiguration(RaftGroup raftGroup) {
         this(() -> raftGroup.raftConfiguration().groupMembers(),
-             () -> raftGroup.localLogEntryStore().createIterator(raftGroup.logEntryProcessor().commitIndex() + 1));
+             raftGroup::createIterator);
     }
 
     public DefaultCurrentConfiguration(

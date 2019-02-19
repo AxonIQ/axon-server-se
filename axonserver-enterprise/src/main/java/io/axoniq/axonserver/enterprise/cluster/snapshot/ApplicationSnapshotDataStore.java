@@ -74,7 +74,9 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public void clear() {
-        applicationController.deleteByContext(context);
+        if( adminContext) {
+            applicationController.deleteByContext(context);
+        }
     }
 
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.Application application) {

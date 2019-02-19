@@ -30,6 +30,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
  * @author Marc Gathier
  */
@@ -168,11 +170,13 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public long lastAppliedEventSequence() {
+        if( isAdmin(context)) return 0L;
         return localEventStore.getLastToken(context);
     }
 
     @Override
     public long lastAppliedSnapshotSequence() {
+        if( isAdmin(context)) return 0L;
         return localEventStore.getLastSnapshot(context);
     }
 }

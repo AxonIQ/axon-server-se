@@ -58,7 +58,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final ApplicationContext applicationContext;
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
-    private final LocalEventStore localEventStore;
+    private volatile LocalEventStore localEventStore;
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -68,8 +68,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                               JpaRaftGroupNodeRepository nodeRepository,
                               SnapshotDataProviders snapshotDataProviders,
                               AxonServerGrpcRaftClientFactory grpcRaftClientFactory,
-                              ApplicationContext applicationContext,
-                              LocalEventStore localEventStore) {
+                              ApplicationContext applicationContext) {
         this.raftStateRepository = raftStateRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
@@ -77,13 +76,13 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         this.eventPublisher = eventPublisher;
         this.nodeRepository = nodeRepository;
         this.snapshotDataProviders = snapshotDataProviders;
-        this.localEventStore = localEventStore;
         this.grpcRaftClientFactory = grpcRaftClientFactory;
         this.applicationContext = applicationContext;
     }
 
 
     public void start() {
+        localEventStore = applicationContext.getBean(LocalEventStore.class);
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
             try {

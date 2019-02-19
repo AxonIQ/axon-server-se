@@ -216,6 +216,10 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup.lastAppliedEventSequence();
     }
 
+    protected long lastAppliedSnapshotSequence() {
+        return raftGroup.lastAppliedSnapshotSequence();
+    }
+
     protected void changeStateTo(MembershipState newState, String cause) {
         transitionHandler.updateState(this, newState, cause);
     }
@@ -265,6 +269,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                                                        .setCause(failureCause)
                                                        .setLastAppliedIndex(lastAppliedIndex())
                                                        .setLastAppliedEventSequence(lastAppliedEventSequence())
+                                                       .setLastAppliedSnapshotSequence(lastAppliedSnapshotSequence())
                                                        .build();
         return AppendEntriesResponse.newBuilder()
                                     .setResponseHeader(responseHeader(requestId))

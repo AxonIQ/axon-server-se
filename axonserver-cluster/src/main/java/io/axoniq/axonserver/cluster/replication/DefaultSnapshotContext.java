@@ -26,4 +26,9 @@ public class DefaultSnapshotContext implements SnapshotContext {
     public long fromSnapshotSequence() {
         return failure.getLastAppliedSnapshotSequence()+1;
     }
+
+    @Override
+    public String toString() {
+        return "DefaultSnapshotContext[fromEvent=" + fromEventSequence() + ",fromSnapshot=" + fromSnapshotSequence() + "]";
+    }
 }

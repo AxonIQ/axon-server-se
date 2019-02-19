@@ -9,6 +9,8 @@ import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import reactor.core.publisher.Flux;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
  * Snapshot data store for event transaction data.
  *
@@ -21,6 +23,7 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
 
     private final String context;
     private final LocalEventStore localEventStore;
+    private final boolean adminContext;
 
     /**
      * Creates Event Transaction Snapshot Data Store for streaming/applying event transaction data.
@@ -31,6 +34,7 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
     public EventTransactionsSnapshotDataStore(String context, LocalEventStore localEventStore) {
         this.context = context;
         this.localEventStore = localEventStore;
+        this.adminContext = isAdmin(context);
     }
 
     @Override
@@ -40,8 +44,9 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
+        if( adminContext) return Flux.empty();
         long fromToken = installationContext.fromEventSequence();
-        long toToken = localEventStore.getLastToken(context);
+        long toToken = localEventStore.getLastToken(context) + 1;
         return Flux.fromIterable(() -> localEventStore.eventTransactionsIterator(context, fromToken, toToken))
                    .map(transactionWithToken -> SerializedObject.newBuilder()
                                                                 .setType(SNAPSHOT_TYPE)
@@ -51,7 +56,7 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public boolean canApplySnapshotData(String type) {
-        return SNAPSHOT_TYPE.equals(type);
+        return !adminContext && SNAPSHOT_TYPE.equals(type);
     }
 
     @Override

@@ -74,6 +74,7 @@ public class ReplicatorPeer {
         @Override
         public void start() {
             offset = 0;
+            logger.warn("{}: start snapshot installation: {}", raftGroup.localNode().groupId(), snapshotInstallationContext);
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();

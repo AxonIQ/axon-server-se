@@ -37,25 +37,25 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     private static final int HEADER_BYTES = 4 + 1 + 8 + 4;
     private static final int TX_CHECKSUM_BYTES = 4;
 
-    private final LogEntryTransformerFactory eventTransformerFactory;
+    private final LogEntryTransformerFactory logEntryTransformerFactory;
     private final Synchronizer synchronizer;
     private final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     private final AtomicLong lastToken = new AtomicLong(0);
     private final ConcurrentNavigableMap<Long, Map<Long, Integer>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
     private final Map<Long, ByteBufferEntrySource> readBuffers = new ConcurrentHashMap<>();
-    private LogEntryTransformer eventTransformer;
+    private LogEntryTransformer logEntryTransformer;
 
-    public PrimaryLogEntryStore(String context, IndexManager indexCreator, LogEntryTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+    public PrimaryLogEntryStore(String context, IndexManager indexCreator, LogEntryTransformerFactory logEntryTransformerFactory, StorageProperties storageProperties) {
         super(context, indexCreator, storageProperties);
-        this.eventTransformerFactory = eventTransformerFactory;
+        this.logEntryTransformerFactory = logEntryTransformerFactory;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }
 
     @Override
     public void initSegments(long lastInitialized) {
-        File storageDir  = new File(storageProperties.getStorage(getType()));
+        File storageDir  = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
-        eventTransformer = eventTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
+        logEntryTransformer = logEntryTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
         initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir, false);
     }
 
@@ -65,9 +65,10 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         return store(term, type, preparedTransaction);
     }
 
+    @Override
     public SegmentEntryIterator getIterator(long nextIndex) {
         if( nextIndex > lastToken.get()) return null;
-        logger.trace("Create iterator at: " + nextIndex);
+        logger.trace("{}: Create iterator at: {}", context, nextIndex);
         return super.getIterator(nextIndex);
     }
 
@@ -101,7 +102,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         long first = getFirstFile(lastInitialized, storageDir);
         WritableEntrySource buffer = getOrOpenDatafile(first);
         indexManager.remove(first);
-        FileUtils.delete(storageProperties.indexFile(getType(), first));
+        FileUtils.delete(storageProperties.indexFile(context, first));
         long sequence = first;
         try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(first, first, 5, false)) {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
@@ -140,7 +141,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     private PreparedTransaction prepareTransaction(byte[] bytes) {
-        byte[] transformed = eventTransformer.transform(bytes);
+        byte[] transformed = logEntryTransformer.transform(bytes);
         return new PreparedTransaction(claim(transformed.length),  transformed);
     }
 
@@ -229,7 +230,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
             next.rollback(token);
         }
 
-        initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(getType())), true);
+        initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(context)), true);
     }
 
     @Override
@@ -237,11 +238,11 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         // No implementation as for primary segment store there are no index files, index is kept in memory
     }
 
-    public void removeSegment(long segment) {
+    protected void removeSegment(long segment) {
         positionsPerSegmentMap.remove(segment);
         ByteBufferEntrySource eventSource = readBuffers.remove(segment);
         if( eventSource != null) eventSource.clean(0);
-        FileUtils.delete(storageProperties.logFile(getType(), segment));
+        FileUtils.delete(storageProperties.logFile(context, segment));
     }
 
     private void completeSegment(WritePosition writePosition) {
@@ -300,7 +301,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     private WritableEntrySource getOrOpenDatafile(long segment)  {
-        File file= storageProperties.logFile(getType(), segment);
+        File file= storageProperties.logFile(context, segment);
         long size = storageProperties.getSegmentSize();
         boolean exists = file.exists();
         if( exists) {
@@ -316,7 +317,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
             } else {
                 buffer.position(5);
             }
-            WritableEntrySource writableEventSource = new WritableEntrySource(buffer, eventTransformer);
+            WritableEntrySource writableEventSource = new WritableEntrySource(buffer, logEntryTransformer);
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {
@@ -342,23 +343,14 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     public void delete() {
         clear(0);
-        File storageDir  = new File(storageProperties.getStorage(getType()));
+        File storageDir  = new File(storageProperties.getStorage(context));
         storageDir.delete();
     }
 
     public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
-        File storageDir  = new File(storageProperties.getStorage(getType()));
-        String[] logFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getLogSuffix());
-        String[] indexFiles = FileUtils.getFilesWithSuffix(storageDir, storageProperties.getIndexSuffix());
-        long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
-        Stream.of(logFiles, indexFiles)
-              .flatMap(Stream::of)
-              .filter(name -> !readBuffers.containsKey(getSegment(name))) // filter out opened files
-              .filter(name -> getSegment(name) < getFirstFile(lastAppliedIndexSupplier.getAsLong() - 1, storageDir)) // filter out non-applied files
-              .map(filename -> storageDir.getAbsolutePath() + File.separator + filename)
-              .map(File::new)
-              .filter(f -> f.lastModified() <= filter) // filter out files older than <time>
-              .forEach(FileUtils::delete);
+        if( next != null) {
+            next.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
+        }
     }
 
     @NotNull

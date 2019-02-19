@@ -66,7 +66,9 @@ public class UserSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public void clear() {
-        userRepository.deleteAll();
+        if( adminContext) {
+            userRepository.deleteAll();
+        }
     }
 
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.User user) {
