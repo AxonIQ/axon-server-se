@@ -86,12 +86,8 @@ public class FollowerState extends AbstractMembershipState {
                 logger.trace("{}: Received heartbeat, commitindex: {}", me(), request.getCommitIndex());
             }
 
-            //2. Reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm
-            // or if the previous index and term are different from those included in the latest snapshot installed
-            if (!logEntryStore.contains(request.getPrevLogIndex(), request.getPrevLogTerm()) &&
-                    (logEntryProcessor.lastAppliedIndex() != request.getPrevLogIndex() ||
-                    logEntryProcessor.lastAppliedTerm() != request.getPrevLogTerm())
-            ) {
+            //2. Reply false if the prev term and index are not valid
+            if (!validPrevTermIndex(request.getPrevLogIndex(), request.getPrevLogTerm())) {
                 String failureCause = String.format("%s: previous term/index missing %s/%s last log %s",
                                                     groupId(),
                                                     request.getPrevLogTerm(),
@@ -142,6 +138,21 @@ public class FollowerState extends AbstractMembershipState {
             logger.error(failureCause, ex);
             return appendEntriesFailure(request.getRequestId(), failureCause);
         }
+    }
+
+    /**
+     * Checks if the log contains an entry at prevLogIndex whose term matches prevLogTerm
+     * or if the previous index and term are those included in the latest snapshot installed
+     *
+     * @param prevIndex the index of the previous log entry
+     * @param prevTerm the term of the previous log entry
+     * @return true if prev index and term can be considered valid, false otherwise.
+     */
+    private boolean validPrevTermIndex(long prevIndex, long prevTerm) {
+        LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
+        LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
+        return logEntryStore.contains(prevIndex, prevTerm) ||
+                (logEntryProcessor.lastAppliedIndex() == prevIndex && logEntryProcessor.lastAppliedTerm() == prevTerm);
     }
 
     @Override
