@@ -59,7 +59,7 @@ public class GrpcRaftPeer implements RaftPeer {
 
             @Override
             public void onError(Throwable cause) {
-                logger.warn( "{}: Received error on vote - {}", node, cause.getMessage());
+                logger.warn( "{}: Received error on vote - {}", node.getNodeId(), cause.getMessage());
                 response.completeExceptionally(cause);
 
             }

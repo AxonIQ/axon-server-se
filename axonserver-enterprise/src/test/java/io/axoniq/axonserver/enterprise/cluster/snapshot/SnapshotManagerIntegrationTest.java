@@ -10,6 +10,7 @@ import io.axoniq.axonserver.access.application.ShaHasher;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserRepository;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.config.SystemInfoProvider;
@@ -29,6 +30,7 @@ import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
+import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.junit.*;
@@ -134,24 +136,26 @@ public class SnapshotManagerIntegrationTest {
         ProcessorLoadBalancing processorLoadBalancing2 = new ProcessorLoadBalancing(tep2, "strategy2");
         processorLoadBalancingRepository.save(processorLoadBalancing1);
         processorLoadBalancingRepository.save(processorLoadBalancing2);
+        SnapshotContext context = new SnapshotContext() { };
 
         List<io.axoniq.axonserver.grpc.cluster.SerializedObject> snapshotChunks =
-                leaderSnapshotManager.streamSnapshotData(0, 95)
+                leaderSnapshotManager.streamSnapshotData(context)
                                      .collectList()
                                      .block();
 
         assertNotNull(snapshotChunks);
-        assertEquals(17, snapshotChunks.size());
+        // Only 4 as events/snapshots are not included in _admin snapshot
+        assertEquals(4, snapshotChunks.size());
         assertEquals(JpaApplication.class.getName(), snapshotChunks.get(0).getType());
         assertEquals(User.class.getName(), snapshotChunks.get(1).getType());
         assertEquals(LoadBalancingStrategy.class.getName(), snapshotChunks.get(2).getType());
         assertEquals(ProcessorLoadBalancing.class.getName(), snapshotChunks.get(3).getType());
-        for (int i = 4; i < 14; i++) {
-            assertEquals("eventsTransaction", snapshotChunks.get(i).getType());
-        }
-        for (int i = 14; i < 17; i++) {
-            assertEquals("snapshotsTransaction", snapshotChunks.get(i).getType());
-        }
+//        for (int i = 4; i < 14; i++) {
+//            assertEquals("eventsTransaction", snapshotChunks.get(i).getType());
+//        }
+//        for (int i = 14; i < 17; i++) {
+//            assertEquals("snapshotsTransaction", snapshotChunks.get(i).getType());
+//        }
 
         assertEquals(2, processorLoadBalancingRepository.findAll().size());
         followerSnapshotManager.clear();
@@ -207,6 +211,8 @@ public class SnapshotManagerIntegrationTest {
         EventStoreFactory eventStoreFactory = mock(EventStoreFactory.class);
         when(eventStoreFactory.createEventManagerChain(CONTEXT)).thenReturn(eventStore);
         when(eventStoreFactory.createSnapshotManagerChain(CONTEXT)).thenReturn(snapshotStore);
+        when(eventStoreFactory.createTransactionManager(eventStore)).thenReturn(new SingleInstanceTransactionManager(eventStore));
+        when(eventStoreFactory.createTransactionManager(snapshotStore)).thenReturn(new SingleInstanceTransactionManager(snapshotStore));
 
         LocalEventStore localEventStore = new LocalEventStore(eventStoreFactory);
         localEventStore.initContext(CONTEXT, false);

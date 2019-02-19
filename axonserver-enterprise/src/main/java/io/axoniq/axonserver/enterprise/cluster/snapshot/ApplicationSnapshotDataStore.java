@@ -4,6 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import reactor.core.publisher.Flux;
@@ -44,7 +45,7 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         if(! adminContext) return Flux.empty();
         List<JpaApplication> applications = applicationController.getApplicationsForContext(context);
 
@@ -73,7 +74,9 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public void clear() {
-        applicationController.deleteByContext(context);
+        if( adminContext) {
+            applicationController.deleteByContext(context);
+        }
     }
 
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.Application application) {

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter;
@@ -41,7 +42,7 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         return Flux.fromIterable(processorLoadBalancingRepository.findByContext(context))
                    .map(ProcessorLBStrategyConverter::createProcessorLBStrategy)
                    .map(this::toSerializedObject);

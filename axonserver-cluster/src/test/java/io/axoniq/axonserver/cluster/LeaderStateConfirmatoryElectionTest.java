@@ -4,10 +4,13 @@ import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
+import io.axoniq.axonserver.cluster.replication.MajorityMatchStrategy;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
 import reactor.core.publisher.Mono;
+
+import java.util.Collections;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -23,6 +26,8 @@ public class LeaderStateConfirmatoryElectionTest {
     private FakeTransitionHandler transitionHandler;
     private FakeScheduler scheduler;
     private ElectionStore electionStore;
+    private MajorityMatchStrategy matchStrategy;
+    private RaftNode localNode;
 
     @Before
     public void setUp() throws Exception {
@@ -34,11 +39,13 @@ public class LeaderStateConfirmatoryElectionTest {
         when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore("Test"));
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.logEntryProcessor()).thenReturn(mock(LogEntryProcessor.class));
+        when(raftGroup.createIterator()).thenReturn(Collections.emptyIterator());
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
-        RaftNode localNode = mock(RaftNode.class);
+        localNode = mock(RaftNode.class);
         when(localNode.nodeId()).thenReturn("node0");
         when(raftGroup.localNode()).thenReturn(localNode);
         scheduler = new FakeScheduler();
+
 
         FakeRaftPeer node0 = new FakeRaftPeer(scheduler, "node0");
         FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1");
@@ -47,6 +54,8 @@ public class LeaderStateConfirmatoryElectionTest {
         addClusterNode("node0", node0);
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
+        matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
+                                                  () -> raftGroup.localNode().replicatorPeers());
     }
 
     @Test
@@ -59,9 +68,11 @@ public class LeaderStateConfirmatoryElectionTest {
                                              .schedulerFactory(() -> scheduler)
                                              .snapshotManager(new FakeSnapshotManager())
                                              .stateFactory(new FakeStateFactory())
+                                             .matchStrategy(matchStrategy)
                                              .build();
 
         leaderState.start();
+        when(localNode.replicatorPeers()).thenReturn(leaderState.replicatorPeers());
         scheduler.timeElapses(50);
         assertNull(transitionHandler.lastTransition());
 
@@ -78,6 +89,7 @@ public class LeaderStateConfirmatoryElectionTest {
 
     @Test
     public void testLeaderNotConfirmed() {
+
         LeaderState leaderState = LeaderState.builder()
                                              .raftGroup(raftGroup)
                                              .transitionHandler(transitionHandler)
@@ -86,9 +98,11 @@ public class LeaderStateConfirmatoryElectionTest {
                                              .schedulerFactory(() -> scheduler)
                                              .snapshotManager(new FakeSnapshotManager())
                                              .stateFactory(new FakeStateFactory())
+                                             .matchStrategy(matchStrategy)
                                              .build();
 
         leaderState.start();
+        when(localNode.replicatorPeers()).thenReturn(leaderState.replicatorPeers());
         scheduler.timeElapses(50);
         assertEquals("follower", ((FakeStateFactory.FakeState)transitionHandler.lastTransition()).name());
     }

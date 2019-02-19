@@ -17,6 +17,7 @@ import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final ApplicationContext applicationContext;
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
+    private volatile LocalEventStore localEventStore;
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -80,6 +82,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
 
     public void start() {
+        localEventStore = applicationContext.getBean(LocalEventStore.class);
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
             try {
@@ -128,7 +131,9 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                                                     raftStateRepository,
                                                     nodeRepository,
                                                     raftProperties,
-                                                    snapshotDataProviders, grpcRaftClientFactory);
+                                                    snapshotDataProviders,
+                                                    localEventStore,
+                                                    grpcRaftClientFactory);
 
             if (!isAdmin(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

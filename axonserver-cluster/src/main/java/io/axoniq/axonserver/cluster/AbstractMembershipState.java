@@ -121,7 +121,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         protected void validate() {
             if (schedulerFactory == null) {
-                schedulerFactory = DefaultScheduler::new;
+                schedulerFactory = () -> new DefaultScheduler("raftState");
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
@@ -216,6 +216,10 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup.lastAppliedEventSequence();
     }
 
+    protected long lastAppliedSnapshotSequence() {
+        return raftGroup.lastAppliedSnapshotSequence();
+    }
+
     protected void changeStateTo(MembershipState newState, String cause) {
         transitionHandler.updateState(this, newState, cause);
     }
@@ -265,6 +269,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                                                        .setCause(failureCause)
                                                        .setLastAppliedIndex(lastAppliedIndex())
                                                        .setLastAppliedEventSequence(lastAppliedEventSequence())
+                                                       .setLastAppliedSnapshotSequence(lastAppliedSnapshotSequence())
                                                        .build();
         return AppendEntriesResponse.newBuilder()
                                     .setResponseHeader(responseHeader(requestId))

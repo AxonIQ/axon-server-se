@@ -72,7 +72,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clear() {
+    public void clear(long lastIndex) {
         entryMap.clear();
     }
 
@@ -106,6 +106,11 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public long firstLogIndex() {
+        return entryMap.isEmpty() ? 0 : entryMap.firstKey();
+    }
+
+    @Override
     public Registration registerLogAppendListener(Consumer<Entry> listener) {
         appendListeners.add(listener);
         return () -> appendListeners.remove(listener);
@@ -121,7 +126,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     public EntryIterator createIterator(long index) {
         logger.debug("{}: Create iterator: {}", name, index);
         if (!entryMap.isEmpty()) {
-            long lowerBound = entryMap.firstKey() == 1 ? entryMap.firstKey() : entryMap.firstKey() + 1;
+            long lowerBound = entryMap.firstKey();
             if (index < lowerBound) {
                 throw new IllegalArgumentException("Index before start");
             }

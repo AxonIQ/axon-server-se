@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 
 /**
  * @author Sara Pellegrini
- * @since
+ * @since 4.1
  */
 public class DefaultCurrentConfiguration implements CurrentConfiguration {
 
@@ -20,7 +20,7 @@ public class DefaultCurrentConfiguration implements CurrentConfiguration {
 
     public DefaultCurrentConfiguration(RaftGroup raftGroup) {
         this(() -> raftGroup.raftConfiguration().groupMembers(),
-             () -> raftGroup.localLogEntryStore().createIterator(raftGroup.logEntryProcessor().commitIndex() + 1));
+             raftGroup::createIterator);
     }
 
     public DefaultCurrentConfiguration(

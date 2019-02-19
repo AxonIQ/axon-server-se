@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import reactor.core.publisher.Flux;
@@ -30,10 +31,10 @@ public class AxonServerSnapshotManager implements SnapshotManager {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         Flux<SerializedObject> stream = Flux.empty();
         for (SnapshotDataStore snapshotDataProvider : snapshotDataStores) {
-            stream = stream.concatWith(snapshotDataProvider.streamSnapshotData(fromEventSequence, toEventSequence));
+            stream = stream.concatWith(snapshotDataProvider.streamSnapshotData(installationContext));
         }
         return stream;
     }

@@ -4,6 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import reactor.core.publisher.Flux;
@@ -39,7 +40,7 @@ public class UserSnapshotDataStore implements SnapshotDataStore {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         if( ! adminContext) return Flux.empty();
         return Flux.fromIterable(userRepository.findAll())
                    .map(UserProtoConverter::createUser)
@@ -65,7 +66,9 @@ public class UserSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public void clear() {
-        userRepository.deleteAll();
+        if( adminContext) {
+            userRepository.deleteAll();
+        }
     }
 
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.User user) {
