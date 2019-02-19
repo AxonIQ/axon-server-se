@@ -261,7 +261,7 @@ public class FollowerStateTest {
         followerState.installSnapshot(installSnapshotRequest);
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
                                                            .setRequestId(UUID.randomUUID().toString())
-                                                           .setTerm(0L)
+                                                           .setTerm(3L)
                                                            .setCommitIndex(1L)
                                                            .setPrevLogIndex(2L)
                                                            .setPrevLogTerm(3L)
@@ -275,6 +275,8 @@ public class FollowerStateTest {
 
         AppendEntriesResponse response = followerState.appendEntries(request);
         assertTrue(response.hasSuccess());
+        assertEquals(3, response.getSuccess().getLastLogIndex());
+        assertEquals(3, response.getTerm());
     }
 
     @Test
