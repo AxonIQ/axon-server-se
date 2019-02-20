@@ -1,8 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.access.modelversion.ModelVersionController;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.UserSynchronizationEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ApplicationSynchronizationEvents;
@@ -25,7 +23,6 @@ import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.ForwardedCommand;
 import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
@@ -34,7 +31,6 @@ import io.axoniq.axonserver.grpc.internal.GetApplicationsRequest;
 import io.axoniq.axonserver.grpc.internal.GetUsersRequest;
 import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.QueryComplete;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
@@ -44,7 +40,6 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -52,7 +47,6 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
  * Holds connection to other axonserver platform node. Receives commands and queries from the other node to execute.
@@ -196,9 +190,8 @@ public class RemoteConnection  {
                                                                  queryResponse -> sendQueryResponse(
                                                                          serializedQuery.client(),
                                                                          queryResponse),
-                                                                 client -> sendQueryComplete(
-                                                                         serializedQuery.getMessageIdentifier(),
-                                                                         client));
+                                                                 client -> sendQueryComplete(client,
+                                                                         serializedQuery.getMessageIdentifier()));
                     }
 
                     private void connectResponse(ConnectResponse connectResponse) {
