@@ -91,4 +91,15 @@ public class LogEntryProcessor {
         this.logAppliedListeners.add(listener);
         return () -> this.logAppliedListeners.remove(listener);
     }
+
+    /**
+     * Checks if the index and term match the last applied.
+     *
+     * @param index the index
+     * @param term the term
+     * @return true if both index and term match with the one from last applied entry, false otherwise
+     */
+    public boolean isLastApplied(long index, long term){
+        return index == lastAppliedIndex() && term == lastAppliedTerm();
+    }
 }

@@ -245,6 +245,41 @@ public class FollowerStateTest {
     }
 
     @Test
+    public void testAppendSuccessAfterSnapshotInstalled() {
+        InstallSnapshotRequest installSnapshotRequest = InstallSnapshotRequest.newBuilder()
+                                                                              .setRequestId(UUID.randomUUID().toString())
+                                                                              .setLeaderId("node1")
+                                                                              .setGroupId("defaultGroup")
+                                                                              .setTerm(0L)
+                                                                              .setOffset(0)
+                                                                              .setDone(true)
+                                                                              .setLastIncludedIndex(2L)
+                                                                              .setLastIncludedTerm(3L)
+                                                                              .setLastConfig(Config.newBuilder().build())
+                                                                              .addData(SerializedObject.newBuilder().build())
+                                                                              .build();
+        followerState.installSnapshot(installSnapshotRequest);
+        AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
+                                                           .setRequestId(UUID.randomUUID().toString())
+                                                           .setTerm(3L)
+                                                           .setCommitIndex(1L)
+                                                           .setPrevLogIndex(2L)
+                                                           .setPrevLogTerm(3L)
+                                                           .setLeaderId("node1")
+                                                           .setGroupId("defaultGroup")
+                                                           .addEntries(Entry.newBuilder()
+                                                                            .setIndex(3L)
+                                                                            .setTerm(3L)
+                                                                            .build())
+                                                           .build();
+
+        AppendEntriesResponse response = followerState.appendEntries(request);
+        assertTrue(response.hasSuccess());
+        assertEquals(3, response.getSuccess().getLastLogIndex());
+        assertEquals(3, response.getTerm());
+    }
+
+    @Test
     public void testAppendFailsDueToIOException() throws IOException {
         doThrow(new IOException("oops")).when(logEntryStore).appendEntry(any());
 
@@ -318,7 +353,7 @@ public class FollowerStateTest {
         assertEquals("defaultGroup", response.getGroupId());
         assertEquals(0L, response.getTerm());
         assertTrue(response.hasSuccess());
-        verify(logEntryStore).clear();
+        verify(logEntryStore).clear(anyLong());
         verify(raftConfiguration).update(request.getLastConfig().getNodesList());
         verify(snapshotManager).applySnapshotData(request.getDataList());
 

@@ -51,7 +51,7 @@ public class InMemoryLogEntryStoreTest {
         assertTrue(testSubject.contains(4,1));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testCreateIteratorWithIndex5andFirstIndex5(){
         testSubject.createEntry(1,"Type", "Content".getBytes());
         testSubject.createEntry(1,"Type", "Content".getBytes());
@@ -60,7 +60,9 @@ public class InMemoryLogEntryStoreTest {
         testSubject.createEntry(1,"Type", "Content".getBytes());
         testSubject.createEntry(1,"Type", "Content".getBytes());
         testSubject.clearOlderThan(0, TimeUnit.MILLISECONDS, () -> 6L);
-        testSubject.createIterator(5);
+        EntryIterator iterator = testSubject.createIterator(5);
+        assertEquals(5, iterator.next().getIndex());
+        assertNull(iterator.previous());
     }
 
     @Test

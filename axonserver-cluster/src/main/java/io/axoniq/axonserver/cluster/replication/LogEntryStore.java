@@ -36,7 +36,11 @@ public interface LogEntryStore {
         return createIterator(1);
     }
 
-    void clear();
+    default void clear(){
+        clear(0);
+    }
+
+    void clear(long lastIndex);
 
     /**
      * Performs a log compaction for logs older than the specified time.
@@ -49,6 +53,8 @@ public interface LogEntryStore {
     void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier);
 
     long lastLogIndex();
+
+    long firstLogIndex();
 
     Registration registerLogAppendListener(Consumer<Entry> listener);
 

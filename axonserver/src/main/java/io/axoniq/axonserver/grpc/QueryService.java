@@ -23,7 +23,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
@@ -189,6 +188,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             StreamObserver<SubscriptionQueryResponse> responseObserver) {
         String context = contextProvider.getContext();
         return new SubscriptionQueryRequestTarget(context, responseObserver, eventPublisher);
+    }
+
+    public Set<GrpcQueryDispatcherListener> listeners() {
+        return dispatcherListenerSet;
     }
 
     private class GrpcQueryResponseConsumer implements QueryResponseConsumer {

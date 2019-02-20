@@ -75,7 +75,7 @@ public class InternalEventStoreService implements BindableService {
     private StreamObserver<InputStream> appendEvent(StreamObserver<Confirmation> responseObserver) {
         return localEventStore.createAppendEventConnection(
                 contextProvider.getContext(),
-                new ForwardingStreamObserver<>(logger, responseObserver));
+                new ForwardingStreamObserver<>(logger, "appendEvent", responseObserver));
     }
 
     private void appendSnapshot(Event request, StreamObserver<Confirmation> responseObserver) {
@@ -93,35 +93,35 @@ public class InternalEventStoreService implements BindableService {
     }
 
     private void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
-        localEventStore.listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
+        localEventStore.listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "listAggregateEvents", responseObserver));
     }
 
     private void listAggregateSnapshots(GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseObserver) {
-        localEventStore.listAggregateSnapshots(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
+        localEventStore.listAggregateSnapshots(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "listAggregateSnapshots", responseObserver));
     }
 
     private StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        return localEventStore.listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, responseObserver));
+        return localEventStore.listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, "listEvents", responseObserver));
     }
 
     private void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        localEventStore.readHighestSequenceNr(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
+        localEventStore.readHighestSequenceNr(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "readHighestSequenceNr", responseObserver));
     }
 
     private StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver) {
-        return localEventStore.queryEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, responseObserver));
+        return localEventStore.queryEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, "queryEvents", responseObserver));
     }
 
     private void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
-        localEventStore.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
+        localEventStore.getFirstToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "getFirstToken", responseObserver));
     }
 
     private void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver) {
-        localEventStore.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
+        localEventStore.getLastToken(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "getLastToken", responseObserver));
     }
 
     private void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
-        localEventStore.getTokenAt(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, responseObserver));
+        localEventStore.getTokenAt(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "getTokenAt", responseObserver));
     }
 }

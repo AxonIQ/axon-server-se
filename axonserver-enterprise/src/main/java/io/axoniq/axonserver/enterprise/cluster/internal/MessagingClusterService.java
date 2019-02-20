@@ -114,6 +114,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         dispatchListeners.clear();
     }
 
+    Set<GrpcFlowControlledDispatcherListener> listeners() {
+        return dispatchListeners;
+    }
+
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
 
         private final CopyOnWriteArraySet<ClientIdentification> clients;

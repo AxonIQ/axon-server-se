@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
@@ -29,9 +29,10 @@ public class RaftTransactionManager implements StorageTransactionManager {
     private final EventStore datafileManagerChain;
     private final GrpcRaftController clusterController;
     private final AtomicLong nextTransactionToken = new AtomicLong();
-    private final AtomicBoolean allocating = new AtomicBoolean();
     private final AtomicInteger waitingTransactions = new AtomicInteger();
     private final boolean eventTransactionManager;
+    private final String entryType;
+    private final ReentrantLock lock = new ReentrantLock();
 
 
     public RaftTransactionManager(EventStore datafileManagerChain,
@@ -39,6 +40,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
         this.datafileManagerChain = datafileManagerChain;
         this.clusterController = clusterController;
         this.eventTransactionManager = datafileManagerChain.getType().getEventType().equals(EventType.EVENT);
+        this.entryType = "Append." + datafileManagerChain.getType().getEventType();
     }
 
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
@@ -81,7 +83,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
     }
 
     private boolean forMe(Entry entry) {
-        return entry.hasSerializedObject() && entry.getSerializedObject().getType().equals("Append." + datafileManagerChain.getType().getEventType());
+        return entry.hasSerializedObject() && entry.getSerializedObject().getType().equals(entryType);
     }
 
     public void on(ClusterEvents.LeaderStepDown masterStepDown) {
@@ -94,16 +96,12 @@ public class RaftTransactionManager implements StorageTransactionManager {
     public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
+            Iterable<? extends ByteString> events = eventsAsByteStrings(eventList);
             // Ensure that only one thread is generating transaction token and log entry index at the same time
-            long before = System.nanoTime();
-            while (!allocating.compareAndSet(false, true)) {
-            }
-            long after = System.nanoTime();
-            if( after - before > 10000) {
-                logger.debug("Waited {} nanos for access", (after - before));
-            }
+
             CompletableFuture<Void> appendEntryResult;
             TransactionWithToken transactionWithToken;
+            lock.lock();
             try {
                 RaftNode node = clusterController.getRaftNode(datafileManagerChain.getType().getContext());
                 if( node == null || !node.isLeader()) {
@@ -114,18 +112,17 @@ public class RaftTransactionManager implements StorageTransactionManager {
                 transactionWithToken =
                         TransactionWithToken.newBuilder().setToken(nextTransactionToken.getAndAdd(eventList.size()))
                                             .setVersion(datafileManagerChain.transactionVersion())
-                .addAllEvents(eventsAsByteStrings(eventList)).build();
+                                            .addAllEvents(events).build();
 
                 if( logger.isTraceEnabled()) {
                     logger.trace("Append transaction: {} with {} events",
                                  transactionWithToken.getToken(),
                                  transactionWithToken.getEventsCount());
                 }
-                appendEntryResult = node.appendEntry(
-                        "Append." + datafileManagerChain.getType().getEventType(), transactionWithToken.toByteArray());
+                appendEntryResult = node.appendEntry(entryType, transactionWithToken.toByteArray());
                 waitingTransactions.incrementAndGet();
             } finally {
-                allocating.set(false);
+                lock.unlock();
             }
             //
             appendEntryResult.whenComplete((r, cause) -> {
@@ -163,13 +160,4 @@ public class RaftTransactionManager implements StorageTransactionManager {
         return waitingTransactions.get();
     }
 
-    @Override
-    public void rollback(long token) {
-
-    }
-
-    @Override
-    public void cancelPendingTransactions() {
-
-    }
 }

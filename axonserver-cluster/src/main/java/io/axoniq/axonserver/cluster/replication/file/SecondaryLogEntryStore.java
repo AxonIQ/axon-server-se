@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 
 /**
  * Author: marc
@@ -29,15 +30,15 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     private final ScheduledExecutorService scheduledExecutorService;
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final ConcurrentSkipListMap<Long, WeakReference<ByteBufferEntrySource>> lruMap = new ConcurrentSkipListMap<>();
-    private final LogEntryTransformerFactory eventTransformerFactory;
+    private final LogEntryTransformerFactory logEntryTransformerFactory;
 
 
     public SecondaryLogEntryStore(String context, IndexManager indexManager,
-                                  LogEntryTransformerFactory eventTransformerFactory,
+                                  LogEntryTransformerFactory logEntryTransformerFactory,
                                   StorageProperties storageProperties) {
         super(context, indexManager, storageProperties);
         scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new AxonThreadFactory(context + "-file-cleanup-"));
-        this.eventTransformerFactory = eventTransformerFactory;
+        this.logEntryTransformerFactory = logEntryTransformerFactory;
     }
 
 
@@ -91,13 +92,13 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     private void deleteFiles(Long s) {
-        logger.debug("Deleting {} files for segment {}", getType(), s);
-        File index = storageProperties.indexFile(getType(), s);
-        File datafile = storageProperties.logFile(getType(), s);
+        logger.debug("{}: Deleting files for segment {}", context, s);
+        File index = storageProperties.indexFile(context, s);
+        File datafile = storageProperties.logFile(context, s);
         boolean success = FileUtils.delete(index) && FileUtils.delete(datafile);
 
         if( ! success) {
-            logger.debug("Deleting {} files for segment {} not complete, rescheduling", getType(), s);
+            logger.warn("{}: Deleting files for segment {} not complete, rescheduling", context, s);
             scheduledExecutorService.schedule(()-> deleteFiles(s), 1, TimeUnit.MINUTES);
         }
     }
@@ -144,7 +145,7 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         return indexManager.getIndex(segment).getPosition(nextIndex);
     }
 
-    private void removeSegment(long segment) {
+    protected void removeSegment(long segment) {
         if( segments.remove(segment)) {
             WeakReference<ByteBufferEntrySource> segmentRef = lruMap.remove(segment);
             if (segmentRef != null) {
@@ -155,9 +156,21 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
             }
 
             indexManager.remove(segment);
-            FileUtils.delete(storageProperties.logFile(getType(), segment));
-            FileUtils.delete(storageProperties.indexFile(getType(), segment));
+            deleteFiles(segment);
         }
+    }
+
+    @Override
+    protected void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
+        long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
+        segments.stream()
+              .filter(segment -> olderThan(segment, filter)) //f.lastModified() <= filter) // filter out files older than <time>
+              .forEach(this::removeSegment);
+    }
+
+    private boolean olderThan(Long segment, long filter) {
+        File segmentFile = storageProperties.logFile(context, segment);
+        return segmentFile.lastModified() <= filter;
     }
 
 
@@ -171,12 +184,13 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
             }
         }
 
-        File file = storageProperties.logFile(getType(), segment);
+        File file = storageProperties.logFile(context, segment);
         long size = file.length();
 
         try(FileChannel fileChannel = new RandomAccessFile(file, "r").getChannel()) {
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, size);
-            ByteBufferEntrySource eventSource = new ByteBufferEntrySource(buffer, eventTransformerFactory, storageProperties);
+            ByteBufferEntrySource eventSource = new ByteBufferEntrySource(buffer,
+                                                                          logEntryTransformerFactory, storageProperties);
             lruMap.put(segment, new WeakReference<>(eventSource));
             return eventSource;
         } catch (IOException ioException) {

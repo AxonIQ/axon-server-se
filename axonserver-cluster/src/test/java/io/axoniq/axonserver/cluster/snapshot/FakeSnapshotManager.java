@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono;
 public class FakeSnapshotManager implements SnapshotManager{
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext context) {
         return Flux.empty();
     }
 

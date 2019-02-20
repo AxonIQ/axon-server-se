@@ -304,10 +304,26 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotWriteStorage.getLastToken();
     }
 
+    /**
+     * Creates an iterator to iterate over event transactions, starting at transaction with token fromToken and ending before toToken
+     *
+     * @param context The context of the transactions
+     * @param fromToken The first transaction token to include
+     * @param toToken Last transaction token (exclusive)
+     * @return the iterator
+     */
     public Iterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken, long toToken) {
         return workersMap.get(context).eventStreamReader.transactionIterator(fromToken, toToken);
     }
 
+    /**
+     * Creates an iterator to iterate over snapshot transactions, starting at transaction with token fromToken and ending before toToken
+     *
+     * @param context The context of the transactions
+     * @param fromToken The first transaction token to include
+     * @param toToken Last transaction token (exclusive)
+     * @return the iterator
+     */
     public Iterator<SerializedTransactionWithToken> snapshotTransactionsIterator(String context, long fromToken, long toToken) {
         return workersMap.get(context).snapshotStreamReader.transactionIterator(fromToken, toToken);
     }

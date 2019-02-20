@@ -77,6 +77,7 @@ message AppendEntryFailure {
     string cause = 1;
     uint64 lastAppliedIndex = 2;
     sint64 lastAppliedEventSequence = 3; // only relevant for storage groups
+    sint64 lastAppliedSnapshotSequence = 4;  // only relevant for storage groups
 }
 
 

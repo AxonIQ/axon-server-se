@@ -140,9 +140,11 @@ public class LeaderState extends AbstractMembershipState {
         appendLeaderElected();
         scheduler.set(schedulerFactory().get());
         scheduleStepDownTimeoutChecker();
-        replicators = new Replicators();
-        replicators.start();
         lastConfirmed.set(0);
+        scheduler.get().execute( () ->  {
+            replicators = new Replicators();
+            replicators.start();
+        });
     }
 
     @Override
@@ -437,7 +439,8 @@ public class LeaderState extends AbstractMembershipState {
                                                                scheduler.get().clock(),
                                                                raftGroup(),
                                                                snapshotManager(),
-                                                               LeaderState.this::updateCurrentTerm);
+                                                               LeaderState.this::updateCurrentTerm,
+                                                               LeaderState.this::lastLogIndex);
             replicatorPeer.start();
             replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
             return () -> {

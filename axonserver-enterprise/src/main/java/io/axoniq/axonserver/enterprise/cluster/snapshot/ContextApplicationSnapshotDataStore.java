@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster.snapshot;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.access.application.JpaContextApplication;
 import io.axoniq.axonserver.access.application.JpaContextApplicationController;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
@@ -39,7 +40,7 @@ public class ContextApplicationSnapshotDataStore implements SnapshotDataStore {
     }
 
     @Override
-    public Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence) {
+    public Flux<SerializedObject> streamSnapshotData(SnapshotContext snapshotContext) {
         List<ContextApplication> applications = applicationController.getApplicationsForContext(context);
 
         return Flux.fromIterable(applications)

@@ -30,6 +30,7 @@ public class GrpcInternalQueryDispatcherListener extends GrpcFlowControlledDispa
         SerializedQuery request = validate(message, queryDispatcher, logger);
         if( request == null) return false;
 
+        logger.warn("Sending query to {}: {}", message.queryRequest().client(), message.queryRequest().query());
         inboundStream.onNext(ConnectorResponse.newBuilder()
                                               .setQuery(
                                                     ForwardedQuery.newBuilder()
