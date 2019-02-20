@@ -4,7 +4,7 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Wrapper around a GRPC StreamObserver that ensures thread safety for sending messages, as GRPC does not provide this by default.
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SendingStreamObserver<T> implements StreamObserver<T> {
     private final StreamObserver<T> delegate;
     private static final Logger logger = LoggerFactory.getLogger(SendingStreamObserver.class);
-    private final AtomicBoolean guard = new AtomicBoolean(true);
+    private final ReentrantLock guard = new ReentrantLock();
 
     public SendingStreamObserver(StreamObserver<T> delegate) {
         this.delegate = delegate;
@@ -21,13 +21,11 @@ public class SendingStreamObserver<T> implements StreamObserver<T> {
 
     @Override
     public void onNext(T t) {
-        while( ! guard.compareAndSet(true, false)) {
-            // busy wait, no action
-        }
+        guard.lock();
         try {
             delegate.onNext(t);
         } finally {
-            guard.set(true);
+            guard.unlock();
         }
     }
 

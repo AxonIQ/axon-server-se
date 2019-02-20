@@ -20,10 +20,6 @@ public interface StorageTransactionManager {
         return 0;
     }
 
-    default void rollback(long token) {
-        // default no-op
-    }
-
     default void cancelPendingTransactions() {
 
     }

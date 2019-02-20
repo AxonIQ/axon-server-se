@@ -42,8 +42,4 @@ public class SnapshotWriteStorage {
         return storageTransactionManager.waitingTransactions();
     }
 
-    public void rollback(long token) {
-        storageTransactionManager.rollback(token);
-    }
-
 }

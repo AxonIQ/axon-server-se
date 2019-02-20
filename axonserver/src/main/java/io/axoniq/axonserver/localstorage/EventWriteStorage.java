@@ -67,11 +67,6 @@ public class EventWriteStorage {
         return storageTransactionManager.getLastToken();
     }
 
-    public long getLastCommittedToken() {
-        lastCommitted.compareAndSet(-1L, getLastToken());
-        return lastCommitted.get();
-    }
-
     private void validate(List<SerializedEvent> eventList) {
         storageTransactionManager.reserveSequenceNumbers(eventList);
     }
@@ -85,10 +80,6 @@ public class EventWriteStorage {
 
     public long waitingTransactions() {
         return storageTransactionManager.waitingTransactions();
-    }
-
-    public void rollback(long token) {
-        storageTransactionManager.rollback(token);
     }
 
     public void cancelPendingTransactions() {
