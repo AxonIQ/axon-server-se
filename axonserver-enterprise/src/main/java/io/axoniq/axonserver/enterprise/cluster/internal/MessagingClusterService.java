@@ -250,8 +250,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         logger.debug("QUERY_COMPLETE {} from {}",
                                      connectorCommand.getQueryComplete().getMessageId(),
                                      connectorCommand.getQueryComplete().getClient());
-                        queryDispatcher.handleComplete(connectorCommand.getQueryComplete().getClient(),
-                                                       connectorCommand.getQueryComplete().getMessageId(),
+                        queryDispatcher.handleComplete(connectorCommand.getQueryComplete().getMessageId(),
+                                                       connectorCommand.getQueryComplete().getClient(),
                                                        true);
                         break;
                     case FLOW_CONTROL:

@@ -144,8 +144,9 @@ public class RemoteConnection  {
                                                                          serializedQuery.client(),
                                                                          queryResponse),
                                                                  client -> sendQueryComplete(
-                                                                         serializedQuery.getMessageIdentifier(),
-                                                                         client));
+                                                                         client,
+                                                                         serializedQuery.getMessageIdentifier()
+                                                                         ));
                     }
 
                     private void connectResponse(ConnectResponse connectResponse) {
