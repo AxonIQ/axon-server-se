@@ -41,4 +41,8 @@ public interface Topology {
     default boolean isAdminNode() {
         return true;
     }
+
+    default Iterable<String> getMyStorageContextNames() {
+        return getMyContextNames();
+    }
 }

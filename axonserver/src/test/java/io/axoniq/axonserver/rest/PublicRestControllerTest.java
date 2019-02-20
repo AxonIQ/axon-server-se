@@ -7,6 +7,7 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.FakeSubscriptionMetrics;
+import io.axoniq.axonserver.rest.json.ExtendedClusterNode;
 import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.SimpleAxonServerNode;
@@ -67,7 +68,7 @@ public class PublicRestControllerTest {
 
     @Test
     public void getNodeInfo() {
-        AxonServerNode node = testSubject.getNodeInfo();
+        ExtendedClusterNode node = testSubject.getNodeInfo();
         assertEquals("node1", node.getName());
         assertEquals("host1", node.getHostName());
         assertNull( node.getInternalHostName());

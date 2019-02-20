@@ -6,9 +6,14 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -65,6 +70,19 @@ public class ClusterTopology implements Topology {
     public Iterable<String> getMyContextNames() {
         return raftController.getMyContexts();
     }
+
+    @Override
+    public Iterable<String> getMyStorageContextNames() {
+        Set<String> names = new HashSet<>();
+        raftController.getMyContexts().forEach(c -> {
+            if (!isAdmin(c)) {
+                names.add(c);
+            }
+        });
+        Executors.defaultThreadFactory();
+        return names;
+    }
+
 
     @Override
     public boolean isAdminNode() {

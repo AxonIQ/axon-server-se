@@ -3,19 +3,19 @@ package io.axoniq.axonserver.rest.json;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
-import java.util.Collection;
-
 /**
  * @author Marc Gathier
  */
 @KeepNames
-public class ExtendedClusterNode implements AxonServerNode {
+public class ExtendedClusterNode {
 
     private final AxonServerNode delegate;
     private boolean authentication;
     private boolean clustered;
     private boolean ssl;
     private boolean adminNode;
+    private Iterable<String> storageContextNames;
+    private Iterable<String> contextNames;
 
     public ExtendedClusterNode(AxonServerNode delegate) {
         this.delegate = delegate;
@@ -45,33 +45,26 @@ public class ExtendedClusterNode implements AxonServerNode {
         this.ssl = ssl;
     }
 
-
-    @Override
     public String getHostName() {
         return delegate.getHostName();
     }
 
-    @Override
     public Integer getGrpcPort() {
         return delegate.getGrpcPort();
     }
 
-    @Override
     public String getInternalHostName() {
         return delegate.getInternalHostName();
     }
 
-    @Override
     public Integer getGrpcInternalPort() {
         return delegate.getGrpcInternalPort();
     }
 
-    @Override
     public Integer getHttpPort() {
         return delegate.getHttpPort();
     }
 
-    @Override
     public String getName() {
         return delegate.getName();
     }
@@ -84,8 +77,19 @@ public class ExtendedClusterNode implements AxonServerNode {
         return adminNode;
     }
 
-    @Override
-    public Collection<String> getContextNames() {
-        return delegate.getContextNames();
+    public Iterable<String> getContextNames() {
+        return contextNames;
+    }
+
+    public void setStorageContextNames(Iterable<String> storageContextNames) {
+        this.storageContextNames = storageContextNames;
+    }
+
+    public void setContextNames(Iterable<String> contextNames) {
+        this.contextNames = contextNames;
+    }
+
+    public Iterable<String> getStorageContextNames() {
+        return storageContextNames;
     }
 }

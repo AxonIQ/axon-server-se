@@ -77,11 +77,13 @@ public class PublicRestController {
 
     @GetMapping(path = "me")
     public ExtendedClusterNode getNodeInfo() {
-        ExtendedClusterNode node = mapExtended(clusterController.getMe());
+        ExtendedClusterNode node = new ExtendedClusterNode(clusterController.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
         node.setClustered(Feature.CLUSTERING.enabled(limits));
         node.setAdminNode(clusterController.isAdminNode());
+        node.setContextNames(clusterController.getMyContextNames());
+        node.setStorageContextNames(clusterController.getMyStorageContextNames());
         return node;
     }
 
@@ -130,10 +132,6 @@ public class PublicRestController {
         }
 
         return null;
-    }
-
-    private ExtendedClusterNode mapExtended(AxonServerNode me) {
-        return new ExtendedClusterNode(me);
     }
 
 

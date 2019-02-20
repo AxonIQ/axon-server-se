@@ -96,10 +96,10 @@
                                 this.licenseLoaded = true;
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
-                                    globals.adminNode = response.adminNode;
-                                    globals.admin = !globals.authenticationEnabled && response.adminNode;
-                                    this.admin = globals.admin;
+                                    globals.adminNode = response.data.adminNode;
                                     if (globals.authenticationEnabled) {
+                                        this.admin = false;
+                                        globals.admin = false;
                                         axios.get("v1/public/user").then(
                                                 response => {
                                                     globals.admin = globals.adminNode && response.data.roles && response.data.roles.includes('ADMIN');
@@ -108,6 +108,8 @@
                                                 });
 
                                     } else {
+                                        this.admin = response.data.adminNode;
+                                        globals.admin = response.data.adminNode;
                                         loadFragment();
                                     }
                                 });
