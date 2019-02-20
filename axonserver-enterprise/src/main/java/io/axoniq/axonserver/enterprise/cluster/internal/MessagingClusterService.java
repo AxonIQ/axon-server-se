@@ -114,6 +114,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         dispatchListeners.clear();
     }
 
+    Set<GrpcFlowControlledDispatcherListener> listeners() {
+        return dispatchListeners;
+    }
+
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
 
         private final CopyOnWriteArraySet<ClientIdentification> clients;
@@ -246,8 +250,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         logger.debug("QUERY_COMPLETE {} from {}",
                                      connectorCommand.getQueryComplete().getMessageId(),
                                      connectorCommand.getQueryComplete().getClient());
-                        queryDispatcher.handleComplete(connectorCommand.getQueryComplete().getMessageId(),
-                                                       connectorCommand.getQueryComplete().getClient(),
+                        queryDispatcher.handleComplete(connectorCommand.getQueryComplete().getClient(),
+                                                       connectorCommand.getQueryComplete().getMessageId(),
                                                        true);
                         break;
                     case FLOW_CONTROL:

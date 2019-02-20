@@ -87,4 +87,16 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     }
 
     protected abstract Logger getLogger();
+
+    public String queue() {
+        return queueName;
+    }
+
+    public int waiting() {
+        return queues.getSegments().get(queueName).size();
+    }
+
+    public long permits() {
+        return permitsLeft.get();
+    }
 }

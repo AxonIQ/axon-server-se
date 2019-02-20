@@ -74,6 +74,10 @@ public class CommandService implements AxonServerClientService {
         dispatcherListenerSet.clear();
     }
 
+    public Set<GrpcFlowControlledDispatcherListener> listeners() {
+        return dispatcherListenerSet;
+    }
+
     @Override
     public final ServerServiceDefinition bindService() {
         return ServerServiceDefinition.builder(CommandServiceGrpc.SERVICE_NAME)
