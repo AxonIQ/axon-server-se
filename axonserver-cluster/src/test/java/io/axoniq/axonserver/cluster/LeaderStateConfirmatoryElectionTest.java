@@ -58,27 +58,6 @@ public class LeaderStateConfirmatoryElectionTest {
                                                   () -> raftGroup.localNode().replicatorPeers());
     }
 
-    @Test
-    public void testLeaderConfirmed() {
-        LeaderState leaderState = LeaderState.builder()
-                                             .raftGroup(raftGroup)
-                                             .transitionHandler(transitionHandler)
-                                             .termUpdateHandler((term, cause) -> electionStore.updateCurrentTerm(term))
-                                             .electionFactory(() -> () -> Mono.just(won()))
-                                             .schedulerFactory(() -> scheduler)
-                                             .snapshotManager(new FakeSnapshotManager())
-                                             .stateFactory(new FakeStateFactory())
-                                             .matchStrategy(matchStrategy)
-                                             .build();
-
-        leaderState.start();
-        when(localNode.replicatorPeers()).thenReturn(leaderState.replicatorPeers());
-        scheduler.timeElapses(50);
-        assertNull(transitionHandler.lastTransition());
-
-    }
-
-
     private void addClusterNode(String nodeId, FakeRaftPeer peer){
         Node node = Node.newBuilder().setNodeId(nodeId).build();
         raftConfiguration.addNode(node);

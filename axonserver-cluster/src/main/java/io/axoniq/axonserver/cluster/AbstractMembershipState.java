@@ -9,10 +9,14 @@ import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,11 +28,15 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
+
 /**
  * @author Sara Pellegrini
  * @since 4.0
  */
 public abstract class AbstractMembershipState implements MembershipState {
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractMembershipState.class);
 
     private final RaftGroup raftGroup;
     private final StateTransitionHandler transitionHandler;
@@ -166,6 +174,46 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
 
         abstract MembershipState build();
+    }
+
+    @Override
+    public RequestVoteResponse requestVote(RequestVoteRequest request) {
+        if (request.getTerm() > currentTerm()) {
+            String message = format("%s received RequestVoteRequest with greater term (%s > %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getCandidateId());
+            RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request), message);
+            logger.info("{}: Request for vote received from {} in term {}. {} voted {} (handled as follower)",
+                        groupId(),
+                        request.getCandidateId(),
+                        request.getTerm(),
+                        me(),
+                        vote != null && vote.getVoteGranted());
+            return vote;
+        }
+        logger.info("{}: Request for vote received from {} in term {}. {} voted rejected",
+                    groupId(),
+                    request.getCandidateId(),
+                    request.getTerm(),
+                    me());
+        return requestVoteResponse(request.getRequestId(), false);
+    }
+
+    @Override
+    public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+        if (request.getTerm() > currentTerm()) {
+            logger.trace(
+                    "{}: Received install snapshot with term {} which is greater than mine {}. Moving to Follower...",
+                    groupId(),
+                    request.getTerm(),
+                    currentTerm());
+            String message = format("%s received InstallSnapshotRequest with greater term (%s > %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getLeaderId());
+            return handleAsFollower(follower -> follower.installSnapshot(request), message);
+        }
+        String cause = format("%s: Received term (%s) is smaller or equal than mine (%s). Rejecting the request.",
+                              groupId(), request.getTerm(), currentTerm());
+        logger.trace(cause);
+        return installSnapshotFailure(request.getRequestId(), cause);
     }
 
     protected String votedFor() {
@@ -318,6 +366,12 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     protected Registration registerConfigurationListener(Consumer<List<Node>> newConfigurationListener){
         return registerConfigurationListener.apply(newConfigurationListener);
+    }
+
+    protected <R> R handleAsFollower(Function<MembershipState, R> handler, String cause) {
+        MembershipState followerState = stateFactory().followerState();
+        changeStateTo(followerState, cause);
+        return handler.apply(followerState);
     }
 
     @Override
