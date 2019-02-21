@@ -107,7 +107,7 @@ public class FollowerState extends AbstractMembershipState {
                 }
                 logEntryStore.appendEntry(request.getEntriesList());
             } catch (IOException e) {
-                String failureCause = String.format("%s: append failed for IOException: %s",e.getMessage(), groupId());
+                String failureCause = String.format("%s: append failed for IOException: %s", e.getMessage(), groupId());
                 logger.warn(failureCause, e);
                 stop();
                 return appendEntriesFailure(request.getRequestId(), failureCause);
@@ -134,7 +134,7 @@ public class FollowerState extends AbstractMembershipState {
                                         .setTerm(currentTerm())
                                         .build();
         } catch (Exception ex) {
-            String failureCause = String.format("%s: failed to append events: %s",  groupId(), ex.getStackTrace());
+            String failureCause = String.format("%s: failed to append events: %s", groupId(), ex.getStackTrace());
             logger.error(failureCause, ex);
             return appendEntriesFailure(request.getRequestId(), failureCause);
         }
@@ -145,7 +145,7 @@ public class FollowerState extends AbstractMembershipState {
      * or if the previous index and term are those included in the latest snapshot installed
      *
      * @param prevIndex the index of the previous log entry
-     * @param prevTerm the term of the previous log entry
+     * @param prevTerm  the term of the previous log entry
      * @return true if prev index and term can be considered valid, false otherwise.
      */
     private boolean validPrevTermIndex(long prevIndex, long prevTerm) {
@@ -168,7 +168,7 @@ public class FollowerState extends AbstractMembershipState {
         String cause = format("%s: %s received RequestVoteRequest with term = %s from %s",
                               groupId(), me(), request.getTerm(), request.getCandidateId());
         updateCurrentTerm(request.getTerm(), cause);
-        boolean voteGranted = voteGrantedFor(request);
+        boolean voteGranted = member(request.getCandidateId()) && voteGrantedFor(request);
         if (voteGranted) {
             rescheduleElection(request.getTerm());
         }
@@ -246,7 +246,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void forceStepDown() {
-        String cause = format("Forced transition from Follower to Candidate for %s in context %s",me(), groupId());
+        String cause = format("Forced transition from Follower to Candidate for %s in context %s", me(), groupId());
         logger.warn(cause);
         changeStateTo(stateFactory().candidateState(), cause);
     }

@@ -172,6 +172,11 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
+    protected boolean shouldGoAwayIfNotMember() {
+        return true;
+    }
+
+    @Override
     public boolean isLeader() {
         return true;
     }

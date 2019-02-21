@@ -40,7 +40,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     private final RaftGroup raftGroup;
     private final StateTransitionHandler transitionHandler;
-    private final BiConsumer<Long,String> termUpdateHandler;
+    private final BiConsumer<Long, String> termUpdateHandler;
     private final MembershipStateFactory stateFactory;
     private final Supplier<Scheduler> schedulerFactory;
     private final Supplier<Election> electionFactory;
@@ -87,7 +87,7 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B termUpdateHandler(BiConsumer<Long,String> termUpdateHandler) {
+        public B termUpdateHandler(BiConsumer<Long, String> termUpdateHandler) {
             this.termUpdateHandler = termUpdateHandler;
             return self();
         }
@@ -122,7 +122,8 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B registerConfigurationListenerFn(Function<Consumer<List<Node>>, Registration> registerConfigurationListener) {
+        public B registerConfigurationListenerFn(
+                Function<Consumer<List<Node>>, Registration> registerConfigurationListener) {
             this.registerConfigurationListener = registerConfigurationListener;
             return self();
         }
@@ -147,7 +148,7 @@ public abstract class AbstractMembershipState implements MembershipState {
             if (currentConfiguration == null) {
                 CachedCurrentConfiguration currentConfiguration = new CachedCurrentConfiguration(raftGroup);
                 this.currentConfiguration = currentConfiguration;
-                if (registerConfigurationListener == null){
+                if (registerConfigurationListener == null) {
                     this.registerConfigurationListener = currentConfiguration::registerChangeListener;
                 }
             }
@@ -163,7 +164,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                 throw new IllegalStateException("The registerConfigurationListener function must be provided");
             }
 
-            if (snapshotManager == null){
+            if (snapshotManager == null) {
                 throw new IllegalStateException("The snapshotManager must be provided");
             }
         }
@@ -195,7 +196,9 @@ public abstract class AbstractMembershipState implements MembershipState {
                     request.getCandidateId(),
                     request.getTerm(),
                     me());
-        return requestVoteResponse(request.getRequestId(), false);
+        return requestVoteResponse(request.getRequestId(),
+                                   false,
+                                   !member(request.getCandidateId()) && shouldGoAwayIfNotMember());
     }
 
     @Override
@@ -214,6 +217,14 @@ public abstract class AbstractMembershipState implements MembershipState {
                               groupId(), request.getTerm(), currentTerm());
         logger.trace(cause);
         return installSnapshotFailure(request.getRequestId(), cause);
+    }
+
+    protected boolean member(String candidateId) {
+        return currentGroupMembers().stream().anyMatch(n -> n.getNodeId().equals(candidateId));
+    }
+
+    protected boolean shouldGoAwayIfNotMember() {
+        return false;
     }
 
     protected String votedFor() {
@@ -288,11 +299,11 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup().raftConfiguration().groupId();
     }
 
-    protected Stream<Node> nodesStream(){
+    protected Stream<Node> nodesStream() {
         return currentConfiguration.groupMembers().stream();
     }
 
-    protected Stream<String> otherNodesId(){
+    protected Stream<String> otherNodesId() {
         return nodesStream().map(Node::getNodeId).filter(id -> !id.equals(me()));
     }
 
@@ -300,7 +311,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         return otherNodesId().map(raftGroup::peer);
     }
 
-    protected Election newElection(){
+    protected Election newElection() {
         return electionFactory.get();
     }
 
@@ -353,18 +364,18 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
 
-    protected ResponseHeader responseHeader(String requestId){
+    protected ResponseHeader responseHeader(String requestId) {
         return ResponseHeader.newBuilder()
                              .setRequestId(requestId)
                              .setResponseId(UUID.randomUUID().toString())
                              .setNodeId(me()).build();
     }
 
-    protected CurrentConfiguration currentConfiguration(){
+    protected CurrentConfiguration currentConfiguration() {
         return this.currentConfiguration;
     }
 
-    protected Registration registerConfigurationListener(Consumer<List<Node>> newConfigurationListener){
+    protected Registration registerConfigurationListener(Consumer<List<Node>> newConfigurationListener) {
         return registerConfigurationListener.apply(newConfigurationListener);
     }
 

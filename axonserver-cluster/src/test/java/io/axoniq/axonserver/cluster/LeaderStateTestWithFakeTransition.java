@@ -13,9 +13,9 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Sara Pellegrini
@@ -30,7 +30,7 @@ public class LeaderStateTestWithFakeTransition {
     private FakeScheduler scheduler;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         raftConfiguration = new FakeRaftConfiguration("defaultGroup", "node0");
         ElectionStore electionStore = new InMemoryElectionStore();
         electionStore.updateCurrentTerm(1);
@@ -53,17 +53,26 @@ public class LeaderStateTestWithFakeTransition {
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
 
+        CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
+        when(currentConfiguration.groupMembers()).thenReturn(asList(node("node1"),
+                                                                    node("node2"),
+                                                                    node("node3")));
+
         leaderState = LeaderState.builder()
                                  .raftGroup(raftGroup)
                                  .transitionHandler(transitionHandler)
                                  .schedulerFactory(() -> scheduler)
                                  .snapshotManager(new FakeSnapshotManager())
                                  .stateFactory(new FakeStateFactory())
-                                 .termUpdateHandler((l, s) -> {})
+                                 .termUpdateHandler((l, s) -> {
+                                 })
+                                 .currentConfiguration(currentConfiguration)
+                                 .registerConfigurationListenerFn(l -> () -> {
+                                 })
                                  .build();
     }
 
-    private void addClusterNode(String nodeId, FakeRaftPeer peer){
+    private void addClusterNode(String nodeId, FakeRaftPeer peer) {
         Node node = Node.newBuilder().setNodeId(nodeId).build();
         raftConfiguration.addNode(node);
         when(raftGroup.peer(nodeId)).thenReturn(peer);
@@ -73,16 +82,29 @@ public class LeaderStateTestWithFakeTransition {
 
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         leaderState.stop();
     }
 
     @Test
     public void testRequestVote() {
         leaderState.start();
-        RequestVoteRequest request = RequestVoteRequest.newBuilder().build();
+        RequestVoteRequest request = RequestVoteRequest.newBuilder()
+                                                       .setCandidateId("node1")
+                                                       .build();
         RequestVoteResponse response = leaderState.requestVote(request);
         assertFalse(response.getVoteGranted());
+    }
+
+    @Test
+    public void testRequestVoteWhenCandidateIsNotAMember() {
+        leaderState.start();
+        RequestVoteRequest request = RequestVoteRequest.newBuilder()
+                                                       .setCandidateId("node4")
+                                                       .build();
+        RequestVoteResponse response = leaderState.requestVote(request);
+        assertFalse(response.getVoteGranted());
+        assertTrue(response.getGoAway());
     }
 
     @Test
@@ -117,4 +139,9 @@ public class LeaderStateTestWithFakeTransition {
         assertTrue(response.hasFailure());
     }
 
+    private Node node(String id) {
+        return Node.newBuilder()
+                   .setNodeId(id)
+                   .build();
+    }
 }
