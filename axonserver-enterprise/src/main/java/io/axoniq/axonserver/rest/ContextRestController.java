@@ -66,6 +66,7 @@ public class ContextRestController {
 
     @DeleteMapping( path = "context/{name}")
     public void deleteContext(@PathVariable("name")  String name) {
+        if( name.startsWith("_")) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT, String.format("Cannot delete internal context %s", name));
         raftServiceFactory.getRaftConfigService().deleteContext(name);
     }
 

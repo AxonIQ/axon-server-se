@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/v1")
 public class ApplicationRestController {
 
-    private static final String ACTION_NOT_SUPPORTED_IN_DEVELOPMENT_MODE = "Action not supported in Development mode";
+    private static final String ACTION_NOT_SUPPORTED_IN_DEVELOPMENT_MODE = "Action not supported in Standard Edition";
     private static final String APPLICATION_NOT_FOUND = "JpaApplication %s not found";
     private final ApplicationController applicationController;
     private final RoleController roleController;
