@@ -179,7 +179,9 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        if (request.getTerm() > currentTerm()) {
+        boolean isMember = member(request.getCandidateId());
+
+        if (isMember && request.getTerm() > currentTerm()) {
             String message = format("%s received RequestVoteRequest with greater term (%s > %s) from %s",
                                     me(), request.getTerm(), currentTerm(), request.getCandidateId());
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request), message);
@@ -198,7 +200,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                     me());
         return requestVoteResponse(request.getRequestId(),
                                    false,
-                                   !member(request.getCandidateId()) && shouldGoAwayIfNotMember());
+                                   !isMember && shouldGoAwayIfNotMember());
     }
 
     @Override
