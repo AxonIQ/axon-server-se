@@ -9,7 +9,6 @@ import io.axoniq.axonserver.topology.Topology;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -79,7 +78,6 @@ public class ClusterTopology implements Topology {
                 names.add(c);
             }
         });
-        Executors.defaultThreadFactory();
         return names;
     }
 
