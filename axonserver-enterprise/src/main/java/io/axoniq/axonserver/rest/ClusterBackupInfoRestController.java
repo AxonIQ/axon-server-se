@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.cluster.replication.file.FileSegmentLogEntryStore;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,7 +59,7 @@ public class ClusterBackupInfoRestController {
         try {
             return backupInfoRestController.createControlDbBackup();
         } finally {
-            grpcRaftController.getMyContexts()
+            grpcRaftController.getContexts()
                               .forEach(c -> grpcRaftController.getRaftGroup(c).localNode().restartLogCleaning());
         }
     }

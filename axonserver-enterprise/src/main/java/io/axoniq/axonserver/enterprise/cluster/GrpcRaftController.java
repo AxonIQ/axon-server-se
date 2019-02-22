@@ -237,13 +237,13 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 1000)
     public void syncStore() {
         raftGroupMap.forEach((k,e) -> ((GrpcRaftGroup)e).syncStore());
     }
 
 
-    public Iterable<String> getMyContexts() {
+    public Iterable<String> getStorageContexts() {
         return raftGroupMap.keySet().stream().filter(groupId -> !isAdmin(groupId)).collect(Collectors.toList());
     }
 

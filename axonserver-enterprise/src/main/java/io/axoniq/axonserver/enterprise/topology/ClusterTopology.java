@@ -67,13 +67,13 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Iterable<String> getMyContextNames() {
-        return raftController.getMyContexts();
+        return raftController.getStorageContexts();
     }
 
     @Override
     public Iterable<String> getMyStorageContextNames() {
         Set<String> names = new HashSet<>();
-        raftController.getMyContexts().forEach(c -> {
+        raftController.getStorageContexts().forEach(c -> {
             if (!isAdmin(c)) {
                 names.add(c);
             }

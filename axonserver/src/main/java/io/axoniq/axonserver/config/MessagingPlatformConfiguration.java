@@ -16,6 +16,8 @@ import java.net.UnknownHostException;
 @ConfigurationProperties(prefix = "axoniq.axonserver")
 public class MessagingPlatformConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(MessagingPlatformConfiguration.class);
+    private static final int RESERVED = 10000;
+    private static final int DEFAULT_MAX_TRANSACTION_SIZE = 4194304-RESERVED;
     /**
      * gRPC port for axonserver platform
      */
@@ -331,4 +333,10 @@ public class MessagingPlatformConfiguration {
         this.maxMessageSize = maxMessageSize;
     }
 
+    public int getMaxTransactionSize() {
+        if( maxMessageSize == 0) return DEFAULT_MAX_TRANSACTION_SIZE;
+
+        return maxMessageSize - RESERVED;
+
+    }
 }
