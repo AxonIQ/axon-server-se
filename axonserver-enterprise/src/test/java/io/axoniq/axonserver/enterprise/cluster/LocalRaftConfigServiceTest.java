@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static junit.framework.TestCase.assertNull;
@@ -53,8 +54,8 @@ public class LocalRaftConfigServiceTest {
     }
 
     private class AdminDB {
-        private Map<String,io.axoniq.axonserver.enterprise.jpa.Context> contextMap = new HashMap<>();
-        private Map<String,ClusterNode> nodeMap = new HashMap<>();
+        private Map<String,io.axoniq.axonserver.enterprise.jpa.Context> contextMap = new ConcurrentHashMap<>();
+        private Map<String,ClusterNode> nodeMap = new ConcurrentHashMap<>();
 
         public void addContext(String name, String... nodes) {
             io.axoniq.axonserver.enterprise.jpa.Context context = contextMap.computeIfAbsent(name, io.axoniq.axonserver.enterprise.jpa.Context::new);
@@ -111,7 +112,7 @@ public class LocalRaftConfigServiceTest {
     }
 
     private class GroupDB {
-        private Map<String, String> nodes = new HashMap<>();
+        private Map<String, String> nodes = new ConcurrentHashMap<>();
 
         private GroupDB(io.axoniq.axonserver.enterprise.jpa.Context context) {
             context.getAllNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), ccn.getClusterNode().getName()));
@@ -123,7 +124,7 @@ public class LocalRaftConfigServiceTest {
     }
 
     private class FakeRaftGroupService implements RaftGroupService {
-        private Map<String, GroupDB> groupDBs = new HashMap<>();
+        private Map<String, GroupDB> groupDBs = new ConcurrentHashMap<>();
 
         void add(io.axoniq.axonserver.enterprise.jpa.Context context) {
             groupDBs.put(context.getName(),new GroupDB(context));
@@ -318,6 +319,7 @@ public class LocalRaftConfigServiceTest {
     @Test
     public void deleteNode() {
         testSubject.deleteNode("node2");
+        assertEquals(1, fakeRaftGroupService.groupDBs.get("_admin").nodes.size());
     }
 
     @Test
@@ -334,6 +336,21 @@ public class LocalRaftConfigServiceTest {
     }
 
     @Test
+    public void joinNewContext() {
+        when(adminNode.isLeader()).thenReturn(true);
+        testSubject.join(NodeInfo.newBuilder().setNodeName("node3").setInternalHostName("node3").setHostName("node3")
+                                 .addContexts(ContextRole.newBuilder().setName("sample2").setNodeLabel("sample2/node3")).build());
+
+    }
+
+    @Test
+    public void joinAllContexts() {
+        when(adminNode.isLeader()).thenReturn(true);
+        testSubject.join(NodeInfo.newBuilder().setNodeName("node3").setInternalHostName("node3").setHostName("node3").build());
+
+    }
+
+    @Test
     public void init() {
         adminDB.contextMap.clear();
         adminDB.nodeMap.clear();
@@ -346,35 +363,4 @@ public class LocalRaftConfigServiceTest {
 
     }
 
-    @Test
-    public void refreshToken() {
-    }
-
-    @Test
-    public void updateApplication() {
-    }
-
-    @Test
-    public void updateUser() {
-    }
-
-    @Test
-    public void updateLoadBalancingStrategy() {
-    }
-
-    @Test
-    public void updateProcessorLoadBalancing() {
-    }
-
-    @Test
-    public void deleteUser() {
-    }
-
-    @Test
-    public void deleteApplication() {
-    }
-
-    @Test
-    public void deleteLoadBalancingStrategy() {
-    }
 }

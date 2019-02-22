@@ -9,6 +9,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -220,10 +222,12 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void deleteNode(String name) {
         ClusterNode clusterNode = contextController.getNode(name);
-        List<CompletableFuture<Void>> completableFutures = clusterNode.getContexts()
-                                                                      .stream()
-                                                                      .filter(contextClusterNode -> contextClusterNode.getContext().getAllNodes().size() > 1)
-                                                                      .map(contextClusterNode ->
+        Set<ContextClusterNode> membersToDelete = clusterNode.getContexts()
+                                                             .stream()
+                                                             .filter(contextClusterNode -> contextClusterNode.getContext().getAllNodes().size() > 1)
+                .collect(Collectors.toSet());
+
+        List<CompletableFuture<Void>> completableFutures = membersToDelete.stream().map(contextClusterNode ->
                     removeNodeFromContext(contextClusterNode.getContext().getName(),
                                           contextClusterNode.getClusterNode().getName(),
                                           contextClusterNode.getClusterNodeLabel())
@@ -326,7 +330,6 @@ class LocalRaftConfigService implements RaftConfigService {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getCause().getMessage(), e.getCause());
         }
     }
@@ -383,7 +386,6 @@ class LocalRaftConfigService implements RaftConfigService {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getCause().getMessage(), e.getCause());
         }
     }
