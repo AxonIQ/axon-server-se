@@ -11,6 +11,7 @@ import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
@@ -21,9 +22,11 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.*;
 
 /**
@@ -55,7 +58,7 @@ public class FollowerStateTest {
         electionStore = spy(new InMemoryElectionStore());
         logEntryProcessor = spy(new LogEntryProcessor(new InMemoryProcessorStore()));
 
-        BiConsumer<Long,String> termUpdateHandler =
+        BiConsumer<Long, String> termUpdateHandler =
                 (term, cause) -> electionStore.updateCurrentTerm(Math.max(term, electionStore.currentTerm()));
 
         raftConfiguration = mock(RaftConfiguration.class);
@@ -78,6 +81,11 @@ public class FollowerStateTest {
         snapshotManager = mock(SnapshotManager.class);
         when(snapshotManager.applySnapshotData(anyList())).thenReturn(Mono.empty());
 
+        CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
+        when(currentConfiguration.groupMembers()).thenReturn(asList(node("node1"),
+                                                                    node("node2"),
+                                                                    node("node3")));
+
         followerState = spy(FollowerState.builder()
                                          .transitionHandler(transitionHandler)
                                          .termUpdateHandler(termUpdateHandler)
@@ -85,6 +93,9 @@ public class FollowerStateTest {
                                          .schedulerFactory(() -> fakeScheduler)
                                          .randomValueSupplier((min, max) -> electionTimeout)
                                          .snapshotManager(snapshotManager)
+                                         .currentConfiguration(currentConfiguration)
+                                         .registerConfigurationListenerFn(l -> () -> {
+                                         })
                                          .stateFactory(new DefaultStateFactory(raftGroup,
                                                                                transitionHandler,
                                                                                termUpdateHandler,
@@ -107,12 +118,27 @@ public class FollowerStateTest {
     @Test
     public void testRequestVoteGranted() {
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setCandidateId("node1")
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setTerm(1)
                                                                                    .build());
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
+        assertFalse(response.getGoAway());
+    }
+
+    @Test
+    public void testRequestVoteNotGrantedWhenCandidateIsNotAMember() {
+        RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
+                                                                                   .setCandidateId("node4")
+                                                                                   .setGroupId("defaultGroup")
+                                                                                   .setTerm(1)
+                                                                                   .build());
+        assertFalse(response.getVoteGranted());
+        assertEquals(1L, response.getTerm());
+        assertEquals("defaultGroup", response.getGroupId());
+        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -123,7 +149,9 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT + 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
-                                                                                   .setRequestId(UUID.randomUUID().toString())
+                                                                                   .setRequestId(UUID.randomUUID()
+                                                                                                     .toString())
+                                                                                   .setCandidateId("node2")
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(1L)
@@ -133,6 +161,7 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
+        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -142,7 +171,8 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT - 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
-                                                                                   .setRequestId(UUID.randomUUID().toString())
+                                                                                   .setRequestId(UUID.randomUUID()
+                                                                                                     .toString())
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(1L)
@@ -152,6 +182,7 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(0L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
+        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -162,7 +193,9 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT + 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
-                                                                                   .setRequestId(UUID.randomUUID().toString())
+                                                                                   .setRequestId(UUID.randomUUID()
+                                                                                                     .toString())
+                                                                                   .setCandidateId("node3")
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(0L)
@@ -172,6 +205,7 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
+        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -182,7 +216,9 @@ public class FollowerStateTest {
         fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT + 1);
 
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
-                                                                                   .setRequestId(UUID.randomUUID().toString())
+                                                                                   .setRequestId(UUID.randomUUID()
+                                                                                                     .toString())
+                                                                                   .setCandidateId("node1")
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(2L)
@@ -192,6 +228,7 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
+        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -247,7 +284,8 @@ public class FollowerStateTest {
     @Test
     public void testAppendSuccessAfterSnapshotInstalled() {
         InstallSnapshotRequest installSnapshotRequest = InstallSnapshotRequest.newBuilder()
-                                                                              .setRequestId(UUID.randomUUID().toString())
+                                                                              .setRequestId(UUID.randomUUID()
+                                                                                                .toString())
                                                                               .setLeaderId("node1")
                                                                               .setGroupId("defaultGroup")
                                                                               .setTerm(0L)
@@ -255,8 +293,10 @@ public class FollowerStateTest {
                                                                               .setDone(true)
                                                                               .setLastIncludedIndex(2L)
                                                                               .setLastIncludedTerm(3L)
-                                                                              .setLastConfig(Config.newBuilder().build())
-                                                                              .addData(SerializedObject.newBuilder().build())
+                                                                              .setLastConfig(Config.newBuilder()
+                                                                                                   .build())
+                                                                              .addData(SerializedObject.newBuilder()
+                                                                                                       .build())
                                                                               .build();
         followerState.installSnapshot(installSnapshotRequest);
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
@@ -402,5 +442,11 @@ public class FollowerStateTest {
                                                     .setTerm(0L)
                                                     .build())
                                    .build();
+    }
+
+    private Node node(String id) {
+        return Node.newBuilder()
+                   .setNodeId(id)
+                   .build();
     }
 }

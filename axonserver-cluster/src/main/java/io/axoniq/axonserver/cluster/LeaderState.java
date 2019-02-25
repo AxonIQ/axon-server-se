@@ -11,16 +11,11 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Entry;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
-import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -85,10 +80,10 @@ public class LeaderState extends AbstractMembershipState {
     }
 
 
-    private CompletableFuture<Void> appendLeaderElected(){
+    private void appendLeaderElected(){
         LeaderElected leaderElected = LeaderElected.newBuilder().setLeaderId(me()).build();
         CompletableFuture<Entry> entry = raftGroup().localLogEntryStore().createEntry(currentTerm(), leaderElected);
-        return waitCommitted(entry);
+        waitCommitted(entry);
     }
 
     private CompletableFuture<Void> appendConfigurationChange(UnaryOperator<List<Node>> changeOperation) {
@@ -162,21 +157,23 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        logger.trace("{}: Received appendEntries request. Rejecting the request.", groupId());
+        if (request.getTerm() > currentTerm()) {
+            logger.info("{}: Received term {} which is greater or equals than mine {}. Moving to Follower...",
+                        groupId(), request.getTerm(), currentTerm());
+            String message = format("%s received AppendEntriesRequest with greater or equals term (%s >= %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getLeaderId());
+            return handleAsFollower(follower -> follower.appendEntries(request), message);
+        }
+        logger.trace("{}: Received term {} is smaller than mine {}. Rejecting the request.",
+                     groupId(),
+                     request.getTerm(),
+                     currentTerm());
         return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
     @Override
-    public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        logger.warn("{}: Request for vote received from {} in term {}. Rejecting the request, {}", groupId(),
-                    request.getCandidateId(), request.getTerm(), member(request.getCandidateId())? "candidate is member" : "candidate is not member");
-        return requestVoteResponse(request.getRequestId(),false, !member(request.getCandidateId()));
-    }
-
-    @Override
-    public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        logger.trace("{}: Received installSnapshot request. Rejecting the request.", groupId());
-        return installSnapshotFailure(request.getRequestId(), "Request rejected because I'm a leader");
+    protected boolean shouldGoAwayIfNotMember() {
+        return true;
     }
 
     @Override
@@ -204,10 +201,6 @@ public class LeaderState extends AbstractMembershipState {
         changeStateTo(stateFactory().followerState(), cause);
     }
 
-    private boolean member(String candidateId) {
-        return currentGroupMembers().stream().anyMatch(n -> n.getNodeId().equals(candidateId));
-    }
-
     private void checkStepdown() {
         if (otherNodesCount() == 0) {
             scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
@@ -228,9 +221,8 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {
-        CompletableFuture<Entry> entryFuture = raftGroup().localLogEntryStore().createEntry(currentTerm,
-                                                                                            entryType,
-                                                                                            entryData);
+        CompletableFuture<Entry> entryFuture = raftGroup().localLogEntryStore()
+                                                          .createEntry(currentTerm, entryType, entryData);
         return waitCommitted(entryFuture);
     }
 
@@ -283,18 +275,12 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     protected void updateCurrentTerm(long term, String cause) {
-        if (term <= raftGroup().localElectionStore().currentTerm()) return;
+        if (term <= raftGroup().localElectionStore().currentTerm()) {
+            return;
+        }
+        stepDown(format("Stepping down because of greater term %s. My term %s", term, currentTerm()));
         super.updateCurrentTerm(term, cause);
-        newElection().result().timeout(Duration.ofMillis(maxElectionTimeout()))
-                     .subscribe(result -> onElectionResult(result.won()),
-                                error -> onElectionResult(false));
-
     }
-
-    private void onElectionResult(boolean won) {
-        if (won) appendLeaderElected(); else stepDown("Leader not reconfirmed");
-    }
-
 
     private class Replicators {
 
