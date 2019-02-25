@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.function.Function;
 
 /**
+ * A {@link StreamObserver} that maps the received messages and send them through a {@link SseEmitter}
+ *
  * @author Sara Pellegrini
  * @since 4.1
  */
