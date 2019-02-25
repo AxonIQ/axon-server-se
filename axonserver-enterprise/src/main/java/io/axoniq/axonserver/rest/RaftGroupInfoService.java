@@ -14,7 +14,7 @@ import java.util.Set;
  * @author Marc Gathier
  */
 @RestController
-@RequestMapping("v1/raft")
+@RequestMapping("internal/raft")
 public class RaftGroupInfoService {
     private final JpaRaftGroupNodeRepository raftGroupNodeRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;

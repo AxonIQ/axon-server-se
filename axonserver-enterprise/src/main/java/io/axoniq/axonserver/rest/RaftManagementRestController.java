@@ -16,7 +16,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 @RestController
 @CrossOrigin
-@RequestMapping("/v1")
+@RequestMapping("internal/raft")
 public class RaftManagementRestController {
 
     private final GrpcRaftController grpcRaftController;
@@ -26,7 +26,7 @@ public class RaftManagementRestController {
         this.grpcRaftController = grpcRaftController;
     }
 
-    @PostMapping(path = "context/{context}/cleanOlderThenSeconds/{seconds}")
+    @PostMapping(path = "context/{context}/cleanLogEntries/{seconds}")
     public void cleanLogOlderThen(@PathVariable("context") String context, @PathVariable("seconds") long seconds){
         this.grpcRaftController.getRaftGroup(context).localNode().forceLogCleaning(seconds, SECONDS);
     }

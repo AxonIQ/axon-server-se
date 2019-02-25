@@ -20,7 +20,7 @@ import java.util.List;
  * @since 4.1
  */
 @RestController
-@RequestMapping("v1/raft")
+@RequestMapping("internal/raft")
 public class RaftStatusRestController {
 
     private final GrpcRaftController grpcRaftController;
@@ -64,7 +64,11 @@ public class RaftStatusRestController {
             media.with("maxEntriesPerBatch", raftGroup.raftConfiguration().maxEntriesPerBatch());
             media.with("maxReplicationRound", raftGroup.raftConfiguration().maxReplicationRound());
             media.with("flowBuffer", raftGroup.raftConfiguration().flowBuffer());
+            media.with("currentTerm", raftGroup.localElectionStore().currentTerm());
+            media.with("votedFor", raftGroup.localElectionStore().votedFor());
             media.with("leaderId", raftGroup.localNode().getLeader());
+            media.with("leaderName", raftGroup.localNode().getLeaderName());
+            media.with("isLeader", raftGroup.localNode().isLeader());
             media.with("configuration", new Nodes(raftGroup.raftConfiguration().groupMembers()));
         }
     }
