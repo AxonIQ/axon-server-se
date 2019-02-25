@@ -25,6 +25,8 @@ import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 
 /**
+ * RestController that exposes endpoints needed to queries the local version of the EventStore.
+ *
  * @author Sara Pellegrini
  * @since 4.1
  */
