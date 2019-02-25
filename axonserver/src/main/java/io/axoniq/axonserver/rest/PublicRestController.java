@@ -2,7 +2,6 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
-import io.axoniq.axonserver.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.features.Feature;
@@ -35,62 +34,60 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping("/v1/public")
 public class PublicRestController {
 
-    private final Topology clusterController;
+    private final Topology topology;
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
     private final EventDispatcher eventDispatcher;
-    private final FeatureChecker limits;
+    private final FeatureChecker features;
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
-    private final ClusterConfiguration clusterConfiguration;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
 
 
-    public PublicRestController(Topology clusterController,
+    public PublicRestController(Topology topology,
                                 CommandDispatcher commandDispatcher,
                                 QueryDispatcher queryDispatcher,
                                 EventDispatcher eventDispatcher,
-                                FeatureChecker limits,
+                                FeatureChecker features,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
-        this.clusterController = clusterController;
+        this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.eventDispatcher = eventDispatcher;
-        this.limits = limits;
+        this.features = features;
         this.sslConfiguration = messagingPlatformConfiguration.getSsl();
         this.accessControlConfiguration = messagingPlatformConfiguration.getAccesscontrol();
-        this.clusterConfiguration = messagingPlatformConfiguration.getCluster();
         this.subscriptionMetricsRegistry = subscriptionMetricsRegistry;
     }
 
 
     @GetMapping
     public List<JsonServerNode> getClusterNodes() {
-        List<AxonServerNode> nodes = clusterController.getRemoteConnections();
+        List<AxonServerNode> nodes = topology.getRemoteConnections();
 
-        nodes.add(clusterController.getMe());
+        nodes.add(topology.getMe());
         return nodes.stream()
-                    .map(n -> new JsonServerNode(n, clusterController.isActive(n)))
+                    .map(n -> new JsonServerNode(n, topology.isActive(n)))
                     .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 
     @GetMapping(path = "me")
     public ExtendedClusterNode getNodeInfo() {
-        ExtendedClusterNode node = new ExtendedClusterNode(clusterController.getMe());
+        ExtendedClusterNode node = new ExtendedClusterNode(topology.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
-        node.setClustered(Feature.CLUSTERING.enabled(limits));
-        node.setAdminNode(clusterController.isAdminNode());
-        node.setContextNames(clusterController.getMyContextNames());
-        node.setStorageContextNames(clusterController.getMyStorageContextNames());
+        node.setClustered(Feature.CLUSTERING.enabled(features));
+        node.setAdminNode(topology.isAdminNode());
+        node.setContextNames(topology.getMyContextNames());
+        node.setStorageContextNames(topology.getMyStorageContextNames());
         return node;
     }
 
 
     @GetMapping(path="mycontexts")
     public Iterable<String> getMyContextList() {
-        return clusterController.getMyContextNames();
+        return topology.getMyStorageContextNames();
     }
 
 
@@ -98,10 +95,10 @@ public class PublicRestController {
     @GetMapping(path = "license")
     public LicenseInfo licenseInfo() {
         LicenseInfo licenseInfo = new LicenseInfo();
-        licenseInfo.setExpiryDate(limits.getExpiryDate());
-        licenseInfo.setEdition(limits.getEdition());
-        licenseInfo.setLicensee(limits.getLicensee());
-        licenseInfo.setFeatureList(limits.getFeatureList());
+        licenseInfo.setExpiryDate(features.getExpiryDate());
+        licenseInfo.setEdition(features.getEdition());
+        licenseInfo.setLicensee(features.getLicensee());
+        licenseInfo.setFeatureList(features.getFeatureList());
 
 
         return licenseInfo;

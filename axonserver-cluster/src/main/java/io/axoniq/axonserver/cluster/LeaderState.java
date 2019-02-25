@@ -257,13 +257,14 @@ public class LeaderState extends AbstractMembershipState {
             CompletableFuture<Void> completableFuture = pendingEntries.remove(e.getIndex());
             int retries = 5;
             while( completableFuture == null && lastConfirmed.get() < e.getIndex() && retries-- > 0) {
-                logger.info("waiting for {}", e.getIndex());
                 Thread.sleep(1);
                 completableFuture = pendingEntries.remove(e.getIndex());
             }
             if( completableFuture != null) {
                 completableFuture.complete(null);
                 lastConfirmed.set(e.getIndex());
+            } else {
+                logger.debug("waited for {}", e.getIndex());
             }
         } catch (InterruptedException e1) {
             Thread.currentThread().interrupt();

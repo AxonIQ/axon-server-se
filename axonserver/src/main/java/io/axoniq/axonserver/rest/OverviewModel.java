@@ -44,11 +44,11 @@ public class OverviewModel {
     @RequestMapping("/v1/public/overview")
     public SvgOverview overview() {
         boolean multiContext = clusterController.isMultiContext();
-        AxonServerBoxMapping hubRegistry = new AxonServerBoxMapping(multiContext, clusterController.getName(), fonts);
+        AxonServerBoxMapping serverRegistry = new AxonServerBoxMapping(multiContext, clusterController.getName(), fonts);
 
-        Element hubNodes = new Grouped(new Elements(10, 200, axonServers, hubRegistry), "axonserverNodes");
-        Element clients = new Elements(10, 10, applications, new ApplicationBoxMapping(hubRegistry, fonts));
-        Element popups = new Elements(axonServers, new AxonServerPopupMapping(hubRegistry, fonts));
+        Element hubNodes = new Grouped(new Elements(10, 200, axonServers, serverRegistry), "axonserverNodes");
+        Element clients = new Elements(10, 10, applications, new ApplicationBoxMapping(serverRegistry, fonts));
+        Element popups = new Elements(axonServers, new AxonServerPopupMapping(serverRegistry, fonts));
 
         Elements components = new Elements(hubNodes, clients, popups);
         Element background = new Clickable(new Rectangle(new Position(0, 0),
