@@ -94,6 +94,7 @@ public class MessagingPlatformConfiguration {
     private int workerThreads;
     private String controldbBackupLocation = ".";
     private int maxMessageSize = 0;
+    private String pidFileLocation = ".";
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -331,4 +332,15 @@ public class MessagingPlatformConfiguration {
         this.maxMessageSize = maxMessageSize;
     }
 
+    public String getPidFileLocation() {
+        return pidFileLocation;
+    }
+
+    public void setMetricsSynchronizationRate(int metricsSynchronizationRate) {
+        this.metricsSynchronizationRate = metricsSynchronizationRate;
+    }
+
+    public void setPidFileLocation(String pidFileLocation) {
+        this.pidFileLocation = pidFileLocation;
+    }
 }
