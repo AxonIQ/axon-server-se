@@ -1,13 +1,12 @@
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
@@ -16,6 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 /**
  * @author Marc Gathier
@@ -28,8 +29,9 @@ public class LifecycleController {
     private final Path path;
     private final ApplicationContext applicationContext;
 
-    public LifecycleController(ApplicationContext applicationContext) {
-        this.path = Paths.get(EVENT_STORE_SERVER_PID);
+    public LifecycleController(ApplicationContext applicationContext, MessagingPlatformConfiguration configuration) {
+
+        this.path = Paths.get(configuration.getPidFileLocation(), EVENT_STORE_SERVER_PID);
         this.applicationContext = applicationContext;
     }
 
