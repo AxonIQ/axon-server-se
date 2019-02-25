@@ -20,7 +20,7 @@ import java.util.List;
  * @since 4.1
  */
 @RestController
-@RequestMapping("v1/raft")
+@RequestMapping("internal/raft")
 public class RaftStatusRestController {
 
     private final GrpcRaftController grpcRaftController;
