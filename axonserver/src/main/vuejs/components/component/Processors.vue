@@ -33,8 +33,13 @@
                                     class="far fa-pause-circle fa-lg"></i></span>
                             <span :class="{hidden : !processor.canPlay}" @click="startProcessor(processor)"><i
                                     class="far fa-play-circle fa-lg"></i></span>
+                            <span  v-if="processor.mode === 'Tracking'"
+                                   :class="{hidden : !processor.canSplit}"
+                                   @click="splitSegment(processor)"><i class="fas fa-plus fa-lg"></i></span>
+                            <span  v-if="processor.mode === 'Tracking'"
+                                   :class="{hidden : !processor.canMerge}"
+                                   @click="mergeSegment(processor)"><i class="fas fa-minus fa-lg"></i></span>
                             <span  v-if="processor.mode === 'Tracking'" @click="showLoadBalance(processor)"><i class="fas fa-balance-scale fa-lg"></i></span>
-
                         </td>
                         <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="center">
                             <span v-if="processor.mode === 'Tracking'">
@@ -251,6 +256,24 @@
                     );
                 }
             },
+            splitSegment(processor) {
+                if (confirm("Pause processor " + processor.name + "?")) {
+                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/split?context=" + this.context).then(
+                            response => {
+                                this.enableStatusLoader(processor);
+                            }
+                    );
+                }
+            },
+            mergeSegment(processor) {
+                if (confirm("Pause processor " + processor.name + "?")) {
+                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/merge?context=" + this.context).then(
+                            response => {
+                                this.enableStatusLoader(processor);
+                            }
+                    );
+                }
+            },
             showLoadBalance(processor){
                 this.loadBalanceProcessor = processor;
                 this.$modal.show('load-balance');
@@ -273,6 +296,8 @@
                 processor.loading = true;
                 processor.canPause = false;
                 processor.canPlay = false;
+                processor.canSplit = false;
+                processor.canMerge = false;
             },
             canMoveFrom(clientId) {
                 let freeThreadInstances = this.selected.freeThreadInstances;
