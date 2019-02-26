@@ -64,13 +64,16 @@ public class IndexManager {
         if( tempFile.exists() && (! force || ! FileUtils.delete(tempFile))) {
             return;
         }
-
-        DB db = DBMaker.fileDB(tempFile)
-                       .fileMmapEnable()
-                       .cleanerHackEnable()
-//                       .allocateStartSize(fileStorageProperties.getIndexInitialSize())
-//                       .allocateIncrement(fileStorageProperties.getIndexNextSize())
-                       .make();
+        DBMaker.Maker maker = DBMaker.fileDB(tempFile);
+        if( storageProperties.isUseMmapIndex()) {
+            maker.fileMmapEnable();
+            if( storageProperties.isCleanerHackEnabled()) {
+                maker.cleanerHackEnable();
+            }
+        } else {
+            maker.fileChannelEnable();
+        }
+        DB db = maker.make();
         try (HTreeMap<Long, Integer> map = db.hashMap(INDEX_MAP,
                                                                         Serializer.LONG,
                                                                         Serializer.INTEGER)
@@ -110,10 +113,14 @@ public class IndexManager {
             this.managed = managed;
             DBMaker.Maker maker = DBMaker.fileDB(storageProperties.indexFile(context, segment))
                                          .readOnly()
-                                         .fileMmapEnable()
                                          .fileLockDisable();
-            if (true) {
-                maker.cleanerHackEnable();
+            if( storageProperties.isUseMmapIndex()) {
+                maker.fileMmapEnable();
+                if (storageProperties.isCleanerHackEnabled()) {
+                    maker.cleanerHackEnable();
+                }
+            } else {
+                maker.fileChannelEnable();
             }
             this.db = maker.make();
             this.entriesMap = db.hashMap(INDEX_MAP, Serializer.LONG, Serializer.INTEGER).createOrOpen();

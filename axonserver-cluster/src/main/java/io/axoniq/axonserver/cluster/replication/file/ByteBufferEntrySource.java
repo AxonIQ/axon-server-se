@@ -18,6 +18,7 @@ public class ByteBufferEntrySource implements EntrySource {
     private final LogEntryTransformer eventTransformer;
     private final ByteBuffer buffer;
     private final boolean main;
+    private final boolean cleanerHackNeeded;
 
     public ByteBufferEntrySource(ByteBuffer buffer, LogEntryTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
         byte version = buffer.get();
@@ -25,12 +26,14 @@ public class ByteBufferEntrySource implements EntrySource {
         this.eventTransformer = eventTransformerFactory.get(version, flags, storageProperties);
         this.buffer = buffer;
         this.main = true;
+        this.cleanerHackNeeded = storageProperties.isCleanerHackNeeded();
     }
 
     public ByteBufferEntrySource(ByteBuffer buffer, LogEntryTransformer eventTransformer) {
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.main = false;
+        this.cleanerHackNeeded = false;
     }
 
     public ByteBufferEntrySource(ByteBuffer duplicate, LogEntryTransformer eventTransformer, int startPosition) {
@@ -87,7 +90,7 @@ public class ByteBufferEntrySource implements EntrySource {
 
     @Override
     protected void finalize() {
-        CleanUtils.cleanDirectBuffer(buffer, main, 60);
+        if (cleanerHackNeeded) CleanUtils.cleanDirectBuffer(buffer, main, 60);
     }
 
     public Entry readLogEntry(int position, long index) {
@@ -104,6 +107,6 @@ public class ByteBufferEntrySource implements EntrySource {
     }
 
     public void clean(long delay) {
-        CleanUtils.cleanDirectBuffer(getBuffer(), true, delay);
+        if (cleanerHackNeeded) CleanUtils.cleanDirectBuffer(getBuffer(), true, delay);
     }
 }
