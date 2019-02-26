@@ -7,7 +7,7 @@ import java.io.File;
  */
 public class StorageProperties {
 
-    private static final String FILENAME_PATTERN = "%s" + File.separator + "%014d%s";
+    private static final String FILENAME_PATTERN = "%s" + File.separator + "%020d%s";
 
     private int syncInterval = 1000;
     private int forceInterval = 1000;
