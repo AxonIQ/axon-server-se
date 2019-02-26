@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.enterprise.cluster.LocalRaftGroupService;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,7 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @CrossOrigin
-@RequestMapping("/v1")
+@Profile("internal")
+@RequestMapping("internal")
 public class LeaderManagement {
     private final LocalRaftGroupService localRaftGroupService;
 
