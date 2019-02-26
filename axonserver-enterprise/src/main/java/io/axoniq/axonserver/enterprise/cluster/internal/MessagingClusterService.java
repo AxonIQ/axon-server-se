@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
@@ -9,7 +8,6 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
@@ -20,11 +18,14 @@ import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
 import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
+import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
 import io.axoniq.axonserver.grpc.internal.Group;
+import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
@@ -51,33 +52,39 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiConsumer;
 import javax.annotation.PreDestroy;
 
+import static io.axoniq.axonserver.ProcessingInstructionHelper.targetClient;
+import static io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter.fromProto;
+
 /**
- * Handles requests from other axonserver cluster servers acting as message processors.
- * Other servers connect to this service to receive commands and queries.
- * When 2 nodes are connected there are 2 connections to forward messages to both nodes.
- * Client side is implemented in {@link RemoteConnection}
- *
+ * Handles requests from other Axon Server cluster servers acting as message processors. Other servers connect to this
+ * service to receive commands and queries. When 2 nodes are connected there are 2 connections to forward messages to
+ * both nodes. Client side is implemented in {@link RemoteConnection}
+ * <p>
  * Request sequence;
  * Connect
  * FlowControl
  * And then subscriptions (queries, commands)
- *
+ * <p>
  * Maintains a list of clients connected to connected service.
- *
+ * <p>
  * When connection lost, already sent commands are returned to caller with error status
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 @Service("MessagingClusterService")
 public class MessagingClusterService extends MessagingClusterServiceGrpc.MessagingClusterServiceImplBase {
-    private final Logger logger = LoggerFactory.getLogger(MessagingClusterService.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(MessagingClusterService.class);
+
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
     private final ClusterController clusterController;
     private final ApplicationEventPublisher eventPublisher;
+
     private final Map<String, ConnectorReceivingStreamObserver> connections = new ConcurrentHashMap<>();
     private final Map<RequestCase, Collection<BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>>>> handlers
             = new EnumMap<>(RequestCase.class);
-
 
     @Value("${axoniq.axonserver.cluster.connectionCheckRetries:5}")
     private int connectionCheckRetries = 5;
@@ -89,12 +96,21 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private int commandProcessingThreads = 1;
     private final Set<GrpcFlowControlledDispatcherListener> dispatchListeners = new CopyOnWriteArraySet<>();
 
-
-    public MessagingClusterService(
-            CommandDispatcher commandDispatcher,
-            QueryDispatcher queryDispatcher,
-            ClusterController clusterController,
-            ApplicationEventPublisher eventPublisher) {
+    /**
+     * Instantiate a {@link MessagingClusterService} which consumes all incoming messages propagated between a cluster
+     * of Axon Server instances.
+     *
+     * @param commandDispatcher the {@link CommandDispatcher} used to dispatch commands and command responses
+     * @param queryDispatcher   the {@link QueryDispatcher} used to dispatch queries, query responses and subscription
+     *                          query updates
+     * @param clusterController the {@link ClusterController} used to add new nodes trying to connect to the cluster
+     * @param eventPublisher    the {@link ApplicationEventPublisher} to publish events through this Axon Server
+     *                          instance
+     */
+    public MessagingClusterService(CommandDispatcher commandDispatcher,
+                                   QueryDispatcher queryDispatcher,
+                                   ClusterController clusterController,
+                                   ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.clusterController = clusterController;
@@ -107,7 +123,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         return new ConnectorReceivingStreamObserver(responseObserver);
     }
 
-
+    /**
+     * Shutdown this {@link MessagingClusterService}, by canceling all the dispatch listeners.
+     */
     @PreDestroy
     public void shutdown() {
         dispatchListeners.forEach(GrpcFlowControlledDispatcherListener::cancel);
@@ -120,6 +138,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
 
+        private static final boolean PROXIED = true;
+
         private final CopyOnWriteArraySet<ClientIdentification> clients;
         private final SendingStreamObserver<ConnectorResponse> responseObserver;
         private volatile GrpcInternalCommandDispatcherListener commandQueueListener;
@@ -128,7 +148,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         private final Map<ClientIdentification, CommandHandler> commandHandlerPerContextClient = new ConcurrentHashMap<>();
         private final Map<ClientIdentification, QueryHandler> queryHandlerPerContextClient = new ConcurrentHashMap<>();
 
-        public ConnectorReceivingStreamObserver(SendingStreamObserver<ConnectorResponse> responseObserver) {
+        private ConnectorReceivingStreamObserver(SendingStreamObserver<ConnectorResponse> responseObserver) {
             super(logger);
             this.responseObserver = responseObserver;
             clients = new CopyOnWriteArraySet<>();
@@ -138,206 +158,244 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         protected void consume(ConnectorCommand connectorCommand) {
             handlers.getOrDefault(connectorCommand.getRequestCase(), Collections.emptySet())
                     .forEach(consumer -> consumer.accept(connectorCommand, responseObserver::onNext));
-                switch (connectorCommand.getRequestCase()) {
-                    case CONNECT:
-                        try {
-                            messagingServerName = connectorCommand.getConnect().getNodeInfo().getNodeName();
-                            if( clusterController.connect(connectorCommand.getConnect().getNodeInfo(), connectorCommand.getConnect().getAdmin()) ) {
-                                logger.debug("Received connect from: {} - {}",
-                                             messagingServerName,
-                                             connectorCommand.getConnect());
 
-                                responseObserver.onNext(ConnectorResponse.newBuilder()
-                                                                         .setConnectResponse(ConnectResponse
-                                                                                                     .newBuilder())
-                                                                         .build());
-                                connections.put(messagingServerName, this);
-                            } else {
-                                logger.warn("Received connection from unknown node {}, closing connection", messagingServerName);
-                                responseObserver.onNext(ConnectorResponse.newBuilder()
-                                                                         .setConnectResponse(ConnectResponse
-                                                                                                     .newBuilder().setDeleted(true))
-                                                                         .build());
-                                responseObserver.onCompleted();
-                            }
-                        } catch( MessagingPlatformException mpe) {
-                            responseObserver.onError(mpe);
+            switch (connectorCommand.getRequestCase()) {
+                case CONNECT:
+                    try {
+                        ConnectRequest connectRequest = connectorCommand.getConnect();
+                        messagingServerName = connectRequest.getNodeInfo().getNodeName();
+
+                        if (clusterController.connect(connectRequest.getNodeInfo(), connectRequest.getAdmin())) {
+                            logger.debug("Received connect from: {} - {}", messagingServerName, connectRequest);
+
+                            responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                     .setConnectResponse(ConnectResponse.newBuilder())
+                                                                     .build());
+                            connections.put(messagingServerName, this);
+                        } else {
+                            logger.warn(
+                                    "Received connection from unknown node {}, closing connection", messagingServerName
+                            );
+
+                            responseObserver.onNext(
+                                    ConnectorResponse.newBuilder()
+                                                     .setConnectResponse(ConnectResponse.newBuilder().setDeleted(true))
+                                                     .build()
+                            );
+                            responseObserver.onCompleted();
                         }
-                        break;
-                    case SUBSCRIBE_COMMAND:
-                        CommandSubscription command = connectorCommand.getSubscribeCommand()
-                                                                      .getCommand();
-                        logger.debug("SUBSCRIBE [{}] [{}] [{}]", command.getCommand(),
-                                     command.getClientId(),
-                                     messagingServerName);
+                    } catch (MessagingPlatformException mpe) {
+                        responseObserver.onError(mpe);
+                    }
+                    break;
+                case SUBSCRIBE_COMMAND:
+                    InternalCommandSubscription subscribeCommand = connectorCommand.getSubscribeCommand();
+                    CommandSubscription command = subscribeCommand.getCommand();
+                    String componentName = command.getComponentName();
+                    String clientId = command.getClientId();
 
-                        checkClient(connectorCommand.getSubscribeCommand().getContext(),
-                                    command.getComponentName(),
-                                    command.getClientId());
+                    logger.debug(
+                            "SUBSCRIBE [{}] [{}] [{}]",
+                            command.getCommand(), clientId, messagingServerName
+                    );
 
-                        CommandHandler commandHandler = commandHandlerPerContextClient
-                                .computeIfAbsent(new ClientIdentification(connectorCommand.getSubscribeCommand().getContext(),
-                                                                          command.getClientId()), clientIdentification -> new
-                                        ProxyCommandHandler(responseObserver, clientIdentification,
-                                                            command.getComponentName(),
-                                                            messagingServerName));
-                        eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(commandHandler.getClient().getContext(),
-                                                                                            command, commandHandler));
-                        break;
-                    case UNSUBSCRIBE_COMMAND:
-                        logger.debug("UNSUBSCRIBE [{}] [{}] [{}]",
-                                     connectorCommand.getUnsubscribeCommand().getCommand(),
-                                     connectorCommand.getUnsubscribeCommand().getCommand().getClientId(),
-                                     messagingServerName);
-                        eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(
-                                connectorCommand.getUnsubscribeCommand().getContext(),
-                                connectorCommand.getUnsubscribeCommand().getCommand(),
-                                true));
-                        break;
-                    case COMMAND_RESPONSE:
-                        logger.debug("Received command response {} from: {}", connectorCommand.getCommandResponse(),
-                                     messagingServerName);
-                        commandDispatcher.handleResponse(new SerializedCommandResponse(connectorCommand.getCommandResponse().getRequestIdentifier(), connectorCommand.getCommandResponse().getResponse().toByteArray()), true);
-                        break;
-                    case SUBSCRIBE_QUERY:
-                        QuerySubscription query = connectorCommand.getSubscribeQuery().getQuery();
-                        logger.debug("SUBSCRIBE [{}/{}] [{}] [{}]", query.getQuery(),
-                                     query.getResultName(),
-                                     query.getClientId(),
-                                     messagingServerName);
-                        checkClient(connectorCommand.getSubscribeQuery().getContext(),
+                    checkClient(subscribeCommand.getContext(), componentName, clientId);
+
+                    CommandHandler commandHandler = commandHandlerPerContextClient.computeIfAbsent(
+                            new ClientIdentification(subscribeCommand.getContext(), clientId),
+                            clientIdentification -> new ProxyCommandHandler(
+                                    responseObserver,
+                                    clientIdentification,
+                                    componentName,
+                                    messagingServerName
+                            )
+                    );
+                    eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(
+                            commandHandler.getClient().getContext(), command, commandHandler
+                    ));
+                    break;
+                case UNSUBSCRIBE_COMMAND:
+                    InternalCommandSubscription unsubscribeCommand = connectorCommand.getUnsubscribeCommand();
+                    CommandSubscription commandSubscription = unsubscribeCommand.getCommand();
+
+                    logger.debug(
+                            "UNSUBSCRIBE [{}] [{}] [{}]",
+                            commandSubscription, commandSubscription.getClientId(), messagingServerName
+                    );
+
+                    eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(
+                            unsubscribeCommand.getContext(), commandSubscription, PROXIED
+                    ));
+                    break;
+                case COMMAND_RESPONSE:
+                    ForwardedCommandResponse commandResponse = connectorCommand.getCommandResponse();
+                    logger.debug("Received command response {} from: {}", commandResponse, messagingServerName);
+
+                    commandDispatcher.handleResponse(
+                            new SerializedCommandResponse(commandResponse.getRequestIdentifier(),
+                                                          commandResponse.getResponse().toByteArray()),
+                            PROXIED
+                    );
+                    break;
+                case SUBSCRIBE_QUERY:
+                    QuerySubscription query = connectorCommand.getSubscribeQuery().getQuery();
+                    String queryContext = connectorCommand.getSubscribeQuery().getContext();
+                    logger.debug(
+                            "SUBSCRIBE [{}/{}] [{}] [{}]", query.getQuery(),
+                            query.getResultName(), query.getClientId(), messagingServerName
+                    );
+
+                    checkClient(queryContext, query.getComponentName(), query.getClientId());
+                    ClientIdentification clientIdentification =
+                            new ClientIdentification(queryContext, query.getClientId());
+
+                    QueryHandler queryHandler = queryHandlerPerContextClient.computeIfAbsent(
+                            clientIdentification,
+                            contextClient -> new ProxyQueryHandler(
+                                    responseObserver,
+                                    clientIdentification,
                                     query.getComponentName(),
-                                    query.getClientId());
+                                    messagingServerName
+                            )
+                    );
 
-                        ClientIdentification clientIdentification = new ClientIdentification(
-                                connectorCommand.getSubscribeQuery().getContext(),
-                                query.getClientId());
-                        QueryHandler queryHandler = queryHandlerPerContextClient.computeIfAbsent(clientIdentification,
-                                                                                                 contextClient -> new ProxyQueryHandler(responseObserver,
-                                                                                             clientIdentification,
-                                                                                             query.getComponentName(),
-                                                                                             messagingServerName));
-                        eventPublisher.publishEvent(new SubscriptionEvents.SubscribeQuery(connectorCommand
-                                                                                                  .getSubscribeQuery()
-                                                                                                  .getContext(),
-                                                                                          query, queryHandler));
+                    eventPublisher.publishEvent(new SubscriptionEvents.SubscribeQuery(
+                            queryContext, query, queryHandler
+                    ));
+                    break;
+                case UNSUBSCRIBE_QUERY:
+                    QuerySubscription querySubscription = connectorCommand.getUnsubscribeQuery().getQuery();
+                    logger.debug(
+                            "UNSUBSCRIBE [{}/{}] [{}] [{}]",
+                            querySubscription.getQuery(),
+                            querySubscription.getResultName(),
+                            querySubscription.getClientId(),
+                            messagingServerName
+                    );
 
-                        break;
-                    case UNSUBSCRIBE_QUERY:
-                        logger.debug("UNSUBSCRIBE [{}/{}] [{}] [{}]",
-                                     connectorCommand.getUnsubscribeQuery().getQuery().getQuery(),
-                                     connectorCommand.getUnsubscribeQuery().getQuery().getResultName(),
-                                     connectorCommand.getUnsubscribeQuery().getQuery().getClientId(),
-                                     messagingServerName);
-                        eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeQuery(connectorCommand
-                                                                                                    .getUnsubscribeQuery()
-                                                                                                    .getContext(),
-                                                                                            connectorCommand
-                                                                                                    .getUnsubscribeQuery()
-                                                                                                    .getQuery(),
-                                                                                            true));
-                        break;
-                    case QUERY_RESPONSE:
-                        if( logger.isDebugEnabled()) logger.debug("QUERY_RESPONSE {} from {}",
-                                     connectorCommand.getQueryResponse().getRequestIdentifier(),
-                                     ProcessingInstructionHelper.targetClient(connectorCommand.getQueryResponse()
-                                                                                              .getProcessingInstructionsList()));
-                        queryDispatcher.handleResponse(connectorCommand.getQueryResponse()
-                                , ProcessingInstructionHelper.targetClient(connectorCommand.getQueryResponse().getProcessingInstructionsList()),
-                                                                                             true);
-                        break;
-                    case QUERY_COMPLETE:
-                        logger.debug("QUERY_COMPLETE {} from {}",
-                                     connectorCommand.getQueryComplete().getMessageId(),
-                                     connectorCommand.getQueryComplete().getClient());
-                        queryDispatcher.handleComplete(connectorCommand.getQueryComplete().getMessageId(),
-                                                       connectorCommand.getQueryComplete().getClient(),
-                                                       true);
-                        break;
-                    case FLOW_CONTROL:
-                        logger.debug("FLOW_CONTROL {}", connectorCommand.getFlowControl());
-                        handleFlowControl(connectorCommand);
-                        break;
-                    case METRICS:
-                        eventPublisher.publishEvent(new MetricsEvents.MetricsChanged(connectorCommand
-                                                                                             .getMetrics()));
-                        break;
-                    case CLIENT_STATUS:
-                        updateClientStatus(connectorCommand.getClientStatus());
-                        break;
-                    case QUERY_HANDLER_STATUS:
-                        QueryHandlerStatus queryHandlerStatus = connectorCommand.getQueryHandlerStatus();
-                        if (!queryHandlerStatus.getConnected()){
-                            eventPublisher.publishEvent(new TopologyEvents.QueryHandlerDisconnected(queryHandlerStatus.getContext(), queryHandlerStatus.getClientName(), true));
-                        }
-                        break;
-                    case COMMAND_HANDLER_STATUS:
-                        CommandHandlerStatus commandHandlerStatus = connectorCommand.getCommandHandlerStatus();
-                        if (!commandHandlerStatus.getConnected()){
-                            eventPublisher.publishEvent(new TopologyEvents.CommandHandlerDisconnected(commandHandlerStatus.getContext(), commandHandlerStatus.getClientName(), true));
-                        }
-                        break;
-                    case CLIENT_EVENT_PROCESSOR_STATUS:
-                        eventPublisher.publishEvent(
-                                new EventProcessorEvents.EventProcessorStatusUpdate(ClientEventProcessorStatusProtoConverter
-                                                                       .fromProto(connectorCommand.getClientEventProcessorStatus()),
-                                                                                    true));
-                        break;
-                    case START_CLIENT_EVENT_PROCESSOR:
-                        ClientEventProcessor startProcessor = connectorCommand.getStartClientEventProcessor();
-                        eventPublisher.publishEvent(
-                                new EventProcessorEvents.StartEventProcessorRequest(startProcessor.getClient(),
-                                                                                    startProcessor.getProcessorName(), true));
-                        break;
-                    case PAUSE_CLIENT_EVENT_PROCESSOR:
-                        ClientEventProcessor pauseProcessor = connectorCommand.getPauseClientEventProcessor();
-                        eventPublisher.publishEvent(
-                                new EventProcessorEvents.PauseEventProcessorRequest(pauseProcessor.getClient(),
-                                                                                    pauseProcessor.getProcessorName(), true));
-                        break;
-                    case RELEASE_SEGMENT:
-                        ClientEventProcessorSegment releaseSegment = connectorCommand.getReleaseSegment();
-                        eventPublisher.publishEvent(new EventProcessorEvents.ReleaseSegmentRequest(releaseSegment.getClient(),
-                                                                                                   releaseSegment.getProcessorName(),
-                                                                                                   releaseSegment.getSegmentIdentifier(),
-                                                                                                   true));
-                        break;
-                    case REQUEST_PROCESSOR_STATUS:
-                        ClientEventProcessor requestStatus = connectorCommand.getRequestProcessorStatus();
-                        eventPublisher.publishEvent(new EventProcessorEvents.ProcessorStatusRequest(requestStatus.getClient(),
-                                                                                                    requestStatus.getProcessorName(),
-                                                                                                    true));
-                        break;
-                    case SUBSCRIPTION_QUERY_RESPONSE:
-                            SubscriptionQueryResponse response = connectorCommand.getSubscriptionQueryResponse();
-                            eventPublisher.publishEvent(new SubscriptionQueryEvents.SubscriptionQueryResponseReceived(response));
-                            break;
-                    default:
-                        break;
-                }
+                    eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeQuery(
+                            connectorCommand.getUnsubscribeQuery().getContext(),
+                            querySubscription,
+                            PROXIED
+                    ));
+                    break;
+                case QUERY_RESPONSE:
+                    String targetClient =
+                            targetClient(connectorCommand.getQueryResponse().getProcessingInstructionsList());
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(
+                                "QUERY_RESPONSE {} from {}",
+                                connectorCommand.getQueryResponse().getRequestIdentifier(),
+                                targetClient
+                        );
+                    }
+
+                    queryDispatcher.handleResponse(connectorCommand.getQueryResponse(), targetClient, PROXIED);
+                    break;
+                case QUERY_COMPLETE:
+                    logger.debug(
+                            "QUERY_COMPLETE {} from {}",
+                            connectorCommand.getQueryComplete().getMessageId(),
+                            connectorCommand.getQueryComplete().getClient()
+                    );
+
+                    queryDispatcher.handleComplete(
+                            connectorCommand.getQueryComplete().getMessageId(),
+                            connectorCommand.getQueryComplete().getClient(),
+                            PROXIED
+                    );
+                    break;
+                case FLOW_CONTROL:
+                    logger.debug("FLOW_CONTROL {}", connectorCommand.getFlowControl());
+
+                    handleFlowControl(connectorCommand);
+                    break;
+                case METRICS:
+                    eventPublisher.publishEvent(new MetricsEvents.MetricsChanged(connectorCommand.getMetrics()));
+                    break;
+                case CLIENT_STATUS:
+                    updateClientStatus(connectorCommand.getClientStatus());
+                    break;
+                case QUERY_HANDLER_STATUS:
+                    QueryHandlerStatus queryHandlerStatus = connectorCommand.getQueryHandlerStatus();
+                    if (!queryHandlerStatus.getConnected()) {
+                        eventPublisher.publishEvent(new TopologyEvents.QueryHandlerDisconnected(
+                                queryHandlerStatus.getContext(), queryHandlerStatus.getClientName(), PROXIED
+                        ));
+                    }
+                    break;
+                case COMMAND_HANDLER_STATUS:
+                    CommandHandlerStatus commandHandlerStatus = connectorCommand.getCommandHandlerStatus();
+                    if (!commandHandlerStatus.getConnected()) {
+                        eventPublisher.publishEvent(new TopologyEvents.CommandHandlerDisconnected(
+                                commandHandlerStatus.getContext(), commandHandlerStatus.getClientName(), PROXIED
+                        ));
+                    }
+                    break;
+                case CLIENT_EVENT_PROCESSOR_STATUS:
+                    eventPublisher.publishEvent(new EventProcessorEvents.EventProcessorStatusUpdate(
+                            fromProto(connectorCommand.getClientEventProcessorStatus()), PROXIED
+                    ));
+                    break;
+                case START_CLIENT_EVENT_PROCESSOR:
+                    ClientEventProcessor startProcessor = connectorCommand.getStartClientEventProcessor();
+                    eventPublisher.publishEvent(new EventProcessorEvents.StartEventProcessorRequest(
+                            startProcessor.getClient(), startProcessor.getProcessorName(), PROXIED
+                    ));
+                    break;
+                case PAUSE_CLIENT_EVENT_PROCESSOR:
+                    ClientEventProcessor pauseProcessor = connectorCommand.getPauseClientEventProcessor();
+                    eventPublisher.publishEvent(new EventProcessorEvents.PauseEventProcessorRequest(
+                            pauseProcessor.getClient(), pauseProcessor.getProcessorName(), PROXIED
+                    ));
+                    break;
+                case RELEASE_SEGMENT:
+                    ClientEventProcessorSegment releaseSegment = connectorCommand.getReleaseSegment();
+                    eventPublisher.publishEvent(new EventProcessorEvents.ReleaseSegmentRequest(
+                            releaseSegment.getClient(),
+                            releaseSegment.getProcessorName(),
+                            releaseSegment.getSegmentIdentifier(),
+                            PROXIED
+                    ));
+                    break;
+                case REQUEST_PROCESSOR_STATUS:
+                    ClientEventProcessor requestStatus = connectorCommand.getRequestProcessorStatus();
+                    eventPublisher.publishEvent(new EventProcessorEvents.ProcessorStatusRequest(
+                            requestStatus.getClient(), requestStatus.getProcessorName(), PROXIED
+                    ));
+                    break;
+                case SUBSCRIPTION_QUERY_RESPONSE:
+                    SubscriptionQueryResponse response = connectorCommand.getSubscriptionQueryResponse();
+                    eventPublisher.publishEvent(
+                            new SubscriptionQueryEvents.SubscriptionQueryResponseReceived(response)
+                    );
+                    break;
+                default:
+                    break;
+            }
         }
 
         private void handleFlowControl(ConnectorCommand connectorCommand) {
             if (Group.COMMAND.equals(connectorCommand.getFlowControl().getGroup())) {
                 if (commandQueueListener == null) {
-                    commandQueueListener = new GrpcInternalCommandDispatcherListener(commandDispatcher
-                                                                                             .getCommandQueues(),
-                                                                                     connectorCommand
-                                                                                             .getFlowControl()
-                                                                                             .getNodeName(),
-                                                                                     responseObserver, commandProcessingThreads);
-
+                    commandQueueListener = new GrpcInternalCommandDispatcherListener(
+                            commandDispatcher.getCommandQueues(),
+                            connectorCommand.getFlowControl().getNodeName(),
+                            responseObserver,
+                            commandProcessingThreads
+                    );
                     dispatchListeners.add(commandQueueListener);
                 }
                 commandQueueListener.addPermits(connectorCommand.getFlowControl().getPermits());
             }
             if (Group.QUERY.equals(connectorCommand.getFlowControl().getGroup())) {
                 if (queryQueueListener == null) {
-                    queryQueueListener = new GrpcInternalQueryDispatcherListener(queryDispatcher,
-                                                                                 connectorCommand
-                                                                                         .getFlowControl()
-                                                                                         .getNodeName(),
-                                                                                 responseObserver, queryProcessingThreads);
+                    queryQueueListener = new GrpcInternalQueryDispatcherListener(
+                            queryDispatcher,
+                            connectorCommand.getFlowControl().getNodeName(),
+                            responseObserver,
+                            queryProcessingThreads
+                    );
                 }
                 queryQueueListener.addPermits(connectorCommand.getFlowControl().getPermits());
                 dispatchListeners.add(queryQueueListener);
@@ -350,7 +408,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void checkClient(String context, String component, String clientName) {
-            if( clients.add(new ClientIdentification(context, clientName))) {
+            if (clients.add(new ClientIdentification(context, clientName))) {
                 eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
                                                                                     component,
                                                                                     clientName,
@@ -359,26 +417,30 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void updateClientStatus(ClientStatus clientStatus) {
-            ClientIdentification clientIdentification = new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName());
-            if( clientStatus.getConnected()) {
-
-                if( clients.add(clientIdentification) ){
-                    // unknown client
-                    eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientStatus.getContext(),
-                                                                                       clientStatus.getComponentName(),
-                                                                                       clientStatus.getClientName(),
-                                                                                       messagingServerName));
+            ClientIdentification clientIdentification =
+                    new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName());
+            if (clientStatus.getConnected()) {
+                if (clients.add(clientIdentification)) {
+                    // Unknown client
+                    eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(
+                            clientStatus.getContext(),
+                            clientStatus.getComponentName(),
+                            clientStatus.getClientName(),
+                            messagingServerName
+                    ));
                 }
             } else {
-                if( clients.remove(clientIdentification)) {
-                    // known client
+                if (clients.remove(clientIdentification)) {
+                    // Known client
                     logger.info("Client disconnected: {}", clientStatus.getClientName());
                     commandHandlerPerContextClient.remove(clientIdentification);
                     queryHandlerPerContextClient.remove(clientIdentification);
-                    eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(clientStatus.getContext(),
-                                                                                       clientStatus.getComponentName(),
-                                                                                       clientStatus.getClientName(),
-                                                                                       messagingServerName));
+                    eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
+                            clientStatus.getContext(),
+                            clientStatus.getComponentName(),
+                            clientStatus.getClientName(),
+                            messagingServerName
+                    ));
                 }
             }
         }
@@ -396,7 +458,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void closeConnections() {
-            if( messagingServerName != null) {
+            if (messagingServerName != null) {
                 connections.remove(messagingServerName);
             }
             if (commandQueueListener != null) {
@@ -409,10 +471,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 dispatchListeners.remove(queryQueueListener);
                 queryQueueListener = null;
             }
-            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(client.getContext(),
-                                                                                                        null,
-                                                                                                        client.getClient(),
-                                                                                                        messagingServerName)));
+            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
+                    client.getContext(), null, client.getClient(), messagingServerName
+            )));
             eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
         }
 
