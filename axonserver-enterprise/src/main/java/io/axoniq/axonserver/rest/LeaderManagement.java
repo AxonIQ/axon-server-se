@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
+ * Rest APIs for Leader management.
+ *
  * Author: marc
  */
 @RestController
@@ -22,6 +24,10 @@ public class LeaderManagement {
         this.localRaftGroupService = localRaftGroupService;
     }
 
+    /**
+     * Forces the current leader for the specified context to step down.
+     * @param name the context
+     */
     @GetMapping( path = "context/{name}/stepdown")
     public void stepdown(@PathVariable("name")  String name) {
         localRaftGroupService.stepDown(name);
