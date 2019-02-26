@@ -6,12 +6,10 @@ import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.EventTransactionsSnapshotDataStore;
-import io.axoniq.axonserver.enterprise.cluster.snapshot.LoadBalanceStrategySnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ProcessorLoadBalancingSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.UserSnapshotDataStore;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.springframework.context.ApplicationContext;
@@ -23,6 +21,7 @@ import java.util.function.Function;
 import static java.util.Arrays.asList;
 
 /**
+ * Providers of the list of {@link SnapshotDataStore}s needed to replicate the full state.
  * @author Sara Pellegrini
  * @since 4.1
  */
@@ -33,8 +32,6 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
 
     private final UserRepository userRepository;
 
-    private final LoadBalanceStrategyRepository loadBalanceStrategyRepository;
-
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
     private final JpaContextApplicationController contextApplicationController;
@@ -43,24 +40,26 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
     public SnapshotDataProviders(
             ApplicationController applicationController,
             UserRepository userRepository,
-            LoadBalanceStrategyRepository loadBalanceStrategyRepository,
             ProcessorLoadBalancingRepository processorLoadBalancingRepository,
             JpaContextApplicationController contextApplicationController,
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
-        this.loadBalanceStrategyRepository = loadBalanceStrategyRepository;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
         this.contextApplicationController = contextApplicationController;
         this.applicationContext = applicationContext;
     }
 
+    /**
+     * Returns the list of {@link SnapshotDataStore}s needed to replicate the full state for the specified context.
+     * @param context the context
+     * @return the list of {@link SnapshotDataStore}s
+     */
     public List<SnapshotDataStore> apply(String context){
         LocalEventStore localEventStore = applicationContext.getBean(LocalEventStore.class);
         return asList(new ApplicationSnapshotDataStore(context, applicationController),
                       new ContextApplicationSnapshotDataStore(context, contextApplicationController),
                       new EventTransactionsSnapshotDataStore(context, localEventStore),
-                      new LoadBalanceStrategySnapshotDataStore(loadBalanceStrategyRepository),
                       new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
                       new SnapshotTransactionsSnapshotDataStore(context, localEventStore),
                       new UserSnapshotDataStore(context, userRepository));
