@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
@@ -370,7 +372,22 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             new SubscriptionQueryEvents.SubscriptionQueryResponseReceived(response)
                     );
                     break;
+                case SPLIT_SEGMENT:
+                    ClientEventProcessorSegment splitSegment = connectorCommand.getSplitSegment();
+                    eventPublisher.publishEvent(new SplitSegmentRequest(
+                            PROXIED, splitSegment.getClient(), splitSegment.getProcessorName(),
+                            splitSegment.getSegmentIdentifier()
+                    ));
+                    break;
+                case MERGE_SEGMENT:
+                    ClientEventProcessorSegment mergeSegment = connectorCommand.getMergeSegment();
+                    eventPublisher.publishEvent(new MergeSegmentRequest(
+                            PROXIED, mergeSegment.getClient(), mergeSegment.getProcessorName(),
+                            mergeSegment.getSegmentIdentifier()
+                    ));
+                    break;
                 default:
+                    logger.warn("Unknown operation occurred [{}]", connectorCommand.getRequestCase());
                     break;
             }
         }
