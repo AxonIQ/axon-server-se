@@ -1,12 +1,26 @@
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.grpc.control.*;
+import io.axoniq.axonserver.grpc.control.ClientIdentification;
+import io.axoniq.axonserver.grpc.control.MergeEventProcessorSegment;
+import io.axoniq.axonserver.grpc.control.NodeInfo;
+import io.axoniq.axonserver.grpc.control.PauseEventProcessor;
+import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
+import io.axoniq.axonserver.grpc.control.PlatformInfo;
+import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
+import io.axoniq.axonserver.grpc.control.ReleaseEventProcessorSegment;
+import io.axoniq.axonserver.grpc.control.RequestEventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.RequestReconnect;
+import io.axoniq.axonserver.grpc.control.SplitEventProcessorSegment;
+import io.axoniq.axonserver.grpc.control.StartEventProcessor;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
@@ -16,20 +30,28 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * GRPC service to track connected applications. Each application will first call the openStream operation with a register
- * request to retrieve information on which AxonServer node to connect to (Standard edition will always return current node as node
- * to connect to).
+ * gRPC service to track connected applications. Each application will first call the openStream operation with a
+ * register request to retrieve information on which Axon Server node to connect to (Standard edition will always return
+ * current node as node to connect to).
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 @Service("PlatformService")
 public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase implements AxonServerClientService {
-    private final Map<ClientComponent, SendingStreamObserver<PlatformOutboundInstruction>> connectionMap = new ConcurrentHashMap<>();
-    private final Logger logger = LoggerFactory.getLogger(PlatformService.class);
 
+    private static final Logger logger = LoggerFactory.getLogger(PlatformService.class);
+
+    private final Map<ClientComponent, SendingStreamObserver<PlatformOutboundInstruction>> connectionMap = new ConcurrentHashMap<>();
     private final Topology topology;
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
@@ -38,9 +60,19 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     @FunctionalInterface
     public interface InstructionConsumer {
+
         void accept(String client, String context, PlatformInboundInstruction instruction);
     }
 
+    /**
+     * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
+     *
+     * @param topology        the {@link Topology} of the group this Axon Server instance participates in
+     * @param contextProvider a {@link ContextProvider} used to retrieve the context this Axon Server instance is
+     *                        working under
+     * @param eventPublisher  the {@link ApplicationEventPublisher} to publish events through this Axon Server
+     *                        instance
+     */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher) {
@@ -64,28 +96,32 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                                                     .setHttpPort(connectTo.getHttpPort())
                                                 ).build());
             responseObserver.onCompleted();
-        } catch( RuntimeException cause) {
+        } catch (RuntimeException cause) {
             logger.warn("Error processing client request {}", request, cause);
             responseObserver.onError(GrpcExceptionBuilder.build(cause));
         }
     }
 
     @Override
-    public StreamObserver<PlatformInboundInstruction> openStream(StreamObserver<PlatformOutboundInstruction> responseObserver) {
+    public StreamObserver<PlatformInboundInstruction> openStream(
+            StreamObserver<PlatformOutboundInstruction> responseObserver) {
         String context = contextProvider.getContext();
-        SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver = new SendingStreamObserver<>(responseObserver);
+        SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver =
+                new SendingStreamObserver<>(responseObserver);
+
         return new ReceivingStreamObserver<PlatformInboundInstruction>(logger) {
             private ClientComponent clientComponent;
+
             @Override
             protected void consume(PlatformInboundInstruction instruction) {
                 RequestCase requestCase = instruction.getRequestCase();
                 handlers.getOrDefault(requestCase, new ArrayDeque<>())
                         .forEach(consumer -> consumer.accept(clientComponent.client, context, instruction));
 
-                if( instruction.hasRegister()) {
-                        ClientIdentification client = instruction.getRegister();
-                        clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
-                        registerClient(clientComponent, sendingStreamObserver);
+                if (instruction.hasRegister()) {
+                    ClientIdentification client = instruction.getRegister();
+                    clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
+                    registerClient(clientComponent, sendingStreamObserver);
                 }
             }
 
@@ -108,9 +144,12 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     public boolean requestReconnect(ClientComponent clientName) {
         logger.debug("Request reconnect: {}", clientName);
+
         StreamObserver<PlatformOutboundInstruction> stream = connectionMap.get(clientName);
-        if( stream != null) {
-            stream.onNext(PlatformOutboundInstruction.newBuilder().setRequestReconnect(RequestReconnect.newBuilder()).build());
+        if (stream != null) {
+            stream.onNext(PlatformOutboundInstruction.newBuilder()
+                                                     .setRequestReconnect(RequestReconnect.newBuilder())
+                                                     .build());
             return true;
         }
         return false;
@@ -119,11 +158,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public boolean requestReconnect(String client) {
         logger.debug("Request reconnect: {}", client);
         return connectionMap.entrySet().stream()
-                .filter(e -> e.getKey().client.equals(client))
-                .map(e -> requestReconnect(e.getKey()))
-                .findFirst().orElse(false);
+                            .filter(e -> e.getKey().client.equals(client))
+                            .map(e -> requestReconnect(e.getKey()))
+                            .findFirst().orElse(false);
     }
-
 
     private void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
@@ -132,16 +170,14 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .forEach(stream -> stream.onNext(instruction));
     }
 
-
     public void requestReconnectForContext(String context) {
         connectionMap.entrySet().stream()
-                            .filter(e -> e.getKey().context.equals(context))
-                            .forEach(e -> requestReconnect(e.getKey()));
-
+                     .filter(e -> e.getKey().context.equals(context))
+                     .forEach(e -> requestReconnect(e.getKey()));
     }
 
     @EventListener
-    public void onPauseEventProcessorRequest(PauseEventProcessorRequest evt){
+    public void onPauseEventProcessorRequest(PauseEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
                 .newBuilder()
                 .setPauseEventProcessor(PauseEventProcessor.newBuilder()
@@ -151,7 +187,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
     @EventListener
-    public void onStartEventProcessorRequest(StartEventProcessorRequest evt){
+    public void onStartEventProcessorRequest(StartEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
                 .newBuilder()
                 .setStartEventProcessor(StartEventProcessor.newBuilder().setProcessorName(evt.processorName()))
@@ -160,66 +196,119 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
     @EventListener
-    public void on(ReleaseSegmentRequest evt){
-        PlatformOutboundInstruction instruction = PlatformOutboundInstruction
-                .newBuilder()
-                .setReleaseSegment(ReleaseEventProcessorSegment.newBuilder()
-                                                               .setProcessorName(evt.processorName())
-                                                               .setSegmentIdentifier(evt.segmentId()))
-                .build();
-        this.sendToClient(evt.clientName(), instruction);
-    }
+    public void on(ReleaseSegmentRequest event) {
+        ReleaseEventProcessorSegment releaseSegmentRequest =
+                ReleaseEventProcessorSegment.newBuilder()
+                                            .setProcessorName(event.getProcessorName())
+                                            .setSegmentIdentifier(event.getSegmentId())
+                                            .build();
 
-    @EventListener
-    public void on(ProcessorStatusRequest evt){
-        PlatformOutboundInstruction instruction = PlatformOutboundInstruction
-                .newBuilder()
-                .setRequestEventProcessorInfo(RequestEventProcessorInfo.newBuilder()
-                                                                       .setProcessorName(evt.processorName()))
-                .build();
-        this.sendToClient(evt.clientName(), instruction);
+        PlatformOutboundInstruction outboundInstruction =
+                PlatformOutboundInstruction.newBuilder()
+                                           .setReleaseSegment(releaseSegmentRequest)
+                                           .build();
+        sendToClient(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        StreamObserver<PlatformOutboundInstruction> connection = connectionMap.remove(new ClientComponent(event.getClient(), event.getComponentName(), event.getContext()));
+        StreamObserver<PlatformOutboundInstruction> connection = connectionMap
+                .remove(new ClientComponent(event.getClient(), event.getComponentName(), event.getContext()));
         logger.debug("application disconnected: {}, connection: {}", event.getClient(), connection);
-        if( connection != null) {
+        if (connection != null) {
             try {
                 connection.onCompleted();
-            } catch (Exception ex ) {
-                logger.debug("Error while closing tracking event processor connection from {} - {}", event.getClient(), ex.getMessage());
+            } catch (Exception ex) {
+                logger.debug("Error while closing tracking event processor connection from {} - {}",
+                             event.getClient(),
+                             ex.getMessage());
             }
         }
     }
 
     public void onInboundInstruction(RequestCase requestCase, InstructionConsumer consumer) {
-        Deque<InstructionConsumer> consumers = handlers.computeIfAbsent(requestCase,rc -> new ArrayDeque<>());
+        Deque<InstructionConsumer> consumers = handlers.computeIfAbsent(requestCase, rc -> new ArrayDeque<>());
         consumers.add(consumer);
     }
 
+    @EventListener
+    public void on(SplitSegmentRequest event) {
+        SplitEventProcessorSegment splitSegmentRequest =
+                SplitEventProcessorSegment.newBuilder()
+                                          .setProcessorName(event.getProcessorName())
+                                          .setSegmentIdentifier(event.getSegmentId())
+                                          .build();
+
+        PlatformOutboundInstruction outboundInstruction =
+                PlatformOutboundInstruction.newBuilder()
+                                           .setSplitEventProcessorSegment(splitSegmentRequest)
+                                           .build();
+        sendToClient(event.getClientName(), outboundInstruction);
+    }
+
+    @EventListener
+    public void on(MergeSegmentRequest event) {
+        MergeEventProcessorSegment mergeSegmentRequest =
+                MergeEventProcessorSegment.newBuilder()
+                                          .setProcessorName(event.getProcessorName())
+                                          .setSegmentIdentifier(event.getSegmentId())
+                                          .build();
+
+        PlatformOutboundInstruction outboundInstruction =
+                PlatformOutboundInstruction.newBuilder()
+                                           .setMergeEventProcessorSegment(mergeSegmentRequest)
+                                           .build();
+        sendToClient(event.getClientName(), outboundInstruction);
+    }
+
+    @EventListener
+    public void on(ProcessorStatusRequest event) {
+        RequestEventProcessorInfo eventProcessorInfoRequest =
+                RequestEventProcessorInfo.newBuilder()
+                                         .setProcessorName(event.processorName())
+                                         .build();
+
+        PlatformOutboundInstruction outboundInstruction =
+                PlatformOutboundInstruction.newBuilder()
+                                           .setRequestEventProcessorInfo(eventProcessorInfoRequest)
+                                           .build();
+        sendToClient(event.clientName(), outboundInstruction);
+    }
 
     private void registerClient(ClientComponent clientComponent,
-                                SendingStreamObserver<PlatformOutboundInstruction> responseObserver){
-        connectionMap.put(clientComponent, responseObserver);
+                                SendingStreamObserver<PlatformOutboundInstruction> responseObserver) {
         logger.debug("Registered client : {}", clientComponent);
-        eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientComponent.context,
-                                                                            clientComponent.component, clientComponent.client));
+
+        connectionMap.put(clientComponent, responseObserver);
+        eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(
+                clientComponent.context, clientComponent.component, clientComponent.client
+        ));
     }
 
-    private void deregisterClient(ClientComponent cc){
-        logger.debug("De-registered client : {}", cc);
-        if( cc != null)  {
-            connectionMap.remove(cc);
-            eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(cc.context,cc.component, cc.client, null));
+    private void deregisterClient(ClientComponent clientComponent) {
+        logger.debug("De-registered client : {}", clientComponent);
+
+        if (clientComponent != null) {
+            connectionMap.remove(clientComponent);
+            eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
+                    clientComponent.context, clientComponent.component, clientComponent.client, null
+            ));
         }
-
     }
 
+    /**
+     * Return a {@link Set} of connected clients as {@link ClientComponent} instances.
+     *
+     * @return a {@link Set} of {@link ClientComponent} instances representing the connected clients.
+     */
     public Set<ClientComponent> getConnectedClients() {
         return connectionMap.keySet();
     }
 
+    /**
+     * Represent a client, specifying the {@code client} id, {@code component} name and the {@code context} of the
+     * given client.
+     */
     public static class ClientComponent {
 
         private final String client;
@@ -234,20 +323,39 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
             ClientComponent that = (ClientComponent) o;
             return Objects.equals(client, that.client);
         }
 
+        /**
+         * Return the id of this client.
+         *
+         * @return a {@link String} representing the id of this client
+         */
         public String getClient() {
             return client;
         }
 
+        /**
+         * Return the component name of this client.
+         *
+         * @return a {@link String} representing the component name of this client
+         */
         public String getComponent() {
             return component;
         }
 
+        /**
+         * Return the context this client is working under.
+         *
+         * @return a {@link String} representing the context this client is working under
+         */
         public String getContext() {
             return context;
         }
@@ -261,6 +369,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         public String toString() {
             return "ClientComponent{" +
                     "client='" + client + '\'' +
+                    ", component='" + component + '\'' +
+                    ", context='" + context + '\'' +
                     '}';
         }
     }
