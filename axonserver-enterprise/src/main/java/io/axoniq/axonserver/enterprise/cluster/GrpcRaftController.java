@@ -234,7 +234,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
 
     /**
-     * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than 100 transactions per second
+     * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than 100 transactions per second.
      */
     @Scheduled(fixedDelay = 1000)
     public void syncStore() {
@@ -243,7 +243,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
 
     /**
-     * Retrieve all non-admin Contexts that this this node is member of
+     * Retrieve all non-admin Contexts that this node is member of.
      * @return List of context names
      */
     public Iterable<String> getStorageContexts() {

@@ -237,25 +237,19 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void deleteNode(String name) {
         ClusterNode clusterNode = contextController.getNode(name);
-        Set<ContextClusterNode> membersToDelete = clusterNode.getContexts()
-                                                             .stream()
-                                                             .filter(contextClusterNode ->
-                                                                             contextClusterNode.getContext()
-                                                                                               .getAllNodes().size()
-                                                                                     > 1)
-                                                             .collect(Collectors.toSet());
+        Set<ContextClusterNode> membersToDelete =
+                clusterNode.getContexts()
+                           .stream()
+                           .filter(contextClusterNode -> contextClusterNode.getContext().getAllNodes().size() > 1)
+                           .collect(Collectors.toSet());
 
-        List<CompletableFuture<Void>> completableFutures = membersToDelete.stream().map(contextClusterNode ->
-                                                                                                removeNodeFromContext(
-                                                                                                        contextClusterNode
-                                                                                                                .getContext()
-                                                                                                                .getName(),
-                                                                                                        contextClusterNode
-                                                                                                                .getClusterNode()
-                                                                                                                .getName(),
-                                                                                                        contextClusterNode
-                                                                                                                .getClusterNodeLabel())
-        ).collect(Collectors.toList());
+        List<CompletableFuture<Void>> completableFutures =
+                membersToDelete.stream()
+                               .map(contextClusterNode ->
+                                            removeNodeFromContext( contextClusterNode.getContext().getName(),
+                                                                   contextClusterNode.getClusterNode().getName(),
+                                                                   contextClusterNode.getClusterNodeLabel())
+                               ).collect(Collectors.toList());
 
         try {
             CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]))
@@ -309,16 +303,6 @@ class LocalRaftConfigService implements RaftConfigService {
         }
     }
 
-    /**
-     * Handles a join request from another node. Can only be executed on the leader of the _admin context.
-     * Adds the new node to all specified contexts. If no contexts are specified it adds the node to all contexts.
-     * First sends the addNode request to the leader of the context, then sends the new configuration of the context as an
-     * entry to the _admin context, so it can update the master configuration.
-     *
-     * If a context has a large eventstore it may take some time to complete.
-     *
-     * @param nodeInfo Node information on the new node
-     */
     @Override
     public void join(NodeInfo nodeInfo) {
         RaftNode adminNode = grpcRaftController.getRaftNode(getAdmin());
@@ -392,10 +376,6 @@ class LocalRaftConfigService implements RaftConfigService {
         }
     }
 
-    /**
-     * Initialize a node with specified contexts. Node becomes leader for all specified contexts.
-     * @param contexts
-     */
     @Override
     public void init(List<String> contexts) {
         try {
@@ -613,22 +593,22 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteUser(User request) {
+    public CompletableFuture<Void> deleteUser(User user) {
         RaftNode config = grpcRaftController.getRaftNode(getAdmin());
-        return config.appendEntry(DELETE_USER, request.toByteArray());
+        return config.appendEntry(DELETE_USER, user.toByteArray());
     }
 
     @Override
-    public CompletableFuture<Void> deleteApplication(Application request) {
+    public CompletableFuture<Void> deleteApplication(Application application) {
         RaftNode config = grpcRaftController.getRaftNode(getAdmin());
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
-        config.appendEntry(DELETE_APPLICATION, request.toByteArray())
+        config.appendEntry(DELETE_APPLICATION, application.toByteArray())
               .thenAccept(done -> contextController
                       .getContexts().forEach(c -> completableFutures.add(
                               raftGroupServiceFactory.getRaftGroupService(c.getName())
                                                      .updateApplication(ContextApplication.newBuilder()
                                                                                           .setContext(c.getName())
-                                                                                          .setName(request.getName())
+                                                                                          .setName(application.getName())
                                                                                           .build())))
               );
         return CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]));

@@ -148,16 +148,16 @@ public class RemoteRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteUser(User request) {
+    public CompletableFuture<Void> deleteUser(User user) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.deleteUser(request, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.deleteUser(user, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
         return confirmation;
     }
 
     @Override
-    public CompletableFuture<Void> deleteApplication(Application request) {
+    public CompletableFuture<Void> deleteApplication(Application application) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.deleteApplication(request, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.deleteApplication(application, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
         return confirmation;
     }
 }
