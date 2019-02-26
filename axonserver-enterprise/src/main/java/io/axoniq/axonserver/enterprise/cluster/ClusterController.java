@@ -426,10 +426,6 @@ public class ClusterController implements SmartLifecycle {
         return messagingPlatformConfiguration.getCommandFlowControl();
     }
 
-    public FlowControl getEventFlowControl() {
-        return messagingPlatformConfiguration.getEventFlowControl();
-    }
-
     public FlowControl getQueryFlowControl() {
         return messagingPlatformConfiguration.getQueryFlowControl();
     }

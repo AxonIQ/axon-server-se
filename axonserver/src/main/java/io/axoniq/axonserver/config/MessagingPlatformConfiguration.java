@@ -71,9 +71,6 @@ public class MessagingPlatformConfiguration {
     private FlowControl queryFlowControl = new FlowControl();
 
     @NestedConfigurationProperty
-    private FlowControl eventFlowControl = new FlowControl();
-
-    @NestedConfigurationProperty
     private ClusterConfiguration cluster = new ClusterConfiguration();
 
     /**
@@ -228,14 +225,6 @@ public class MessagingPlatformConfiguration {
 
     public void setQueryFlowControl(FlowControl queryFlowControl) {
         this.queryFlowControl = queryFlowControl;
-    }
-
-    public FlowControl getEventFlowControl() {
-        return eventFlowControl;
-    }
-
-    public void setEventFlowControl(FlowControl eventFlowControl) {
-        this.eventFlowControl = eventFlowControl;
     }
 
     public ClusterConfiguration getCluster() {
