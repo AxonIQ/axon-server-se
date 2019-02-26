@@ -9,15 +9,27 @@ services:
       - SPRING_DATASOURCE_USERNAME=demouser
       - SPRING_DATASOURCE_PASSWORD=thepassword
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-      - AXON.AXONSERVER.SERVERS=axonserver-enterprise-1
+      - SPRING_JPA_HIBERNATE_DDL-AUTO=create-drop
+      - AXON_AXONSERVER_SERVERS=axonserver-enterprise-1
+      - AXON_AXONSERVER_CONTEXT=default
     ports:
       - 9900:9900
     deploy:
       replicas: 2
+    depends_on:
+      - postgres-db
+  curl-loop:
+    image: plavignotte/continuous-curl
+    environment:
+      - LOOP=4
+      - METHOD=GET
+    command: http://sample-command-processor-axonserver-client:9900/cmd/echo?text=ciao
+    depends_on:
+      - sample-command-processor-axonserver-client
   postgres-db:
     image: postgres
     environment:
-      - POSTGRES_DB=axon-scale-demo
+      - POSTGRES_DB=sample
       - POSTGRES_USER=demouser
       - POSTGRES_PASSWORD=thepassword
     volumes:
