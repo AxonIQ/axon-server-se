@@ -1,13 +1,14 @@
 package io.axoniq.axonserver.message.query.subscription;
 
-import io.axoniq.axonserver.SubscriptionEvents;
-import io.axoniq.axonserver.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryCanceled;
-import io.axoniq.axonserver.SubscriptionQueryEvents.SubscriptionQueryRequestEvent;
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequestEvent;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
@@ -33,7 +34,7 @@ public class SubscriptionQueryDispatcher {
     private final Logger logger = LoggerFactory.getLogger(SubscriptionQueryDispatcher.class);
     private final Iterable<ContextSubscriptionQuery> directSubscriptions;
     private final QueryRegistrationCache registrationCache;
-    private final Map<String, Set<String>> subscriptionsSent = new ConcurrentHashMap<>();
+    private final Map<ClientIdentification, Set<String>> subscriptionsSent = new ConcurrentHashMap<>();
 
     public SubscriptionQueryDispatcher(Iterable<ContextSubscriptionQuery> directSubscriptions,
                                        QueryRegistrationCache registrationCache) {
@@ -62,7 +63,7 @@ public class SubscriptionQueryDispatcher {
         }
         handlers.forEach(handler -> {
             handler.dispatch(event.subscriptionQueryRequest());
-            subscriptionsSent.computeIfAbsent(handler.getClientName(), client -> new CopyOnWriteArraySet<>()).add(event.subscriptionId());
+            subscriptionsSent.computeIfAbsent(handler.getClient(), client -> new CopyOnWriteArraySet<>()).add(event.subscriptionId());
         });
     }
 
@@ -80,7 +81,7 @@ public class SubscriptionQueryDispatcher {
 
     @EventListener
     public void on(SubscriptionEvents.SubscribeQuery event){
-        String clientName = event.getSubscription().getClientId();
+        ClientIdentification clientName = new ClientIdentification(event.getContext(),event.getSubscription().getClientId());
         QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), event.getSubscription().getQuery());
         directSubscriptions.forEach(subscription -> {
             String subscriptionId = subscription.subscriptionQuery().getSubscriptionIdentifier();

@@ -4,7 +4,7 @@ import io.axoniq.axonhub.client.query.QueryPriorityCalculator;
 import org.axonframework.queryhandling.QueryMessage;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class StringLengthQueryPriorityProvider implements QueryPriorityCalculator {
     @Override

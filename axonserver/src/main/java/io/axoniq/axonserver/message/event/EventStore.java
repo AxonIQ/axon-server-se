@@ -20,14 +20,14 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public interface EventStore {
     CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage);
 
-    StreamObserver<Event> createAppendEventConnection(String context,
-                                                      StreamObserver<Confirmation> responseObserver);
+    StreamObserver<InputStream> createAppendEventConnection(String context,
+                                                            StreamObserver<Confirmation> responseObserver);
 
     void listAggregateEvents(String context, GetAggregateEventsRequest request,
                              StreamObserver<InputStream> responseStreamObserver);

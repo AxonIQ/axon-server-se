@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.QueryRequestValidator;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.internal.ForwardedQuery;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.grpc.stub.StreamObserver;
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Reads messages for a specific messagingServerName from a queue and sends them to the messagingServerName using gRPC.
  * Only reads messages when there are permits left.
- * Author: marc
+ * @author Marc Gathier
  */
 public class GrpcInternalQueryDispatcherListener extends GrpcFlowControlledDispatcherListener<ConnectorResponse, WrappedQuery> implements QueryRequestValidator {
     private static final Logger logger = LoggerFactory.getLogger(GrpcInternalQueryDispatcherListener.class);
@@ -27,10 +27,17 @@ public class GrpcInternalQueryDispatcherListener extends GrpcFlowControlledDispa
 
     @Override
     protected boolean send(WrappedQuery message) {
-        QueryRequest request = validate(message, queryDispatcher, logger);
+        SerializedQuery request = validate(message, queryDispatcher, logger);
         if( request == null) return false;
 
-        inboundStream.onNext(ConnectorResponse.newBuilder().setQuery(QueryRequest.newBuilder(request).addProcessingInstructions(ProcessingInstructionHelper.context(message.context()))).build());
+        logger.warn("Sending query to {}: {}", message.queryRequest().client(), message.queryRequest().query());
+        inboundStream.onNext(ConnectorResponse.newBuilder()
+                                              .setQuery(
+                                                    ForwardedQuery.newBuilder()
+                                                                  .setClient(message.client().getClient())
+                                                                  .setContext(message.client().getContext())
+                                                                  .setQuery(request.toByteString()))
+                                              .build());
         return true;
     }
 

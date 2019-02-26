@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class CommandDispatcher {
     @FunctionalInterface
@@ -22,6 +22,8 @@ public class CommandDispatcher {
         executorMap.put("unregister-node", UnregisterNode::run);
         executorMap.put("register-context", RegisterContext::run);
         executorMap.put("delete-context", DeleteContext::run);
+        executorMap.put("add-node-to-context", AddNodeToContext::run);
+        executorMap.put("delete-node-from-context", DeleteNodeFromContext::run);
         executorMap.put("contexts", ListContexts::run);
         executorMap.put("register-user", RegisterUser::run);
         executorMap.put("delete-user", DeleteUser::run);

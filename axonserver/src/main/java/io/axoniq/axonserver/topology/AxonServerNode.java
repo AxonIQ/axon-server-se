@@ -3,7 +3,7 @@ package io.axoniq.axonserver.topology;
 import java.util.Collection;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface AxonServerNode {
 

@@ -4,10 +4,11 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import static io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter.asSerializedTransactionWithToken;
 
 /**
  * Author: marc
@@ -32,16 +33,11 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                     if( logger.isTraceEnabled()) {
                         logger.trace("Index {}: Received Event with index: {} and {} events",
                                     e.getIndex(),
-                                    transactionWithToken.getIndex(),
+                                    transactionWithToken.getToken(),
                                     transactionWithToken.getEventsCount()
                         );
                     }
-                    if (transactionWithToken.getIndex() > localEventStore.getLastEventIndex(groupId)) {
-                        localEventStore.syncEvents(groupId, new TransactionInformation(transactionWithToken.getIndex()), transactionWithToken);
-                    } else {
-                        logger.debug("Index {}: event already applied",
-                                    e.getIndex());
-                    }
+                    localEventStore.syncEvents(groupId, asSerializedTransactionWithToken(transactionWithToken));
                 } catch (InvalidProtocolBufferException e1) {
                     throw new RuntimeException("Error processing entry: " + e.getIndex(), e1);
                 }
@@ -49,12 +45,7 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                 TransactionWithToken transactionWithToken = null;
                 try {
                     transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
-                    if (transactionWithToken.getIndex() > localEventStore.getLastSnapshotIndex(groupId)) {
-                        localEventStore.syncSnapshots(groupId, new TransactionInformation(transactionWithToken.getIndex()), transactionWithToken);
-                    } else {
-                        logger.debug("Index {}: snapshot already applied",
-                                    e.getIndex());
-                    }
+                    localEventStore.syncSnapshots(groupId, asSerializedTransactionWithToken(transactionWithToken));
                 } catch (InvalidProtocolBufferException e1) {
                     throw new RuntimeException("Error processing entry: " + e.getIndex(), e1);
                 }
@@ -62,10 +53,5 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
             }
         }
 
-    }
-
-    @Override
-    public int priority() {
-        return 0;
     }
 }

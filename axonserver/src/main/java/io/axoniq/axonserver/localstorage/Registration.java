@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.localstorage;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @FunctionalInterface
 public interface Registration {

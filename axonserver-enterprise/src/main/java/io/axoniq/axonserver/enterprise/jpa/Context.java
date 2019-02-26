@@ -14,7 +14,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.PreRemove;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity(name = "Context")
 public class Context implements Serializable {
@@ -80,5 +80,18 @@ public class Context implements Serializable {
 
     public void addClusterNode(ContextClusterNode contextClusterNode) {
         nodes.add(contextClusterNode);
+    }
+
+    @Override
+    public String toString() {
+        return "Context{" +
+                "name='" + name + '\'' +
+                '}';
+    }
+
+    public String getNodeLabel(String node) {
+        return nodes.stream().filter(n -> n.getClusterNode().getName().equals(node))
+                    .map(ContextClusterNode::getClusterNodeLabel)
+                    .findFirst().orElse(null);
     }
 }

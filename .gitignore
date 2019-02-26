@@ -1,37 +1,24 @@
-target/
-log/
-bin/
+# IntelliJ / Eclipse
+.idea
+*.iml
+.settings
+.classpath
+.project
+.factorypath
 
+# Maven
+target
+
+tmp
+tmp-?
+
+# axoniq.license
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 token.properties
 
 #webpack building
 package-lock.json
 */node/
-*/node5/
 */node_modules/
 */src/main/resources/static/dist/
-
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/build/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/

@@ -14,7 +14,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -29,11 +31,9 @@ public abstract class SegmentBasedLogEntryStore {
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;
     protected volatile SegmentBasedLogEntryStore next;
-    private final String type;
 
-    public SegmentBasedLogEntryStore(String eventTypeContext, IndexManager indexManager, StorageProperties storageProperties) {
-        this.type = eventTypeContext;
-        this.context = eventTypeContext;
+    public SegmentBasedLogEntryStore(String context, IndexManager indexManager, StorageProperties storageProperties) {
+        this.context = context;
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
     }
@@ -56,7 +56,7 @@ public abstract class SegmentBasedLogEntryStore {
     }
 
     public long getFirstToken() {
-        if( next != null) return next.getFirstToken();
+        if( next != null && !next.getSegments().isEmpty()) return next.getFirstToken();
         if( getSegments().isEmpty() ) return 0;
         return getSegments().last();
     }
@@ -83,7 +83,7 @@ public abstract class SegmentBasedLogEntryStore {
     }
 
     protected ValidationResult validateSegment(long segment) {
-        logger.debug("{}: Validating segment: {}", type, segment);
+        logger.debug("{}: Validating segment: {}", context, segment);
         Iterator<Entry> iterator = getEntries(segment, segment, true);
         try {
             Entry last = null;
@@ -94,10 +94,6 @@ public abstract class SegmentBasedLogEntryStore {
         } catch (Exception ex) {
             return new ValidationResult(segment, ex.getMessage());
         }
-    }
-
-    public String getType() {
-        return type;
     }
 
     public abstract void initSegments(long maxValue);
@@ -126,7 +122,7 @@ public abstract class SegmentBasedLogEntryStore {
 
     protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {
         SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
-        File events  = new File(storageProperties.getStorage(type));
+        File events  = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(events);
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getLogSuffix());
         Arrays.stream(eventFiles)
@@ -155,8 +151,8 @@ public abstract class SegmentBasedLogEntryStore {
 
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
         Stream<String> filenames = getSegments().stream().filter(s -> s > lastSegmentBackedUp).map( s -> Stream.of(
-                storageProperties.logFile(type, s).getAbsolutePath(),
-                storageProperties.indexFile(type, s).getAbsolutePath()
+                storageProperties.logFile(context, s).getAbsolutePath(),
+                storageProperties.indexFile(context, s).getAbsolutePath()
         )).flatMap(Function.identity());
         if( next == null) return filenames;
         return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
@@ -211,4 +207,8 @@ public abstract class SegmentBasedLogEntryStore {
     }
 
     protected abstract int getPosition(long segment, long nextIndex);
+
+    protected abstract void removeSegment(long segment);
+
+    protected abstract void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier);
 }

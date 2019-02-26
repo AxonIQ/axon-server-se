@@ -7,7 +7,7 @@ import io.axoniq.axonserver.localstorage.query.result.NullExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.StringExpressionResult;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  * left(value, chars)
  */
 public class LeftExpression implements Expression {

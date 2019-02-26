@@ -5,7 +5,6 @@ import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
-import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -15,6 +14,10 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
 
+import java.util.Collections;
+import java.util.function.BiConsumer;
+
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -47,6 +50,7 @@ public class CandidateStateTest {
         when(raftGroup.localLogEntryStore()).thenReturn(new InMemoryLogEntryStore("Test"));
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
+        when(raftGroup.createIterator()).thenReturn(Collections.emptyIterator());
         LogEntryProcessor logEntryProcessor = mock(LogEntryProcessor.class);
         when(raftGroup.logEntryProcessor()).thenReturn(logEntryProcessor);
         when(raftGroup.localNode()).thenReturn(localNode);
@@ -60,13 +64,22 @@ public class CandidateStateTest {
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
 
+        CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
+        when(currentConfiguration.groupMembers()).thenReturn(asList(node("node0"),
+                                                                    node("node1"),
+                                                                    node("node2")));
 
+        BiConsumer<Long, String> termUpdateHandler = (term, cause) -> electionStore.updateCurrentTerm(term);
         candidateState = CandidateState.builder()
                                        .raftGroup(raftGroup)
                                        .transitionHandler(transitionHandler)
+                                       .termUpdateHandler(termUpdateHandler)
                                        .snapshotManager(new FakeSnapshotManager())
                                        .schedulerFactory(() -> fakeScheduler)
                                        .randomValueSupplier((min, max) -> electionTimeout)
+                                       .currentConfiguration(currentConfiguration)
+                                       .registerConfigurationListenerFn(l -> () -> {
+                                       })
                                        .stateFactory(new FakeStateFactory()).build();
     }
 
@@ -88,12 +101,16 @@ public class CandidateStateTest {
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(1).build();
         RequestVoteResponse response = candidateState.requestVote(request);
         assertFalse(response.getVoteGranted());
+        assertFalse(response.getGoAway());
     }
 
     @Test
     public void requestVoteGreaterTerm() {
         candidateState.start();
-        RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(10).build();
+        RequestVoteRequest request = RequestVoteRequest.newBuilder()
+                                                       .setCandidateId("node1")
+                                                       .setTerm(10)
+                                                       .build();
         RequestVoteResponse response = candidateState.requestVote(request);
         MembershipState membershipState = transitionHandler.lastTransition();
         assertTrue(membershipState instanceof FakeState);
@@ -103,11 +120,24 @@ public class CandidateStateTest {
     }
 
     @Test
+    public void requestVoteNonMember() {
+        candidateState.start();
+        RequestVoteRequest request = RequestVoteRequest.newBuilder()
+                                                       .setCandidateId("node3")
+                                                       .setTerm(10)
+                                                       .build();
+        RequestVoteResponse response = candidateState.requestVote(request);
+        assertFalse(response.getVoteGranted());
+        assertFalse(response.getGoAway());
+    }
+
+    @Test
     public void requestVoteLowerTerm() {
         candidateState.start();
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(0).build();
         RequestVoteResponse response = candidateState.requestVote(request);
         assertFalse(response.getVoteGranted());
+        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -171,7 +201,7 @@ public class CandidateStateTest {
     }
 
     @Test
-    public void electionWon() throws InterruptedException {
+    public void electionWon() {
         node1.setTerm(1);
         node1.setVoteGranted(true);
         candidateState.start();
@@ -183,20 +213,23 @@ public class CandidateStateTest {
     }
 
     @Test
-    public void electionRescheduled() throws InterruptedException{
+    public void electionRescheduled() {
         candidateState.start();
         node2.setTerm(2);
         node1.setTerm(2);
         node1.setVoteGranted(true);
-        fakeScheduler.timeElapses(electionTimeout+1);
+        fakeScheduler.timeElapses(electionTimeout + 1);
         fakeScheduler.timeElapses(30);
         assertTrue(transitionHandler.lastTransition() instanceof FakeState);
         MembershipState membershipState = transitionHandler.lastTransition();
         FakeState fakeState = (FakeState) membershipState;
         assertEquals("leader", fakeState.name());
-
     }
 
-
+    private Node node(String id) {
+        return Node.newBuilder()
+                   .setNodeId(id)
+                   .build();
+    }
 
 }

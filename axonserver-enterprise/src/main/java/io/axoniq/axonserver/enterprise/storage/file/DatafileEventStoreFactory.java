@@ -12,7 +12,7 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFa
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DatafileEventStoreFactory implements EventStoreFactory {
     protected final EmbeddedDBProperties embeddedDBProperties;

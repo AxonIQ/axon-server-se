@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SnapshotWriteStorage {
 
@@ -22,7 +22,7 @@ public class SnapshotWriteStorage {
 
     public CompletableFuture<Confirmation> store( Event eventMessage) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        storageTransactionManager.store(Collections.singletonList(eventMessage))
+        storageTransactionManager.store(Collections.singletonList(new SerializedEvent(eventMessage)))
                                  .whenComplete((firstToken, cause) ->  {
             if( cause == null ) {
                 lastCommitted.set(firstToken);
@@ -42,16 +42,4 @@ public class SnapshotWriteStorage {
         return storageTransactionManager.waitingTransactions();
     }
 
-    public long getLastCommittedToken() {
-        lastCommitted.compareAndSet(-1L, getLastToken());
-        return lastCommitted.get();
-    }
-
-    public void rollback(long token) {
-        storageTransactionManager.rollback(token);
-    }
-
-    public long getLastIndex() {
-        return storageTransactionManager.getLastIndex();
-    }
 }

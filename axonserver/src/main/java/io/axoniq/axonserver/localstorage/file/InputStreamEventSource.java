@@ -2,18 +2,19 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamEventSource implements EventSource {
     private static final Logger logger = LoggerFactory.getLogger(InputStreamEventSource.class);
@@ -27,7 +28,8 @@ public class InputStreamEventSource implements EventSource {
                                   StorageProperties storageProperties) {
         try {
             logger.debug("Open file {}", dataFile);
-            dataInputStream = new PositionKeepingDataInputStream(new FileInputStream(dataFile));
+            dataInputStream = new PositionKeepingDataInputStream(new BufferedInputStream(new FileInputStream(dataFile),
+                                                                                         storageProperties.getReadBufferSize()));
             byte version = dataInputStream.readByte();
             int modifiers = dataInputStream.readInt();
             eventTransformer = eventTransformerFactory.get(version, modifiers, storageProperties);
@@ -37,7 +39,7 @@ public class InputStreamEventSource implements EventSource {
     }
 
     @Override
-    public Event readEvent(int position)  {
+    public SerializedEvent readEvent(int position)  {
         try {
             dataInputStream.position(position);
             return readEvent();
@@ -46,9 +48,9 @@ public class InputStreamEventSource implements EventSource {
         }
     }
 
-    public Event readEvent() throws IOException {
+    public SerializedEvent readEvent() throws IOException {
         byte[] bytes = dataInputStream.readEvent();
-        return eventTransformer.readEvent(bytes);
+        return new SerializedEvent(eventTransformer.readEvent(bytes));
     }
 
     @Override

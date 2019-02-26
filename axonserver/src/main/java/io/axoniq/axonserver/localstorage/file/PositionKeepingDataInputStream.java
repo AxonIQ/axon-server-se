@@ -1,17 +1,17 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import java.io.DataInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PositionKeepingDataInputStream {
     private int position = 0;
     private DataInputStream reader;
 
-    public PositionKeepingDataInputStream(FileInputStream fileInputStream) {
+    public PositionKeepingDataInputStream(InputStream fileInputStream) {
         reader = new DataInputStream(fileInputStream);
     }
 

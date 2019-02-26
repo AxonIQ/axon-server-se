@@ -4,7 +4,7 @@ import java.util.Scanner;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PasswordReader {
     public static final PasswordReader INSTANCE = new PasswordReader();

@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
-import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
@@ -18,20 +18,18 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 public class RaftNode {
-
-    private final ExecutorService executor = Executors.newCachedThreadPool(new AxonThreadFactory("Apply"));
 
     private static final Logger logger = LoggerFactory.getLogger(RaftNode.class);
 
@@ -40,23 +38,25 @@ public class RaftNode {
     private final MembershipStateFactory stateFactory;
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
     private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
-    private final List<Registration> registrations = new CopyOnWriteArrayList<>();
-    private volatile Future<?> applyTask;
+    private volatile ScheduledRegistration applyTask;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
+    private final List<BiConsumer<Long,String>> termChangeListeners = new CopyOnWriteArrayList<>();
     private final Scheduler scheduler;
+    private final List<Consumer> messagesListeners = new CopyOnWriteArrayList<>();
 
     public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
-        this(nodeId, raftGroup, new DefaultScheduler(), snapshotManager);
+        this(nodeId, raftGroup, new DefaultScheduler("raftNode-" + nodeId), snapshotManager);
     }
 
     public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
         this.registerEntryConsumer(this::updateConfig);
-        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState, snapshotManager));
+        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
+                                                                      this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
-        updateState(null, stateFactory.idleState(nodeId));
+        updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
     }
 
     private ScheduledRegistration scheduleLogCleaning() {
@@ -83,6 +83,16 @@ public class RaftNode {
         return false;
     }
 
+    /**
+     * Performs a log compaction for logs older than the specified time.
+     *
+     * @param time the time before which the logs could be deleted.
+     * @param timeUnit the time unit
+     */
+    public void forceLogCleaning(long time, TimeUnit timeUnit){
+        LongSupplier lastAppliedIndexSupplier = () -> raftGroup.logEntryProcessor().lastAppliedIndex();
+        raftGroup.localLogEntryStore().clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
+    }
 
     private boolean stopLogCleaning(){
         if (scheduledLogCleaning != null) {
@@ -99,24 +109,36 @@ public class RaftNode {
         }
     }
 
-    private synchronized void updateState(MembershipState currentState, MembershipState newState) {
+    private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
+        String newStateName = toString(newState);
+        String currentStateName = toString(currentState);
+        long term = raftGroup.localElectionStore().currentTerm();
         if( state.compareAndSet(currentState, newState)) {
             Optional.ofNullable(currentState).ifPresent(MembershipState::stop);
-            logger.info("{}: Updating state from {} to {}", groupId(), toString(currentState), toString(newState));
+            logger.info("{}: Updating state from {} to {} ({})", groupId(), currentStateName, newStateName, cause);
             stateChangeListeners.forEach(stateChangeListeners -> {
                 try {
-                    stateChangeListeners.accept(new StateChanged(toString(currentState),
-                                                                 toString(newState),
-                                                                 groupId()));
+                    StateChanged change = new StateChanged(groupId(), nodeId, currentStateName, newStateName, cause, term);
+                    stateChangeListeners.accept(change);
                 } catch (Exception ex) {
                     logger.warn("{}: Failed to handle event", groupId(), ex);
-                    throw new RuntimeException("Transition to " + toString(newState) + " failed", ex);
+                    throw new RuntimeException("Transition to " + newStateName + " failed", ex);
                 }
             });
-            logger.info("{}: Updated state to {}", groupId(), toString(newState));
             newState.start();
+            logger.info("{}: Updated state to {}", groupId(), newStateName);
         } else {
-            logger.warn("{}: transition to {} failed, invalid current state", groupId(), toString(newState));
+            logger.warn("{}: transition to {} failed, invalid current state (node: {}, term:{}, currentState: {})",
+                        groupId(), newStateName, nodeId, term, currentStateName);
+        }
+    }
+
+    private synchronized void updateTerm(Long newTerm, String cause){
+        ElectionStore electionStore = raftGroup.localElectionStore();
+        if (newTerm > electionStore.currentTerm()) {
+            electionStore.updateCurrentTerm(newTerm);
+            electionStore.markVotedFor(null);
+            termChangeListeners.forEach(consumer -> consumer.accept(newTerm, cause));
         }
     }
 
@@ -130,10 +152,10 @@ public class RaftNode {
             logger.warn("{}: Node is already started!", groupId());
             return;
         }
-        updateState(state.get(), stateFactory.followerState());
-        applyTask = executor.submit(() -> raftGroup.logEntryProcessor()
-                                                   .start(raftGroup.localLogEntryStore()::createIterator,
-                                                          this::applyEntryConsumers));
+        updateState(state.get(), stateFactory.followerState(), "Node started");
+        applyTask = scheduler.scheduleWithFixedDelay( () -> raftGroup.logEntryProcessor()
+                                                   .apply(raftGroup.localLogEntryStore()::createIterator,
+                                                          this::applyEntryConsumers), 0, 1, TimeUnit.MILLISECONDS);
         if (raftGroup.raftConfiguration().isLogCompactionEnabled()){
             scheduledLogCleaning = scheduleLogCleaning();
         }
@@ -144,32 +166,51 @@ public class RaftNode {
         stateChangeListeners.add(stateChangedConsumer);
     }
 
+    public void registerTermChangeListener(BiConsumer<Long,String> termChangedConsumer) {
+        termChangeListeners.add(termChangedConsumer);
+    }
+
     public synchronized AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.trace("{}: Received AppendEntries request in state {} {}", groupId(), state.get(), request);
-        return state.get().appendEntries(request);
+        notifyMessage(request);
+        AppendEntriesResponse response = state.get().appendEntries(request);
+        notifyMessage(response);
+        return response;
     }
 
     public synchronized RequestVoteResponse requestVote(RequestVoteRequest request) {
         logger.trace("{}: Received RequestVote request in state {} {}", groupId(), state.get(), request);
-        return state.get().requestVote(request);
+        notifyMessage(request);
+        RequestVoteResponse response = state.get().requestVote(request);
+        notifyMessage(response);
+        return response;
     }
 
     public synchronized InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         logger.trace("{}: Received InstallSnapshot request in state {} {}", groupId(), state.get(), request);
-        return state.get().installSnapshot(request);
+        notifyMessage(request);
+        InstallSnapshotResponse response = state.get().installSnapshot(request);
+        notifyMessage(response);
+        return response;
+    }
+
+    private void notifyMessage(Object message){
+            messagesListeners.forEach(consumer -> {
+                try {
+                    consumer.accept(message);
+                } catch (Exception ignore){}
+            });
     }
 
     public void stop() {
         logger.info("{}: Stopping the node...", groupId());
-        updateState(state.get(), stateFactory.idleState(nodeId));
+        updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
         logger.info("{}: Moved to idle state", groupId());
-        raftGroup.logEntryProcessor().stop();
         if (applyTask != null) {
             applyTask.cancel(true);
             applyTask = null;
         }
         stopLogCleaning();
-        registrations.forEach(Registration::cancel);
         logger.info("{}: Node stopped.", groupId());
     }
 
@@ -230,7 +271,7 @@ public class RaftNode {
 
     public CompletableFuture<Void> removeGroup() {
         state.get().stop();
-        raftGroup.raftConfiguration().clear();
+        raftGroup.delete();
         return CompletableFuture.completedFuture(null);
     }
 
@@ -238,4 +279,30 @@ public class RaftNode {
         return state.get().currentGroupMembers();
     }
 
+    public MembershipStateFactory stateFactory() {
+        return stateFactory;
+    }
+
+    public Registration registerMessageListener(Consumer messageConsumer){
+        this.messagesListeners.add(messageConsumer);
+        return () -> this.messagesListeners.remove(messageConsumer);
+    }
+
+    public RaftGroup raftGroup() {
+        return raftGroup;
+    }
+
+    public String getLeaderName() {
+        String leader = state.get().getLeader();
+        if( leader == null) return null;
+        return currentGroupMembers().stream()
+                                    .filter(node -> node.getNodeId().equals(leader))
+                                    .map(Node::getNodeName)
+                                    .findFirst()
+                                    .orElse(null);
+    }
+
+    public Iterator<ReplicatorPeer> replicatorPeers() {
+        return state.get().replicatorPeers();
+    }
 }

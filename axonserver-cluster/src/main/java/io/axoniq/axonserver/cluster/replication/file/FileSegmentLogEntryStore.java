@@ -22,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 
 /**
@@ -98,7 +98,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 if( throwable != null) {
                     completableFuture.completeExceptionally(throwable);
                 } else {
-                    logger.info("{}: written {}", name, index);
+                    logger.info("{}: written configuration {}", name, index);
                     Entry entry = Entry.newBuilder()
                                        .setTerm(currentTerm)
                                        .setIndex(index)
@@ -127,7 +127,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 if( throwable != null) {
                     completableFuture.completeExceptionally(throwable);
                 } else {
-                    logger.info("{}: written {}", name, index);
+                    logger.info("{}: written leader elected {}", name, index);
                     Entry entry = Entry.newBuilder().setTerm(currentTerm).setIndex(index).setLeaderElected(leader).build();
                     completableFuture.complete(entry);
                     appendListeners.forEach(listener -> listener.accept(entry));
@@ -147,10 +147,10 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
             boolean skip = false;
             if( existingEntry != null ) {
                 if( existingEntry.getTerm() != e.getTerm() ) {
-                    logger.warn("{}: Clear from {}", name, e.getIndex());
+                    logger.debug("{}: Clear from {}", name, e.getIndex());
                     deleteFrom(e.getIndex());
                 } else {
-                    logger.warn("{}: Skip {}", name, e.getIndex());
+                    logger.debug("{}: Skip {}", name, e.getIndex());
                     skip = true;
                 }
             }
@@ -217,6 +217,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public long firstLogIndex() {
+        return primaryEventStore.getFirstToken();
+    }
+
+    @Override
     public Registration registerLogAppendListener(Consumer<Entry> listener) {
         appendListeners.add(listener);
         return () -> appendListeners.remove(listener);
@@ -230,8 +235,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
 
     @Override
     public EntryIterator createIterator(long index) {
-        long firstToken = primaryEventStore.getFirstToken();
-        long lowerBound = firstToken == 1 ? firstToken : firstToken + 1;
+        long lowerBound = primaryEventStore.getFirstToken();
         if (index < lowerBound) {
             throw new IllegalArgumentException("Read before start");
         }
@@ -239,12 +243,18 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void clear() {
-        primaryEventStore.clear();
+    public void clear(long lastIndex) {
+        primaryEventStore.clear(lastIndex);
+        primaryEventStore.init(false);
     }
 
     @Override
-    public void clearOlderThan(long time, TimeUnit timeUnit, Supplier<Long> lastAppliedIndexSupplier) {
+    public void delete() {
+        primaryEventStore.delete();
+    }
+
+    @Override
+    public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
         primaryEventStore.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
     }
 

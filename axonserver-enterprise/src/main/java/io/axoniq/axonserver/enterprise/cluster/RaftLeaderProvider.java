@@ -23,7 +23,11 @@ public class RaftLeaderProvider {
 
     @EventListener
     public void on(ClusterEvents.LeaderConfirmation masterConfirmation) {
-        leaderMap.put(masterConfirmation.getContext(), masterConfirmation.getNode());
+        if( masterConfirmation.getNode() == null) {
+            leaderMap.remove(masterConfirmation.getContext());
+        } else {
+            leaderMap.put(masterConfirmation.getContext(), masterConfirmation.getNode());
+        }
     }
 
     @EventListener
@@ -40,6 +44,7 @@ public class RaftLeaderProvider {
         return leaderMap.get(context);
     }
     public boolean isLeader(String context) {
-        return node.equals(leaderMap.get(context));
+        String leader = leaderMap.get(context);
+        return leader != null && leader.equals(node);
     }
 }

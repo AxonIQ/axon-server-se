@@ -9,7 +9,7 @@ import javax.persistence.Id;
 import javax.persistence.IdClass;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @IdClass(JpaRaftGroupNode.Key.class)
@@ -20,12 +20,14 @@ public class JpaRaftGroupNode {
     private String nodeId;
     private String host;
     private int port;
+    private String nodeName;
 
     public JpaRaftGroupNode(String groupId, Node node) {
         this.groupId = groupId;
         this.nodeId = node.getNodeId();
         this.host = node.getHost();
         this.port = node.getPort();
+        this.nodeName = node.getNodeName();
     }
 
     public JpaRaftGroupNode() {
@@ -63,6 +65,23 @@ public class JpaRaftGroupNode {
         this.port = port;
     }
 
+    public String getNodeName() {
+        return nodeName;
+    }
+
+    public void setNodeName(String nodeName) {
+        this.nodeName = nodeName;
+    }
+
+    public Node asNode() {
+        return Node.newBuilder()
+            .setNodeId(getNodeId())
+            .setNodeName(getNodeName())
+            .setHost(getHost())
+            .setPort(getPort())
+            .build();
+    }
+    
     public static class Key implements Serializable {
         private String groupId;
         private String nodeId;

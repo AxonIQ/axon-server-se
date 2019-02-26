@@ -41,7 +41,7 @@ public class LogEntryFileTest {
                         SerializedObject so = SerializedObject.parseFrom(bytes);
                         TransactionWithToken twt = TransactionWithToken.parseFrom(so.getData());
                         if( index == 173757) {
-                            System.out.println(twt.getIndex() + " " + twt.getEventsCount());
+                            System.out.println(twt.getToken() + " " + twt.getEventsCount());
                         }
                         builder.setSerializedObject(so);
                         break;
@@ -69,7 +69,7 @@ public class LogEntryFileTest {
     @Ignore("Manual test only")
     public void readEventsFile() throws IOException {
         try (DataInputStream dataInputStream = new DataInputStream(new FileInputStream(
-                "D:\\test\\loadtest\\axonhub\\data\\default\\00000000000000.events"))) {
+                "D:\\test\\axonserver\\4.1-SNAPSHOT\\enterprise\\axonserver2\\data\\default\\00000000000000000000.snapshots"))) {
 
             dataInputStream.read();
             dataInputStream.readInt();
@@ -77,7 +77,6 @@ public class LogEntryFileTest {
             int index = 0;
             while (size > 0) {
                 dataInputStream.read(); // version
-                long idx = dataInputStream.readLong();
                 short eventCount = dataInputStream.readShort();
                 for( int i = 0 ; i < eventCount; i++) {
                     int eventSize = dataInputStream.readInt();
@@ -85,8 +84,8 @@ public class LogEntryFileTest {
                     dataInputStream.read(bytes);
                 }
                 dataInputStream.readInt(); //CRC
+                System.out.println("Transaction " + index + ", size: " + size);
                 size = dataInputStream.readInt();
-                System.out.println("Transaction " + idx + ", nrEvents: " + eventCount);
                 index+= eventCount;
             }
 

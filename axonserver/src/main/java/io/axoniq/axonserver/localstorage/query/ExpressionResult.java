@@ -7,7 +7,7 @@ import java.io.StringReader;
 import java.math.BigDecimal;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface ExpressionResult extends Comparable<ExpressionResult> {
 

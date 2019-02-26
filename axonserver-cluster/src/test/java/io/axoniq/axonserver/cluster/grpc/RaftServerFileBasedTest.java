@@ -105,7 +105,7 @@ public class RaftServerFileBasedTest {
                 Thread.sleep(TimeUnit.SECONDS.toMillis(3));
         } finally {
             clusterNodes.forEach((id, node) -> node.stop());
-            raftServers.forEach(r -> r.stop(() -> {}));
+            raftServers.forEach(RaftServer::stop);
         }
     }
 
@@ -178,6 +178,10 @@ public class RaftServerFileBasedTest {
             return "MyGroupId";
         }
 
+        @Override
+        public void delete() {
+
+        }
 //        @Override
 //        public int minElectionTimeout() {
 //            return 1000;

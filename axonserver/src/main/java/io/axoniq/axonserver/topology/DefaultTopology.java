@@ -3,7 +3,7 @@ package io.axoniq.axonserver.topology;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class DefaultTopology implements Topology {
     private final AxonServerNode me;

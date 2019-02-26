@@ -10,7 +10,7 @@ import java.util.Queue;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class QueryProcessor {
 

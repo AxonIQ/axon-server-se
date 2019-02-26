@@ -1,8 +1,7 @@
 package io.axoniq.axonserver.enterprise.config;
 
 import io.axoniq.axonserver.LifecycleController;
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalanceStrategyController;
-import io.axoniq.axonserver.component.processor.balancing.jpa.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.config.AxonServerFreeConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
@@ -14,6 +13,8 @@ import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftLoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftProcessorLoadBalancingControllerFacade;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingController;
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
@@ -31,12 +32,12 @@ import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
 import io.axoniq.axonserver.rest.UserControllerFacade;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.platform.user.UserController;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Author: marc
@@ -90,8 +91,8 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(UserControllerFacade.class)
-    public UserControllerFacade userControllerFacade(UserController userController, RaftConfigServiceFactory raftServiceFactory) {
-        return new RaftUserControllerFacade(userController, raftServiceFactory);
+    public UserControllerFacade userControllerFacade(UserController userController, PasswordEncoder passwordEncoder, RaftConfigServiceFactory raftServiceFactory) {
+        return new RaftUserControllerFacade(userController, passwordEncoder, raftServiceFactory);
     }
 
     @Bean

@@ -3,7 +3,7 @@ package io.axoniq.axonserver.migration;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventProducer {
     List<? extends DomainEvent> findEvents(long lastProcessedToken, int batchSize);

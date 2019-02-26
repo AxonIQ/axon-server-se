@@ -27,6 +27,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
+import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotNull;
 
 /**
@@ -85,8 +86,7 @@ public class RaftServerTest {
 
             RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
 
-
-            CompletableFuture<Void>[] futures = new CompletableFuture[2500];
+            CompletableFuture<Void>[] futures = new CompletableFuture[250];
             Thread.currentThread().setPriority(5);
             AtomicInteger successCount = new AtomicInteger();
                 long before = System.currentTimeMillis();
@@ -96,13 +96,14 @@ public class RaftServerTest {
                                            successCount.incrementAndGet();
                                        });
                 }
-                CompletableFuture.allOf(futures).get(60, TimeUnit.SECONDS);
+                CompletableFuture.allOf(futures).get(5, TimeUnit.SECONDS);
                 long after = System.currentTimeMillis();
-                System.out.println("Applied on leader within " + (after - before) + "ms.");
-                Thread.sleep(TimeUnit.SECONDS.toMillis(3));
+                System.out.println("Applied on leader within " + (after - before) + "ms., successful = " + successCount);
+                assertEquals(futures.length, successCount.get());
+                Thread.sleep(100);
         } finally {
             clusterNodes.forEach((id, node) -> node.stop());
-            raftServers.forEach(r -> r.stop(() -> {}));
+            raftServers.forEach(RaftServer::stop);
         }
     }
 
@@ -173,6 +174,10 @@ public class RaftServerTest {
             return "MyGroupId";
         }
 
+        @Override
+        public void delete() {
+
+        }
 //        @Override
 //        public int minElectionTimeout() {
 //            return 1000;

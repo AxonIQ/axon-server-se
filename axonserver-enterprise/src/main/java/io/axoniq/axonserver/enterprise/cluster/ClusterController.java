@@ -2,7 +2,9 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.config.ClusterConfiguration;
+import io.axoniq.axonserver.config.FlowControl;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
@@ -12,14 +14,20 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -38,7 +46,7 @@ import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Controller("ClusterController")
 public class ClusterController implements SmartLifecycle {
@@ -49,13 +57,14 @@ public class ClusterController implements SmartLifecycle {
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
     private final RaftGroupRepositoryManager raftGroupRepositoryManager;
+    private final QueryDispatcher queryDispatcher;
+    private final CommandDispatcher commandDispatcher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String,ClusterNode> nodeMap = new ConcurrentHashMap<>();
-
     private volatile boolean running;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -63,6 +72,8 @@ public class ClusterController implements SmartLifecycle {
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
                              RaftGroupRepositoryManager raftGroupRepositoryManager,
+                             QueryDispatcher queryDispatcher,
+                             CommandDispatcher commandDispatcher,
                              ApplicationEventPublisher applicationEventPublisher,
                              FeatureChecker limits
     ) {
@@ -71,36 +82,56 @@ public class ClusterController implements SmartLifecycle {
         this.stubFactory = stubFactory;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
         this.raftGroupRepositoryManager = raftGroupRepositoryManager;
+        this.queryDispatcher = queryDispatcher;
+        this.commandDispatcher = commandDispatcher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
     }
 
 
     @EventListener
-    @Transactional
-    public void on(ClusterEvents.AxonServerNodeDeleted nodeDeleted) {
-        deleteNode(nodeDeleted.node());
+    public void on(ContextEvents.ContextUpdated contextUpdated) {
+        nodeMap.clear();
     }
+
 
     @Transactional
     public void deleteNode(String name) {
         logger.warn("Delete node: {}", name);
-        RemoteConnection remoteConnection = remoteConnections.remove(name);
-        if (remoteConnection != null) {
-            ClusterNode node = entityManager.find(ClusterNode.class, name);
-            if (node != null) {
-                entityManager.remove(node);
-                entityManager.flush();
+        synchronized (remoteConnections) {
+            if (messagingPlatformConfiguration.getName().equals(name)) {
+                remoteConnections.forEach((node, rc) -> rc.close());
+                remoteConnections.clear();
+
+                List<ClusterNode> otherNodes = entityManager
+                        .createQuery("select c from ClusterNode c where c.name <> :name", ClusterNode.class)
+                        .setParameter("name", name)
+                        .getResultList();
+
+                otherNodes.forEach(node -> {
+                    entityManager.remove(node);
+                    nodeMap.remove(node.getName());
+                    nodeListeners.forEach(listener -> listener
+                            .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED, node)));
+                });
             }
-            //remoteConnection.sendDelete(messagingPlatformConfiguration.getName());
-            logger.warn("Send delete node: {} to {}:{}",
-                        messagingPlatformConfiguration.getName(),
-                        remoteConnection.getClusterNode().getInternalHostName(),
-                        remoteConnection.getClusterNode().getGrpcInternalPort());
-            remoteConnection.close();
-            nodeListeners.forEach(listener -> listener
-                    .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED, remoteConnection.getClusterNode())));
+
+            RemoteConnection remoteConnection = remoteConnections.remove(name);
+            if (remoteConnection != null) {
+                ClusterNode node = entityManager.find(ClusterNode.class, name);
+                if (node != null) {
+                    entityManager.remove(node);
+                    entityManager.flush();
+                }
+                remoteConnection.close();
+                nodeListeners.forEach(listener -> listener
+                        .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED,
+                                                 remoteConnection.getClusterNode())));
+                nodeMap.remove(name);
+            }
+
         }
+        applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeDeleted(name));
     }
 
     @Override
@@ -133,6 +164,10 @@ public class ClusterController implements SmartLifecycle {
                                                      TimeUnit.MILLISECONDS);
         }
         running = true;
+    }
+
+    public boolean isClustered() {
+        return Feature.CLUSTERING.enabled(limits);
     }
 
     private void checkCurrentNodeSaved() {
@@ -182,13 +217,18 @@ public class ClusterController implements SmartLifecycle {
             return;
         }
 
-        RemoteConnection remoteConnection = new RemoteConnection(getMe(), clusterNode,
-                                                                 applicationEventPublisher,
-                                                                 stubFactory, messagingPlatformConfiguration);
-        remoteConnections.put(clusterNode.getName(), remoteConnection);
+        synchronized (remoteConnections) {
+            if( ! remoteConnections.containsKey(clusterNode.getName())) {
+                RemoteConnection remoteConnection = new RemoteConnection(this, clusterNode,
+                                                                         stubFactory,
+                                                                         queryDispatcher,
+                                                                         commandDispatcher);
+                remoteConnections.put(clusterNode.getName(), remoteConnection);
 
-        if (connect) {
-            remoteConnection.init();
+                if (connect) {
+                    remoteConnection.init();
+                }
+            }
         }
     }
 
@@ -197,7 +237,28 @@ public class ClusterController implements SmartLifecycle {
     }
 
     @Transactional
-    public synchronized ClusterNode addConnection(NodeInfo nodeInfo, boolean updateContexts) {
+    public boolean connect(NodeInfo nodeInfo, boolean admin) {
+        String nodeName = nodeInfo.getNodeName();
+        ClusterNode node = getNode(nodeName);
+        if (node == null) {
+            if( ! admin) {
+                return false;
+            }
+            addConnection(nodeInfo);
+        }
+
+
+        if (!remoteConnections.containsKey(nodeName)) {
+            startRemoteConnection(node, false);
+            nodeListeners.forEach(listener -> listener
+                    .accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node)));
+        }
+
+        return true;
+    }
+
+    @Transactional
+    public synchronized ClusterNode addConnection(NodeInfo nodeInfo) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
             throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same node name");
@@ -210,10 +271,11 @@ public class ClusterController implements SmartLifecycle {
         if (!remoteConnections.containsKey(node.getName())) {
             startRemoteConnection(node, false);
             nodeListeners.forEach(listener -> listener
-                    .accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node)));
+                        .accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node)));
         }
         return node;
     }
+
 
     private void checkLimit(String nodeName) {
         if (remoteConnections.containsKey(nodeName)) {
@@ -274,9 +336,8 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
-        Set<JpaRaftGroupNode> nodes = raftGroupRepositoryManager
-                .findByGroupId(context);
-        if (nodes.isEmpty()) {
+        Collection<String> nodesInContext = getNodesInContext(context);
+        if (nodesInContext.isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No AxonServers found for context: " + context);
         }
@@ -285,7 +346,6 @@ public class ClusterController implements SmartLifecycle {
         }
 
         List<String> activeNodes = new ArrayList<>();
-        Collection<String> nodesInContext = nodes.stream().map(JpaRaftGroupNode::getNodeId).collect(Collectors.toSet());
         if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
             activeNodes.add(messagingPlatformConfiguration.getName());
         }
@@ -296,11 +356,24 @@ public class ClusterController implements SmartLifecycle {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
                                                  "No active Axon servers found for context: " + context);
         }
-        String nodeName = nodeSelectionStrategy.selectNode(clientName, componentName, activeNodes);
+        String nodeName = nodeSelectionStrategy.selectNode(new ClientIdentification(context,clientName), componentName, activeNodes);
         if (remoteConnections.containsKey(nodeName)) {
             return remoteConnections.get(nodeName).getClusterNode();
         }
         return getMe();
+    }
+
+    private Collection<String> getNodesInContext(String context) {
+        if( getMe().isAdmin() ) {
+            Context contextJPA = entityManager.find(Context.class, context);
+            if( contextJPA != null) {
+                return contextJPA.getNodeNames();
+            }
+        }
+        Set<JpaRaftGroupNode> nodes = raftGroupRepositoryManager
+                .findByGroupId(context);
+        return nodes.stream().map(JpaRaftGroupNode::getNodeName).collect(Collectors.toSet());
+
     }
 
 
@@ -311,7 +384,7 @@ public class ClusterController implements SmartLifecycle {
 
     public boolean canRebalance(String clientName, String componentName, String context) {
         Context context1 = entityManager.find(Context.class, context);
-        if (context1 == null) {
+        if (context1 == null || context1.getNodes().size() <= 1) {
             return false;
         }
         List<String> activeNodes = new ArrayList<>();
@@ -325,7 +398,7 @@ public class ClusterController implements SmartLifecycle {
             return false;
         }
 
-        return nodeSelectionStrategy.canRebalance(clientName, componentName, activeNodes);
+        return nodeSelectionStrategy.canRebalance(new ClientIdentification(context,clientName), componentName, activeNodes);
     }
 
 
@@ -336,10 +409,6 @@ public class ClusterController implements SmartLifecycle {
     @Transactional
     public void sendDeleteNode(String name) {
         deleteNode(name);
-    }
-
-    public void publish(ConnectorCommand connectorCommand) {
-        activeConnections().forEach(remoteConnection -> remoteConnection.publish(connectorCommand));
     }
 
     public void closeConnection(String nodeName) {
@@ -356,4 +425,33 @@ public class ClusterController implements SmartLifecycle {
         return nodeMap.computeIfAbsent(name, n -> entityManager.find(ClusterNode.class, n));
     }
 
+    public FlowControl getCommandFlowControl() {
+        return messagingPlatformConfiguration.getCommandFlowControl();
+    }
+
+    public FlowControl getEventFlowControl() {
+        return messagingPlatformConfiguration.getEventFlowControl();
+    }
+
+    public FlowControl getQueryFlowControl() {
+        return messagingPlatformConfiguration.getQueryFlowControl();
+    }
+
+    public void publishEvent(Object event) {
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public long getConnectionWaitTime() {
+        return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
+    }
+
+    public void requestDelete(String node) {
+        applicationEventPublisher.publishEvent(DeleteNode.newBuilder().setNodeName(node).build());
+    }
+
+    @EventListener
+    @Transactional
+    public void on(DeleteNode deleteRequested) {
+        deleteNode(deleteRequested.getNodeName());
+    }
 }

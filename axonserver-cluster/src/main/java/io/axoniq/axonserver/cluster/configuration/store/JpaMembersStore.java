@@ -29,11 +29,7 @@ public class JpaMembersStore implements MembersStore {
     @Override
     public List<Node> get() {
         Set<JpaRaftGroupNode> jpaNodes = raftGroupNodeRepository.findByGroupId(this.groupId.get());
-        return jpaNodes.stream().map(jpaNode -> Node.newBuilder()
-                                                    .setNodeId(jpaNode.getNodeId())
-                                                    .setHost(jpaNode.getHost())
-                                                    .setPort(jpaNode.getPort())
-                                                    .build())
+        return jpaNodes.stream().map(JpaRaftGroupNode::asNode)
                        .collect(Collectors.toList());
     }
 

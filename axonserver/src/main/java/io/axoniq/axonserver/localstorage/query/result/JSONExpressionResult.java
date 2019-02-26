@@ -6,7 +6,7 @@ import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import net.minidev.json.JSONObject;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class JSONExpressionResult implements AbstractMapExpressionResult  {

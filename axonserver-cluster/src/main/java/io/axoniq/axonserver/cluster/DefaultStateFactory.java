@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
+import io.axoniq.axonserver.cluster.replication.MajorityMatchStrategy;
+import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
@@ -19,23 +21,34 @@ import java.util.function.Supplier;
 public class DefaultStateFactory implements MembershipStateFactory {
 
     private final RaftGroup raftGroup;
-    private final BiConsumer<MembershipState, MembershipState> transitionHandler;
+    private final StateTransitionHandler transitionHandler;
+    private final BiConsumer<Long, String> termUpdateHandler;
     private final Supplier<Scheduler> schedulerFactory;
     private final SnapshotManager snapshotManager;
     private final CurrentConfiguration currentConfiguration;
     private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
+    private final MatchStrategy matchStrategy;
+
 
     public DefaultStateFactory(RaftGroup raftGroup,
-                               BiConsumer<MembershipState, MembershipState> transitionHandler,
+                               StateTransitionHandler transitionHandler,
+                               BiConsumer<Long, String> termUpdateHandler,
                                SnapshotManager snapshotManager) {
         this.raftGroup = raftGroup;
         this.transitionHandler = transitionHandler;
+        this.termUpdateHandler = termUpdateHandler;
         this.snapshotManager = snapshotManager;
-        this.schedulerFactory = DefaultScheduler::new;
+        this.schedulerFactory = () -> new DefaultScheduler("raftState");
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
+        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(), () -> raftGroup.localNode().replicatorPeers());
 
+    }
+
+    private MembershipStateFactory stateFactory(){
+        MembershipStateFactory stateFactory = raftGroup.localNode().stateFactory();
+        return stateFactory != null ? stateFactory : this;
     }
 
     @Override
@@ -44,15 +57,24 @@ public class DefaultStateFactory implements MembershipStateFactory {
     }
 
     @Override
+    public RemovedState removedState() {
+        return RemovedState.builder()
+                           .raftGroup(raftGroup)
+                           .build();
+    }
+
+    @Override
     public LeaderState leaderState() {
         return LeaderState.builder()
                           .raftGroup(raftGroup)
                           .schedulerFactory(schedulerFactory)
                           .transitionHandler(transitionHandler)
+                          .termUpdateHandler(termUpdateHandler)
                           .snapshotManager(snapshotManager)
                           .currentConfiguration(currentConfiguration)
                           .registerConfigurationListenerFn(registerConfigurationListener)
-                          .stateFactory(this)
+                          .stateFactory(stateFactory())
+                          .matchStrategy(matchStrategy)
                           .build();
     }
 
@@ -62,10 +84,11 @@ public class DefaultStateFactory implements MembershipStateFactory {
                             .raftGroup(raftGroup)
                             .schedulerFactory(schedulerFactory)
                             .transitionHandler(transitionHandler)
+                            .termUpdateHandler(termUpdateHandler)
                             .snapshotManager(snapshotManager)
                             .currentConfiguration(currentConfiguration)
                             .registerConfigurationListenerFn(registerConfigurationListener)
-                            .stateFactory(this)
+                            .stateFactory(stateFactory())
                             .build();
     }
 
@@ -75,10 +98,11 @@ public class DefaultStateFactory implements MembershipStateFactory {
                              .raftGroup(raftGroup)
                              .schedulerFactory(schedulerFactory)
                              .transitionHandler(transitionHandler)
+                             .termUpdateHandler(termUpdateHandler)
                              .snapshotManager(snapshotManager)
                              .currentConfiguration(currentConfiguration)
                              .registerConfigurationListenerFn(registerConfigurationListener)
-                             .stateFactory(this)
+                             .stateFactory(stateFactory())
                              .build();
     }
 }

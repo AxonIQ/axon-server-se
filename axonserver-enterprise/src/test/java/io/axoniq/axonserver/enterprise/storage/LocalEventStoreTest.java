@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage;
 
+import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -14,11 +15,13 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.rules.*;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LocalEventStoreTest {
     private LocalEventStore testSubject;
@@ -27,7 +30,7 @@ public class LocalEventStoreTest {
 
     @Before
     public void init()  {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties();
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
         embeddedDBProperties.getEvent().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getEvent().setSegmentSize(512*1024L);
         embeddedDBProperties.getEvent().setForceInterval(100);
@@ -49,7 +52,7 @@ public class LocalEventStoreTest {
     @Test
     public void testParallelTransactions() {
         String[] results = new String[2];
-        StreamObserver<Event> inputStream1 = testSubject.createAppendEventConnection("default",
+        StreamObserver<InputStream> inputStream1 = testSubject.createAppendEventConnection("default",
                                                                                            new StreamObserver<Confirmation>() {
                                                                                                @Override
                                                                                                public void onNext(
@@ -69,7 +72,7 @@ public class LocalEventStoreTest {
                                                                                                    results[0] = "OK";
                                                                                                }
                                                                                            });
-        StreamObserver<Event> inputStream2 = testSubject.createAppendEventConnection("default",
+        StreamObserver<InputStream> inputStream2 = testSubject.createAppendEventConnection("default",
                                                                                            new StreamObserver<Confirmation>() {
                                                                                                @Override
                                                                                                public void onNext(
@@ -92,8 +95,8 @@ public class LocalEventStoreTest {
 
         Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(0).build();
 
-        inputStream1.onNext(event);
-        inputStream2.onNext(event);
+        inputStream1.onNext(new ByteArrayInputStream(event.toByteArray()));
+        inputStream2.onNext(new ByteArrayInputStream(event.toByteArray()));
 
         inputStream1.onCompleted();
         inputStream2.onCompleted();
@@ -105,7 +108,7 @@ public class LocalEventStoreTest {
     @Test
     public void count() throws InterruptedException {
         CountDownLatch storeLatch = new CountDownLatch(1);
-        StreamObserver<Event> inputStream1 = testSubject.createAppendEventConnection("default",
+        StreamObserver<InputStream> inputStream1 = testSubject.createAppendEventConnection("default",
                                                                                      new StreamObserver<Confirmation>() {
                                                                                          @Override
                                                                                          public void onNext(
@@ -125,7 +128,7 @@ public class LocalEventStoreTest {
                                                                                      });
         Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(0).build();
 
-        inputStream1.onNext(event);
+        inputStream1.onNext(new ByteArrayInputStream(event.toByteArray()));
         inputStream1.onCompleted();
 
         storeLatch.await(1, TimeUnit.SECONDS);
@@ -164,4 +167,5 @@ public class LocalEventStoreTest {
                                                .build());
         latch.await(1, TimeUnit.SECONDS);
     }
+
 }

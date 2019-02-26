@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController
 @RequestMapping("/event")

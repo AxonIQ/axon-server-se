@@ -2,22 +2,16 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.grpc.Context;
-import io.grpc.Contexts;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
-import io.grpc.StatusRuntimeException;
+import io.grpc.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AuthenticationInterceptor implements ServerInterceptor{
-    private final AxonServerAccessController axonHubAccessController;
+    private final AxonServerAccessController axonServerAccessController;
 
-    public AuthenticationInterceptor(AxonServerAccessController axonHubAccessController) {
-        this.axonHubAccessController = axonHubAccessController;
+    public AuthenticationInterceptor(AxonServerAccessController axonServerAccessController) {
+        this.axonServerAccessController = axonServerAccessController;
     }
 
     @Override
@@ -27,8 +21,15 @@ public class AuthenticationInterceptor implements ServerInterceptor{
         String context = GrpcMetadataKeys.CONTEXT_KEY.get();
 
         if( token == null) {
+            token = metadata.get(GrpcMetadataKeys.AXONDB_TOKEN_KEY);
+        }
+        if( context == null) {
+            context = metadata.get(GrpcMetadataKeys.AXONDB_CONTEXT_MD_KEY);
+        }
+
+        if( token == null) {
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING, "Token missing");
-        } else if( ! axonHubAccessController.allowed( serverCall.getMethodDescriptor().getFullMethodName(), context, token)) {
+        } else if( ! axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(), context, token)) {
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token for " + serverCall.getMethodDescriptor().getFullMethodName());
         }
 

@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
@@ -25,7 +26,7 @@ import static io.axoniq.axonserver.grpc.internal.ConnectorResponse.ResponseCase.
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(MockitoJUnitRunner.class)
 public class MessagingClusterServiceTest {
@@ -39,21 +40,20 @@ public class MessagingClusterServiceTest {
 
     private FakeApplicationEventPublisher eventPublisher;
 
-    @Mock
-    private GrpcRaftController grpcRaftController;
-
     @Before
     public void setUp() {
         this.eventPublisher = new FakeApplicationEventPublisher();
         messagingClusterService = new MessagingClusterService(
-                commandDispatcher, queryDispatcher, clusterController, grpcRaftController, eventPublisher);
+                commandDispatcher, queryDispatcher, clusterController, eventPublisher);
     }
 
     @Test
     public void connect() {
         CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = messagingClusterService.openStream(responseStream);
-        requestStream.onNext(ConnectorCommand.newBuilder().setConnect(NodeInfo.newBuilder().setNodeName("application-server1")).build());
+        requestStream.onNext(ConnectorCommand.newBuilder().setConnect(
+                ConnectRequest.newBuilder().setNodeInfo(NodeInfo.newBuilder().setNodeName("application-server1"))
+                ).build());
         assertEquals(1, responseStream.count); // connect response
         assertEquals(CONNECT_RESPONSE, responseStream.responseList.get(0).getResponseCase());
     }

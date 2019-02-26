@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.logging;
 
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class TopologyEventsLogger {

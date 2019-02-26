@@ -6,7 +6,7 @@ import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FakeClock extends Clock {
     private long timeInMillis = System.currentTimeMillis();

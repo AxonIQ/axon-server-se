@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ClusterTransactionManagerFactory implements StorageTransactionManagerFactory {
 

@@ -2,14 +2,16 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamTransactionIterator implements TransactionIterator {
 
@@ -17,8 +19,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     private final PositionKeepingDataInputStream reader;
     private long currentSequenceNumber;
     private final boolean validating;
-    private TransactionWithToken next;
-    private TransactionInformation currentTransaction;
+    private SerializedTransactionWithToken next;
 
     public InputStreamTransactionIterator(InputStreamEventSource eventSource, long segment, long start, boolean validating) {
         this.eventSource = eventSource;
@@ -54,18 +55,8 @@ public class InputStreamTransactionIterator implements TransactionIterator {
         }
     }
 
-    private void processVersion(PositionKeepingDataInputStream reader) throws IOException {
-        byte version = reader.readByte();
-        currentTransaction = new TransactionInformation(version, reader);
-    }
-
-    private void addEvent(TransactionWithToken.Builder transactionWithTokenBuilder) {
-        try {
-            transactionWithTokenBuilder.addEvents(eventSource.readEvent());
-            currentSequenceNumber++;
-        } catch (IOException | RuntimeException io) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);
-        }
+    private byte processVersion(PositionKeepingDataInputStream reader) throws IOException {
+        return reader.readByte();
     }
 
     private boolean readTransaction() {
@@ -74,24 +65,16 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             if (size == -1 || size == 0) {
                 return false;
             }
-            processVersion(reader);
-            TransactionWithToken.Builder transactionWithTokenBuilder = TransactionWithToken.newBuilder()
-                                                                                           .setToken(currentSequenceNumber)
-                                                                                           .setIndex(currentTransaction.getIndex());
 
+            byte version = processVersion(reader);
             short nrOfMessages = reader.readShort();
+            List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
             for (int idx = 0; idx < nrOfMessages; idx++) {
-                addEvent(transactionWithTokenBuilder);
+                events.add(eventSource.readEvent());
             }
-            next = transactionWithTokenBuilder.build();
-            int chk = reader.readInt(); // checksum
-//            if (validating) {
-//                Checksum checksum = new Checksum();
-//                checksum.update(reader, position, size);
-//                if( chk != checksum.get()) {
-//                    throw new RuntimeException("Invalid checksum at " + currentSequenceNumber);
-//                }
-//            }
+            next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
+            currentSequenceNumber += nrOfMessages;
+            reader.readInt(); // checksum
             return true;
         } catch (IOException | RuntimeException io) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);
@@ -104,11 +87,11 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     }
 
     @Override
-    public TransactionWithToken next() {
+    public SerializedTransactionWithToken next() {
         if (next == null) {
             throw new NoSuchElementException();
         }
-        TransactionWithToken rv = next;
+        SerializedTransactionWithToken rv = next;
         if (!readTransaction()) {
             next = null;
             close();
@@ -122,8 +105,4 @@ public class InputStreamTransactionIterator implements TransactionIterator {
         eventSource.close();
     }
 
-    @Override
-    public TransactionInformation currentTransaction() {
-        return currentTransaction;
-    }
 }

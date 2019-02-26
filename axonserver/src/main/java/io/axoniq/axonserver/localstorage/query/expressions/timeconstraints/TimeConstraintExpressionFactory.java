@@ -9,7 +9,7 @@ import io.axoniq.axonserver.localstorage.query.expressions.AbstractExpressionFac
 import java.util.Optional;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TimeConstraintExpressionFactory extends AbstractExpressionFactory {
     @Override

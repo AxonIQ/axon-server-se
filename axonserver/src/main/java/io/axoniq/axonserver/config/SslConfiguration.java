@@ -3,7 +3,7 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.KeepNames;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class SslConfiguration {
@@ -11,6 +11,7 @@ public class SslConfiguration {
     private String certChainFile;
     private String privateKeyFile;
     private String internalCertChainFile;
+    private String internalTrustManagerFile;
 
     public boolean isEnabled() {
         return enabled;
@@ -43,5 +44,13 @@ public class SslConfiguration {
 
     public void setInternalCertChainFile(String internalCertChainFile) {
         this.internalCertChainFile = internalCertChainFile;
+    }
+
+    public String getInternalTrustManagerFile() {
+        return internalTrustManagerFile;
+    }
+
+    public void setInternalTrustManagerFile(String internalTrustManagerFile) {
+        this.internalTrustManagerFile = internalTrustManagerFile;
     }
 }

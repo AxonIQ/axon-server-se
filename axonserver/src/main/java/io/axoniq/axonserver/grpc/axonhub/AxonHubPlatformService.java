@@ -13,7 +13,7 @@ import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class AxonHubPlatformService implements AxonServerClientService {

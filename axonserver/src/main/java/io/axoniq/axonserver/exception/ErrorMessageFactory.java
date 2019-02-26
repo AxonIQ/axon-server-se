@@ -3,7 +3,7 @@ package io.axoniq.axonserver.exception;
 import io.axoniq.axonserver.grpc.ErrorMessage;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ErrorMessageFactory {
     public static ErrorMessage build(String message) {

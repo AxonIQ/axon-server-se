@@ -33,7 +33,7 @@ message RequestVoteResponse {
     string groupId = 2;
     uint64 term = 3; // term for candidate to update itself
     bool voteGranted = 4;
-    // shouldShutdown?
+    bool goAway = 5; // returned by leader on request vote from unknown node
 }
 
 message AppendEntriesRequest {
@@ -45,6 +45,7 @@ message AppendEntriesRequest {
     uint64 prevLogIndex = 6;
     repeated Entry entries = 7;
     uint64 commitIndex = 8;
+    string targetId = 9; // The nodeId of the receiver, used to initialize raft group
 }
 
 message Entry {
@@ -73,8 +74,10 @@ message AppendEntrySuccess {
 }
 
 message AppendEntryFailure {
-    uint64 lastAppliedIndex = 1;
-    sint64 lastAppliedEventSequence = 2; // only relevant for storage groups
+    string cause = 1;
+    uint64 lastAppliedIndex = 2;
+    sint64 lastAppliedEventSequence = 3; // only relevant for storage groups
+    sint64 lastAppliedSnapshotSequence = 4;  // only relevant for storage groups
 }
 
 
@@ -112,6 +115,7 @@ message InstallSnapshotSuccess {
 }
 
 message InstallSnapshotFailure {
+    string cause = 1;
 }
 
 message Config {
@@ -123,9 +127,12 @@ message LeaderElected {
 }
 
 message Node {
+    // generated unique id for a node
     string nodeId = 1;
     string host = 2;
     uint32 port = 3;
+    // cluster node name
+    string nodeName = 4;
 }
 
 message ConfigChangeResult {

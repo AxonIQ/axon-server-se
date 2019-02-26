@@ -2,7 +2,7 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.util.AssertUtils;
 import org.junit.*;
-import org.junit.rules.*;
+import org.junit.rules.TemporaryFolder;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -11,9 +11,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamReaderTest {
+
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
     private static TestInputStreamStorageContainer testStorageContainer;
@@ -36,7 +37,6 @@ public class InputStreamReaderTest {
     public void setUp() {
         testSubject = new EventStreamReader(testStorageContainer.getDatafileManagerChain(),
                                             testStorageContainer.getEventWriter());
-
     }
 
     @Test
@@ -60,7 +60,7 @@ public class InputStreamReaderTest {
             counter.incrementAndGet();
         }, Throwable::printStackTrace);
 
-        controller.update(testStorageContainer.getEventWriter().getLastToken()-1, 100);
+        controller.update(testStorageContainer.getEventWriter().getLastToken() - 1, 100);
         AssertUtils.assertWithin(1000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(2, counter.get()));
     }
 
@@ -78,8 +78,6 @@ public class InputStreamReaderTest {
         });
 
         AssertUtils.assertWithin(5000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(10000, counter.get()));
-        if( ! task.isDone()) task.cancel(true);
+        if (!task.isDone()) task.cancel(true);
     }
-
-
 }

@@ -26,7 +26,9 @@ public interface RaftConfigService {
 
     void init(List<String> contexts);
 
-    CompletableFuture<Void> updateApplication(Application application);
+    CompletableFuture<Application> updateApplication(Application application);
+
+    CompletableFuture<Application> refreshToken(Application application);
 
     CompletableFuture<Void> updateUser(User request);
 
@@ -39,4 +41,6 @@ public interface RaftConfigService {
     CompletableFuture<Void> deleteUser(User request);
 
     CompletableFuture<Void> deleteApplication(Application request);
+
+    void deleteNode(String name);
 }

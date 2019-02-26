@@ -1,22 +1,16 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamEventStore extends SegmentBasedEventStore {
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
@@ -45,7 +39,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     @Override
     protected Optional<EventSource> getEventSource(long segment) {
         logger.debug("Get eventsource: {}", segment);
-        InputStreamEventSource eventSource = get(segment);
+        InputStreamEventSource eventSource = get(segment, false);
         logger.trace("result={}", eventSource);
         if( eventSource == null)
             return Optional.empty();
@@ -63,20 +57,20 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> eventList) {
+    public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
         throw new UnsupportedOperationException();
     }
 
 
-    private InputStreamEventSource get(long segment) {
-        if( ! segments.contains(segment)) return null;
+    private InputStreamEventSource get(long segment, boolean force) {
+        if( !force && ! segments.contains(segment)) return null;
 
         return new InputStreamEventSource(storageProperties.dataFile(context, segment), eventTransformerFactory, storageProperties);
     }
 
     @Override
     protected void recreateIndex(long segment) {
-        try (InputStreamEventSource is = get(segment);
+        try (InputStreamEventSource is = get(segment, true);
              EventIterator iterator = createEventIterator( is,segment, segment)) {
             Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {

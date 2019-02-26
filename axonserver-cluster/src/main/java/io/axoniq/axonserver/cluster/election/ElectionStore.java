@@ -14,4 +14,5 @@ public interface ElectionStore {
 
     void updateCurrentTerm(long term);
 
+    void delete();
 }

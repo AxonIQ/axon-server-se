@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -9,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import java.net.UnknownHostException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @ConfigurationProperties(prefix = "axoniq.axonserver")
@@ -68,6 +69,9 @@ public class MessagingPlatformConfiguration {
     private FlowControl queryFlowControl = new FlowControl();
 
     @NestedConfigurationProperty
+    private FlowControl eventFlowControl = new FlowControl();
+
+    @NestedConfigurationProperty
     private ClusterConfiguration cluster = new ClusterConfiguration();
 
     /**
@@ -90,6 +94,7 @@ public class MessagingPlatformConfiguration {
     private int workerThreads;
     private String controldbBackupLocation = ".";
     private int maxMessageSize = 0;
+    private String pidFileLocation = ".";
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -124,10 +129,10 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getHostname() {
-        if( hostname == null) {
+        if( StringUtils.isEmpty(hostname )) {
             try {
                 hostname = systemInfoProvider.getHostName();
-                if( domain != null && hostname.endsWith("." + domain)) {
+                if(!StringUtils.isEmpty(domain) && hostname.endsWith("." + domain)) {
                         hostname = hostname.substring(0, hostname.length() - domain.length() - 1);
                 }
             } catch (UnknownHostException e) {
@@ -150,7 +155,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalHostname() {
-        if( internalHostname == null) {
+        if( StringUtils.isEmpty(internalHostname)) {
             internalHostname = getHostname();
         }
         return internalHostname;
@@ -161,7 +166,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if( internalDomain == null) {
+        if( StringUtils.isEmpty(internalDomain)) {
             internalDomain = getDomain();
         }
         return internalDomain;
@@ -180,13 +185,13 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getFullyQualifiedHostname() {
-        if( getDomain() != null ) return getHostname() + "." + getDomain();
+        if( ! StringUtils.isEmpty(getDomain())) return getHostname() + "." + getDomain();
 
         return getHostname();
     }
 
     public String getFullyQualifiedInternalHostname() {
-        if( getInternalDomain() != null) return getInternalHostname() + "." + getInternalDomain();
+        if( ! StringUtils.isEmpty(getInternalDomain()) ) return getInternalHostname() + "." + getInternalDomain();
 
         return getInternalHostname();
     }
@@ -221,6 +226,14 @@ public class MessagingPlatformConfiguration {
 
     public void setQueryFlowControl(FlowControl queryFlowControl) {
         this.queryFlowControl = queryFlowControl;
+    }
+
+    public FlowControl getEventFlowControl() {
+        return eventFlowControl;
+    }
+
+    public void setEventFlowControl(FlowControl eventFlowControl) {
+        this.eventFlowControl = eventFlowControl;
     }
 
     public ClusterConfiguration getCluster() {
@@ -319,4 +332,15 @@ public class MessagingPlatformConfiguration {
         this.maxMessageSize = maxMessageSize;
     }
 
+    public String getPidFileLocation() {
+        return pidFileLocation;
+    }
+
+    public void setMetricsSynchronizationRate(int metricsSynchronizationRate) {
+        this.metricsSynchronizationRate = metricsSynchronizationRate;
+    }
+
+    public void setPidFileLocation(String pidFileLocation) {
+        this.pidFileLocation = pidFileLocation;
+    }
 }

@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.enterprise.storage.transaction;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface ReplicationManager {
 
@@ -15,5 +15,5 @@ public interface ReplicationManager {
 
     void registerListener(EventTypeContext type, Consumer<Long> replicationCompleted);
 
-    void publish(EventTypeContext type, List<Event> eventList, long token);
+    void publish(EventTypeContext type, List<SerializedEvent> eventList, long token);
 }

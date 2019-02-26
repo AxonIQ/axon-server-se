@@ -15,10 +15,16 @@ public class StorageProperties {
     private String indexSuffix = ".index";
     private int validationSegments = 10;
     private int flags = 0;
-    private int primaryCleanupDelay = 1000;
+    /**
+     * Delay to actually do the clear of the buffer when removing a file from primary storage (in seconds)
+     */
+    private int primaryCleanupDelay = 5;
     private int segmentSize = 1024*1024*16;
     private long numberOfSegments = 1000;
-    private long secondaryCleanupDelay = 30000;
+    /**
+     * Delay to actually do the clear of the buffer when removing a file from secondary storage (in seconds)
+     */
+    private long secondaryCleanupDelay = 30;
     private String logStorageFolder = "log";
 
     public int getSyncInterval() {

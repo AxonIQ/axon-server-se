@@ -1,16 +1,14 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import org.springframework.boot.actuate.health.Health;
 
 import java.util.Iterator;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventStreamReader {
     private final EventStore datafileManagerChain;
@@ -22,24 +20,12 @@ public class EventStreamReader {
         this.eventWriteStorage = eventWriteStorage;
     }
 
-    public EventStreamController createController(Consumer<EventWithToken> eventWithTokenConsumer, Consumer<Throwable> errorCallback) {
+    public EventStreamController createController(Consumer<SerializedEventWithToken> eventWithTokenConsumer, Consumer<Throwable> errorCallback) {
         return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage);
     }
 
-    public Iterator<TransactionWithToken> transactionIterator(long firstToken) {
-        return datafileManagerChain.transactionIterator(firstToken);
-    }
-
-    public Iterator<TransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+    public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         return datafileManagerChain.transactionIterator(firstToken, limitToken);
-    }
-
-    @Deprecated
-    /**
-     * @deprecated use {@link #transactionIterator(long)} instead
-     */
-    public CompletableFuture<Void> streamTransactions(long firstToken, Predicate<TransactionWithToken> transactionConsumer) {
-        return CompletableFuture.runAsync(() -> datafileManagerChain.streamTransactions(firstToken, transactionConsumer));
     }
 
     public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {

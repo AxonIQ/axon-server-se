@@ -23,6 +23,7 @@ public class RaftNodeTest {
     private RaftNode testSubject;
 
     @Test
+    @Ignore
     public void rescheduleLogCompaction() {
         SnapshotManager snapshotManager = mock(SnapshotManager.class);
         LogEntryStore logEntryStore = mock(LogEntryStore.class);

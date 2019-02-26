@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ExpressionContext {
 

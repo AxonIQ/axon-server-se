@@ -1,11 +1,13 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.platform.user.User;
+
+import io.axoniq.axonserver.access.jpa.User;
 
 import java.util.List;
 
+
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface UserControllerFacade {
 

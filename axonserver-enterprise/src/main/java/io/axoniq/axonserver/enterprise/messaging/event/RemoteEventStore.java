@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.messaging.event;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.internal.ContextAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -22,7 +23,6 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
-import io.axoniq.axonserver.message.event.ContextAddingInterceptor;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -34,7 +34,7 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RemoteEventStore implements io.axoniq.axonserver.message.event.EventStore {
     private final ClusterNode clusterNode;
@@ -73,9 +73,9 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     }
 
     @Override
-    public StreamObserver<Event> createAppendEventConnection(String context,
+    public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    StreamObserver<Confirmation> responseObserver) {
-        EventStoreGrpc.EventStoreStub stub = getEventStoreStub(context);
+        EventDispatcherStub stub = getNonMarshallingStub(context);
         return stub.appendEvent(new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
@@ -185,6 +185,11 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
         public void listAggregateSnapshots(GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseStream) {
             ClientCalls.asyncServerStreamingCall(
                     getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_SNAPSHOTS, getCallOptions()), request, responseStream);
+        }
+
+        public StreamObserver<InputStream> appendEvent(
+                StreamObserver<Confirmation> responseObserver) {
+            return ClientCalls.asyncBidiStreamingCall(getChannel().newCall(EventDispatcher.METHOD_APPEND_EVENT, getCallOptions()), responseObserver);
         }
 
     }

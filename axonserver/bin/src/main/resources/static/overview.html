@@ -1,0 +1,159 @@
+<script src="js/overview.js"></script>
+
+<defs>
+    <style type="text/css">
+        rect.background {
+            fill: white;
+        }
+
+        rect.client {
+            stroke: #B133CC;
+            stroke-width: 1;
+            fill: #F9F9F9;
+            filter: url(#f1);
+        }
+
+        rect.axonserver {
+            stroke: #B133CC;
+            stroke-width: 1;
+            fill: #F9F9F9;
+            filter: url(#f1);
+        }
+
+        rect.axondb {
+            stroke: #B133CC;
+            stroke-width: 1;
+            fill: #F9F9F9;
+            filter: url(#f1);
+        }
+
+        path.axondb {
+            fill: #CCCCCC;
+        }
+
+        path.master {
+            fill: #B133CC;
+        }
+
+        rect.down {
+            fill-opacity: 0.1;
+            stroke-dasharray: 1 3;
+        }
+
+        text.client {
+            font-family: 'Lato', 'sans-serif';
+            font-weight: bold;
+            font-style: normal;
+            font-size: 9px;
+        }
+
+        text.component {
+            font-family: 'Lato', 'sans-serif';
+            font-weight: bold;
+            font-style: normal;
+            font-size: 12px;
+        }
+        text.type {
+            font-family: 'Montserrat', 'sans-serif';
+            font-style: italic;
+            font-size: 10px;
+        }
+
+        text.axonserver {
+            font-family: 'Lato', 'sans-serif';
+            font-weight: bold;
+            font-style: normal;
+            font-size: 12px;
+        }
+
+        text.axondb {
+            font-family: 'Lato', 'sans-serif';
+            font-weight: bold;
+            font-style: normal;
+            font-size: 12px;
+        }
+
+        text.popup {
+            font-family: 'Montserrat', 'sans-serif';
+            font-size: 10px;
+            font-weight: normal;
+            font-style: normal;
+
+        }
+
+        text.current {
+            text-decoration: underline;
+        }
+
+
+        rect.popup {
+            fill: #8c7a73;
+            filter: url(#f1);
+            stroke: #888;
+            stroke-width: 1;
+            opacity: 0.90;
+        }
+
+        rect.axonserverNodes {
+            fill: none;
+            stroke: #8c7a73;
+            stroke-width: 2;
+        }
+
+        line.down {
+            stroke-dasharray: 1 3;
+        }
+
+        line.applicationToHub {
+            stroke: #888;
+        }
+
+        line.hubToHub {
+            stroke: #888;
+        }
+
+        line.hubToDB {
+            stroke: #888;
+        }
+    </style>
+</defs>
+
+<div id="overview">
+    <div v-if="!hasFeature('APPLICATION_OVERVIEW')" class="msg warning">
+        Overview is not allowed
+    </div>
+
+
+    <div v-if="hasFeature('APPLICATION_OVERVIEW')">
+    <svg v-show="!component || component === ''" width="900" height="600">
+
+        <filter id="f1" width="150%" height="150%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="5" dy="5"/>
+            <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+            <!--
+            <feOffset result="offOut" in="SourceAlpha" dx="5" dy="5" />
+            <feGaussianBlur result="blurOut" in="offOut" stdDeviation="3" />
+            <feBlend in="SourceGraphic" in2="blurOut" mode="normal" />
+            -->
+        </filter>
+
+        <g onclick="hidePopup()"/>
+    </svg>
+
+    <div v-if="component">
+        <h2>
+            <span @click="component = ''"><i class="fas fa-arrow-circle-left" ></i></span> Application details for {{title}}
+        </h2>
+
+        <component-subscription-metrics :component="component" :context="context"></component-subscription-metrics>
+        <component-instances :component="component" :context="context"></component-instances>
+        <component-commands :component="component" :context="context"></component-commands>
+        <component-queries :component="component" :context="context"></component-queries>
+        <component-processors :component="component" :context="context"></component-processors>
+    </div>
+    </div>
+</div>

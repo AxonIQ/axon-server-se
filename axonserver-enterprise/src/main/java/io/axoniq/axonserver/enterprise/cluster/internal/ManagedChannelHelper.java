@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ManagedChannelHelper {
     private static final Logger logger = LoggerFactory.getLogger(ManagedChannelHelper.class);
@@ -48,9 +48,7 @@ public class ManagedChannelHelper {
                        .keepAliveWithoutCalls(true);
             }
             if( messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl().isEnabled()) {
-                if (addSslConfig(messagingPlatformConfiguration, builder)) {
-                    return null;
-                }
+                addTlsConfig(messagingPlatformConfiguration, builder);
             } else {
                 builder.usePlaintext();
             }
@@ -60,30 +58,36 @@ public class ManagedChannelHelper {
             builder.directExecutor();
             channel = builder.build();
         } catch(Exception ex) {
-            logger.debug("Error while building channel - {}", ex.getMessage());
+            logger.warn("Error while building channel - {}", ex.getMessage());
             return null;
         }
         return channel;
     }
 
-    private static boolean addSslConfig(MessagingPlatformConfiguration messagingPlatformConfiguration,
-                                        NettyChannelBuilder builder) {
-        try {
-            SslContext sslContext = GrpcSslContexts.forClient()
-                                                   .trustManager(new File(messagingPlatformConfiguration.getSsl().getInternalCertChainFile()))
-                                                   .build();
+    private static void addTlsConfig(MessagingPlatformConfiguration messagingPlatformConfiguration,
+                                     NettyChannelBuilder builder) {
+        if( messagingPlatformConfiguration.getSsl().getInternalTrustManagerFile() != null) {
+            File trustManager = new File(messagingPlatformConfiguration.getSsl().getInternalTrustManagerFile());
+            if (!trustManager.exists()) {
+                throw new RuntimeException(
+                        "TrustManager file " + trustManager.getAbsolutePath() + " does not exist");
+            }
+            SslContext sslContext = null;
+            try {
+                sslContext = GrpcSslContexts.forClient()
+                                            .trustManager(trustManager)
+                                            .build();
+            } catch (SSLException e) {
+                throw new RuntimeException(e.getMessage(), e);
+            }
             builder.sslContext(sslContext);
-        } catch (SSLException e) {
-            logger.error("Failed to setup SSL context", e);
-            return true;
         }
-        return false;
     }
 
     public static void checkShutdownNeeded(String name, Throwable throwable) {
         if( throwable instanceof StatusRuntimeException) {
             StatusRuntimeException sre = (StatusRuntimeException)throwable;
-            if( sre.getStatus().getCode().equals(Status.Code.UNAVAILABLE)) {
+            if( sre.getStatus().getCode().equals(Status.Code.UNAVAILABLE) || sre.getStatus().getCode().equals(Status.Code.INTERNAL)) {
                 ManagedChannel channel = channelPerNode.remove(name);
                 if( channel != null) {
                     try {

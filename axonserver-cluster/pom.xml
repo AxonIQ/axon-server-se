@@ -5,7 +5,7 @@
     <parent>
         <artifactId>axonserver-parent</artifactId>
         <groupId>io.axoniq.axonserver</groupId>
-        <version>4.0.1-SNAPSHOT</version>
+        <version>4.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -111,8 +111,8 @@
 
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
-            <artifactId>axonserver-grpc</artifactId>
-            <version>4.0.1-SNAPSHOT</version>
+            <artifactId>axonserver-internal-grpc</artifactId>
+            <version>${project.parent.version}</version>
             <scope>test</scope>
         </dependency>
 

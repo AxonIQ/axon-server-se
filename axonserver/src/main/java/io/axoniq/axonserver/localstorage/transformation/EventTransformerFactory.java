@@ -3,7 +3,7 @@ package io.axoniq.axonserver.localstorage.transformation;
 import io.axoniq.axonserver.localstorage.file.StorageProperties;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EventTransformerFactory {
 

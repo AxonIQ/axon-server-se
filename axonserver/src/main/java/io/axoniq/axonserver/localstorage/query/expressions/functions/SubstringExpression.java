@@ -1,11 +1,6 @@
 package io.axoniq.axonserver.localstorage.query.expressions.functions;
 
-import io.axoniq.axonserver.localstorage.query.Expression;
-import io.axoniq.axonserver.localstorage.query.ExpressionContext;
-import io.axoniq.axonserver.localstorage.query.ExpressionResult;
-import io.axoniq.axonserver.localstorage.query.PipeExpression;
-import io.axoniq.axonserver.localstorage.query.Pipeline;
-import io.axoniq.axonserver.localstorage.query.QueryResult;
+import io.axoniq.axonserver.localstorage.query.*;
 import io.axoniq.axonserver.localstorage.query.result.MapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.NullExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.StringExpressionResult;
@@ -16,7 +11,7 @@ import java.util.List;
 import static java.util.Collections.singletonMap;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SubstringExpression implements Expression, PipeExpression {
 

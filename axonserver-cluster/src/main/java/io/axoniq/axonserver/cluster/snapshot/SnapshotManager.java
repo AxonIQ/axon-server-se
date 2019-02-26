@@ -18,11 +18,10 @@ public interface SnapshotManager {
     /**
      * Streams snapshot data within given event sequence boundaries.
      *
-     * @param fromEventSequence lower boundary (inclusive) in terms of event sequence of snapshot data
-     * @param toEventSequence   upper boundary (inclusive) in terms of event sequence of snapshot data
+     * @param installationContext information (boundaries for data streams) related to the current snapshot installation
      * @return a flux of serialized snapshot data
      */
-    Flux<SerializedObject> streamSnapshotData(long fromEventSequence, long toEventSequence);
+    Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext);
 
     /**
      * Applies a list of serialized snapshot data.

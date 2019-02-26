@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Profile;
 import static org.axonframework.modelling.command.AggregateLifecycle.apply;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Aggregate
 @Profile("commands")

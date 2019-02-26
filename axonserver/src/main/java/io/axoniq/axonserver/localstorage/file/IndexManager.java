@@ -15,14 +15,10 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class IndexManager {
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
@@ -44,13 +40,16 @@ public class IndexManager {
         if( tempFile.exists() && (! force || ! FileUtils.delete(tempFile))) {
             return;
         }
-
-        DB db = DBMaker.fileDB(tempFile)
-                       .fileMmapEnable()
-                       .cleanerHackEnable()
-//                       .allocateStartSize(fileStorageProperties.getIndexInitialSize())
-//                       .allocateIncrement(fileStorageProperties.getIndexNextSize())
-                       .make();
+        DBMaker.Maker maker = DBMaker.fileDB(tempFile);
+        if( storageProperties.isUseMmapIndex()) {
+            maker.fileMmapEnable();
+            if( storageProperties.isCleanerHackEnabled()) {
+                maker.cleanerHackEnable();
+            }
+        } else {
+            maker.fileChannelEnable();
+        }
+        DB db =  maker.make();
         try (HTreeMap<String, SortedSet<PositionInfo>> map = db.hashMap(AGGREGATE_MAP,
                                                                    Serializer.STRING,
                                                                    PositionInfoSerializer.get())
@@ -75,11 +74,11 @@ public class IndexManager {
             return Collections.emptySortedSet();
         }
 
-        IllegalAccessError lastError = new IllegalAccessError();
+        RuntimeException lastError = new RuntimeException();
         for(int retry = 0 ; retry < 3; retry++ ) {
             try (Index idx = getIndex(segment)) {
                 return idx.getPositions(aggregateId);
-            } catch (IllegalAccessError ex) {
+            } catch (RuntimeException ex) {
                 lastError = ex;
             }
         }
@@ -89,6 +88,7 @@ public class IndexManager {
     public Index getIndex(long segment) {
         Index index = indexMap.get(segment);
         if( index == null || index.db.isClosed()) {
+            if( ! storageProperties.index(context, segment).exists()) return null;
             index = new Index(segment, false);
             indexMap.put(segment, index);
             indexCleanup();
@@ -153,10 +153,14 @@ public class IndexManager {
             this.managed = managed;
             DBMaker.Maker maker = DBMaker.fileDB(storageProperties.index(context, segment))
                                              .readOnly()
-                                             .fileMmapEnable()
                                              .fileLockDisable();
-            if (true) {
+            if( storageProperties.isUseMmapIndex()) {
+                maker.fileMmapEnable();
+                if (storageProperties.isCleanerHackEnabled()) {
                     maker.cleanerHackEnable();
+                }
+            } else {
+                maker.fileChannelEnable();
             }
             this.db = maker.make();
             this.positions = db.hashMap(AGGREGATE_MAP, Serializer.STRING, PositionInfoSerializer.get()).createOrOpen();

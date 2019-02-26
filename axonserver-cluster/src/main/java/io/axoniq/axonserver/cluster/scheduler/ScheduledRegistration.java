@@ -28,4 +28,12 @@ public interface ScheduledRegistration extends Registration {
      * @return time left since the schedule
      */
     long getElapsed(TimeUnit unit);
+
+    /**
+     * Cancels the scheduled registration.
+     *
+     * @param mayInterruptIfRunning {@code true} if the thread executing this task should be interrupted; otherwise,
+     *                              in-progress tasks are allowed to complete
+     */
+    void cancel(boolean mayInterruptIfRunning);
 }

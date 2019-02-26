@@ -10,6 +10,7 @@ import io.grpc.stub.StreamObserver;
 import junit.framework.TestCase;
 import org.junit.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class JpaLocalEventStoreTest {
     private LocalEventStore testSubject;
@@ -72,13 +73,13 @@ public class JpaLocalEventStoreTest {
         String[] aggregateIds = new String[aggregeteIdCount];
         IntStream.range(0, aggregeteIdCount).parallel().forEach(j -> {
             aggregateIds[j] = UUID.randomUUID().toString();
-            StreamObserver<Event> connection = testSubject.createAppendEventConnection("default",
+            StreamObserver<InputStream> connection = testSubject.createAppendEventConnection("default",
                                                                                              new CollectingStreamObserver<>());
             IntStream.range(0, eventsPerAggregate).forEach(i -> {
                 Event event = Event.newBuilder().setAggregateIdentifier(aggregateIds[j]).setAggregateSequenceNumber(i)
                                    .setMessageIdentifier(UUID.randomUUID().toString())
                                    .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build();
-                connection.onNext(event);
+                connection.onNext(new ByteArrayInputStream(event.toByteArray()));
             });
             connection.onCompleted();
         });

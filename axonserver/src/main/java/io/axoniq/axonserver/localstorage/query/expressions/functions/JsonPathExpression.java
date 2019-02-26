@@ -4,11 +4,7 @@ import com.jayway.jsonpath.JsonPath;
 import io.axoniq.axonserver.localstorage.query.Expression;
 import io.axoniq.axonserver.localstorage.query.ExpressionContext;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.JSONExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.ListExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.NullExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.NumericExpressionResult;
-import io.axoniq.axonserver.localstorage.query.result.StringExpressionResult;
+import io.axoniq.axonserver.localstorage.query.result.*;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
@@ -16,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class JsonPathExpression implements Expression {
     private final String alias;

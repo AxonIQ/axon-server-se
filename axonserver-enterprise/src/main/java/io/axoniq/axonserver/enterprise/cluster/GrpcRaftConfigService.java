@@ -10,12 +10,15 @@ import io.axoniq.axonserver.grpc.internal.ContextNames;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeName;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.User;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -49,6 +52,11 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
                                                                              .collect(Collectors.toList())));
     }
 
+    @Override
+    public void deleteNode(NodeName request, StreamObserver<Confirmation> responseObserver) {
+        wrap(responseObserver, () -> localRaftConfigService.deleteNode(request.getNode()));
+    }
+
     private void wrap(StreamObserver<Confirmation> responseObserver, Runnable action) {
         try {
             action.run();
@@ -58,25 +66,47 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
             responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
+    private <T> void wrapFuture(StreamObserver<T> responseObserver, Supplier<CompletableFuture<T>> action) {
+        try {
+            action.get().thenAccept(r -> forwardAndClose(responseObserver, r)).exceptionally(t -> forwardError(responseObserver,t));
+        } catch (Exception ex) {
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
+        }
+    }
 
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()->localRaftConfigService.addNodeToContext(request.getContext(), request.getNode()));
+        wrap(responseObserver, ()->localRaftConfigService.addNodeToContext(request.getContext(), request.getNodeName()));
     }
 
     @Override
     public void deleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()->localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNode()));
+        wrap(responseObserver, ()->localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNodeName()));
     }
 
     @Override
-    public void updateApplication(Application request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.updateApplication( request));
+    public void updateApplication(Application request, StreamObserver<Application> responseObserver) {
+        wrapFuture(responseObserver, () -> localRaftConfigService.updateApplication(request));
     }
 
+    @Override
+    public void refreshToken(Application request, StreamObserver<Application> responseObserver) {
+        wrapFuture(responseObserver, () -> localRaftConfigService.refreshToken(request));
+    }
+
+    private Void forwardError(StreamObserver<?> responseObserver, Throwable t) {
+        responseObserver.onError(t);
+        return null;
+    }
+
+    private <T> void forwardAndClose(StreamObserver<T> streamObserver, T result) {
+        streamObserver.onNext(result);
+        streamObserver.onCompleted();
+    }
+    private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
     @Override
     public void updateUser(User request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.updateUser( request));
+        wrapFuture(responseObserver, ()-> localRaftConfigService.updateUser( request).thenApply(u -> CONFIRMATION));
     }
 
     @Override

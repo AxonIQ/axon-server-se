@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FlowControlQueues<T> {
     private static final Logger logger = LoggerFactory.getLogger(FlowControlQueues.class);
@@ -53,7 +53,7 @@ public class FlowControlQueues<T> {
         }
     }
 
-    public void move( String oldFilterValue, Function<T, String> newFilterAssignment) {
+    public void move(String oldFilterValue, Function<T, String> newFilterAssignment) {
         logger.debug("Remove: {}", oldFilterValue);
         BlockingQueue<FilterNode> filterSegment = segments.remove(oldFilterValue);
         if( filterSegment == null) return;

@@ -2,10 +2,9 @@ package io.axoniq.axonserver.enterprise.storage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.ByteBufferEventSource;
 import io.axoniq.axonserver.localstorage.file.EventByteBufferIterator;
 import io.axoniq.axonserver.localstorage.file.EventSource;
@@ -37,7 +36,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SecondaryEventStore extends SegmentBasedEventStore {
     private final ScheduledExecutorService scheduledExecutorService;
@@ -58,6 +57,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     @Override
     public void initSegments(long lastInitialized)  {
         segments.addAll(prepareSegmentStore(lastInitialized));
+
         if( next != null) next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
     }
 
@@ -138,7 +138,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(TransactionInformation transactionInformation, List<Event> eventList) {
+    public PreparedTransaction prepareTransaction( List<SerializedEvent> eventList) {
         throw new UnsupportedOperationException();
     }
 
@@ -167,9 +167,11 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
             }
 
             indexManager.remove(segment);
-            FileUtils.delete(storageProperties.dataFile(context, segment));
-            FileUtils.delete(storageProperties.index(context, segment));
-            FileUtils.delete(storageProperties.bloomFilter(context, segment));
+            if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+                ! FileUtils.delete(storageProperties.index(context, segment)) ||
+                ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
+            }
         }
     }
 
@@ -189,7 +191,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
         try(FileChannel fileChannel = new RandomAccessFile(file, "r").getChannel()) {
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, size);
-            ByteBufferEventSource eventSource = new ByteBufferEventSource(buffer, eventTransformerFactory, storageProperties);
+            ByteBufferEventSource eventSource = new ByteBufferEventSource(file.getAbsolutePath(), buffer, eventTransformerFactory, storageProperties);
             lruMap.put(segment, new WeakReference<>(eventSource));
             return eventSource;
         } catch (IOException ioException) {

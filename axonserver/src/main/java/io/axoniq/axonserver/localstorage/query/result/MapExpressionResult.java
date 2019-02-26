@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class MapExpressionResult implements AbstractMapExpressionResult {

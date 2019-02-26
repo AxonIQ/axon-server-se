@@ -1,10 +1,13 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import org.springframework.stereotype.Component;
+
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * Author: marc
@@ -30,16 +33,18 @@ public class RaftConfigServiceFactory {
 
 
     public RaftConfigService getRaftConfigService() {
-        if( raftLeaderProvider.isLeader(GrpcRaftController.ADMIN_GROUP)) return localRaftConfigService;
-        String leader = raftLeaderProvider.getLeader(GrpcRaftController.ADMIN_GROUP);
-        if( leader == null) throw new RuntimeException("No leader for " + GrpcRaftController.ADMIN_GROUP);
+        if( raftLeaderProvider.isLeader(getAdmin()) ) return localRaftConfigService;
+        String leader = raftLeaderProvider.getLeader(getAdmin());
+        if( leader == null) throw new RuntimeException("No leader for " + getAdmin());
         ClusterNode node = clusterController.getNode(leader);
         return new RemoteRaftConfigService(RaftConfigServiceGrpc.newStub(ManagedChannelHelper
-                                                                               .createManagedChannel(configuration, node)));
+                                                                               .createManagedChannel(configuration, node))
+                                                                .withInterceptors(new InternalTokenAddingInterceptor(configuration.getAccesscontrol().getInternalToken())));
     }
 
     public RaftConfigServiceGrpc.RaftConfigServiceBlockingStub getRaftConfigServiceStub(String host, int port) {
-        return RaftConfigServiceGrpc.newBlockingStub(ManagedChannelHelper.createManagedChannel(configuration, host, port));
+        return RaftConfigServiceGrpc.newBlockingStub(ManagedChannelHelper.createManagedChannel(configuration, host, port))
+                                    .withInterceptors(new InternalTokenAddingInterceptor(configuration.getAccesscontrol().getInternalToken()));
     }
 
     public RaftConfigService getLocalRaftConfigService() {

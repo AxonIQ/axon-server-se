@@ -5,16 +5,18 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ForwardingStreamObserver<T> implements StreamObserver<T> {
 
     private final Logger logger;
+    private final String request;
     private final StreamObserver<T> responseObserver;
 
     public ForwardingStreamObserver(
-            Logger logger, StreamObserver<T> responseObserver) {
+            Logger logger, String request, StreamObserver<T> responseObserver) {
         this.logger = logger;
+        this.request = request;
         this.responseObserver = responseObserver;
     }
 
@@ -25,7 +27,7 @@ public class ForwardingStreamObserver<T> implements StreamObserver<T> {
 
     @Override
     public void onError(Throwable cause) {
-        logger.warn(EventDispatcher.ERROR_ON_CONNECTION_FROM_EVENT_STORE, cause.getMessage());
+        logger.warn(EventDispatcher.ERROR_ON_CONNECTION_FROM_EVENT_STORE, request, cause.getMessage());
         responseObserver.onError(GrpcExceptionBuilder.build(cause));
     }
 

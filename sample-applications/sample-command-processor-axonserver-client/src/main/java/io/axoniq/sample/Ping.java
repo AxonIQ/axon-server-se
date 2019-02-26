@@ -9,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Ping {
     private static class StreamGobbler implements Runnable {

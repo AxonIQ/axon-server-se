@@ -1,16 +1,14 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.jpa.UserRole;
+import io.axoniq.axonserver.access.role.RoleController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.platform.role.Role;
-import io.axoniq.platform.role.RoleController;
-import io.axoniq.platform.user.User;
-import io.axoniq.platform.user.UserController;
-import io.axoniq.platform.user.UserRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +25,7 @@ import java.util.stream.Collectors;
 import javax.validation.Valid;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RestController("UserRestController")
 @CrossOrigin
@@ -37,14 +35,11 @@ public class UserRestController {
     private final Logger logger = LoggerFactory.getLogger(UserRestController.class);
     private final UserControllerFacade userController;
     private final RoleController roleController;
-    private final ApplicationEventPublisher eventPublisher;
 
     public UserRestController(UserControllerFacade userController,
-                              RoleController roleController,
-                              ApplicationEventPublisher eventPublisher) {
+                              RoleController roleController) {
         this.userController = userController;
         this.roleController = roleController;
-        this.eventPublisher = eventPublisher;
     }
 
     @PostMapping("users")

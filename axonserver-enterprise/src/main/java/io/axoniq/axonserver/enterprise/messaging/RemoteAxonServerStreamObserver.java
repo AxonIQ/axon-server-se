@@ -1,13 +1,11 @@
 package io.axoniq.axonserver.enterprise.messaging;
 
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RemoteAxonServerStreamObserver<T> implements StreamObserver<T> {
 

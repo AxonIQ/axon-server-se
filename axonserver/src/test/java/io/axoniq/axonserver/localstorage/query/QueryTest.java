@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class QueryTest {
 
@@ -48,7 +48,7 @@ public class QueryTest {
                                                                                                        .build())
                                                                            .putMetaData("meta-key", MetaDataValue.newBuilder().setTextValue("text-value2").build())
                                                                            .putMetaData("otherkey", MetaDataValue.newBuilder().setNumberValue(42L).build())
-                                                             .build()).setToken(0).build());
+                                                             .build()).setToken(1).build());
         events.add(EventWithToken.newBuilder().setEvent(Event.newBuilder()
                                                                            .setAggregateType("Type1")
                                                                            .setAggregateSequenceNumber(2L)
@@ -57,7 +57,7 @@ public class QueryTest {
                                                                                                        .build())
                                                                            .putMetaData("meta-key", MetaDataValue.newBuilder().setTextValue("text-value2").build())
                                                                            .putMetaData("otherkey", MetaDataValue.newBuilder().setNumberValue(1L).build())
-                                                             .build()).setToken(0).build());
+                                                             .build()).setToken(2).build());
         events.add(EventWithToken.newBuilder().setEvent(Event.newBuilder()
                                                                            .setAggregateType("Type3")
                                                                            .setAggregateSequenceNumber(3L)
@@ -65,7 +65,7 @@ public class QueryTest {
                                                                                                        .setType("PayloadType1")
                                                                                                        .build())
                                                                            .putMetaData("otherkey", MetaDataValue.newBuilder().setNumberValue(1L).build())
-                                                             .build()).setToken(0).build());
+                                                             .build()).setToken(3).build());
         events.add(EventWithToken.newBuilder().setEvent(Event.newBuilder()
                                                                            .setAggregateType("Type1")
                                                                            .setAggregateSequenceNumber(12L)
@@ -73,7 +73,7 @@ public class QueryTest {
                                                                                                        .setType("PayloadType1")
                                                                                                        .build())
                                                                            .putMetaData("meta-key", MetaDataValue.newBuilder().setTextValue("text-value").build())
-                                                             .build()).setToken(0).build());
+                                                             .build()).setToken(4).build());
 
         eventStream = events.stream();
     }

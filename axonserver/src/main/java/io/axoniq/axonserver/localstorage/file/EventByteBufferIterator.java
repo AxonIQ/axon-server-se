@@ -3,13 +3,13 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventInformation;
-import io.axoniq.axonserver.localstorage.TransactionInformation;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventByteBufferIterator extends EventIterator {
 
@@ -32,8 +32,7 @@ public class EventByteBufferIterator extends EventIterator {
                 if (size == -1 || size == 0) {
                     return;
                 }
-                byte version = reader.get(); // version
-                transactionInformation = new TransactionInformation(version, reader);
+                reader.get(); // version
                 short nrOfMessages = reader.getShort();
 
                 if (firstSequence >= currentSequenceNumber + nrOfMessages) {
@@ -63,7 +62,7 @@ public class EventByteBufferIterator extends EventIterator {
     private void addEvent() {
         try {
             int position = reader.position();
-            eventsInTransaction.add(new EventInformation(currentSequenceNumber, position, eventSource.readEvent()));
+            eventsInTransaction.add(new EventInformation(position, new SerializedEventWithToken(currentSequenceNumber, eventSource.readEvent())));
             currentSequenceNumber++;
         } catch( BufferUnderflowException io) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);
@@ -76,8 +75,7 @@ public class EventByteBufferIterator extends EventIterator {
                 reader.position(reader.position()-4);
                 return false;
             }
-            byte version = reader.get(); // version
-        transactionInformation = new TransactionInformation(version, reader);
+            reader.get(); // version
             short nrOfMessages = reader.getShort();
             for( int idx = 0; idx < nrOfMessages ; idx++) {
                 addEvent();

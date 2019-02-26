@@ -3,12 +3,13 @@ package io.axoniq.axonserver.enterprise.jpa;
 import io.axoniq.axonserver.KeepNames;
 
 import java.io.Serializable;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.IdClass;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Entity
 @IdClass(Safepoint.SafepointKey.class)
@@ -17,29 +18,56 @@ public class Safepoint {
     private String context;
     @Id
     private String type;
-    private long token;
+
+    @Column(name = "token")  // for retro compatibility
+    private long safePoint;
+    /**
+     * The generation of the master this node last synchronize with
+     */
+    private long generation;
 
     public Safepoint() {}
-    public Safepoint(String type, String context, long token) {
+
+    public Safepoint(String type, String context) {
+        this(type, context, 0, 0);
+    }
+    public Safepoint(String type, String context, long safePoint, long generation) {
         this.type = type;
         this.context = context;
-        this.token = token;
+        this.safePoint = safePoint;
+        this.generation = generation;
     }
 
     public String getContext() {
         return context;
     }
 
-    public long getToken() {
-        return token;
+    public long safePoint() {
+        return safePoint;
+    }
+
+    public void setSafePoint(long safePoint) {
+        this.safePoint = safePoint;
     }
 
     public String getType() {
         return type;
     }
 
+    public long generation() {
+        return generation;
+    }
+
+    public void increaseGeneration() {
+        this.generation++;
+    }
+
+    public void setGeneration(long generation) {
+        this.generation = generation;
+    }
+
     public boolean isEvent() {
-        return "Event".equals(type);
+        return "event".equalsIgnoreCase(type);
     }
 
     @KeepNames

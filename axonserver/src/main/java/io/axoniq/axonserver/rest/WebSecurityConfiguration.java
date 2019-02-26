@@ -1,12 +1,10 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.platform.application.jpa.Application;
-import io.axoniq.platform.application.jpa.ApplicationContext;
-import io.axoniq.platform.application.jpa.ApplicationContextRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -26,7 +24,6 @@ import org.springframework.web.filter.GenericFilterBean;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.FilterChain;
@@ -39,7 +36,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.sql.DataSource;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @EnableWebSecurity
@@ -62,7 +59,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         http.csrf().disable();
         http.headers().frameOptions().disable();
         if (accessControlConfiguration.isEnabled()) {
-            final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter();
+            final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
             http.addFilterBefore(tokenFilter, BasicAuthenticationFilter.class);
             ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
                     .authorizeRequests()
@@ -102,21 +99,21 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
     }
 
-    public class AuthenticationToken implements Authentication {
+    public static class AuthenticationToken implements Authentication {
 
         private final boolean authenticated;
         private final String name;
-        private final Set<String> admin;
+        private final Set<String> roles;
 
-        AuthenticationToken(boolean authenticated, String name, Set<String> admin) {
+        AuthenticationToken(boolean authenticated, String name, Set<String> roles) {
             this.authenticated = authenticated;
             this.name = name;
-            this.admin = admin;
+            this.roles = roles;
         }
 
         @Override
         public Collection<? extends GrantedAuthority> getAuthorities() {
-            return admin.stream()
+            return roles.stream()
                         .map(s -> (GrantedAuthority) () -> s)
                         .collect(Collectors.toSet());
         }
@@ -152,7 +149,13 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
     }
 
-    private class TokenAuthenticationFilter extends GenericFilterBean {
+    public static class TokenAuthenticationFilter extends GenericFilterBean {
+
+        private final AxonServerAccessController accessController;
+
+        public TokenAuthenticationFilter(AxonServerAccessController accessController) {
+            this.accessController = accessController;
+        }
 
         @Override
         public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain)
@@ -164,24 +167,20 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     token = request.getParameter(AxonServerAccessController.TOKEN_PARAM);
                 }
 
-                if ( isLocalRequest(request)) {
+                if( actuatorRequest(request)) {
+                    // No further action
+                } else if ( isLocalRequest(request)) {
                     SecurityContextHolder.getContext().setAuthentication(
                             new AuthenticationToken(true,
                                                     "LocalAdmin",
                                                     Collections.singleton("ADMIN")));
                 } else {
                     if (token != null) {
-                        Application application = accessController.getApplication(token);
-                        if (application != null) {
-                            Set<String> roles = application.getContexts()
-                                                           .stream()
-                                                           .map(ApplicationContext::getRoles)
-                                                           .flatMap(List::stream)
-                                                           .map(ApplicationContextRole::getRole)
-                                                           .collect(Collectors.toSet());
+                        Set<String> roles = accessController.getAdminRoles(token);
+                        if (roles != null && ! roles.isEmpty()) {
                             SecurityContextHolder.getContext().setAuthentication(
                                     new AuthenticationToken(true,
-                                                            application.getName(),
+                                                            "AuthenticatedApp",
                                                             roles));
                         } else {
                             HttpServletResponse httpServletResponse = (HttpServletResponse)servletResponse;
@@ -195,13 +194,17 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                         HttpServletResponse httpServletResponse = (HttpServletResponse)servletResponse;
                         httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_TOKEN_MISSING.getHttpCode().value());
                         try (ServletOutputStream outputStream = httpServletResponse.getOutputStream() ) {
-                            outputStream.println("Missing header: " + AxonServerAccessController.TOKEN_PARAM);
+                            outputStream.println("Missing header: " + AxonServerStandardAccessController.TOKEN_PARAM);
                         }
                         return;
                     }
                 }
             }
             filterChain.doFilter(servletRequest, servletResponse);
+        }
+
+        private boolean actuatorRequest(HttpServletRequest httpServletRequest) {
+            return httpServletRequest.getRequestURI().startsWith("/actuator/");
         }
 
         private boolean stopRedirect(String header) {

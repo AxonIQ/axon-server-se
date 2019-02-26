@@ -8,6 +8,7 @@ import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.cluster.configuration.MembersStore;
 import io.axoniq.axonserver.cluster.configuration.store.JpaMembersStore;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
+import io.axoniq.axonserver.cluster.grpc.GrpcRaftClientFactory;
 import io.axoniq.axonserver.cluster.grpc.GrpcRaftPeer;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftStateController;
@@ -23,25 +24,36 @@ import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManage
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.localstorage.LocalEventStore;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class GrpcRaftGroup implements RaftGroup {
+    private final String context;
     private final LogEntryStore localLogEntryStore;
     private final JpaRaftStateController raftStateController;
     private final RaftConfiguration raftConfiguration;
     private final RaftNode localNode;
     private final LogEntryProcessor logEntryProcessor;
+    private final LocalEventStore localEventStore;
+    private final GrpcRaftClientFactory clientFactory;
 
     public GrpcRaftGroup(String localNodeId, String groupId,
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
                          RaftProperties storageOptions,
-                         Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory) {
+                         Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory,
+                         LocalEventStore localEventStore,
+                         GrpcRaftClientFactory clientFactory) {
+        this.clientFactory = clientFactory;
+        context = groupId;
+        this.localEventStore = localEventStore;
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
         raftStateController.init();
         logEntryProcessor = new LogEntryProcessor(raftStateController);
@@ -76,7 +88,7 @@ public class GrpcRaftGroup implements RaftGroup {
             }
 
             @Override
-            public void clear() {
+            public void delete() {
                 membersStore.set(Collections.emptyList());
             }
 
@@ -136,7 +148,7 @@ public class GrpcRaftGroup implements RaftGroup {
         List<Node> nodes = raftConfiguration.groupMembers();
         for (Node node : nodes) {
             if (node.getNodeId().equals(nodeId)){
-                return new GrpcRaftPeer(node);
+                return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
             }
         }
         throw new IllegalArgumentException(nodeId + " is not member of this group");
@@ -144,7 +156,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public RaftPeer peer(Node node) {
-        return new GrpcRaftPeer(node);
+        return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
     }
 
     @Override
@@ -154,5 +166,17 @@ public class GrpcRaftGroup implements RaftGroup {
 
     public void syncStore() {
         raftStateController.sync();
+    }
+
+    @Override
+    public long lastAppliedEventSequence() {
+        if( isAdmin(context)) return 0L;
+        return localEventStore.getLastToken(context);
+    }
+
+    @Override
+    public long lastAppliedSnapshotSequence() {
+        if( isAdmin(context)) return 0L;
+        return localEventStore.getLastSnapshot(context);
     }
 }

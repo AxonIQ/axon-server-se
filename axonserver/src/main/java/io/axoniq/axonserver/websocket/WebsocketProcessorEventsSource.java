@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.websocket;
 
-import io.axoniq.axonserver.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;

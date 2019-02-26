@@ -22,8 +22,10 @@ import org.springframework.context.event.EventListener;
 import java.nio.charset.Charset;
 import java.util.function.Function;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final Logger logger = LoggerFactory.getLogger(EventStoreManager.class);
@@ -63,7 +65,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              RaftGroupRepositoryManager contextController,
                              LocalEventStore localEventStore) {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
-             () -> contextController.getMyContexts().iterator(),
+             () -> contextController.getMyContextNames().iterator(),
              leaderProvider::getLeader,
              lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
@@ -107,6 +109,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     private void initContext(String context, boolean validating) {
+        if( isAdmin(context)) return;
         logger.debug("Init context: {}", context);
         localEventStore.initContext(context, validating);
     }
@@ -126,6 +129,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     public void stop(Runnable runnable) {
         runnable.run();
         running = false;
+        runnable.run();
     }
 
     @Override
@@ -146,7 +150,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         return masterProvider.apply(context);
     }
 
-    public boolean isMaster(String context) {
+    private boolean isMaster(String context) {
         return isMaster(nodeName, context);
     }
 

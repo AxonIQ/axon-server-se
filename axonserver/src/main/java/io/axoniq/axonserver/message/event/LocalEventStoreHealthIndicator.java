@@ -7,7 +7,7 @@ import org.springframework.boot.actuate.health.Health;
 import org.springframework.stereotype.Component;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
@@ -21,13 +21,14 @@ public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
     }
 
     @Override
-    protected void doHealthCheck(Health.Builder builder) throws Exception {
+    protected void doHealthCheck(Health.Builder builder)  {
+        builder.up();
         clusterController.getMyContextNames().forEach(context -> {
             builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastToken(context));
             builder.withDetail(String.format("%s.lastSnapshot", context), localEventStore.getLastSnapshot(context));
             builder.withDetail(String.format("%s.waitingEventTransactions", context), localEventStore.getWaitingEventTransactions(context));
             builder.withDetail(String.format("%s.waitingSnapshotTransactions", context), localEventStore.getWaitingSnapshotTransactions(context));
-            localEventStore.health(builder);
         });
+        localEventStore.health(builder);
     }
 }

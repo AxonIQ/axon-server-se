@@ -14,20 +14,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import javax.annotation.PreDestroy;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
-@SpringBootApplication(scanBasePackages = "io.axoniq")
+@SpringBootApplication
 @EnableAsync
 @EnableScheduling
-@EnableJpaRepositories("io.axoniq")
-@EntityScan("io.axoniq")
 @Import(PluginImportSelector.class)
 public class AxonServerEnterprise {
     private static final Logger log = LoggerFactory.getLogger(AxonServerEnterprise.class);

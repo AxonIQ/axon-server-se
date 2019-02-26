@@ -31,7 +31,7 @@ import javax.net.ssl.SSLContext;
 
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AxonIQCliCommand {
     protected static CommandLine processCommandLine(String name, String[] args, Option... options) {
@@ -153,10 +153,12 @@ public class AxonIQCliCommand {
             if (token != null) {
                 httpPost.addHeader("AxonIQ-Access-Token", token);
             }
-            ObjectMapper objectMapper = new ObjectMapper();
-            httpPost.addHeader("Content-Type", "application/json");
-            HttpEntity entity = new ByteArrayEntity(objectMapper.writeValueAsBytes(value));
-            httpPost.setEntity(entity);
+            if( value != null) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                httpPost.addHeader("Content-Type", "application/json");
+                HttpEntity entity = new ByteArrayEntity(objectMapper.writeValueAsBytes(value));
+                httpPost.setEntity(entity);
+            }
 
             CloseableHttpResponse response = httpclient.execute(httpPost);
             if (response.getStatusLine().getStatusCode() != expectedStatusCode) {

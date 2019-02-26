@@ -10,7 +10,7 @@ import net.minidev.json.parser.ParseException;
 import java.util.Objects;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class StringExpressionResult implements ExpressionResult {

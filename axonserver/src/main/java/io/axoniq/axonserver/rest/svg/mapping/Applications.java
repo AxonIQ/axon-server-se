@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
-import io.axoniq.axonserver.TopologyEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;

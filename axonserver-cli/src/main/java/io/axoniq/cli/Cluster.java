@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class Cluster extends AxonIQCliCommand {
     public static void run(String[] args)  {

@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.query.subscription.metric;
 
-import io.axoniq.axonserver.SubscriptionQueryEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
 import io.micrometer.core.instrument.Counter;
