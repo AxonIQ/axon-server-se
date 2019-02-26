@@ -41,8 +41,6 @@ message ConnectorCommand {
         ClientEventProcessor request_processor_status = 35;
         CommandHandlerStatus command_handler_status = 36;
         QueryHandlerStatus query_handler_status = 37;
-        ClientEventProcessorSegment split_segment = 38;
-        ClientEventProcessorSegment merge_segment = 39;
     }
 }
 
