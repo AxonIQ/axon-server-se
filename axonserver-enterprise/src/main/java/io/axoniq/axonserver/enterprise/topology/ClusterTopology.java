@@ -93,7 +93,7 @@ public class ClusterTopology implements Topology {
 
     public Stream<AxonServerNode> nodesFromRaftGroups() {
         Map<ClusterNode, Set<String>> contextPerNode = new HashMap<>();
-//        clusterController.nodes().forEach(n -> contextPerNode.put(n, new HashSet<>()));
+        clusterController.nodes().forEach(n -> contextPerNode.put(n, new HashSet<>()));
         raftController.getContexts().forEach(context -> {
             raftController.getRaftGroup(context).raftConfiguration().groupMembers().forEach(
                     node -> {

@@ -21,13 +21,10 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -449,6 +446,10 @@ public class ClusterController implements SmartLifecycle {
         applicationEventPublisher.publishEvent(DeleteNode.newBuilder().setNodeName(node).build());
     }
 
+    /**
+     * Event handler for deleting a node. Deleting a node needs to be executed in a transaction.
+     * @param deleteRequested event containing the node name
+     */
     @EventListener
     @Transactional
     public void on(DeleteNode deleteRequested) {

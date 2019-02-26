@@ -10,11 +10,12 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
-import io.axoniq.axonserver.rest.json.ExtendedClusterNode;
+import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.json.UserInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
+import io.swagger.annotations.ApiOperation;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 
 /**
+ * Rest calls to retrieve information about the configuration of Axon Server. Used by UI and CLI.
  * @author Marc Gathier
  */
 @RestController("PublicRestController")
@@ -63,6 +65,8 @@ public class PublicRestController {
 
 
     @GetMapping
+    @ApiOperation(value="Retrieves all nodes in the cluster that the current node knows about.", notes = "For _admin nodes the result contains all nodes, for non _admin nodes the"
+            + "result only contains nodes from contexts available on this node and the _admin nodes.")
     public List<JsonServerNode> getClusterNodes() {
         List<AxonServerNode> nodes = topology.getRemoteConnections();
 
@@ -73,8 +77,9 @@ public class PublicRestController {
     }
 
     @GetMapping(path = "me")
-    public ExtendedClusterNode getNodeInfo() {
-        ExtendedClusterNode node = new ExtendedClusterNode(topology.getMe());
+    @ApiOperation(value="Retrieves general information on the configuration of the current node, including hostnames and ports for the gRPC and HTTP connections and contexts")
+    public NodeConfiguration getNodeConfiguration() {
+        NodeConfiguration node = new NodeConfiguration(topology.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
         node.setClustered(Feature.CLUSTERING.enabled(features));
@@ -86,6 +91,7 @@ public class PublicRestController {
 
 
     @GetMapping(path="mycontexts")
+    @ApiOperation(value="Retrieves names for all storage (non admin) contexts for the current node")
     public Iterable<String> getMyContextList() {
         return topology.getMyStorageContextNames();
     }
@@ -93,6 +99,7 @@ public class PublicRestController {
 
 
     @GetMapping(path = "license")
+    @ApiOperation(value="Retrieves license information")
     public LicenseInfo licenseInfo() {
         LicenseInfo licenseInfo = new LicenseInfo();
         licenseInfo.setExpiryDate(features.getExpiryDate());
@@ -105,6 +112,7 @@ public class PublicRestController {
     }
 
     @GetMapping(path = "status")
+    @ApiOperation(value="Retrieves status information, used by UI")
     public StatusInfo status() {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
@@ -121,6 +129,7 @@ public class PublicRestController {
 
 
     @GetMapping(path = "user")
+    @ApiOperation(value="Retrieves information on the user logged in in the current Http Session")
     public UserInfo userInfo(HttpServletRequest request) {
         if (request.getUserPrincipal() instanceof Authentication) {
             Authentication token = (Authentication) request.getUserPrincipal();

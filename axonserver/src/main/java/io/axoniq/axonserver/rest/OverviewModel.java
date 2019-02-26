@@ -22,22 +22,24 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 /**
+ * Controller that generates a SVG model of the configuration of AxonServer and the connected client applications.
+ *
  * @author Marc Gathier
  */
 @RestController("OverviewModel")
 public class OverviewModel {
 
     private final Topology clusterController;
-    private final Iterable<Application> applications;
-    private final Iterable<AxonServer> axonServers;
+    private final Iterable<Application> applicationProvider;
+    private final Iterable<AxonServer> axonServerProvider;
     private final Fonts fonts;
 
     public OverviewModel(Topology clusterController,
-                         Iterable<Application> applications,
-                         Iterable<AxonServer> axonServers) {
+                         Iterable<Application> applicationProvider,
+                         Iterable<AxonServer> axonServerProvider) {
         this.clusterController = clusterController;
-        this.applications = applications;
-        this.axonServers = axonServers;
+        this.applicationProvider = applicationProvider;
+        this.axonServerProvider = axonServerProvider;
         this.fonts = new Fonts();
     }
 
@@ -46,9 +48,9 @@ public class OverviewModel {
         boolean multiContext = clusterController.isMultiContext();
         AxonServerBoxMapping serverRegistry = new AxonServerBoxMapping(multiContext, clusterController.getName(), fonts);
 
-        Element hubNodes = new Grouped(new Elements(10, 200, axonServers, serverRegistry), "axonserverNodes");
-        Element clients = new Elements(10, 10, applications, new ApplicationBoxMapping(serverRegistry, fonts));
-        Element popups = new Elements(axonServers, new AxonServerPopupMapping(serverRegistry, fonts));
+        Element hubNodes = new Grouped(new Elements(10, 200, axonServerProvider, serverRegistry), "axonserverNodes");
+        Element clients = new Elements(10, 10, applicationProvider, new ApplicationBoxMapping(serverRegistry, fonts));
+        Element popups = new Elements(axonServerProvider, new AxonServerPopupMapping(serverRegistry, fonts));
 
         Elements components = new Elements(hubNodes, clients, popups);
         Element background = new Clickable(new Rectangle(new Position(0, 0),

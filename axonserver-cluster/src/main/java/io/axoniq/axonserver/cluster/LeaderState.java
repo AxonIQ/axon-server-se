@@ -43,7 +43,9 @@ import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
- * Author: marc
+ * Performs all actions when the node is in leader state.
+ *
+ * @author Marc Gathier
  */
 public class LeaderState extends AbstractMembershipState {
 
@@ -264,7 +266,7 @@ public class LeaderState extends AbstractMembershipState {
                 completableFuture.complete(null);
                 lastConfirmed.set(e.getIndex());
             } else {
-                logger.debug("waited for {}", e.getIndex());
+                logger.warn("Failed to retrieve waiting call for log entry index {} - entry = {}, could not complete the request.", e.getIndex(), e);
             }
         } catch (InterruptedException e1) {
             Thread.currentThread().interrupt();

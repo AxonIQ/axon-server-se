@@ -4,10 +4,12 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
 /**
+ * Contains information on the current node, including the gRPC and HTTP ports, and Axon Server configuration (SSL, Authentication, Cluster).
+ *
  * @author Marc Gathier
  */
 @KeepNames
-public class ExtendedClusterNode {
+public class NodeConfiguration {
 
     private final AxonServerNode delegate;
     private boolean authentication;
@@ -17,7 +19,7 @@ public class ExtendedClusterNode {
     private Iterable<String> storageContextNames;
     private Iterable<String> contextNames;
 
-    public ExtendedClusterNode(AxonServerNode delegate) {
+    public NodeConfiguration(AxonServerNode delegate) {
         this.delegate = delegate;
     }
 

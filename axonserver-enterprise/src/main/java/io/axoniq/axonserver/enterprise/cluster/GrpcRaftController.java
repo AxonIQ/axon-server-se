@@ -18,7 +18,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,14 +29,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
@@ -237,12 +233,19 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
 
+    /**
+     * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than 100 transactions per second
+     */
     @Scheduled(fixedDelay = 1000)
     public void syncStore() {
         raftGroupMap.forEach((k,e) -> ((GrpcRaftGroup)e).syncStore());
     }
 
 
+    /**
+     * Retrieve all non-admin Contexts that this this node is member of
+     * @return List of context names
+     */
     public Iterable<String> getStorageContexts() {
         return raftGroupMap.keySet().stream().filter(groupId -> !isAdmin(groupId)).collect(Collectors.toList());
     }
