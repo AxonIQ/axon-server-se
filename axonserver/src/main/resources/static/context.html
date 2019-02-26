@@ -95,7 +95,9 @@
                         return false;
                     },
                     deleteContext(context) {
-                        if (confirm("Delete context " + context.context)) {
+                        if( this.isInternalContext(context) ) {
+                            alert("Cannot delete internal context")
+                        } else if (confirm("Delete context " + context.context)) {
                             axios.delete("v1/context/" + context.context).then(
                                     response => this.loadContexts()
                             )
@@ -109,6 +111,9 @@
                         }, function (sub) {
                             me.subscription = sub;
                         });
+                    },
+                    isInternalContext(context) {
+                        return context.context.charAt(0) === '_';
                     }
                 }
             });
@@ -127,7 +132,7 @@
             </thead>
             <tbody>
             <tr v-for="context in contexts">
-                <td>{{context.context}} <span @click="deleteContext(context)" v-if="admin" title="Delete Context"><i
+                <td>{{context.context}} <span @click="deleteContext(context)" v-if="admin && !isInternalContext(context)" title="Delete Context"><i
                         class="far fa-trash-alt"></i></span></td>
                 <td>
                     <ul>

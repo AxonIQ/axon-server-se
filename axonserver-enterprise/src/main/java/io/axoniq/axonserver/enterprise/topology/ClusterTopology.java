@@ -3,12 +3,20 @@ package io.axoniq.axonserver.enterprise.topology;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -39,7 +47,11 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Stream<? extends AxonServerNode> nodes() {
-        return clusterController.nodes();
+        if( clusterController.isAdminNode()) {
+            return clusterController.nodes();
+        }
+
+        return nodesFromRaftGroups();
     }
 
     @Override
@@ -59,6 +71,73 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Iterable<String> getMyContextNames() {
-        return raftController.getMyContexts();
+        return raftController.getStorageContexts();
     }
+
+    @Override
+    public Iterable<String> getMyStorageContextNames() {
+        Set<String> names = new HashSet<>();
+        raftController.getStorageContexts().forEach(c -> {
+            if (!isAdmin(c)) {
+                names.add(c);
+            }
+        });
+        return names;
+    }
+
+
+    @Override
+    public boolean isAdminNode() {
+        return clusterController.isAdminNode();
+    }
+
+    public Stream<AxonServerNode> nodesFromRaftGroups() {
+        Map<ClusterNode, Set<String>> contextPerNode = new HashMap<>();
+        clusterController.nodes().forEach(n -> contextPerNode.put(n, new HashSet<>()));
+        raftController.getContexts().forEach(context -> {
+            raftController.getRaftGroup(context).raftConfiguration().groupMembers().forEach(
+                    node -> {
+                        ClusterNode clusterNode = clusterController.getNode(node.getNodeName());
+                        contextPerNode.computeIfAbsent(clusterNode, c -> new HashSet<>()).add(context);
+                    }
+            );
+        });
+        return contextPerNode.entrySet().stream().map(e -> new AxonServerNode() {
+            @Override
+            public String getHostName() {
+                return e.getKey().getHostName();
+            }
+
+            @Override
+            public Integer getGrpcPort() {
+                return e.getKey().getGrpcPort();
+            }
+
+            @Override
+            public String getInternalHostName() {
+                return e.getKey().getInternalHostName();
+            }
+
+            @Override
+            public Integer getGrpcInternalPort() {
+                return e.getKey().getGrpcInternalPort();
+            }
+
+            @Override
+            public Integer getHttpPort() {
+                return e.getKey().getHttpPort();
+            }
+
+            @Override
+            public String getName() {
+                return e.getKey().getName();
+            }
+
+            @Override
+            public Collection<String> getContextNames() {
+                return e.getValue();
+            }
+        });
+    }
+
 }

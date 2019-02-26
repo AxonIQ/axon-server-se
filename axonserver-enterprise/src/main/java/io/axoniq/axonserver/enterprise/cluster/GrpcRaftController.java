@@ -233,13 +233,20 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
 
-    @Scheduled(fixedDelay = 5000)
+    /**
+     * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than 100 transactions per second.
+     */
+    @Scheduled(fixedDelay = 1000)
     public void syncStore() {
         raftGroupMap.forEach((k,e) -> ((GrpcRaftGroup)e).syncStore());
     }
 
 
-    public Iterable<String> getMyContexts() {
+    /**
+     * Retrieve all non-admin Contexts that this node is member of.
+     * @return List of context names
+     */
+    public Iterable<String> getStorageContexts() {
         return raftGroupMap.keySet().stream().filter(groupId -> !isAdmin(groupId)).collect(Collectors.toList());
     }
 
@@ -270,4 +277,5 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
         }
     }
+
 }

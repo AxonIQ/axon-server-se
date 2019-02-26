@@ -14,6 +14,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -21,13 +22,10 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -241,20 +239,33 @@ public class ClusterController implements SmartLifecycle {
         String nodeName = nodeInfo.getNodeName();
         ClusterNode node = getNode(nodeName);
         if (node == null) {
-            if( ! admin) {
+            if (!admin && !isAnyContext(nodeName)) {
+                // received connection from unknown node, and this node is not in any context we know of and not an admin node
+                // -> refuse the connection
                 return false;
             }
-            addConnection(nodeInfo);
+            node = addConnection(nodeInfo);
+            RemoteConnection remoteConnection = remoteConnections.remove(nodeName);
+            if (remoteConnection != null) {
+                remoteConnection.close();
+            }
         }
 
 
         if (!remoteConnections.containsKey(nodeName)) {
             startRemoteConnection(node, false);
-            nodeListeners.forEach(listener -> listener
-                    .accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node)));
+            for (Consumer<ClusterEvent> nodeListener : nodeListeners) {
+                nodeListener.accept(new ClusterEvent(ClusterEvent.EventType.NODE_ADDED, node));
+            }
         }
 
         return true;
+    }
+
+    private boolean isAnyContext(String nodeName) {
+        Set<JpaRaftGroupNode> groups = raftGroupRepositoryManager.findByNodeName(nodeName);
+        logger.warn("Checking if node {} is member of any known context, found {}", nodeName, groups.size());
+        return ! groups.isEmpty();
     }
 
     @Transactional
@@ -429,10 +440,6 @@ public class ClusterController implements SmartLifecycle {
         return messagingPlatformConfiguration.getCommandFlowControl();
     }
 
-    public FlowControl getEventFlowControl() {
-        return messagingPlatformConfiguration.getEventFlowControl();
-    }
-
     public FlowControl getQueryFlowControl() {
         return messagingPlatformConfiguration.getQueryFlowControl();
     }
@@ -449,9 +456,27 @@ public class ClusterController implements SmartLifecycle {
         applicationEventPublisher.publishEvent(DeleteNode.newBuilder().setNodeName(node).build());
     }
 
+    /**
+     * Event handler for deleting a node. Deleting a node needs to be executed in a transaction.
+     * @param deleteRequested event containing the node name
+     */
     @EventListener
     @Transactional
     public void on(DeleteNode deleteRequested) {
         deleteNode(deleteRequested.getNodeName());
+    }
+
+    public boolean isAdminNode() {
+        return getMe().isAdmin();
+    }
+
+    /**
+     * sets up a connection to a node received through a newconfiguration log entry.
+     * Node information does not contain full information of the remote node (only name, internal hostname and internal port)
+     * so if it is an unknown host it will set-up a temporary connection that is updated once the remote node connects.
+     * @param node the node to connect to
+     */
+    public void connect(Node node) {
+        startRemoteConnection(new ClusterNode(node), true);
     }
 }

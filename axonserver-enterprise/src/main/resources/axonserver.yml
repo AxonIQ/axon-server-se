@@ -18,7 +18,7 @@ spring:
       leak-detection-threshold: 2000
 
   transaction:
-    default-timeout: 15000
+    default-timeout: 3000
 
   h2:
     console:
@@ -61,7 +61,9 @@ management:
     web:
       exposure:
         include: metrics,info,health,loggers,prometheus,env
-
+  endpoint:
+    health:
+      show-details: always
 
 info:
   app:
