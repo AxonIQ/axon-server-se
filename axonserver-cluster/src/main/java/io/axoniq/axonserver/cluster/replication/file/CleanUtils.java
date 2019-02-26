@@ -12,8 +12,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Author: marc
- * Copied code from Tomcat to clean buffer: org.apache.tomcat.util.buf.ByteBufferUtils
+ * Utility to support cleaning MemoryMapped files on Windows. When running on Windows MemoryMappedFiles retain lock on file, even when closed. Need to call clean
+ * to remove the lock explicitely, otherwise it depends on the OS cleaning the memory segment.
+ * Original code from Tomcat to clean buffer: org.apache.tomcat.util.buf.ByteBufferUtils
+ *
+ * @author Marc Gathier
  */
 public class CleanUtils {
     private static final Method cleanerMethod;
@@ -37,12 +40,12 @@ public class CleanUtils {
             }
 
             cleanMethodLocal.invoke(cleanerObject);
-        } catch (IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException | IllegalAccessException methodException) {
-            if( logger.isDebugEnabled()) {
-                logger.warn("Unable to configure clean method. If you are running on Windows with a Java version 9 or higher start Axon Server with --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED", methodException);
-            } else {
-                logger.warn("Unable to configure clean method. If you are running on Windows with a Java version 9 or higher start Axon Server with --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED");
-            }
+        } catch (IllegalAccessException methodException) {
+            logger.warn("Unable to configure clean method for MemoryMappedFiles. If you are running on Windows with a Java version 9 or higher start Axon Server with --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED");
+            cleanerMethodLocal = null;
+            cleanMethodLocal = null;
+        } catch (IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException  methodException) {
+            logger.warn("Unable to configure clean method for MemoryMappedFiles", methodException);
             cleanerMethodLocal = null;
             cleanMethodLocal = null;
         }
