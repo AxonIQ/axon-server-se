@@ -1,10 +1,11 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
+import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyController;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,13 +23,14 @@ import java.util.Map;
 import static java.util.stream.Collectors.toMap;
 
 /**
- * Created by Sara Pellegrini on 14/08/2018.
- * sara.pellegrini@gmail.com
+ * Rest APIs to manage Processor Load Balancing Strategies.
  */
 @RestController
 @Transactional
 @RequestMapping("v1")
 public class LoadBalancingManagementRestController {
+
+    private final RaftConfigServiceFactory raftServiceFactory;
 
     private final ProcessorLoadBalancingController processorController;
 
@@ -36,8 +38,10 @@ public class LoadBalancingManagementRestController {
 
 
     public LoadBalancingManagementRestController(
+            RaftConfigServiceFactory raftServiceFactory,
             ProcessorLoadBalancingController processorController,
             LoadBalanceStrategyController strategyController) {
+        this.raftServiceFactory = raftServiceFactory;
         this.processorController = processorController;
         this.strategyController = strategyController;
     }
@@ -69,8 +73,13 @@ public class LoadBalancingManagementRestController {
                             @PathVariable("processor") String processor,
                             @RequestParam("context") String context,
                             @RequestParam("strategy") String strategy){
-        TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, component, context);
-        processorController.save(new ProcessorLoadBalancing(trackingProcessor, strategy));
+        ProcessorLBStrategy update = ProcessorLBStrategy.newBuilder()
+                                                           .setComponent(component)
+                                                           .setProcessor(processor)
+                                                           .setContext(context)
+                                                           .setStrategy(strategy)
+                                                           .build();
+        raftServiceFactory.getRaftConfigService().updateProcessorLoadBalancing(update);
     }
 
     @GetMapping("components/{component}/processors/loadbalance/strategies")
