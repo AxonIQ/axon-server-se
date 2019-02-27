@@ -31,7 +31,7 @@ public class RaftStatusRestController {
 
     @GetMapping("status")
     public List<RaftContext> status() {
-        Iterable<String> myContexts = grpcRaftController.getStorageContexts();
+        Iterable<String> myContexts = grpcRaftController.raftGroups();
         List<RaftContext> raftContexts = new LinkedList<>();
         for (String context : myContexts) {
             raftContexts.add(new RaftContext(grpcRaftController.getRaftGroup(context)));
