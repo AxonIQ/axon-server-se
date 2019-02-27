@@ -12,44 +12,13 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
- * Created by Sara Pellegrini on 01/08/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
  */
 public class TrackingProcessorTest {
 
     @Test
-    public void printOn() {
-        EventProcessorInfo.EventTrackerInfo trackerInfo0 = EventProcessorInfo.EventTrackerInfo.newBuilder()
-                                                                                              .setCaughtUp(true)
-                                                                                              .setReplaying(false)
-                                                                                              .setOnePartOf(2)
-                                                                                              .setSegmentId(0).build();
-        EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
-                                                              .setMode("Tracking")
-                                                              .setActiveThreads(1)
-                                                              .setAvailableThreads(3)
-                                                              .setRunning(true)
-                                                              .addEventTrackersInfo(trackerInfo0).build();
-
-        EventProcessorInfo.EventTrackerInfo trackerInfo1 = EventProcessorInfo.EventTrackerInfo.newBuilder()
-                                                                                              .setCaughtUp(true)
-                                                                                              .setReplaying(false)
-                                                                                              .setOnePartOf(2)
-                                                                                              .setSegmentId(1).build();
-        EventProcessorInfo processorInfo1 = EventProcessorInfo.newBuilder()
-                                                              .setMode("Tracking")
-                                                              .setActiveThreads(1)
-                                                              .setAvailableThreads(0)
-                                                              .setRunning(true)
-                                                              .addEventTrackersInfo(trackerInfo1).build();
-        List<ClientProcessor> clientProcessors = asList(new FakeClientProcessor("clientIdOne", true, processorInfo0),
-                                                        new FakeClientProcessor("clientIdTwo", true, processorInfo1)
-        );
-        TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", clientProcessors);
-        GsonMedia media = new GsonMedia();
-        testSubject.printOn(media);
-        System.out.println(media.toString());
-        String expected =
+    public void testPrintOnCreatesFullyFledgedJson() {
+        String expectedJson =
                 "{\"name\":\"processor name\","
                         + "\"mode\":\"tracking\","
                         + "\"warnings\":[],"
@@ -57,10 +26,50 @@ public class TrackingProcessorTest {
                         + "\"activeThreads\":2,"
                         + "\"canPause\":true,"
                         + "\"canPlay\":false,"
+                        + "\"canSplit\":true,"
+                        + "\"canMerge\":true,"
                         + "\"trackers\":["
                         + "{\"clientId\":\"clientIdOne\",\"segmentId\":0,\"caughtUp\":true,\"replaying\":false,\"onePartOf\":2},"
                         + "{\"clientId\":\"clientIdTwo\",\"segmentId\":1,\"caughtUp\":true,\"replaying\":false,\"onePartOf\":2}"
                         + "]}";
-        assertEquals(expected, media.toString());
+
+        EventProcessorInfo.EventTrackerInfo trackerInfo0 = EventProcessorInfo.EventTrackerInfo.newBuilder()
+                                                                                              .setCaughtUp(true)
+                                                                                              .setReplaying(false)
+                                                                                              .setOnePartOf(2)
+                                                                                              .setSegmentId(0)
+                                                                                              .build();
+        EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
+                                                              .setMode("Tracking")
+                                                              .setActiveThreads(1)
+                                                              .setAvailableThreads(3)
+                                                              .setRunning(true)
+                                                              .addEventTrackersInfo(trackerInfo0)
+                                                              .build();
+
+        EventProcessorInfo.EventTrackerInfo trackerInfo1 = EventProcessorInfo.EventTrackerInfo.newBuilder()
+                                                                                              .setCaughtUp(true)
+                                                                                              .setReplaying(false)
+                                                                                              .setOnePartOf(2)
+                                                                                              .setSegmentId(1)
+                                                                                              .build();
+        EventProcessorInfo processorInfo1 = EventProcessorInfo.newBuilder()
+                                                              .setMode("Tracking")
+                                                              .setActiveThreads(1)
+                                                              .setAvailableThreads(0)
+                                                              .setRunning(true)
+                                                              .addEventTrackersInfo(trackerInfo1)
+                                                              .build();
+        List<ClientProcessor> testClientProcessors = asList(
+                new FakeClientProcessor("clientIdOne", true, processorInfo0),
+                new FakeClientProcessor("clientIdTwo", true, processorInfo1)
+        );
+
+        TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", testClientProcessors);
+
+        GsonMedia media = new GsonMedia();
+        testSubject.printOn(media);
+
+        assertEquals(expectedJson, media.toString());
     }
 }
