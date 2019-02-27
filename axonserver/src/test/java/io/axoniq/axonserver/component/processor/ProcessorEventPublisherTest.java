@@ -18,9 +18,12 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
+ * Test whether the public API of the {@link ProcessorEventPublisher} publishes application events as expected.
+ * Thus, the application events contain the fields as provided through the functions.
+ *
  * @author Steven van Beelen
  */
-public class ApplicationProcessorEventsSourceTest {
+public class ProcessorEventPublisherTest {
 
     private static final String CLIENT_NAME_OF_SPLIT = "splitClientName";
     private static final String PROCESSOR_NAME_TO_SPLIT = "splitProcessorName";
@@ -34,7 +37,7 @@ public class ApplicationProcessorEventsSourceTest {
     private final ApplicationEventPublisher applicationEventPublisher = mock(ApplicationEventPublisher.class);
     private final ClientProcessors clientProcessors = mock(ClientProcessors.class);
 
-    private ApplicationProcessorEventsSource testSubject;
+    private ProcessorEventPublisher testSubject;
 
     @Before
     public void setUp() {
@@ -68,13 +71,13 @@ public class ApplicationProcessorEventsSourceTest {
 
         when(clientProcessors.spliterator()).thenReturn(eventProcessors.spliterator());
 
-        testSubject = new ApplicationProcessorEventsSource(
+        testSubject = new ProcessorEventPublisher(
                 platformService, applicationEventPublisher, clientProcessors
         );
     }
 
     /**
-     * Test whether the {@link ApplicationProcessorEventsSource#splitSegment(String, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#splitSegment(String, String)} operation correctly
      * deduces what the largest Segment for a given Event Processor is, for which the {@code segmentId} will be included
      * to the {@link SplitSegmentRequest}.
      */
@@ -93,7 +96,7 @@ public class ApplicationProcessorEventsSourceTest {
     }
 
     /**
-     * Test whether the {@link ApplicationProcessorEventsSource#mergeSegment(String, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#mergeSegment(String, String)} operation correctly
      * deduces what the smallest Segment for a given Event Processor is, for which the {@code segmentId} will be
      * included to the {@link MergeSegmentRequest}.
      */

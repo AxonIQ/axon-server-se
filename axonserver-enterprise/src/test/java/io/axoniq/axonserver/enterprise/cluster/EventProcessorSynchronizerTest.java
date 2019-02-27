@@ -10,6 +10,13 @@ import org.mockito.*;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Tests whether the event listeners in the {@link EventProcessorSynchronizer} actually republish the handled event as a
+ * {@link ConnectorCommand} over the given {@link ClusterPublisher}. Should assert whether the republished message
+ * contains the expected fields as well.
+ *
+ * @author Steven van Beelen
+ */
 public class EventProcessorSynchronizerTest {
 
     private static final boolean PROXIED = true;

@@ -3,7 +3,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.component.processor.ApplicationProcessorEventsSource;
+import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.ComponentProcessors;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import org.jetbrains.annotations.NotNull;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("v1")
 public class EventProcessorRestController {
 
-    private final ApplicationProcessorEventsSource processorEventsSource;
+    private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
     private final Clients clients;
 
@@ -32,14 +32,14 @@ public class EventProcessorRestController {
      * Instantiate a REST endpoint to open up several Event Processor operations, like start, stop and segment release,
      * to the Axon Server UI.
      *
-     * @param processorEventsSource the {@link ApplicationProcessorEventsSource} used to publish specific application
+     * @param processorEventsSource the {@link ProcessorEventPublisher} used to publish specific application
      *                              events for the provided endpoints
      * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
      *                              instances containing the known status of all the Event Processors
      * @param clients               an {@link Iterable} of {@link Client} instances, used to publish an application
      *                              event to each Client which should receive it
      */
-    public EventProcessorRestController(ApplicationProcessorEventsSource processorEventsSource,
+    public EventProcessorRestController(ProcessorEventPublisher processorEventsSource,
                                         ClientProcessors eventProcessors,
                                         Clients clients) {
         this.processorEventsSource = processorEventsSource;

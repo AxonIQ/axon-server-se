@@ -57,10 +57,20 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
 
-
+    /**
+     * Functional interface describing a consumer of {@link PlatformOutboundInstruction}s to be called as a form of
+     * handler functions when new instructions are received.
+     */
     @FunctionalInterface
     public interface InstructionConsumer {
 
+        /**
+         * Consume the given {@code client}, {@code context} and {@link PlatformInboundInstruction}.
+         *
+         * @param client      a {@link String} specifying the name of the client
+         * @param context     a {@link String} specifying the context of the client
+         * @param instruction a {@link PlatformOutboundInstruction} describing the inbound instruction to be consumed
+         */
         void accept(String client, String context, PlatformInboundInstruction instruction);
     }
 

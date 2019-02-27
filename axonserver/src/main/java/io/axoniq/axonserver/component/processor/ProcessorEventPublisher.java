@@ -31,7 +31,7 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
  * @since 4.0
  */
 @Component
-public class ApplicationProcessorEventsSource {
+public class ProcessorEventPublisher {
 
     private static final boolean NOT_PROXIED = false;
     private static final boolean PARALLELIZE_STREAM = false;
@@ -54,9 +54,9 @@ public class ApplicationProcessorEventsSource {
      *                                  #splitSegment(String, String)} and {@link #mergeSegment(String, String)}
      *                                  operations.
      */
-    public ApplicationProcessorEventsSource(PlatformService platformService,
-                                            ApplicationEventPublisher applicationEventPublisher,
-                                            ClientProcessors clientProcessors) {
+    public ProcessorEventPublisher(PlatformService platformService,
+                                   ApplicationEventPublisher applicationEventPublisher,
+                                   ClientProcessors clientProcessors) {
         this.platformService = platformService;
         this.applicationEventPublisher = applicationEventPublisher;
         this.clientProcessors = clientProcessors;
@@ -64,12 +64,14 @@ public class ApplicationProcessorEventsSource {
 
     @PostConstruct
     public void init() {
-        platformService.onInboundInstruction(EVENT_PROCESSOR_INFO, this::onEventProcessorUpdated);
+        platformService.onInboundInstruction(EVENT_PROCESSOR_INFO, this::publishEventProcessorStatus);
     }
 
-    private void onEventProcessorUpdated(String clientName, String context, PlatformInboundInstruction instruction) {
+    private void publishEventProcessorStatus(String clientName,
+                                             String context,
+                                             PlatformInboundInstruction inboundInstruction) {
         ClientEventProcessorInfo processorStatus =
-                new ClientEventProcessorInfo(clientName, context, instruction.getEventProcessorInfo());
+                new ClientEventProcessorInfo(clientName, context, inboundInstruction.getEventProcessorInfo());
         applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus, NOT_PROXIED));
     }
 

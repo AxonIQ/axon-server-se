@@ -136,11 +136,10 @@ public class MessagingClusterServiceTest {
 
         Iterator<Object> publishedEvents = eventPublisher.events().iterator();
         assertTrue(publishedEvents.hasNext());
-        Object publishedEvent = publishedEvents.next();
-        assertTrue(publishedEvent instanceof SplitSegmentRequest);
-        assertEquals(expectedClientName, ((SplitSegmentRequest) publishedEvent).getClientName());
-        assertEquals(expectedProcessorName, ((SplitSegmentRequest) publishedEvent).getProcessorName());
-        assertEquals(expectedSegmentId, ((SplitSegmentRequest) publishedEvent).getSegmentId());
+        SplitSegmentRequest splitSegmentRequest = (SplitSegmentRequest) publishedEvents.next();
+        assertEquals(expectedClientName, splitSegmentRequest.getClientName());
+        assertEquals(expectedProcessorName, splitSegmentRequest.getProcessorName());
+        assertEquals(expectedSegmentId, splitSegmentRequest.getSegmentId());
     }
 
     @Test
@@ -158,7 +157,6 @@ public class MessagingClusterServiceTest {
         CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
 
-
         requestStream.onNext(ConnectorCommand.newBuilder().setMergeSegment(testMergeMessage).build());
 
         assertEquals(0, responseStream.count);
@@ -166,10 +164,9 @@ public class MessagingClusterServiceTest {
 
         Iterator<Object> publishedEvents = eventPublisher.events().iterator();
         assertTrue(publishedEvents.hasNext());
-        Object publishedEvent = publishedEvents.next();
-        assertTrue(publishedEvent instanceof MergeSegmentRequest);
-        assertEquals(expectedClientName, ((MergeSegmentRequest) publishedEvent).getClientName());
-        assertEquals(expectedProcessorName, ((MergeSegmentRequest) publishedEvent).getProcessorName());
-        assertEquals(expectedSegmentId, ((MergeSegmentRequest) publishedEvent).getSegmentId());
+        MergeSegmentRequest mergeSegmentRequest = (MergeSegmentRequest) publishedEvents.next();
+        assertEquals(expectedClientName, mergeSegmentRequest.getClientName());
+        assertEquals(expectedProcessorName, mergeSegmentRequest.getProcessorName());
+        assertEquals(expectedSegmentId, mergeSegmentRequest.getSegmentId());
     }
 }
