@@ -257,7 +257,7 @@
                 }
             },
             splitSegment(processor) {
-                if (confirm("Pause processor " + processor.name + "?")) {
+                if (confirm("Split segment for " + processor.name + "?")) {
                     axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/split?context=" + this.context).then(
                             response => {
                                 this.enableStatusLoader(processor);
@@ -266,7 +266,7 @@
                 }
             },
             mergeSegment(processor) {
-                if (confirm("Pause processor " + processor.name + "?")) {
+                if (confirm("Merge segment for " + processor.name + "?")) {
                     axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/merge?context=" + this.context).then(
                             response => {
                                 this.enableStatusLoader(processor);
