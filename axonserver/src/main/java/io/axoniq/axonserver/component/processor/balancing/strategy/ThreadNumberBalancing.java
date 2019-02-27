@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component.processor.balancing.strategy;
 
-import io.axoniq.axonserver.component.processor.ApplicationProcessorEventsSource;
+import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.balancing.DefaultOperationFactory;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
@@ -104,11 +104,11 @@ public class ThreadNumberBalancing implements LoadBalancingStrategy {
     @Component("ThreadNumberBalancingStrategy")
     public static class ThreadNumberBalancingStrategyFactory implements LoadBalancingStrategy.Factory {
 
-        private final ApplicationProcessorEventsSource processorEventsSource;
+        private final ProcessorEventPublisher processorEventsSource;
 
         private final ClientProcessors processors;
 
-        public ThreadNumberBalancingStrategyFactory(ApplicationProcessorEventsSource processorEventsSource,
+        public ThreadNumberBalancingStrategyFactory(ProcessorEventPublisher processorEventsSource,
                                                     ClientProcessors processors) {
             this.processorEventsSource = processorEventsSource;
             this.processors = processors;
