@@ -7,7 +7,7 @@ import java.io.File;
  */
 public class StorageProperties {
 
-    private static final String FILENAME_PATTERN = "%s" + File.separator + "%014d%s";
+    private static final String FILENAME_PATTERN = "%s" + File.separator + "%020d%s";
 
     private int syncInterval = 1000;
     private int forceInterval = 1000;
@@ -26,6 +26,8 @@ public class StorageProperties {
      */
     private long secondaryCleanupDelay = 30;
     private String logStorageFolder = "log";
+    private boolean useMmapIndex;
+    private boolean cleanerHackEnabled;
 
     public int getSyncInterval() {
         return syncInterval;
@@ -132,4 +134,38 @@ public class StorageProperties {
         return new File(String.format(FILENAME_PATTERN, getStorage(context), segment, indexSuffix + ".temp"));
     }
 
+    /**
+     * Checks if we can use memory mapped files for index files. Can only use this when we are able to remove the lock on the file explicitly, as we want to
+     * create a temporary file and remove it when done.
+     * @return true if module should use mapdb mmap files
+     */
+    public boolean isUseMmapIndex() {
+        return useMmapIndex;
+    }
+
+    public void setUseMmapIndex(boolean useMmapIndex) {
+        this.useMmapIndex = useMmapIndex;
+    }
+
+    /**
+     * Checks if we should enable the cleaner hack for mapdb files. Only applied when useMmapIndex is true.
+     * @return true if mapdb should use cleaner hack
+     */
+    public boolean isCleanerHackEnabled() {
+        return cleanerHackEnabled;
+    }
+
+    public void setCleanerHackEnabled(boolean cleanerHackEnabled) {
+        this.cleanerHackEnabled = cleanerHackEnabled;
+    }
+
+    /**
+     * Checks if we need to explicitly call the clean method on memory mapped files to remove the file lock (needed only on Windows)
+     *
+     * @return true if running on Windows
+     */
+    public boolean isCleanerHackNeeded() {
+        String os = System.getProperty("os.name").toLowerCase();
+        return os.startsWith("win");
+    }
 }

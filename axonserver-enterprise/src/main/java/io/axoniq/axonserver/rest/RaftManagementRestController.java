@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +17,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 @RestController
 @CrossOrigin
+@Profile("internal")
 @RequestMapping("internal/raft")
 public class RaftManagementRestController {
 

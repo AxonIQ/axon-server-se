@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component.processor.balancing;
 
-import io.axoniq.axonserver.component.processor.ApplicationProcessorEventsSource;
+import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 
 import static java.util.stream.StreamSupport.stream;
@@ -11,12 +11,12 @@ import static java.util.stream.StreamSupport.stream;
  */
 public class DefaultOperationFactory implements OperationFactory {
 
-    private final ApplicationProcessorEventsSource processorEventsSource;
+    private final ProcessorEventPublisher processorEventsSource;
 
     private final ClientProcessors processors;
 
     public DefaultOperationFactory(
-            ApplicationProcessorEventsSource processorEventsSource,
+            ProcessorEventPublisher processorEventsSource,
             ClientProcessors processors) {
         this.processorEventsSource = processorEventsSource;
         this.processors = processors;

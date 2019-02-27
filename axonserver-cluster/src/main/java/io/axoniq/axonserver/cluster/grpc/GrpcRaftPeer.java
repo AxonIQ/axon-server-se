@@ -28,7 +28,7 @@ public class GrpcRaftPeer implements RaftPeer {
     private static final Logger logger = LoggerFactory.getLogger(GrpcRaftPeer.class);
     public final Node node;
     private final GrpcRaftClientFactory clientFactory;
-    private final long maxElectionTimeout;
+    private final long idleConnectionTimeout;
     private final AtomicReference<AppendEntriesStream> appendEntiesStreamRef = new AtomicReference<>();
     private final AtomicReference<Consumer<AppendEntriesResponse>> appendEntriesResponseListener = new AtomicReference<>();
 
@@ -39,10 +39,10 @@ public class GrpcRaftPeer implements RaftPeer {
         this(node, new DefaultGrpcRaftClientFactory(), 5000);
     }
 
-    public GrpcRaftPeer(Node node, GrpcRaftClientFactory clientFactory, long maxElectionTimeout) {
+    public GrpcRaftPeer(Node node, GrpcRaftClientFactory clientFactory, long idleConnectionTimeout) {
         this.node = node;
         this.clientFactory = clientFactory;
-        this.maxElectionTimeout = maxElectionTimeout;
+        this.idleConnectionTimeout = idleConnectionTimeout;
     }
 
     @Override
@@ -170,7 +170,6 @@ public class GrpcRaftPeer implements RaftPeer {
 
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
             if( stream != null) {
-                logger.trace("{} Send {} using {}", node.getNodeId(), request, stream);
                 stream.onNext(request);
             } else {
                 logger.warn("{}: Not sending AppendEntriesRequest {}", node.getNodeId(), request);
@@ -178,7 +177,7 @@ public class GrpcRaftPeer implements RaftPeer {
         }
 
         private boolean noMessagesReceived() {
-            return lastMessageReceived.get() < System.currentTimeMillis() - 2*maxElectionTimeout;
+            return lastMessageReceived.get() < System.currentTimeMillis() - idleConnectionTimeout;
         }
 
 
@@ -201,6 +200,7 @@ public class GrpcRaftPeer implements RaftPeer {
 
                 @Override
                 public void onError(Throwable throwable) {
+                    lastMessageReceived.set(0);
                     logger.debug("Error on AppendEntries stream", throwable);
                     requestStreamRef.set(null);
                 }

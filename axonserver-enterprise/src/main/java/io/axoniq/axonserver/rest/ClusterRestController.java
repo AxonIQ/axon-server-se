@@ -2,6 +2,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -34,14 +35,17 @@ public class ClusterRestController {
 
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
+    private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
 
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
+                                 GrpcRaftController grpcRaftController,
                                  FeatureChecker limits) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
+        this.grpcRaftController = grpcRaftController;
         this.limits = limits;
     }
 
@@ -51,7 +55,7 @@ public class ClusterRestController {
         if( !Feature.CLUSTERING.enabled(limits) ) {
             throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
         }
-        if( ! clusterController.getRemoteConnections().isEmpty()) {
+        if( ! grpcRaftController.getContexts().isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER, "This node is already a member of a cluster");
         }
 

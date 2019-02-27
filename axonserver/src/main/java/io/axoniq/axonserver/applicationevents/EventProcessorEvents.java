@@ -4,11 +4,13 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 
 /**
- * Created by Sara Pellegrini on 09/04/2018.
- * sara.pellegrini@gmail.com
+ * Set of application events for specific operations which can be performed on Event Processors. Used to signal other
+ * components within an Axon Server cluster that a given operation should be done on an Event Processor.
+ *
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class EventProcessorEvents {
-
 
     @KeepNames
     public abstract static class BaseEventProcessorsEvent {
@@ -34,7 +36,7 @@ public class EventProcessorEvents {
             this.eventProcessorStatus = clientEventProcessorInfo;
         }
 
-        public ClientEventProcessorInfo eventProcessorStatus(){
+        public ClientEventProcessorInfo eventProcessorStatus() {
             return this.eventProcessorStatus;
         }
     }
@@ -49,7 +51,7 @@ public class EventProcessorEvents {
             this.eventProcessorStatus = eventProcessorStatus;
         }
 
-        public ClientEventProcessorInfo eventProcessorStatus(){
+        public ClientEventProcessorInfo eventProcessorStatus() {
             return this.eventProcessorStatus;
         }
     }
@@ -58,7 +60,6 @@ public class EventProcessorEvents {
     public static class PauseEventProcessorRequest extends BaseEventProcessorsEvent {
 
         private final String clientName;
-
         private final String processorName;
 
         public PauseEventProcessorRequest(String clientName, String processorName, boolean proxied) {
@@ -74,7 +75,6 @@ public class EventProcessorEvents {
         public String processorName() {
             return processorName;
         }
-
     }
 
 
@@ -82,7 +82,6 @@ public class EventProcessorEvents {
     public static class StartEventProcessorRequest extends BaseEventProcessorsEvent {
 
         private final String clientName;
-
         private final String processorName;
 
         public StartEventProcessorRequest(String clientName, String processorName, boolean proxied) {
@@ -100,41 +99,80 @@ public class EventProcessorEvents {
         }
     }
 
-    @KeepNames
-    public static class ReleaseSegmentRequest extends BaseEventProcessorsEvent {
+    /**
+     * Base for a request to deal with segments. Contains the {@code clientName}, {@code processorName} and
+     * {@code segmentId}, to respectively  find the right client, the right processor and the right segment to perform
+     * the operation on/with.
+     */
+    public abstract static class BaseSegmentRequest extends BaseEventProcessorsEvent {
 
         private final String clientName;
-
         private final String processorName;
-
         private final int segmentId;
 
-        public ReleaseSegmentRequest(String clientName, String processorName, int segmentId, boolean proxied) {
+        /**
+         * Instantiate a {@link BaseSegmentRequest} to perform some operation on a specific segment of a given Event
+         * Processor.
+         *
+         * @param proxied       a {@code boolean} specifying whether this message has been proxied yes/no
+         * @param clientName    a {@link String} defining the name of the client which should handle this message
+         * @param processorName a {@link String} defining the name of the processor which this message should perform
+         *                      some operation on/with
+         * @param segmentId     an {@code int} specifying the segment identifier which this message should perform some
+         *                      operation on/with
+         */
+        protected BaseSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
             super(proxied);
             this.clientName = clientName;
             this.processorName = processorName;
             this.segmentId = segmentId;
         }
 
-        public String clientName() {
+        /**
+         * Return the name of the client.
+         *
+         * @return a {@link String} specifying the name of the client
+         */
+        public String getClientName() {
             return clientName;
         }
 
-        public String processorName() {
+        /**
+         * Return the name of the processor.
+         *
+         * @return a {@link String} specifying the name of the processor
+         */
+        public String getProcessorName() {
             return processorName;
         }
 
-        public int segmentId() {
+        /**
+         * Return the segment identifier.
+         *
+         * @return an {@code int} specifying the id of the segment
+         */
+        public int getSegmentId() {
             return segmentId;
         }
     }
 
+    /**
+     * A {@link BaseSegmentRequest} implementation defining the a release segment request for a given
+     * {@code processorName}.
+     */
+    @KeepNames
+    public static class ReleaseSegmentRequest extends BaseSegmentRequest {
+
+        public ReleaseSegmentRequest(String clientName, String processorName, int segmentId, boolean proxied) {
+            super(proxied, clientName, processorName, segmentId);
+        }
+    }
+
+    @KeepNames
     public static class ProcessorStatusRequest extends BaseEventProcessorsEvent {
 
         private final String clientName;
-
         private final String processorName;
-
 
         public ProcessorStatusRequest(String clientName, String processorName, boolean proxied) {
             super(proxied);
@@ -149,7 +187,29 @@ public class EventProcessorEvents {
         public String processorName() {
             return processorName;
         }
-
     }
 
+    /**
+     * A {@link BaseSegmentRequest} implementation defining the a split segment request for a given
+     * {@code processorName}.
+     */
+    @KeepNames
+    public static class SplitSegmentRequest extends BaseSegmentRequest {
+
+        public SplitSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
+            super(proxied, clientName, processorName, segmentId);
+        }
+    }
+
+    /**
+     * A {@link BaseSegmentRequest} implementation defining the a merge segment request for a given
+     * {@code processorName}.
+     */
+    @KeepNames
+    public static class MergeSegmentRequest extends BaseSegmentRequest {
+
+        public MergeSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
+            super(proxied, clientName, processorName, segmentId);
+        }
+    }
 }

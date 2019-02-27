@@ -7,16 +7,16 @@
                         <col width="15%">
                         <col width="15%">
                         <col width="15%">
-                        <col width="10%">
                         <col width="15%">
-                        <col width="30%">
+                        <col width="15%">
+                        <col width="25%">
                     </colgroup>
                     <thead>
                     <tr>
                         <th><div>Processor Name</div></th>
                         <th><div>Processing Mode</div></th>
                         <th><div>Active Threads</div></th>
-                        <th><div></div></th>
+                        <th><div>Processor Operations</div></th>
                         <th v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" style="text-align: center">Auto Load Balancing</th>
                         <th><div></div></th>
                     </tr>
@@ -29,14 +29,34 @@
                         <td>{{processor.activeThreads}}</td>
                         <td>
                             <span :class="{hidden : !processor.loading}"><i class="fas fa-spinner fa-pulse"></i></span>
-                            <span :class="{hidden : !processor.canPause}" @click="pauseProcessor(processor)"><i
-                                    class="far fa-pause-circle fa-lg"></i></span>
-                            <span :class="{hidden : !processor.canPlay}" @click="startProcessor(processor)"><i
-                                    class="far fa-play-circle fa-lg"></i></span>
-                            <span  v-if="processor.mode === 'Tracking'" @click="showLoadBalance(processor)"><i class="fas fa-balance-scale fa-lg"></i></span>
+                            <span :class="{hidden : !processor.canPause}"
+                                  @click="pauseProcessor(processor)"
+                                  title="Pause this Event Processor">
+                                <i class="far fa-pause-circle fa-lg"></i>
+                            </span>
+                            <span :class="{hidden : !processor.canPlay}"
+                                  @click="startProcessor(processor)"
+                                  title="Start this Event Processor">
+                                <i class="far fa-play-circle fa-lg"></i>
+                            </span>
+                            <span v-if="processor.mode === 'Tracking'"
+                                  :class="{hidden : !processor.canSplit}"
+                                  @click="splitSegment(processor)" title="Split the biggest segment in two">
+                                <i class="fas fa-plus fa-lg"></i>
+                            </span>
 
+                            <span v-if="processor.mode === 'Tracking'"
+                                  :class="{hidden : !processor.canMerge}"
+                                  @click="mergeSegment(processor)" title="Merge the smallest segments in to one">
+                                <i class="fas fa-minus fa-lg"></i>
+                            </span>
+                            <span v-if="processor.mode === 'Tracking'"
+                                  @click="showLoadBalance(processor)"
+                                  title="Load balance this Event Processor automatically">
+                                <i class="fas fa-balance-scale fa-lg"></i>
+                            </span>
                         </td>
-                        <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="center">
+                        <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="right">
                             <span v-if="processor.mode === 'Tracking'">
                                 <select v-model="processorsLBStrategies[processor.name]"
                                         @change="changeLoadBalancingStrategy(processor.name, processorsLBStrategies[processor.name])">
@@ -47,7 +67,6 @@
                         <td>
                             <span v-for="warning in processor.warnings"><i class="fas fa-exclamation-triangle"></i> {{warning.message}}<br></span>
                         </td>
-
                     </tr>
                     </tbody>
                 </table>
@@ -251,6 +270,24 @@
                     );
                 }
             },
+            splitSegment(processor) {
+                if (confirm("Split segment for " + processor.name + "?")) {
+                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/split?context=" + this.context).then(
+                            response => {
+                                this.enableStatusLoader(processor);
+                            }
+                    );
+                }
+            },
+            mergeSegment(processor) {
+                if (confirm("Merge segment for " + processor.name + "?")) {
+                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/merge?context=" + this.context).then(
+                            response => {
+                                this.enableStatusLoader(processor);
+                            }
+                    );
+                }
+            },
             showLoadBalance(processor){
                 this.loadBalanceProcessor = processor;
                 this.$modal.show('load-balance');
@@ -273,6 +310,8 @@
                 processor.loading = true;
                 processor.canPause = false;
                 processor.canPlay = false;
+                processor.canSplit = false;
+                processor.canMerge = false;
             },
             canMoveFrom(clientId) {
                 let freeThreadInstances = this.selected.freeThreadInstances;

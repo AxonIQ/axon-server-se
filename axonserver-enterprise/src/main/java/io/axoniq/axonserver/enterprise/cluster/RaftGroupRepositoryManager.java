@@ -6,6 +6,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -25,9 +26,7 @@ public class RaftGroupRepositoryManager {
     }
 
     public Set<JpaRaftGroupNode> getMyContexts() {
-        return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
-                                      .stream()
-                                      .collect(Collectors.toSet());
+        return findByNodeName(messagingPlatformConfiguration.getName());
     }
 
     public Set<String> getMyContextNames() {
@@ -52,5 +51,9 @@ public class RaftGroupRepositoryManager {
             JpaRaftGroupNode jpaRaftGroupNode = new JpaRaftGroupNode(groupId, n);
             raftGroupNodeRepository.save(jpaRaftGroupNode);
         });
+    }
+
+    public Set<JpaRaftGroupNode> findByNodeName(String nodeName) {
+        return new HashSet<>(raftGroupNodeRepository.findByNodeName(nodeName));
     }
 }

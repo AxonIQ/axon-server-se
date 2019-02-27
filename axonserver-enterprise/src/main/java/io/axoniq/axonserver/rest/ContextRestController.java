@@ -66,6 +66,7 @@ public class ContextRestController {
 
     @DeleteMapping( path = "context/{name}")
     public void deleteContext(@PathVariable("name")  String name) {
+        if( name.startsWith("_")) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT, String.format("Cannot delete internal context %s", name));
         raftServiceFactory.getRaftConfigService().deleteContext(name);
     }
 
@@ -85,6 +86,13 @@ public class ContextRestController {
         if( contextJson.getNodes() == null || contextJson.getNodes().isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "Add at least one node for context");
         }
+
+        if (!contextJson.getContext().matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
+            throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                                                 "Invalid context name");
+
+        }
+
         raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
     }
 

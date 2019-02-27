@@ -19,6 +19,7 @@
         let globals = {
             authenticationEnabled: true,
             admin: false,
+            adminNode: true,
             license: "free",
             features: [],
             hasFeature: function(featureName) {
@@ -95,17 +96,20 @@
                                 this.licenseLoaded = true;
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
-                                    globals.admin = !globals.authenticationEnabled;
-                                    this.admin = globals.admin;
+                                    globals.adminNode = response.data.adminNode;
                                     if (globals.authenticationEnabled) {
+                                        this.admin = false;
+                                        globals.admin = false;
                                         axios.get("v1/public/user").then(
                                                 response => {
-                                                    globals.admin = response.data.roles && response.data.roles.includes('ADMIN');
+                                                    globals.admin = globals.adminNode && response.data.roles && response.data.roles.includes('ADMIN');
                                                     this.admin = globals.admin;
                                                     loadFragment();
                                                 });
 
                                     } else {
+                                        this.admin = response.data.adminNode;
+                                        globals.admin = response.data.adminNode;
                                         loadFragment();
                                     }
                                 });
@@ -154,7 +158,7 @@
 </head>
 <body>
 <nav id="nav">
-    <span v-if="licenseLoaded"/>
+    <span v-if="licenseLoaded">
     <a href="#" class="menu-settings current"><i class="fas fa-cog fa-2x"></i>Settings</a>
     <a href="#overview" class="menu-overview" v-if="hasFeature('APPLICATION_OVERVIEW')"><i class="fas fa-eye fa-2x"></i>Overview</a>
     <a href="#query" class="menu-query" v-if="hasFeature('AD_HOC_QUERIES')"><i class="fas fa-search fa-2x"></i>Search</a>
@@ -164,7 +168,8 @@
             class="fas fa-window-restore fa-2x"></i>Apps</a>
     <a href="#users" class="menu-users" v-if="admin"><i class="fas fa-users fa-2x"></i> Users</a>
     <a href="#context" class="menu-context" v-if="admin && hasFeature('MULTI_CONTEXT')"><i class="fas fa-sitemap fa-2x"></i> Contexts</a>
-    <a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>
+    <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
+    </span>
 </nav>
 
 

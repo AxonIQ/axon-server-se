@@ -3,8 +3,11 @@ package io.axoniq.axonserver.enterprise.storage.transaction;
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
 import io.axoniq.axonserver.localstorage.EventStore;
@@ -32,15 +35,18 @@ public class RaftTransactionManager implements StorageTransactionManager {
     private final AtomicInteger waitingTransactions = new AtomicInteger();
     private final boolean eventTransactionManager;
     private final String entryType;
+    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final ReentrantLock lock = new ReentrantLock();
 
 
     public RaftTransactionManager(EventStore datafileManagerChain,
-                                  GrpcRaftController clusterController) {
+                                  GrpcRaftController clusterController,
+                                  MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.datafileManagerChain = datafileManagerChain;
         this.clusterController = clusterController;
         this.eventTransactionManager = datafileManagerChain.getType().getEventType().equals(EventType.EVENT);
         this.entryType = "Append." + datafileManagerChain.getType().getEventType();
+        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
@@ -141,7 +147,16 @@ public class RaftTransactionManager implements StorageTransactionManager {
     }
 
     private Iterable<? extends ByteString> eventsAsByteStrings(List<SerializedEvent> eventList) {
-        return eventList.stream().map(SerializedEvent::asByteString).collect(Collectors.toList());
+        AtomicInteger totalSize = new AtomicInteger();
+        List<ByteString> result = eventList.stream()
+                                           .map(SerializedEvent::asByteString)
+                                           .peek(byteString -> totalSize.addAndGet(byteString.size()))
+                                           .collect(Collectors.toList());
+        if (totalSize.get() > messagingPlatformConfiguration.getMaxTransactionSize()) {
+            throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED,
+                                                 String.format("Transaction size %d exceeds %d", totalSize.get(), messagingPlatformConfiguration.getMaxTransactionSize()));
+        }
+        return result;
     }
 
 

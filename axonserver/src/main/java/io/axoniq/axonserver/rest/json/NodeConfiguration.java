@@ -3,20 +3,23 @@ package io.axoniq.axonserver.rest.json;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
-import java.util.Collection;
-
 /**
+ * Contains information on the current node, including the gRPC and HTTP ports, and Axon Server configuration (SSL, Authentication, Cluster).
+ *
  * @author Marc Gathier
  */
 @KeepNames
-public class ExtendedClusterNode implements AxonServerNode {
+public class NodeConfiguration {
 
     private final AxonServerNode delegate;
     private boolean authentication;
     private boolean clustered;
     private boolean ssl;
+    private boolean adminNode;
+    private Iterable<String> storageContextNames;
+    private Iterable<String> contextNames;
 
-    public ExtendedClusterNode(AxonServerNode delegate) {
+    public NodeConfiguration(AxonServerNode delegate) {
         this.delegate = delegate;
     }
 
@@ -44,39 +47,51 @@ public class ExtendedClusterNode implements AxonServerNode {
         this.ssl = ssl;
     }
 
-
-    @Override
     public String getHostName() {
         return delegate.getHostName();
     }
 
-    @Override
     public Integer getGrpcPort() {
         return delegate.getGrpcPort();
     }
 
-    @Override
     public String getInternalHostName() {
         return delegate.getInternalHostName();
     }
 
-    @Override
     public Integer getGrpcInternalPort() {
         return delegate.getGrpcInternalPort();
     }
 
-    @Override
     public Integer getHttpPort() {
         return delegate.getHttpPort();
     }
 
-    @Override
     public String getName() {
         return delegate.getName();
     }
 
-    @Override
-    public Collection<String> getContextNames() {
-        return delegate.getContextNames();
+    public void setAdminNode(boolean adminNode) {
+        this.adminNode = adminNode;
+    }
+
+    public boolean isAdminNode() {
+        return adminNode;
+    }
+
+    public Iterable<String> getContextNames() {
+        return contextNames;
+    }
+
+    public void setStorageContextNames(Iterable<String> storageContextNames) {
+        this.storageContextNames = storageContextNames;
+    }
+
+    public void setContextNames(Iterable<String> contextNames) {
+        this.contextNames = contextNames;
+    }
+
+    public Iterable<String> getStorageContextNames() {
+        return storageContextNames;
     }
 }

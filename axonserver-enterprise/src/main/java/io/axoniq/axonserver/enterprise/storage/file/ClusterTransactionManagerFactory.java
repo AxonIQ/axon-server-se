@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage.file;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.storage.transaction.RaftTransactionManager;
@@ -19,16 +20,18 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class ClusterTransactionManagerFactory implements StorageTransactionManagerFactory {
 
     private final GrpcRaftController raftController;
+    private final MessagingPlatformConfiguration configuration;
     private final Map<String, Set<RaftTransactionManager>> transactionManagersPerContext = new ConcurrentHashMap<>();
 
     public ClusterTransactionManagerFactory(
-            GrpcRaftController raftController) {
+            GrpcRaftController raftController, MessagingPlatformConfiguration configuration) {
         this.raftController = raftController;
+        this.configuration = configuration;
     }
 
     @Override
     public StorageTransactionManager createTransactionManager(EventStore eventStore) {
-        RaftTransactionManager raftTransactionManager = new RaftTransactionManager(eventStore, raftController);
+        RaftTransactionManager raftTransactionManager = new RaftTransactionManager(eventStore, raftController, configuration);
         transactionManagersPerContext.computeIfAbsent(eventStore.getType().getContext(),
                                                       k -> new CopyOnWriteArraySet<>()).add(raftTransactionManager);
         return raftTransactionManager;

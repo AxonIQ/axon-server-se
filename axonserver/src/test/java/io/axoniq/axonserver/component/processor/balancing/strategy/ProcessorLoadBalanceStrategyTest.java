@@ -1,19 +1,15 @@
 package io.axoniq.axonserver.component.processor.balancing.strategy;
 
-import io.axoniq.axonserver.component.processor.ApplicationProcessorEventsSource;
+import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
-import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
-import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -28,7 +24,7 @@ public class ProcessorLoadBalanceStrategyTest {
         Map<String, LoadBalancingStrategy.Factory> factories =
                 new HashMap<>();
         factories.put("NoLoadBalance", new NoLoadBalanceStrategy.Factory());
-        ApplicationProcessorEventsSource processorEventsSource = mock(ApplicationProcessorEventsSource.class);
+        ProcessorEventPublisher processorEventsSource = mock(ProcessorEventPublisher.class);
         ClientProcessors processors = Collections::emptyListIterator;
         factories.put("ThreadNumberBalancingStrategy",
                       new ThreadNumberBalancing.ThreadNumberBalancingStrategyFactory(processorEventsSource, processors));
