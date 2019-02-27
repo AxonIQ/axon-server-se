@@ -25,7 +25,7 @@ public class ClusterEventsLogger {
 
     @EventListener
     public void on(ClusterEvents.LeaderConfirmation event) {
-        logger.info("{}: Leader for is now {}", event.getContext(), event.getNode());
+        logger.info("{}: Leader is {}", event.getContext(), event.getNode());
     }
 
     @EventListener
