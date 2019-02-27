@@ -10,7 +10,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=thepassword
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL-AUTO=create-drop
-      - AXON_AXONSERVER_SERVERS=axonserver-enterprise-1
+      - AXON_AXONSERVER_SERVERS=axonserver-enterprise-1:8124,axonserver-enterprise-2:8125,axonserver-enterprise-3:8126
       - AXON_AXONSERVER_CONTEXT=default
     ports:
       - 9900:9900

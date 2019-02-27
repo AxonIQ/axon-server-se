@@ -44,11 +44,51 @@ The [docker-compose.cluster.monitoring.yml](docker-compose.cluster.monitoring.ym
 ### Run it
 
 You can combine different compose files to construct cluster that fits your needs best:
+ - [run the test case](#test-case)
  - [only cluster](#cluster)
  - [cluster with sample application](#cluster-with-sample-application)
  - cluster with metrics
  - [cluster with sample application and metrics](#cluster-with-sample-application-and-prometheus-metrics)
  - ...
+
+#### Test case
+
+1 Make sure you have local Docker daemon (Docker for desktop) working.
+
+2 Build AxonServer repo and create&install docker images to local daemon:
+
+```bash
+$ mvn clean verify jib:dockerBuild
+```
+3 Run three AxonServerEnterprise nodes only. Each server is configured for `default` and `_admin` context:
+```bash
+$ docker-compose -f docker/docker-compose.cluster.yml up -d
+```
+4 Initialize the cluster (wait for the servers to start first):
+```bash
+$ docker-compose -f docker/docker-compose.cluster.cli.yml up -d axonserver-cli-init-cluster
+```
+5 Register node 2:
+```bash
+$ docker-compose -f docker/docker-compose.cluster.cli.yml up -d axonserver-cli-register-node2
+```
+6 Register node 3:
+```bash
+$ docker-compose -f docker/docker-compose.cluster.cli.yml up -d axonserver-cli-register-node3
+```
+7 Run the test [application](../sample-applications/sample-command-processor-axonserver-client):
+```bash
+$ docker-compose -f docker/docker-compose.cluster.sample-application.yml up -d
+```
+
+>NOTE: Ideally you should be able to run all of this with one command:
+>```bash
+>$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml -f docker/docker-compose.cluster.sample-application.yml up -d
+>
+>```
+>Docker does not guarantee the 'start' ordering of this containers. 
+>The problem is that our cluster configuration process is not resilient and ordering of execution commands: init, register node1, register node 2 is important.
+>This is the reason why we had to manually control the ordering in 7 stpes
 
 #### Cluster
 ```bash
