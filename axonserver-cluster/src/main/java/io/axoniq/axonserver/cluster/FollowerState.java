@@ -46,12 +46,7 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
 
-    /**
-     * Instantiates the Follower State from its builder.
-     *
-     * @param builder used to construct the Follower State
-     */
-    protected FollowerState(Builder builder) {
+    private FollowerState(Builder builder) {
         super(builder);
         clusterConfiguration = new FollowerConfiguration(leaderId::get);
     }
