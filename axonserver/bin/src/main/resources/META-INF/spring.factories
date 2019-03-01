@@ -1,3 +1,0 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  io.axoniq.axonserver.config.AxonServerFreeConfiguration,\
-  io.axoniq.axonserver.config.MetricsConfiguration

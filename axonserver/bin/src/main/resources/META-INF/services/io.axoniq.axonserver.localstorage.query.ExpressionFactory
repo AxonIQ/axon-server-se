@@ -1,4 +1,0 @@
-io.axoniq.axonserver.localstorage.query.expressions.binary.BinaryExpressionFactory
-io.axoniq.axonserver.localstorage.query.expressions.binary.ArithmeticExpressionFactory
-io.axoniq.axonserver.localstorage.query.expressions.functions.FunctionExpressionFactory
-io.axoniq.axonserver.localstorage.query.expressions.timeconstraints.TimeConstraintExpressionFactory
