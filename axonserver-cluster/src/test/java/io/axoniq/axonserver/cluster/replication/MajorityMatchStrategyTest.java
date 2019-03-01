@@ -1,6 +1,9 @@
 package io.axoniq.axonserver.cluster.replication;
 
+import io.axoniq.axonserver.cluster.RaftConfiguration;
+import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.ReplicatorPeer;
+import io.axoniq.axonserver.cluster.election.ElectionStore;
 import org.junit.*;
 
 import java.time.Clock;
@@ -8,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Author: marc
@@ -20,7 +24,17 @@ public class MajorityMatchStrategyTest {
 
     @Before
     public void setup() {
-        replicationPeers = Arrays.asList(new FakeReplicationPeer(), new FakeReplicationPeer());
+        RaftConfiguration raftConfiguration = mock(RaftConfiguration.class);
+        when(raftConfiguration.groupId()).thenReturn("mockGroup");
+
+        ElectionStore electionStore = mock(ElectionStore.class);
+        when(electionStore.currentTerm()).thenReturn(1L);
+
+        RaftGroup raftGroup = mock(RaftGroup.class);
+        when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
+        when(raftGroup.localElectionStore()).thenReturn(electionStore);
+
+        replicationPeers = Arrays.asList(new FakeReplicationPeer(raftGroup), new FakeReplicationPeer(raftGroup));
         testSubject = new MajorityMatchStrategy(() -> 10L, () -> replicationPeers.iterator());
 
     }
@@ -57,8 +71,8 @@ public class MajorityMatchStrategyTest {
 
         private long matchIndex;
 
-        public FakeReplicationPeer() {
-            super(null, i -> {}, clock, null, null,
+        public FakeReplicationPeer(RaftGroup raftGroup) {
+            super(null, i -> {}, clock, raftGroup , null,
                   (term,reason) -> {}, () -> 1L);
         }
 
