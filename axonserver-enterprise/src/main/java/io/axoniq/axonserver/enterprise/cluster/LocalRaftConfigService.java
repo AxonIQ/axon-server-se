@@ -33,6 +33,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -159,7 +160,8 @@ class LocalRaftConfigService implements RaftConfigService {
         @SuppressWarnings("unchecked")
         CompletableFuture<Void>[] workers = new CompletableFuture[nodeNames.size()];
         int nodeIdx = 0;
-        for (String name : nodeNames) {
+        Iterable<String> nodes = new HashSet<>(nodeNames);
+        for (String name : nodes) {
             workers[nodeIdx] = raftGroupServiceFactory.getRaftGroupServiceForNode(name).deleteContext(context);
             workers[nodeIdx].thenAccept(r -> nodeNames.remove(name));
             nodeIdx++;

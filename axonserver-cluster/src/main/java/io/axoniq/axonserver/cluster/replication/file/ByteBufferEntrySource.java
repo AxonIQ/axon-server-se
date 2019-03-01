@@ -29,15 +29,15 @@ public class ByteBufferEntrySource implements EntrySource {
         this.cleanerHackNeeded = storageProperties.isCleanerHackNeeded();
     }
 
-    public ByteBufferEntrySource(ByteBuffer buffer, LogEntryTransformer eventTransformer) {
+    public ByteBufferEntrySource(ByteBuffer buffer, LogEntryTransformer eventTransformer, boolean cleanerHackNeeded) {
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.main = false;
-        this.cleanerHackNeeded = false;
+        this.cleanerHackNeeded = cleanerHackNeeded;
     }
 
     public ByteBufferEntrySource(ByteBuffer duplicate, LogEntryTransformer eventTransformer, int startPosition) {
-        this(duplicate, eventTransformer);
+        this(duplicate, eventTransformer, false);
         buffer.position(startPosition);
     }
 
@@ -77,7 +77,7 @@ public class ByteBufferEntrySource implements EntrySource {
     }
 
     public ByteBufferEntrySource duplicate() {
-        return new ByteBufferEntrySource(buffer.duplicate(), eventTransformer);
+        return new ByteBufferEntrySource(buffer.duplicate(), eventTransformer, cleanerHackNeeded);
     }
     public ByteBufferEntrySource duplicate(int startPosition) {
         return new ByteBufferEntrySource(buffer.duplicate(), eventTransformer, startPosition);
