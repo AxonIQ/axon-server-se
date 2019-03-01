@@ -81,6 +81,16 @@ $ docker-compose -f docker/docker-compose.cluster.cli.yml up -d axonserver-cli-r
 $ docker-compose -f docker/docker-compose.cluster.sample-application.yml up -d
 ```
 
+8 Log files are saved in volume. You can inspect your volume and explore where is it saved on your host machine:
+```bash
+$ docker volume inspect docker_axonserver-logs
+```
+
+9 Remove everything (NOTE: `-v` option will remove volumes that are defined in this compose file as well):
+```bash
+$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml -f docker/docker-compose.cluster.sample-application.yml down -v
+```
+
 >NOTE: Ideally you should be able to run all of this with one command:
 >```bash
 >$ docker-compose -f docker/docker-compose.cluster.yml -f docker/docker-compose.cluster.cli.yml -f docker/docker-compose.cluster.sample-application.yml up -d

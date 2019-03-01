@@ -10,9 +10,11 @@ services:
       - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-1
       - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-1
       - AXONIQ_AXONSERVER_CLUSTER_ENABLED=true
+      - LOGGING_FILE=/axon-server-logs/axonserver-enterprise-1.log
     volumes:
       - axonserver-enterprise-1-eventstore:/eventstorage
       - axonserver-enterprise-1-controldb:/controldb
+      - axonserver-logs:/axon-server-logs
     ports:
       - '8024:8024'
       - '8124:8124'
@@ -29,9 +31,11 @@ services:
       - SERVER_PORT=8025
       - AXONIQ_AXONSERVER_PORT=8125
       - AXONIQ_AXONSERVER_INTERNAL-PORT=8225
+      - LOGGING_FILE=/axon-server-logs/axonserver-enterprise-2.log
     volumes:
       - axonserver-enterprise-2-eventstore:/eventstorage
       - axonserver-enterprise-2-controldb:/controldb
+      - axonserver-logs:/axon-server-logs
     ports:
       - '8025:8025'
       - '8125:8125'
@@ -48,9 +52,11 @@ services:
       - SERVER_PORT=8026
       - AXONIQ_AXONSERVER_PORT=8126
       - AXONIQ_AXONSERVER_INTERNAL-PORT=8226
+      - LOGGING_FILE=/axon-server-logs/axonserver-enterprise-3.log
     volumes:
       - axonserver-enterprise-3-eventstore:/eventstorage
       - axonserver-enterprise-3-controldb:/controldb
+      - axonserver-logs:/axon-server-logs
     ports:
       - '8026:8026'
       - '8126:8126'
@@ -62,3 +68,4 @@ volumes:
   axonserver-enterprise-2-controldb:
   axonserver-enterprise-3-eventstore:
   axonserver-enterprise-3-controldb:
+  axonserver-logs:
