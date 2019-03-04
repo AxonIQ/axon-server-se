@@ -21,7 +21,7 @@ public class RaftProperties extends StorageProperties {
     private final SystemInfoProvider systemInfoProvider;
     private int maxReplicationRound = 10;
     private boolean logCompactionEnabled = true;
-    private int logCompactionMinutes = 60;
+    private int logRetentionHours = 1;
 
     public RaftProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -93,11 +93,11 @@ public class RaftProperties extends StorageProperties {
         this.logCompactionEnabled = logCompactionEnabled;
     }
 
-    public int getLogCompactionMinutes() {
-        return logCompactionMinutes;
+    public int getLogRetentionHours() {
+        return logRetentionHours;
     }
 
-    public void setLogCompactionMinutes(int logCompactionMinutes) {
-        this.logCompactionMinutes = logCompactionMinutes;
+    public void setLogRetentionHours(int logRetentionHours) {
+        this.logRetentionHours = Math.max(logRetentionHours, 1);
     }
 }

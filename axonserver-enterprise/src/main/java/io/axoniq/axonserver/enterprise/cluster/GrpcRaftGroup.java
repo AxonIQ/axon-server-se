@@ -123,8 +123,8 @@ public class GrpcRaftGroup implements RaftGroup {
             }
 
             @Override
-            public int logCompactionMinutes() {
-                return storageOptions.getLogCompactionMinutes();
+            public int logRetentionHours() {
+                return storageOptions.getLogRetentionHours();
             }
 
             @Override

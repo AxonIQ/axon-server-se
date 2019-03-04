@@ -61,8 +61,8 @@ public class RaftNode {
 
     private ScheduledRegistration scheduleLogCleaning() {
         return scheduler.scheduleWithFixedDelay(
-                () -> raftGroup.localLogEntryStore().clearOlderThan(raftGroup.raftConfiguration().logCompactionMinutes(),
-                                                                    TimeUnit.MINUTES,
+                () -> raftGroup.localLogEntryStore().clearOlderThan(raftGroup.raftConfiguration().logRetentionHours(),
+                                                                    TimeUnit.HOURS,
                                                                     () -> raftGroup.logEntryProcessor().lastAppliedIndex()),
                 1,
                 1,

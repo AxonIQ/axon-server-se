@@ -55,8 +55,11 @@ public interface RaftConfiguration {
         return true;
     }
 
-    default int logCompactionMinutes() {
-        return 60;
+    /**
+     * The number of hours closed logfiles should be retained before compacting the log.
+     * @return number of hours
+     */
+    default int logRetentionHours() {
+        return 1;
     }
-
 }
