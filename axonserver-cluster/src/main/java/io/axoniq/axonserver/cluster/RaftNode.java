@@ -82,10 +82,14 @@ public class RaftNode {
 
     private ScheduledRegistration scheduleLogCleaning() {
         return scheduler.scheduleWithFixedDelay(
-                () -> raftGroup.localLogEntryStore().clearOlderThan(1,
-                                                                    TimeUnit.HOURS,
-                                                                    () -> raftGroup.logEntryProcessor()
-                                                                                   .lastAppliedIndex()),
+                () -> {
+                    logger.info("{} in term {}: Clearing the log...", groupId(), currentTerm());
+                    raftGroup.localLogEntryStore().clearOlderThan(1,
+                                                                  TimeUnit.HOURS,
+                                                                  () -> raftGroup.logEntryProcessor()
+                                                                                 .lastAppliedIndex());
+                    logger.info("{} in term {}: Log cleaned.", groupId(), currentTerm());
+                },
                 1,
                 1,
                 TimeUnit.HOURS);
