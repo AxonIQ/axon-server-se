@@ -135,11 +135,13 @@ Usage:
 
     axoniq-cli.jar register-node -h node-in-cluster [-p internal-grpc-port] [-c contexts]
     
-Tells this Axon Server node to join a cluster. You need to specify the hostname and optionally the internal port number of
-a node that is already in the cluster. If you do not specify the internal port number it uses 8224 (default internal port number for Axon Server).
+Tells this Axon Server node to join a cluster. 
+You need to specify the hostname and optionally the internal port number of a node that is the leader of the _admin context. 
+If you do not specify the internal port number it uses 8224 (default internal port number for Axon Server).
 
-If you specify contexts (as a comma separated list), the new node will be a member of the specified contexts. If you do not \
-specify any contexts, the new node will only be member of the default context.    
+
+If you specify a context, the new node will be a member of the specified context. 
+If you do not specify a context, the new node will be member of the _admin and the default context.    
 
 _unregister-node_
 

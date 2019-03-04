@@ -316,8 +316,7 @@ class LocalRaftConfigService implements RaftConfigService {
         List<String> contexts = nodeInfo.getContextsList().stream().map(ContextRole::getName).collect(Collectors
                                                                                                               .toList());
         if (contexts.isEmpty()) {
-            contexts = contextController.getContexts().map(io.axoniq.axonserver.enterprise.jpa.Context::getName)
-                                        .collect(Collectors.toList());
+            contexts = contextController.getContexts().map(Context::getName).collect(Collectors.toList());
         }
 
         String nodeLabel = generateNodeLabel(nodeInfo.getNodeName());
