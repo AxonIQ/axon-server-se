@@ -240,7 +240,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private AtomicLong lastSequenceForAggregate(String aggregateId, boolean checkAll) {
-        return new AtomicLong( getLastSequenceNumber(aggregateId, checkAll ? Integer.MAX_VALUE : 10).orElse(-1L));
+        return new AtomicLong( getLastSequenceNumber(aggregateId,
+                                                     checkAll ? Integer.MAX_VALUE : MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK).orElse(-1L));
     }
 
     @Override
