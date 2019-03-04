@@ -66,7 +66,7 @@ public class FollowerState extends AbstractMembershipState {
         nextTimeout.set(scheduler.get().clock().millis() + random(minElectionTimeout(), maxElectionTimeout()));
         scheduleElectionTimeoutChecker();
         heardFromLeader = false;
-        leaderId.set("");
+        leaderId.set(null);
     }
 
     @Override
@@ -276,7 +276,7 @@ public class FollowerState extends AbstractMembershipState {
             String message = format("%s in term %s: Timeout in follower state: %s ms.",
                                     groupId(),
                                     currentTerm(),
-                                    (now - nextTimeout.get()));
+                                    lastMessage.get());
             logger.info(message);
             changeStateTo(stateFactory().candidateState(), message);
         } else {
