@@ -116,6 +116,21 @@ public class GrpcRaftGroup implements RaftGroup {
             public int maxEntriesPerBatch() {
                 return storageOptions.getMaxEntriesPerBatch();
             }
+
+            @Override
+            public boolean isLogCompactionEnabled() {
+                return storageOptions.isLogCompactionEnabled();
+            }
+
+            @Override
+            public int logCompactionMinutes() {
+                return storageOptions.getLogCompactionMinutes();
+            }
+
+            @Override
+            public int maxReplicationRound() {
+                return storageOptions.getMaxReplicationRound();
+            }
         };
 
         List<SnapshotDataStore> dataProviders = snapshotDataProvidersFactory.apply(groupId);
