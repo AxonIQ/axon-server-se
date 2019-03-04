@@ -380,7 +380,7 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void init(List<String> contexts) {
         if (!grpcRaftController.getContexts().isEmpty()){
-            throw new MessagingPlatformException(ErrorCode.OTHER,
+            throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
                     "This node is already part of a cluster and cannot be initialized again.");
         }
         logger.info("Initialization of this node with following contexts: {}", contexts);
