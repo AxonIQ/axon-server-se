@@ -3,8 +3,8 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.ComponentProcessors;
+import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
@@ -93,8 +97,10 @@ public class EventProcessorRestController {
     public void splitSegment(@PathVariable("component") String component,
                              @PathVariable("processor") String processorName,
                              @RequestParam("context") String context) {
-        clientIterable(component, context)
-                .forEach(client -> processorEventsSource.splitSegment(client.name(), processorName));
+        List<String> clientNames = StreamSupport.stream(clientIterable(component, context).spliterator(), false)
+                                                .map(Client::name)
+                                                .collect(Collectors.toList());
+        processorEventsSource.splitSegment(clientNames, processorName);
     }
 
     /**
@@ -108,8 +114,10 @@ public class EventProcessorRestController {
     public void mergeSegment(@PathVariable("component") String component,
                              @PathVariable("processor") String processorName,
                              @RequestParam("context") String context) {
-        clientIterable(component, context)
-                .forEach(client -> processorEventsSource.mergeSegment(client.name(), processorName));
+        List<String> clientNames = StreamSupport.stream(clientIterable(component, context).spliterator(), false)
+                                                .map(Client::name)
+                                                .collect(Collectors.toList());
+        processorEventsSource.mergeSegment(clientNames, processorName);
     }
 
     @NotNull
