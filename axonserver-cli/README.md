@@ -141,7 +141,7 @@ If you do not specify the internal port number it uses 8224 (default internal po
 
 
 If you specify a context, the new node will be a member of the specified context. 
-If you do not specify a context, the new node will be member of all the context of which the _admin leader is part .    
+If you haven't specified a context, the new node will become a member of all the contexts which the _admin leader is a part of.
 
 _unregister-node_
 
