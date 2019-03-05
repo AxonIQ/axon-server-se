@@ -133,7 +133,7 @@ _register-node_
 
 Usage:
 
-    axoniq-cli.jar register-node -h node-in-cluster [-p internal-grpc-port] [-c contexts]
+    axoniq-cli.jar register-node -h node-in-cluster [-p internal-grpc-port] [-c context]
     
 Tells this Axon Server node to join a cluster. 
 You need to specify the hostname and optionally the internal port number of a node that is the leader of the _admin context. 
