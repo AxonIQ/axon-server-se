@@ -44,20 +44,20 @@ public class LocalRaftGroupService implements RaftGroupService {
             MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
                                                                            "Node is already part of this context.");
             result.completeExceptionally(ex);
-        }
-        raftNode.addNode(node).whenComplete(((configChangeResult, throwable) -> {
-            if(throwable != null) {
-                result.completeExceptionally(throwable);
-            } else {
-                if( configChangeResult.hasFailure()) {
-                    result.completeExceptionally(new RuntimeException(configChangeResult.getFailure().toString()));
+        } else {
+            raftNode.addNode(node).whenComplete(((configChangeResult, throwable) -> {
+                if(throwable != null) {
+                    result.completeExceptionally(throwable);
                 } else {
-                    result.complete(null);
+                    if( configChangeResult.hasFailure()) {
+                        result.completeExceptionally(new RuntimeException(configChangeResult.getFailure().toString()));
+                    } else {
+                        result.complete(null);
+                    }
                 }
-            }
 
-        }));
-
+            }));
+        }
         return result;
     }
 
