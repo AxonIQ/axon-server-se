@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 /**
+ * The cluster node representation used within AxonServer Rest API calls.
+ *
  * @author Marc Gathier
  */
 @JsonIgnoreProperties(ignoreUnknown=true)
