@@ -383,6 +383,11 @@ class LocalRaftConfigService implements RaftConfigService {
             throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
                     "This node is already part of a cluster and cannot be initialized again.");
         }
+        for (String context : contexts) {
+            if (!context.matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME, "Invalid context name: "+ context);
+            }
+        }
         logger.info("Initialization of this node with following contexts: {}", contexts);
         init(getAdmin());
         contexts.forEach(this::init);
