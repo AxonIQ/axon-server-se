@@ -228,8 +228,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         Map<String, Long> oldSequenceNumberPerAggregate = new HashMap<>();
         for( Map.Entry<String,MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
             AtomicLong current = sequenceNumbersPerAggregate.computeIfAbsent(entry.getKey(),
-                                                                             id -> new AtomicLong(
-                                                                                     getLastSequenceNumber(id, MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK).orElse(-1L)));
+                                                                             id -> lastSequenceForAggregate(id, entry.getValue().getMin() > 0));
 
             if( ! current.compareAndSet(entry.getValue().getMin() - 1, entry.getValue().getMax())) {
                 oldSequenceNumberPerAggregate.forEach((aggregateId, sequenceNumber) -> sequenceNumbersPerAggregate.put(aggregateId, new AtomicLong(sequenceNumber)));
@@ -238,6 +237,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             }
             oldSequenceNumberPerAggregate.putIfAbsent(entry.getKey(), entry.getValue().getMin() - 1);
         }
+    }
+
+    private AtomicLong lastSequenceForAggregate(String aggregateId, boolean checkAll) {
+        return new AtomicLong( getLastSequenceNumber(aggregateId,
+                                                     checkAll ? Integer.MAX_VALUE : MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK).orElse(-1L));
     }
 
     @Override
