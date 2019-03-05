@@ -3,10 +3,13 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.State;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
+
+import java.util.List;
 
 /**
  * @author Marc Gathier
@@ -39,14 +42,21 @@ public class GrpcRaftStatusManager {
     }
 
     private void updateLeader(Context context) {
-        context.getMembersList().forEach(cm -> {
-            if (State.LEADER.getNumber() == cm.getState().getNumber() && !cm.getNodeName().equals(raftLeaderProvider
-                                                                                                          .getLeader(
-                                                                                                                  context.getName()))) {
-                eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context.getName(),
-                                                                                 cm.getNodeName(),
-                                                                                 true));
-            }
-        });
+        List<ContextMember> membersList = context.getMembersList();
+        ContextMember leader = membersList.stream()
+                                          .filter(cm -> State.LEADER.getNumber() == cm.getState().getNumber())
+                                          .findFirst()
+                                          .orElse(null);
+        if (leader != null && !leader.getNodeName().equals(raftLeaderProvider.getLeader(context.getName()))){
+            eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context.getName(),
+                                                                             leader.getNodeName(),
+                                                                             true));
+        }
+
+        if (leader == null && raftLeaderProvider.getLeader(context.getName()) != null) {
+            eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context.getName(),
+                                                                             null,
+                                                                             true));
+        }
     }
 }
