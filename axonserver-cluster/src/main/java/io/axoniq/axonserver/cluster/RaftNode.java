@@ -84,7 +84,7 @@ public class RaftNode {
         return scheduler.scheduleWithFixedDelay(
                 () -> {
                     logger.info("{} in term {}: Clearing the log...", groupId(), currentTerm());
-                    raftGroup.localLogEntryStore().clearOlderThan(1,
+                    raftGroup.localLogEntryStore().clearOlderThan(raftGroup.raftConfiguration().logRetentionHours(),
                                                                   TimeUnit.HOURS,
                                                                   () -> raftGroup.logEntryProcessor()
                                                                                  .lastAppliedIndex());

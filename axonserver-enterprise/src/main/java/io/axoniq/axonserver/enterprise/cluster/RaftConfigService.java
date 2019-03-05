@@ -1,13 +1,12 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.Application;
+import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.User;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Request changes to the Axon Server configuration, to be handled through Raft.
@@ -70,41 +69,38 @@ public interface RaftConfigService {
      * @param application the application and roles per context
      * @return the application with generated token (if generated) in a completable future
      */
-    CompletableFuture<Application> updateApplication(Application application);
+    Application updateApplication(Application application);
 
     /**
      * Generates a new token for an existing application.
      * @param application the application
-     * @return the application with a new generated token in a completable future
+     * @return the application with a new generated token
      */
-    CompletableFuture<Application> refreshToken(Application application);
+    Application refreshToken(Application application);
 
     /**
      * Creates or updates a user.
      * @param user the user and its roles
-     * @return completable future that will be completed when the operation is done
      */
-    CompletableFuture<Void> updateUser(User user);
+    void updateUser(User user);
 
-    CompletableFuture<Void> updateLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy);
+    void updateLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy);
 
-    CompletableFuture<Void> deleteLoadBalancingStrategy(LoadBalanceStrategy build);
+    void deleteLoadBalancingStrategy(LoadBalanceStrategy build);
 
-    CompletableFuture<Void> updateProcessorLoadBalancing(ProcessorLBStrategy processorLBStrategy);
+    void updateProcessorLoadBalancing(ProcessorLBStrategy processorLBStrategy);
 
     /**
      * Deletes a user.
      * @param user the user to delete
-     * @return completable future that will be completed when the operation is done
      */
-    CompletableFuture<Void> deleteUser(User user);
+    void deleteUser(User user);
 
     /**
      * Deletes an application.
      * @param application the application to delete
-     * @return completable future that will be completed when the operation is done
      */
-    CompletableFuture<Void> deleteApplication(Application application);
+    void deleteApplication(Application application);
 
     /**
      * Deletes a node from the configuration. Deletes the node from all contexts where it is member of.

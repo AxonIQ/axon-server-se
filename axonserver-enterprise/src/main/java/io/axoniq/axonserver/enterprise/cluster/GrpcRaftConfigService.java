@@ -17,8 +17,6 @@ import io.axoniq.axonserver.grpc.internal.User;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +24,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServiceImplBase {
+    private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
 
     private final LocalRaftConfigService localRaftConfigService;
 
@@ -66,13 +65,6 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
             responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
-    private <T> void wrapFuture(StreamObserver<T> responseObserver, Supplier<CompletableFuture<T>> action) {
-        try {
-            action.get().thenAccept(r -> forwardAndClose(responseObserver, r)).exceptionally(t -> forwardError(responseObserver,t));
-        } catch (Exception ex) {
-            responseObserver.onError(GrpcExceptionBuilder.build(ex));
-        }
-    }
 
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
@@ -86,27 +78,27 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void updateApplication(Application request, StreamObserver<Application> responseObserver) {
-        wrapFuture(responseObserver, () -> localRaftConfigService.updateApplication(request));
+            try {
+                responseObserver.onNext(localRaftConfigService.updateApplication(request));
+                responseObserver.onCompleted();
+            } catch (Exception e) {
+                responseObserver.onError(e);
+            }
     }
 
     @Override
     public void refreshToken(Application request, StreamObserver<Application> responseObserver) {
-        wrapFuture(responseObserver, () -> localRaftConfigService.refreshToken(request));
+        try {
+            responseObserver.onNext(localRaftConfigService.refreshToken(request));
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(GrpcExceptionBuilder.build(e));
+        }
     }
 
-    private Void forwardError(StreamObserver<?> responseObserver, Throwable t) {
-        responseObserver.onError(t);
-        return null;
-    }
-
-    private <T> void forwardAndClose(StreamObserver<T> streamObserver, T result) {
-        streamObserver.onNext(result);
-        streamObserver.onCompleted();
-    }
-    private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
     @Override
     public void updateUser(User request, StreamObserver<Confirmation> responseObserver) {
-        wrapFuture(responseObserver, ()-> localRaftConfigService.updateUser( request).thenApply(u -> CONFIRMATION));
+        wrap(responseObserver, ()-> localRaftConfigService.updateUser( request));
     }
 
     @Override
