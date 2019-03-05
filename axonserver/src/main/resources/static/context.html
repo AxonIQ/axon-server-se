@@ -132,8 +132,12 @@
             </thead>
             <tbody>
             <tr v-for="context in contexts">
-                <td>{{context.context}} <span @click="deleteContext(context)" v-if="admin && !isInternalContext(context)" title="Delete Context"><i
-                        class="far fa-trash-alt"></i></span></td>
+                <td>{{context.context}}
+                    <span v-if="context.changePending" title="Pending change"><i class="fas fa-exclamation-circle"></i></span>
+                    <span @click="deleteContext(context)" v-if="admin && !isInternalContext(context)" title="Delete Context">
+                        <i class="far fa-trash-alt"></i>
+                    </span>
+                </td>
                 <td>
                     <ul>
                         <li v-for="node in context.nodes"><span class="nodeName">{{node}}</span>

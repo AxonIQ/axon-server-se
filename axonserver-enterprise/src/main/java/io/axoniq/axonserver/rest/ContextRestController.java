@@ -57,6 +57,10 @@ public class ContextRestController {
     public List<ContextJSON> getContexts() {
         return contextController.getContexts().map(context ->  {
             ContextJSON json = new ContextJSON(context.getName());
+            json.setChangePending(context.isChangePending());
+            if( context.getPendingSince() != null) {
+                json.setPendingSince(context.getPendingSince().getTime());
+            }
             json.setLeader(raftLeaderProvider.getLeader(context.getName()));
             json.setNodes(context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).sorted().collect(Collectors.toList()));
             return json;
@@ -71,8 +75,12 @@ public class ContextRestController {
     }
 
     @PostMapping(path = "context/{context}/{node}")
-    public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node) {
+    public ResponseEntity<RestResponse> updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node) {
         raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
+        return ResponseEntity.accepted()
+                      .body(new RestResponse(true,
+                                             "Started to add node to context. This may take some time depending on the number of events already in the context"));
+
     }
 
     @DeleteMapping(path = "context/{context}/{node}")

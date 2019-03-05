@@ -13,6 +13,8 @@ public class ContextJSON {
     private String context;
     private String leader;
     private List<String> nodes = new ArrayList<>();
+    private boolean changePending;
+    private long pendingSince;
 
     public ContextJSON() {
     }
@@ -43,5 +45,21 @@ public class ContextJSON {
 
     public void setLeader(String leader) {
         this.leader = leader;
+    }
+
+    public boolean isChangePending() {
+        return changePending;
+    }
+
+    public void setChangePending(boolean changePending) {
+        this.changePending = changePending;
+    }
+
+    public long getPendingSince() {
+        return pendingSince;
+    }
+
+    public void setPendingSince(long pendingSince) {
+        this.pendingSince = pendingSince;
     }
 }

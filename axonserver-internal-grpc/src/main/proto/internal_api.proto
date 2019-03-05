@@ -79,6 +79,8 @@ service RaftGroupService {
     rpc DeleteProcessorLBStrategy(ContextProcessorLBStrategy) returns (Confirmation) {}
 
     rpc GetStatus(Context) returns (stream Context) {}
+
+    rpc AppendEntry(ContextEntry) returns (Confirmation) {}
 }
 
 
@@ -261,6 +263,12 @@ enum Group {
 }
 
 
+message ContextEntry {
+    string context = 1;
+    string entry_name = 2;
+    bytes entry = 3;
+}
+
 message ProcessorsLBStrategy{
     int64 version = 1;
     repeated ProcessorLBStrategy processor = 2;
@@ -380,6 +388,7 @@ message Application {
     string token_prefix = 3;
     string token = 4;
     repeated ApplicationContextRole roles_per_context = 5;
+    bool pending = 6;
 }
 
 message ApplicationContextRole {
@@ -415,6 +424,7 @@ enum State {
 message ContextConfiguration {
     string context = 1;
     repeated NodeInfoWithLabel nodes = 2;
+    bool pending = 3;
 }
 
 message NodeInfoWithLabel {

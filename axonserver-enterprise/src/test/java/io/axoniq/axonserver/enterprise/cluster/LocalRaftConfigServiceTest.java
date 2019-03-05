@@ -184,6 +184,10 @@ public class LocalRaftConfigServiceTest {
             return CompletableFuture.completedFuture(null);
         }
 
+        @Override
+        public CompletableFuture<Void> appendEntry(String context, String name, byte[] toByteArray) {
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     @Before

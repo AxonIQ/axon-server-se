@@ -4,6 +4,7 @@ import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextEntry;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
@@ -76,6 +77,12 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     @Override
     public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext());
+        confirm(responseObserver, completable);
+    }
+
+    @Override
+    public void appendEntry(ContextEntry request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(), request.getEntryName(), request.getContextBytes().toByteArray());
         confirm(responseObserver, completable);
     }
 

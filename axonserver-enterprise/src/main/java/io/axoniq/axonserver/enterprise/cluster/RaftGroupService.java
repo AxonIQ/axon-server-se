@@ -36,4 +36,5 @@ public interface RaftGroupService {
 
     CompletableFuture<Void> deleteContext(String context);
 
+    CompletableFuture<Void> appendEntry(String context, String name, byte[] bytes);
 }

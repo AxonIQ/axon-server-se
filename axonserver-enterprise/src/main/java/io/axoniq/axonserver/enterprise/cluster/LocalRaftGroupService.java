@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
@@ -96,6 +97,7 @@ public class LocalRaftGroupService implements RaftGroupService {
         return CompletableFuture.completedFuture(null);
     }
 
+
     public Context getStatus(String name) {
         RaftGroup raftGroup = grpcRaftController.getRaftGroup(name);
         RaftNode raftNode = raftGroup.localNode();
@@ -136,8 +138,19 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> updateProcessorLoadBalancing(String context,
                                                                 ProcessorLBStrategy processorLBStrategy) {
+        return appendEntry(context, ProcessorLBStrategy.class.getName(), processorLBStrategy.toByteArray());
+    }
+
+    @Override
+    public CompletableFuture<Void> appendEntry(String context, String name, byte[] bytes) {
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        return raftNode.appendEntry(ProcessorLBStrategy.class.getName(), processorLBStrategy.toByteArray());
+        if (raftNode == null) {
+            CompletableFuture<Void> error = new CompletableFuture<>();
+            error.completeExceptionally(new MessagingPlatformException(ErrorCode.OTHER,
+                                                                       "Cannot find node for context"));
+            return error;
+        }
+        return raftNode.appendEntry(name, bytes);
     }
 
     @Override

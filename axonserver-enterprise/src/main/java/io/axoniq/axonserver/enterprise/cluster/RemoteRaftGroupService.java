@@ -1,9 +1,11 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextEntry;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
@@ -22,7 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RemoteRaftGroupService implements RaftGroupService {
     private static final Function<Confirmation, Void> TO_VOID = x -> null;
@@ -60,6 +62,20 @@ public class RemoteRaftGroupService implements RaftGroupService {
         return result;
     }
 
+
+    @Override
+    public CompletableFuture<Void> appendEntry(String context, String name, byte[] bytes) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        ContextEntry request = ContextEntry.newBuilder()
+                                           .setContext(context)
+                                           .setEntryName(name)
+                                           .setEntry(ByteString.copyFrom(bytes))
+                                           .build();
+        stub.appendEntry(request,
+                         new CompletableStreamObserver<>(result, logger));
+        return result;
+    }
+
     @Override
     public void getStatus(Consumer<Context> contextConsumer) {
         stub.getStatus(Context.getDefaultInstance(), new StreamObserver<Context>() {
@@ -90,7 +106,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                  .addAllMembers(raftNodes.stream().map(this::asContextMember).collect(Collectors.toList()))
                                  .build();
         stub.initContext(
-                request, new CompletableStreamObserver(result, logger, TO_VOID));
+                request, new CompletableStreamObserver<>(result, logger, TO_VOID));
 
         return result;
     }
