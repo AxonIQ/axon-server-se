@@ -16,7 +16,7 @@ public class CommandOptions {
     public static final Option NODENAME = Option.builder("n").longOpt("node").required().hasArg().desc("Name of the node").build();
     public static final Option CONTEXT = Option.builder("c").longOpt("context").required().hasArg().desc("Name of the context").build();
     public static final Option NODES = Option.builder("n").hasArgs().valueSeparator(',').longOpt("nodes").desc("[Optional - Enterprise Edition only] member nodes for context").build();
-    public static final Option CONTEXTS = Option.builder("c").hasArgs().valueSeparator(',').longOpt("contexts").desc("[Optional - Enterprise Edition only] contexts to register node in").build();
+    public static final Option CONTEXT_TO_REGISTER_IN = Option.builder("c").longOpt("context").hasArg().desc("[Optional - Enterprise Edition only] context to register node in").build();
     public static final Option INTERNALHOST = Option.builder("h").longOpt("internal-host").desc("Internal hostname of the node").required().hasArg().build();
     public static final Option INTERNALPORT = Option.builder("p").longOpt("internal-port").desc("Internal port of the node (default 8224)").type(PatternOptionBuilder.NUMBER_VALUE).hasArg().build();
     public static final Option TOKEN = Option.builder("t").longOpt("access-token").desc("[Optional] Access token to authenticate at server").hasArg().build();

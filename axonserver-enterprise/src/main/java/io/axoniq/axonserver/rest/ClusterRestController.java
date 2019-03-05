@@ -60,8 +60,8 @@ public class ClusterRestController {
         }
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
-        if( jsonClusterNode.getContexts() != null && ! jsonClusterNode.getContexts().isEmpty()) {
-            jsonClusterNode.getContexts().forEach(c -> nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(c).build()));
+        if( jsonClusterNode.getContext() != null && ! jsonClusterNode.getContext().isEmpty()) {
+            nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(jsonClusterNode.getContext()).build());
         }
         try {
             raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort)
@@ -186,7 +186,7 @@ public class ClusterRestController {
         @NotNull(message = "missing required field: internalGrpcPort")
         private Integer internalGrpcPort;
 
-        private List<String> contexts;
+        private String context;
 
         public String getInternalHostName() {
             return internalHostName;
@@ -204,12 +204,12 @@ public class ClusterRestController {
             this.internalGrpcPort = internalGrpcPort;
         }
 
-        public List<String> getContexts() {
-            return contexts;
+        public String getContext() {
+            return context;
         }
 
-        public void setContexts(List<String> contexts) {
-            this.contexts = contexts;
+        public void setContext(String context) {
+            this.context = context;
         }
     }
 }

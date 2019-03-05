@@ -2,9 +2,10 @@ package io.axoniq.cli.json;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.util.List;
 
 /**
+ * The cluster node representation used within AxonServer Rest API calls.
+ *
  * @author Marc Gathier
  */
 @JsonIgnoreProperties(ignoreUnknown=true)
@@ -19,7 +20,7 @@ public class ClusterNode {
     private boolean connected;
     private boolean master;
 
-    private List<String> contexts;
+    private String context;
 
     public ClusterNode(String internalHostName, Integer internalGrpcPort) {
         this.internalHostName = internalHostName;
@@ -93,11 +94,11 @@ public class ClusterNode {
         this.master = master;
     }
 
-    public List<String> getContexts() {
-        return contexts;
+    public String getContext() {
+        return context;
     }
 
-    public void setContexts(List<String> contexts) {
-        this.contexts = contexts;
+    public void setContext(String context) {
+        this.context = context;
     }
 }
