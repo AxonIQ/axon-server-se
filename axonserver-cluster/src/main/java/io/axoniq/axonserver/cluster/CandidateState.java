@@ -18,6 +18,8 @@ import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
+ * Performs all actions when the node is in the Candidate state.
+ *
  * @author Sara Pellegrini
  * @since 4.1
  */
@@ -31,6 +33,11 @@ public class CandidateState extends AbstractMembershipState {
         super(builder);
     }
 
+    /**
+     * Instantiates a new builder for the Candidate State.
+     *
+     * @return a new builder for the Candidate State
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -51,16 +58,21 @@ public class CandidateState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() >= currentTerm()) {
-            logger.info("{}: Received term {} which is greater or equals than mine {}. Moving to Follower...",
-                        groupId(), request.getTerm(), currentTerm());
+            logger.info("{} in term {}: Received term {} which is greater or equals than mine. Moving to Follower...",
+                        groupId(),
+                        currentTerm(),
+                        request.getTerm());
             String message = format("%s received AppendEntriesRequest with greater or equals term (%s >= %s) from %s",
-                                    me(), request.getTerm(), currentTerm(), request.getLeaderId());
+                                    me(),
+                                    request.getTerm(),
+                                    currentTerm(),
+                                    request.getLeaderId());
             return handleAsFollower(follower -> follower.appendEntries(request), message);
         }
-        logger.trace("{}: Received term {} is smaller than mine {}. Rejecting the request.",
-                     groupId(),
-                     request.getTerm(),
-                     currentTerm());
+        logger.info("{} in term {}: Received term {} is smaller than mine. Rejecting the request.",
+                    groupId(),
+                    currentTerm(),
+                    request.getTerm());
         return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a candidate");
     }
 
@@ -80,23 +92,36 @@ public class CandidateState extends AbstractMembershipState {
     }
 
     private void startElection() {
-        if (currentConfiguration().isEmpty()) return;
+        if (currentConfiguration().isEmpty()) {
+            return;
+        }
         newElection().result().subscribe(this::onElectionResult, error -> logger.warn("Failed to run election", error));
         resetElectionTimeout();
     }
 
-    private void onElectionResult(Result result){
+    private void onElectionResult(Result result) {
         if (result.won()) {
             changeStateTo(stateFactory().leaderState(), result.cause());
-        } else if( result.goAway()) {
+        } else if (result.goAway()) {
             changeStateTo(stateFactory().removedState(), result.cause());
         } else {
             changeStateTo(stateFactory().followerState(), result.cause());
         }
     }
 
+    /**
+     * A Builder for {@link CandidateState}.
+     *
+     * @author Sara Pellegrini
+     * @since 4.1
+     */
     public static class Builder extends AbstractMembershipState.Builder<Builder> {
 
+        /**
+         * Builds the Candidate State.
+         *
+         * @return the Candidate State
+         */
         public CandidateState build() {
             return new CandidateState(this);
         }

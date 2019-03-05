@@ -30,10 +30,12 @@ import java.util.function.Supplier;
 import static java.lang.String.format;
 
 /**
+ * Peer responsible for replication: appending entries, installing snapshot and sending heartbeats.
+ *
  * @author Milan Savic
+ * @since 4.1
  */
 public class ReplicatorPeer {
-
 
     private interface ReplicatorPeerState {
 
@@ -74,7 +76,10 @@ public class ReplicatorPeer {
         @Override
         public void start() {
             offset = 0;
-            logger.warn("{}: start snapshot installation: {}", raftGroup.localNode().groupId(), snapshotInstallationContext);
+            logger.info("{} in term {}: start snapshot installation: {}",
+                        groupId(),
+                        currentTerm(),
+                        snapshotInstallationContext);
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();
@@ -99,7 +104,10 @@ public class ReplicatorPeer {
                                                                  .setOffset(offset)
                                                                  .setDone(done)
                                                                  .addAllData(serializedObjects);
-                                   logger.trace("{}: Sending install snapshot chunk with offset: {}", groupId(), offset);
+                                   logger.trace("{} in term {}: Sending install snapshot chunk with offset: {}",
+                                                groupId(),
+                                                currentTerm(),
+                                                offset);
                                    if (firstChunk()) {
                                        requestBuilder.setLastConfig(raftGroup.raftConfiguration().config());
                                    }
@@ -109,7 +117,7 @@ public class ReplicatorPeer {
 
                                @Override
                                public void onError(Throwable t) {
-                                   logger.error("Install snapshot failed.", t);
+                                   logger.error("{} in term {}: Install snapshot failed.", groupId(), currentTerm(), t);
                                    subscription.cancel();
                                    changeStateTo(new IdleReplicatorPeerState());
                                }
@@ -127,7 +135,10 @@ public class ReplicatorPeer {
                                                               .setOffset(offset)
                                                               .setDone(done)
                                                               .build());
-                                   logger.info("{}: Sending the last chunk for install snapshot to {}", groupId(), raftPeer.nodeId());
+                                   logger.info("{} in term {}: Sending the last chunk for install snapshot to {}.",
+                                               groupId(),
+                                               currentTerm(),
+                                               raftPeer.nodeId());
                                }
                            });
         }
@@ -145,7 +156,9 @@ public class ReplicatorPeer {
         public int sendNextEntries() {
             int sent = 0;
             if (!canSend()) {
-                logger.trace("Can't send Install Snapshot chunk. offset {}, lastReceivedOffset {}.",
+                logger.trace("{} in term {}: Can't send Install Snapshot chunk. offset {}, lastReceivedOffset {}.",
+                             groupId(),
+                             currentTerm(),
                              offset,
                              lastReceivedOffset);
             }
@@ -157,28 +170,47 @@ public class ReplicatorPeer {
         }
 
         private void send(InstallSnapshotRequest request) {
-            logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
+            logger.trace("{} in term {}: Send request to {}: {}.",
+                         groupId(),
+                         currentTerm(),
+                         raftPeer.nodeId(),
+                         request);
             raftPeer.installSnapshot(request);
             lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 
         public void handleResponse(InstallSnapshotResponse response) {
-            logger.trace("{}: Install snapshot - received response: {}", groupId(), response);
+            logger.trace("{} in term {}: Install snapshot - received response: {}.",
+                         groupId(),
+                         currentTerm(),
+                         response);
             if (response.hasSuccess()) {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
                 lastReceivedOffset = response.getSuccess().getLastReceivedOffset();
                 if (done) {
-                    logger.trace("{}: Install snapshot confirmation received: {}", groupId(), response);
+                    logger.info("{} in term {}: Install snapshot confirmation received: {}",
+                                groupId(),
+                                currentTerm(),
+                                response);
                     setMatchIndex(lastAppliedIndex);
                     changeStateTo(new AppendEntryState());
                 }
             } else {
+                logger.info("{} in term {}: Install snapshot message failed. Reason: {}.",
+                            groupId(),
+                            currentTerm(),
+                            response.getFailure().getCause());
                 if (currentTerm() < response.getTerm()) {
-                    logger.info("{}: Install snapshot - Replica has higher term: {}",
+                    logger.info("{} in term {}: Install snapshot - Replica has higher term: {}",
                                 groupId(),
+                                currentTerm(),
                                 response.getTerm());
-                    String cause = format("%s: %s received InstallSnapshotResponse with term = %s from %s",
-                                          groupId(), me(), response.getTerm(), response.getResponseHeader().getNodeId());
+                    String cause = format("%s in term %s: %s received InstallSnapshotResponse with term = %s from %s",
+                                          groupId(),
+                                          currentTerm(),
+                                          me(),
+                                          response.getTerm(),
+                                          response.getResponseHeader().getNodeId());
                     updateCurrentTerm.accept(response.getTerm(), cause);
                 }
             }
@@ -216,19 +248,26 @@ public class ReplicatorPeer {
                 EntryIterator iterator = entryIterator;
                 if (iterator == null) {
                     nextIndex.compareAndSet(0, raftGroup.localLogEntryStore().lastLogIndex() + 1);
-                    logger.debug("{}: create entry iterator for {} at {}", groupId(), raftPeer.nodeId(), nextIndex);
+                    logger.debug("{} in term {}: create entry iterator for {} at {}",
+                                 groupId(),
+                                 currentTerm(),
+                                 raftPeer.nodeId(),
+                                 nextIndex);
                     iterator = updateEntryIterator();
                 }
 
-                if (iterator == null) return sent;
+                if (iterator == null) {
+                    return sent;
+                }
 
                 if (logCannotSend && !canSend()) {
-                    logger.info("{}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
-                                 groupId(),
-                                 raftPeer.nodeId(),
-                                 nextIndex,
-                                 matchIndex,
-                                 raftGroup.localLogEntryStore().lastLogIndex());
+                    logger.info("{} in term {}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
+                                groupId(),
+                                currentTerm(),
+                                raftPeer.nodeId(),
+                                nextIndex,
+                                matchIndex,
+                                raftGroup.localLogEntryStore().lastLogIndex());
                     logCannotSend = false;
                 }
                 while (canSend()
@@ -236,7 +275,12 @@ public class ReplicatorPeer {
                     Entry entry = iterator.next();
                     //
                     TermIndex previous = iterator.previous();
-                    logger.trace("{}: Send request {} to {}: {}", groupId(), sent, raftPeer.nodeId(), entry.getIndex());
+                    logger.trace("{} in term {}: Send request {} to {}: {}",
+                                 groupId(),
+                                 currentTerm(),
+                                 sent,
+                                 raftPeer.nodeId(),
+                                 entry.getIndex());
                     send(AppendEntriesRequest.newBuilder()
                                              .setRequestId(UUID.randomUUID().toString())
                                              .setGroupId(groupId())
@@ -257,28 +301,43 @@ public class ReplicatorPeer {
                     sendHeartbeat();
                 }
             } catch (RuntimeException ex) {
-                logger.warn("{}: Sending nextEntries to {} failed", groupId(), raftPeer.nodeId(), ex);
+                logger.warn("{} in term {}: Sending nextEntries to {} failed.",
+                            groupId(),
+                            currentTerm(),
+                            raftPeer.nodeId(),
+                            ex);
                 updateEntryIterator();
             }
             return sent;
         }
 
         public void handleResponse(AppendEntriesResponse response) {
-            logger.trace("{}: Received response from {}: {}", groupId(), raftPeer.nodeId(), response);
+            logger.trace("{} in term {}: Received response from {}: {}.",
+                         groupId(),
+                         currentTerm(),
+                         raftPeer.nodeId(),
+                         response);
             if (response.hasFailure()) {
+                logger.info("{} in term {}: Sending append entry to {} failed. Reason: {}. Last applied index: {}, match index: {}.",
+                            groupId(),
+                            currentTerm(),
+                            nodeId(),
+                            response.getFailure().getCause(),
+                            response.getFailure().getLastAppliedIndex(),
+                            matchIndex());
                 if (currentTerm() < response.getTerm()) {
-                    logger.info("{}: Replica has higher term: {}", groupId(), response.getTerm());
+                    logger.info("{} in term {}: Replica has higher term: {}.",
+                                groupId(),
+                                currentTerm(),
+                                response.getTerm());
                     String cause = format("%s: %s received AppendEntriesResponse with term = %s from %s",
-                                          groupId(), me(), response.getTerm(), response.getResponseHeader().getNodeId());
+                                          groupId(),
+                                          me(),
+                                          response.getTerm(),
+                                          response.getResponseHeader().getNodeId());
                     updateCurrentTerm.accept(response.getTerm(), cause);
                     return;
                 }
-                logger.info("{}: create entry iterator as replica does not have current for {} at {}, lastSaved = {}, currentMatchIndex = {}",
-                            groupId(),
-                            raftPeer.nodeId(),
-                            nextIndex,
-                            response.getFailure().getLastAppliedIndex(),
-                            matchIndex());
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(matchIndex.get() + 1);
                 snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
@@ -288,12 +347,13 @@ public class ReplicatorPeer {
                 setMatchIndex(response.getSuccess().getLastLogIndex());
             }
 
-            if (canSend()){
+            if (canSend()) {
                 logCannotSend = true;
             }
         }
 
         public void sendHeartbeat() {
+            logger.trace("{} in term {}: Sending heartbeat to {}.", groupId(), currentTerm(), nodeId());
             long commitIndex = raftGroup.logEntryProcessor().commitIndex();
             TermIndex lastTermIndex = raftGroup.localLogEntryStore().lastLog();
             AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
@@ -323,17 +383,19 @@ public class ReplicatorPeer {
                 entryIterator = logEntryStore.createIterator(nextIndex());
                 return entryIterator;
             } else {
-                logger.info("{}: follower {} is far behind the log entry. Follower's last applied index: {}.",
-                                groupId(),
-                                raftPeer.nodeId(),
-                                nextIndex());
+                logger.info("{} in term {}: follower {} is far behind the log entry. Follower's last applied index: {}.",
+                            groupId(),
+                            currentTerm(),
+                            raftPeer.nodeId(),
+                            nextIndex());
                 changeStateTo(new InstallSnapshotState(snapshotContext.get()));
             }
             return null;
         }
 
         private boolean canSend() {
-            return running && matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < raftGroup.raftConfiguration().flowBuffer();
+            return running && matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < raftGroup
+                    .raftConfiguration().flowBuffer();
         }
     }
 
@@ -341,7 +403,8 @@ public class ReplicatorPeer {
 
     private final RaftPeer raftPeer;
     private final Consumer<Long> matchIndexCallback;
-    private final AtomicReference<SnapshotContext> snapshotContext = new AtomicReference<>(new SnapshotContext() {});
+    private final AtomicReference<SnapshotContext> snapshotContext = new AtomicReference<>(new SnapshotContext() {
+    });
     private final AtomicLong nextIndex = new AtomicLong(1);
     private final AtomicLong matchIndex = new AtomicLong(0);
     private final AtomicLong lastMessageSent = new AtomicLong(0);
@@ -379,17 +442,20 @@ public class ReplicatorPeer {
         if (currentState != null) {
             currentState.stop();
         }
+        logger.info("{} in term {}: Changing state from {} to {}.", groupId(), currentTerm(), currentState, newState);
         currentState = newState;
         newState.start();
     }
 
     public void start() {
+        logger.info("{} in term {}: Starting the replicator peer for {}.", groupId(), currentTerm(), nodeId());
         running = true;
         matchIndexCallback.accept(matchIndex.get());
         changeStateTo(new AppendEntryState());
     }
 
     public void stop() {
+        logger.info("{} in term {}: Stopping the replicator peer for {}.", groupId(), currentTerm(), nodeId());
         running = false;
         changeStateTo(new IdleReplicatorPeerState());
     }
@@ -401,6 +467,7 @@ public class ReplicatorPeer {
     public long lastMessageSent() {
         return lastMessageSent.get();
     }
+
     public long nextIndex() {
         return nextIndex.get();
     }

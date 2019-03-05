@@ -31,8 +31,10 @@ import java.util.stream.Stream;
 import static java.lang.String.format;
 
 /**
+ * Abstract state defining common behavior for all Raft states.
+ *
  * @author Sara Pellegrini
- * @since 4.0
+ * @since 4.1
  */
 public abstract class AbstractMembershipState implements MembershipState {
 
@@ -185,16 +187,19 @@ public abstract class AbstractMembershipState implements MembershipState {
             String message = format("%s received RequestVoteRequest with greater term (%s > %s) from %s",
                                     me(), request.getTerm(), currentTerm(), request.getCandidateId());
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request), message);
-            logger.info("{}: Request for vote received from {} in term {}. {} voted {} (handled as follower)",
-                        groupId(),
-                        request.getCandidateId(),
-                        request.getTerm(),
-                        me(),
-                        vote != null && vote.getVoteGranted());
+            logger.info(
+                    "{} in term {}: Request for vote received from {} for term {}. {} voted {} (handled as follower).",
+                    groupId(),
+                    currentTerm(),
+                    request.getCandidateId(),
+                    request.getTerm(),
+                    me(),
+                    vote != null && vote.getVoteGranted());
             return vote;
         }
-        logger.info("{}: Request for vote received from {} in term {}. {} voted rejected",
+        logger.info("{} in term {}: Request for vote received from {} in term {}. {} voted rejected.",
                     groupId(),
+                    currentTerm(),
                     request.getCandidateId(),
                     request.getTerm(),
                     me());
@@ -206,17 +211,17 @@ public abstract class AbstractMembershipState implements MembershipState {
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         if (request.getTerm() > currentTerm()) {
-            logger.trace(
-                    "{}: Received install snapshot with term {} which is greater than mine {}. Moving to Follower...",
+            logger.info(
+                    "{} in term {}: Received install snapshot with term {} which is greater than mine. Moving to Follower...",
                     groupId(),
-                    request.getTerm(),
-                    currentTerm());
+                    currentTerm(),
+                    request.getTerm());
             String message = format("%s received InstallSnapshotRequest with greater term (%s > %s) from %s",
                                     me(), request.getTerm(), currentTerm(), request.getLeaderId());
             return handleAsFollower(follower -> follower.installSnapshot(request), message);
         }
-        String cause = format("%s: Received term (%s) is smaller or equal than mine (%s). Rejecting the request.",
-                              groupId(), request.getTerm(), currentTerm());
+        String cause = format("%s in term %s: Received term (%s) is smaller or equal than mine. Rejecting the request.",
+                              groupId(), currentTerm(), request.getTerm());
         logger.trace(cause);
         return installSnapshotFailure(request.getRequestId(), cause);
     }
