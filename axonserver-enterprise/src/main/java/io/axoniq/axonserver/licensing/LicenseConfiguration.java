@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -66,12 +65,7 @@ public final class LicenseConfiguration {
         if(instance == null) {
             Properties properties = new LicensePropertyReader().readLicenseProperties();
             if(properties == null) {
-                log.warn("License property not specified - Running in Standard mode");
-                instance = new LicenseConfiguration(null, Edition.Standard, UUID.randomUUID().toString(),
-                                                    1, 1, null,
-                                                    AXON_SERVER,
-                                                    null,
-                                                    null);
+                throw LicenseException.noLicenseFile();
             } else {
                 instance = new LicenseConfiguration(
                         getLocalDate(properties.getProperty("expiry_date")),
