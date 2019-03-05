@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
@@ -13,12 +14,14 @@ import io.axoniq.axonserver.grpc.internal.State;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStrategyConsumer.DELETE_LOAD_BALANCING_STRATEGY;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Author: marc
@@ -36,19 +39,25 @@ public class LocalRaftGroupService implements RaftGroupService {
     public CompletableFuture<Void> addNodeToContext(String context, Node node) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        raftNode.addNode(node).whenComplete(((configChangeResult, throwable) -> {
-            if(throwable != null) {
-                result.completeExceptionally(throwable);
-            } else {
-                if( configChangeResult.hasFailure()) {
-                    result.completeExceptionally(new RuntimeException(configChangeResult.getFailure().toString()));
+        Set<String> members = raftNode.currentGroupMembers().stream().map(Node::getNodeName).collect(toSet());
+        if (members.contains(node.getNodeName())){
+            MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
+                                                                           "Node is already part of this context.");
+            result.completeExceptionally(ex);
+        } else {
+            raftNode.addNode(node).whenComplete(((configChangeResult, throwable) -> {
+                if(throwable != null) {
+                    result.completeExceptionally(throwable);
                 } else {
-                    result.complete(null);
+                    if( configChangeResult.hasFailure()) {
+                        result.completeExceptionally(new RuntimeException(configChangeResult.getFailure().toString()));
+                    } else {
+                        result.complete(null);
+                    }
                 }
-            }
 
-        }));
-
+            }));
+        }
         return result;
     }
 
