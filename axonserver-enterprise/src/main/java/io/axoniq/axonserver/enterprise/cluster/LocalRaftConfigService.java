@@ -3,7 +3,6 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
 import io.axoniq.axonserver.access.application.JpaApplication;
-import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
@@ -380,63 +379,43 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void init(List<String> contexts) {
+        if (!grpcRaftController.getContexts().isEmpty()){
+            throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
+                    "This node is already part of a cluster and cannot be initialized again.");
+        }
+        for (String context : contexts) {
+            if (!context.matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME, "Invalid context name: "+ context);
+            }
+        }
+        logger.info("Initialization of this node with following contexts: {}", contexts);
+        init(getAdmin());
+        contexts.forEach(this::init);
+    }
+
+    private void init(String contextName){
+        String nodeName = messagingPlatformConfiguration.getName();
+        String nodeLabelForContext = generateNodeLabel(nodeName);
+        grpcRaftController.initRaftGroup(contextName,
+                                         nodeLabelForContext,
+                                         messagingPlatformConfiguration.getName());
+        NodeInfo nodeInfo = NodeInfo
+                .newBuilder()
+                .setNodeName(nodeName)
+                .setGrpcInternalPort(messagingPlatformConfiguration.getInternalPort())
+                .setInternalHostName(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
+                .setGrpcPort(messagingPlatformConfiguration.getPort())
+                .setHttpPort(messagingPlatformConfiguration.getHttpPort())
+                .setHostName(messagingPlatformConfiguration.getFullyQualifiedHostname())
+                .build();
+        ContextConfiguration contextConfiguration = ContextConfiguration
+                .newBuilder()
+                .setContext(contextName)
+                .addNodes(NodeInfoWithLabel.newBuilder().setNode(nodeInfo).setLabel(nodeLabelForContext))
+                .build();
+        RaftNode adminLeader = grpcRaftController.waitForLeader(grpcRaftController.getRaftGroup(getAdmin()));
         try {
-            String adminLabel = generateNodeLabel(messagingPlatformConfiguration.getName());
-            RaftGroup configGroup = grpcRaftController.initRaftGroup(getAdmin(),
-                                                                     adminLabel,
-                                                                     messagingPlatformConfiguration.getName());
-            RaftNode leader = grpcRaftController.waitForLeader(configGroup);
-            Node me = Node.newBuilder().setNodeId(adminLabel)
-                          .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
-                          .setPort(messagingPlatformConfiguration.getInternalPort())
-                          .setNodeName(messagingPlatformConfiguration.getName())
-                          .build();
-
-            leader.addNode(me).get();
-            NodeInfo nodeInfo = NodeInfo.newBuilder()
-                                        .setGrpcInternalPort(messagingPlatformConfiguration.getInternalPort())
-                                        .setNodeName(messagingPlatformConfiguration.getName())
-                                        .setInternalHostName(messagingPlatformConfiguration
-                                                                     .getFullyQualifiedInternalHostname())
-                                        .setGrpcPort(messagingPlatformConfiguration.getPort())
-                                        .setHttpPort(messagingPlatformConfiguration.getHttpPort())
-                                        .setHostName(messagingPlatformConfiguration.getFullyQualifiedHostname())
-                                        .build();
-            ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
-                                                                            .setContext(getAdmin())
-                                                                            .addNodes(NodeInfoWithLabel.newBuilder()
-                                                                                                       .setNode(nodeInfo)
-                                                                                                       .setLabel(
-                                                                                                               adminLabel))
-                                                                            .build();
-            leader.appendEntry(ContextConfiguration.class.getName(), contextConfiguration.toByteArray()).get();
-            List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
-            contexts.forEach(c -> {
-                String contextLabel = generateNodeLabel(messagingPlatformConfiguration.getName());
-                RaftGroup group = grpcRaftController.initRaftGroup(c,
-                                                                   contextLabel,
-                                                                   messagingPlatformConfiguration.getName());
-                RaftNode groupLeader = grpcRaftController.waitForLeader(group);
-                Node contextMe = Node.newBuilder().setNodeId(contextLabel)
-                                     .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
-                                     .setPort(messagingPlatformConfiguration.getInternalPort())
-                                     .setNodeName(messagingPlatformConfiguration.getName())
-                                     .build();
-
-                completableFutures.add(groupLeader.addNode(contextMe).thenCompose(r -> {
-                    ContextConfiguration groupConfiguration = ContextConfiguration.newBuilder()
-                                                                                  .setContext(c)
-                                                                                  .addNodes(NodeInfoWithLabel
-                                                                                                    .newBuilder()
-                                                                                                    .setNode(nodeInfo)
-                                                                                                    .setLabel(
-                                                                                                            contextLabel))
-                                                                                  .build();
-                    return leader.appendEntry(ContextConfiguration.class.getName(), groupConfiguration.toByteArray());
-                }));
-            });
-
-            CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0])).get();
+            adminLeader.appendEntry(ContextConfiguration.class.getName(), contextConfiguration.toByteArray()).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
