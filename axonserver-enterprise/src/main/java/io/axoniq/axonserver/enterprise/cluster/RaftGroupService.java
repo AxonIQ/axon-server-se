@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
@@ -60,4 +61,11 @@ public interface RaftGroupService {
      * @return completable future that completes when entry is applied on the leader
      */
     CompletableFuture<Void> appendEntry(String context, String name, byte[] bytes);
+
+    /**
+     * Returns the current raft group configuration as a {@link ContextConfiguration}
+     * @param context the raft group name
+     * @return the completable future containing the current context configuration
+     */
+    CompletableFuture<ContextConfiguration> configuration(String context);
 }

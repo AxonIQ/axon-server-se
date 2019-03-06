@@ -149,6 +149,11 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
+        public CompletableFuture<ContextConfiguration> configuration(String context) {
+            return null;
+        }
+
+        @Override
         public CompletableFuture<Void> initContext(String context, List<Node> nodes) {
             GroupDB groupDB = new GroupDB();
             nodes.forEach(n -> groupDB.nodes.put(n.getNodeId(), n.getNodeName()));

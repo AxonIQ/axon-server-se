@@ -81,6 +81,8 @@ service RaftGroupService {
     rpc GetStatus(Context) returns (stream Context) {}
 
     rpc AppendEntry(ContextEntry) returns (Confirmation) {}
+
+    rpc Configuration(ContextName) returns (ContextConfiguration) {}
 }
 
 

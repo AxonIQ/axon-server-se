@@ -64,6 +64,10 @@ public interface MembershipState extends ClusterConfiguration{
         throw new UnsupportedOperationException("Operation only supported in leader state");
     }
 
+    default CurrentConfiguration currentConfiguration() {
+        throw new UnsupportedOperationException("CurrentConfiguration is not available in this state.");
+    }
+
     default boolean pendingChanges() {
         return false;
     }

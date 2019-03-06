@@ -8,9 +8,12 @@ import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.State;
 import org.jetbrains.annotations.NotNull;
@@ -69,6 +72,32 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public void getStatus(Consumer<Context> contextConsumer) {
         grpcRaftController.raftGroups().forEach(name -> contextConsumer.accept(getStatus(name)));
+    }
+
+    @Override
+    public CompletableFuture<ContextConfiguration> configuration(String context) {
+        RaftGroup raftGroup = grpcRaftController.getRaftGroup(context);
+        if (raftGroup == null) {
+            return null;
+        }
+        RaftNode raftNode = raftGroup.localNode();
+        ContextConfiguration.Builder builder = ContextConfiguration
+                .newBuilder()
+                .setContext(context)
+                .setPending(raftNode.isCurrentConfigurationPending());
+        for (Node member : raftNode.currentGroupMembers()) {
+            builder.addNodes(NodeInfoWithLabel
+                                     .newBuilder()
+                                     .setLabel(member.getNodeId())
+                                     .setNode(NodeInfo
+                                                      .newBuilder()
+                                                      .setNodeName(member.getNodeName())
+                                                      .setHostName(member.getHost())
+                                                      .setGrpcInternalPort(member.getPort())
+                                                      .build())
+                                     .build());
+        }
+        return CompletableFuture.completedFuture(builder.build());
     }
 
     @Override

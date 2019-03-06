@@ -378,7 +378,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                              .setNodeId(me()).build();
     }
 
-    protected CurrentConfiguration currentConfiguration() {
+    public CurrentConfiguration currentConfiguration() {
         return this.currentConfiguration;
     }
 
