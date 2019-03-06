@@ -376,7 +376,7 @@ public class LocalRaftConfigServiceTest {
         adminDB.nodeMap.put("localhost", createNode("localhost"));
         fakeRaftGroupService.groupDBs.clear();
 
-        testSubject.init(Arrays.asList("_admin", "default"));
+        testSubject.init(Arrays.asList("default"));
         assertEquals(2, adminDB.contextMap.size());
         assertEquals(2,fakeRaftGroupService.groupDBs.size());
 
