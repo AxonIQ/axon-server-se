@@ -9,6 +9,7 @@ import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
+import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -34,15 +35,17 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
         logger.warn("Init context: {}", request);
         try {
-            localRaftGroupService.initContext(request.getName(), request.getMembersList()
-                    .stream()
-            .map(contextMember -> Node.newBuilder()
-                                      .setNodeId(contextMember.getNodeId())
-                                      .setHost(contextMember.getHost())
-                                      .setPort(contextMember.getPort())
-                                      .setNodeName(contextMember.getNodeName())
-                                      .build()).collect(
-                            Collectors.toList()));
+            localRaftGroupService.initContext(request.getName(),
+                                              request.getMembersList()
+                                                     .stream()
+                                                     .map(contextMember -> Node.newBuilder()
+                                                                               .setNodeId(contextMember.getNodeId())
+                                                                               .setHost(contextMember.getHost())
+                                                                               .setPort(contextMember.getPort())
+                                                                               .setNodeName(contextMember.getNodeName())
+                                                                               .build())
+                                                     .collect(Collectors.toList()));
+
             responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
             responseObserver.onCompleted();
         } catch (Throwable t) {
@@ -52,9 +55,20 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void addServer(Context request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.addNodeToContext(request.getName(), toNode(request.getMembers(0)));
-        confirm(responseObserver, completable);
+    public void addServer(Context request, StreamObserver<ContextUpdateConfirmation> responseObserver) {
+        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.addNodeToContext(request.getName(), toNode(request.getMembers(0)));
+        forwardWhenComplete(responseObserver, completable);
+    }
+
+    private <T> void forwardWhenComplete(StreamObserver<T> responseObserver, CompletableFuture<T> completable) {
+        completable.whenComplete((r, t) -> {
+            if (t != null) {
+                responseObserver.onError(t);
+            } else {
+                responseObserver.onNext(r);
+                responseObserver.onCompleted();
+            }
+        });
     }
 
     private void confirm(StreamObserver<Confirmation> responseObserver, CompletableFuture<Void> completable) {
@@ -69,9 +83,9 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void removeServer(Context request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteNode(request.getName(), request.getMembers(0).getNodeId());
-        confirm(responseObserver, completable);
+    public void removeServer(Context request, StreamObserver<ContextUpdateConfirmation> responseObserver) {
+        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.deleteNode(request.getName(), request.getMembers(0).getNodeId());
+        forwardWhenComplete(responseObserver, completable);
     }
 
     @Override

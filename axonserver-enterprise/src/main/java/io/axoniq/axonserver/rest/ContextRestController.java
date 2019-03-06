@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -36,18 +35,15 @@ import javax.validation.Valid;
 public class ContextRestController {
 
     private final RaftConfigServiceFactory raftServiceFactory;
-    private final RaftGroupServiceFactory raftGroupServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
     private final FeatureChecker limits;
 
     public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
-                                 RaftGroupServiceFactory raftGroupServiceFactory,
                                  RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
-        this.raftGroupServiceFactory = raftGroupServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
         this.contextController = contextController;
         this.limits = limits;
@@ -69,23 +65,43 @@ public class ContextRestController {
     }
 
     @DeleteMapping( path = "context/{name}")
-    public void deleteContext(@PathVariable("name")  String name) {
+    public ResponseEntity<RestResponse> deleteContext(@PathVariable("name")  String name) {
+        try {
         if( name.startsWith("_")) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT, String.format("Cannot delete internal context %s", name));
         raftServiceFactory.getRaftConfigService().deleteContext(name);
+        return ResponseEntity.accepted()
+                             .body(new RestResponse(true,
+                                                    "Accepted delete request"));
+        } catch( MessagingPlatformException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpCode())
+                                 .body(new RestResponse(false, ex.getMessage()));
+        }
     }
 
     @PostMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node) {
-        raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
-        return ResponseEntity.accepted()
-                      .body(new RestResponse(true,
-                                             "Started to add node to context. This may take some time depending on the number of events already in the context"));
-
+        try {
+            raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
+            return ResponseEntity.accepted()
+                          .body(new RestResponse(true,
+                                                 "Started to add node to context. This may take some time depending on the number of events already in the context"));
+        } catch( MessagingPlatformException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpCode())
+                                 .body(new RestResponse(false, ex.getMessage()));
+        }
     }
 
     @DeleteMapping(path = "context/{context}/{node}")
-    public void deleteNodeFromContext(@PathVariable("context") String name, @PathVariable("node") String node){
-        raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
+    public ResponseEntity<RestResponse> deleteNodeFromContext(@PathVariable("context") String name, @PathVariable("node") String node){
+        try {
+            raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
+            return ResponseEntity.accepted()
+                                 .body(new RestResponse(true,
+                                                        "Accepted delete request"));
+        } catch( MessagingPlatformException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpCode())
+                                 .body(new RestResponse(false, ex.getMessage()));
+        }
     }
 
     @PostMapping(path ="context")
@@ -104,7 +120,7 @@ public class ContextRestController {
         raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
     }
 
-    @GetMapping(path = "context/init")
+    @PostMapping(path = "context/init")
     public ResponseEntity<RestResponse> init(@RequestParam(name="context", required = false) List<String> contexts) {
         if( contexts == null) contexts = new ArrayList<>();
         if( contexts.isEmpty()) {

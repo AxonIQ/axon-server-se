@@ -19,7 +19,7 @@ public class DeleteNodeFromContext extends AxonIQCliCommand {
         String url = createUrl(commandLine, "/v1/context", CONTEXT, NODENAME);
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            delete(httpclient, url, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            delete(httpclient, url, 202, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
         }
     }
 }

@@ -462,6 +462,10 @@ public class RaftNode {
         return state.get().currentGroupMembers();
     }
 
+    public boolean uncommittedChanges() {
+        return state.get().pendingChanges();
+    }
+
     /**
      * Gets the state factory.
      *

@@ -58,9 +58,9 @@ service RaftGroupService {
 
     rpc DeleteContext(ContextName) returns (Confirmation) {}
 
-    rpc AddServer(Context) returns (Confirmation) {}
+    rpc AddServer(Context) returns (ContextUpdateConfirmation) {}
 
-    rpc RemoveServer(Context) returns (Confirmation) {}
+    rpc RemoveServer(Context) returns (ContextUpdateConfirmation) {}
 
     rpc MergeAppAuthorization(ContextApplication) returns (Confirmation) {}
 
@@ -372,6 +372,13 @@ message TransactionWithToken {
 message Context {
     string name = 1;
     repeated ContextMember members = 2;
+}
+
+message ContextUpdateConfirmation {
+    bool success = 1;
+    string message = 2;
+    repeated ContextMember members = 3;
+    bool pending = 4;
 }
 
 message ContextMember {

@@ -18,7 +18,7 @@ public class InitCluster extends AxonIQCliCommand {
         String url = createUrl(commandLine, "/v1/context/init");
 
         try (CloseableHttpClient httpclient  = createClient(commandLine)) {
-            getJSON(httpclient, url, RestResponse.class, 200, null);
+            postJSON(httpclient, url, RestResponse.class, 200, null);
         }
     }
 
