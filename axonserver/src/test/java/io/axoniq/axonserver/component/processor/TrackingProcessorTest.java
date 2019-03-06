@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import org.junit.*;
 
+import java.util.Collections;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -64,6 +65,46 @@ public class TrackingProcessorTest {
                 new FakeClientProcessor("clientIdOne", true, processorInfo0),
                 new FakeClientProcessor("clientIdTwo", true, processorInfo1)
         );
+
+        TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", testClientProcessors);
+
+        GsonMedia media = new GsonMedia();
+        testSubject.printOn(media);
+
+        assertEquals(expectedJson, media.toString());
+    }
+
+    @Test
+    public void testPrintOnDisableCanMergeIfThereIsOnlyOneSegment() {
+        String expectedJson =
+                "{\"name\":\"processor name\","
+                        + "\"mode\":\"tracking\","
+                        + "\"warnings\":[],"
+                        + "\"freeThreadInstances\":[\"clientIdOne\"],"
+                        + "\"activeThreads\":1,"
+                        + "\"canPause\":true,"
+                        + "\"canPlay\":false,"
+                        + "\"canSplit\":true,"
+                        + "\"canMerge\":false,"
+                        + "\"trackers\":["
+                        + "{\"clientId\":\"clientIdOne\",\"segmentId\":0,\"caughtUp\":true,\"replaying\":false,\"onePartOf\":1}"
+                        + "]}";
+
+        EventProcessorInfo.EventTrackerInfo trackerInfo0 = EventProcessorInfo.EventTrackerInfo.newBuilder()
+                                                                                              .setCaughtUp(true)
+                                                                                              .setReplaying(false)
+                                                                                              .setOnePartOf(1)
+                                                                                              .setSegmentId(0)
+                                                                                              .build();
+        EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
+                                                              .setMode("Tracking")
+                                                              .setActiveThreads(1)
+                                                              .setAvailableThreads(1)
+                                                              .setRunning(true)
+                                                              .addEventTrackersInfo(trackerInfo0)
+                                                              .build();
+        List<ClientProcessor> testClientProcessors =
+                Collections.singletonList(new FakeClientProcessor("clientIdOne", true, processorInfo0));
 
         TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", testClientProcessors);
 

@@ -19,12 +19,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.enterprise.CompetableFutureUtils.getFuture;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStrategyConsumer.DELETE_LOAD_BALANCING_STRATEGY;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * @author Marc Gathier
@@ -43,7 +45,13 @@ public class LocalRaftGroupService implements RaftGroupService {
     public CompletableFuture<ContextUpdateConfirmation> addNodeToContext(String context, Node node) {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        raftNode.addNode(node).whenComplete((configChangeResult, throwable) -> {
+        Set<String> members = raftNode.currentGroupMembers().stream().map(Node::getNodeName).collect(toSet());
+        if (members.contains(node.getNodeName())){
+            MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
+                                                                           "Node is already part of this context.");
+            result.completeExceptionally(ex);
+        } else {
+            raftNode.addNode(node).whenComplete((configChangeResult, throwable) -> {
             if( throwable != null) {
                 logger.error("{}: Exception while adding node {}", context, node.getNodeName(), throwable);
             }
@@ -54,7 +62,7 @@ public class LocalRaftGroupService implements RaftGroupService {
             result.complete(contextUpdateConfirmation);
 
         });
-
+        }
         return result;
     }
 

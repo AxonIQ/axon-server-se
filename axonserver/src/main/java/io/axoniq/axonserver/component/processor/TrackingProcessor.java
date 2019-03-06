@@ -25,6 +25,8 @@ import static java.util.stream.Collectors.toList;
  */
 public class TrackingProcessor extends GenericProcessor implements EventProcessor {
 
+    private static final int ZERO_THREADS = 0;
+
     private static final String FREE_THREAD_INSTANCES_COUNT = "freeThreadInstances";
     private static final String ACTIVE_THREADS_COUNT = "activeThreads";
     private static final String CAN_PAUSE_KEY = "canPause";
@@ -33,6 +35,14 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     private static final String CAN_MERGE_KEY = "canMerge";
     private static final String TRACKERS_LIST_KEY = "trackers";
 
+    /**
+     * Instantiate a {@link TrackingProcessor}, used to represent the state of a Tracking Event Processor in the UI.
+     *
+     * @param name       a {@link String} defining the processing group name of this Event Processor
+     * @param mode       a {@link String} defining the mode of this Event Processor
+     * @param processors a {@link Collection} of {@link ClientProcessor}s portraying the state of this Event Processor
+     *                   per client it is running on
+     */
     TrackingProcessor(String name, String mode, Collection<ClientProcessor> processors) {
         super(name, mode, processors);
     }
@@ -48,30 +58,41 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     @Override
     public void printOn(Media media) {
         EventProcessor.super.printOn(media);
-        Integer activeThreads = processorInstances().stream().map(EventProcessorInfo::getActiveThreads)
-                                                    .reduce(Integer::sum).orElse(0);
-        Set<String> freeThreadInstances = processors().stream()
-                                                      .filter(p -> p.eventProcessorInfo().getAvailableThreads() > 0)
-                                                      .map(ClientProcessor::clientId)
-                                                      .collect(Collectors.toSet());
+
+        Set<String> freeThreadInstances =
+                processors().stream()
+                            .filter(processor -> processor.eventProcessorInfo().getAvailableThreads() > ZERO_THREADS)
+                            .map(ClientProcessor::clientId)
+                            .collect(Collectors.toSet());
+
+        Integer activeThreads = processorInstances().stream()
+                                                    .map(EventProcessorInfo::getActiveThreads)
+                                                    .reduce(Integer::sum)
+                                                    .orElse(0);
 
         boolean isRunning = processors().stream().anyMatch(ClientProcessor::running);
+
+        long numberOfSegments = processorInstances().stream()
+                                                    .map(EventProcessorInfo::getEventTrackersInfoList)
+                                                    .mapToLong(List::size)
+                                                    .sum();
+        boolean canMerge = isRunning && numberOfSegments > 1;
+
         media.withStrings(FREE_THREAD_INSTANCES_COUNT, freeThreadInstances)
              .with(ACTIVE_THREADS_COUNT, activeThreads)
              .with(CAN_PAUSE_KEY, isRunning)
              .with(CAN_PLAY_KEY, processors().stream().anyMatch(p -> !p.running()))
              .with(CAN_SPLIT_KEY, isRunning)
-             .with(CAN_MERGE_KEY, isRunning)
+             .with(CAN_MERGE_KEY, canMerge)
              .with(TRACKERS_LIST_KEY, trackers());
     }
 
     private List<Printable> trackers() {
-        return processors().stream()
-                           .flatMap(client -> client.eventProcessorInfo().getEventTrackersInfoList()
-                                                    .stream()
-                                                    .map(tracker -> new TrackingProcessorSegment(client.clientId(),
-                                                                                                 tracker))
-                           ).collect(toList());
+        return processors()
+                .stream()
+                .flatMap(client -> client.eventProcessorInfo().getEventTrackersInfoList().stream()
+                                         .map(tracker -> new TrackingProcessorSegment(client.clientId(), tracker)))
+                .collect(toList());
     }
 
     private List<EventProcessorInfo> processorInstances() {
