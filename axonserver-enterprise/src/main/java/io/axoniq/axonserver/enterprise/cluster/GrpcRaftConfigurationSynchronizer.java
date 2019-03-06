@@ -73,8 +73,8 @@ public class GrpcRaftConfigurationSynchronizer {
 
     private boolean isConfirmed(ContextConfiguration configuration) {
         String context = configuration.getContext();
-        RaftGroupService leader = raftGroupServiceFactory.getRaftGroupService(context);
         try {
+            RaftGroupService leader = raftGroupServiceFactory.getRaftGroupService(context);
             ContextConfiguration c = leader.configuration(context).get();
             return c != null && !c.getPending() && sameNodes.test(configuration, c);
         } catch (Exception e) {

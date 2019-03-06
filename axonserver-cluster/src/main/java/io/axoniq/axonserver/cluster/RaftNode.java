@@ -472,10 +472,6 @@ public class RaftNode {
         return state.get().currentConfiguration().isUncommitted();
     }
 
-    public boolean uncommittedChanges() {
-        return state.get().pendingChanges();
-    }
-
     /**
      * Gets the state factory.
      *

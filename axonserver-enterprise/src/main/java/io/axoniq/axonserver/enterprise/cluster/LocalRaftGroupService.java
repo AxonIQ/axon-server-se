@@ -131,7 +131,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                                 .setHost(n.getHost())));
 
 
-        builder.setPending(raftNode.uncommittedChanges());
+        builder.setPending(raftNode.isCurrentConfigurationPending());
 
         if(throwable != null) {
             builder.setSuccess(false);
@@ -143,7 +143,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                 builder.setMessage(configChangeResult.getFailure().toString());
             } else {
                 builder.setSuccess(true);
-                logger.warn("Pending: {}", raftNode.uncommittedChanges());
+                logger.warn("Pending: {}", raftNode.isCurrentConfigurationPending());
                 builder.setPending(false);
             }
         }

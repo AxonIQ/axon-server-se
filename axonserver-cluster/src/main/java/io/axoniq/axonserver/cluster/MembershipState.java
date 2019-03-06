@@ -67,8 +67,4 @@ public interface MembershipState extends ClusterConfiguration{
     default CurrentConfiguration currentConfiguration() {
         throw new UnsupportedOperationException("CurrentConfiguration is not available in this state.");
     }
-
-    default boolean pendingChanges() {
-        return false;
-    }
 }

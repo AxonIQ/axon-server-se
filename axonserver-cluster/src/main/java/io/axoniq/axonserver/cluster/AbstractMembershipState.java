@@ -397,8 +397,5 @@ public abstract class AbstractMembershipState implements MembershipState {
         return currentConfiguration.groupMembers();
     }
 
-    @Override
-    public boolean pendingChanges() {
-        return currentConfiguration.isUncommitted();
-    }
+
 }
