@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise;
 
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -21,9 +22,13 @@ public class CompetableFutureUtils {
             return completableFuture.get();
         } catch (InterruptedException e) {
            Thread.currentThread().interrupt();
-           throw GrpcExceptionBuilder.build(e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         } catch (ExecutionException e) {
-            throw GrpcExceptionBuilder.build(e.getCause());
+            if( e.getCause() instanceof MessagingPlatformException) {
+                throw (MessagingPlatformException) e.getCause();
+            }
+
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getCause().getMessage(), e.getCause());
         }
     }
 }

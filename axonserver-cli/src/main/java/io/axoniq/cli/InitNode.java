@@ -17,7 +17,7 @@ public class InitNode extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            getJSON(httpclient, url, RestResponse.class, 200, null);
+            postJSON(httpclient, url, null, 200, null, RestResponse.class);
         }
     }
 }

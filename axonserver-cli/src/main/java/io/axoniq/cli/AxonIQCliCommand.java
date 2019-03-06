@@ -147,14 +147,20 @@ public class AxonIQCliCommand {
         }
     }
 
-    protected static String postJSON(CloseableHttpClient httpclient, String url, Object value, int expectedStatusCode, String token)
+    protected static String postJSON(CloseableHttpClient httpclient, String url, Object value, int expectedStatusCode,
+                                    String token) throws IOException {
+        return postJSON(httpclient, url, value, expectedStatusCode, token, String.class);
+    }
+
+    protected static <T> T postJSON(CloseableHttpClient httpclient, String url, Object value, int expectedStatusCode,
+                                     String token, Class<T> responseClass)
             throws IOException {
             HttpPost httpPost = new HttpPost(url);
             if (token != null) {
                 httpPost.addHeader("AxonIQ-Access-Token", token);
             }
+            ObjectMapper objectMapper = new ObjectMapper();
             if( value != null) {
-                ObjectMapper objectMapper = new ObjectMapper();
                 httpPost.addHeader("Content-Type", "application/json");
                 HttpEntity entity = new ByteArrayEntity(objectMapper.writeValueAsBytes(value));
                 httpPost.setEntity(entity);
@@ -167,10 +173,11 @@ public class AxonIQCliCommand {
                                                             + responseBody(response));
             }
 
-            try (InputStream is = response.getEntity().getContent()) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-                return reader.readLine();
+            if( responseClass.equals(String.class)) {
+                return (T) responseBody(response);
             }
+
+            return objectMapper.readValue(response.getEntity().getContent(), responseClass);
     }
 
     public static String option(CommandLine commandLine, Option option) {

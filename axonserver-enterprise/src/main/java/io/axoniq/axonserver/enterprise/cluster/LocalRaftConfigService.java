@@ -178,17 +178,17 @@ class LocalRaftConfigService implements RaftConfigService {
         }
 
         CompletableFuture.allOf(workers).whenComplete((result, exception) -> {
-            if( exception != null) {
-                logger.warn("{}: Could not delete context from {}", context, String.join(",", nodeNames), exception);
-            }
             ContextConfiguration.Builder updatedContextConfigurationBuilder =
                     ContextConfiguration.newBuilder()
                                         .setContext(context);
+            if( exception != null) {
+                logger.warn("{}: Could not delete context from {}", context, String.join(",", nodeNames), exception);
 
             contextInAdmin.getAllNodes().stream().filter(c-> nodeNames.contains(c.getClusterNode().getName()))
                           .forEach(c -> updatedContextConfigurationBuilder.addNodes(NodeInfoWithLabel.newBuilder()
                                                                                                      .setLabel(c.getClusterNodeLabel())
                           .setNode(c.getClusterNode().toNodeInfo())));
+            }
 
             appendToAdmin(ContextConfiguration.class.getName(), updatedContextConfigurationBuilder.build().toByteArray());
         });
@@ -201,7 +201,7 @@ class LocalRaftConfigService implements RaftConfigService {
         String nodeLabel = contextDef.getNodeLabel(node);
 
         if (!contextDef.getNodeNames().contains(node)) {
-            throw new MessagingPlatformException(ErrorCode.OTHER,
+            throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE,
                                                  String.format("Node %s not found in context %s", node, context));
         }
 
