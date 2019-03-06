@@ -462,8 +462,14 @@ public class RaftNode {
         return state.get().currentGroupMembers();
     }
 
-    public boolean uncommittedChanges() {
-        return state.get().pendingChanges();
+
+    /**
+     * Returns if the current configuration is pending (not yet committed).
+     *
+     * @return true if the current configuration is uncommitted, false otherwise
+     */
+    public boolean isCurrentConfigurationPending(){
+        return state.get().currentConfiguration().isUncommitted();
     }
 
     /**

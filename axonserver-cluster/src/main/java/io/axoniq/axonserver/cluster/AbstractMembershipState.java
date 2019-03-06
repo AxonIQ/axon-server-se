@@ -378,7 +378,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                              .setNodeId(me()).build();
     }
 
-    protected CurrentConfiguration currentConfiguration() {
+    public CurrentConfiguration currentConfiguration() {
         return this.currentConfiguration;
     }
 
@@ -397,8 +397,5 @@ public abstract class AbstractMembershipState implements MembershipState {
         return currentConfiguration.groupMembers();
     }
 
-    @Override
-    public boolean pendingChanges() {
-        return currentConfiguration.isUncommitted();
-    }
+
 }

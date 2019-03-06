@@ -4,6 +4,7 @@ import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextEntry;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase {
+
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftGroupService.class);
     private final LocalRaftGroupService localRaftGroupService;
 
@@ -143,4 +145,12 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
                    .build();
     }
 
+    @Override
+    public void configuration(ContextName request, StreamObserver<ContextConfiguration> responseObserver) {
+        localRaftGroupService.configuration(request.getContext())
+                             .thenAccept(c -> {
+                                 responseObserver.onNext(c);
+                                 responseObserver.onCompleted();
+                             });
+    }
 }
