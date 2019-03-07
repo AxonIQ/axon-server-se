@@ -27,6 +27,10 @@ public class LicenseException extends RuntimeException {
         return new LicenseException("Could not verify license signature. " + details);
     }
 
+    public static LicenseException noLicenseFile() {
+        return new LicenseException("No license found");
+    }
+
     public static LicenseException unableToRead(File file) {
         return new LicenseException(String.format(
                 "Unable to read license file. "
