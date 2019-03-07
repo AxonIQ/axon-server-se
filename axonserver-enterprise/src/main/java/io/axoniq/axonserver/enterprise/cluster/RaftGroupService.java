@@ -32,7 +32,7 @@ public interface RaftGroupService {
     CompletableFuture<Void> initContext(String context, List<Node> nodes);
 
     /**
-     * Deletes a node froma raft group. Returns configuration of the group as defined in the group after completion.
+     * Deletes a node from a raft group. Returns configuration of the group as defined in the group after completion.
      * The confirmation may contain an error (for instance when another update is in progress).
      * @param context the context where to add the node to
      * @param node the node to add

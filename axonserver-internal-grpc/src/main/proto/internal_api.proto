@@ -397,7 +397,6 @@ message Application {
     string token_prefix = 3;
     string token = 4;
     repeated ApplicationContextRole roles_per_context = 5;
-    bool pending = 6;
 }
 
 message ApplicationContextRole {
