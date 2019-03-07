@@ -7,6 +7,8 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.rest.json.RestResponse;
+import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -130,12 +132,12 @@ public class ContextRestController {
     }
 
     @PostMapping(path = "context/init")
-    public ResponseEntity<RestResponse> init(@RequestParam(name = "context", required = false) List<String> contexts) {
-        if (contexts == null) {
-            contexts = new ArrayList<>();
-        }
-        if (contexts.isEmpty()) {
-            contexts.add("default");
+    public ResponseEntity<RestResponse> init(@RequestParam(name = "context", required = false) String context) {
+        List<String> contexts = new ArrayList<>();
+        if (StringUtils.isEmpty(context)) {
+            contexts.add(Topology.DEFAULT_CONTEXT);
+        } else {
+            contexts.add(context);
         }
         try {
             raftServiceFactory.getLocalRaftConfigService().init(contexts);
