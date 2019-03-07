@@ -1,6 +1,7 @@
 <config>
     <input single-jar="@project.build.finalName@.jar">
         <jar in="@project.build.finalName@.jar" out="@project.build.finalName@-obs.jar"/>
+        <jar in="dependency/*.jar" out="dependency/*.jar"/>
     </input>
 
     <keep-names>
@@ -23,7 +24,7 @@
             <field template="*"/>
             <method access="protected+"/>
         </class>
-        <class template="class io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode.Key">
+        <class template="class io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode$Key">
             <field template="*"/>
             <method access="protected+"/>
         </class>
@@ -32,6 +33,12 @@
             <method access="protected+"/>
         </class>
         <class template="class * implements org.springframework.data.jpa.repository.JpaRepository">
+            <method access="protected+"/>
+        </class>
+        <class template="class * implements io.axoniq.axonserver.cluster.MembershipState">
+            <method access="protected+"/>
+        </class>
+        <class template="class * extends io.axoniq.axonserver.cluster.AbstractMembershipState">
             <method access="protected+"/>
         </class>
         <class template="@org.springframework.boot.context.properties.ConfigurationProperties class *">

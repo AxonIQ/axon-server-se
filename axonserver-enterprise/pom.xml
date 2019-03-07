@@ -191,29 +191,29 @@
             </activation>
             <build>
                 <plugins>
-                    <!--<plugin>-->
-                        <!--<groupId>org.apache.maven.plugins</groupId>-->
-                        <!--<artifactId>maven-dependency-plugin</artifactId>-->
-                        <!--<executions>-->
-                            <!--<execution>-->
-                                <!--<id>copy-base-axonserver</id>-->
-                                <!--<phase>prepare-package</phase>-->
-                                <!--<goals>-->
-                                    <!--<goal>copy</goal>-->
-                                <!--</goals>-->
-                                <!--<configuration>-->
-                                    <!--<artifactItems>-->
-                                        <!--<artifactItem>-->
-                                            <!--<groupId>io.axoniq.axonserver</groupId>-->
-                                            <!--<artifactId>axonserver-internal-grpc</artifactId>-->
-                                            <!--<type>jar</type>-->
-                                            <!--<overWrite>true</overWrite>-->
-                                        <!--</artifactItem>-->
-                                    <!--</artifactItems>-->
-                                <!--</configuration>-->
-                            <!--</execution>-->
-                        <!--</executions>-->
-                    <!--</plugin>-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-packages-to-obfuscate</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>io.axoniq.axonserver</groupId>
+                                            <artifactId>axonserver-cluster</artifactId>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
@@ -288,12 +288,12 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <!--<excludes>-->
-                                <!--<exclude>-->
-                                    <!--<groupId>io.axoniq.axonserver</groupId>-->
-                                    <!--<artifactId>axonserver-internal-grpc</artifactId>-->
-                                <!--</exclude>-->
-                            <!--</excludes>-->
+                            <excludes>
+                                <exclude>
+                                    <groupId>io.axoniq.axonserver</groupId>
+                                    <artifactId>axonserver-cluster</artifactId>
+                                </exclude>
+                            </excludes>
                             <layout>ZIP</layout>
                         </configuration>
                     </plugin>

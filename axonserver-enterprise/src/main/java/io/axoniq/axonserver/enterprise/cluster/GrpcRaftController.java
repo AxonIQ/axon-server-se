@@ -243,6 +243,13 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
 
     /**
+     * Returns the max election timeout
+     * @return election timeout in ms.
+     */
+    public int electionTimeout() {
+        return raftProperties.getMaxElectionTimeout();
+    }
+    /**
      * Retrieve all non-admin Contexts that this node is member of.
      * @return List of context names
      */
