@@ -48,15 +48,17 @@ public class ContextController {
     @Transactional
     public void updateContext(ContextConfiguration contextConfiguration) {
         Context context = entityManager.find(Context.class, contextConfiguration.getContext());
-        if( contextConfiguration.getNodesCount() == 0) {
+        if( ! contextConfiguration.getPending() && contextConfiguration.getNodesCount() == 0) {
             entityManager.remove(context);
             return;
         }
+
 
         if( context == null) {
             context = new Context(contextConfiguration.getContext());
             entityManager.persist(context);
         }
+        context.changePending(contextConfiguration.getPending());
         Map<String, ClusterNode> currentNodes = new HashMap<>();
         context.getAllNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
         Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();

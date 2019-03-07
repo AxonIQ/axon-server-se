@@ -1,6 +1,7 @@
 package io.axoniq.cli;
 
 import io.axoniq.cli.json.ClusterNode;
+import io.axoniq.cli.json.RestResponse;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.ParseException;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -42,7 +43,8 @@ public class RegisterNode extends AxonIQCliCommand {
 
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            postJSON(httpclient, url, clusterNode, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            postJSON(httpclient, url, clusterNode, 202, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()),
+                     RestResponse.class);
         }
     }
 }

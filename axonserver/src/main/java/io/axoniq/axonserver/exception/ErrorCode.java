@@ -100,6 +100,11 @@ public enum ErrorCode {
         return ErrorCode.OTHER;
     }
 
+    public static ErrorCode fromException(Exception ex) {
+        if( ex instanceof MessagingPlatformException) return ((MessagingPlatformException) ex).getErrorCode();
+        return ErrorCode.OTHER;
+    }
+
 
     public String getCode() {
         return code;

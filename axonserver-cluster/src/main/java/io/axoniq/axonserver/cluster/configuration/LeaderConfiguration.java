@@ -62,9 +62,13 @@ public class LeaderConfiguration implements ClusterConfiguration {
     @Override
     public CompletableFuture<ConfigChangeResult> addServer(Node node) {
         checkValidityOf(node);
-        return update(node).thenCompose(success -> appendConfigurationChange.apply(new AddServer(node)))
-                           .thenApply(success -> success())
-                           .exceptionally(this::failure);
+        try {
+            return update(node).thenCompose(success -> appendConfigurationChange.apply(new AddServer(node)))
+                               .thenApply(success -> success())
+                               .exceptionally(this::failure);
+        } catch( Exception ex) {
+            return CompletableFuture.completedFuture(failure(ex));
+        }
     }
 
     private CompletableFuture<Void> update(Node node) {
@@ -84,9 +88,14 @@ public class LeaderConfiguration implements ClusterConfiguration {
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         checkArgument(nodeId != null, "nodeId cannot be null");
         checkArgument(!nodeId.isEmpty(), "nodeId cannot be empty");
-        return appendConfigurationChange.apply(new RemoveServer(nodeId))
-                                        .thenApply(success -> success())
-                                        .exceptionally(this::failure);
+        try {
+            return appendConfigurationChange.apply(new RemoveServer(nodeId))
+                                            .thenApply(success -> success())
+                                            .exceptionally(this::failure);
+        } catch( Exception ex) {
+            return CompletableFuture.completedFuture(failure(ex));
+        }
+
     }
 
     private ConfigChangeResult success() {

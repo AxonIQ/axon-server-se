@@ -58,7 +58,7 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     private void wrap(StreamObserver<Confirmation> responseObserver, Runnable action) {
         try {
-            action.run();
+            io.grpc.Context.current().fork().wrap(action).run();
             responseObserver.onNext(Confirmation.newBuilder().build());
             responseObserver.onCompleted();
         } catch (Exception ex) {

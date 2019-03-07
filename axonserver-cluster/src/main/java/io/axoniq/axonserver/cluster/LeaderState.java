@@ -45,44 +45,14 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class LeaderState extends AbstractMembershipState {
 
-    private final ClusterConfiguration clusterConfiguration;
-
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
+    private final ClusterConfiguration clusterConfiguration;
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private final MatchStrategy matchStrategy;
-    private volatile Replicators replicators;
     private final AtomicLong lastConfirmed = new AtomicLong();
-
-    /**
-     * A Builder for {@link LeaderState}.
-     *
-     * @author Marc Gathier
-     * @since 4.1
-     */
-    protected static class Builder extends AbstractMembershipState.Builder<Builder> {
-
-        private MatchStrategy matchStrategy;
-
-        public LeaderState build() {
-            return new LeaderState(this);
-        }
-
-        public LeaderState.Builder matchStrategy(MatchStrategy matchStrategy) {
-            this.matchStrategy = matchStrategy;
-            return this;
-        }
-    }
-
-    /**
-     * Instantiates a new builder for the Leader State.
-     *
-     * @return a new builder for the Leader State
-     */
-    public static Builder builder() {
-        return new Builder();
-    }
+    private volatile Replicators replicators;
 
     private LeaderState(Builder builder) {
         super(builder);
@@ -93,6 +63,14 @@ public class LeaderState extends AbstractMembershipState {
                                                        this::appendConfigurationChange);
     }
 
+    /**
+     * Instantiates a new builder for the Leader State.
+     *
+     * @return a new builder for the Leader State
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
 
     private void appendLeaderElected() {
         logger.info("{} in term {}: Appending info that leader has been elected.", groupId(), currentTerm());
@@ -159,8 +137,10 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void stop() {
-        replicators.stop();
-        replicators = null;
+        if (replicators != null) {
+            replicators.stop();
+            replicators = null;
+        }
         pendingEntries.forEach((index, completableFuture) -> completableFuture
                 .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
         pendingEntries.clear();
@@ -305,6 +285,26 @@ public class LeaderState extends AbstractMembershipState {
         }
         stepDown(format("Stepping down because of greater term %s. My term %s", term, currentTerm()));
         super.updateCurrentTerm(term, cause);
+    }
+
+    /**
+     * A Builder for {@link LeaderState}.
+     *
+     * @author Marc Gathier
+     * @since 4.1
+     */
+    protected static class Builder extends AbstractMembershipState.Builder<Builder> {
+
+        private MatchStrategy matchStrategy;
+
+        public LeaderState build() {
+            return new LeaderState(this);
+        }
+
+        public LeaderState.Builder matchStrategy(MatchStrategy matchStrategy) {
+            this.matchStrategy = matchStrategy;
+            return this;
+        }
     }
 
     private class Replicators {

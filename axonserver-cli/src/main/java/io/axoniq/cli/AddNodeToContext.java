@@ -1,5 +1,6 @@
 package io.axoniq.cli;
 
+import io.axoniq.cli.json.RestResponse;
 import org.apache.commons.cli.CommandLine;
 import org.apache.http.impl.client.CloseableHttpClient;
 
@@ -19,7 +20,9 @@ public class AddNodeToContext extends AxonIQCliCommand {
         String url = createUrl(commandLine, "/v1/context", CONTEXT, NODENAME);
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            postJSON(httpclient, url, null, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            RestResponse response = postJSON(httpclient, url, null, 202, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()),
+                     RestResponse.class);
+            System.out.println(response.getMessage());
         }
     }
 }

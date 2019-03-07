@@ -2,16 +2,20 @@ package io.axoniq.axonserver.enterprise.jpa;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.PreRemove;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 
 /**
  * @author Marc Gathier
@@ -23,6 +27,13 @@ public class Context implements Serializable {
 
     @OneToMany(fetch = FetchType.EAGER, mappedBy = "key.context", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ContextClusterNode> nodes = new HashSet<>();
+
+    @Column(name="CHANGE_PENDING")
+    private boolean changePending;
+
+    @Column(name="PENDING_SINCE")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date pendingSince;
 
     public Context() {
     }
@@ -80,6 +91,23 @@ public class Context implements Serializable {
 
     public void addClusterNode(ContextClusterNode contextClusterNode) {
         nodes.add(contextClusterNode);
+    }
+
+    public boolean isChangePending() {
+        return changePending;
+    }
+
+    public void changePending(boolean changePending) {
+        this.changePending = changePending;
+        if(changePending) {
+            pendingSince = new Date();
+        } else {
+            pendingSince = null;
+        }
+    }
+
+    public Date getPendingSince() {
+        return pendingSince;
     }
 
     @Override
