@@ -129,10 +129,8 @@ public class LeaderState extends AbstractMembershipState {
         scheduler.set(schedulerFactory().get());
         scheduleStepDownTimeoutChecker();
         lastConfirmed.set(0);
-        scheduler.get().execute(() -> {
-            replicators = new Replicators();
-            replicators.start();
-        });
+        replicators = new Replicators();
+        replicators.start();
     }
 
     @Override
@@ -235,22 +233,8 @@ public class LeaderState extends AbstractMembershipState {
                 appendEntryDone.completeExceptionally(failure);
             } else {
                 pendingEntries.put(e.getIndex(), appendEntryDone);
-
-                int retries = 10;
-                while( replicators == null && retries-- > 0 ) {
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e1) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-
-                if (replicators != null) {
-                    replicators.updateCommitIndex(e.getIndex());
-                    replicators.notifySenders();
-                } else {
-                    logger.warn("{}: Initialization in progress, could not handle committed on local log", groupId());
-                }
+                replicators.updateCommitIndex(e.getIndex());
+                replicators.notifySenders();
             }
         });
         return appendEntryDone;
@@ -354,7 +338,7 @@ public class LeaderState extends AbstractMembershipState {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
                 otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateCommitIndex)));
-                replicate();
+                scheduler.get().execute(this::replicate);
                 logger.info("{} in term {}: Start replication thread for {} peers.",
                             groupId(),
                             currentTerm(),
