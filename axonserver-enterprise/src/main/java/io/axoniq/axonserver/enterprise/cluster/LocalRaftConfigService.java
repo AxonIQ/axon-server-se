@@ -6,6 +6,7 @@ import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
@@ -38,6 +39,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
@@ -61,6 +67,7 @@ class LocalRaftConfigService implements RaftConfigService {
     private final ApplicationController applicationController;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
+    private final Predicate<String> contextNameValidation = new ContextNameValidation();
 
     public LocalRaftConfigService(GrpcRaftController grpcRaftController, ContextController contextController,
                                   RaftGroupServiceFactory raftGroupServiceFactory,
@@ -427,7 +434,7 @@ class LocalRaftConfigService implements RaftConfigService {
                     "This node is already part of a cluster and cannot be initialized again.");
         }
         for (String context : contexts) {
-            if (!context.matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
+            if (!contextNameValidation.test(context)) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME, "Invalid context name: "+ context);
             }
         }
