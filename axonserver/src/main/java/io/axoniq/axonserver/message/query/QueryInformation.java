@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.message.query;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.grpc.ErrorMessage;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 
 import java.util.Set;
@@ -74,5 +76,19 @@ public class QueryInformation {
 
     public String getContext() {
         return query.getContext();
+    }
+
+    public boolean waitingFor(String client) {
+        return handlerNames.contains(client);
+    }
+
+    public boolean completeWithError(String client, ErrorCode errorCode, String message) {
+        responseConsumer.accept(QueryResponse.newBuilder()
+                                             .setErrorCode(errorCode.getCode())
+                                             .setErrorMessage(ErrorMessage.newBuilder().setMessage(message))
+                                             .setRequestIdentifier(key)
+                                             .build());
+
+        return completed(client);
     }
 }

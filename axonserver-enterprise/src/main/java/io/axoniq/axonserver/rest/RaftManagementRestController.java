@@ -2,6 +2,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.swagger.annotations.Api;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -22,6 +23,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @RestController
 @CrossOrigin
 @Profile("internal")
+@Api(tags = "internal", hidden = true)
 @RequestMapping("internal/raft")
 public class RaftManagementRestController {
 

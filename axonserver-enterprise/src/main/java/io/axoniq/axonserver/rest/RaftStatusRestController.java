@@ -6,6 +6,7 @@ import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
+import io.swagger.annotations.Api;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +22,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("internal/raft")
+@Api(tags = "internal", hidden = true)
 public class RaftStatusRestController {
 
     private final GrpcRaftController grpcRaftController;

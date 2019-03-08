@@ -17,11 +17,11 @@ import java.util.stream.Collectors;
 @Component
 public class CommandCache extends ConcurrentHashMap<String, CommandInformation> {
     private final Logger logger = LoggerFactory.getLogger(CommandCache.class);
-    private final long defaultQueryTimeout;
+    private final long defaultCommandTimeout;
 
     @Autowired
-    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultQueryTimeout) {
-        this.defaultQueryTimeout = defaultQueryTimeout;
+    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout) {
+        this.defaultCommandTimeout = defaultCommandTimeout;
     }
 
     public CommandCache() {
@@ -31,7 +31,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-cleanup-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
-        long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
+        long minTimestamp = System.currentTimeMillis() - defaultCommandTimeout;
         Set<Entry<String, CommandInformation>> toDelete = entrySet().stream().filter(e -> e.getValue().getTimestamp() < minTimestamp).collect(
                 Collectors.toSet());
         if( ! toDelete.isEmpty()) {
