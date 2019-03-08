@@ -125,12 +125,14 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        appendLeaderElected();
-        scheduler.set(schedulerFactory().get());
-        scheduleStepDownTimeoutChecker();
-        lastConfirmed.set(0);
         replicators = new Replicators();
+        scheduler.set(schedulerFactory().get());
+        lastConfirmed.set(0);
         replicators.start();
+        //It is important to have leaderElected log entry appended only after the replicators are started,
+        //because when there is only one node into the group, the replicators are used to directly update commit index.
+        appendLeaderElected();
+        scheduleStepDownTimeoutChecker();
     }
 
     @Override
@@ -233,8 +235,12 @@ public class LeaderState extends AbstractMembershipState {
                 appendEntryDone.completeExceptionally(failure);
             } else {
                 pendingEntries.put(e.getIndex(), appendEntryDone);
-                replicators.updateCommitIndex(e.getIndex());
-                replicators.notifySenders();
+                try {
+                    replicators.updateCommitIndex(e.getIndex());
+                    replicators.notifySenders();
+                } catch (Exception ex) {
+                    logger.error("{} in term {}: problem happened during replicators update.", groupId(), currentTerm());
+                }
             }
         });
         return appendEntryDone;
