@@ -4,6 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -22,10 +23,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -38,7 +42,7 @@ public class ClusterRestController {
     private final RaftConfigServiceFactory raftServiceFactory;
     private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
-
+    private final Predicate<String> contextNameValidation = new ContextNameValidation();
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
@@ -63,9 +67,13 @@ public class ClusterRestController {
         }
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
-        if (jsonClusterNode.getContext() != null && !jsonClusterNode.getContext().isEmpty()) {
-            nodeInfoBuilder
-                    .addContexts(ContextRole.newBuilder().setName(jsonClusterNode.getContext()).build());
+        String context = jsonClusterNode.getContext();
+        if (context != null && !context.isEmpty()) {
+            if (!isAdmin(context) && !contextNameValidation.test(context)) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                                                     "Invalid context name: " + context);
+            }
+            nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context).build());
         }
 
         try {

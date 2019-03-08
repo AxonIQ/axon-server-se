@@ -3,6 +3,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
@@ -38,6 +41,7 @@ public class ContextRestController {
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
     private final FeatureChecker limits;
+    private final Predicate<String> contextNameValidation = new ContextNameValidation();
 
     public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
                                  RaftLeaderProvider raftLeaderProvider,
@@ -119,7 +123,7 @@ public class ContextRestController {
                     .asResponseEntity(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED);
         }
 
-        if (!contextJson.getContext().matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
+        if (!contextNameValidation.test(contextJson.getContext())) {
             return new RestResponse(false, "Invalid context name").asResponseEntity(ErrorCode.INVALID_CONTEXT_NAME);
         }
 
