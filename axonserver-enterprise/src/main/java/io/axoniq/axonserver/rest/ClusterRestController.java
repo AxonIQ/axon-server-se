@@ -29,6 +29,8 @@ import java.util.stream.Stream;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
  * @author Marc Gathier
  */
@@ -67,8 +69,9 @@ public class ClusterRestController {
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
         String context = jsonClusterNode.getContext();
         if (context != null && !context.isEmpty()) {
-            if (!contextNameValidation.test(context)) {
-                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME, "Invalid context name: " + context);
+            if (!isAdmin(context) && !contextNameValidation.test(context)) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                                                     "Invalid context name: " + context);
             }
             nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context).build());
         }
