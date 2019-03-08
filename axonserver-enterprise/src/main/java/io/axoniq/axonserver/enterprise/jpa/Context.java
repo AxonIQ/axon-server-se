@@ -29,7 +29,7 @@ public class Context implements Serializable {
     private Set<ContextClusterNode> nodes = new HashSet<>();
 
     @Column(name="CHANGE_PENDING")
-    private boolean changePending;
+    private Boolean changePending;
 
     @Column(name="PENDING_SINCE")
     @Temporal(TemporalType.TIMESTAMP)
@@ -94,12 +94,12 @@ public class Context implements Serializable {
     }
 
     public boolean isChangePending() {
-        return changePending;
+        return changePending != null && changePending;
     }
 
-    public void changePending(boolean changePending) {
+    public void changePending(Boolean changePending) {
         this.changePending = changePending;
-        if(changePending) {
+        if(changePending != null && changePending) {
             pendingSince = new Date();
         } else {
             pendingSince = null;

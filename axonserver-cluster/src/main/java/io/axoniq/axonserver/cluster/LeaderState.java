@@ -129,10 +129,8 @@ public class LeaderState extends AbstractMembershipState {
         scheduler.set(schedulerFactory().get());
         scheduleStepDownTimeoutChecker();
         lastConfirmed.set(0);
-        scheduler.get().execute(() -> {
-            replicators = new Replicators();
-            replicators.start();
-        });
+        replicators = new Replicators();
+        replicators.start();
     }
 
     @Override
@@ -235,10 +233,8 @@ public class LeaderState extends AbstractMembershipState {
                 appendEntryDone.completeExceptionally(failure);
             } else {
                 pendingEntries.put(e.getIndex(), appendEntryDone);
-                if (replicators != null) {
-                    replicators.notifySenders();
-                }
-                replicators.updateMatchIndex(e.getIndex());
+                replicators.updateCommitIndex(e.getIndex());
+                replicators.notifySenders();
             }
         });
         return appendEntryDone;
@@ -341,8 +337,8 @@ public class LeaderState extends AbstractMembershipState {
         private void start() {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
-                otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateMatchIndex)));
-                replicate();
+                otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateCommitIndex)));
+                scheduler.get().execute(this::replicate);
                 logger.info("{} in term {}: Start replication thread for {} peers.",
                             groupId(),
                             currentTerm(),
@@ -381,7 +377,7 @@ public class LeaderState extends AbstractMembershipState {
                     });
         }
 
-        private void updateMatchIndex(long matchIndex) {
+        private void updateCommitIndex(long matchIndex) {
             logger.trace("{} in term {}: Updated matchIndex: {}.", groupId(), currentTerm(), matchIndex);
             long nextCommitCandidate = raftGroup().logEntryProcessor().commitIndex() + 1;
             boolean updateCommit = false;
@@ -431,7 +427,7 @@ public class LeaderState extends AbstractMembershipState {
         public void addNode(Node node) {
             if (!node.getNodeId().equals(me())) {
                 RaftPeer raftPeer = raftGroup().peer(node);
-                registrations.add(registerPeer(raftPeer, this::updateMatchIndex));
+                registrations.add(registerPeer(raftPeer, this::updateCommitIndex));
             }
         }
 

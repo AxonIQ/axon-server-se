@@ -143,7 +143,6 @@ public class LocalRaftGroupService implements RaftGroupService {
                 builder.setMessage(configChangeResult.getFailure().toString());
             } else {
                 builder.setSuccess(true);
-                logger.warn("Pending: {}", raftNode.isCurrentConfigurationPending());
                 builder.setPending(false);
             }
         }

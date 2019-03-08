@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.access.application.JpaContextApplication;
 import io.axoniq.axonserver.access.application.JpaContextApplicationRepository;
+import io.swagger.annotations.Api;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,7 +16,8 @@ import java.util.List;
  * Created by marc on 7/14/2017.
  */
 @RestController
-@RequestMapping("/v1")
+@Api(tags = "internal")
+@RequestMapping("/internal")
 public class GroupApplicationRestController {
 
     private final JpaContextApplicationRepository applicationController;

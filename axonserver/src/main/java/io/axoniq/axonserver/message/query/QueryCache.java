@@ -1,14 +1,19 @@
 package io.axoniq.axonserver.message.query;
 
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.exception.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 /**
  * @author Marc Gathier
@@ -41,4 +46,17 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
             });
         }
     }
+
+    @EventListener
+    public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
+        forEach((key, value) -> completeForApplication(value, applicationDisconnected.getClient()));
+    }
+
+    private void completeForApplication(QueryInformation entry, String client) {
+        if( entry.waitingFor(client) && entry.completeWithError(client, ErrorCode.CONNECTION_TO_HANDLER_LOST,
+                                                                format("Connection to handler %s lost", client))) {
+            remove(entry.getKey());
+        }
+    }
+
 }
