@@ -92,7 +92,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                      .setNode(NodeInfo
                                                       .newBuilder()
                                                       .setNodeName(member.getNodeName())
-                                                      .setHostName(member.getHost())
+                                                      .setInternalHostName(member.getHost())
                                                       .setGrpcInternalPort(member.getPort())
                                                       .build())
                                      .build());

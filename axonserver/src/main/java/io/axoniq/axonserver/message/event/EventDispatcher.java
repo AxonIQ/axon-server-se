@@ -336,6 +336,16 @@ public class EventDispatcher implements AxonServerClientService {
         void incrementLastToken() {
             lastToken.incrementAndGet();
         }
+
+        @Override
+        public String toString() {
+            return "EventTrackerInfo{" +
+                    "responseObserver=" + responseObserver +
+                    ", client='" + client + '\'' +
+                    ", context='" + context + '\'' +
+                    ", lastToken=" + lastToken +
+                    '}';
+        }
     }
 
     private class GetEventsRequestStreamObserver implements StreamObserver<GetEventsRequest> {
@@ -394,6 +404,7 @@ public class EventDispatcher implements AxonServerClientService {
 
                                 @Override
                                 public void onCompleted() {
+                                    removeTrackerInfo();
                                     try {
                                         responseObserver.onCompleted();
                                     } catch (RuntimeException ignored) {
@@ -424,6 +435,7 @@ public class EventDispatcher implements AxonServerClientService {
         }
 
         private void removeTrackerInfo() {
+            logger.warn("Remove tracker info {}", trackerInfo);
             if (trackerInfo != null) {
                 trackingEventProcessors.computeIfPresent(new ClientIdentification(trackerInfo.context,trackerInfo.client),
                                                          (c,streams) -> {
