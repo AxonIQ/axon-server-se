@@ -153,17 +153,19 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         if (request.getTerm() > currentTerm()) {
-            logger.info("{} in term {}: Received term {} which is greater or equals than mine. Moving to Follower...",
+            logger.info("{} in term {}: Append Entries from leader {}: Received term {} which is greater or equals than mine. Moving to Follower...",
                         groupId(),
                         currentTerm(),
+                        request.getLeaderId(),
                         request.getTerm());
             String message = format("%s received AppendEntriesRequest with greater or equals term (%s >= %s) from %s",
                                     me(), request.getTerm(), currentTerm(), request.getLeaderId());
             return handleAsFollower(follower -> follower.appendEntries(request), message);
         }
-        logger.info("{} in term {}: Received term {} is smaller than mine. Rejecting the request.",
+        logger.info("{} in term {}: Append Entries from leader {}: Received term {} is smaller than mine. Rejecting the request.",
                     groupId(),
                     currentTerm(),
+                    request.getLeaderId(),
                     request.getTerm());
         return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
