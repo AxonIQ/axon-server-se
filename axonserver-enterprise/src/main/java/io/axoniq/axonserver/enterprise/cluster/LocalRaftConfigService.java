@@ -39,10 +39,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -113,10 +109,11 @@ class LocalRaftConfigService implements RaftConfigService {
                                    .addNodeToContext(context, raftNode)
                                    .whenComplete((result, throwable) ->
                                                          handleContextUpdateResult(context, node, "add", oldConfiguration, result, throwable));
-        } catch( Exception throwable) {
+        } catch( RuntimeException throwable) {
             logger.error("{}: Failed to add node {}", context, node, throwable);
             appendToAdmin(oldConfiguration.getClass().getName(),
                           oldConfiguration.toByteArray());
+            throw throwable;
         }
     }
 
@@ -224,10 +221,14 @@ class LocalRaftConfigService implements RaftConfigService {
                                                                node,
                                                                context));
         }
-        removeNodeFromContext(contextDef, node, nodeLabel);
+
+        ;
+        removeNodeFromContext(contextDef, raftGroupServiceFactory.getRaftGroupService(context), node, nodeLabel);
     }
 
-    private CompletableFuture<Void> removeNodeFromContext(Context context, String node, String nodeLabel) {
+    private CompletableFuture<Void> removeNodeFromContext(Context context,
+                                                          RaftGroupService raftGroupService,
+                                                          String node, String nodeLabel) {
         RaftNode config = grpcRaftController.getRaftNode(getAdmin());
         CompletableFuture<Void> removeDone = new CompletableFuture<>();
         ContextConfiguration oldConfiguration = createContextConfigBuilder(context)
@@ -237,7 +238,7 @@ class LocalRaftConfigService implements RaftConfigService {
                 .build();
         getFuture(config.appendEntry(ContextConfiguration.class.getName(), contextConfiguration.toByteArray()));
         try {
-            raftGroupServiceFactory.getRaftGroupService(context.getName()).deleteNode(context.getName(), nodeLabel)
+            raftGroupService.deleteNode(context.getName(), nodeLabel)
                                    .whenComplete((result, exception) -> {
                                        handleContextUpdateResult(context.getName(),
                                                                  node,
@@ -269,9 +270,12 @@ class LocalRaftConfigService implements RaftConfigService {
 
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         membersToDelete.forEach(contextClusterNode ->
-                                            completableFutures.add(removeNodeFromContext( contextClusterNode.getContext(),
-                                                                   contextClusterNode.getClusterNode().getName(),
-                                                                   contextClusterNode.getClusterNodeLabel()))
+                                            completableFutures.add(removeNodeFromContext(contextClusterNode.getContext(),
+                                                                                         raftGroupServiceFactory
+                                                                                                 .getRaftGroupService(
+                                                                                                         contextClusterNode.getContext().getName()),
+                                                                                         contextClusterNode.getClusterNode().getName(),
+                                                                                         contextClusterNode.getClusterNodeLabel()))
                                );
 
         getFuture(CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]))
@@ -291,6 +295,11 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void addContext(String context, List<String> nodes) {
+        Context contextDef = contextController.getContext(context);
+        if( contextDef != null ) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_EXISTS, String.format("Context %s already exists", context));
+        }
+
         RaftNode config = grpcRaftController.getRaftNode(getAdmin());
         List<Node> raftNodes = new ArrayList<>();
         List<NodeInfoWithLabel> clusterNodes = new ArrayList<>();

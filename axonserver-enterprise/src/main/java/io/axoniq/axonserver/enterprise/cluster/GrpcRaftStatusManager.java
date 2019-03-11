@@ -37,7 +37,7 @@ public class GrpcRaftStatusManager {
      */
     @Scheduled(fixedDelay = 5000)
     public void updateStatus() {
-        contextController.getNodes().forEach(node -> raftServiceFactory.getRaftGroupServiceForNode(node)
+        contextController.getRemoteNodes().forEach(node -> raftServiceFactory.getRaftGroupServiceForNode(node)
                                                                        .getStatus(this::updateLeader));
     }
 

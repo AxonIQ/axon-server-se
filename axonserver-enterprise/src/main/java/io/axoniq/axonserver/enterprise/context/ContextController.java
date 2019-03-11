@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -90,8 +91,8 @@ public class ContextController {
         });
     }
 
-    public Iterable<String> getNodes() {
-        return entityManager.createQuery("select n.name from ClusterNode n", String.class).getResultList();
+    public Iterable<String> getRemoteNodes() {
+        return clusterController.remoteNodeNames();
     }
 
     public ClusterNode getNode(String node) {
