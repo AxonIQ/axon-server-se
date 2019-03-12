@@ -93,6 +93,9 @@ public class CandidateState extends AbstractMembershipState {
 
     private void startElection() {
         if (currentConfiguration().isEmpty()) {
+            logger.info("{} in term {}: Not able to start election. Current configuration is empty.",
+                        groupId(),
+                        currentTerm());
             return;
         }
         newElection().result().subscribe(this::onElectionResult, error -> logger.warn("Failed to run election", error));

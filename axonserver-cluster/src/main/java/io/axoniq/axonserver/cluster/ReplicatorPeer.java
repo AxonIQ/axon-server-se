@@ -54,6 +54,11 @@ public class ReplicatorPeer {
         public int sendNextEntries(boolean fromNotify) {
             return 0;
         }
+
+        @Override
+        public String toString() {
+            return "Idle Replicator Peer State";
+        }
     }
 
     private class InstallSnapshotState implements ReplicatorPeerState {
@@ -224,6 +229,11 @@ public class ReplicatorPeer {
             return subscription != null &&
                     running &&
                     offset - lastReceivedOffset < raftGroup.raftConfiguration().flowBuffer();
+        }
+
+        @Override
+        public String toString() {
+            return "Install Snapshot Replicator Peer State";
         }
     }
 
@@ -400,6 +410,11 @@ public class ReplicatorPeer {
         private boolean canSend() {
             return running && matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < raftGroup
                     .raftConfiguration().flowBuffer();
+        }
+
+        @Override
+        public String toString() {
+            return "Append Entries Replicator Peer State";
         }
     }
 
