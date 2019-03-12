@@ -3,13 +3,13 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.State;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +24,8 @@ import static java.util.concurrent.ConcurrentHashMap.newKeySet;
  */
 @Component
 public class LeadershipStatusNotifier {
+
+    private static final Logger logger = LoggerFactory.getLogger(LeadershipStatusNotifier.class);
 
     private final ContextController contextController;
     private final RaftGroupServiceFactory raftServiceFactory;
@@ -69,6 +71,12 @@ public class LeadershipStatusNotifier {
                     publishLeaderConfirmation(context, null);
                 }
             } else {
+                if (leaders.size() > 1) {
+                    logger.warn("Found {} leaders for context {}. They are {}.",
+                                leaders.size(),
+                                context,
+                                String.join(",", leaders));
+                }
                 if (!leaders.contains(lastKnownLeader)) {
                     String anyLeader = leaders.stream()
                                               .findAny()
