@@ -355,11 +355,9 @@ class LocalRaftConfigService implements RaftConfigService {
                 if (context != null) {
                     oldConfiguration = createContextConfigBuilder(context).build();
                     ContextConfiguration old = oldConfiguration;
-                    newContext = createContextConfigBuilder(context)
-                            .setPending(true)
-                            .addNodes(newNodeInfoWithLabel(nodeLabel, nodeInfo)).build();
+                    ContextConfiguration pending = ContextConfiguration.newBuilder(old).setPending(true).build();
 
-                    getFuture(adminNode.appendEntry(ContextConfiguration.class.getName(), newContext.toByteArray()));
+                    getFuture(adminNode.appendEntry(ContextConfiguration.class.getName(), pending.toByteArray()));
                     raftGroupServiceFactory.getRaftGroupService(c)
                                            .addNodeToContext(c, node)
                                            .whenComplete((result, throwable) ->
@@ -368,10 +366,10 @@ class LocalRaftConfigService implements RaftConfigService {
                     context = new Context(c);
                     oldConfiguration = createContextConfigBuilder(context).build();
                     ContextConfiguration old = oldConfiguration;
+                    ContextConfiguration pending = ContextConfiguration.newBuilder(old).setPending(true).build();
                     newContext = createContextConfigBuilder(context)
-                            .setPending(true)
                             .addNodes(newNodeInfoWithLabel(nodeLabel, nodeInfo)).build();
-                    appendToAdmin(ContextConfiguration.class.getName(), newContext.toByteArray());
+                    appendToAdmin(ContextConfiguration.class.getName(), pending.toByteArray());
 
                     raftGroupServiceFactory.getRaftGroupServiceForNode(ClusterNode.from(nodeInfo))
                                            .initContext(c, Collections.singletonList(node))

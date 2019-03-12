@@ -32,10 +32,11 @@ public class SyncStorage {
         }
 
         if (token != eventStore.nextToken()) {
-            logger.warn("{}: {} expecting token {} received {}",
+            logger.error("{}: {} expecting token {} received {}",
                         eventStore.getType().getContext(), eventStore.getType().getEventType(),
                         eventStore.nextToken(),
                         token);
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Received invalid token");
         }
         PreparedTransaction preparedTransaction = eventStore.prepareTransaction(eventList);
         try {

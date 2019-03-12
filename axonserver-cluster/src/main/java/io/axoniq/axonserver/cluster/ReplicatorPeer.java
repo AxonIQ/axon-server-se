@@ -45,13 +45,13 @@ public class ReplicatorPeer {
         default void stop() {
         }
 
-        int sendNextEntries();
+        int sendNextEntries(boolean fromNotify);
     }
 
     private class IdleReplicatorPeerState implements ReplicatorPeerState {
 
         @Override
-        public int sendNextEntries() {
+        public int sendNextEntries(boolean fromNotify) {
             return 0;
         }
     }
@@ -153,7 +153,11 @@ public class ReplicatorPeer {
         }
 
         @Override
-        public int sendNextEntries() {
+        public int sendNextEntries(boolean fromNotify) {
+            if( fromNotify) {
+                logger.debug("{}: SendNextEntries called from notify", groupId());
+                return 0;
+            }
             int sent = 0;
             if (!canSend()) {
                 logger.trace("{} in term {}: Can't send Install Snapshot chunk. offset {}, lastReceivedOffset {}.",
@@ -242,7 +246,7 @@ public class ReplicatorPeer {
         }
 
         @Override
-        public int sendNextEntries() {
+        public int sendNextEntries(boolean fromNotify) {
             int sent = 0;
             try {
                 EntryIterator iterator = entryIterator;
@@ -476,8 +480,8 @@ public class ReplicatorPeer {
         return matchIndex.get();
     }
 
-    public int sendNextMessage() {
-        return currentState.sendNextEntries();
+    public int sendNextMessage(boolean fromNotify) {
+        return currentState.sendNextEntries(fromNotify);
     }
 
     private String groupId() {

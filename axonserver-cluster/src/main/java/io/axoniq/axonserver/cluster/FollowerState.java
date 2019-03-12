@@ -238,8 +238,18 @@ public class FollowerState extends AbstractMembershipState {
             snapshotManager().clear();
         }
 
-        snapshotManager().applySnapshotData(request.getDataList())
-                         .block();
+        try {
+            snapshotManager().applySnapshotData(request.getDataList())
+                             .block();
+        } catch (Exception ex) {
+            String failureCause = String.format(
+                    "%s in term %s: Install snapshot failed - %s",
+                    groupId(),
+                    currentTerm(),
+                    ex.getMessage());
+            logger.error(failureCause, ex);
+            return installSnapshotFailure(request.getRequestId(), failureCause);
+        }
 
         //When install snapshot request is completed, update commit and last applied indexes.
         if (request.getDone()) {

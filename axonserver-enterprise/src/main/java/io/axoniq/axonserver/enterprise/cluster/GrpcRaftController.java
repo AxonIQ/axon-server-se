@@ -282,6 +282,8 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         raftGroupMap.remove(context);
         if( context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
+        } else {
+            eventPublisher.publishEvent(new ContextEvents.ContextDeleted(context));
         }
     }
 

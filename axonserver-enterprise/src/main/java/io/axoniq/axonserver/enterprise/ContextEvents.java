@@ -51,4 +51,18 @@ public class ContextEvents {
             return context;
         }
     }
+
+    @KeepNames
+    public static class ContextDeleted extends TopologyEvents.TopologyBaseEvent {
+        private final String context;
+
+        public ContextDeleted(String context) {
+            super(false);
+            this.context = context;
+        }
+
+        public String getContext() {
+            return context;
+        }
+    }
 }

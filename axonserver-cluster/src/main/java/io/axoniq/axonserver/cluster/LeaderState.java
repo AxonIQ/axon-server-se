@@ -344,7 +344,7 @@ public class LeaderState extends AbstractMembershipState {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
                 otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateCommitIndex)));
-                scheduler.get().execute(this::replicate);
+                scheduler.get().execute(() -> replicate(false));
                 logger.info("{} in term {}: Start replication thread for {} peers.",
                             groupId(),
                             currentTerm(),
@@ -354,7 +354,7 @@ public class LeaderState extends AbstractMembershipState {
             }
         }
 
-        private void replicate() {
+        private void replicate(boolean fromNotify) {
             if (!replicationRunning.compareAndSet(false, true)) {
                 // it's fine, replication is already in progress
                 return;
@@ -366,7 +366,7 @@ public class LeaderState extends AbstractMembershipState {
                             while (runsWithoutChanges < 3) {
                                 int sent = 0;
                                 for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
-                                    sent += raftPeer.sendNextMessage();
+                                    sent += raftPeer.sendNextMessage(fromNotify);
                                 }
                                 if (sent == 0) {
                                     runsWithoutChanges++;
@@ -375,7 +375,7 @@ public class LeaderState extends AbstractMembershipState {
                                 }
                             }
                         } finally {
-                            schedulerInstance.schedule(this::replicate,
+                            schedulerInstance.schedule(() -> replicate(false),
                                                        raftGroup().raftConfiguration().heartbeatTimeout(),
                                                        MILLISECONDS);
                             replicationRunning.set(false);
@@ -402,7 +402,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-            replicate();
+            replicate(true);
         }
 
         private long lastMessageTimeFromMajority() {
