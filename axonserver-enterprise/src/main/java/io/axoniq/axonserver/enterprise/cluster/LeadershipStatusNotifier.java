@@ -77,7 +77,7 @@ public class LeadershipStatusNotifier {
                                 context,
                                 String.join(",", leaders));
                 }
-                if (!leaders.contains(lastKnownLeader)) {
+                if (lastKnownLeader == null || !leaders.contains(lastKnownLeader)) {
                     String anyLeader = leaders.stream()
                                               .findAny()
                                               .get();
@@ -98,7 +98,7 @@ public class LeadershipStatusNotifier {
                .stream()
                .filter(cm -> State.LEADER.getNumber() == cm.getState().getNumber())
                .findFirst()
-               .ifPresent(leader -> leadersPerContext.getOrDefault(context.getName(), newKeySet())
+               .ifPresent(leader -> leadersPerContext.computeIfAbsent(context.getName(), n -> newKeySet())
                                                      .add(leader.getNodeName()));
     }
 
