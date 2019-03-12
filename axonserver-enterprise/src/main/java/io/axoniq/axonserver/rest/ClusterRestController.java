@@ -62,8 +62,8 @@ public class ClusterRestController {
                     .asResponseEntity(ErrorCode.CLUSTER_NOT_ALLOWED);
         }
         if (!grpcRaftController.getContexts().isEmpty()) {
-            return new RestResponse(false, "License does not allow clustering of Axon servers")
-                    .asResponseEntity(ErrorCode.CLUSTER_NOT_ALLOWED);
+            return new RestResponse(false, "Server already has contexts defined, cannot join cluster")
+                    .asResponseEntity(ErrorCode.ALREADY_MEMBER_OF_CLUSTER);
         }
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
