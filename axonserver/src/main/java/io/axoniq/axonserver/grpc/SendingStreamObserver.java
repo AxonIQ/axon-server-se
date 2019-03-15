@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.grpc.stub.StreamObserver;
+import io.netty.util.internal.OutOfDirectMemoryError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
