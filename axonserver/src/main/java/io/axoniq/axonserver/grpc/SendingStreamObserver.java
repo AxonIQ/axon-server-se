@@ -24,6 +24,14 @@ public class SendingStreamObserver<T> implements StreamObserver<T> {
         guard.lock();
         try {
             delegate.onNext(t);
+        } catch( RuntimeException | OutOfDirectMemoryError e) {
+            logger.warn("Error while sending message: {}", e.getMessage());
+            try {
+                // Cancel RPC
+                delegate.onError(e);
+            } catch (Throwable ex) {
+                // Ignore further exception on cancelling the RPC
+            }
         } finally {
             guard.unlock();
         }
