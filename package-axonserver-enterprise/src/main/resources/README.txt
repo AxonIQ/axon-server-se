@@ -16,11 +16,11 @@ To start the server on a specific node run the command:
 
 On the first node initialize the cluster using:
 
-    java -jar axoniq-cli.jar init-cluster
+    java -jar axonserver-cli.jar init-cluster
 
 On the other nodes, connect to the first node using:
 
-    java -jar axoniq-cli.jar register-node -h <first-node-hostname>
+    java -jar axonserver-cli.jar register-node -h <first-node-hostname>
 
 For more information on setting up clusters and context check the reference guide at:
 
