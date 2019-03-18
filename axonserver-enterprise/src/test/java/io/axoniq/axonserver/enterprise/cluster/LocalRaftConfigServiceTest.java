@@ -14,7 +14,9 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
@@ -131,14 +133,24 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public CompletableFuture<Void> addNodeToContext(String context, Node node) {
+        public CompletableFuture<ContextUpdateConfirmation> addNodeToContext(String context, Node node) {
             groupDBs.get(context).nodes.put(node.getNodeId(), node.getNodeName());
-            return CompletableFuture.completedFuture(null);
+            ContextUpdateConfirmation.Builder contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder()
+                    .setSuccess(true);
+            groupDBs.get(context).nodes.forEach((id,name) ->
+                                                        contextUpdateConfirmation.addMembers(ContextMember.newBuilder().setNodeName(name).setNodeId(id)));
+
+            return CompletableFuture.completedFuture(contextUpdateConfirmation.build());
         }
 
         @Override
         public void getStatus(Consumer<Context> contextConsumer) {
 
+        }
+
+        @Override
+        public CompletableFuture<ContextConfiguration> configuration(String context) {
+            return null;
         }
 
         @Override
@@ -150,9 +162,14 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public CompletableFuture<Void> deleteNode(String context, String node) {
+        public CompletableFuture<ContextUpdateConfirmation> deleteNode(String context, String node) {
             groupDBs.get(context).nodes.remove(node);
-            return CompletableFuture.completedFuture(null);
+            ContextUpdateConfirmation.Builder contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder()
+                                                                                                   .setSuccess(true);
+            groupDBs.get(context).nodes.forEach((id,name) ->
+                                                        contextUpdateConfirmation.addMembers(ContextMember.newBuilder().setNodeName(name).setNodeId(id)));
+
+            return CompletableFuture.completedFuture(contextUpdateConfirmation.build());
         }
 
         @Override
@@ -184,6 +201,13 @@ public class LocalRaftConfigServiceTest {
             return CompletableFuture.completedFuture(null);
         }
 
+        @Override
+        public CompletableFuture<Void> appendEntry(String context, String name, byte[] toByteArray) {
+            if( context.equals("_admin")) {
+                adminDB.applyEntry(name, toByteArray);
+            }
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     @Before
@@ -357,7 +381,7 @@ public class LocalRaftConfigServiceTest {
         adminDB.nodeMap.put("localhost", createNode("localhost"));
         fakeRaftGroupService.groupDBs.clear();
 
-        testSubject.init(Arrays.asList("_admin", "default"));
+        testSubject.init(Arrays.asList("default"));
         assertEquals(2, adminDB.contextMap.size());
         assertEquals(2,fakeRaftGroupService.groupDBs.size());
 

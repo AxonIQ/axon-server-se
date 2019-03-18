@@ -5,22 +5,29 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import java.util.Collection;
 
 /**
- * Created by Sara Pellegrini on 26/03/2018.
- * sara.pellegrini@gmail.com
+ * Generic state representation of an Event Processor for the UI.
+ *
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class GenericProcessor implements EventProcessor {
 
     private final String name;
-
     private final String mode;
+    private final Collection<ClientProcessor> clientProcessors;
 
-    private final Collection<ClientProcessor> processors;
-
-    public GenericProcessor(String name,
-                            String mode, Collection<ClientProcessor> processors) {
+    /**
+     * Instantiate a {@link GenericProcessor}, used to represent the state of an Event Processor in the UI.
+     *
+     * @param name       a {@link String} defining the processing group name of this Event Processor
+     * @param mode       a {@link String} defining the mode of this Event Processor
+     * @param processors a {@link Collection} of {@link ClientProcessor}s portraying the state of this Event Processor
+     *                   per client it is running on
+     */
+    GenericProcessor(String name, String mode, Collection<ClientProcessor> processors) {
         this.name = name;
         this.mode = mode;
-        this.processors = processors;
+        this.clientProcessors = processors;
     }
 
     @Override
@@ -33,8 +40,14 @@ public class GenericProcessor implements EventProcessor {
         return mode;
     }
 
-    protected Collection<ClientProcessor> processors(){
-        return this.processors;
+    /**
+     * Return a {@link Collection} of {@link ClientProcessor}s portraying the state of this Event Processor per client
+     * it is running on.
+     *
+     * @return a {@link Collection} of {@link ClientProcessor}s portraying the state of this Event Processor per client
+     * it is running on
+     */
+    protected Collection<ClientProcessor> processors() {
+        return this.clientProcessors;
     }
-
 }

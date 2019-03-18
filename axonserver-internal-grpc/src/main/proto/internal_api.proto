@@ -58,9 +58,9 @@ service RaftGroupService {
 
     rpc DeleteContext(ContextName) returns (Confirmation) {}
 
-    rpc AddServer(Context) returns (Confirmation) {}
+    rpc AddServer(Context) returns (ContextUpdateConfirmation) {}
 
-    rpc RemoveServer(Context) returns (Confirmation) {}
+    rpc RemoveServer(Context) returns (ContextUpdateConfirmation) {}
 
     rpc MergeAppAuthorization(ContextApplication) returns (Confirmation) {}
 
@@ -79,6 +79,10 @@ service RaftGroupService {
     rpc DeleteProcessorLBStrategy(ContextProcessorLBStrategy) returns (Confirmation) {}
 
     rpc GetStatus(Context) returns (stream Context) {}
+
+    rpc AppendEntry(ContextEntry) returns (Confirmation) {}
+
+    rpc Configuration(ContextName) returns (ContextConfiguration) {}
 }
 
 
@@ -261,6 +265,12 @@ enum Group {
 }
 
 
+message ContextEntry {
+    string context = 1;
+    string entry_name = 2;
+    bytes entry = 3;
+}
+
 message ProcessorsLBStrategy{
     int64 version = 1;
     repeated ProcessorLBStrategy processor = 2;
@@ -366,6 +376,13 @@ message Context {
     repeated ContextMember members = 2;
 }
 
+message ContextUpdateConfirmation {
+    bool success = 1;
+    string message = 2;
+    repeated ContextMember members = 3;
+    bool pending = 4;
+}
+
 message ContextMember {
     string node_id = 1;
     string host = 2;
@@ -415,6 +432,7 @@ enum State {
 message ContextConfiguration {
     string context = 1;
     repeated NodeInfoWithLabel nodes = 2;
+    bool pending = 3;
 }
 
 message NodeInfoWithLabel {

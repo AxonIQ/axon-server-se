@@ -56,4 +56,7 @@ public class RaftGroupServiceFactory {
                                                                                 .createManagedChannel(configuration, clusterNode)));
     }
 
+    public String getLeader(String context) {
+        return raftLeaderProvider.getLeader(context);
+    }
 }

@@ -63,4 +63,8 @@ public interface MembershipState extends ClusterConfiguration{
     default Iterator<ReplicatorPeer> replicatorPeers() {
         throw new UnsupportedOperationException("Operation only supported in leader state");
     }
+
+    default CurrentConfiguration currentConfiguration() {
+        throw new UnsupportedOperationException("CurrentConfiguration is not available in this state.");
+    }
 }

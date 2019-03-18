@@ -1,5 +1,8 @@
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import org.springframework.http.ResponseEntity;
+
 /**
  * Author: marc
  */
@@ -20,4 +23,7 @@ public class RestResponse {
         return message;
     }
 
+    public ResponseEntity<RestResponse> asResponseEntity(ErrorCode clusterNotAllowed) {
+        return ResponseEntity.status(clusterNotAllowed.getHttpCode()).body(this);
+    }
 }

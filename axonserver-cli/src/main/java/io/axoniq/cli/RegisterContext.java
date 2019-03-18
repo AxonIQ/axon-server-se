@@ -1,6 +1,7 @@
 package io.axoniq.cli;
 
 import io.axoniq.cli.json.ContextNode;
+import io.axoniq.cli.json.RestResponse;
 import org.apache.commons.cli.CommandLine;
 import org.apache.http.impl.client.CloseableHttpClient;
 
@@ -31,7 +32,8 @@ public class RegisterContext extends AxonIQCliCommand {
         ContextNode clusterNode = new ContextNode(commandLine.getOptionValue(CONTEXT.getOpt()), nodeRolesMap);
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            postJSON(httpclient, url, clusterNode, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            postJSON(httpclient, url, clusterNode, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()),
+                     RestResponse.class);
         }
     }
 }

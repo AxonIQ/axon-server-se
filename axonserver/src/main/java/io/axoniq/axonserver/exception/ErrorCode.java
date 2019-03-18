@@ -15,6 +15,7 @@ public enum ErrorCode {
     NO_SUCH_APPLICATION("AXONIQ-1300", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
     NO_SUCH_NODE("AXONIQ-1301", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
     CONTEXT_NOT_FOUND("AXONIQ-1302", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
+    CONTEXT_EXISTS("AXONIQ-1304", Status.ALREADY_EXISTS, HttpStatus.BAD_REQUEST, true),
     NO_AXONSERVER_FOR_CONTEXT("AXONIQ-1400", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
     AXONSERVER_NODE_NOT_CONNECTED("AXONIQ-1500", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
 
@@ -22,7 +23,7 @@ public enum ErrorCode {
     INVALID_SEQUENCE("AXONIQ-2000", Status.OUT_OF_RANGE, HttpStatus.CONFLICT, true),
     PAYLOAD_TOO_LARGE("AXONIQ-2001", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
     TOO_MANY_EVENTS("AXONIQ-2002", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
-    NO_MASTER_AVAILABLE("AXONIQ-2100", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
+    NO_LEADER_AVAILABLE("AXONIQ-2100", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
     NOT_RUNNING_IN_CLUSTER("AXONIQ-2101", Status.NOT_FOUND, HttpStatus.BAD_REQUEST, true),
     INVALID_TRANSACTION_TOKEN("AXONIQ-2200", Status.OUT_OF_RANGE, HttpStatus.CONFLICT, true),
     CLUSTER_NOT_ALLOWED("AXONIQ-2301", Status.PERMISSION_DENIED, HttpStatus.FORBIDDEN, true),
@@ -97,6 +98,11 @@ public enum ErrorCode {
                 return value;
             }
         }
+        return ErrorCode.OTHER;
+    }
+
+    public static ErrorCode fromException(Exception ex) {
+        if( ex instanceof MessagingPlatformException) return ((MessagingPlatformException) ex).getErrorCode();
         return ErrorCode.OTHER;
     }
 

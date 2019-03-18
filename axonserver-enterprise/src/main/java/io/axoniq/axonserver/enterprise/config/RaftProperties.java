@@ -19,6 +19,9 @@ public class RaftProperties extends StorageProperties {
     private int flowBuffer = 1000;
 
     private final SystemInfoProvider systemInfoProvider;
+    private int maxReplicationRound = 10;
+    private boolean logCompactionEnabled = true;
+    private int logRetentionHours = 1;
 
     public RaftProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -72,5 +75,29 @@ public class RaftProperties extends StorageProperties {
     @Override
     public boolean isUseMmapIndex() {
         return ! (systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
+    }
+
+    public int getMaxReplicationRound() {
+        return maxReplicationRound;
+    }
+
+    public void setMaxReplicationRound(int maxReplicationRound) {
+        this.maxReplicationRound = maxReplicationRound;
+    }
+
+    public boolean isLogCompactionEnabled() {
+        return logCompactionEnabled;
+    }
+
+    public void setLogCompactionEnabled(boolean logCompactionEnabled) {
+        this.logCompactionEnabled = logCompactionEnabled;
+    }
+
+    public int getLogRetentionHours() {
+        return logRetentionHours;
+    }
+
+    public void setLogRetentionHours(int logRetentionHours) {
+        this.logRetentionHours = Math.max(logRetentionHours, 1);
     }
 }

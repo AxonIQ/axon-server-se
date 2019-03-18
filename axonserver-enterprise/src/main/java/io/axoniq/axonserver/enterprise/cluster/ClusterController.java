@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import javax.persistence.EntityManager;
 
 /**
@@ -387,6 +389,9 @@ public class ClusterController implements SmartLifecycle {
 
     }
 
+    public Set<String> remoteNodeNames() {
+        return remoteConnections.keySet();
+    }
 
     public Stream<ClusterNode> nodes() {
         return entityManager.createNamedQuery("ClusterNode.findAll", ClusterNode.class).getResultList()

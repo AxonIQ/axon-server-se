@@ -143,8 +143,7 @@ public class RemoteConnection  {
                                                                  queryResponse -> sendQueryResponse(
                                                                          serializedQuery.client(),
                                                                          queryResponse),
-                                                                 client -> sendQueryComplete(
-                                                                         client,
+                                                                 client -> sendQueryComplete(client,
                                                                          serializedQuery.getMessageIdentifier()
                                                                          ));
                     }

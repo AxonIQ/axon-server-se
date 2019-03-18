@@ -24,8 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 /**
@@ -61,12 +59,12 @@ public class ApplicationRestController {
     }
 
     @PostMapping("applications")
-    public Future<String> updateJson(@RequestBody ApplicationJSON application) {
+    public String updateJson(@RequestBody ApplicationJSON application) {
         checkEdition();
         checkRoles(application);
-        return raftServiceFactory.getRaftConfigService()
-                                 .updateApplication(ApplicationProtoConverter.createApplication(application))
-                                 .thenApply(Application::getToken);
+        Application savedApplication = raftServiceFactory.getRaftConfigService()
+                                 .updateApplication(ApplicationProtoConverter.createApplication(application));
+        return savedApplication.getToken();
     }
 
     private void checkRoles(ApplicationJSON application) {
@@ -102,22 +100,22 @@ public class ApplicationRestController {
     }
 
     @DeleteMapping("applications/{name}")
-    public CompletableFuture<Void> delete(@PathVariable("name") String name) {
+    public void delete(@PathVariable("name") String name) {
         checkEdition();
         try {
-            return raftServiceFactory.getRaftConfigService().deleteApplication(Application.newBuilder().setName(name).build());
+            raftServiceFactory.getRaftConfigService().deleteApplication(Application.newBuilder().setName(name).build());
         } catch(ApplicationNotFoundException notFoundException) {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_APPLICATION, notFound(name));
         }
     }
 
     @PatchMapping("applications/{name}")
-    public CompletableFuture<String> renewToken(@PathVariable("name") String name) {
+    public String renewToken(@PathVariable("name") String name) {
         checkEdition();
         try {
-            return raftServiceFactory.getRaftConfigService()
-                                     .refreshToken(Application.newBuilder().setName(name).build())
-                                     .thenApply(Application::getToken);
+            Application savedApplication =  raftServiceFactory.getRaftConfigService()
+                                     .refreshToken(Application.newBuilder().setName(name).build());
+            return savedApplication.getToken();
         } catch(ApplicationNotFoundException notFoundException) {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_APPLICATION, notFound(name));
         }

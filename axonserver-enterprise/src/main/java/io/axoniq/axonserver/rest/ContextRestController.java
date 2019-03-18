@@ -1,15 +1,15 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.rest.json.RestResponse;
-import org.springframework.http.HttpStatus;
+import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
@@ -36,18 +38,16 @@ import javax.validation.Valid;
 public class ContextRestController {
 
     private final RaftConfigServiceFactory raftServiceFactory;
-    private final RaftGroupServiceFactory raftGroupServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
     private final FeatureChecker limits;
+    private final Predicate<String> contextNameValidation = new ContextNameValidation();
 
     public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
-                                 RaftGroupServiceFactory raftGroupServiceFactory,
                                  RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
-        this.raftGroupServiceFactory = raftGroupServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
         this.contextController = contextController;
         this.limits = limits;
@@ -55,59 +55,99 @@ public class ContextRestController {
 
     @GetMapping(path = "public/context")
     public List<ContextJSON> getContexts() {
-        return contextController.getContexts().map(context ->  {
+        return contextController.getContexts().map(context -> {
             ContextJSON json = new ContextJSON(context.getName());
+            json.setChangePending(context.isChangePending());
+            if (context.getPendingSince() != null) {
+                json.setPendingSince(context.getPendingSince().getTime());
+            }
             json.setLeader(raftLeaderProvider.getLeader(context.getName()));
-            json.setNodes(context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).sorted().collect(Collectors.toList()));
+            json.setNodes(context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).sorted()
+                                 .collect(Collectors.toList()));
             return json;
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());
-
     }
 
-    @DeleteMapping( path = "context/{name}")
-    public void deleteContext(@PathVariable("name")  String name) {
-        if( name.startsWith("_")) throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT, String.format("Cannot delete internal context %s", name));
-        raftServiceFactory.getRaftConfigService().deleteContext(name);
+    @DeleteMapping(path = "context/{name}")
+    public ResponseEntity<RestResponse> deleteContext(@PathVariable("name") String name) {
+        try {
+            if (name.startsWith("_")) {
+                return new RestResponse(false, String.format(
+                        "Cannot delete internal context %s",
+                        name))
+                        .asResponseEntity(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT);
+            }
+            raftServiceFactory.getRaftConfigService().deleteContext(name);
+            return ResponseEntity.accepted()
+                                 .body(new RestResponse(true,
+                                                        "Accepted delete request"));
+        } catch (Exception ex) {
+            return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
+        }
     }
 
     @PostMapping(path = "context/{context}/{node}")
-    public void updateNodeRoles(@PathVariable("context") String name, @PathVariable("node") String node) {
-        raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
+    public ResponseEntity<RestResponse> updateNodeRoles(@PathVariable("context") String name,
+                                                        @PathVariable("node") String node) {
+        try {
+            raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
+            return ResponseEntity.accepted()
+                                 .body(new RestResponse(true,
+                                                        "Started to add node to context. This may take some time depending on the number of events already in the context"));
+        } catch (Exception ex) {
+            return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
+        }
     }
 
     @DeleteMapping(path = "context/{context}/{node}")
-    public void deleteNodeFromContext(@PathVariable("context") String name, @PathVariable("node") String node){
-        raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
+    public ResponseEntity<RestResponse> deleteNodeFromContext(@PathVariable("context") String name,
+                                                              @PathVariable("node") String node) {
+        try {
+            raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
+            return ResponseEntity.accepted()
+                                 .body(new RestResponse(true,
+                                                        "Accepted delete request"));
+        } catch (Exception ex) {
+            return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
+        }
     }
 
-    @PostMapping(path ="context")
-    public void addContext(@RequestBody @Valid ContextJSON contextJson) {
-        if(!Feature.MULTI_CONTEXT.enabled(limits)) throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "License does not allow creating contexts");
-        if( contextJson.getNodes() == null || contextJson.getNodes().isEmpty()) {
-            throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED, "Add at least one node for context");
+    @PostMapping(path = "context")
+    public ResponseEntity<RestResponse> addContext(@RequestBody @Valid ContextJSON contextJson) {
+        if (!Feature.MULTI_CONTEXT.enabled(limits)) {
+            return new RestResponse(false, "License does not allow creating contexts")
+                    .asResponseEntity(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED);
+        }
+        if (contextJson.getNodes() == null || contextJson.getNodes().isEmpty()) {
+            return new RestResponse(false, "Add at least one node for context")
+                    .asResponseEntity(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED);
         }
 
-        if (!contextJson.getContext().matches("[a-zA-Z][a-zA-Z_\\-0-9]*")) {
-            throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
-                                                 "Invalid context name");
-
+        if (!contextNameValidation.test(contextJson.getContext())) {
+            return new RestResponse(false, "Invalid context name").asResponseEntity(ErrorCode.INVALID_CONTEXT_NAME);
         }
 
-        raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
+        try {
+            raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
+            return ResponseEntity.ok(new RestResponse(true, null));
+        } catch (Exception ex) {
+            return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
+        }
     }
 
-    @GetMapping(path = "context/init")
-    public ResponseEntity<RestResponse> init(@RequestParam(name="context", required = false) List<String> contexts) {
-        if( contexts == null) contexts = new ArrayList<>();
-        if( contexts.isEmpty()) {
-            contexts.add("default");
+    @PostMapping(path = "context/init")
+    public ResponseEntity<RestResponse> init(@RequestParam(name = "context", required = false) String context) {
+        List<String> contexts = new ArrayList<>();
+        if (StringUtils.isEmpty(context)) {
+            contexts.add(Topology.DEFAULT_CONTEXT);
+        } else {
+            contexts.add(context);
         }
         try {
             raftServiceFactory.getLocalRaftConfigService().init(contexts);
             return ResponseEntity.ok(new RestResponse(true, null));
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new RestResponse(false, ex.getMessage()));
+            return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
         }
     }
-
 }

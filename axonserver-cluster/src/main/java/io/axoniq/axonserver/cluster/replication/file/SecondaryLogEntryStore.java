@@ -13,6 +13,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
@@ -22,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
+import java.util.stream.Collectors;
 
 /**
  * Author: marc
@@ -163,9 +165,15 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     @Override
     protected void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
         long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
-        segments.stream()
-              .filter(segment -> olderThan(segment, filter)) //f.lastModified() <= filter) // filter out files older than <time>
-              .forEach(this::removeSegment);
+        List<Long> segmentsToBeDeleted = segments.stream()
+                                                 .filter(segment -> olderThan(segment, filter)) //f.lastModified() <= filter) // filter out files older than <time>
+                                                 .collect(Collectors.toList());
+        String formattedSegmentsToBeDeleted = segmentsToBeDeleted.stream()
+                                                                 .map(Object::toString)
+                                                                 .collect(Collectors.joining(","));
+        logger.info("Deleting segments {}.", formattedSegmentsToBeDeleted);
+        segmentsToBeDeleted.forEach(this::removeSegment);
+        logger.info("Segments deleted {}.", formattedSegmentsToBeDeleted);
     }
 
     private boolean olderThan(Long segment, long filter) {

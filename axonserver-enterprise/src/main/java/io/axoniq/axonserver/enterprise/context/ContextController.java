@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -48,15 +49,17 @@ public class ContextController {
     @Transactional
     public void updateContext(ContextConfiguration contextConfiguration) {
         Context context = entityManager.find(Context.class, contextConfiguration.getContext());
-        if( contextConfiguration.getNodesCount() == 0) {
+        if( ! contextConfiguration.getPending() && contextConfiguration.getNodesCount() == 0) {
             entityManager.remove(context);
             return;
         }
+
 
         if( context == null) {
             context = new Context(contextConfiguration.getContext());
             entityManager.persist(context);
         }
+        context.changePending(contextConfiguration.getPending());
         Map<String, ClusterNode> currentNodes = new HashMap<>();
         context.getAllNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
         Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();
@@ -88,8 +91,8 @@ public class ContextController {
         });
     }
 
-    public Iterable<String> getNodes() {
-        return entityManager.createQuery("select n.name from ClusterNode n", String.class).getResultList();
+    public Iterable<String> getRemoteNodes() {
+        return clusterController.remoteNodeNames();
     }
 
     public ClusterNode getNode(String node) {

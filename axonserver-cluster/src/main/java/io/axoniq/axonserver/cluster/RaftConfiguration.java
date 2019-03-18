@@ -52,6 +52,14 @@ public interface RaftConfiguration {
      * @return {@code true} if the log compaction is enable, {@code false} otherwise
      */
     default boolean isLogCompactionEnabled() {
-        return false;
+        return true;
+    }
+
+    /**
+     * The number of hours closed logfiles should be retained before compacting the log.
+     * @return number of hours
+     */
+    default int logRetentionHours() {
+        return 1;
     }
 }

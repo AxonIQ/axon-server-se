@@ -4,14 +4,16 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.features.Feature;
 import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.rest.json.RestResponse;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,10 +23,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -37,7 +42,7 @@ public class ClusterRestController {
     private final RaftConfigServiceFactory raftServiceFactory;
     private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
-
+    private final Predicate<String> contextNameValidation = new ContextNameValidation();
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
@@ -51,31 +56,39 @@ public class ClusterRestController {
 
 
     @PostMapping
-    public void add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
-        if( !Feature.CLUSTERING.enabled(limits) ) {
-            throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
+    public ResponseEntity<RestResponse> add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
+        if (!Feature.CLUSTERING.enabled(limits)) {
+            return new RestResponse(false, "License does not allow clustering of Axon servers")
+                    .asResponseEntity(ErrorCode.CLUSTER_NOT_ALLOWED);
         }
-        if( ! grpcRaftController.getContexts().isEmpty()) {
-            throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER, "This node is already a member of a cluster");
+        if (!grpcRaftController.getContexts().isEmpty()) {
+            return new RestResponse(false, "Server already has contexts defined, cannot join cluster")
+                    .asResponseEntity(ErrorCode.ALREADY_MEMBER_OF_CLUSTER);
         }
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
-        if( jsonClusterNode.getContexts() != null && ! jsonClusterNode.getContexts().isEmpty()) {
-            jsonClusterNode.getContexts().forEach(c -> nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(c).build()));
+        String context = jsonClusterNode.getContext();
+        if (context != null && !context.isEmpty()) {
+            if (!isAdmin(context) && !contextNameValidation.test(context)) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                                                     "Invalid context name: " + context);
+            }
+            nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context).build());
         }
+
         try {
-            raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName, jsonClusterNode.internalGrpcPort)
+            raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName,
+                                                        jsonClusterNode.internalGrpcPort)
                               .joinCluster(nodeInfoBuilder.build());
-        } catch (Throwable e) {
-            throw GrpcExceptionBuilder.parse(e);
+
+            return ResponseEntity.accepted()
+                                 .body(new RestResponse(true,
+                                                        "Accepted join request, may take a while to process"));
+        } catch (Exception ex) {
+            return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
         }
     }
 
-    private void handleExecutionException(Throwable cause) {
-        throw GrpcExceptionBuilder.parse(cause);
-//        if( cause instanceof RuntimeException) throw (RuntimeException)cause;
-//        throw new MessagingPlatformException(ErrorCode.OTHER, cause.getMessage(), cause);
-    }
 
     @DeleteMapping( path = "{name}")
     public void deleteNode(@PathVariable("name") String name) {
@@ -186,7 +199,7 @@ public class ClusterRestController {
         @NotNull(message = "missing required field: internalGrpcPort")
         private Integer internalGrpcPort;
 
-        private List<String> contexts;
+        private String context;
 
         public String getInternalHostName() {
             return internalHostName;
@@ -204,12 +217,12 @@ public class ClusterRestController {
             this.internalGrpcPort = internalGrpcPort;
         }
 
-        public List<String> getContexts() {
-            return contexts;
+        public String getContext() {
+            return context;
         }
 
-        public void setContexts(List<String> contexts) {
-            this.contexts = contexts;
+        public void setContext(String context) {
+            this.context = context;
         }
     }
 }

@@ -1,6 +1,7 @@
 package io.axoniq.cli;
 
 import io.axoniq.cli.json.ClusterNode;
+import io.axoniq.cli.json.RestResponse;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.ParseException;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -10,8 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.axoniq.cli.CommandOptions.INTERNALHOST;
-import static io.axoniq.cli.CommandOptions.INTERNALPORT;
+import static io.axoniq.cli.CommandOptions.*;
 
 /**
  * @author Marc Gathier
@@ -19,7 +19,7 @@ import static io.axoniq.cli.CommandOptions.INTERNALPORT;
 public class RegisterNode extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {
         // check args
-        CommandLine commandLine = processCommandLine(args[0], args, INTERNALHOST, CommandOptions.INTERNALPORT, CommandOptions.CONTEXTS,
+        CommandLine commandLine = processCommandLine(args[0], args, INTERNALHOST, CommandOptions.INTERNALPORT, CONTEXT_TO_REGISTER_IN,
                                                      CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/cluster");
@@ -34,16 +34,17 @@ public class RegisterNode extends AxonIQCliCommand {
         ClusterNode clusterNode = new ClusterNode(commandLine.getOptionValue(INTERNALHOST.getOpt().charAt(0)),
                 port.intValue());
 
-        if( commandLine.hasOption(CommandOptions.CONTEXTS.getOpt())) {
-            List<String> contexts = new ArrayList<>(Arrays.asList(commandLine.getOptionValues(CommandOptions.CONTEXTS.getOpt())));
-            if(! contexts.isEmpty()) {
-                clusterNode.setContexts(contexts);
+        if( commandLine.hasOption(CONTEXT_TO_REGISTER_IN.getOpt())) {
+            String context = commandLine.getOptionValue(CONTEXT_TO_REGISTER_IN.getOpt());
+            if(! context.isEmpty()) {
+                clusterNode.setContext(context);
             }
         }
 
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            postJSON(httpclient, url, clusterNode, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            postJSON(httpclient, url, clusterNode, 202, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()),
+                     RestResponse.class);
         }
     }
 }

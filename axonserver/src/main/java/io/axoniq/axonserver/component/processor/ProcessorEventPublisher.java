@@ -15,8 +15,13 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.Comparator;
-import java.util.stream.Stream;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import javax.annotation.PostConstruct;
 
@@ -33,6 +38,8 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
 @Component
 public class ProcessorEventPublisher {
 
+    private static final boolean REVERSE_ORDER = true;
+    private static final boolean REGULAR_ORDER = false;
     private static final boolean NOT_PROXIED = false;
     private static final boolean PARALLELIZE_STREAM = false;
 
@@ -51,7 +58,7 @@ public class ProcessorEventPublisher {
      * @param clientProcessors          an {@link Iterable} of
      *                                  {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
      *                                  instances used to deduce the segment to be split/merged on the {@link
-     *                                  #splitSegment(String, String)} and {@link #mergeSegment(String, String)}
+     *                                  #splitSegment(List, String)} and {@link #mergeSegment(List, String)}
      *                                  operations.
      */
     public ProcessorEventPublisher(PlatformService platformService,
@@ -89,41 +96,178 @@ public class ProcessorEventPublisher {
         );
     }
 
-    public void splitSegment(String clientName, String processorName) {
+    /**
+     * Split the biggest segment of the given {@code processorName} in two, by publishing a {@link SplitSegmentRequest}
+     * as an application event to be picked up by the component publishing this message towards the right Axon client.
+     *
+     * @param clientNames   a {@link List} of {@link String}s specifying all the clients which are in the same context
+     *                      as the given {@code processorName}
+     * @param processorName a {@link String} specifying the Tracking Event Processor for which the biggest segment
+     *                      should be split in two
+     */
+    public void splitSegment(List<String> clientNames, String processorName) {
+        Map<ClientSegmentPair, EventTrackerInfo> clientToTracker =
+                buildClientToTrackerMap(clientNames, processorName, REGULAR_ORDER);
+
+        Integer biggestSegment = clientToTracker.values().stream()
+                                                .min(Comparator.comparingInt(EventTrackerInfo::getOnePartOf))
+                                                .map(EventTrackerInfo::getSegmentId)
+                                                .orElseThrow(() -> new IllegalArgumentException(
+                                                        "No segments found for processor name [" + processorName + "]"
+                                                ));
+
         applicationEventPublisher.publishEvent(new SplitSegmentRequest(
-                NOT_PROXIED, clientName, processorName, deduceSegmentIdToSplit(clientName, processorName)
+                NOT_PROXIED, getClientForSegment(clientToTracker, biggestSegment), processorName, biggestSegment
         ));
     }
 
-    private int deduceSegmentIdToSplit(String clientName, String processorName) {
-        return eventTrackerInfoStream(clientName, processorName)
-                .min(Comparator.comparingInt(EventTrackerInfo::getOnePartOf))
-                .map(EventTrackerInfo::getSegmentId)
-                .get();
-    }
+    /**
+     * Merge the smallest segment of the given {@code processorName} with the segment that it is paired with, by
+     * publishing a {@link MergeSegmentRequest} as an application event to be picked up by the component publishing this
+     * message towards the right Axon client. Prior to publishing the {@code MergeSegmentRequest} firstly all other
+     * active clients should be notified to release the paired segment.
+     *
+     * @param clientNames   a {@link List} of {@link String}s specifying all the clients which are in the same context
+     *                      as the given {@code processorName}
+     * @param processorName a {@link String} specifying the Tracking Event Processor for which the smallest segment
+     *                      should be merged with the segment that it's paired with
+     */
+    public void mergeSegment(List<String> clientNames, String processorName) {
+        Map<ClientSegmentPair, EventTrackerInfo> clientToTracker =
+                buildClientToTrackerMap(clientNames, processorName, REVERSE_ORDER);
 
-    public void mergeSegment(String clientName, String processorName) {
+        EventTrackerInfo smallestSegment =
+                clientToTracker.values().stream()
+                               .max(Comparator.comparingInt(EventTrackerInfo::getOnePartOf))
+                               .orElseThrow(() -> new IllegalArgumentException(
+                                       "No segments found for processor name [" + processorName + "]"
+                               ));
+
+        int segmentToMerge = deduceSegmentToMerge(smallestSegment);
+        String clientOwningSegmentToMerge = getClientForSegment(clientToTracker, segmentToMerge);
+
+        clientNames.stream()
+                   .filter(clientName -> !clientName.equals(clientOwningSegmentToMerge))
+                   .forEach(clientName -> releaseSegment(clientName, processorName, smallestSegment.getSegmentId()));
+
         applicationEventPublisher.publishEvent(new MergeSegmentRequest(
-                NOT_PROXIED, clientName, processorName, deduceSegmentIdToMerge(clientName, processorName)
+                NOT_PROXIED, clientOwningSegmentToMerge, processorName, segmentToMerge
         ));
     }
 
-    private int deduceSegmentIdToMerge(String clientName, String processorName) {
-        return eventTrackerInfoStream(clientName, processorName)
-                .max(Comparator.comparingInt(EventTrackerInfo::getOnePartOf))
-                .map(EventTrackerInfo::getSegmentId)
-                .get();
+    /**
+     * Build a convenience {@link TreeMap}, where the key is a {@link ClientSegmentPair} and the value is an
+     * {@link EventTrackerInfo}, to be used to support the {@link #splitSegment(List, String)} and
+     * {@link #mergeSegment(List, String)} operations.
+     *
+     * @param clientNames   a {@link List} of {@link String}s specifying the clients to take into account when building
+     *                      the {@link Map}
+     * @param processorName a {@link String} specifying the Tracking Event Processor for which the supported split/merge
+     *                      operation should be executed
+     * @param reverseOrder  a {@code boolean} specifying whether the returned {@link Map} should following the regular
+     *                      ordering or if it should be reversed
+     * @return a {@link Map} of {@link ClientSegmentPair} to {@link EventTrackerInfo} to support the
+     * {@link #splitSegment(List, String)} and {@link #mergeSegment(List, String)} operations
+     */
+    @NotNull
+    private Map<ClientSegmentPair, EventTrackerInfo> buildClientToTrackerMap(List<String> clientNames,
+                                                                             String processorName,
+                                                                             boolean reverseOrder) {
+        Map<ClientSegmentPair, EventTrackerInfo> clientToTracker =
+                reverseOrder ? new TreeMap<>(Collections.reverseOrder()) : new TreeMap<>();
+
+        List<ClientProcessor> clientsWithProcessor =
+                StreamSupport.stream(clientProcessors.spliterator(), PARALLELIZE_STREAM)
+                             .filter(clientProcessor -> clientNames.contains(clientProcessor.clientId()))
+                             .filter(clientProcessor -> clientProcessor.eventProcessorInfo().getProcessorName()
+                                                                       .equals(processorName))
+                             .collect(Collectors.toList());
+
+        for (ClientProcessor clientProcessor : clientsWithProcessor) {
+            List<EventTrackerInfo> eventTrackers = clientProcessor.eventProcessorInfo().getEventTrackersInfoList();
+            eventTrackers.forEach(eventTracker -> clientToTracker.put(
+                    new ClientSegmentPair(clientProcessor.clientId(), eventTracker.getSegmentId()), eventTracker)
+            );
+        }
+
+        return clientToTracker;
     }
 
     @NotNull
-    private Stream<EventTrackerInfo> eventTrackerInfoStream(String clientName, String processorName) {
-        return StreamSupport.stream(clientProcessors.spliterator(), PARALLELIZE_STREAM)
-                            .filter(clientProcessor -> clientProcessor.clientId().equals(clientName))
-                            .filter(clientProcessor -> clientProcessor.eventProcessorInfo().getProcessorName()
-                                                                      .equals(processorName))
-                            .map(ClientProcessor::spliterator)
-                            .flatMap(
-                                    segmentSpliterator -> StreamSupport.stream(segmentSpliterator, PARALLELIZE_STREAM)
-                            );
+    private String getClientForSegment(Map<ClientSegmentPair, EventTrackerInfo> clientToTracker, Integer segmentId) {
+        return clientToTracker.keySet().stream()
+                              .filter(clientAndSegment -> clientAndSegment.getSegmentId() == segmentId)
+                              .findFirst()
+                              .map(ClientSegmentPair::getClientId)
+                              .orElseThrow(() -> new IllegalArgumentException(
+                                      "No client found which has a claim on segment [" + segmentId + "]"
+                              ));
+    }
+
+    /**
+     * Deduce the segment id with which the given {@code segment} should be merged. Do so, by deducing the "parent mask"
+     * by bit shifting the segment's size (the {@link EventTrackerInfo#getOnePartOf()} field) by one, and doing an XOR
+     * on the given segment's {@link EventTrackerInfo#getSegmentId()} with the deduced "parent mask".
+     *
+     * @param segment a {@link EventTrackerInfo} for which to deduce the segment to merge with
+     * @return an {@code int} specifying the segment identifier to merge with the given {@code segment}
+     */
+    private int deduceSegmentToMerge(EventTrackerInfo segment) {
+        int segmentSize = segment.getOnePartOf();
+        int parentMask = segmentSize >>> 1;
+        return segment.getSegmentId() ^ parentMask;
+    }
+
+    /**
+     * Pair of {@code clientId} and {@code segmentId}, used to simplify the split and merge logic by combining the two
+     * main fields required to issue a split/merge operation.
+     */
+    private static class ClientSegmentPair implements Comparable<ClientSegmentPair> {
+
+        private final String clientId;
+        private final int segmentId;
+
+        /**
+         * Instantiate a {@link ClientSegmentPair}, using the given {@code clientId} and {@code segmentId} as it's
+         * contents.
+         *
+         * @param clientId  a {@link String} specifying the identifier of the client
+         * @param segmentId a {@code int} specifying the identifier of the segment
+         */
+        private ClientSegmentPair(String clientId, int segmentId) {
+            this.clientId = clientId;
+            this.segmentId = segmentId;
+        }
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public int getSegmentId() {
+            return segmentId;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(clientId, segmentId);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            final ClientSegmentPair other = (ClientSegmentPair) obj;
+            return Objects.equals(this.clientId, other.clientId)
+                    && Objects.equals(this.segmentId, other.segmentId);
+        }
+
+        @Override
+        public int compareTo(@NotNull ClientSegmentPair other) {
+            return Integer.compare(this.segmentId, other.segmentId);
+        }
     }
 }
