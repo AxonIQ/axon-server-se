@@ -10,6 +10,10 @@
         SSL disabled
     </div>
 
+    <div v-if="node.developmentMode" id="developmentModeEnables" class="msg warning">
+        Development Mode is enabled - Data can be deleted!
+    </div>
+
     <div v-if="!node.authentication" id="authenticationDisabled" class="msg warning">
         Authentication disabled
     </div>

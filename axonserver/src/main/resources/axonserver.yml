@@ -32,6 +32,8 @@ axoniq:
     metrics-interval: 15
     metrics-synchronization-rate: 2500
     connect2contexts: node-contexts
+    devtools:
+      enabled: false
 
 logging:
   level:

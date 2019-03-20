@@ -16,6 +16,7 @@ public class NodeConfiguration {
     private boolean clustered;
     private boolean ssl;
     private boolean adminNode;
+    private boolean developmentMode;
     private Iterable<String> storageContextNames;
     private Iterable<String> contextNames;
 
@@ -45,6 +46,14 @@ public class NodeConfiguration {
 
     public void setSsl(boolean ssl) {
         this.ssl = ssl;
+    }
+
+    public boolean isDevelopmentMode() {
+        return developmentMode;
+    }
+
+    public void setDevelopmentMode(boolean developmentMode) {
+        this.developmentMode = developmentMode;
     }
 
     public String getHostName() {
