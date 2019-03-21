@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * Creates a gRPC {@link StatusRuntimeException} from an exception. If the Exception is a {@link MessagingPlatformException} it adds the error code as metadata.
  * @author Marc Gathier
  */
 public class GrpcExceptionBuilder {

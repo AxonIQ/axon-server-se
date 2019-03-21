@@ -4,6 +4,7 @@ import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Controller;
 
 /**
+ * Implementation of {@link ContextProvider} that retrieves the context from gRPC threadlocal.
  * @author Marc Gathier
  */
 @Controller

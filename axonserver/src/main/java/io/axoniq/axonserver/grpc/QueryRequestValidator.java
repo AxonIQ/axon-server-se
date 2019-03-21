@@ -6,9 +6,18 @@ import io.axoniq.axonserver.message.query.WrappedQuery;
 import org.slf4j.Logger;
 
 /**
+ * Validates a query request before sending it to the query handler.
  * @author Marc Gathier
  */
 public interface QueryRequestValidator {
+
+    /**
+     * Validates a query request. Checks timeout to verify that the request still needs to be sent.
+     * @param message the query to handle
+     * @param queryDispatcher the target for the query
+     * @param logger logger to log messages to
+     * @return serialized query message to send if message is valid, null if message is not valid.
+     */
     default SerializedQuery validate(WrappedQuery message, QueryDispatcher queryDispatcher, Logger logger) {
         SerializedQuery serializedQuery = message.queryRequest();
         QueryRequest request = serializedQuery.query();

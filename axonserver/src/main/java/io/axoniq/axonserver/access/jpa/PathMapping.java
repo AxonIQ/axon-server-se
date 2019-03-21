@@ -4,6 +4,8 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 
 /**
+ * Maps a path to its required role.
+ * The path may be a http method followed by a uri or a gRPC service followed by the operation name.
  * @author Marc Gathier
  */
 @Entity

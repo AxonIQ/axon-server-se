@@ -2,11 +2,5 @@
     globals.pageView = new Vue({ el: '#command' })
 </script>
 <span id="command">
-     <span v-if="!hasFeature('BASIC_APP_MONITORING')" class="msg warning">
-        View is not allowed
-    </span>
-
-     <span v-if="hasFeature('BASIC_APP_MONITORING')" >
-        <component-command-metrics></component-command-metrics>
-     </span>
+    <component-command-metrics></component-command-metrics>
 </span>

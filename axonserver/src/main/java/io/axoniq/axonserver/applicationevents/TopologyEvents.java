@@ -4,6 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
+ * Set of events raised when application connect to or disconnect from Axon Server.
  * @author Marc Gathier
  */
 public class TopologyEvents {

@@ -8,8 +8,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
- * Created by Sara Pellegrini on 11/06/2018.
- * sara.pellegrini@gmail.com
+ * Version of StreamObserver that has notion of number of messages it may send based on the number of permits.
+ * When it tries to send a message while out of permits it throws an exception.
+ * @author Sara Pellegrini
  */
 public class FlowControlledStreamObserver<T> implements StreamObserver<T> {
 

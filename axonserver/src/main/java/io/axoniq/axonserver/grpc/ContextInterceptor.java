@@ -4,6 +4,8 @@ import io.axoniq.axonserver.topology.Topology;
 import io.grpc.*;
 
 /**
+ * Interceptor that retrieves the CONTEXT from the request metadata and adds it in the threadlocal gRPC context.
+ *
  * @author Marc Gathier
  */
 public class ContextInterceptor implements ServerInterceptor{

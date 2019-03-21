@@ -1,8 +1,9 @@
 package io.axoniq.axonserver.access.role;
 
 /**
- * Created by Sara Pellegrini on 07/03/2018.
- * sara.pellegrini@gmail.com
+ * Access to user and application roles.
+ *
+ * @author Sara Pellegrini
  */
 import io.axoniq.axonserver.access.jpa.Role;
 import org.springframework.stereotype.Controller;

@@ -1,11 +1,15 @@
-package io.axoniq.axonserver.config;
+package io.axoniq.axonserver.enterprise.config;
 
-import io.axoniq.axonserver.KeepNames;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
 /**
+ * Configuration properties used for setting up cluster of AxonServer instances.
+ *
  * @author Marc Gathier
  */
-@KeepNames
+@Configuration
+@ConfigurationProperties(prefix = "axoniq.axonserver.cluster")
 public class ClusterConfiguration {
     /**
      * Cluster enabled

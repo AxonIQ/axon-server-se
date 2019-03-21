@@ -12,6 +12,8 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 /**
+ * Defines users to access the Axon Dashboard and their roles.
+ *
  * @author Marc Gathier
  */
 @Entity

@@ -5,6 +5,8 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.grpc.*;
 
 /**
+ * Interceptor around gRPC request to perform authentication/authorization on gRPC requests.
+ * The interceptor retrieves the TOKEN and the CONTEXT from gRPC metadata provided in the request.
  * @author Marc Gathier
  */
 public class AuthenticationInterceptor implements ServerInterceptor{

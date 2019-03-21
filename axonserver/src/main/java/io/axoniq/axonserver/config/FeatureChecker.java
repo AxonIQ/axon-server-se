@@ -1,9 +1,8 @@
-package io.axoniq.axonserver.features;
+package io.axoniq.axonserver.config;
 
 import java.time.LocalDate;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * @author Marc Gathier
@@ -30,10 +29,8 @@ public interface FeatureChecker {
         return false;
     }
 
-    default List<FeatureStatus> getFeatureList() {
-        return Arrays.stream(Feature.values())
-                     .map(feature -> new FeatureStatus(feature, feature.enabled(this)))
-                     .collect(Collectors.toList());
+    default List<String> getFeatureList() {
+        return Collections.emptyList();
     }
 
     default LocalDate getExpiryDate() {

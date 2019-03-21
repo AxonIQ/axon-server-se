@@ -4,7 +4,7 @@ package io.axoniq.axonserver.applicationevents;
 import io.axoniq.axonserver.access.jpa.User;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class UserEvents {
     public static class UserUpdated{

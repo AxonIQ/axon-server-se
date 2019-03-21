@@ -6,7 +6,8 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.command.Command;
 
 /**
- * Author: marc
+ * Wrapper around gRPC command to reduce serialization/deserialization.
+ * @author Marc Gathier
  */
 public class SerializedCommand  {
 

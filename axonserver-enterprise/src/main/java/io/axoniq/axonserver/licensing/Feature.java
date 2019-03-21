@@ -1,4 +1,6 @@
-package io.axoniq.axonserver.features;
+package io.axoniq.axonserver.licensing;
+
+import io.axoniq.axonserver.config.FeatureChecker;
 
 import java.util.function.Function;
 
@@ -7,7 +9,7 @@ import java.util.function.Function;
  */
 public enum Feature {
     // Basic
-    FILESYSTEM_STORAGE_ENGINE( FeatureChecker::isBasic),
+    FILESYSTEM_STORAGE_ENGINE(FeatureChecker::isBasic),
     MANUAL_TRACKING_PROCESSOR_SCALING_BALANCING( FeatureChecker::isBasic),
     AD_HOC_QUERIES( FeatureChecker::isBasic),
     APPLICATION_OVERVIEW( FeatureChecker::isBasic),

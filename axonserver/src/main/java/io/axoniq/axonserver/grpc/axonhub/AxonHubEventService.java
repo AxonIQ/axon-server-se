@@ -16,6 +16,8 @@ import static io.grpc.MethodDescriptor.generateFullMethodName;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
+ *  Entry point to accept axonhub client eventstore requests in Axon Server. Difference between Axon Server and AxonHub client is the service name.
+ *  Delegates the request to the normal (Axon Server) {@link EventDispatcher}r.
  * @author Marc Gathier
  */
 @Component

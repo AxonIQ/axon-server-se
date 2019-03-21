@@ -5,6 +5,7 @@ import io.grpc.Context;
 import io.grpc.Metadata;
 
 /**
+ * Defines constants for keys that can be passed in gRPC metadata.
  * @author Marc Gathier
  */
 public interface GrpcMetadataKeys {

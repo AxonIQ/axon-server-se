@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.exception;
 
 /**
+ * Exceptions created inside AxonServer.
+ *
  * @author Marc Gathier
  */
 public class MessagingPlatformException extends RuntimeException {

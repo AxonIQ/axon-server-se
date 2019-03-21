@@ -10,6 +10,7 @@ import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryHandler;
 
 /**
+ * Set of events that are raised when an application registers a CommandHandler or QueryHandler. Events are propagated to the other AxonServer nodes.
  * @author Marc Gathier
  */
 public class SubscriptionEvents {

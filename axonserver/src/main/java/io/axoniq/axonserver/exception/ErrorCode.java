@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 
 /**
+ * Error codes and their mappings to gRPC errors and HTTP errors.
+ *
  * @author Marc Gathier
  */
 public enum ErrorCode {

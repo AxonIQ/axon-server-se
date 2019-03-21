@@ -12,8 +12,9 @@ import javax.persistence.Enumerated;
 import javax.persistence.Id;
 
 /**
- * Created by Sara Pellegrini on 08/03/2018.
- * sara.pellegrini@gmail.com
+ * Holds defined roles. Roles may be defined on an application or user level.
+ *
+ * @author Sara Pellegrini
  */
 @Entity
 public class Role {

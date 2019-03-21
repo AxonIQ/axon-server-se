@@ -7,6 +7,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
+ * Utility to retrieve information about the host where AxonServer is running.
+ *
  * @author Marc Gathier
  */
 @Component

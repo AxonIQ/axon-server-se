@@ -12,8 +12,8 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCa
 
 
 /**
- * Created by Sara Pellegrini on 11/05/2018.
- * sara.pellegrini@gmail.com
+ * Set of events used in handling of SubscriptionQueries.
+ * @author Sara Pellegrini
  */
 public class SubscriptionQueryEvents {
 

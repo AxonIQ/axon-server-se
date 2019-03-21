@@ -9,6 +9,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 /**
+ * A user/role combination.
+ *
  * @author Marc Gathier
  */
 @Entity

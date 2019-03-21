@@ -1,8 +1,7 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.features.DefaultFeatureChecker;
-import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -29,7 +28,8 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class PublicRestControllerTest {
     private PublicRestController testSubject;
-    private FeatureChecker limits = new DefaultFeatureChecker();
+    private FeatureChecker limits = new FeatureChecker() {
+    };
     @Mock
     private Topology clusterController;
     @Mock

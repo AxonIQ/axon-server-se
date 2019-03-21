@@ -3,6 +3,7 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.KeepNames;
 
 /**
+ * Configuration properties for flow control.
  * @author Marc Gathier
  */
 @KeepNames

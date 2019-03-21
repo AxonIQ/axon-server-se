@@ -70,9 +70,6 @@ public class MessagingPlatformConfiguration {
     @NestedConfigurationProperty
     private FlowControl queryFlowControl = new FlowControl();
 
-    @NestedConfigurationProperty
-    private ClusterConfiguration cluster = new ClusterConfiguration();
-
     /**
      * Rate for synchronization of metrics information between nodes
      */
@@ -225,14 +222,6 @@ public class MessagingPlatformConfiguration {
 
     public void setQueryFlowControl(FlowControl queryFlowControl) {
         this.queryFlowControl = queryFlowControl;
-    }
-
-    public ClusterConfiguration getCluster() {
-        return cluster;
-    }
-
-    public void setCluster(ClusterConfiguration cluster) {
-        this.cluster = cluster;
     }
 
     public int getMetricsInterval() {

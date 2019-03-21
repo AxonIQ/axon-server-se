@@ -2,7 +2,12 @@ package io.axoniq.axonserver.grpc.axonhub;
 
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.QueryService;
-import io.axoniq.axonserver.grpc.query.*;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -13,6 +18,9 @@ import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncServerStreamingCall;
 
 /**
+ * Entry point to accept axonhub client queries in Axon Server. Difference between Axon Server and AxonHub client is the service name.
+ * Delegates the request to the normal (Axon Server) {@link QueryService}
+ *
  * @author Marc Gathier
  */
 @Component

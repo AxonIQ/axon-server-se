@@ -13,6 +13,8 @@ import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
+ * Entry point to accept axonhub client connection requests in Axon Server. Difference between Axon Server and AxonHub client is the service name.
+ * Delegates the request to the normal (Axon Server) {@link PlatformService}
  * @author Marc Gathier
  */
 @Component

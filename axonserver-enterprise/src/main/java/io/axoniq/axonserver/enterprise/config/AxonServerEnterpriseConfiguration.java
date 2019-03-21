@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.config;
 
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.config.AxonServerFreeConfiguration;
+import io.axoniq.axonserver.config.AxonServerStandardConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
@@ -43,7 +43,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * Author: marc
  */
 @Configuration
-@AutoConfigureBefore(AxonServerFreeConfiguration.class)
+@AutoConfigureBefore(AxonServerStandardConfiguration.class)
 public class AxonServerEnterpriseConfiguration {
 
     @Bean

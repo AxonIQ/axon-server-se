@@ -11,6 +11,8 @@ import springfox.documentation.spring.web.plugins.Docket;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 /**
+ * Specific configuration for Swagger pages.
+ *
  * @author Marc Gathier
  */
 @EnableSwagger2

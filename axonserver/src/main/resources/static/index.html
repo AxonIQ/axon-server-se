@@ -24,7 +24,7 @@
             features: [],
             hasFeature: function(featureName) {
                     for( let idx = 0; idx < globals.features.length; idx++) {
-                        if( globals.features[idx].name === featureName) return globals.features[idx].enabled;
+                        if( globals.features[idx] === featureName) return true;
                     }
                     return false;
             },
@@ -94,6 +94,17 @@
                                 globals.license = response.data.edition.toLowerCase();
                                 globals.features = response.data.featureList;
                                 this.licenseLoaded = true;
+                                if( globals.license === 'enterprise edition') {
+                                    axios.get("v1/public/pages").then(response => {
+                                        response.data.forEach(page => {
+                                            $("nav").append($("<a/>")
+                                                                    .attr("href", "#" + page.url)
+                                                                    .attr("class", "menu-" + page.url)
+                                                                    .append($("<i/>").attr("class", "fas fa-cog fa-2x"))
+                                                                    .append(page.title));
+                                        })
+                                    });
+                                }
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
                                     globals.adminNode = response.data.adminNode;
@@ -127,15 +138,6 @@
                 loadFragment();
             });
 
-            axios.get("v1/public/pages").then(response => {
-                response.data.forEach(page => {
-                    $("nav").append($("<a/>")
-                                            .attr("href", "#" + page.url)
-                                            .attr("class", "menu-" + page.url)
-                                            .append($("<i/>").attr("class", "fas fa-cog fa-2x"))
-                                            .append(page.title));
-                })
-            });
 
 
 
@@ -160,10 +162,10 @@
 <nav id="nav">
     <span v-if="licenseLoaded">
     <a href="#" class="menu-settings current"><i class="fas fa-cog fa-2x"></i>Settings</a>
-    <a href="#overview" class="menu-overview" v-if="hasFeature('APPLICATION_OVERVIEW')"><i class="fas fa-eye fa-2x"></i>Overview</a>
-    <a href="#query" class="menu-query" v-if="hasFeature('AD_HOC_QUERIES')"><i class="fas fa-search fa-2x"></i>Search</a>
-    <a href="#commands" class="menu-commands" v-if="hasFeature('BASIC_APP_MONITORING')"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
-    <a href="#queries" class="menu-queries" v-if="hasFeature('BASIC_APP_MONITORING')"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
+    <a href="#overview" class="menu-overview"><i class="fas fa-eye fa-2x"></i>Overview</a>
+    <a href="#query" class="menu-query"><i class="fas fa-search fa-2x"></i>Search</a>
+    <a href="#commands" class="menu-commands"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
+    <a href="#queries" class="menu-queries"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
     <a href="#applications" class="menu-applications" v-if="admin && hasFeature('APP_AUTHENTICATION')"><i
             class="fas fa-window-restore fa-2x"></i>Apps</a>
     <a href="#users" class="menu-users" v-if="admin"><i class="fas fa-users fa-2x"></i> Users</a>

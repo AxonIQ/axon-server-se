@@ -2,10 +2,6 @@
 
 <div id="settings">
 
-    <div v-if="!node.clustered && hasFeature('CLUSTERING')" id="clusterDisabled" class="msg warning">
-        Running in Standalone Mode
-    </div>
-
     <div v-if="!node.ssl" id="sslDisabled" class="msg warning">
         SSL disabled
     </div>

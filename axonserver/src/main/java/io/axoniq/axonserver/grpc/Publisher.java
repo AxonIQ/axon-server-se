@@ -1,11 +1,15 @@
 package io.axoniq.axonserver.grpc;
 
 /**
- * Created by Sara Pellegrini on 04/05/2018.
- * sara.pellegrini@gmail.com
+ * Allows publishing of messages.
+ * @author Sara Pellegrini
  */
 public interface Publisher<T> {
 
+    /**
+     * Publish a message
+     * @param message the message
+     */
     void publish(T message);
 
 }

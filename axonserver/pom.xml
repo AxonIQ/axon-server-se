@@ -31,11 +31,6 @@
     <dependencies>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
-            <artifactId>axonserver-connector-api</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver-grpc</artifactId>
             <version>${project.parent.version}</version>
         </dependency>

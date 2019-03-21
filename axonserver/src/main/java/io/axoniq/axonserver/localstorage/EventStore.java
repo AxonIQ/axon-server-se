@@ -35,8 +35,6 @@ public interface EventStore {
     default void cleanup() {
     }
 
-    boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent);
-
     Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber);
 
     default void reserveSequenceNumbers(List<SerializedEvent> events) {
@@ -47,10 +45,6 @@ public interface EventStore {
     void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
 
     PreparedTransaction prepareTransaction( List<SerializedEvent> eventList);
-
-    default boolean replicated() {
-        return false;
-    }
 
     EventTypeContext getType();
 
@@ -78,13 +72,9 @@ public interface EventStore {
 
     }
 
-    default boolean contains( SerializedTransactionWithToken newTransaction) {
-        return true;
-    }
-
     /**
      * Return a closeable iterator to iterate over all events starting at token start.
-     * @param start
+     * @param start first token to return
      * @return closeable iterator of SerializedEventWithToken
      */
     CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start);

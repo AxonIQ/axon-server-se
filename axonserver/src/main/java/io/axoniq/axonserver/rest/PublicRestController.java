@@ -2,10 +2,9 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.features.Feature;
-import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -82,10 +81,10 @@ public class PublicRestController {
         NodeConfiguration node = new NodeConfiguration(topology.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
-        node.setClustered(Feature.CLUSTERING.enabled(features));
         node.setAdminNode(topology.isAdminNode());
         node.setContextNames(topology.getMyContextNames());
         node.setStorageContextNames(topology.getMyStorageContextNames());
+        node.setClustered(features.isEnterprise());
         return node;
     }
 

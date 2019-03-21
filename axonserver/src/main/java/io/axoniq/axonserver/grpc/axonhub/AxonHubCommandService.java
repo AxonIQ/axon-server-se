@@ -17,7 +17,7 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
  * Entry point to accept axonhub client commands in Axon Server. Difference between Axon Server and AxonHub client is the service name.
- * Delegets the request to the normal (Axon Server) Command Service
+ * Delegates the request to the normal (Axon Server) {@link CommandService}
  * @author Marc Gathier
  */
 @Component

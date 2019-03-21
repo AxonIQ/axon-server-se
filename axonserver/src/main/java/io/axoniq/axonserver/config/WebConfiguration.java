@@ -3,8 +3,6 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.features.Feature;
-import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
 import org.springframework.boot.web.servlet.error.DefaultErrorAttributes;
@@ -28,19 +26,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * Customizations for Spring MVC handlers.
+ *
  * @author Marc Gathier
  */
 @Configuration
 public class WebConfiguration implements WebMvcConfigurer {
 
-    private final FeatureChecker featureChecker;
     private final AxonServerAccessController accessController;
     private final boolean accessControlEnabled;
 
-    public WebConfiguration(FeatureChecker featureChecker,
-                            MessagingPlatformConfiguration configuration,
+    public WebConfiguration(MessagingPlatformConfiguration configuration,
                             AxonServerAccessController accessController) {
-        this.featureChecker = featureChecker;
         this.accessController = accessController;
         this.accessControlEnabled = configuration.getAccesscontrol().isEnabled();
     }
@@ -82,7 +79,7 @@ public class WebConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        if(accessControlEnabled && Feature.APP_AUTHENTICATION.enabled(featureChecker)) {
+        if(accessControlEnabled ) {
             registry.addInterceptor(new RestAuthenticationInterceptor(accessController)).addPathPatterns(
                     "/v1/commands/run",
                     "/v1/queries/run",
@@ -109,7 +106,7 @@ public class WebConfiguration implements WebMvcConfigurer {
         }
 
         @ExceptionHandler(value = {MessagingPlatformException.class})
-        protected ResponseEntity<Object> handleEventStoreException(RuntimeException ex, WebRequest request) {
+        protected ResponseEntity<Object> handleAxonServerException(RuntimeException ex, WebRequest request) {
             MessagingPlatformException eventStoreException = (MessagingPlatformException)ex;
             return ResponseEntity.status(eventStoreException.getErrorCode().getHttpCode())
                     .header("AxonIQ-ErrorCode", eventStoreException.getErrorCode().getCode())

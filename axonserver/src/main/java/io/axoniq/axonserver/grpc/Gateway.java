@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * gRPC server setup for handling requests from client applications.
  * @author Marc Gathier
  */
 @Component("Gateway")

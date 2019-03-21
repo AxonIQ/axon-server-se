@@ -3,8 +3,6 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.applicationevents.UserEvents;
-import io.axoniq.axonserver.features.DefaultFeatureChecker;
-import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -32,10 +30,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 
 /**
+ * Creates instances of Spring beans required by Axon Server.
+ *
  * @author Marc Gathier
  */
 @Configuration
-public class AxonServerFreeConfiguration {
+public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
@@ -83,7 +83,7 @@ public class AxonServerFreeConfiguration {
     @Bean
     @ConditionalOnMissingBean(FeatureChecker.class)
     public FeatureChecker featureChecker() {
-        return new DefaultFeatureChecker();
+        return new FeatureChecker() {};
     }
 
     @Bean

@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.features.FeatureStatus;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -14,7 +13,7 @@ public class LicenseInfo {
     private LocalDate expiryDate;
     private String edition;
     private String licensee;
-    private List<FeatureStatus> featureList;
+    private List<String> featureList;
 
     public LocalDate getExpiryDate() {
         return expiryDate;
@@ -40,11 +39,11 @@ public class LicenseInfo {
         this.licensee = licensee;
     }
 
-    public List<FeatureStatus> getFeatureList() {
+    public List<String> getFeatureList() {
         return featureList;
     }
 
-    public void setFeatureList(List<FeatureStatus> featureList) {
+    public void setFeatureList(List<String> featureList) {
         this.featureList = featureList;
     }
 }
