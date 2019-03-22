@@ -178,27 +178,6 @@ public abstract class JdbcAbstractStore implements EventStore {
         }
     }
 
-    @Override
-    public boolean streamEvents(long token,
-                                Predicate<SerializedEventWithToken> onEvent) {
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(
-                     readEvents)) {
-            SerializedEventWithToken event;
-            preparedStatement.setLong(1, token);
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    event = readEventWithToken(resultSet);
-                    if (!onEvent.test(event)) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        } catch (SQLException e) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
-        }
-    }
 
     @Override
     public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {

@@ -33,11 +33,6 @@ public class FakeEventStore implements EventStore {
     }
 
     @Override
-    public boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent) {
-        return onEvent.test(new SerializedEventWithToken(token, Event.newBuilder().build()));
-    }
-
-    @Override
     public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
         return Optional.empty();
     }

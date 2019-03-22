@@ -325,30 +325,6 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent) {
-        logger.debug("Start streaming event from files at {}", token);
-        long lastSegment = -1;
-        long segment = getSegmentFor(token);
-        EventInformation eventWithToken = null;
-        while (segment > lastSegment) {
-            EventIterator eventIterator = getEvents(segment, token);
-            while (eventIterator.hasNext()) {
-                eventWithToken = eventIterator.next();
-                if (!onEvent.test(eventWithToken.getSerializedEventWithToken())) {
-                    eventIterator.close();
-                    logger.debug("Stopped streaming event from files at {}, out of permits", eventWithToken.getToken());
-                    return false;
-                }
-            }
-            lastSegment = segment;
-            segment = getSegmentFor(eventWithToken == null ? token : eventWithToken.getToken() + 1);
-            token = segment;
-        }
-        logger.debug("Stopped streaming event from files at {}", eventWithToken == null? token: eventWithToken.getToken());
-        return true;
-    }
-
-    @Override
     public Iterator<SerializedTransactionWithToken> transactionIterator(long token) {
         return new TransactionWithTokenIterator(token);
     }
@@ -356,11 +332,6 @@ public abstract class SegmentBasedEventStore implements EventStore {
     @Override
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         return new TransactionWithTokenIterator(firstToken, limitToken);
-    }
-
-    @Override
-    public boolean replicated() {
-        return true;
     }
 
     protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {

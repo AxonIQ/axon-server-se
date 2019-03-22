@@ -68,7 +68,7 @@ public class LocalEventStoreTest {
                     }
                 };
             }
-        }, 5);
+        });
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
 
