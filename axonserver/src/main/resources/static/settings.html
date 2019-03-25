@@ -10,7 +10,7 @@
         SSL disabled
     </div>
 
-    <div v-if="node.developmentMode" id="developmentModeEnables" class="msg warning">
+    <div v-if="node.developmentMode" id="developmentModeEnabled" class="msg warning">
         Development Mode is enabled - Data can be deleted!
     </div>
 
@@ -51,8 +51,8 @@
         <div class="column status titleButton">
             <section>
                 <h2>Status</h2>
-                <span @click="reloadStatus" class="icon refresh" title="Refresh"><i class="fas fa-sync"></i></span>
-                </button>
+                    <span @click="reloadStatus" class="icon reset" title="Refresh"><i class="fas fa-sync"></i></span>
+
                 <ul>
                     <li>
                         <span>#Events</span>
@@ -79,11 +79,17 @@
                         <span>#Active Subscription Queries</span>
                         <span class="number">{{status.nrOfActiveSubscriptionQueries}}</span>
                     </li>
-
                     <li>
                         <span>#Subscription Queries Updates</span>
                         <span class="number">{{status.nrOfSubscriptionQueriesUpdates}}</span>
                     </li>
+                    <li>
+                        <div v-if="node.developmentMode">
+                            <button @click="resetEvents()" class="button-reset" title="Reset">Reset Events</button>
+                        </div>
+                        <span>&nbsp;</span>
+                    </li>
+
                 </ul>
             </section>
         </div>

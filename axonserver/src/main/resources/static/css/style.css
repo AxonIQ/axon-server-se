@@ -206,6 +206,14 @@ input[type="search"]{
 	border: none;
 	color: #fff;
 }
+.button-reset{
+	padding: 14px 14px 14px 14px;
+	font-size: 12px;
+	border-radius: 4px;
+	background: #f35c00;
+	border: none;
+	color: #fff;
+}
 
 .button:disabled {
 	opacity: 0.5;
