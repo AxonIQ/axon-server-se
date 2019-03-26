@@ -1,11 +1,14 @@
 package io.axoniq.axonserver.component.processor;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import org.junit.*;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -112,5 +115,34 @@ public class TrackingProcessorTest {
         testSubject.printOn(media);
 
         assertEquals(expectedJson, media.toString());
+    }
+
+    @Test
+    public void testPrintOnEnableCanMergeWhenOnlyOneSegmentOfMultipleIsClaimed() throws IOException {
+
+        EventProcessorInfo.EventTrackerInfo trackerInfo0 = EventProcessorInfo.EventTrackerInfo.newBuilder()
+                                                                                              .setCaughtUp(true)
+                                                                                              .setReplaying(false)
+                                                                                              .setOnePartOf(2)
+                                                                                              .setSegmentId(0)
+                                                                                              .build();
+        EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
+                                                              .setMode("Tracking")
+                                                              .setActiveThreads(1)
+                                                              .setAvailableThreads(1)
+                                                              .setRunning(true)
+                                                              .addEventTrackersInfo(trackerInfo0)
+                                                              .build();
+        List<ClientProcessor> testClientProcessors =
+                Collections.singletonList(new FakeClientProcessor("clientIdOne", true, processorInfo0));
+
+        TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", testClientProcessors);
+
+        GsonMedia media = new GsonMedia();
+        testSubject.printOn(media);
+
+        JsonNode actual = new ObjectMapper().reader().readTree(media.toString());
+        assertTrue(actual.at("/canMerge").booleanValue());
+        assertEquals("Not all segments claimed", actual.at("/warnings/0/message").textValue());
     }
 }
