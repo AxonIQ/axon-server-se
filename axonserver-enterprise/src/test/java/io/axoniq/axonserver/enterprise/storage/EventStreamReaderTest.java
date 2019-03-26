@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage;
 
 import io.axoniq.axonserver.localstorage.EventStreamController;
+import io.axoniq.axonserver.localstorage.EventStreamExecutor;
 import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.util.AssertUtils;
 import org.junit.*;
@@ -37,7 +38,7 @@ public class EventStreamReaderTest {
     @Before
     public void setUp() {
         testSubject = new EventStreamReader(testStorageContainer.getDatafileManagerChain(),
-                                            testStorageContainer.getEventWriter());
+                                            testStorageContainer.getEventWriter(), new EventStreamExecutor(1));
 
     }
 

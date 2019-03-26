@@ -13,15 +13,18 @@ import java.util.function.Predicate;
 public class EventStreamReader {
     private final EventStore datafileManagerChain;
     private final EventWriteStorage eventWriteStorage;
+    private final EventStreamExecutor eventStreamExecutor;
 
     public EventStreamReader(EventStore datafileManagerChain,
-                             EventWriteStorage eventWriteStorage) {
+                             EventWriteStorage eventWriteStorage,
+                             EventStreamExecutor eventStreamExecutor) {
         this.datafileManagerChain = datafileManagerChain;
         this.eventWriteStorage = eventWriteStorage;
+        this.eventStreamExecutor = eventStreamExecutor;
     }
 
     public EventStreamController createController(Consumer<SerializedEventWithToken> eventWithTokenConsumer, Consumer<Throwable> errorCallback) {
-        return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage);
+        return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage, eventStreamExecutor);
     }
 
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {

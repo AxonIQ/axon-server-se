@@ -41,8 +41,10 @@ public class EventWriteStorage {
                     if( ! listeners.isEmpty()) {
                         IntStream.range(0, eventList.size())
                                  .forEach(i -> {
+                                     SerializedEventWithToken event = new SerializedEventWithToken(firstToken + i,
+                                                                                                   eventList.get(i));
                                      listeners.values()
-                                              .forEach(consumer -> safeForwardEvent(consumer, new SerializedEventWithToken(firstToken + i, eventList.get(i))));
+                                              .forEach(consumer -> safeForwardEvent(consumer, event));
                                  });
                     }
                 } else {

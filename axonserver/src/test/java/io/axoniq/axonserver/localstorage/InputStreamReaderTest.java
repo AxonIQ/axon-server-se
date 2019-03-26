@@ -36,7 +36,7 @@ public class InputStreamReaderTest {
     @Before
     public void setUp() {
         testSubject = new EventStreamReader(testStorageContainer.getDatafileManagerChain(),
-                                            testStorageContainer.getEventWriter());
+                                            testStorageContainer.getEventWriter(), new EventStreamExecutor(1));
     }
 
     @Test
