@@ -408,7 +408,7 @@ public class FollowerStateTest {
                                                                .setLeaderId("node1")
                                                                .setGroupId("defaultGroup")
                                                                .setTerm(0L)
-                                                               .setOffset(1)
+                                                               .setOffset(0)
                                                                .setLastIncludedIndex(2L)
                                                                .setLastIncludedTerm(0L)
                                                                .setDone(true)
@@ -448,5 +448,53 @@ public class FollowerStateTest {
         return Node.newBuilder()
                    .setNodeId(id)
                    .build();
+    }
+
+    @Test
+    public void installSnapshotMissingChunk() {
+        InstallSnapshotRequest zero = InstallSnapshotRequest.newBuilder()
+                                                            .setRequestId(UUID.randomUUID().toString())
+                                                            .setLeaderId("node1")
+                                                            .setGroupId("defaultGroup")
+                                                            .setTerm(0L)
+                                                            .setOffset(0)
+                                                            .setLastIncludedIndex(2L)
+                                                            .setLastIncludedTerm(0L)
+                                                            .setDone(false)
+                                                            .build();
+        assertTrue(followerState.installSnapshot(zero).hasSuccess());
+        InstallSnapshotRequest one = InstallSnapshotRequest.newBuilder(zero).setOffset(1).build();
+        assertTrue(followerState.installSnapshot(one).hasSuccess());
+        InstallSnapshotRequest three = InstallSnapshotRequest.newBuilder(zero).setOffset(3).build();
+        InstallSnapshotResponse response = followerState.installSnapshot(three);
+        assertEquals("defaultGroup", response.getGroupId());
+        assertTrue(response.hasFailure());
+    }
+
+    @Test
+    public void installSnapshotInterrupted() {
+        InstallSnapshotRequest zero = InstallSnapshotRequest.newBuilder()
+                                                            .setRequestId(UUID.randomUUID().toString())
+                                                            .setLeaderId("node1")
+                                                            .setGroupId("defaultGroup")
+                                                            .setTerm(0L)
+                                                            .setOffset(0)
+                                                            .setLastIncludedIndex(2L)
+                                                            .setLastIncludedTerm(0L)
+                                                            .setDone(false)
+                                                            .build();
+        assertTrue(followerState.installSnapshot(zero).hasSuccess());
+        InstallSnapshotRequest one = InstallSnapshotRequest.newBuilder(zero).setOffset(1).build();
+        assertTrue(followerState.installSnapshot(one).hasSuccess());
+
+        //the leader has been disrupted, and start again from the first chuck
+        assertTrue(followerState.installSnapshot(zero).hasSuccess());
+
+        //the chuck "two" must fail because a new install snapshot is started
+        InstallSnapshotRequest two = InstallSnapshotRequest.newBuilder(zero).setOffset(2).build();
+        InstallSnapshotResponse response = followerState.installSnapshot(two);
+
+        assertEquals("defaultGroup", response.getGroupId());
+        assertTrue(response.hasFailure());
     }
 }
