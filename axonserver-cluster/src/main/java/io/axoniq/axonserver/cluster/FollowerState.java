@@ -45,6 +45,7 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicLong nextTimeout = new AtomicLong();
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
+    private final AtomicLong lastSnapshotChunk = new AtomicLong(-1);
 
     private FollowerState(Builder builder) {
         super(builder);
@@ -226,6 +227,19 @@ public class FollowerState extends AbstractMembershipState {
 
         rescheduleElection(request.getTerm());
 
+        //Install snapshot chunks must arrived in the correct order. If the chunk doesn't has the expected index it will be rejected.
+        //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
+        if (request.getOffset() != 0 && (lastSnapshotChunk.get() + 1) != request.getOffset()) {
+            String failureCause = format("%s in term %s: missing previous snapshot chunk. Received %s while expecting %s.",
+                                         groupId(),
+                                         currentTerm(),
+                                         request.getOffset(),
+                                         (lastSnapshotChunk.get() + 1)
+            );
+            logger.warn(failureCause);
+            return installSnapshotFailure(request.getRequestId(), failureCause);
+        }
+
         if (request.hasLastConfig()) {
             logger.trace("{} in term {}: applying config {}", groupId(), currentTerm(), request.getLastConfig());
             raftGroup().raftConfiguration().update(request.getLastConfig().getNodesList());
@@ -251,13 +265,19 @@ public class FollowerState extends AbstractMembershipState {
             return installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
+        lastSnapshotChunk.set(request.getOffset());
         //When install snapshot request is completed, update commit and last applied indexes.
         if (request.getDone()) {
             long index = request.getLastIncludedIndex();
             long term = request.getLastIncludedTerm();
             raftGroup().logEntryProcessor().markCommitted(index, term);
             raftGroup().logEntryProcessor().updateLastApplied(index, term);
-            logger.info("{} in term {}: Install snapshot finished.", groupId(), currentTerm());
+            lastSnapshotChunk.set(-1);
+            logger.info("{} in term {}: Install snapshot finished. Last applied entry: {}, Last log entry {}, Commit Index: {}",
+                        groupId(), currentTerm(),
+                        raftGroup().logEntryProcessor().lastAppliedIndex(),
+                        raftGroup().localLogEntryStore().lastLogIndex(),
+                        raftGroup().logEntryProcessor().commitIndex());
         }
 
         return InstallSnapshotResponse.newBuilder()
