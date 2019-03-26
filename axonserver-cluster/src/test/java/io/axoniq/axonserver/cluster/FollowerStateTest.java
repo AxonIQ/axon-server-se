@@ -497,4 +497,30 @@ public class FollowerStateTest {
         assertEquals("defaultGroup", response.getGroupId());
         assertTrue(response.hasFailure());
     }
+
+    @Test
+    public void installSnapshotCompleted() {
+        InstallSnapshotRequest zero = InstallSnapshotRequest.newBuilder()
+                                                            .setRequestId(UUID.randomUUID().toString())
+                                                            .setLeaderId("node1")
+                                                            .setGroupId("defaultGroup")
+                                                            .setTerm(0L)
+                                                            .setOffset(0)
+                                                            .setLastIncludedIndex(2L)
+                                                            .setLastIncludedTerm(0L)
+                                                            .setDone(false)
+                                                            .build();
+        assertTrue(followerState.installSnapshot(zero).hasSuccess());
+        InstallSnapshotRequest one = InstallSnapshotRequest.newBuilder(zero).setOffset(1).build();
+        assertTrue(followerState.installSnapshot(one).hasSuccess());
+        InstallSnapshotRequest two = InstallSnapshotRequest.newBuilder(zero).setOffset(2).setDone(true).build();
+        assertTrue(followerState.installSnapshot(two).hasSuccess());
+
+        InstallSnapshotRequest three = InstallSnapshotRequest.newBuilder(zero).setOffset(3).build();
+        InstallSnapshotResponse response = followerState.installSnapshot(three);
+
+        //the chuck "three" must fail because install snapshot is completed with chunk "two"
+        assertEquals("defaultGroup", response.getGroupId());
+        assertTrue(response.hasFailure());
+    }
 }
