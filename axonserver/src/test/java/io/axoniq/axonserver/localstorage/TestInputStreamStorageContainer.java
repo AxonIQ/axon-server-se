@@ -13,7 +13,6 @@ import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerF
 
 import java.io.File;
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -24,8 +23,8 @@ import java.util.stream.IntStream;
  */
 public class TestInputStreamStorageContainer {
 
-    private final EventStore datafileManagerChain;
-    private final EventStore snapshotManagerChain;
+    private final EventStorageEngine datafileManagerChain;
+    private final EventStorageEngine snapshotManagerChain;
     private EventWriteStorage eventWriter;
 
     public TestInputStreamStorageContainer(File location) throws IOException {
@@ -37,9 +36,9 @@ public class TestInputStreamStorageContainer {
         embeddedDBProperties.getSnapshot().setSegmentSize(512*1024L);
         EventStoreFactory eventStoreFactory = new LowMemoryEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
                                                                              new DefaultStorageTransactionManagerFactory());
-        datafileManagerChain = eventStoreFactory.createEventManagerChain("default");
+        datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");
         datafileManagerChain.init(false);
-        snapshotManagerChain = eventStoreFactory.createSnapshotManagerChain("default");
+        snapshotManagerChain = eventStoreFactory.createSnapshotStorageEngine("default");
         snapshotManagerChain.init(false);
         eventWriter = new EventWriteStorage(new SingleInstanceTransactionManager(datafileManagerChain));
     }
@@ -67,11 +66,11 @@ public class TestInputStreamStorageContainer {
         }
     }
 
-    public EventStore getDatafileManagerChain() {
+    public EventStorageEngine getDatafileManagerChain() {
         return datafileManagerChain;
     }
 
-    public EventStore getSnapshotManagerChain() {
+    public EventStorageEngine getSnapshotManagerChain() {
         return snapshotManagerChain;
     }
 
@@ -79,7 +78,7 @@ public class TestInputStreamStorageContainer {
         return eventWriter;
     }
 
-    public StorageTransactionManager getTransactionManager(EventStore datafileManagerChain) {
+    public StorageTransactionManager getTransactionManager(EventStorageEngine datafileManagerChain) {
         return new SingleInstanceTransactionManager(datafileManagerChain);
     }
 
@@ -88,7 +87,7 @@ public class TestInputStreamStorageContainer {
     }
 
     public void close() {
-        datafileManagerChain.cleanup();
-        snapshotManagerChain.cleanup();
+        datafileManagerChain.close();
+        snapshotManagerChain.close();
     }
 }

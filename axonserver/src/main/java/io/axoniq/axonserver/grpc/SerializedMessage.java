@@ -8,7 +8,9 @@ import com.google.protobuf.UnknownFieldSet;
 import java.util.Map;
 
 /**
- * Author: marc
+ * Base wrapper for gRPC messages that maintains serialized data to reduce time to write to stream.
+ *
+ * @author Marc Gathier
  */
 public abstract class SerializedMessage<T extends Message> extends AbstractMessage {
     protected abstract T wrapped();

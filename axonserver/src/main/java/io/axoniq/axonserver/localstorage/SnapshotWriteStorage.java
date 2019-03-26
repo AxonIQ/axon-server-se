@@ -34,10 +34,6 @@ public class SnapshotWriteStorage {
         return completableFuture;
     }
 
-    public long getLastToken() {
-        return storageTransactionManager.getLastToken();
-    }
-
     public long waitingTransactions() {
         return storageTransactionManager.waitingTransactions();
     }

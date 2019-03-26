@@ -188,10 +188,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void cleanup() {
+    public void close() {
         synchronizer.shutdown(true);
         readBuffers.forEach((s, source) -> source.clean(5));
-        if( next != null) next.cleanup();
+        if( next != null) next.close();
     }
 
     @Override
@@ -250,7 +250,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void stepDown() {
+    public void clearReservedSequenceNumbers() {
         sequenceNumbersPerAggregate.clear();
     }
 

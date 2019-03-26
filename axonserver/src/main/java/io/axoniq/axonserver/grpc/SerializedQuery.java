@@ -6,7 +6,8 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 
 /**
- * Author: marc
+ * Wrapper around {@link QueryRequest} to reduce serialization/deserialization.
+ * @author Marc Gathier
  */
 public class SerializedQuery  {
 

@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Marc Gathier
  */
-public class LocalEventStoreTest {
+public class LocalEventStorageEngineTest {
     private LocalEventStore testSubject;
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();

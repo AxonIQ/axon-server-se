@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
+ * Cache for running commands.
  * @author Marc Gathier
  */
 @Component
@@ -28,7 +29,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
         this(300000);
     }
 
-    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-cleanup-rate:5000}")
+    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultCommandTimeout;

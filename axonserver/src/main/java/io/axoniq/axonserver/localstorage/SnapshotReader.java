@@ -9,9 +9,9 @@ import java.util.function.Consumer;
  * @author Marc Gathier
  */
 public class SnapshotReader {
-    private final EventStore datafileManagerChain;
+    private final EventStorageEngine datafileManagerChain;
 
-    public SnapshotReader(EventStore datafileManagerChain) {
+    public SnapshotReader(EventStorageEngine datafileManagerChain) {
         this.datafileManagerChain = datafileManagerChain;
     }
 

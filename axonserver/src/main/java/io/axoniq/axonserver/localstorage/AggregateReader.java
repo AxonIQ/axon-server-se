@@ -7,10 +7,10 @@ import java.util.function.Consumer;
  * @author Marc Gathier
  */
 public class AggregateReader {
-    private final EventStore datafileManagerChain;
+    private final EventStorageEngine datafileManagerChain;
     private final SnapshotReader snapshotReader;
 
-    public AggregateReader(EventStore datafileManagerChain, SnapshotReader snapshotReader) {
+    public AggregateReader(EventStorageEngine datafileManagerChain, SnapshotReader snapshotReader) {
         this.datafileManagerChain = datafileManagerChain;
         this.snapshotReader = snapshotReader;
     }

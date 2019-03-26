@@ -71,7 +71,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 sender = new Sender(queryEventsRequest.getNumberOfPermits(),
                                     queryEventsRequest.getLiveEvents(),
                                     System.currentTimeMillis() + timeout);
-                long connectionToken = eventWriteStorage.getLastToken();
+                long connectionToken = eventStreamReader.getLastToken();
                 long minConnectionToken = StringUtils.isEmpty(queryEventsRequest.getQuery()) ? Math.max(
                         connectionToken - defaultLimit, 0) : 0;
                 String queryString = StringUtils.isEmpty(queryEventsRequest.getQuery()) ?

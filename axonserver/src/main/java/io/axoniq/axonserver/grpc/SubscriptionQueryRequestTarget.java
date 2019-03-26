@@ -18,8 +18,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Created by Sara Pellegrini on 30/05/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
  */
 public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<SubscriptionQueryRequest> {
 

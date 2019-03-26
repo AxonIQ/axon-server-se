@@ -60,7 +60,7 @@ public class InputStreamReaderTest {
             counter.incrementAndGet();
         }, Throwable::printStackTrace);
 
-        controller.update(testStorageContainer.getEventWriter().getLastToken() - 1, 100);
+        controller.update(testStorageContainer.getDatafileManagerChain().getLastToken() - 1, 100);
         AssertUtils.assertWithin(1000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(2, counter.get()));
     }
 

@@ -81,7 +81,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void cleanupContext(String context) {
         Workers workers = workersMap.remove(context);
         if( workers == null) return;
-        workers.cleanup();
+        workers.close();
     }
 
     public void cancel(String context) {
@@ -232,7 +232,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void getLastToken(String context, GetLastTokenRequest request,
                              StreamObserver<TrackingToken> responseObserver) {
-        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventWriteStorage.getLastToken()).build());
+        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventStorageEngine.getLastToken()).build());
         responseObserver.onCompleted();
     }
 
@@ -267,7 +267,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void stop(@NonNull Runnable runnable) {
         running = false;
-        workersMap.forEach((k, workers) -> workers.cleanup());
+        workersMap.forEach((k, workers) -> workers.close());
         runnable.run();
     }
 
@@ -297,11 +297,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public long getLastToken(String context) {
-        return workers(context).eventWriteStorage.getLastToken();
+        return workers(context).eventStorageEngine.getLastToken();
     }
 
     public long getLastSnapshot(String context) {
-        return workers(context).snapshotWriteStorage.getLastToken();
+        return workers(context).snapshotStorageEngine.getLastToken();
     }
 
     /**
@@ -351,10 +351,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         try {
             Workers workers = workers(context);
             if (eventType == EventType.SNAPSHOT) {
-                return workers.snapshotDatafileManagerChain.getBackupFilenames(lastSegmentBackedUp);
+                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp);
             }
 
-            return workers.eventDatafileManagerChain.getBackupFilenames(lastSegmentBackedUp);
+            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp);
         } catch (Exception ex ) {
             logger.warn("Failed to get backup filenames", ex);
         }
@@ -381,8 +381,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final AggregateReader aggregateReader;
         private final EventStreamReader eventStreamReader;
         private final EventStreamReader snapshotStreamReader;
-        private final EventStore eventDatafileManagerChain;
-        private final EventStore snapshotDatafileManagerChain;
+        private final EventStorageEngine eventStorageEngine;
+        private final EventStorageEngine snapshotStorageEngine;
         private final String context;
         private final SyncStorage eventSyncStorage;
         private final SyncStorage snapshotSyncStorage;
@@ -390,31 +390,31 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final Set<EventStreamController> eventStreamControllerSet = new CopyOnWriteArraySet<>();
 
         public Workers(String context) {
-            this.eventDatafileManagerChain = eventStoreFactory.createEventManagerChain(context);
-            this.snapshotDatafileManagerChain = eventStoreFactory.createSnapshotManagerChain(context);
+            this.eventStorageEngine = eventStoreFactory.createEventStorageEngine(context);
+            this.snapshotStorageEngine = eventStoreFactory.createSnapshotStorageEngine(context);
             this.context = context;
-            this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventDatafileManagerChain));
-            this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotDatafileManagerChain));
-            this.aggregateReader = new AggregateReader(eventDatafileManagerChain, new SnapshotReader(snapshotDatafileManagerChain));
-            this.eventStreamReader = new EventStreamReader(eventDatafileManagerChain, eventWriteStorage);
-            this.snapshotStreamReader = new EventStreamReader(snapshotDatafileManagerChain, null);
-            this.snapshotSyncStorage = new SyncStorage(snapshotDatafileManagerChain);
-            this.eventSyncStorage = new SyncStorage(eventDatafileManagerChain);
+            this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
+            this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
+            this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
+            this.eventStreamReader = new EventStreamReader(eventStorageEngine, eventWriteStorage);
+            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine, null);
+            this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
+            this.eventSyncStorage = new SyncStorage(eventStorageEngine);
         }
 
         public synchronized void init(boolean validate) {
             logger.debug("{}: init called", context);
             if( initialized.compareAndSet(false, true)) {
                 logger.debug("{}: initializing", context);
-                eventDatafileManagerChain.init(validate);
-                snapshotDatafileManagerChain.init(validate);
+                eventStorageEngine.init(validate);
+                snapshotStorageEngine.init(validate);
             }
         }
 
-        public void cleanup() {
-            eventDatafileManagerChain.cleanup();
-            snapshotDatafileManagerChain.cleanup();
+        public void close() {
             cancelTrackingEventProcessors();
+            eventStorageEngine.close();
+            snapshotStorageEngine.close();
         }
 
         private EventStreamController createController(Consumer<SerializedEventWithToken> consumer, Consumer<Throwable> errorCallback) {

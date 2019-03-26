@@ -32,7 +32,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         return super.remove(messagId);
     }
 
-    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-cleanup-rate:5000}")
+    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;

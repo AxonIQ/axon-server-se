@@ -10,7 +10,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.TransactionWithToken;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  */
 public class RaftTransactionManager implements StorageTransactionManager {
     private final Logger logger = LoggerFactory.getLogger(RaftTransactionManager.class);
-    private final EventStore datafileManagerChain;
+    private final EventStorageEngine eventStorageEngine;
     private final GrpcRaftController clusterController;
     private final AtomicLong nextTransactionToken = new AtomicLong();
     private final AtomicInteger waitingTransactions = new AtomicInteger();
@@ -39,19 +39,19 @@ public class RaftTransactionManager implements StorageTransactionManager {
     private final ReentrantLock lock = new ReentrantLock();
 
 
-    public RaftTransactionManager(EventStore datafileManagerChain,
+    public RaftTransactionManager(EventStorageEngine eventStorageEngine,
                                   GrpcRaftController clusterController,
                                   MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        this.datafileManagerChain = datafileManagerChain;
+        this.eventStorageEngine = eventStorageEngine;
         this.clusterController = clusterController;
-        this.eventTransactionManager = datafileManagerChain.getType().getEventType().equals(EventType.EVENT);
-        this.entryType = "Append." + datafileManagerChain.getType().getEventType();
+        this.eventTransactionManager = eventStorageEngine.getType().getEventType().equals(EventType.EVENT);
+        this.entryType = "Append." + eventStorageEngine.getType().getEventType();
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
         waitingTransactions.set(0);
-        nextTransactionToken.set(datafileManagerChain.getLastToken()+1);
+        nextTransactionToken.set(eventStorageEngine.getLastToken()+1);
             try (EntryIterator iterator = becomeMaster.getUnappliedEntries().get()) {
                 while (iterator.hasNext()) {
                     Entry entry = iterator.next();
@@ -76,7 +76,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
                                                   e.getAggregateSequenceNumber()));
                                 }
                                 if( eventTransactionManager) {
-                                    datafileManagerChain.reserveSequenceNumbers(serializedEvents);
+                                    eventStorageEngine.reserveSequenceNumbers(serializedEvents);
                                 }
                                 nextTransactionToken.addAndGet(transactionWithToken.getEventsCount());
                             }
@@ -94,8 +94,8 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
     public void on(ClusterEvents.LeaderStepDown masterStepDown) {
         nextTransactionToken.set(-1);
-        logger.error("{}: Step down", datafileManagerChain.getType());
-        datafileManagerChain.stepDown();
+        logger.error("{}: Step down", eventStorageEngine.getType());
+        eventStorageEngine.clearReservedSequenceNumbers();
     }
 
     @Override
@@ -109,7 +109,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
             TransactionWithToken transactionWithToken;
             lock.lock();
             try {
-                RaftNode node = clusterController.getRaftNode(datafileManagerChain.getType().getContext());
+                RaftNode node = clusterController.getRaftNode(eventStorageEngine.getType().getContext());
                 if( node == null || !node.isLeader()) {
                     completableFuture.completeExceptionally(new RuntimeException("No longer leader"));
                     return completableFuture;
@@ -117,7 +117,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
                 transactionWithToken =
                         TransactionWithToken.newBuilder().setToken(nextTransactionToken.getAndAdd(eventList.size()))
-                                            .setVersion(datafileManagerChain.transactionVersion())
+                                            .setVersion(eventStorageEngine.transactionVersion())
                                             .addAllEvents(events).build();
 
                 if( logger.isTraceEnabled()) {
@@ -161,13 +161,8 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
 
     @Override
-    public long getLastToken() {
-        return datafileManagerChain.getLastToken();
-    }
-
-    @Override
     public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
-        datafileManagerChain.reserveSequenceNumbers(eventList);
+        eventStorageEngine.reserveSequenceNumbers(eventList);
     }
 
     @Override

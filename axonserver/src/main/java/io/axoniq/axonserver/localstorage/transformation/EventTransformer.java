@@ -1,23 +1,23 @@
 package io.axoniq.axonserver.localstorage.transformation;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 /**
+ * Transformer to transform events between protobuf event bytes and stored event bytes.
+ * Transformer implementations may perform compression or encryption before storing.
  * @author Marc Gathier
  */
-public abstract class EventTransformer {
+public interface EventTransformer {
 
+    /**
+     * Converts stored bytes to protobuf bytes.
+     * @param eventBytes bytes as stored
+     * @return protobuf event bytes
+     */
+    byte[] fromStorage(byte[] eventBytes);
 
-    public byte[] readEvent(byte[] eventBytes) {
-        return fromStorage(eventBytes);
-    }
-
-    protected abstract byte[] fromStorage(byte[] eventBytes);
-
-    public List<byte[]> toStorage(List<byte[]> origEventList) {
-        return origEventList.stream().map(this::toStorage).collect(Collectors.toList());
-    }
-
-    public abstract byte[] toStorage(byte[] e);
+    /**
+     * Converts protobuf event bytes to bytes to store.
+     * @param bytes protobuf event bytes
+     * @return transformed bytes to store
+     */
+    byte[] toStorage(byte[] bytes);
 }

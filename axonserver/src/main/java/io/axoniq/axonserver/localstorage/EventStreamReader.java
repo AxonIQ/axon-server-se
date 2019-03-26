@@ -11,36 +11,40 @@ import java.util.function.Predicate;
  * @author Marc Gathier
  */
 public class EventStreamReader {
-    private final EventStore datafileManagerChain;
+    private final EventStorageEngine eventStorageEngine;
     private final EventWriteStorage eventWriteStorage;
 
-    public EventStreamReader(EventStore datafileManagerChain,
+    public EventStreamReader(EventStorageEngine datafileManagerChain,
                              EventWriteStorage eventWriteStorage) {
-        this.datafileManagerChain = datafileManagerChain;
+        this.eventStorageEngine = datafileManagerChain;
         this.eventWriteStorage = eventWriteStorage;
     }
 
     public EventStreamController createController(Consumer<SerializedEventWithToken> eventWithTokenConsumer, Consumer<Throwable> errorCallback) {
-        return new EventStreamController(eventWithTokenConsumer, errorCallback, datafileManagerChain, eventWriteStorage);
+        return new EventStreamController(eventWithTokenConsumer, errorCallback, eventStorageEngine, eventWriteStorage);
     }
 
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
-        return datafileManagerChain.transactionIterator(firstToken, limitToken);
+        return eventStorageEngine.transactionIterator(firstToken, limitToken);
     }
 
     public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
-        datafileManagerChain.query( minToken, minTimestamp, consumer);
+        eventStorageEngine.query(minToken, minTimestamp, consumer);
     }
 
     public long getFirstToken() {
-        return datafileManagerChain.getFirstToken();
+        return eventStorageEngine.getFirstToken();
     }
 
     public long getTokenAt(long instant) {
-        return datafileManagerChain.getTokenAt(instant);
+        return eventStorageEngine.getTokenAt(instant);
     }
 
     public void health(Health.Builder builder) {
-        datafileManagerChain.health(builder);
+        eventStorageEngine.health(builder);
+    }
+
+    public long getLastToken() {
+        return eventStorageEngine.getLastToken();
     }
 }

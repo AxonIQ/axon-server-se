@@ -14,7 +14,9 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * Wrapper around CommandProviderInbound that maintains serialized data to reduce time to write to stream.
+ *
+ * @author Marc Gathier
  */
 public class SerializedCommandProviderInbound extends SerializedMessage<CommandProviderInbound> {
     private static final SerializedCommandProviderInbound DEFAULT_INSTANCE = new SerializedCommandProviderInbound(CommandProviderInbound.getDefaultInstance());

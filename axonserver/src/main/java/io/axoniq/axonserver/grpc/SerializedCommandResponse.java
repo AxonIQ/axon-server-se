@@ -14,7 +14,9 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import java.io.IOException;
 
 /**
- * Author: marc
+ * Wrapper around {@link CommandResponse} that maintains serialized data to reduce time to write to stream.
+ *
+ * @author Marc Gathier
  */
 public class SerializedCommandResponse extends SerializedMessage<CommandResponse> {
 

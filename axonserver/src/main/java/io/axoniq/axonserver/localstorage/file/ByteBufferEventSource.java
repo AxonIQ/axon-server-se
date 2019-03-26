@@ -50,7 +50,7 @@ public class ByteBufferEventSource implements EventSource {
         int size = buffer.getInt();
         byte[] bytes = new byte[size];
         buffer.get(bytes);
-        return new SerializedEvent(eventTransformer.readEvent(bytes));
+        return new SerializedEvent(eventTransformer.fromStorage(bytes));
     }
 
     public ByteBufferEventSource duplicate() {

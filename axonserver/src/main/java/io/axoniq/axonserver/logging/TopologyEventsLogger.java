@@ -7,6 +7,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
+ * Application events for application connects/disconnects.
  * @author Marc Gathier
  */
 @Component

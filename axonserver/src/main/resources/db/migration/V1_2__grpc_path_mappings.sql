@@ -1,11 +1,11 @@
-insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/ListEvents', 'READ');
-insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/AppendEvent', 'WRITE');
-insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/AppendSnapshot', 'WRITE');
-insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/ListAggregateEvents', 'READ');
-insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/ReadHighestSequenceNr', 'READ');
-insert into path_mapping( path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/GetFirstToken', 'READ');
-insert into path_mapping( path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/GetLastToken', 'READ');
-insert into path_mapping( path, role) values ('io.axoniq.axonserver.grpc.event.EventStore/GetTokenAt', 'READ');
+insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/ListEvents', 'READ');
+insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/AppendEvent', 'WRITE');
+insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/AppendSnapshot', 'WRITE');
+insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/ListAggregateEvents', 'READ');
+insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/ReadHighestSequenceNr', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/GetFirstToken', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/GetLastToken', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axonserver.grpc.event.EventStorageEngine/GetTokenAt', 'READ');
 
 insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.command.CommandService/OpenStream', 'WRITE');
 insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.command.CommandService/Dispatch', 'WRITE');
@@ -19,14 +19,14 @@ insert into path_mapping (path, role) values ('io.axoniq.axonserver.grpc.control
 
 -- old axonhub grpc names
 
-insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStore/ListEvents', 'READ');
-insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStore/AppendEvent', 'WRITE');
-insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStore/AppendSnapshot', 'WRITE');
-insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStore/ListAggregateEvents', 'READ');
-insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStore/ReadHighestSequenceNr', 'READ');
-insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStore/GetFirstToken', 'READ');
-insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStore/GetLastToken', 'READ');
-insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStore/GetTokenAt', 'READ');
+insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/ListEvents', 'READ');
+insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/AppendEvent', 'WRITE');
+insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/AppendSnapshot', 'WRITE');
+insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/ListAggregateEvents', 'READ');
+insert into path_mapping (path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/ReadHighestSequenceNr', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/GetFirstToken', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/GetLastToken', 'READ');
+insert into path_mapping( path, role) values ('io.axoniq.axondb.grpc.EventStorageEngine/GetTokenAt', 'READ');
 
 insert into path_mapping (path, role) values ('io.axoniq.axonhub.grpc.CommandService/OpenStream', 'WRITE');
 insert into path_mapping (path, role) values ('io.axoniq.axonhub.grpc.CommandService/Dispatch', 'WRITE');

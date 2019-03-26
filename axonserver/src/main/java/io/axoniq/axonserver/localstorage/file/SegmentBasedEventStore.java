@@ -5,7 +5,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
@@ -45,7 +45,7 @@ import java.util.stream.Stream;
 /**
  * @author Marc Gathier
  */
-public abstract class SegmentBasedEventStore implements EventStore {
+public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
 
     private static final int TRANSACTION_LENGTH_BYTES = 4;

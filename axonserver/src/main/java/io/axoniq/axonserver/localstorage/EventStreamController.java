@@ -30,14 +30,13 @@ public class EventStreamController {
     private static final Logger logger = LoggerFactory.getLogger(EventStreamController.class);
     private final Consumer<SerializedEventWithToken> eventWithTokenConsumer;
     private final Consumer<Throwable> errorCallback;
-    private final EventStore datafileManagerChain;
+    private final EventStorageEngine datafileManagerChain;
     private final EventWriteStorage eventWriteStorage;
     private final AtomicLong remainingPermits = new AtomicLong();
     private final AtomicLong currentTrackingToken = new AtomicLong(Long.MIN_VALUE);
     private final AtomicBoolean processingBacklog = new AtomicBoolean();
     private final AtomicBoolean running = new AtomicBoolean();
     private volatile Registration eventListener;
-    private volatile int heartbeatInterval;
     private final AtomicLong lastMessageSent = new AtomicLong(System.currentTimeMillis());
     private volatile long lastPermitTimestamp;
     private AtomicReference<CloseableIterator<SerializedEventWithToken>> eventIteratorReference = new AtomicReference<>();
@@ -50,10 +49,10 @@ public class EventStreamController {
 
     public EventStreamController(
             Consumer<SerializedEventWithToken> eventWithTokenConsumer,
-            Consumer<Throwable> errorCallback, EventStore datafileManagerChain, EventWriteStorage eventWriteStorage) {
+            Consumer<Throwable> errorCallback, EventStorageEngine eventStorageEngine, EventWriteStorage eventWriteStorage) {
         this.eventWithTokenConsumer = eventWithTokenConsumer;
         this.errorCallback = errorCallback;
-        this.datafileManagerChain = datafileManagerChain;
+        this.datafileManagerChain = eventStorageEngine;
         this.eventWriteStorage = eventWriteStorage;
     }
 
@@ -126,7 +125,7 @@ public class EventStreamController {
     }
 
     private boolean sendFromStream(SerializedEventWithToken eventWithToken) {
-        if( eventWriteStorage.getLastToken() < eventWithToken.getToken()) return false;
+        if( datafileManagerChain.getLastToken() < eventWithToken.getToken()) return false;
         return sendEvent(eventWithToken);
     }
 
@@ -151,18 +150,6 @@ public class EventStreamController {
                 remainingPermits.incrementAndGet();
             }
             return newToken;
-        }
-    }
-
-    public void sendHeartBeat() {
-        try {
-            long now = System.currentTimeMillis();
-            if (heartbeatInterval > 0 && lastMessageSent.get() < now - heartbeatInterval) {
-                // eventWithTokenConsumer.accept(SerializedEventWithToken.DEFAULT_INSTANCE);
-                lastMessageSent.updateAndGet(current -> Math.max(current, now));
-            }
-        } catch (Exception e) {
-            logger.debug("Exception while sending heartbeat", e);
         }
     }
 

@@ -24,7 +24,7 @@ import static org.junit.Assert.*;
 /**
  * Author: marc
  */
-public class LocalEventStoreTest {
+public class LocalEventStorageEngineTest {
     private LocalEventStore testSubject;
     private static final String SAMPLE_CONTEXT = "FakeContext";
     private List<CompletableFuture<Long>> pendingTransactions = new ArrayList<>();
@@ -33,28 +33,23 @@ public class LocalEventStoreTest {
     public void setup() {
         testSubject = new LocalEventStore(new EventStoreFactory() {
             @Override
-            public EventStore createEventManagerChain(String context) {
+            public EventStorageEngine createEventStorageEngine(String context) {
                 return new FakeEventStore(EventType.EVENT);
             }
 
             @Override
-            public EventStore createSnapshotManagerChain(String context) {
+            public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return new FakeEventStore(EventType.SNAPSHOT);
             }
 
             @Override
-            public StorageTransactionManager createTransactionManager(EventStore datafileManagerChain) {
+            public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
                 return new StorageTransactionManager() {
                     @Override
                     public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
                         CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
                         pendingTransactions.add(pendingTransaction);
                         return pendingTransaction;
-                    }
-
-                    @Override
-                    public long getLastToken() {
-                        return datafileManagerChain.getLastToken();
                     }
 
                     @Override

@@ -6,13 +6,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Defines the interface for a transaction manager.
  * @author Marc Gathier
  */
 public interface StorageTransactionManager {
 
     CompletableFuture<Long> store(List<SerializedEvent> eventList);
-
-    long getLastToken();
 
     void reserveSequenceNumbers(List<SerializedEvent> eventList);
 

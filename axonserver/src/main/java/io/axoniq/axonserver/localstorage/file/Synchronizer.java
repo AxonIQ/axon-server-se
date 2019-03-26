@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Thread responsible to close the segment when it got full. Also confirms to writer when transaction blocks are cleanup.
+ * Thread responsible to close the segment when it got full. Also confirms to writer when transaction blocks are close.
  * One instance per event-type (Event,Snapshot) per context
  * @author Zoltan Altfatter
  */

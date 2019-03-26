@@ -14,7 +14,7 @@ import java.util.function.Predicate;
 /**
  * Author: marc
  */
-public class FakeEventStore implements EventStore {
+public class FakeEventStore implements EventStorageEngine {
 
     private final EventType eventType;
 

@@ -16,9 +16,9 @@ public class SyncStorage {
     private static final Logger logger = LoggerFactory.getLogger(SyncStorage.class);
 
 
-    private final EventStore eventStore;
+    private final EventStorageEngine eventStore;
 
-    public SyncStorage(EventStore eventStore) {
+    public SyncStorage(EventStorageEngine eventStore) {
         this.eventStore = eventStore;
     }
 
