@@ -27,9 +27,12 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
 
     private final LocalRaftConfigService localRaftConfigService;
+    private final RaftConfigServiceFactory raftConfigServiceFactory;
 
-    public GrpcRaftConfigService(LocalRaftConfigService localRaftConfigService) {
+    public GrpcRaftConfigService(LocalRaftConfigService localRaftConfigService,
+                                 RaftConfigServiceFactory raftConfigServiceFactory) {
         this.localRaftConfigService = localRaftConfigService;
+        this.raftConfigServiceFactory = raftConfigServiceFactory;
     }
 
     @Override
@@ -39,7 +42,7 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void joinCluster(NodeInfo request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.join(request));
+        wrap(responseObserver, ()-> raftConfigServiceFactory.getRaftConfigService().join(request));
     }
 
     @Override
