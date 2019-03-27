@@ -95,6 +95,9 @@ public class FakeEventStore implements EventStore {
     }
 
     @Override
+    public void deleteAllEventData() {}
+
+    @Override
     public long getTokenAt(long instant) {
         return 0;
     }

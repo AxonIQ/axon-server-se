@@ -168,4 +168,31 @@ public class LocalEventStoreTest {
         latch.await(1, TimeUnit.SECONDS);
     }
 
+    @Test
+    public void deleteAllEvents() throws InterruptedException {
+            StreamObserver<InputStream> inputStream = testSubject.createAppendEventConnection("default",
+                    new StreamObserver<Confirmation>() {
+                        @Override
+                        public void onNext(
+                                Confirmation confirmation) {
+                        }
+
+                        @Override
+                        public void onError(
+                                Throwable throwable) {
+                        }
+
+                        @Override
+                        public void onCompleted() {
+                        }
+                    });
+            Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(0).build();
+
+            inputStream.onNext(new ByteArrayInputStream(event.toByteArray()));
+            inputStream.onCompleted();
+
+            testSubject.deleteAllEventData("default");
+
+            Assert.assertEquals(-1,testSubject.getLastToken("default"));
+    }
 }

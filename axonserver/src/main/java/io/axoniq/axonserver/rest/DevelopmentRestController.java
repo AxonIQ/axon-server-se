@@ -1,7 +1,9 @@
 package io.axoniq.axonserver.rest;
 
 
+import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,7 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/devtools")
 public class DevelopmentRestController {
 
+    @Autowired
+    private DefaultEventStoreLocator eventStoreLocator;
+
     @DeleteMapping("delete-events")
     @ApiOperation(value="Clears all event data, saga data and tracking projection tokens from the cluster", notes = "Only for development/test environments.")
-    public void resetEventStore() { }
+    public void resetEventStore(){
+        eventStoreLocator.getEventStore("default").deleteAllEventData("default");
+    }
 }

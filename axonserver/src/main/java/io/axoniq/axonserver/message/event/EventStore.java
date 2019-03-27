@@ -46,4 +46,6 @@ public interface EventStore {
     StreamObserver<QueryEventsRequest> queryEvents(String context, StreamObserver<QueryEventsResponse> responseObserver);
 
     void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseObserver);
+
+    void deleteAllEventData(String context);
 }

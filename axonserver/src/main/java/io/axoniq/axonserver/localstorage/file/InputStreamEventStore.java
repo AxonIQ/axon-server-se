@@ -61,6 +61,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void deleteAllEventData() {throw new UnsupportedOperationException();}
 
     private InputStreamEventSource get(long segment, boolean force) {
         if( !force && ! segments.contains(segment)) return null;

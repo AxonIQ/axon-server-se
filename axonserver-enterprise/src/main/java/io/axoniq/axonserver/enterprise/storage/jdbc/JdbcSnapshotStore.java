@@ -18,4 +18,8 @@ public class JdbcSnapshotStore extends JdbcAbstractStore{
         return "SNAPSHOT_EVENT_ENTRY";
     }
 
+    @Override
+    public void deleteAllEventData() {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -156,6 +156,11 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         }
     }
 
+    @Override
+    public void deleteAllEventData() {
+        throw new UnsupportedOperationException();
+    }
+
     private void removeSegment(long segment) {
         if( segments.remove(segment)) {
             WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);

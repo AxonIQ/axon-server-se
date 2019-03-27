@@ -149,4 +149,14 @@ public class PrimaryEventStoreTest {
         }
     }
 
+    @Test
+    public void testDeletingAllEvents() throws InterruptedException {
+        setupEvents(5, 3);
+        Thread.sleep(1500);
+        testSubject.deleteAllEventData();
+        assertEquals(-1, testSubject.getLastToken());
+
+        storeEvent();
+        assertEquals(0,testSubject.getLastToken());
+    }
 }

@@ -98,4 +98,6 @@ public interface EventStore {
      * @return the next token
      */
     long nextToken();
+
+    void deleteAllEventData();
 }
