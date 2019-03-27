@@ -27,6 +27,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Clock;
 import java.util.List;
 
 /**
@@ -76,8 +77,8 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventStoreLocator.class)
-    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore, MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        return new DefaultEventStoreLocator(localEventStore, messagingPlatformConfiguration);
+    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore) {
+        return new DefaultEventStoreLocator(localEventStore);
     }
 
     @Bean
@@ -113,6 +114,11 @@ public class AxonServerStandardConfiguration {
                 eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false));
             }
         };
+    }
+
+    @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
     }
 
 }

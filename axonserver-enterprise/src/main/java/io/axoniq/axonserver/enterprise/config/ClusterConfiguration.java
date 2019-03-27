@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -44,6 +45,14 @@ public class ClusterConfiguration {
      * Timeout for connection request (in ms.)
      */
     private long connectionWaitTime = 3000;
+
+    @NestedConfigurationProperty
+    private FlowControl commandFlowControl = new FlowControl();
+
+    @NestedConfigurationProperty
+    private FlowControl queryFlowControl = new FlowControl();
+
+
 
     public long getConnectionCheckDelay() {
         return connectionCheckDelay;
@@ -107,5 +116,21 @@ public class ClusterConfiguration {
 
     public void setConnectionWaitTime(long connectionWaitTime) {
         this.connectionWaitTime = connectionWaitTime;
+    }
+
+    public FlowControl getCommandFlowControl() {
+        return commandFlowControl;
+    }
+
+    public void setCommandFlowControl(FlowControl commandFlowControl) {
+        this.commandFlowControl = commandFlowControl;
+    }
+
+    public FlowControl getQueryFlowControl() {
+        return queryFlowControl;
+    }
+
+    public void setQueryFlowControl(FlowControl queryFlowControl) {
+        this.queryFlowControl = queryFlowControl;
     }
 }

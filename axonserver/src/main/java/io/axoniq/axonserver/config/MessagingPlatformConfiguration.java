@@ -64,12 +64,6 @@ public class MessagingPlatformConfiguration {
     @NestedConfigurationProperty
     private AccessControlConfiguration accesscontrol = new AccessControlConfiguration();
 
-    @NestedConfigurationProperty
-    private FlowControl commandFlowControl = new FlowControl();
-
-    @NestedConfigurationProperty
-    private FlowControl queryFlowControl = new FlowControl();
-
     /**
      * Rate for synchronization of metrics information between nodes
      */
@@ -206,22 +200,6 @@ public class MessagingPlatformConfiguration {
 
     public void setAccesscontrol(AccessControlConfiguration accesscontrol) {
         this.accesscontrol = accesscontrol;
-    }
-
-    public FlowControl getCommandFlowControl() {
-        return commandFlowControl;
-    }
-
-    public void setCommandFlowControl(FlowControl commandFlowControl) {
-        this.commandFlowControl = commandFlowControl;
-    }
-
-    public FlowControl getQueryFlowControl() {
-        return queryFlowControl;
-    }
-
-    public void setQueryFlowControl(FlowControl queryFlowControl) {
-        this.queryFlowControl = queryFlowControl;
     }
 
     public int getMetricsInterval() {

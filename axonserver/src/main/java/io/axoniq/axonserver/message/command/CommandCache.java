@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -19,20 +20,22 @@ import java.util.stream.Collectors;
 public class CommandCache extends ConcurrentHashMap<String, CommandInformation> {
     private final Logger logger = LoggerFactory.getLogger(CommandCache.class);
     private final long defaultCommandTimeout;
+    private final Clock clock;
 
     @Autowired
-    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout) {
+    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout, Clock clock) {
         this.defaultCommandTimeout = defaultCommandTimeout;
+        this.clock = clock;
     }
 
-    public CommandCache() {
-        this(300000);
+    public CommandCache(Clock clock) {
+        this(300000, clock);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
-        long minTimestamp = System.currentTimeMillis() - defaultCommandTimeout;
+        long minTimestamp = clock.millis() - defaultCommandTimeout;
         Set<Entry<String, CommandInformation>> toDelete = entrySet().stream().filter(e -> e.getValue().getTimestamp() < minTimestamp).collect(
                 Collectors.toSet());
         if( ! toDelete.isEmpty()) {

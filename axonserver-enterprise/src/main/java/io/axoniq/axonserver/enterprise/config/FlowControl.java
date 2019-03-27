@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.config;
+package io.axoniq.axonserver.enterprise.config;
 
 import io.axoniq.axonserver.KeepNames;
 

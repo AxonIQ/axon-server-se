@@ -15,7 +15,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @CrossOrigin
 @RequestMapping("/v1/search")
-
 public class SearchController {
     private final HttpStreamingQuery httpStreamingQuery;
 

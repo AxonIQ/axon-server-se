@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
-import io.axoniq.axonserver.config.FlowControl;
+import io.axoniq.axonserver.enterprise.config.FlowControl;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
@@ -438,11 +438,11 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public FlowControl getCommandFlowControl() {
-        return messagingPlatformConfiguration.getCommandFlowControl();
+        return clusterConfiguration.getCommandFlowControl();
     }
 
     public FlowControl getQueryFlowControl() {
-        return messagingPlatformConfiguration.getQueryFlowControl();
+        return clusterConfiguration.getQueryFlowControl();
     }
 
     public void publishEvent(Object event) {

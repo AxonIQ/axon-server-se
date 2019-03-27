@@ -78,13 +78,6 @@ public class LifecycleController {
         });
     }
 
-    public void configurationError(String parameter) {
-        logger.error("Cannot start AxonServer: Missing required configuration parameter: {}", parameter);
-        SpringApplication.exit(applicationContext, () -> {
-            System.exit(1);
-            return 1;
-        });
-    }
     public void licenseError(String parameter) {
         logger.error(parameter);
         SpringApplication.exit(applicationContext, () -> {

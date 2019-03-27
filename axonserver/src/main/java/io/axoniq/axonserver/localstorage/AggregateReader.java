@@ -7,11 +7,11 @@ import java.util.function.Consumer;
  * @author Marc Gathier
  */
 public class AggregateReader {
-    private final EventStorageEngine datafileManagerChain;
+    private final EventStorageEngine eventStorageEngine;
     private final SnapshotReader snapshotReader;
 
-    public AggregateReader(EventStorageEngine datafileManagerChain, SnapshotReader snapshotReader) {
-        this.datafileManagerChain = datafileManagerChain;
+    public AggregateReader(EventStorageEngine eventStorageEngine, SnapshotReader snapshotReader) {
+        this.eventStorageEngine = eventStorageEngine;
         this.snapshotReader = snapshotReader;
     }
 
@@ -24,7 +24,7 @@ public class AggregateReader {
                 actualMinSequenceNumber = snapshot.get().asEvent().getAggregateSequenceNumber() + 1;
             }
         }
-        datafileManagerChain.streamByAggregateId(aggregateId, actualMinSequenceNumber, eventConsumer);
+        eventStorageEngine.streamByAggregateId(aggregateId, actualMinSequenceNumber, eventConsumer);
 
     }
     public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
@@ -34,6 +34,6 @@ public class AggregateReader {
     }
 
     public long readHighestSequenceNr(String aggregateId) {
-        return datafileManagerChain.getLastSequenceNumber(aggregateId).orElse(-1L);
+        return eventStorageEngine.getLastSequenceNumber(aggregateId).orElse(-1L);
     }
 }

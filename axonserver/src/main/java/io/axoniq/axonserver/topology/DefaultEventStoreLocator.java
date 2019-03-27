@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.topology;
 
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
 
@@ -11,12 +10,9 @@ import javax.annotation.PostConstruct;
  */
 public class DefaultEventStoreLocator implements EventStoreLocator {
     private final LocalEventStore localEventStore;
-    private final String node;
 
-    public DefaultEventStoreLocator(LocalEventStore localEventStore,
-                                    MessagingPlatformConfiguration configuration) {
+    public DefaultEventStoreLocator(LocalEventStore localEventStore) {
         this.localEventStore = localEventStore;
-        this.node = configuration.getName();
     }
 
     @PostConstruct
@@ -38,6 +34,6 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
 
     @Override
     public String getMaster(String context) {
-        return node;
+        return null;
     }
 }

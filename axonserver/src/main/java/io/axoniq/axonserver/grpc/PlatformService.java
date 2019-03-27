@@ -180,12 +180,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .forEach(stream -> stream.onNext(instruction));
     }
 
-    public void requestReconnectForContext(String context) {
-        connectionMap.entrySet().stream()
-                     .filter(e -> e.getKey().context.equals(context))
-                     .forEach(e -> requestReconnect(e.getKey()));
-    }
-
     @EventListener
     public void onPauseEventProcessorRequest(PauseEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
