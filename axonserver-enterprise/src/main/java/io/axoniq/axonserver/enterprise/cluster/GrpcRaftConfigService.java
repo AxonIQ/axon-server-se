@@ -15,8 +15,10 @@ import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.User;
 import io.grpc.stub.StreamObserver;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -27,12 +29,17 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
 
     private final LocalRaftConfigService localRaftConfigService;
-    private final RaftConfigServiceFactory raftConfigServiceFactory;
+    private final Supplier<RaftConfigService> serviceFactory;
 
+    @Autowired
     public GrpcRaftConfigService(LocalRaftConfigService localRaftConfigService,
                                  RaftConfigServiceFactory raftConfigServiceFactory) {
+        this(localRaftConfigService, raftConfigServiceFactory::getRaftConfigService);
+    }
+
+    GrpcRaftConfigService(LocalRaftConfigService localRaftConfigService, Supplier<RaftConfigService> serviceFactory){
         this.localRaftConfigService = localRaftConfigService;
-        this.raftConfigServiceFactory = raftConfigServiceFactory;
+        this.serviceFactory = serviceFactory;
     }
 
     @Override
@@ -42,7 +49,7 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void joinCluster(NodeInfo request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> raftConfigServiceFactory.getRaftConfigService().join(request));
+        wrap(responseObserver, ()-> serviceFactory.get().join(request));
     }
 
     @Override
