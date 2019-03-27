@@ -11,7 +11,7 @@
     </div>
 
     <div v-if="node.developmentMode" id="developmentModeEnabled" class="msg warning">
-        Development Mode is enabled - Data can be deleted!
+        Development Mode is enabled
     </div>
 
     <div v-if="!node.authentication" id="authenticationDisabled" class="msg warning">
@@ -84,7 +84,7 @@
                         <span class="number">{{status.nrOfSubscriptionQueriesUpdates}}</span>
                     </li>
                     <li>
-                        <div v-if="node.developmentMode">
+                        <div v-if="node.developmentMode && !node.clustered">
                             <button @click="resetEvents()" class="button-reset" title="Reset">Reset Events</button>
                         </div>
                         <span>&nbsp;</span>
