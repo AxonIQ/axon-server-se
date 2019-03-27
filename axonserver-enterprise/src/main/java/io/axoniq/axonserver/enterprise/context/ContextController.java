@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -86,7 +85,7 @@ public class ContextController {
         newNodes.forEach((node, nodeInfo) -> {
             if( !currentNodes.containsKey(node)) {
                 logger.debug("{}: Node not in current configuration {}", contextConfiguration.getContext(), node);
-                clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel(), false, false);
+                clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel());
             }
         });
     }
