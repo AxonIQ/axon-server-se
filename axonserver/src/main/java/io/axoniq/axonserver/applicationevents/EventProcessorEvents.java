@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.applicationevents;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 
 /**
@@ -12,7 +11,6 @@ import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
  */
 public class EventProcessorEvents {
 
-    @KeepNames
     public abstract static class BaseEventProcessorsEvent {
 
         private final boolean proxied;
@@ -26,7 +24,6 @@ public class EventProcessorEvents {
         }
     }
 
-    @KeepNames
     public static class EventProcessorStatusUpdate extends BaseEventProcessorsEvent {
 
         private final ClientEventProcessorInfo eventProcessorStatus;
@@ -41,7 +38,6 @@ public class EventProcessorEvents {
         }
     }
 
-    @KeepNames
     public static class EventProcessorStatusUpdated extends BaseEventProcessorsEvent {
 
         private final ClientEventProcessorInfo eventProcessorStatus;
@@ -56,7 +52,6 @@ public class EventProcessorEvents {
         }
     }
 
-    @KeepNames
     public static class PauseEventProcessorRequest extends BaseEventProcessorsEvent {
 
         private final String clientName;
@@ -78,7 +73,6 @@ public class EventProcessorEvents {
     }
 
 
-    @KeepNames
     public static class StartEventProcessorRequest extends BaseEventProcessorsEvent {
 
         private final String clientName;
@@ -160,7 +154,6 @@ public class EventProcessorEvents {
      * A {@link BaseSegmentRequest} implementation defining the a release segment request for a given
      * {@code processorName}.
      */
-    @KeepNames
     public static class ReleaseSegmentRequest extends BaseSegmentRequest {
 
         public ReleaseSegmentRequest(String clientName, String processorName, int segmentId, boolean proxied) {
@@ -168,7 +161,6 @@ public class EventProcessorEvents {
         }
     }
 
-    @KeepNames
     public static class ProcessorStatusRequest extends BaseEventProcessorsEvent {
 
         private final String clientName;
@@ -193,7 +185,6 @@ public class EventProcessorEvents {
      * A {@link BaseSegmentRequest} implementation defining the a split segment request for a given
      * {@code processorName}.
      */
-    @KeepNames
     public static class SplitSegmentRequest extends BaseSegmentRequest {
 
         public SplitSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
@@ -205,7 +196,6 @@ public class EventProcessorEvents {
      * A {@link BaseSegmentRequest} implementation defining the a merge segment request for a given
      * {@code processorName}.
      */
-    @KeepNames
     public static class MergeSegmentRequest extends BaseSegmentRequest {
 
         public MergeSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {

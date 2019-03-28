@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest.json;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
 /**
@@ -8,7 +7,6 @@ import io.axoniq.axonserver.topology.AxonServerNode;
  *
  * @author Marc Gathier
  */
-@KeepNames
 public class NodeConfiguration {
 
     private final AxonServerNode delegate;

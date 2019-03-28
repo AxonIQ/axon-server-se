@@ -1,14 +1,12 @@
 package io.axoniq.axonserver.rest.json;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.util.StringUtils;
 
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class SerializedObjectJson {
     private String type;
     private String data;

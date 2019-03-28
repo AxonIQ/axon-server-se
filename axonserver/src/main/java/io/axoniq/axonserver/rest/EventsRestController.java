@@ -2,7 +2,6 @@ package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -249,7 +248,6 @@ public class EventsRestController {
         return result;
     }
 
-    @KeepNames
     @JsonPropertyOrder({ "messageIdentifier", "aggregateIdentifier", "aggregateSequenceNumber", "aggregateType", "payloadType"
             , "payloadRevision" , "payload" , "timestamp" , "metaData" })
     public static class JsonEvent {
@@ -346,7 +344,6 @@ public class EventsRestController {
         }
     }
 
-    @KeepNames
     public static class JsonEventList {
         @Size(min = 1, message = "'messages' field cannot be empty")
         @NotNull(message = "'messages' field cannot be missing")

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.localstorage.query.result;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +17,6 @@ import javax.xml.transform.stream.StreamResult;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class XmlExpressionResult implements AbstractMapExpressionResult  {
     private static final Logger logger = LoggerFactory.getLogger(XmlExpressionResult.class);
     private static final TransformerFactory transformerFactory = TransformerFactory.newInstance();

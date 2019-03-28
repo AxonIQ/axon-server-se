@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest.json;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -13,7 +12,6 @@ import java.util.UUID;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class QueryRequestJson {
     private String messageIdentifier;
     private String query;

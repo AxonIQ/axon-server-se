@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.access.jpa;
 
-import io.axoniq.axonserver.KeepNames;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,7 +25,6 @@ public class Role {
     private Set<Type> types = new HashSet<>();
 
 
-    @KeepNames
     public enum Type {
         USER,APPLICATION
     }

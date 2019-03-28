@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.query.DefaultQueries;
 import io.axoniq.axonserver.component.query.Query;
@@ -16,15 +15,22 @@ import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import javax.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -78,7 +84,6 @@ public class QueryRestController {
     }
 
 
-    @KeepNames
     public static class JsonQueryMapping {
         private String query;
         private Set<String> resultNames;
@@ -107,7 +112,6 @@ public class QueryRestController {
 
     }
 
-    @KeepNames
     public static class JsonComponentMapping {
 
         private String component;

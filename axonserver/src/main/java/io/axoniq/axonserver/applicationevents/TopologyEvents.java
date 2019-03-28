@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.applicationevents;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
@@ -9,7 +8,6 @@ import io.axoniq.axonserver.message.ClientIdentification;
  */
 public class TopologyEvents {
 
-    @KeepNames
     public abstract static class TopologyBaseEvent {
         private final boolean forwarded;
 
@@ -23,7 +21,6 @@ public class TopologyEvents {
 
     }
 
-    @KeepNames
     public static class ApplicationConnected extends TopologyBaseEvent {
         private final String context;
         private final String componentName;
@@ -66,7 +63,6 @@ public class TopologyEvents {
         }
     }
 
-    @KeepNames
     public static class ApplicationDisconnected extends TopologyBaseEvent {
         private final String context;
         private final String componentName;
@@ -113,7 +109,6 @@ public class TopologyEvents {
 
     }
 
-    @KeepNames
     public static class CommandHandlerDisconnected extends TopologyBaseEvent {
         private final String context;
         private final String client;
@@ -146,7 +141,6 @@ public class TopologyEvents {
         }
     }
 
-    @KeepNames
     public static class QueryHandlerDisconnected extends TopologyBaseEvent {
         private final String context;
         private final String client;

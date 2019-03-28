@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 
 import java.util.Objects;
@@ -8,7 +7,6 @@ import java.util.Objects;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class QueryDefinition {
     private final String context;
     private final String queryName;

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
@@ -83,7 +82,6 @@ public class CommandRestController {
         return commandDispatcher.commandCount();
     }
 
-    @KeepNames
     public static class JsonClientMapping {
         private String client;
         private String component;
@@ -128,7 +126,6 @@ public class CommandRestController {
 
     }
 
-    @KeepNames
     private static class JsonQueueInfo {
         private final String client;
         private final int count;

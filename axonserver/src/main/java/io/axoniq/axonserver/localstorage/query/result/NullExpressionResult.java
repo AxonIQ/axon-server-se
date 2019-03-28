@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage.query.result;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 
 import java.util.Objects;
@@ -9,7 +8,6 @@ import java.util.Objects;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class NullExpressionResult implements ExpressionResult {
     public static final NullExpressionResult INSTANCE = new NullExpressionResult();
     private NullExpressionResult() {

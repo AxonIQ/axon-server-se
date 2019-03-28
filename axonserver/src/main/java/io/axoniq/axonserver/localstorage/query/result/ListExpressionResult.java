@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage.query.result;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 
 import java.util.Arrays;
@@ -11,7 +10,6 @@ import java.util.Objects;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class ListExpressionResult implements ExpressionResult {
     private final List<ExpressionResult> results;
 

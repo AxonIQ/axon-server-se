@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
@@ -73,7 +72,6 @@ public class UserRestController {
         }
     }
 
-    @KeepNames
     public static class UserJson {
 
         private String userName;

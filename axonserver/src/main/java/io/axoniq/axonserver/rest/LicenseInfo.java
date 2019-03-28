@@ -1,14 +1,11 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.KeepNames;
-
 import java.time.LocalDate;
 import java.util.List;
 
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class LicenseInfo {
     private LocalDate expiryDate;
     private String edition;

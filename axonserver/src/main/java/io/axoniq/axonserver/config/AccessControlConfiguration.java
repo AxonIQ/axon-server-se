@@ -1,13 +1,10 @@
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.KeepNames;
-
 /**
  * Configuration properties related to Axon Server Access Control.
  *
  * @author Marc Gathier
  */
-@KeepNames
 public class AccessControlConfiguration {
 
     /**

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
@@ -74,7 +73,6 @@ public class QueryMetricsRegistry {
     }
 
 
-    @KeepNames
     public static class QueryMetric {
         private final QueryDefinition queryDefinition;
         private final String clientId;

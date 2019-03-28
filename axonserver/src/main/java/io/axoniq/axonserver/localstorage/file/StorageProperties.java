@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 
 import java.io.File;
@@ -8,7 +7,6 @@ import java.io.File;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class StorageProperties {
 
     private static final String PATH_FORMAT = "%s/%s/%020d%s";

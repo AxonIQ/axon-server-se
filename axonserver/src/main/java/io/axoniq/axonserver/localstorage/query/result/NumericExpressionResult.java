@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage.query.result;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,7 +11,6 @@ import java.util.Objects;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class NumericExpressionResult implements ExpressionResult {
     private final BigDecimal value;
 

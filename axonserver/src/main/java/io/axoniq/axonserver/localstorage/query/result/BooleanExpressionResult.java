@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.localstorage.query.result;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import org.jetbrains.annotations.NotNull;
 
@@ -10,7 +9,6 @@ import java.util.Objects;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class BooleanExpressionResult implements ExpressionResult {
     public static final BooleanExpressionResult TRUE = new BooleanExpressionResult(true);
     public static final BooleanExpressionResult FALSE = new BooleanExpressionResult(false);

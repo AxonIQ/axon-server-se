@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -22,7 +21,6 @@ import java.util.concurrent.CompletableFuture;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public interface EventStore {
     CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage);
 

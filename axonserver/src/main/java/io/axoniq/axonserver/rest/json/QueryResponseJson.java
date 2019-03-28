@@ -1,12 +1,10 @@
 package io.axoniq.axonserver.rest.json;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class QueryResponseJson {
     private final String messageIdentifier;
     private final String requestIdentifier;

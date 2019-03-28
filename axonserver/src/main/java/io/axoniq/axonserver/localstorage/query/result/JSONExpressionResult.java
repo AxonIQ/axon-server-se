@@ -1,14 +1,12 @@
 package io.axoniq.axonserver.localstorage.query.result;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
 import net.minidev.json.JSONObject;
 
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class JSONExpressionResult implements AbstractMapExpressionResult  {
     private final JSONObject value;
 

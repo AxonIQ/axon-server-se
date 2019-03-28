@@ -1,13 +1,10 @@
 package io.axoniq.axonserver.rest.json;
 
-import io.axoniq.axonserver.KeepNames;
-
 import java.util.Set;
 
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class UserInfo {
     private final String user;
     private final Set<String> roles;

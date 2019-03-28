@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -140,7 +139,6 @@ public class PublicRestController {
     }
 
 
-    @KeepNames
     public static class JsonServerNode {
 
         private final AxonServerNode wrapped;

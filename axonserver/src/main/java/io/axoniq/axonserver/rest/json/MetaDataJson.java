@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest.json;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 
 import java.util.HashMap;
@@ -9,7 +8,6 @@ import java.util.Map;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class MetaDataJson extends HashMap<String,Object> {
 
     public MetaDataJson() {

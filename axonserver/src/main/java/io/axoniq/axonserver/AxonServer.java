@@ -9,8 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import javax.annotation.PreDestroy;
 
 /**
- * Main Runner for AxonServer.
- *
+ * Main class for AxonServer.
  *
  * @@author Marc Gathier
  */

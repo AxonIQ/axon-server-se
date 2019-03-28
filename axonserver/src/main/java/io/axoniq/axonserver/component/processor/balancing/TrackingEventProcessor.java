@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.component.processor.balancing;
 
-import io.axoniq.axonserver.KeepNames;
-
 import java.io.Serializable;
 import java.util.Objects;
 import javax.annotation.Nonnull;
@@ -10,7 +8,6 @@ import javax.annotation.Nonnull;
  * Created by Sara Pellegrini on 07/08/2018.
  * sara.pellegrini@gmail.com
  */
-@KeepNames
 public final class TrackingEventProcessor implements Serializable {
 
     private String name;

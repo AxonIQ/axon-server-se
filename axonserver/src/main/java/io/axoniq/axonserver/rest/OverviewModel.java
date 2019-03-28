@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.rest.svg.Element;
 import io.axoniq.axonserver.rest.svg.Elements;
 import io.axoniq.axonserver.rest.svg.Fonts;
@@ -60,7 +59,6 @@ public class OverviewModel {
         return new SvgOverview(new Elements(background, components));
     }
 
-    @KeepNames
     public static class SvgOverview {
         private final Element element;
 

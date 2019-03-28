@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.applicationevents;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
@@ -17,7 +16,6 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCa
  */
 public class SubscriptionQueryEvents {
 
-    @KeepNames
     public static class ProxiedSubscriptionQueryRequest {
 
         private final SubscriptionQueryRequest request;
@@ -63,7 +61,6 @@ public class SubscriptionQueryEvents {
         }
     }
 
-    @KeepNames
     public abstract static class SubscriptionQueryRequestEvent {
 
         private final String context;
@@ -108,7 +105,6 @@ public class SubscriptionQueryEvents {
 
     }
 
-    @KeepNames
     public static class SubscriptionQueryRequested extends SubscriptionQueryRequestEvent {
 
         public SubscriptionQueryRequested(String context, SubscriptionQuery subscription,
@@ -126,7 +122,6 @@ public class SubscriptionQueryEvents {
         }
     }
 
-    @KeepNames
     public static class SubscriptionQueryInitialResultRequested extends SubscriptionQueryRequestEvent {
 
         public SubscriptionQueryInitialResultRequested(String context, SubscriptionQuery subscription,
@@ -144,7 +139,6 @@ public class SubscriptionQueryEvents {
         }
     }
 
-    @KeepNames
     public static class SubscriptionQueryCanceled {
 
         private final String context;
@@ -170,7 +164,6 @@ public class SubscriptionQueryEvents {
         }
     }
 
-    @KeepNames
     public static class SubscriptionQueryResponseReceived {
 
         private final SubscriptionQueryResponse response;

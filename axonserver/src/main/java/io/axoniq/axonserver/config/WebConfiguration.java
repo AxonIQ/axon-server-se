@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
@@ -91,7 +90,6 @@ public class WebConfiguration implements WebMvcConfigurer {
 
 
     @ControllerAdvice
-    @KeepNames
     public static class GlobalExceptionHandler {
         @ExceptionHandler({ IllegalArgumentException.class })
         @ResponseStatus( HttpStatus.BAD_REQUEST)

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.rest.json;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.grpc.ErrorMessage;
 
 import java.util.List;
@@ -8,7 +7,6 @@ import java.util.List;
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class MessageJson {
 
     private final String location;

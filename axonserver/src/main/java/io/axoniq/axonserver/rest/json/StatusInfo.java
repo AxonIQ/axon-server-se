@@ -1,13 +1,10 @@
 package io.axoniq.axonserver.rest.json;
 
-import io.axoniq.axonserver.KeepNames;
-
 import java.util.Map;
 
 /**
  * @author Marc Gathier
  */
-@KeepNames
 public class StatusInfo {
     private long nrOfCommands;
     private long nrOfQueries;

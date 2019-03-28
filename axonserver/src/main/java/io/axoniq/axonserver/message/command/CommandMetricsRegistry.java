@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
@@ -75,7 +74,6 @@ public class CommandMetricsRegistry {
              .register(meterRegistry);
     }
 
-    @KeepNames
     public static class CommandMetric {
         private final String command;
         private final String clientId;
