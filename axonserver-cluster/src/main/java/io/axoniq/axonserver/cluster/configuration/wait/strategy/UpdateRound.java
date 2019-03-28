@@ -2,7 +2,11 @@ package io.axoniq.axonserver.cluster.configuration.wait.strategy;
 
 import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.configuration.WaitStrategy;
+import io.axoniq.axonserver.cluster.exception.ReplicationTimeoutException;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -24,16 +28,21 @@ public class UpdateRound implements WaitStrategy {
         this.registerMatchIndexListener = registerMatchIndexListener;
     }
 
-    public CompletableFuture<Void> await(){
+    public CompletableFuture<Void> await() {
         long stopRoundAt = lastIndex.get();
         CompletableFuture<Void> roundCompleted = new CompletableFuture<>();
-        Registration registration = registerMatchIndexListener.apply(matchIndex -> {
-            if (matchIndex >= stopRoundAt) {
-                roundCompleted.complete(null);
-            }
+        Flux<Long> flux = Flux.create(emitter -> {
+            Registration registration = registerMatchIndexListener.apply(emitter::next);
+            emitter.onDispose(registration::cancel);
         });
-        roundCompleted.thenRun(registration::cancel);
+        Disposable disposable = flux.timeout(Duration.ofSeconds(5))
+                                    .subscribe(matchIndex -> {
+                                        if (matchIndex >= stopRoundAt) {
+                                            roundCompleted.complete(null);
+                                        }
+                                    }, error -> roundCompleted.completeExceptionally(
+                                            new ReplicationTimeoutException("The initial replication is no more active.", error)));
+        roundCompleted.thenRun(disposable::dispose);
         return roundCompleted;
     }
-
 }
