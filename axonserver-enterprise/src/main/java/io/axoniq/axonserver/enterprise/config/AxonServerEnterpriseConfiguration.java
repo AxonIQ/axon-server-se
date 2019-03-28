@@ -30,7 +30,7 @@ import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
-import io.axoniq.axonserver.rest.UserControllerFacade;
+import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;

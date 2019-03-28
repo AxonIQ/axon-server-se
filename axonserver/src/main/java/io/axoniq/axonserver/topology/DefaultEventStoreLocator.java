@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.topology;
 
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -6,7 +15,9 @@ import io.axoniq.axonserver.message.event.EventStore;
 import javax.annotation.PostConstruct;
 
 /**
+ * Default implementation for an EventStoreLocator.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class DefaultEventStoreLocator implements EventStoreLocator {
     private final LocalEventStore localEventStore;
@@ -21,7 +32,7 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
     }
 
     @Override
-    public boolean isMaster(String nodeName, String contextName) {
+    public boolean isLeader(String nodeName, String contextName) {
         return true;
     }
 
@@ -32,8 +43,4 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
         return null;
     }
 
-    @Override
-    public String getMaster(String context) {
-        return null;
-    }
 }

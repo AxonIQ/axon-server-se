@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.component.ComponentItems;
@@ -35,7 +44,10 @@ import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 
 /**
+ * REST controller to retrieve information about subscribed commands and to dispatch commands.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 @RestController("CommandRestController")
 @RequestMapping("/v1")

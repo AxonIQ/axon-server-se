@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -44,7 +53,10 @@ import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 
 /**
+ * REST endpoint to retrieve and store events and snapshots.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 @RestController("EventsRestController")
 @RequestMapping("/v1")
