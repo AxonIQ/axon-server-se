@@ -7,6 +7,10 @@ import java.io.IOException;
 
 import static io.axoniq.cli.AxonIQCliCommand.*;
 
+/**
+ * @author Greg Woods
+ * @since 4.2
+ */
 public class DeleteEvents{
     public static void run(String[] args) throws IOException {
         // check args

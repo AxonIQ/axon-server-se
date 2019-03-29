@@ -99,5 +99,8 @@ public interface EventStore {
      */
     long nextToken();
 
+    /**
+     * Deletes all event data in the Event Store (Only intended for development environments).
+     */
     void deleteAllEventData();
 }

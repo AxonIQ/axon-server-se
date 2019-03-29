@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Rest calls for convenience in development/test environments
+ * Rest calls for convenience in development/test environments. These endpoints are only available when development
+ * mode is active.
  * @author Greg Woods
+ * @since 4.2
  */
 @RestController("DevelopmentRestController")
 @ConditionalOnProperty("axoniq.axonserver.devtools.enabled")
@@ -21,8 +23,11 @@ public class DevelopmentRestController {
     @Autowired
     private DefaultEventStoreLocator eventStoreLocator;
 
+    /**
+     * REST endpoint handling requests to reset the events and snapshots in Axon Server
+     */
     @DeleteMapping("delete-events")
-    @ApiOperation(value="Clears all event data, saga data and tracking projection tokens from the cluster", notes = "Only for development/test environments.")
+    @ApiOperation(value="Clears all event and snapshot data from Axon Server", notes = "Only for development/test environments.")
     public void resetEventStore(){
         eventStoreLocator.getEventStore("default").deleteAllEventData("default");
     }

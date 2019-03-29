@@ -158,7 +158,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void deleteAllEventData() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Development mode deletion is not supported in clustered environments");
     }
 
     private void removeSegment(long segment) {

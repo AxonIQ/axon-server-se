@@ -20,6 +20,6 @@ public class JdbcSnapshotStore extends JdbcAbstractStore{
 
     @Override
     public void deleteAllEventData() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Development mode deletion is not supported in Jdbc backed snapshot stores");
     }
 }

@@ -48,6 +48,9 @@ public class NodeConfiguration {
         this.ssl = ssl;
     }
 
+    /**
+     * @return whether development mode is enabled
+     */
     public boolean isDevelopmentMode() {
         return developmentMode;
     }
