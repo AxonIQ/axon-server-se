@@ -87,7 +87,7 @@ public class ClusterControllerTest {
             }
         };
         ClusterNode clusterNode = new ClusterNode("MyName", "LAPTOP-1QH9GIHL.axoniq.io", "LAPTOP-1QH9GIHL.axoniq.net", 8124, 8224, 8024);
-        clusterNode.addContext(context, "MyName",true, true);
+        clusterNode.addContext(context, "MyName");
         entityManager.persist(clusterNode);
 
         MessagingPlatformConfiguration messagingPlatformConfiguration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
@@ -181,7 +181,7 @@ public class ClusterControllerTest {
         List<ClusterNode> clusterNodes = new ArrayList<>();
         clusterNodes.add(new ClusterNode("MyName", "hostName", "internalHostName", 0, 0, 0));
         Context context = new Context(Topology.DEFAULT_CONTEXT);
-        clusterNodes.get(0).addContext(context, "MyName", true, true);
+        clusterNodes.get(0).addContext(context, "MyName");
         testSubject.start();
         when(nodeSelectionStrategy.selectNode(any(), any(), any())).thenReturn("Dummy");
         ClusterNode node = testSubject.findNodeForClient("client", "component", Topology.DEFAULT_CONTEXT);
