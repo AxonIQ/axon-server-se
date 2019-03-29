@@ -52,6 +52,11 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         forEach((key, value) -> completeForApplication(value, applicationDisconnected.getClient()));
     }
 
+    @EventListener
+    public void on(TopologyEvents.QueryHandlerDisconnected queryHandlerDisconnected) {
+        forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClient()));
+    }
+
     private void completeForApplication(QueryInformation entry, String client) {
         if( entry.waitingFor(client) && entry.completeWithError(client, ErrorCode.CONNECTION_TO_HANDLER_LOST,
                                                                 format("Connection to handler %s lost", client))) {
