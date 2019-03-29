@@ -20,7 +20,7 @@ import java.util.stream.StreamSupport;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ProcessorsInfoTargetTest {
     private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget();

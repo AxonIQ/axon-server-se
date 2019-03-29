@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.util.CountingStreamObserver;
-import io.grpc.stub.StreamObserver;
 import org.junit.*;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,7 +18,7 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FlowControlledStreamObserverTest {
     private FlowControlledStreamObserver<String> testSubject;

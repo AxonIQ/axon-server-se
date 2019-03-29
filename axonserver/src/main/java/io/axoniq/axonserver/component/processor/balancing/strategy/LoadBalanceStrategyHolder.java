@@ -15,7 +15,8 @@ import io.axoniq.axonserver.serializer.Printable;
 import java.util.Set;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public interface LoadBalanceStrategyHolder {
 

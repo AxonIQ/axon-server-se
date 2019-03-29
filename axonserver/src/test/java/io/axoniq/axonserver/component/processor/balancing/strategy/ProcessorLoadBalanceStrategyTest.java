@@ -22,7 +22,7 @@ import java.util.Map;
 import static org.mockito.Mockito.mock;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ProcessorLoadBalanceStrategyTest {
 

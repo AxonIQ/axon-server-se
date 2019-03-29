@@ -11,7 +11,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class RaftUserControllerFacade implements UserControllerFacade {
 

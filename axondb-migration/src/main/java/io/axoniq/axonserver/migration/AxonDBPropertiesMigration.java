@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AxonDBPropertiesMigration {
     public static final Map<String, AxonServerProperty> propertyMap = new HashMap<>();

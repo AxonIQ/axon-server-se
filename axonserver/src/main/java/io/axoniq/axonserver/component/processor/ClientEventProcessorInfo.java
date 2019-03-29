@@ -12,7 +12,8 @@ package io.axoniq.axonserver.component.processor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 /**
- * Author: marc
+ * Holder for event processor information for a client.
+ * author Marc Gathier
  */
 public class ClientEventProcessorInfo {
 

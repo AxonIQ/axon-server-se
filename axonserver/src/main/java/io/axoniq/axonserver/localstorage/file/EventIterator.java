@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public abstract class EventIterator implements Iterator<EventInformation>, AutoCloseable {
     protected long currentSequenceNumber;

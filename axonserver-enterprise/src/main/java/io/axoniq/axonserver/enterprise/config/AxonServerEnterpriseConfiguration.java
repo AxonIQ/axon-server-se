@@ -40,7 +40,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Configuration
 @AutoConfigureBefore(AxonServerStandardConfiguration.class)

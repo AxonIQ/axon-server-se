@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @JsonIgnoreProperties(ignoreUnknown=true)
 public class ContextNode {

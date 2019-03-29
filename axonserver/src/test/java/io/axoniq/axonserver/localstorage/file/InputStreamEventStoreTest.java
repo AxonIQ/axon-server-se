@@ -27,7 +27,7 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InputStreamEventStoreTest {
     private InputStreamEventStore testSubject;

@@ -7,7 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @ConfigurationProperties(prefix = "axoniq.axonserver.replication")
 @Configuration

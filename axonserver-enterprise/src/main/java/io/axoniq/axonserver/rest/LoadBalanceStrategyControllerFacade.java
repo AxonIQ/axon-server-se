@@ -4,7 +4,7 @@ import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrat
 import io.axoniq.axonserver.serializer.Printable;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface LoadBalanceStrategyControllerFacade {
 

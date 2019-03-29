@@ -20,7 +20,8 @@ import org.springframework.stereotype.Service;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @Service
 public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServiceImplBase {

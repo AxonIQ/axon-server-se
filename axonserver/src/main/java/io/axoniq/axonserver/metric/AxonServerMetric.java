@@ -10,7 +10,9 @@
 package io.axoniq.axonserver.metric;
 
 /**
- * Author: marc
+ * Base definition of a  metric used for monitoring durations.
+ * @author Marc Gathier
+ * @since 4.0
  */
 public interface AxonServerMetric {
 

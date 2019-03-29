@@ -18,7 +18,7 @@ import java.io.IOException;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SerializedCommandResponseTest {
     private SerializedCommandResponse testSubject;

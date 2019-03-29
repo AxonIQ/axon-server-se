@@ -26,7 +26,7 @@ import java.sql.SQLException;
 import javax.persistence.EntityManager;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 @ConditionalOnProperty("axoniq.axonserver.axondb.datasource")

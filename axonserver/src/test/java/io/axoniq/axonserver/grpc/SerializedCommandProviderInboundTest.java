@@ -9,18 +9,16 @@
 
 package io.axoniq.axonserver.grpc;
 
-import com.google.protobuf.Message;
 import io.axoniq.axonserver.grpc.command.Command;
 import org.junit.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SerializedCommandProviderInboundTest {
 

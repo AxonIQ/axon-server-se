@@ -12,7 +12,7 @@ package io.axoniq.axonserver.message.event;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class NoOpStreamObserver<T> implements StreamObserver<T> {
 

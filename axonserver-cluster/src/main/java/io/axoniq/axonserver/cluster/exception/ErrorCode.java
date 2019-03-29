@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.cluster.exception;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public enum ErrorCode {
     DIRECTORY_CREATION_FAILED,

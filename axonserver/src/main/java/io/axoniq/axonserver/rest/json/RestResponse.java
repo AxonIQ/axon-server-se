@@ -13,7 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import org.springframework.http.ResponseEntity;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RestResponse {
     private final boolean success;

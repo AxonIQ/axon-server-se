@@ -31,7 +31,7 @@ import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LocalEventStorageEngineTest {
     private LocalEventStore testSubject;

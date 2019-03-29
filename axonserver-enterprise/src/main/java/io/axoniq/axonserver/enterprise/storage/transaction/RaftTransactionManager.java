@@ -25,7 +25,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * Implemementation of {@link StorageTransactionManager} that replicates data using the raft protocol
+ *
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class RaftTransactionManager implements StorageTransactionManager {
     private final Logger logger = LoggerFactory.getLogger(RaftTransactionManager.class);

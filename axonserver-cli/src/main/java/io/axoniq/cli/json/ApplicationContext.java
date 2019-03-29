@@ -12,7 +12,7 @@ package io.axoniq.cli.json;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ApplicationContext {
     private String context;

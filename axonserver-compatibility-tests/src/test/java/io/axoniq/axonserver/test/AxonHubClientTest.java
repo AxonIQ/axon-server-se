@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AxonHubClientTest {
     private AxonServerFixture fixture = new AxonServerFixture();

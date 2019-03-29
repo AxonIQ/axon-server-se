@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Repository
 public class SimpleLoadBalanceStrategyHolder implements LoadBalanceStrategyHolder {

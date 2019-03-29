@@ -19,7 +19,7 @@ import static io.axoniq.cli.CommandOptions.CONTEXT;
 import static io.axoniq.cli.CommandOptions.NODENAME;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AddNodeToContext extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {
