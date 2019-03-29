@@ -93,12 +93,12 @@ public interface EventStorageEngine {
     }
 
     /**
-     * Find events for an aggregate and execute the consumer for each event.
+     * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
      * @param aggregateId the aggregate identifier
      * @param actualMinSequenceNumber the first sequence number to retrieve
      * @param eventConsumer the consumer to apply for each event
      */
-    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer);
+    void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer);
 
     /**
      * Find events for an aggregate and execute the consumer for each event.
@@ -108,7 +108,7 @@ public interface EventStorageEngine {
      * @param maxResults maximum number of events to apply
      * @param eventConsumer the consumer to apply for each event
      */
-    void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
+    void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer);
 
 
     /**

@@ -47,14 +47,14 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber,
-                                    Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+                                          Consumer<SerializedEvent> eventConsumer) {
 
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber,
-                                    int maxResults, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber,
+                                          int maxResults, Consumer<SerializedEvent> eventConsumer) {
 
     }
 

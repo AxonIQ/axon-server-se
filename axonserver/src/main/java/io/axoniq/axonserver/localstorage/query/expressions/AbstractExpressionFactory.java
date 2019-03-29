@@ -9,11 +9,11 @@
 
 package io.axoniq.axonserver.localstorage.query.expressions;
 
-import io.axoniq.axondb.query.QueryElement;
 import io.axoniq.axonserver.localstorage.query.Expression;
 import io.axoniq.axonserver.localstorage.query.ExpressionFactory;
 import io.axoniq.axonserver.localstorage.query.ExpressionRegistry;
 import io.axoniq.axonserver.localstorage.query.QueryExecutionException;
+import io.axoniq.axonserver.queryparser.QueryElement;
 
 import java.util.List;
 import java.util.Optional;

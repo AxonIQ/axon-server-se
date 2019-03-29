@@ -40,9 +40,9 @@
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.axoniq.axondb</groupId>
+            <groupId>io.axoniq.axonserver</groupId>
             <artifactId>query-parser</artifactId>
-            <version>1.3.1</version>
+            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

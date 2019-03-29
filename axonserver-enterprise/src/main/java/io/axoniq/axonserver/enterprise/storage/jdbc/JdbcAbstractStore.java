@@ -261,7 +261,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidWithinRangeDesc)) {
@@ -280,7 +280,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidAsc)) {

@@ -108,7 +108,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber);
         boolean delegate = true;
         if( ! positionInfos.isEmpty()) {
@@ -117,7 +117,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
 
         if( delegate && next != null) {
-            next.streamByAggregateId(aggregateId, firstSequenceNumber, eventConsumer);
+            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, eventConsumer);
         }
 
         positionInfos.keySet()
@@ -128,8 +128,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
-                                    int maxResults, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
+                                          int maxResults, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber, maxSequenceNumber, maxResults);
         AtomicInteger toDo = new AtomicInteger(maxResults);
         if( ! positionInfos.isEmpty()) {
@@ -145,7 +145,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
 
         if( toDo.get() > 0 && next != null) {
-            next.streamByAggregateId(aggregateId, firstSequenceNumber, maxSequenceNumber, toDo.get(), eventConsumer);
+            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, maxSequenceNumber, toDo.get(), eventConsumer);
         }
 
 

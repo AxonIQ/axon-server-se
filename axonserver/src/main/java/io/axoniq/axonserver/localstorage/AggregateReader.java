@@ -33,7 +33,7 @@ public class AggregateReader {
                 actualMinSequenceNumber = snapshot.get().asEvent().getAggregateSequenceNumber() + 1;
             }
         }
-        eventStorageEngine.streamByAggregateId(aggregateId, actualMinSequenceNumber, eventConsumer);
+        eventStorageEngine.processEventsPerAggregate(aggregateId, actualMinSequenceNumber, eventConsumer);
 
     }
     public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {

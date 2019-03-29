@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.localstorage.query;
 
-import io.axoniq.axondb.query.Query;
-import io.axoniq.axondb.query.QueryElement;
+import io.axoniq.axonserver.queryparser.Query;
+import io.axoniq.axonserver.queryparser.QueryElement;
 
 import java.util.Collections;
 import java.util.LinkedList;
