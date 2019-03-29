@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage.advancedstorage;
 
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -26,8 +26,8 @@ public class MultitierDatafileEventStoreFactory extends DatafileEventStoreFactor
     }
 
     @Override
-    public EventStore createEventManagerChain(String context) {
-        SegmentBasedEventStore base = (SegmentBasedEventStore) super.createEventManagerChain(context);
+    public EventStorageEngine createEventStorageEngine(String context) {
+        SegmentBasedEventStore base = (SegmentBasedEventStore) super.createEventStorageEngine(context);
         if( advancedStorageProperties.getEventSecondary().getStorage() != null) {
             IndexManager altIndexManager = new IndexManager(context, advancedStorageProperties.getEventSecondary());
             AlternateLocationEventStore third = new AlternateLocationEventStore(new EventTypeContext(context, EventType.EVENT), altIndexManager,

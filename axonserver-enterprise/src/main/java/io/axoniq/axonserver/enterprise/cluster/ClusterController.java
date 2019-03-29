@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
-import io.axoniq.axonserver.config.ClusterConfiguration;
-import io.axoniq.axonserver.config.FlowControl;
+import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
+import io.axoniq.axonserver.enterprise.config.FlowControl;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
@@ -12,8 +12,8 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.features.Feature;
-import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.licensing.Feature;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -30,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import javax.persistence.EntityManager;
 
 /**
@@ -53,6 +51,7 @@ public class ClusterController implements SmartLifecycle {
 
     private final Logger logger = LoggerFactory.getLogger(ClusterController.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
+    private final ClusterConfiguration clusterConfiguration;
     private final EntityManager entityManager;
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
@@ -68,6 +67,7 @@ public class ClusterController implements SmartLifecycle {
     private volatile boolean running;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
+                             ClusterConfiguration clusterConfiguration,
                              EntityManager entityManager,
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
@@ -78,6 +78,7 @@ public class ClusterController implements SmartLifecycle {
                              FeatureChecker limits
     ) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+        this.clusterConfiguration = clusterConfiguration;
         this.entityManager = entityManager;
         this.stubFactory = stubFactory;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
@@ -156,7 +157,6 @@ public class ClusterController implements SmartLifecycle {
             logger.debug("Start cluster controller");
 
             nodes().forEach(clusterNode -> startRemoteConnection(clusterNode, true));
-            ClusterConfiguration clusterConfiguration = messagingPlatformConfiguration.getCluster();
 
             reconnectExecutor.scheduleWithFixedDelay(this::checkConnections,
                                                      clusterConfiguration.getConnectionCheckDelay(),
@@ -164,10 +164,6 @@ public class ClusterController implements SmartLifecycle {
                                                      TimeUnit.MILLISECONDS);
         }
         running = true;
-    }
-
-    public boolean isClustered() {
-        return Feature.CLUSTERING.enabled(limits);
     }
 
     private void checkCurrentNodeSaved() {
@@ -442,11 +438,11 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public FlowControl getCommandFlowControl() {
-        return messagingPlatformConfiguration.getCommandFlowControl();
+        return clusterConfiguration.getCommandFlowControl();
     }
 
     public FlowControl getQueryFlowControl() {
-        return messagingPlatformConfiguration.getQueryFlowControl();
+        return clusterConfiguration.getQueryFlowControl();
     }
 
     public void publishEvent(Object event) {
@@ -454,7 +450,7 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public long getConnectionWaitTime() {
-        return messagingPlatformConfiguration.getCluster().getConnectionWaitTime();
+        return clusterConfiguration.getConnectionWaitTime();
     }
 
     public void requestDelete(String node) {

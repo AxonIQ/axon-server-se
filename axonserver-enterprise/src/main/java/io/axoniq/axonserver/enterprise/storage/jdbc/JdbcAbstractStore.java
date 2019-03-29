@@ -6,7 +6,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
@@ -37,7 +37,7 @@ import javax.sql.DataSource;
 /**
  * @author Marc Gathier
  */
-public abstract class JdbcAbstractStore implements EventStore {
+public abstract class JdbcAbstractStore implements EventStorageEngine {
 
     private final String maxGlobalIndex = String.format("select max(global_index) from %s", getTableName());
     private final String createTable = String.format("create table %s (global_index bigint not null, aggregate_identifier varchar(255) not null, event_identifier varchar(255) not null, meta_data blob, payload blob not null, payload_revision varchar(255), payload_type varchar(255) not null, sequence_number bigint not null, time_stamp bigint not null, type varchar(255) not null, primary key (global_index))", getTableName());
@@ -178,27 +178,6 @@ public abstract class JdbcAbstractStore implements EventStore {
         }
     }
 
-    @Override
-    public boolean streamEvents(long token,
-                                Predicate<SerializedEventWithToken> onEvent) {
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(
-                     readEvents)) {
-            SerializedEventWithToken event;
-            preparedStatement.setLong(1, token);
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    event = readEventWithToken(resultSet);
-                    if (!onEvent.test(event)) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        } catch (SQLException e) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
-        }
-    }
 
     @Override
     public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
@@ -282,7 +261,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidWithinRangeDesc)) {
@@ -301,7 +280,7 @@ public abstract class JdbcAbstractStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidAsc)) {

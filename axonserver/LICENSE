@@ -74,27 +74,32 @@ Agreement, a License to the Software.
 all right, title and interest in and to the AxonIQ Software, and except
 as expressly set forth in Sections 2.1, and 3.1 of this Agreement, no
 other license to the AxonIQ Software is granted to you under this
-Agreement, by implication, estoppel or otherwise. You agree not to: (i)
-reverse engineer or decompile, decrypt, disassemble or otherwise reduce
-any  AxonIQ Software provided to you in Object Code, or any portion
-thereof, to  Source Code, except and only to the extent any such
-restriction is prohibited  by applicable law, (ii) except as expressly
-permitted in this Agreement,  prepare  derivative works from, modify,
-copy or use the AxonIQ Software Object  Code or the Commercial Software
-Source Code in any manner; (iii) except as  expressly permitted in
-Section 2.1 above, transfer, sell, rent, lease,  distribute, sublicense,
-loan or otherwise transfer, AxonIQ Software Object  Code, in whole or in
-part, to any third party; (iv) use AxonIQ Software  Object Code for
-providing time-sharing services, any software-as-a-service,  service
-bureau services or as part of an application services provider or  other
-service offering (collectively, "SaaS Offering") where obtaining access
-to the AxonIQ Software or the features and functions of the AxonIQ
-Software  is a primary reason or substantial motivation for users of the
-SaaS Offering  to access and/or use the SaaS Offering ("Prohibited SaaS
-Offering"); (v)  circumvent the limitations on use of AxonIQ Software
-provided to you in  Object Code format that are imposed or preserved by
-any License Key, or (vi)  alter or remove any Marks and Notices in the
-AxonIQ Software. If you have any question as to whether a specific SaaS
+Agreement, by implication, estoppel or otherwise. You agree not to:
+    (i) reverse engineer or decompile, decrypt, disassemble or otherwise reduce
+        any  AxonIQ Software provided to you in Object Code, or any portion
+        thereof, to  Source Code, except and only to the extent any such
+        restriction is prohibited  by applicable law,
+    (ii) except as expressly
+        permitted in this Agreement,  prepare  derivative works from, modify,
+        copy or use the AxonIQ Software Object  Code or the Commercial Software
+        Source Code in any manner;
+    (iii) except as  expressly permitted in
+        Section 2.1 above, transfer, sell, rent, lease,  distribute, sublicense,
+        loan or otherwise transfer, AxonIQ Software Object  Code, in whole or in
+        part, to any third party;
+    (iv) use AxonIQ Software  Object Code for
+        providing time-sharing services, any software-as-a-service,  service
+        bureau services or as part of an application services provider or  other
+        service offering (collectively, "SaaS Offering") where obtaining access
+        to the AxonIQ Software or the features and functions of the AxonIQ
+        Software  is a primary reason or substantial motivation for users of the
+        SaaS Offering  to access and/or use the SaaS Offering ("Prohibited SaaS
+        Offering");
+    (v) circumvent the limitations on use of AxonIQ Software
+        provided to you in  Object Code format that are imposed or preserved by
+        any License Key, or
+    (vi)  alter or remove any Marks and Notices in the AxonIQ Software.
+If you have any question as to whether a specific SaaS
 Offering constitutes a Prohibited SaaS Offering, or are interested in
 obtaining AxonIQ's permission to engage in commercial or non-commercial
 distribution of the AxonIQ Software, please contact license@axoniq.io.

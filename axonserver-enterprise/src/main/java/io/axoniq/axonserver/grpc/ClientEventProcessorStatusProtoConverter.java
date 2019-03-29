@@ -4,8 +4,8 @@ import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 
 /**
- * Converts between ClientEventProcessorInfo and {@link ClientEventProcessorStatus} proto messages
- * Author: marc
+ * Converts between {@link ClientEventProcessorInfo} and {@link ClientEventProcessorStatus} proto messages
+ * @author Marc Gathier
  */
 public class ClientEventProcessorStatusProtoConverter {
 

@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.cluster.replication.file;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface StorageCallback  {
     boolean onCompleted(long firstToken);

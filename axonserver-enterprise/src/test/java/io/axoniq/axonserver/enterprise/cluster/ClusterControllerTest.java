@@ -5,14 +5,14 @@ import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
-import io.axoniq.axonserver.config.ClusterConfiguration;
+import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
@@ -47,7 +47,7 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(SpringRunner.class)
 @DataJpaTest
@@ -97,7 +97,7 @@ public class ClusterControllerTest {
         messagingPlatformConfiguration.setHostname("LAPTOP-1QH9GIHL");
         messagingPlatformConfiguration.setDomain("axoniq.io");
         messagingPlatformConfiguration.setInternalDomain("axoniq.net");
-        messagingPlatformConfiguration.setCluster(new ClusterConfiguration());
+        ClusterConfiguration clusterConfiguration = new ClusterConfiguration();
 
         StubFactory stubFactory = new StubFactory() {
             @Override
@@ -121,7 +121,7 @@ public class ClusterControllerTest {
                                                                                                                                Node.newBuilder().setNodeId("MyName").setNodeName("MyName").build())));
         CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
-        testSubject = new ClusterController(messagingPlatformConfiguration, entityManager,
+        testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration, entityManager,
                                             stubFactory, nodeSelectionStrategy, mockRaftGroupRepositoryManager,
                                             queryDispatcher, commandDispatcher,
                                             eventPublisher, limits);

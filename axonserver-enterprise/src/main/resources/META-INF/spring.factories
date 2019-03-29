@@ -1,5 +1,5 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  io.axoniq.axonserver.config.AxonServerFreeConfiguration,\
+  io.axoniq.axonserver.config.AxonServerStandardConfiguration,\
   io.axoniq.axonserver.config.MetricsConfiguration,\
   io.axoniq.axonserver.enterprise.config.AxonServerEnterpriseConfiguration,\
   io.axoniq.axonserver.enterprise.storage.jdbc.JdbcEventStoreFactory,\

@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface ProcessorStore {
 

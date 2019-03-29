@@ -1,7 +1,14 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage.query;
 
-import io.axoniq.axondb.query.EventStoreQueryParser;
-import io.axoniq.axondb.query.Query;
 import io.axoniq.axonserver.grpc.event.ColumnsResponse;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -19,6 +26,8 @@ import io.axoniq.axonserver.localstorage.query.result.EventExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.MapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.NumericExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.TimestampExpressionResult;
+import io.axoniq.axonserver.queryparser.EventStoreQueryParser;
+import io.axoniq.axonserver.queryparser.Query;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +80,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 sender = new Sender(queryEventsRequest.getNumberOfPermits(),
                                     queryEventsRequest.getLiveEvents(),
                                     System.currentTimeMillis() + timeout);
-                long connectionToken = eventWriteStorage.getLastToken();
+                long connectionToken = eventStreamReader.getLastToken();
                 long minConnectionToken = StringUtils.isEmpty(queryEventsRequest.getQuery()) ? Math.max(
                         connectionToken - defaultLimit, 0) : 0;
                 String queryString = StringUtils.isEmpty(queryEventsRequest.getQuery()) ?

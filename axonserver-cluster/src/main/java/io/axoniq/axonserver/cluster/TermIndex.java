@@ -3,7 +3,7 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class TermIndex {
     private final long term;
