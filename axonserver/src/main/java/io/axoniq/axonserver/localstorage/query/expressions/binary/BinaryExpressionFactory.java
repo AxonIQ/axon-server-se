@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.query.expressions.binary;
 
-import io.axoniq.axondb.query.QueryElement;
+import io.axoniq.axonserver.queryparser.QueryElement;
 import io.axoniq.axonserver.localstorage.query.Expression;
 import io.axoniq.axonserver.localstorage.query.ExpressionRegistry;
 import io.axoniq.axonserver.localstorage.query.PipeExpression;

@@ -23,7 +23,7 @@ import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServerBoxMapping;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServerPopupMapping;
 import io.axoniq.axonserver.topology.Topology;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.PrintWriter;
@@ -51,7 +51,7 @@ public class OverviewModel {
         this.fonts = new Fonts();
     }
 
-    @RequestMapping("/v1/public/overview")
+    @GetMapping("/v1/public/overview")
     public SvgOverview overview() {
         boolean multiContext = clusterController.isMultiContext();
         AxonServerBoxMapping serverRegistry = new AxonServerBoxMapping(multiContext, clusterController.getName(), fonts);

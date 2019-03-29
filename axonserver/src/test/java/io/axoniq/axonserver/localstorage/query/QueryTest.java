@@ -10,8 +10,8 @@
 package io.axoniq.axonserver.localstorage.query;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axondb.query.EventStoreQueryParser;
-import io.axoniq.axondb.query.Query;
+import io.axoniq.axonserver.queryparser.EventStoreQueryParser;
+import io.axoniq.axonserver.queryparser.Query;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;

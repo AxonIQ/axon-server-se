@@ -22,21 +22,63 @@ public class StorageProperties {
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
     private static final String OLD_PATH_FORMAT = "%s/%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
+    /**
+     * File suffix for events files.
+     */
     private String eventsSuffix = ".events";
+    /**
+     * File suffix for index files.
+     */
     private String indexSuffix = ".index";
+    /**
+     * File suffix for bloom files.
+     */
     private String bloomIndexSuffix = ".bloom";
 
+    /**
+     * Size for new storage segments.
+     */
     private long segmentSize = 1024 * 1024 * 256L;
 
+    /**
+     * Location for segment files. Will create subdirectory per context.
+     */
     private String storage = "./data";
+    /**
+     * False-positive percentage allowed for bloom index. Decreasing the value increases the size of the bloom indexes.
+     */
     private float bloomIndexFpp = 0.03f;
+    /**
+     * Interval to force syncing files to disk (ms)
+     */
     private long forceInterval = 1000;
+    /**
+     * Number of segments to validate to on startup after unclean shutdown.
+     */
     private int validationSegments = 10;
+    /**
+     * Number of segments to keep in primary location (only for multitier storage option)
+     */
     private int numberOfSegments = 5;
+    /**
+     * Delay to clear ByfeBuffers from off-heap memory for writable segments
+     */
     private int primaryCleanupDelay = 60;
+    /**
+     * Delay to clear ByfeBuffers from off-heap memory for read-only segments
+     */
     private int secondaryCleanupDelay = 15;
+    /**
+     * Maximum number of indexes to keep open in memory
+     */
     private int maxIndexesInMemory = 50;
+    /**
+     * Maximum number of bloom filters to keep in memory
+     */
     private int maxBloomFiltersInMemory = 100;
+    /**
+     * Interval (ms) to check if there are files that are complete and can be closed
+     */
     private long syncInterval = 1000;
 
     /**

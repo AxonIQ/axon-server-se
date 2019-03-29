@@ -30,11 +30,11 @@ public class MessagingPlatformConfiguration {
     /**
      * gRPC port for axonserver platform
      */
-    private int port = 8000;
+    private int port = 8124;
     /**
      * gRPC port for communication between messing platform nodes
      */
-    private int internalPort = 8001;
+    private int internalPort = 8224;
     /**
      * Node name of this axonserver platform node, if not set defaults to the hostname
      */
@@ -62,8 +62,17 @@ public class MessagingPlatformConfiguration {
      */
     private int httpPort;
 
+    /**
+     * Timeout for keep alive messages on gRPC connections.
+     */
     private long keepAliveTimeout = 5000;
-    private long keepAliveTime = 0;
+    /**
+     * Interval at which AxonServer will send timeout messages. Set to 0 to disbable gRPC timeout checks
+     */
+    private long keepAliveTime = 2500;
+    /**
+     * Minimum keep alive interval accepted by this end of the gRPC connection.
+     */
     private long minKeepAliveTime = 1000;
 
 
@@ -78,21 +87,23 @@ public class MessagingPlatformConfiguration {
      */
     private int metricsSynchronizationRate;
 
+    /**
+     * Expiry interval (minutes) of metrics
+     */
     private int metricsInterval =15;
 
-    /**
-     * The contexts that this hub node will be connected to. Valid values are
-     * <tt>all-contexts</tt>, <tt>node-contexts</tt> and <tt>default-context</tt>.
-     */
-    private String connect2contexts = "node-contexts";
-
     private final SystemInfoProvider systemInfoProvider;
-    private int internalExecutorThreads;
-    private int executorThreads ;
-    private int bossThreads;
-    private int workerThreads;
+    /**
+     * Location where the control DB backups are created.
+     */
     private String controldbBackupLocation = ".";
+    /*
+     * Maximum inbound message size for gRPC (0 keeps gRPC default size)
+     */
     private int maxMessageSize = 0;
+    /**
+     * Location where AxonServer creates its pid file.
+     */
     private String pidFileLocation = ".";
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
@@ -219,14 +230,6 @@ public class MessagingPlatformConfiguration {
         this.metricsInterval = metricsInterval;
     }
 
-    public String getConnect2contexts() {
-        return connect2contexts;
-    }
-
-    public void setConnect2contexts(String connect2contexts) {
-        this.connect2contexts = connect2contexts;
-    }
-
     public long getKeepAliveTimeout() {
         return keepAliveTimeout;
     }
@@ -249,38 +252,6 @@ public class MessagingPlatformConfiguration {
 
     public void setMinKeepAliveTime(long minKeepAliveTime) {
         this.minKeepAliveTime = minKeepAliveTime;
-    }
-
-    public int getInternalExecutorThreads() {
-        return internalExecutorThreads;
-    }
-
-    public void setInternalExecutorThreads(int internalExecutorThreads) {
-        this.internalExecutorThreads = internalExecutorThreads;
-    }
-
-    public int getExecutorThreads() {
-        return executorThreads;
-    }
-
-    public void setExecutorThreads(int executorThreads) {
-        this.executorThreads = executorThreads;
-    }
-
-    public int getBossThreads() {
-        return bossThreads;
-    }
-
-    public void setBossThreads(int bossThreads) {
-        this.bossThreads = bossThreads;
-    }
-
-    public int getWorkerThreads() {
-        return workerThreads;
-    }
-
-    public void setWorkerThreads(int workerThreads) {
-        this.workerThreads = workerThreads;
     }
 
     public String getControldbBackupLocation() {

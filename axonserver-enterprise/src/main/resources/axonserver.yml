@@ -27,18 +27,7 @@ spring:
 
 axoniq:
   axonserver:
-    port: 8124
-    internal-port: 8224
-    accesscontrol:
-      enabled: false
-    ssl:
-      enabled: false
-    cluster:
-      enbaled: true
-    metrics-interval: 15
     metrics-synchronization-rate: 2500
-    connect2contexts: node-contexts
-    keep-alive-time: 2500
 
 logging:
   level:

@@ -13,10 +13,6 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "axoniq.axonserver.cluster")
 public class ClusterConfiguration {
     /**
-     * Cluster enabled
-     */
-    private boolean enabled;
-    /**
      * Delay before the first run of the connection checker (in ms.)
      */
     private long connectionCheckDelay = 1000;
@@ -100,14 +96,6 @@ public class ClusterConfiguration {
 
     public void setRebalanceDelay(long rebalanceDelay) {
         this.rebalanceDelay = rebalanceDelay;
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
     }
 
     public long getConnectionWaitTime() {
