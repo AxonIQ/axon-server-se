@@ -13,6 +13,8 @@ import java.util.function.Supplier;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
+ * Implementation of {@link WaitStrategy} that waits for the server node to be updated in specific number of round.
+ *
  * @author Sara Pellegrini
  * @since 4.0
  */
@@ -22,6 +24,15 @@ public class MultipleUpdateRound implements WaitStrategy {
 
     private final WaitStrategy round;
 
+    /**
+     * Creates an instance with the default configuration.
+     * The max number of round is defined from raft group properties,
+     * and the {@link WaitStrategy} for the single round is implemented by the {@link FastUpdateRound}.
+     *
+     * @param raftGroup the raftGroup
+     * @param currentTime supplier for current milliseconds
+     * @param registerMatchIndexListener registration function to monitor matchIndex updates for the node
+     */
     public MultipleUpdateRound(RaftGroup raftGroup,
                                Supplier<Long> currentTime,
                                Function<Consumer<Long>, Registration> registerMatchIndexListener) {
@@ -32,11 +43,23 @@ public class MultipleUpdateRound implements WaitStrategy {
     }
 
 
+    /**
+     * Creates an instance with the specified supplier for the max rounds number, and the {@link WaitStrategy} for a single round.
+     * @param maxRounds supplier of the max number of rounds admitted
+     * @param round the {@link WaitStrategy} for the single round
+     */
     public MultipleUpdateRound(Supplier<Integer> maxRounds, WaitStrategy round) {
         this.maxRounds = maxRounds;
         this.round = round;
     }
 
+    /**
+     * Returns a completable future that completes successfully when the server is updated within correct rounds number.
+     * If, after all the possible rounds the server is not up to date, the completable future completes exceptionally,
+     * with a {@link ServerTooSlowException}
+     *
+     * @return the completable future
+     */
     @Override
     public CompletableFuture<Void> await() {
         return startRound(0);
@@ -54,7 +77,10 @@ public class MultipleUpdateRound implements WaitStrategy {
             roundCompleted.get();
             return completedFuture(null);
         } catch (Exception e) {
-            return startRound(iteration+1);
+            if (e.getCause() instanceof  ServerTooSlowException){
+                return startRound(iteration+1);
+            }
+            return failedFuture(e);
         }
     }
 
