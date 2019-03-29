@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.cluster.exception;
 
 /**
+ * AxonServer error codes defined in cluster module
+ *
  * Author: marc
  */
 public enum ErrorCode {

@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 
 /**
+ * AxonServer's error code definitions.
+ *
  * @author Marc Gathier
  */
 public enum ErrorCode {

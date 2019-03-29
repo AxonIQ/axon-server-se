@@ -28,7 +28,7 @@ public class UpdateRoundTest {
     }
 
     @Test(expected = ReplicationTimeoutException.class)
-    public void updateFailsIfReplicationIsNoMoreActive() throws Throwable {
+    public void roundFailsIfReplicationIsNoMoreActive() throws Throwable {
         UpdateRound testSubject = new UpdateRound(() -> 100L, consumer -> () -> {});
         CompletableFuture<Void> future = testSubject.await();
         try {
