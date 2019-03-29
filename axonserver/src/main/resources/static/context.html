@@ -17,8 +17,6 @@
                     newContext: {nodes: []},
                     admin: globals.admin,
                     webSocketInfo: globals.webSocketInfo,
-                    selectedStorage: false,
-                    selectedMessaging: false,
                     nodes: []
                 }, mounted() {
                     this.loadContexts();
@@ -57,7 +55,7 @@
                             return;
                         }
                         if (confirm("Add node " + context.selectedNode + " to context " + context.context)) {
-                            axios.post("v1/context/" + context.context + "/" + context.selectedNode + "?storage=true&messaging=true").then(
+                            axios.post("v1/context/" + context.context + "/" + context.selectedNode).then(
                                     response => this.loadContexts()
                             )
                         }
@@ -150,8 +148,6 @@
                 <td>
                     <ul>
                         <li v-for="node in context.nodes"><span class="nodeName">{{node}}</span>
-                            <span v-if="!admin && node.messaging" class="messaging">Messaging</span>
-                            <span v-if="!admin && node.storage" class="storage">Storage</span>
                             <span v-if="admin" @click="deleteNodeFromContext(node,context)" title="Delete"><i
                                     class="far fa-trash-alt"></i></span></li>
                     </ul>

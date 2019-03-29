@@ -22,7 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * Cache for running commands.
+ * Cache for pending commands.
+ * Has a scheduled task to check for commands that are pending for longer than the configured timeout
+ * and will cancel these commands when timeout occurs.
  * @author Marc Gathier
  */
 @Component
@@ -43,7 +45,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
-        logger.debug("Checking timed out queries");
+        logger.debug("Checking timed out commands");
         long minTimestamp = clock.millis() - defaultCommandTimeout;
         Set<Entry<String, CommandInformation>> toDelete = entrySet().stream().filter(e -> e.getValue().getTimestamp() < minTimestamp).collect(
                 Collectors.toSet());

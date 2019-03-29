@@ -55,6 +55,12 @@
                                 </artifactItem>
                                 <artifactItem>
                                     <groupId>io.axoniq.axonserver</groupId>
+                                    <artifactId>axonserver-cli</artifactId>
+                                    <classifier>exec</classifier>
+                                    <destFileName>axonserver-cli.jar</destFileName>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>io.axoniq.axonserver</groupId>
                                     <artifactId>axonserver-migration</artifactId>
                                     <classifier>exec</classifier>
                                     <destFileName>axonserver-migration.jar</destFileName>
