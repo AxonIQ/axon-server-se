@@ -40,7 +40,7 @@ public class GrpcRaftConfigServiceTest {
     }
 
     @Test
-    public void joinClusterWhenLeader() {
+    public void followerReceiveJoinCluster() {
         isLeader = false;
         NodeInfo nodeInfo = NodeInfo.newBuilder().build();
         service.joinCluster(nodeInfo, fakeResponseObserver());
