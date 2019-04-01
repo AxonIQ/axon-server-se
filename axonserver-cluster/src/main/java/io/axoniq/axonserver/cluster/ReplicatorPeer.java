@@ -222,6 +222,7 @@ public class ReplicatorPeer {
                                           response.getResponseHeader().getNodeId());
                     updateCurrentTerm.accept(response.getTerm(), cause);
                 }
+                changeStateTo(new AppendEntryState());
             }
         }
 
