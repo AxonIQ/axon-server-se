@@ -4,7 +4,8 @@ import io.axoniq.axonserver.grpc.internal.Metric;
 import io.axoniq.axonserver.metric.AxonServerMetric;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.0
  */
 public class GrpcBackedMetric implements AxonServerMetric {
     private Metric metric;

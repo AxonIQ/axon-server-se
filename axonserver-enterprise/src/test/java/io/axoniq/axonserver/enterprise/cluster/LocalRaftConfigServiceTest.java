@@ -62,7 +62,7 @@ public class LocalRaftConfigServiceTest {
         public void addContext(String name, String... nodes) {
             io.axoniq.axonserver.enterprise.jpa.Context context = contextMap.computeIfAbsent(name, io.axoniq.axonserver.enterprise.jpa.Context::new);
             for (String node : nodes) {
-                nodeMap.computeIfAbsent(node, n -> createNode(n)).addContext(context, node + "/" + context, false, false);
+                nodeMap.computeIfAbsent(node, n -> createNode(n)).addContext(context, node + "/" + context);
             }
         }
 
@@ -102,7 +102,7 @@ public class LocalRaftConfigServiceTest {
                     });
                     newNodes.forEach((node, nodeInfo) -> {
                         if( !currentNodes.containsKey(node)) {
-                            clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel(), false, false);
+                            clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel());
                         }
                     });
 

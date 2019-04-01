@@ -3,7 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster.raftfacade;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.rest.UserControllerFacade;
+import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -11,7 +11,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class RaftUserControllerFacade implements UserControllerFacade {
 

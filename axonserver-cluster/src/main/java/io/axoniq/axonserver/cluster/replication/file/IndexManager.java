@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class IndexManager {
 

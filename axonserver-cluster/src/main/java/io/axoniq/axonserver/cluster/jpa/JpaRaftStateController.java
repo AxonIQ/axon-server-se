@@ -4,7 +4,8 @@ import io.axoniq.axonserver.cluster.ProcessorStore;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     private final String groupId;

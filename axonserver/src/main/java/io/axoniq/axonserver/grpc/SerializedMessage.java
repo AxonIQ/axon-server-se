@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc;
 
 import com.google.protobuf.AbstractMessage;
@@ -8,7 +17,9 @@ import com.google.protobuf.UnknownFieldSet;
 import java.util.Map;
 
 /**
- * Author: marc
+ * Base wrapper for gRPC messages that maintains serialized data to reduce time to write to stream.
+ *
+ * @author Marc Gathier
  */
 public abstract class SerializedMessage<T extends Message> extends AbstractMessage {
     protected abstract T wrapped();

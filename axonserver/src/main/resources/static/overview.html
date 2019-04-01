@@ -1,3 +1,12 @@
+<!--
+  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~ under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+
 <script src="js/overview.js"></script>
 
 <defs>
@@ -119,12 +128,6 @@
 </defs>
 
 <div id="overview">
-    <div v-if="!hasFeature('APPLICATION_OVERVIEW')" class="msg warning">
-        Overview is not allowed
-    </div>
-
-
-    <div v-if="hasFeature('APPLICATION_OVERVIEW')">
     <svg v-show="!component || component === ''" width="900" height="600">
 
         <filter id="f1" width="150%" height="150%">
@@ -154,6 +157,5 @@
         <component-commands :component="component" :context="context"></component-commands>
         <component-queries :component="component" :context="context"></component-queries>
         <component-processors :component="component" :context="context"></component-processors>
-    </div>
     </div>
 </div>

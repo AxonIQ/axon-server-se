@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
@@ -9,7 +18,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
@@ -21,7 +29,6 @@ public class EventWriteStorage {
 
     private final Map<String, Consumer<SerializedEventWithToken>> listeners = new ConcurrentHashMap<>();
     private final StorageTransactionManager storageTransactionManager;
-    private final AtomicLong lastCommitted = new AtomicLong(-1L);
 
 
     public EventWriteStorage( StorageTransactionManager storageTransactionManager) {
@@ -36,7 +43,6 @@ public class EventWriteStorage {
             storageTransactionManager.store(eventList).whenComplete((firstToken, cause) -> {
                 if( cause == null) {
                     completableFuture.complete(null);
-                    lastCommitted.set(firstToken + eventList.size() - 1);
 
                     if( ! listeners.isEmpty()) {
                         IntStream.range(0, eventList.size())
@@ -61,10 +67,6 @@ public class EventWriteStorage {
         } catch( RuntimeException re) {
             logger.warn("Failed to forward event", re);
         }
-    }
-
-    public long getLastToken() {
-        return storageTransactionManager.getLastToken();
     }
 
     private void validate(List<SerializedEvent> eventList) {

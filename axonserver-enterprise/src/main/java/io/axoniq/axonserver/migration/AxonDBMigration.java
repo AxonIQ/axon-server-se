@@ -26,7 +26,7 @@ import java.sql.SQLException;
 import javax.persistence.EntityManager;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 @ConditionalOnProperty("axoniq.axonserver.axondb.datasource")
@@ -107,7 +107,7 @@ public class AxonDBMigration implements SmartLifecycle {
                 }
 
                 ClusterNode clusterNode = entityManager.find(ClusterNode.class, node);
-                clusterNode.addContext(context, clusterNode.getName(), true, true);
+                clusterNode.addContext(context, clusterNode.getName());
             }
 
         }

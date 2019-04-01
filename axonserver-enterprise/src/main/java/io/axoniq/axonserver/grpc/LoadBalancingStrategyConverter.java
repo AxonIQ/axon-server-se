@@ -4,7 +4,8 @@ import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrat
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 
 /**
- * Author: marc
+ * Convert between JPA {@link LoadBalancingStrategy} object and Protobuf {@link LoadBalanceStrategy} object and vice versa.
+ * @author Marc Gathier
  */
 public class LoadBalancingStrategyConverter {
     public static LoadBalanceStrategy createLoadBalanceStrategy(LoadBalancingStrategy loadBalancingStrategy) {

@@ -3,7 +3,7 @@ package io.axoniq.axonserver.cluster.exception;
 /**
  * AxonServer error codes defined in cluster module
  *
- * Author: marc
+ * @author Marc Gathier
  */
 public enum ErrorCode {
 

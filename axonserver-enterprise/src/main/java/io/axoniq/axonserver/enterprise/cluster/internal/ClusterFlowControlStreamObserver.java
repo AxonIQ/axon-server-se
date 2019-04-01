@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
+import io.axoniq.axonserver.enterprise.config.FlowControl;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.Group;
@@ -48,7 +49,7 @@ public class ClusterFlowControlStreamObserver extends SendingStreamObserver<Conn
         }
     }
 
-    public void initCommandFlowControl(String name, io.axoniq.axonserver.config.FlowControl flowControl) {
+    public void initCommandFlowControl(String name, FlowControl flowControl) {
         remainingCommandPermits.set(flowControl.getInitialPermits()-
                                             flowControl.getThreshold());
         this.newCommandPermits = flowControl.getNewPermits();
@@ -59,7 +60,7 @@ public class ClusterFlowControlStreamObserver extends SendingStreamObserver<Conn
         onNext(ConnectorCommand.newBuilder().setFlowControl(InternalFlowControl.newBuilder(newCommandPermitsRequest.getFlowControl())
                 .setPermits(flowControl.getInitialPermits()).build()).build());
     }
-    public void initQueryFlowControl(String name, io.axoniq.axonserver.config.FlowControl flowControl) {
+    public void initQueryFlowControl(String name, FlowControl flowControl) {
         remainingQueryPermits.set(flowControl.getInitialPermits()-
                                           flowControl.getThreshold());
         this.newQueryPermits = flowControl.getNewPermits();

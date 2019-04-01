@@ -3,11 +3,10 @@ package io.axoniq.axonserver.enterprise.storage;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.AggregateReader;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SnapshotReader;
 import io.axoniq.axonserver.localstorage.SnapshotWriteStorage;
 import org.junit.*;
-import org.junit.rules.TemporaryFolder;
+import org.junit.rules.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -110,6 +109,11 @@ public class AggregateReaderTest {
 
         Assert.assertEquals(10, events.size());
         Assert.assertEquals("Demo", events.get(0).getAggregateType());
+    }
+
+    @Test
+    public void readHighestSequenceNr() {
+        Assert.assertEquals(99, testSubject.readHighestSequenceNr("55"));
     }
 
 }

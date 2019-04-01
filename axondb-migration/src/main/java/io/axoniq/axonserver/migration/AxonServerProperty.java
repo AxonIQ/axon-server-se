@@ -3,7 +3,7 @@ package io.axoniq.axonserver.migration;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AxonServerProperty {
     private final String name;
