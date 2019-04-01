@@ -6,6 +6,7 @@ import io.axoniq.axonserver.cluster.configuration.WaitStrategy;
 import io.axoniq.axonserver.cluster.exception.ServerTooSlowException;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -76,10 +77,14 @@ public class MultipleUpdateRound implements WaitStrategy {
         try {
             roundCompleted.get();
             return completedFuture(null);
-        } catch (Exception e) {
-            if (e.getCause() instanceof  ServerTooSlowException){
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof  ServerTooSlowException){
                 return startRound(iteration+1);
             }
+            return failedFuture(cause);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return failedFuture(e);
         }
     }
