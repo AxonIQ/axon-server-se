@@ -47,7 +47,8 @@ public class MultipleUpdateRound implements WaitStrategy {
     /**
      * Creates an instance with the specified supplier for the max rounds number, and the {@link WaitStrategy} for a single round.
      * @param maxRounds supplier of the max number of rounds admitted
-     * @param round the {@link WaitStrategy} for the single round
+     * @param round the {@link WaitStrategy} for the single round, that completes exceptionally
+     *              with a {@link ServerTooSlowException} when the round takes too long to be completed
      */
     public MultipleUpdateRound(Supplier<Integer> maxRounds, WaitStrategy round) {
         this.maxRounds = maxRounds;
