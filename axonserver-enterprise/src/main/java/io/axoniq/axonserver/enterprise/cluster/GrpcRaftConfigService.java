@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServiceImplBase {
-    private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
 
     private final LocalRaftConfigService localRaftConfigService;
     private final Supplier<RaftConfigService> serviceFactory;
@@ -37,6 +36,12 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
         this(localRaftConfigService, raftConfigServiceFactory::getRaftConfigService);
     }
 
+    /**
+     * Creates an GrpcRaftConfigService instance with specified {@link LocalRaftConfigService} and supplier of
+     * admin leader's {@link RaftConfigService}
+     * @param localRaftConfigService the local RaftConfigService instance
+     * @param serviceFactory the supplier of the RaftConfigService instance for current leader of _admin group
+     */
     GrpcRaftConfigService(LocalRaftConfigService localRaftConfigService, Supplier<RaftConfigService> serviceFactory){
         this.localRaftConfigService = localRaftConfigService;
         this.serviceFactory = serviceFactory;
