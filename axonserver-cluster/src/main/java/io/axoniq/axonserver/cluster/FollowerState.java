@@ -227,7 +227,7 @@ public class FollowerState extends AbstractMembershipState {
 
         rescheduleElection(request.getTerm());
 
-        //Install snapshot chunks must arrived in the correct order. If the chunk doesn't has the expected index it will be rejected.
+        //Install snapshot chunks must arrive in the correct order. If the chunk doesn't have the expected index it will be rejected.
         //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
         if (request.getOffset() != 0 && (lastSnapshotChunk.get() + 1) != request.getOffset()) {
             String failureCause = format("%s in term %s: missing previous snapshot chunk. Received %s while expecting %s.",
