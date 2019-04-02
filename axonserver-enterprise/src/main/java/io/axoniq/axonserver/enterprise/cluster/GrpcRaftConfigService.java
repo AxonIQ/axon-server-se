@@ -22,7 +22,10 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * Binding of {@link RaftConfigService} gRPC API.
+ *
+ * @author marc
+ * @since 4.1
  */
 @Service
 public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServiceImplBase {
@@ -39,31 +42,32 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     /**
      * Creates an GrpcRaftConfigService instance with specified {@link LocalRaftConfigService} and supplier of
      * admin leader's {@link RaftConfigService}
+     *
      * @param localRaftConfigService the local RaftConfigService instance
-     * @param serviceFactory the supplier of the RaftConfigService instance for current leader of _admin group
+     * @param serviceFactory         the supplier of the RaftConfigService instance for current leader of _admin group
      */
-    GrpcRaftConfigService(LocalRaftConfigService localRaftConfigService, Supplier<RaftConfigService> serviceFactory){
+    GrpcRaftConfigService(LocalRaftConfigService localRaftConfigService, Supplier<RaftConfigService> serviceFactory) {
         this.localRaftConfigService = localRaftConfigService;
         this.serviceFactory = serviceFactory;
     }
 
     @Override
     public void initCluster(ContextNames request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.init(request.getContextsList()));
+        wrap(responseObserver, () -> localRaftConfigService.init(request.getContextsList()));
     }
 
     @Override
     public void joinCluster(NodeInfo request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> serviceFactory.get().join(request));
+        wrap(responseObserver, () -> serviceFactory.get().join(request));
     }
 
     @Override
     public void createContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.addContext(request.getName(),
-                                                                      request.getMembersList()
-                                                                             .stream()
-                                                                             .map(ContextMember::getNodeId)
-                                                                             .collect(Collectors.toList())));
+        wrap(responseObserver, () -> localRaftConfigService.addContext(request.getName(),
+                                                                       request.getMembersList()
+                                                                              .stream()
+                                                                              .map(ContextMember::getNodeId)
+                                                                              .collect(Collectors.toList())));
     }
 
     @Override
@@ -83,22 +87,24 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()->localRaftConfigService.addNodeToContext(request.getContext(), request.getNodeName()));
+        wrap(responseObserver,
+             () -> localRaftConfigService.addNodeToContext(request.getContext(), request.getNodeName()));
     }
 
     @Override
     public void deleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()->localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNodeName()));
+        wrap(responseObserver,
+             () -> localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNodeName()));
     }
 
     @Override
     public void updateApplication(Application request, StreamObserver<Application> responseObserver) {
-            try {
-                responseObserver.onNext(localRaftConfigService.updateApplication(request));
-                responseObserver.onCompleted();
-            } catch (Exception e) {
-                responseObserver.onError(e);
-            }
+        try {
+            responseObserver.onNext(localRaftConfigService.updateApplication(request));
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(e);
+        }
     }
 
     @Override
@@ -113,37 +119,36 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void updateUser(User request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.updateUser( request));
+        wrap(responseObserver, () -> localRaftConfigService.updateUser(request));
     }
 
     @Override
     public void deleteUser(User request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.deleteUser(request));
+        wrap(responseObserver, () -> localRaftConfigService.deleteUser(request));
     }
 
     @Override
     public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.deleteContext(request.getContext()));
+        wrap(responseObserver, () -> localRaftConfigService.deleteContext(request.getContext()));
     }
 
     @Override
     public void deleteApplication(Application request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.deleteApplication(request));
+        wrap(responseObserver, () -> localRaftConfigService.deleteApplication(request));
     }
 
     @Override
     public void updateLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.updateLoadBalancingStrategy(request));
+        wrap(responseObserver, () -> localRaftConfigService.updateLoadBalancingStrategy(request));
     }
 
     @Override
     public void deleteLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.deleteLoadBalancingStrategy(request));
+        wrap(responseObserver, () -> localRaftConfigService.deleteLoadBalancingStrategy(request));
     }
 
     @Override
     public void updateProcessorLBStrategy(ProcessorLBStrategy request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, ()-> localRaftConfigService.updateProcessorLoadBalancing(request));
+        wrap(responseObserver, () -> localRaftConfigService.updateProcessorLoadBalancing(request));
     }
-
 }
