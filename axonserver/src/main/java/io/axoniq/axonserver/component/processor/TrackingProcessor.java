@@ -81,11 +81,13 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
 
         boolean isRunning = processors().stream().anyMatch(ClientProcessor::running);
 
-        long numberOfSegments = processorInstances().stream()
-                                                    .map(EventProcessorInfo::getEventTrackersInfoList)
-                                                    .mapToLong(List::size)
-                                                    .sum();
-        boolean canMerge = isRunning && numberOfSegments > 1;
+        int largestSegmentFactor = processorInstances().stream()
+                                                       .map(EventProcessorInfo::getEventTrackersInfoList)
+                                                       .flatMap(List::stream)
+                                                       .mapToInt(EventProcessorInfo.EventTrackerInfo::getOnePartOf)
+                                                       .min()
+                                                       .orElse(1);
+        boolean canMerge = isRunning && largestSegmentFactor != 1;
 
         media.withStrings(FREE_THREAD_INSTANCES_COUNT, freeThreadInstances)
              .with(ACTIVE_THREADS_COUNT, activeThreads)

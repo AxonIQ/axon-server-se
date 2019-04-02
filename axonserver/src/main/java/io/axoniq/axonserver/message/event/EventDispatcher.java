@@ -444,7 +444,7 @@ public class EventDispatcher implements AxonServerClientService {
         }
 
         private void removeTrackerInfo() {
-            logger.warn("Remove tracker info {}", trackerInfo);
+            logger.info("Removed tracker info {}", trackerInfo);
             if (trackerInfo != null) {
                 trackingEventProcessors.computeIfPresent(new ClientIdentification(trackerInfo.context,trackerInfo.client),
                                                          (c,streams) -> {

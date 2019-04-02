@@ -9,12 +9,7 @@
 
 package io.axoniq.axonserver.component.processor;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.*;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.grpc.PlatformService;
@@ -24,15 +19,10 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
+import javax.annotation.PostConstruct;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import javax.annotation.PostConstruct;
 
 import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO;
 
@@ -126,7 +116,11 @@ public class ProcessorEventPublisher {
                                                 ));
 
         applicationEventPublisher.publishEvent(new SplitSegmentRequest(
-                NOT_PROXIED, getClientForSegment(clientToTracker, biggestSegment), processorName, biggestSegment
+                NOT_PROXIED,
+                getClientForSegment(clientToTracker, biggestSegment)
+                        .orElseThrow(() -> new IllegalArgumentException("No client found which has a claim on segment [" + biggestSegment + "]")),
+                processorName,
+                biggestSegment
         ));
     }
 
@@ -153,15 +147,31 @@ public class ProcessorEventPublisher {
                                ));
 
         int segmentToMerge = deduceSegmentToMerge(smallestSegment);
-        String clientOwningSegmentToMerge = getClientForSegment(clientToTracker, segmentToMerge);
+        Optional<String> clientOwningSegmentToMerge = getClientForSegment(clientToTracker, segmentToMerge);
 
-        clientNames.stream()
-                   .filter(clientName -> !clientName.equals(clientOwningSegmentToMerge))
-                   .forEach(clientName -> releaseSegment(clientName, processorName, smallestSegment.getSegmentId()));
+        clientOwningSegmentToMerge.ifPresent(
+                name -> {
+                    clientNames.stream()
+                               .filter(clientName -> !clientName.equals(name))
+                               .forEach(clientName -> releaseSegment(clientName, processorName, smallestSegment.getSegmentId()));
 
-        applicationEventPublisher.publishEvent(new MergeSegmentRequest(
-                NOT_PROXIED, clientOwningSegmentToMerge, processorName, segmentToMerge
-        ));
+                }
+        );
+
+        if (clientOwningSegmentToMerge.isPresent()) {
+            applicationEventPublisher.publishEvent(new MergeSegmentRequest(
+                    NOT_PROXIED, clientOwningSegmentToMerge.get(), processorName, segmentToMerge
+            ));
+        } else {
+            // the segment to merge with is unclaimed. We need to merge the known part
+            String clientOwningSmallestSegment = getClientForSegment(clientToTracker, smallestSegment.getSegmentId()).orElseThrow(() -> new IllegalArgumentException(
+                    "Attempt to merge segments [" + segmentToMerge + "] and [" + smallestSegment.getSegmentId() + "] failed")
+            );
+
+            applicationEventPublisher.publishEvent(new MergeSegmentRequest(
+                    NOT_PROXIED, clientOwningSmallestSegment, processorName, smallestSegment.getSegmentId()
+            ));
+        }
     }
 
     /**
@@ -202,15 +212,11 @@ public class ProcessorEventPublisher {
         return clientToTracker;
     }
 
-    @NotNull
-    private String getClientForSegment(Map<ClientSegmentPair, EventTrackerInfo> clientToTracker, Integer segmentId) {
+    private Optional<String> getClientForSegment(Map<ClientSegmentPair, EventTrackerInfo> clientToTracker, Integer segmentId) {
         return clientToTracker.keySet().stream()
                               .filter(clientAndSegment -> clientAndSegment.getSegmentId() == segmentId)
                               .findFirst()
-                              .map(ClientSegmentPair::getClientId)
-                              .orElseThrow(() -> new IllegalArgumentException(
-                                      "No client found which has a claim on segment [" + segmentId + "]"
-                              ));
+                              .map(ClientSegmentPair::getClientId);
     }
 
     /**
