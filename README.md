@@ -45,13 +45,3 @@ application reconnects to the messaging platform the blacklist is empty.
 ### Event failure
 
 ## Query routing
-
-
-## Development Notes
-
-Enable IntelliJ IDEA support for ECMA6:
-File -> Settings -> Languages and Frameworks -> JavaScript -> JavaScript language version = ECMAScript6
-
-For fast development of UI with WebPack and Vue-Loader, use "npm run watch".
-
-
