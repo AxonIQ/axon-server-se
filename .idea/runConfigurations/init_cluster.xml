@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="init cluster" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="io.axoniq.cli.CommandDispatcher" />
+    <module name="axonserver-cli" />
+    <option name="PROGRAM_PARAMETERS" value="init-cluster -S http://localhost:8024" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

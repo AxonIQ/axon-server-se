@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="register node 2" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="io.axoniq.cli.CommandDispatcher" />
+    <module name="axonserver-cli" />
+    <option name="PROGRAM_PARAMETERS" value="register-node -S http://localhost:9024 -h localhost" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
