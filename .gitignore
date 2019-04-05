@@ -1,11 +1,7 @@
 # IntelliJ / Eclipse
-#.idea
-.idea/dataSources/**
-.idea/httpRequests/**
-.idea/libraries/**
-.idea/shelf/**
-.idea/.name
-.idea/*.xml
+!.idea/
+.idea/*
+!/.idea/runConfigurations/
 *.iml
 .settings
 .classpath
