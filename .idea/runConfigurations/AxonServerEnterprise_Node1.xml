@@ -1,0 +1,49 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="AxonServerEnterprise Node1" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="axonserver-enterprise" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="io.axoniq.axonserver.AxonServerEnterprise" />
+    <option name="ACTIVE_PROFILES" value="internal" />
+    <option name="VM_PARAMETERS" value="-Dlicense=dev/developer.license" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <additionalParameters>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.name" />
+        <option name="value" value="axonserver-enterprise-1" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.cluster.enabled" />
+        <option name="value" value="true" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="logging.file" />
+        <option name="value" value="./dev/node1/log/axonserver1.log" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.event.storage" />
+        <option name="value" value="./dev/node1/eventstorage" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.snapshot.storage" />
+        <option name="value" value="./dev/node1/snapshotstorage" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.replication.log-storage-folder" />
+        <option name="value" value="./dev/node1/logstorage" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.controldb-path" />
+        <option name="value" value="./dev/node1/controldb" />
+      </param>
+    </additionalParameters>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
