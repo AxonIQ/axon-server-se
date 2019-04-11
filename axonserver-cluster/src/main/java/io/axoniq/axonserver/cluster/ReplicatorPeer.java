@@ -15,6 +15,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Clock;
 import java.util.List;
@@ -63,12 +64,14 @@ public class ReplicatorPeer {
 
     private class InstallSnapshotState implements ReplicatorPeerState {
 
-        private static final int SNAPSHOT_CHUNKS_BUFFER_SIZE = 10;
+        @Value("axoniq.axonserver.maxmessagesize")
+        private int MAX_MESSAGE_SIZE;
 
         private final SnapshotContext snapshotInstallationContext;
         private Registration registration;
         private Subscription subscription;
         private int offset;
+        private int currentMessageSize = 0;
         private volatile int lastReceivedOffset;
         private volatile boolean done = false;
         private volatile long lastAppliedIndex;
@@ -76,6 +79,16 @@ public class ReplicatorPeer {
         public InstallSnapshotState(
                 SnapshotContext snapshotInstallationContext) {
             this.snapshotInstallationContext = snapshotInstallationContext;
+        }
+
+        private boolean isOverLimit(int serializedObjectSize){
+            if (serializedObjectSize+currentMessageSize > MAX_MESSAGE_SIZE){
+                currentMessageSize=serializedObjectSize;
+                return true;
+            } else {
+                currentMessageSize = currentMessageSize + serializedObjectSize;
+                return false;
+            }
         }
 
         @Override
@@ -89,7 +102,8 @@ public class ReplicatorPeer {
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();
             snapshotManager.streamSnapshotData(snapshotInstallationContext)
-                           .buffer(SNAPSHOT_CHUNKS_BUFFER_SIZE)
+                           //Buffer serializedObjects until the max grpc message size is met
+                           .bufferUntil(p -> isOverLimit(p.getSerializedSize()),true)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override
                                public void onSubscribe(Subscription s) {
