@@ -14,7 +14,7 @@ import java.util.function.Supplier;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
- * Implementation of {@link WaitStrategy} that waits for the server node to be updated in specific number of round.
+ * Implementation of {@link WaitStrategy} that waits for the server node to be updated in specific number of rounds.
  *
  * @author Sara Pellegrini
  * @since 4.0
@@ -45,7 +45,7 @@ public class MultipleUpdateRound implements WaitStrategy {
 
 
     /**
-     * Creates an instance with the specified supplier for the max rounds number, and the {@link WaitStrategy} for a single round.
+     * Creates an instance with the specified supplier for the max number of rounds, and the {@link WaitStrategy} for a single round.
      * @param maxRounds supplier of the max number of rounds admitted
      * @param round the {@link WaitStrategy} for the single round, that completes exceptionally
      *              with a {@link ServerTooSlowException} when the round takes too long to be completed
@@ -56,8 +56,8 @@ public class MultipleUpdateRound implements WaitStrategy {
     }
 
     /**
-     * Returns a completable future that completes successfully when the server is updated within correct rounds number.
-     * If, after all the possible rounds the server is not up to date, the completable future completes exceptionally,
+     * Returns a completable future that completes successfully when the server is updated within correct number of rounds.
+     * If after all the possible rounds the server is not up to date, the completable future completes exceptionally,
      * with a {@link ServerTooSlowException}
      *
      * @return the completable future

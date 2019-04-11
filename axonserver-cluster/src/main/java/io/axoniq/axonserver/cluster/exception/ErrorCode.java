@@ -4,6 +4,7 @@ package io.axoniq.axonserver.cluster.exception;
  * AxonServer error codes defined in cluster module
  *
  * @author Marc Gathier
+ * @since 4.1
  */
 public enum ErrorCode {
 
@@ -19,8 +20,7 @@ public enum ErrorCode {
     CLUSTER_ERROR("AXONIQ-10000"),
     SERVER_TOO_SLOW("AXONIQ-10001"),
     UNCOMMITTED_CONFIGURATION("AXONIQ-10002"),
-    REPLICATION_TIMEOUT("AXONIQ-10003"),
-    ;
+    REPLICATION_TIMEOUT("AXONIQ-10003");
 
     private final String code;
 
@@ -30,6 +30,7 @@ public enum ErrorCode {
 
     public String code() {
         return code;
-    }}
+    }
+}
 
 

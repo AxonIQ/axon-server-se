@@ -60,7 +60,7 @@ public class UpdateRound implements WaitStrategy {
                     }
                 }, error -> roundCompleted.completeExceptionally(
                         new ReplicationTimeoutException(
-                                "The first replication is no more active. It's likely caused by a leader change.",
+                                "The first replication is no longer active. It's likely caused by a leader change.",
                                 error)));
         roundCompleted.thenRun(disposable::dispose);
         return roundCompleted;

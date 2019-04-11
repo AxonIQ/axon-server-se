@@ -16,6 +16,9 @@ public class RaftErrorMapping implements Function<Throwable, ErrorMessage> {
 
     private final Map<Class, ErrorCode> codes = new HashMap<>();
 
+    /**
+     * Create a {@link RaftErrorMapping} initializing the codes mapping
+     */
     public RaftErrorMapping() {
         codes.put(ServerTooSlowException.class, ErrorCode.SERVER_TOO_SLOW);
         codes.put(UncommittedConfigException.class, ErrorCode.UNCOMMITTED_CONFIGURATION);
