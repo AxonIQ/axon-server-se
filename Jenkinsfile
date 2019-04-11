@@ -8,13 +8,13 @@ properties([
 ])
 def label = "worker-${UUID.randomUUID().toString()}"
 def deployingBranches = [
-    "master", "feature/cluster"
+    "master", "axonserver-4.1.x"
 ]
 def dockerBranches = [
-    "master", "feature/cluster"
+    "master", "axonserver-4.1.x"
 ]
 def sonarBranches = [
-    "master", "axonserver-4.0.x"
+    "master", "axonserver-4.1.x"
 ]
 def relevantBranch(thisBranch, branches) {
     for (br in branches) {

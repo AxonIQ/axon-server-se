@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.access.jpa.Role;
@@ -11,8 +20,10 @@ import java.util.Collection;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Created by Sara Pellegrini on 06/03/2018.
- * sara.pellegrini@gmail.com
+ * Rest service to retrieve user roles and application roles.
+ * @author Sara Pellegrini
+ * @since 4.0
+ *
  */
 @RestController
 @RequestMapping("v1/roles")

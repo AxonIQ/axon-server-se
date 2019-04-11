@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -5,7 +14,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
@@ -45,7 +54,7 @@ import java.util.stream.Stream;
 /**
  * @author Marc Gathier
  */
-public abstract class SegmentBasedEventStore implements EventStore {
+public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
 
     private static final int TRANSACTION_LENGTH_BYTES = 4;
@@ -99,7 +108,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber);
         boolean delegate = true;
         if( ! positionInfos.isEmpty()) {
@@ -108,7 +117,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         }
 
         if( delegate && next != null) {
-            next.streamByAggregateId(aggregateId, firstSequenceNumber, eventConsumer);
+            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, eventConsumer);
         }
 
         positionInfos.keySet()
@@ -119,8 +128,8 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
-                                    int maxResults, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
+                                          int maxResults, Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber, maxSequenceNumber, maxResults);
         AtomicInteger toDo = new AtomicInteger(maxResults);
         if( ! positionInfos.isEmpty()) {
@@ -136,7 +145,7 @@ public abstract class SegmentBasedEventStore implements EventStore {
         }
 
         if( toDo.get() > 0 && next != null) {
-            next.streamByAggregateId(aggregateId, firstSequenceNumber, maxSequenceNumber, toDo.get(), eventConsumer);
+            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, maxSequenceNumber, toDo.get(), eventConsumer);
         }
 
 
@@ -222,25 +231,6 @@ public abstract class SegmentBasedEventStore implements EventStore {
         validate(validate ? storageProperties.getValidationSegments() : 2);
     }
 
-
-    @Override
-    public boolean contains( SerializedTransactionWithToken newTransaction){
-        long token = newTransaction.getToken();
-        long segment = getSegmentFor(token);
-        EventSource eventSource = getEventSource(segment).orElse(null);
-        if( eventSource == null )  {
-            if( next != null) {
-                return next.contains(newTransaction);
-            }
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored");
-        }
-
-        try (TransactionIterator iterator = eventSource.createTransactionIterator(segment, token, false)){
-            return iterator.hasNext() && newTransaction.equals(iterator.next());
-        } catch (Exception e) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Error checking that transaction is stored", e);
-        }
-    }
 
     @Override
     public long getFirstToken() {
@@ -344,30 +334,6 @@ public abstract class SegmentBasedEventStore implements EventStore {
     }
 
     @Override
-    public boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent) {
-        logger.debug("Start streaming event from files at {}", token);
-        long lastSegment = -1;
-        long segment = getSegmentFor(token);
-        EventInformation eventWithToken = null;
-        while (segment > lastSegment) {
-            EventIterator eventIterator = getEvents(segment, token);
-            while (eventIterator.hasNext()) {
-                eventWithToken = eventIterator.next();
-                if (!onEvent.test(eventWithToken.getSerializedEventWithToken())) {
-                    eventIterator.close();
-                    logger.debug("Stopped streaming event from files at {}, out of permits", eventWithToken.getToken());
-                    return false;
-                }
-            }
-            lastSegment = segment;
-            segment = getSegmentFor(eventWithToken == null ? token : eventWithToken.getToken() + 1);
-            token = segment;
-        }
-        logger.debug("Stopped streaming event from files at {}", eventWithToken == null? token: eventWithToken.getToken());
-        return true;
-    }
-
-    @Override
     public Iterator<SerializedTransactionWithToken> transactionIterator(long token) {
         return new TransactionWithTokenIterator(token);
     }
@@ -375,11 +341,6 @@ public abstract class SegmentBasedEventStore implements EventStore {
     @Override
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         return new TransactionWithTokenIterator(firstToken, limitToken);
-    }
-
-    @Override
-    public boolean replicated() {
-        return true;
     }
 
     protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {

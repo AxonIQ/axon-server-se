@@ -7,13 +7,11 @@ import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.stubbing.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -21,7 +19,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,8 +62,8 @@ public class ContextControllerTest {
         ClusterNode node1 = new ClusterNode("node1", "node1", "node1", 8124, 8224, 8024);
 
         ClusterNode node2 = new ClusterNode("node2", "node2", "node2", 8124, 8224, 8024);
-        node1.addContext(defaultContext, "node1", true, true);
-        node2.addContext(defaultContext, "node2", true, true);
+        node1.addContext(defaultContext, "node1");
+        node2.addContext(defaultContext, "node2");
         initialNodes.add(nodeInfo(node1));
         initialNodes.add(nodeInfo(node2));
         entityManager.persist(node1);
@@ -109,7 +106,7 @@ public class ContextControllerTest {
         entityManager.persist(test1);
 
         entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList().forEach(n -> n.addContext(test1,
-                                                                                                                              n.getName(), true, true));
+                                                                                                                              n.getName()));
         // when delete context test1
         testSubject.deleteContext("test1");
         // expect nodes 1 and node 2 no longer contain context text1

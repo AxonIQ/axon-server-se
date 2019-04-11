@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.cluster.exception;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class LogException extends RuntimeException {
 

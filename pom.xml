@@ -27,6 +27,7 @@
         <module>plugins/axonserver-rabbitmq-connector</module>
         <module>plugins/axonserver-kafka-connector</module>
         <module>axonserver-cluster</module>
+        <module>query-parser</module>
     </modules>
 
     <properties>

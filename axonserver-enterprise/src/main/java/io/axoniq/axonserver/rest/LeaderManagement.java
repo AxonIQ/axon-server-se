@@ -9,9 +9,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Rest APIs for Leader management.
+ * Rest APIs for Leader management. Only enabled when active profiles contains internal.
  *
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @RestController
 @CrossOrigin

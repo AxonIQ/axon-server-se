@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
@@ -32,7 +41,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         return super.remove(messagId);
     }
 
-    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-cleanup-rate:5000}")
+    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
@@ -50,6 +59,11 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         forEach((key, value) -> completeForApplication(value, applicationDisconnected.getClient()));
+    }
+
+    @EventListener
+    public void on(TopologyEvents.QueryHandlerDisconnected queryHandlerDisconnected) {
+        forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClient()));
     }
 
     private void completeForApplication(QueryInformation entry, String client) {

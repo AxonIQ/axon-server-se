@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
@@ -9,14 +18,17 @@ import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
 import org.assertj.core.util.Lists;
-import org.junit.*;
-import org.mockito.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.*;
 
 /**
@@ -43,28 +55,20 @@ public class ProcessorEventPublisherTest {
     private final ClientProcessors clientProcessors = mock(ClientProcessors.class);
 
     private ProcessorEventPublisher testSubject;
+    private List<ClientProcessor> eventProcessors;
 
     @Before
     public void setUp() {
         List<EventTrackerInfo> segmentInfo = new ArrayList<>();
         int biggestSegment = 4; // Biggest, as it's only one/fourth of the event stream
         int smallestSegment = 8; // Smallest, as it's one/sixteenth of the event stream
-        segmentInfo.add(EventTrackerInfo.newBuilder()
-                                        .setSegmentId(SEGMENT_ID_TO_MERGE)
-                                        .setOnePartOf(smallestSegment)
-                                        .build());
-        segmentInfo.add(EventTrackerInfo.newBuilder()
-                                        .setSegmentId(SEGMENT_ID_TO_SPLIT)
-                                        .setOnePartOf(biggestSegment)
-                                        .build());
-        segmentInfo.add(EventTrackerInfo.newBuilder().setSegmentId(2).setOnePartOf(biggestSegment).build());
-        segmentInfo.add(EventTrackerInfo.newBuilder().setSegmentId(3).setOnePartOf(biggestSegment).build());
-        segmentInfo.add(EventTrackerInfo.newBuilder()
-                                        .setSegmentId(PAIRED_WITH_SEGMENT)
-                                        .setOnePartOf(smallestSegment)
-                                        .build());
+        segmentInfo.add(createSegmentInfo(SEGMENT_ID_TO_MERGE, smallestSegment));
+        segmentInfo.add(createSegmentInfo(SEGMENT_ID_TO_SPLIT, biggestSegment));
+        segmentInfo.add(createSegmentInfo(2, biggestSegment));
+        segmentInfo.add(createSegmentInfo(3, biggestSegment));
+        segmentInfo.add(createSegmentInfo(PAIRED_WITH_SEGMENT, smallestSegment));
 
-        List<ClientProcessor> eventProcessors = new ArrayList<>();
+        eventProcessors = new ArrayList<>();
 
         ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
         when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
@@ -84,11 +88,18 @@ public class ProcessorEventPublisherTest {
         when(mergeClientProcessor.eventProcessorInfo()).thenReturn(eventProcessorToMerge);
         eventProcessors.add(mergeClientProcessor);
 
-        when(clientProcessors.spliterator()).thenReturn(eventProcessors.spliterator());
+        when(clientProcessors.spliterator()).thenAnswer(i -> eventProcessors.spliterator());
 
         testSubject = new ProcessorEventPublisher(
                 platformService, applicationEventPublisher, clientProcessors
         );
+    }
+
+    private EventTrackerInfo createSegmentInfo(int segmentId, int onePartOf) {
+        return EventTrackerInfo.newBuilder()
+                               .setSegmentId(segmentId)
+                               .setOnePartOf(onePartOf)
+                               .build();
     }
 
     /**
@@ -135,6 +146,45 @@ public class ProcessorEventPublisherTest {
         assertFalse(mergeRequest.isProxied());
         assertEquals(CLIENT_NAME_OF_MERGE, mergeRequest.getClientName());
         assertEquals(PROCESSOR_NAME_TO_MERGE, mergeRequest.getProcessorName());
+        assertEquals(SEGMENT_ID_TO_MERGE, mergeRequest.getSegmentId());
+    }
+
+
+    /**
+     * Test whether the {@link ProcessorEventPublisher#mergeSegment(List, String)} operation correctly
+     * deduces what the smallest Segment for a given Event Processor is, for which the {@code segmentId} will be
+     * included to the {@link MergeSegmentRequest}.
+     */
+    @Test
+    public void testSegmentToMergeWithIsUnclaimed() {
+        int expectedInvocations = 1;
+
+        eventProcessors.clear();
+
+        ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
+        when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
+        EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
+                                                                     .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
+                                                                     .addAllEventTrackersInfo(
+                                                                             Arrays.asList(
+                                                                                     createSegmentInfo(0, 4),
+                                                                                     createSegmentInfo(1, 2)
+                                                                             )
+                                                                     )
+                                                                     .build();
+        when(splitClientProcessor.eventProcessorInfo()).thenReturn(eventProcessorToSplit);
+        eventProcessors.add(splitClientProcessor);
+
+        testSubject.mergeSegment(CLIENTS, PROCESSOR_NAME_TO_SPLIT);
+
+        ArgumentCaptor<Object> argumentCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(applicationEventPublisher, times(expectedInvocations)).publishEvent(argumentCaptor.capture());
+        List<Object> publishedEvents = argumentCaptor.getAllValues();
+
+        MergeSegmentRequest mergeRequest = (MergeSegmentRequest) publishedEvents.get(0);
+        assertFalse(mergeRequest.isProxied());
+        assertEquals(CLIENT_NAME_OF_SPLIT, mergeRequest.getClientName());
+        assertEquals(PROCESSOR_NAME_TO_SPLIT, mergeRequest.getProcessorName());
         assertEquals(SEGMENT_ID_TO_MERGE, mergeRequest.getSegmentId());
     }
 }

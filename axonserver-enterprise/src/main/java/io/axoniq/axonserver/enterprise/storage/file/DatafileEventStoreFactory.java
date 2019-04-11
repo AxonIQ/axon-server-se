@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage.file;
 
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -27,7 +27,7 @@ public class DatafileEventStoreFactory implements EventStoreFactory {
     }
 
     @Override
-    public EventStore createEventManagerChain(String context) {
+    public EventStorageEngine createEventStorageEngine(String context) {
         IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getEvent());
         PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT), indexManager, eventTransformerFactory, embeddedDBProperties.getEvent());
         SecondaryEventStore second = new SecondaryEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
@@ -38,7 +38,7 @@ public class DatafileEventStoreFactory implements EventStoreFactory {
     }
 
     @Override
-    public EventStore createSnapshotManagerChain(String context) {
+    public EventStorageEngine createSnapshotStorageEngine(String context) {
         IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getSnapshot());
         PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT), indexManager, eventTransformerFactory, embeddedDBProperties.getSnapshot());
         SecondaryEventStore second = new SecondaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT), indexManager,
@@ -49,7 +49,7 @@ public class DatafileEventStoreFactory implements EventStoreFactory {
     }
 
     @Override
-    public StorageTransactionManager createTransactionManager(EventStore eventStore) {
-        return storageTransactionManagerFactory.createTransactionManager(eventStore);
+    public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
+        return storageTransactionManagerFactory.createTransactionManager(eventStorageEngine);
     }
 }

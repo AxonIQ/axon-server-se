@@ -1,14 +1,22 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.applicationevents;
 
-import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
+ * Set of events raised when application connect to or disconnect from Axon Server.
  * @author Marc Gathier
  */
 public class TopologyEvents {
 
-    @KeepNames
     public abstract static class TopologyBaseEvent {
         private final boolean forwarded;
 
@@ -22,7 +30,6 @@ public class TopologyEvents {
 
     }
 
-    @KeepNames
     public static class ApplicationConnected extends TopologyBaseEvent {
         private final String context;
         private final String componentName;
@@ -65,7 +72,6 @@ public class TopologyEvents {
         }
     }
 
-    @KeepNames
     public static class ApplicationDisconnected extends TopologyBaseEvent {
         private final String context;
         private final String componentName;
@@ -112,7 +118,6 @@ public class TopologyEvents {
 
     }
 
-    @KeepNames
     public static class CommandHandlerDisconnected extends TopologyBaseEvent {
         private final String context;
         private final String client;
@@ -145,7 +150,6 @@ public class TopologyEvents {
         }
     }
 
-    @KeepNames
     public static class QueryHandlerDisconnected extends TopologyBaseEvent {
         private final String context;
         private final String client;

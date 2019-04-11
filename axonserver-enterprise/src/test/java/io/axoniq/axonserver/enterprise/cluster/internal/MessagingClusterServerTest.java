@@ -7,7 +7,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
-import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.config.FeatureChecker;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;

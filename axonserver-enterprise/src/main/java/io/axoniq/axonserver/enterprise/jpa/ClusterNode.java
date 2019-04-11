@@ -127,13 +127,11 @@ public class ClusterNode implements Serializable, AxonServerNode {
         this.name = name;
     }
 
-    public void addContext(Context context, String clusterNodeLabel, boolean storage, boolean messaging) {
+    public void addContext(Context context, String clusterNodeLabel) {
         ContextClusterNode contextClusterNode = contexts.stream()
                                                         .filter(ccn -> ccn.getContext().equals(context))
                                                         .findFirst()
                                                         .orElse(new ContextClusterNode(context, this, clusterNodeLabel));
-            contextClusterNode.setMessaging(messaging);
-            contextClusterNode.setStorage(storage);
     }
 
     public static ClusterNode from(NodeInfo connect) {

@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -24,17 +24,17 @@ public class JdbcEventStoreFactory implements EventStoreFactory {
     }
 
     @Override
-    public EventStore createEventManagerChain(String context) {
+    public EventStorageEngine createEventStorageEngine(String context) {
         return new JdbcEventStore(new EventTypeContext(context, EventType.EVENT), storageProperties.dataSource());
     }
 
     @Override
-    public EventStore createSnapshotManagerChain(String context) {
+    public EventStorageEngine createSnapshotStorageEngine(String context) {
         return new JdbcSnapshotStore(new EventTypeContext(context, EventType.SNAPSHOT), storageProperties.dataSource());
     }
 
     @Override
-    public StorageTransactionManager createTransactionManager(EventStore datafileManagerChain) {
-        return new SingleInstanceTransactionManager(datafileManagerChain);
+    public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
+        return new SingleInstanceTransactionManager(eventStorageEngine);
     }
 }

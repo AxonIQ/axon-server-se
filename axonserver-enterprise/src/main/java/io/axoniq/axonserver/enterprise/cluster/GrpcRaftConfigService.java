@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 /**
  * Binding of {@link RaftConfigService} gRPC API.
  *
- * @author marc
+ * @author Marc Gathier
  * @since 4.1
  */
 @Service

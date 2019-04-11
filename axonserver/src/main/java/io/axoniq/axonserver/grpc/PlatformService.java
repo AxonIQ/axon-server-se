@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
@@ -178,12 +187,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .filter(e -> e.getKey().client.equals(clientName))
                      .map(Map.Entry::getValue)
                      .forEach(stream -> stream.onNext(instruction));
-    }
-
-    public void requestReconnectForContext(String context) {
-        connectionMap.entrySet().stream()
-                     .filter(e -> e.getKey().context.equals(context))
-                     .forEach(e -> requestReconnect(e.getKey()));
     }
 
     @EventListener
