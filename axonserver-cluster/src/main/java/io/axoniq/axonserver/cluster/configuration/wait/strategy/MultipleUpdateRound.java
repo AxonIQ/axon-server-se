@@ -27,7 +27,7 @@ public class MultipleUpdateRound implements WaitStrategy {
 
     /**
      * Creates an instance with the default configuration.
-     * The max number of round is defined from raft group properties,
+     * The max number of rounds is defined from raft group properties,
      * and the {@link WaitStrategy} for the single round is implemented by the {@link FastUpdateRound}.
      *
      * @param raftGroup the raftGroup
