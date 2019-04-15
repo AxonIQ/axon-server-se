@@ -12,7 +12,7 @@ spring:
       use-new-id-generator-mappings: false
 
   datasource:
-    url: jdbc:h2:file:${axoniq.axonserver.controldb-path:./data}/axonserver-controldb;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    url: jdbc:h2:retry:${axoniq.axonserver.controldb-path:./data}/axonserver-controldb
     hikari:
       connection-init-sql: select 1;
       leak-detection-threshold: 2000
