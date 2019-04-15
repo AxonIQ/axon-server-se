@@ -27,6 +27,7 @@
         <module>plugins/axonserver-rabbitmq-connector</module>
         <module>plugins/axonserver-kafka-connector</module>
         <module>axonserver-cluster</module>
+        <module>query-parser</module>
     </modules>
 
     <properties>
@@ -40,9 +41,15 @@
 
         <kotlin.version>1.1.61</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <grpc.version>1.17.1</grpc.version>
-        <netty.version>4.1.32.Final</netty.version>
+        <!--
+            Please note that there are dependencies between the gRPC and Netty TcNative versions.
+            gRPC is quite specific about the version of Netty TcNative, so check the dependencies on
+            https://github.com/grpc/grpc-java/blob/master/SECURITY.md
+        -->
+        <grpc.version>1.19.0</grpc.version>
         <netty.tcnative.version>2.0.20.Final</netty.tcnative.version>
+
+        <netty.version>4.1.32.Final</netty.version>
         <axonserver.api.version>4.1</axonserver.api.version>
         <axon.version>4.0.3</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>

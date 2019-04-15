@@ -1,6 +1,6 @@
 {
-  "name": "axon-hub-server",
-  "description": "Axon Hub Server",
+  "name": "axon-server",
+  "description": "Axon Server",
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_ENV=development webpack-dev-server --open --hot",

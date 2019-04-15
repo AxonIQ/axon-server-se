@@ -18,8 +18,6 @@ public class ContextRoleMapping implements Function<ContextClusterNode, ContextR
         return ContextRole.newBuilder()
                    .setName(contextClusterNode.getClusterNode().getName())
                    .setNodeLabel(contextClusterNode.getClusterNodeLabel())
-                   .setMessaging(contextClusterNode.isMessaging())
-                   .setStorage(contextClusterNode.isStorage())
                    .build();
     }
 }

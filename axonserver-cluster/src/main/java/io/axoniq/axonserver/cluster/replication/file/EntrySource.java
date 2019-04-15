@@ -4,7 +4,7 @@ package io.axoniq.axonserver.cluster.replication.file;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface EntrySource extends AutoCloseable {
 

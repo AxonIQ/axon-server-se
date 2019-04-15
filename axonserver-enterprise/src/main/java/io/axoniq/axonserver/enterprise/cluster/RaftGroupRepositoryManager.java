@@ -12,7 +12,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @Component
 public class RaftGroupRepositoryManager {

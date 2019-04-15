@@ -8,7 +8,8 @@ import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import org.springframework.stereotype.Component;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @Component
 public class RaftGroupServiceFactory {

@@ -8,7 +8,7 @@ import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.springframework.stereotype.Component;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class ProcessorLBStrategyConsumer implements LogEntryConsumer {

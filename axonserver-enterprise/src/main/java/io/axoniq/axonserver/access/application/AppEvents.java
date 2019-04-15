@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.access.application;
 
 /**
- * Author: marc
+ * Event types published when Applications are updated or deleted.
+ * @author Marc Gathier
  */
 public class AppEvents {
 

@@ -4,7 +4,8 @@ import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class Checksum {
     private final CRC32 crc32;

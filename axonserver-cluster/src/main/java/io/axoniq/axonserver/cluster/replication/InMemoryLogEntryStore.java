@@ -25,7 +25,8 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class InMemoryLogEntryStore implements LogEntryStore {
     private final Logger logger = LoggerFactory.getLogger(InMemoryLogEntryStore.class);
