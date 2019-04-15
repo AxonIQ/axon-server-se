@@ -76,6 +76,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this(eventStoreFactory, new EventStreamExecutor(1), Short.MAX_VALUE);
     }
 
+    public LocalEventStore(EventStoreFactory eventStoreFactory, int maxEventCount) {
+        this(eventStoreFactory, new EventStreamExecutor(1), maxEventCount);
+    }
+
     @Autowired
     public LocalEventStore(EventStoreFactory eventStoreFactory, EventStreamExecutor eventStreamExecutor, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount) {
         this.eventStoreFactory = eventStoreFactory;

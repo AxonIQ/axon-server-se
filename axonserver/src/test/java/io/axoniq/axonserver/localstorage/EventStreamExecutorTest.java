@@ -14,7 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Marc Gathier
@@ -26,6 +29,7 @@ public class EventStreamExecutorTest {
     @Test
     public void execute() throws InterruptedException {
         CountDownLatch countDownLatch = new CountDownLatch(10);
+        long before = System.currentTimeMillis();
         IntStream.range(0, (int)countDownLatch.getCount()).forEach(i ->
                                                                                       testSubject.execute(() -> {
                                                                                           try {
@@ -36,7 +40,8 @@ public class EventStreamExecutorTest {
                                                                                               e.printStackTrace();
                                                                                           }
                                                                                       }));
-        countDownLatch.await();
-
+        countDownLatch.await(500, TimeUnit.MILLISECONDS);
+        long after = System.currentTimeMillis();
+        assertTrue(300 < after-before);
     }
 }
