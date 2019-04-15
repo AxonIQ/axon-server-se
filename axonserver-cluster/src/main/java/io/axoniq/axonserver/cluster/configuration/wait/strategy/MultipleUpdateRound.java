@@ -6,6 +6,7 @@ import io.axoniq.axonserver.cluster.configuration.WaitStrategy;
 import io.axoniq.axonserver.cluster.exception.ServerTooSlowException;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -13,6 +14,8 @@ import java.util.function.Supplier;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
+ * Implementation of {@link WaitStrategy} that waits for the server node to be updated in specific number of rounds.
+ *
  * @author Sara Pellegrini
  * @since 4.0
  */
@@ -22,6 +25,15 @@ public class MultipleUpdateRound implements WaitStrategy {
 
     private final WaitStrategy round;
 
+    /**
+     * Creates an instance with the default configuration.
+     * The max number of rounds is defined from raft group properties,
+     * and the {@link WaitStrategy} for the single round is implemented by the {@link FastUpdateRound}.
+     *
+     * @param raftGroup the raftGroup
+     * @param currentTime supplier for current milliseconds
+     * @param registerMatchIndexListener registration function to monitor matchIndex updates for the node
+     */
     public MultipleUpdateRound(RaftGroup raftGroup,
                                Supplier<Long> currentTime,
                                Function<Consumer<Long>, Registration> registerMatchIndexListener) {
@@ -32,11 +44,24 @@ public class MultipleUpdateRound implements WaitStrategy {
     }
 
 
+    /**
+     * Creates an instance with the specified supplier for the max number of rounds, and the {@link WaitStrategy} for a single round.
+     * @param maxRounds supplier of the max number of rounds admitted
+     * @param round the {@link WaitStrategy} for the single round, that completes exceptionally
+     *              with a {@link ServerTooSlowException} when the round takes too long to be completed
+     */
     public MultipleUpdateRound(Supplier<Integer> maxRounds, WaitStrategy round) {
         this.maxRounds = maxRounds;
         this.round = round;
     }
 
+    /**
+     * Returns a completable future that completes successfully when the server is updated within correct number of rounds.
+     * If after all the possible rounds the server is not up to date, the completable future completes exceptionally,
+     * with a {@link ServerTooSlowException}
+     *
+     * @return the completable future
+     */
     @Override
     public CompletableFuture<Void> await() {
         return startRound(0);
@@ -53,8 +78,15 @@ public class MultipleUpdateRound implements WaitStrategy {
         try {
             roundCompleted.get();
             return completedFuture(null);
-        } catch (Exception e) {
-            return startRound(iteration+1);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof  ServerTooSlowException){
+                return startRound(iteration+1);
+            }
+            return failedFuture(cause);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return failedFuture(e);
         }
     }
 
