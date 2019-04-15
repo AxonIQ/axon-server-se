@@ -19,8 +19,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
+ * Handles streams of events from EventStore to client. One instance per tracking event processor.
  * @author Marc Gathier
  */
 public class EventStreamController {
@@ -28,7 +30,7 @@ public class EventStreamController {
     private final Consumer<SerializedEventWithToken> eventWithTokenConsumer;
     private final Consumer<Throwable> errorCallback;
     private final EventStorageEngine datafileManagerChain;
-    private final EventWriteStorage eventWriteStorage;
+    private final Function<Consumer<SerializedEventWithToken>, Registration> liveEventRegistrationFunction;
     private final EventStreamExecutor eventStreamExecutor;
     private final AtomicLong remainingPermits = new AtomicLong();
     private final AtomicLong currentTrackingToken = new AtomicLong(Long.MIN_VALUE);
@@ -45,14 +47,23 @@ public class EventStreamController {
      */
     private final Object sendEventMonitor = new Object();
 
+    /**
+     * Constructor for the {@link EventStreamController}.
+     * @param eventWithTokenConsumer consumer for events
+     * @param errorCallback called when there is an error while sending events
+     * @param eventStorageEngine storage engine that contains the events
+     * @param liveEventRegistrationFunction function to register the controller with the event writer to receive updates
+     * @param eventStreamExecutor thread pool to start reading events from event store asynchronously
+     */
     public EventStreamController(
             Consumer<SerializedEventWithToken> eventWithTokenConsumer,
-            Consumer<Throwable> errorCallback, EventStorageEngine eventStorageEngine, EventWriteStorage eventWriteStorage,
+            Consumer<Throwable> errorCallback, EventStorageEngine eventStorageEngine,
+            Function<Consumer<SerializedEventWithToken>, Registration> liveEventRegistrationFunction,
             EventStreamExecutor eventStreamExecutor) {
         this.eventWithTokenConsumer = eventWithTokenConsumer;
         this.errorCallback = errorCallback;
         this.datafileManagerChain = eventStorageEngine;
-        this.eventWriteStorage = eventWriteStorage;
+        this.liveEventRegistrationFunction = liveEventRegistrationFunction;
         this.eventStreamExecutor = eventStreamExecutor;
     }
 
@@ -86,7 +97,7 @@ public class EventStreamController {
                 if( remainingPermits.get() > 0) {
                     closeIterator();
                 }
-                this.eventListener = eventWriteStorage.registerEventListener(this::sendFromWriter);
+                this.eventListener = liveEventRegistrationFunction.apply(this::sendFromWriter);
                 logger.info("Done processing backlog at: {}", currentTrackingToken.get());
             }
         } catch(Throwable ex) {

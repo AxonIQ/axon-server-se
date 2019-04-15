@@ -411,8 +411,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
             this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
             this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
-            this.eventStreamReader = new EventStreamReader(eventStorageEngine, eventWriteStorage, eventStreamExecutor);
-            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine, null, eventStreamExecutor);
+            this.eventStreamReader = new EventStreamReader(eventStorageEngine, eventWriteStorage::registerEventListener, eventStreamExecutor);
+            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine,  consumer -> null, eventStreamExecutor);
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
         }

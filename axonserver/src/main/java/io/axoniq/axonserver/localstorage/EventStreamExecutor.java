@@ -9,14 +9,19 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Thread pool used by event streaming operations. limits the number of threads available for streaming older events.
+ * Thread pool used by event streaming operations. Limits the number of threads available for streaming older events.
  *
  * @author Marc Gathier
+ * @since 4.1.1
  */
 @Component
 public class EventStreamExecutor {
     private final ThreadPoolExecutor eventStreamExecutor;
 
+    /**
+     * Instantiates the EventStreamExecutor with a thread pool with maxThreads threads.
+     * @param maxThreads number of threads to reserve for streaming events from file
+     */
     public EventStreamExecutor(@Value("${axon.axonserver.event-stream-threads:8}") int maxThreads) {
         eventStreamExecutor = new ThreadPoolExecutor(maxThreads, maxThreads, 60L, TimeUnit.SECONDS,
                                                      new LinkedBlockingQueue<>(),
