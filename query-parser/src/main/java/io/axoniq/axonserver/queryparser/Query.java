@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * Container for a parsed query.
+ * @author Marc Gathier
+ * @since 4.0
  */
 public class Query extends BaseQueryElement {
 

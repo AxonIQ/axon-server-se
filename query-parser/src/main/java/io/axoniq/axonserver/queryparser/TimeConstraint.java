@@ -16,7 +16,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.0
  */
 public class TimeConstraint extends BaseQueryElement {
     @Override

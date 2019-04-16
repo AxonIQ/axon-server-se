@@ -12,7 +12,8 @@ package io.axoniq.axonserver.queryparser;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.0
  */
 public interface PipelineEntry extends QueryElement {
 

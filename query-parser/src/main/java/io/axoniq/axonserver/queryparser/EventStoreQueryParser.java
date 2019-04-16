@@ -19,7 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Author: marc
+ * Parser to parse query string to {@link Query}. Throws {@link ParseException} when there is a syntax error in the query.
+ * @author Marc Gathier
+ * @since 4.0
  */
 public class EventStoreQueryParser {
 
@@ -44,7 +46,7 @@ public class EventStoreQueryParser {
 
         EventStoreQueryListener baseListener = new EventStoreQueryListener(parser);
         walker.walk(baseListener, query1);
-        if( errors.size() > 0) {
+        if( ! errors.isEmpty()) {
             throw errors.get(0);
         }
         return baseListener.query();

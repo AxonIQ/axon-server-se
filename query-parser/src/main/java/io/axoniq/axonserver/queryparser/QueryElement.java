@@ -12,6 +12,10 @@ package io.axoniq.axonserver.queryparser;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * @author Marc Gathier
+ * @since 4.0
+ */
 public interface QueryElement {
 
     String operator();

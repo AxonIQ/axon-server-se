@@ -15,7 +15,8 @@ import io.axoniq.EventStoreQueryParser;
 import java.util.Stack;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.0
  */
 public class EventStoreQueryListener extends EventStoreQueryBaseListener {
     Stack<PipelineEntry> stack = new Stack<>();

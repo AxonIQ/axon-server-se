@@ -15,7 +15,8 @@ import java.util.Optional;
 
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.0
  */
 public class Identifier implements PipelineEntry {
 
