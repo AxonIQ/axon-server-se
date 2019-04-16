@@ -55,6 +55,10 @@ public class NodeConfiguration {
         return developmentMode;
     }
 
+    /**
+     * Setting to <code>true</code> enables features for development convenience (disabled by default)
+     * @param developmentMode
+     */
     public void setDevelopmentMode(boolean developmentMode) {
         this.developmentMode = developmentMode;
     }
