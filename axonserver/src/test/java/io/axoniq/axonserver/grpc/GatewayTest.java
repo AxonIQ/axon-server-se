@@ -53,7 +53,7 @@ public class GatewayTest {
 
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         accessController = mock(AxonServerStandardAccessController.class);
         routingConfiguration = new MessagingPlatformConfiguration(null);
         routingConfiguration.setPort(7023);
@@ -71,7 +71,7 @@ public class GatewayTest {
 
 
     @Test
-    public void stopWithCallback() throws Exception {
+    public void stopWithCallback() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
                                   accessController);
 
@@ -83,7 +83,7 @@ public class GatewayTest {
     }
 
     @Test
-    public void start() throws Exception {
+    public void start() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
                                   accessController);
 
@@ -94,7 +94,7 @@ public class GatewayTest {
     }
 
     @Test(expected = RuntimeException.class)
-    public void startWithSslIncompleteConfiguration() throws Exception {
+    public void startWithSslIncompleteConfiguration() {
         routingConfiguration.setSsl(new SslConfiguration());
         routingConfiguration.getSsl().setEnabled(true);
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
@@ -104,11 +104,11 @@ public class GatewayTest {
     }
 
     @Test
-    public void startWithSsl() throws Exception {
+    public void startWithSsl() {
         routingConfiguration.setSsl(new SslConfiguration());
         routingConfiguration.getSsl().setEnabled(true);
-        routingConfiguration.getSsl().setCertChainFile("../resources/axoniq-public.crt");
-        routingConfiguration.getSsl().setPrivateKeyFile("../resources/axoniq-private.pem");
+        routingConfiguration.getSsl().setCertChainFile("../resources/sample.crt");
+        routingConfiguration.getSsl().setPrivateKeyFile("../resources/sample.pem");
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
                                   accessController);
         assertTrue(testSubject.isAutoStartup());
@@ -275,12 +275,10 @@ public class GatewayTest {
             implements AxonServerClientService {
 
         private GrpcContextProvider contextProvider = new GrpcContextProvider();
-        private String lastContext;
 
         @Override
         public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {
-            lastContext = contextProvider.getContext();
-            responseObserver.onNext(PlatformInfo.newBuilder().setPrimary(NodeInfo.newBuilder().setNodeName(lastContext))
+            responseObserver.onNext(PlatformInfo.newBuilder().setPrimary(NodeInfo.newBuilder().setNodeName(contextProvider.getContext()))
                                                 .build());
             responseObserver.onCompleted();
         }
