@@ -97,7 +97,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
     public void on(ClusterEvents.LeaderStepDown masterStepDown) {
         nextTransactionToken.set(-1);
-        logger.error("{}: Step down", eventStorageEngine.getType());
+        logger.info("{}: Step down", eventStorageEngine.getType());
         eventStorageEngine.clearReservedSequenceNumbers();
     }
 

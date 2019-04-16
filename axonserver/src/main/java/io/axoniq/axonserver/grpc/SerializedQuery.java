@@ -43,6 +43,15 @@ public class SerializedQuery  {
     }
 
 
+    /**
+     * Creates a copy of the object with client set to {@code newClient}.
+     * @param newClient the new clientId
+     * @return a copy of the serialized query
+     */
+    public SerializedQuery withClient(String newClient) {
+        return new SerializedQuery(context, newClient, serializedData);
+    }
+
     public QueryRequest query() {
         if( query == null) {
             try {
