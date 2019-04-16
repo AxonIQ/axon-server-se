@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage;
 
 import io.axoniq.axonserver.localstorage.EventStreamController;
+import io.axoniq.axonserver.localstorage.EventStreamExecutor;
 import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.util.AssertUtils;
 import org.junit.*;
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Ignore
 public class EventStreamReaderTest {
+
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
     private static TestStorageContainer testStorageContainer;
@@ -37,8 +39,8 @@ public class EventStreamReaderTest {
     @Before
     public void setUp() {
         testSubject = new EventStreamReader(testStorageContainer.getDatafileManagerChain(),
-                                            testStorageContainer.getEventWriter());
-
+                                            testStorageContainer.getEventWriter()::registerEventListener,
+                                            new EventStreamExecutor(1));
     }
 
     @Test
@@ -62,7 +64,7 @@ public class EventStreamReaderTest {
             counter.incrementAndGet();
         }, Throwable::printStackTrace);
 
-        controller.update(testStorageContainer.getDatafileManagerChain().getLastToken()-1, 100);
+        controller.update(testStorageContainer.getDatafileManagerChain().getLastToken() - 1, 100);
         AssertUtils.assertWithin(1000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(2, counter.get()));
     }
 
@@ -80,8 +82,8 @@ public class EventStreamReaderTest {
         });
 
         AssertUtils.assertWithin(2000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(10000, counter.get()));
-        if( ! task.isDone()) task.cancel(true);
+        if (!task.isDone()) {
+            task.cancel(true);
+        }
     }
-
-
 }

@@ -14,33 +14,24 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
+ * Handles streams of events from EventStore to client. One instance per tracking event processor.
  * @author Marc Gathier
  */
 public class EventStreamController {
-    private static final Executor threadPool = Executors.newCachedThreadPool(new CustomizableThreadFactory("event-stream-"){
-        @Override
-        public Thread newThread(Runnable runnable) {
-            Thread thread = super.newThread(runnable);
-            thread.setDaemon(true);
-            return thread;
-        }
-    });
     private static final Logger logger = LoggerFactory.getLogger(EventStreamController.class);
     private final Consumer<SerializedEventWithToken> eventWithTokenConsumer;
     private final Consumer<Throwable> errorCallback;
     private final EventStorageEngine datafileManagerChain;
-    private final EventWriteStorage eventWriteStorage;
+    private final Function<Consumer<SerializedEventWithToken>, Registration> liveEventRegistrationFunction;
+    private final EventStreamExecutor eventStreamExecutor;
     private final AtomicLong remainingPermits = new AtomicLong();
     private final AtomicLong currentTrackingToken = new AtomicLong(Long.MIN_VALUE);
     private final AtomicBoolean processingBacklog = new AtomicBoolean();
@@ -56,20 +47,31 @@ public class EventStreamController {
      */
     private final Object sendEventMonitor = new Object();
 
+    /**
+     * Constructor for the {@link EventStreamController}.
+     * @param eventWithTokenConsumer consumer for events
+     * @param errorCallback called when there is an error while sending events
+     * @param eventStorageEngine storage engine that contains the events
+     * @param liveEventRegistrationFunction function to register the controller with the event writer to receive updates
+     * @param eventStreamExecutor thread pool to start reading events from event store asynchronously
+     */
     public EventStreamController(
             Consumer<SerializedEventWithToken> eventWithTokenConsumer,
-            Consumer<Throwable> errorCallback, EventStorageEngine eventStorageEngine, EventWriteStorage eventWriteStorage) {
+            Consumer<Throwable> errorCallback, EventStorageEngine eventStorageEngine,
+            Function<Consumer<SerializedEventWithToken>, Registration> liveEventRegistrationFunction,
+            EventStreamExecutor eventStreamExecutor) {
         this.eventWithTokenConsumer = eventWithTokenConsumer;
         this.errorCallback = errorCallback;
         this.datafileManagerChain = eventStorageEngine;
-        this.eventWriteStorage = eventWriteStorage;
+        this.liveEventRegistrationFunction = liveEventRegistrationFunction;
+        this.eventStreamExecutor = eventStreamExecutor;
     }
 
     public void update(long trackingToken, long numberOfPermits) {
         currentTrackingToken.compareAndSet(Long.MIN_VALUE, trackingToken);
         lastPermitTimestamp = System.currentTimeMillis();
         if( remainingPermits.getAndAdd(numberOfPermits) <= 0)
-            threadPool.execute(this::startTracker);
+            eventStreamExecutor.execute(this::startTracker);
     }
 
     public boolean missingNewPermits(long minLastPermits) {
@@ -95,10 +97,10 @@ public class EventStreamController {
                 if( remainingPermits.get() > 0) {
                     closeIterator();
                 }
-                this.eventListener = eventWriteStorage.registerEventListener(this::sendFromWriter);
+                this.eventListener = liveEventRegistrationFunction.apply(this::sendFromWriter);
                 logger.info("Done processing backlog at: {}", currentTrackingToken.get());
             }
-        } catch(Exception ex) {
+        } catch(Throwable ex) {
             processingBacklog.set(false);
             logger.warn("Failed to stream", ex);
             cancelListener();
@@ -114,22 +116,13 @@ public class EventStreamController {
                 return;
             }
 
-            int retries = 5;
-            while( current != eventWithToken.getToken() && retries > 0) {
-                logger.debug("Received unexpected token: {} while expecting: {}", eventWithToken.getToken(), current);
-                LockSupport.parkNanos(100);
-                current = currentTrackingToken.get();
-                retries--;
+            if( remainingPermits.get() > 0 && !sendEvent(eventWithToken)) {
+                eventStreamExecutor.execute(this::startTracker);
             }
-
-            if(current != eventWithToken.getToken()) {
-                threadPool.execute(this::startTracker);
-                return;
-            }
-
-            sendEvent(eventWithToken);
         } catch (Throwable t) {
             logger.warn("Failed to send {}", eventWithToken, t);
+            cancelListener();
+            errorCallback.accept(t);
         }
     }
 

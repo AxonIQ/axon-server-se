@@ -69,15 +69,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
     private long newPermitsTimeout=120000;
 
+    private final EventStreamExecutor eventStreamExecutor;
     private final int maxEventCount;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
-        this(eventStoreFactory, Short.MAX_VALUE);
+        this(eventStoreFactory, new EventStreamExecutor(1), Short.MAX_VALUE);
+    }
+
+    public LocalEventStore(EventStoreFactory eventStoreFactory, int maxEventCount) {
+        this(eventStoreFactory, new EventStreamExecutor(1), maxEventCount);
     }
 
     @Autowired
-    public LocalEventStore(EventStoreFactory eventStoreFactory, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount) {
+    public LocalEventStore(EventStoreFactory eventStoreFactory, EventStreamExecutor eventStreamExecutor, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount) {
         this.eventStoreFactory = eventStoreFactory;
+        this.eventStreamExecutor = eventStreamExecutor;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
     }
 
@@ -405,8 +411,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
             this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
             this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
-            this.eventStreamReader = new EventStreamReader(eventStorageEngine, eventWriteStorage);
-            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine, null);
+            this.eventStreamReader = new EventStreamReader(eventStorageEngine, eventWriteStorage::registerEventListener, eventStreamExecutor);
+            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine,  consumer -> null, eventStreamExecutor);
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
         }
