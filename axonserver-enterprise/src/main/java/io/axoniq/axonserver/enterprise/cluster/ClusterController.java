@@ -98,6 +98,7 @@ public class ClusterController implements SmartLifecycle {
 
     @Transactional
     public void deleteNode(String name) {
+        logger.info("Delete node: {}", name);
         synchronized (remoteConnections) {
             if (messagingPlatformConfiguration.getName().equals(name)) {
                 remoteConnections.forEach((node, rc) -> rc.close());

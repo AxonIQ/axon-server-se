@@ -44,7 +44,7 @@ public class SerializedQuery  {
 
 
     /**
-     * Creates a copy of the object with client set to newClient.
+     * Creates a copy of the object with client set to {@code newClient}.
      * @param newClient the new clientId
      * @return a copy of the serialized query
      */
