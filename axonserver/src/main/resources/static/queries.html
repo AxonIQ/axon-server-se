@@ -11,6 +11,7 @@
 <noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript
     being enabled. Please enable Javascript and reload this page!</h2></noscript>
 <span id="query">
+    <div class="content results">
         <table id="queries" class="table table-striped">
             <thead>
             <tr>
@@ -28,4 +29,5 @@
                 <td v-for="clientId in clients">{{metrics[clientId][queryName] || 0}}</td>
             </tbody>
         </table>
+    </div>
 </span>

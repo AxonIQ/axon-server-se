@@ -61,15 +61,15 @@ public class QueryServiceTest {
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
         ClientIdentification name = new ClientIdentification(Topology.DEFAULT_CONTEXT, "name");
-        queryQueue.put(name.toString(), new WrappedQuery(name,
+        queryQueue.put(name.toString(), new WrappedQuery(
                                                         new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
                                                                      QueryRequest.newBuilder()
                                                                                  .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
                                                                                  .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put(name.toString(), new WrappedQuery(name,
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
+        queryQueue.put(name.toString(), new WrappedQuery(
+                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
         verify(queryDispatcher).removeFromCache(any());
