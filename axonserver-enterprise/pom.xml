@@ -18,7 +18,7 @@
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver</artifactId>
-            <version>${project.parent.version}</version>
+            <version>${axonserver.se.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.axoniq.axonserver</groupId>
