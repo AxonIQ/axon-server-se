@@ -1,0 +1,46 @@
+server:
+  port: 8024
+
+spring:
+  application:
+    name: AxonServer
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+      use-new-id-generator-mappings: false
+
+  datasource:
+    url: jdbc:h2:retry:${axoniq.axonserver.controldb-path:./data}/axonserver-controldb
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+logging:
+  level:
+    root: WARN
+    io.axoniq.axonserver.AxonServer: INFO
+    io.axoniq.axonserver.grpc.Gateway: INFO
+    io.axoniq.axonserver.grpc.internal.MessagingClusterServer: INFO
+    org.springframework.boot.web.embedded.tomcat.TomcatWebServer: INFO
+    org.springframework.http.converter.json.Jackson2ObjectMapperBuilder: ERROR
+    org.hibernate.orm.deprecation: ERROR
+
+
+management:
+  security:
+    enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: metrics,info,health,loggers,prometheus,env
+
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: AxonIQ
+    version: @project.version@

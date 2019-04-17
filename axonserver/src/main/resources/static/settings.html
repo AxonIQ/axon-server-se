@@ -1,0 +1,136 @@
+<!--
+  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~ under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+
+<script src="js/settings.js" language="JavaScript"></script>
+
+<div id="settings">
+
+    <div v-if="!node.ssl" id="sslDisabled" class="msg warning">
+        SSL disabled
+    </div>
+
+    <div v-if="!node.authentication" id="authenticationDisabled" class="msg warning">
+        Authentication disabled
+    </div>
+
+    <div v-if="!node.adminNode" class="msg warning">
+        This is not an ADMIN node
+    </div>
+
+    <div class="column-wrapper">
+
+        <div class="column configuration">
+            <section>
+                <h2>Configuration</h2>
+                <ul>
+                    <li>
+                        <span>Node Name</span>
+                        <span id="nodeName">{{node.name}}</span>
+                    </li>
+                    <li>
+                        <span>Host Name</span>
+                        <span id="hostName">{{node.hostName}}</span>
+                    </li>
+                    <li>
+                        <span>Http Port</span>
+                        <span id="httpPort">{{node.httpPort}}</span>
+                    </li>
+                    <li>
+                        <span>GRPC Port</span>
+                        <span id="grpcPort">{{node.grpcPort}}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+
+        <div class="column status titleButton">
+            <section>
+                <h2>Status</h2>
+                <span @click="reloadStatus" class="icon refresh" title="Refresh"><i class="fas fa-sync"></i></span>
+                </button>
+                <ul>
+                    <li>
+                        <span>#Events</span>
+                        <span id="nrEvents" class="number">{{status.nrOfEvents}}</span>
+                    </li>
+                    <li>
+                        <span>#Snapshots</span>
+                        <span id="nrSnapshots" class="number">{{status.nrOfSnapshots}}</span>
+                    </li>
+                    <li>
+                        <span>#Commands</span>
+                        <span id="nrCommands" class="number">{{status.nrOfCommands}}</span>
+                    </li>
+                    <li>
+                        <span>#Queries</span>
+                        <span id="nrQueries" class="number">{{status.nrOfQueries}}</span>
+                    </li>
+                    <li>
+                        <span>#Subscription Queries</span>
+                        <span class="number">{{status.nrOfSubscriptionQueries}}</span>
+                    </li>
+
+                    <li>
+                        <span>#Active Subscription Queries</span>
+                        <span class="number">{{status.nrOfActiveSubscriptionQueries}}</span>
+                    </li>
+
+                    <li>
+                        <span>#Subscription Queries Updates</span>
+                        <span class="number">{{status.nrOfSubscriptionQueriesUpdates}}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+
+        <div class="column license">
+            <section>
+                <h2>License</h2>
+                <ul>
+                    <li v-if="license.licensee" id="licenseeInfo">
+                        <span>Licensee</span>
+                        <span id="licensee">{{license.licensee}}</span>
+                    </li>
+                    <li>
+                        <span>Edition</span>
+                        <span id="edition">{{license.edition}}</span>
+                    </li>
+                    <li v-if="license.licensee">
+                        <span>Expiry date</span>
+                        <span id="expiryDate"> {{license.expiryDate | formatDate}}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <section v-if="node.clustered" id="nodesOverview">
+        <h2>Nodes</h2>
+        <div class="results singleHeader">
+            <table id="clusterTable">
+                <thead>
+                <tr>
+                    <th class="nodeName">Node Name</th>
+                    <th class="hostName">Host Name</th>
+                    <th class="httpPort">Http Port</th>
+                    <th class="grpcPort">GRPC Port</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="n in nodes">
+                    <td>{{n.name}}</td>
+                    <td>{{n.hostName}}</td>
+                    <td>{{n.httpPort}}</td>
+                    <td>{{n.grpcPort}}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>

@@ -1,0 +1,197 @@
+<!--
+  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~ under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+
+<script>
+    //# sourceURL=context.js
+    globals.pageView = new Vue(
+            {
+                el: '#context',
+                data: {
+                    contexts: [],
+                    newContext: {nodes: []},
+                    admin: globals.admin,
+                    webSocketInfo: globals.webSocketInfo,
+                    nodes: []
+                }, mounted() {
+                    this.loadContexts();
+                    axios.get("v1/public").then(response => {
+                        this.nodes = response.data;
+                        this.initNewContext();
+                    });
+                    this.connect();
+                }, beforeDestroy() {
+                    if (this.subscription) {
+                        this.subscription.unsubscribe();
+                    }
+                }, methods: {
+                    initNewContext() {
+                        for (var a = 0; a < this.nodes.length; a++) {
+                            this.newContext.nodes[a] = {
+                                name: this.nodes[a].name,
+                                selected: false
+                            };
+                        }
+
+                    },
+                    deleteNodeFromContext(node, context) {
+                        if (confirm("Delete node " + node + " from context " + context.context)) {
+                            axios.delete("v1/context/" + context.context + "/" + node).then(
+                                    response => this.loadContexts()
+                            )
+                        }
+                    },
+                    addNodeToContext(context) {
+                        if (!context.selectedNode) {
+                            return;
+                        }
+                        if (this.containsSelectedNode(context)) {
+                            alert("Node already linked to context");
+                            return;
+                        }
+                        if (confirm("Add node " + context.selectedNode + " to context " + context.context)) {
+                            axios.post("v1/context/" + context.context + "/" + context.selectedNode).then(
+                                    response => this.loadContexts()
+                            )
+                        }
+                    },
+                    containsSelectedNode(context) {
+                        for (var a = 0; a < context.nodes.length; a++) {
+                            if (context.nodes[a].name === context.selectedNode) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    },
+                    loadContexts() {
+                        axios.get("v1/public/context").then(response => {
+                            this.contexts = response.data;
+                        });
+                    },
+                    createContext() {
+                        if (!this.newContext.context) {
+                            alert("No Context Name set");
+                            return;
+                        }
+                        if (this.existsContext()) {
+                            alert("Context " + this.newContext.context + " already exists");
+                            return;
+                        }
+                        var context = {context: this.newContext.context, nodes: []};
+                        for (var i = 0; i < this.newContext.nodes.length; i++) {
+                            if (this.newContext.nodes[i].selected ) {
+                                context.nodes.push(this.newContext.nodes[i].name);
+                            }
+                        }
+                        axios.post("v1/context", context).then(response => {
+                            this.initNewContext();
+                            this.loadContexts();
+                        });
+                    },
+                    existsContext() {
+                        for (var i = 0; i < this.contexts.length; i++) {
+                            if (this.contexts[i].context === this.newContext.context) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    },
+                    deleteContext(context) {
+                        if( this.isInternalContext(context) ) {
+                            alert("Cannot delete internal context")
+                        } else if (confirm("Delete context " + context.context)) {
+                            axios.delete("v1/context/" + context.context).then(
+                                    response => this.loadContexts()
+                            )
+                        }
+
+                    },
+                    connect() {
+                        let me = this;
+                        me.webSocketInfo.subscribe('/topic/cluster', function () {
+                            me.loadContexts();
+                        }, function (sub) {
+                            me.subscription = sub;
+                        });
+                    },
+                    isInternalContext(context) {
+                        return context.context.charAt(0) === '_';
+                    }
+                }
+            });
+
+</script>
+<span id="context">
+    <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
+                <div class="results singleHeader">
+
+        <table>
+            <thead>
+            <tr>
+                <th>Context Name</th>
+                <th>Nodes</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="context in contexts">
+                <td>{{context.context}}
+                    <span v-if="context.changePending" title="Pending change"><i class="fas fa-exclamation-circle"></i></span>
+                    <span @click="deleteContext(context)" v-if="admin && !isInternalContext(context)" title="Delete Context">
+                        <i class="far fa-trash-alt"></i>
+                    </span>
+                </td>
+                <td>
+                    <ul>
+                        <li v-for="node in context.nodes"><span class="nodeName">{{node}}</span>
+                            <span v-if="admin" @click="deleteNodeFromContext(node,context)" title="Delete"><i
+                                    class="far fa-trash-alt"></i></span></li>
+                    </ul>
+                    <span v-if="admin">
+                    <select class="nodeName" v-model="context.selectedNode">
+                        <option v-for="n in nodes">{{n.name}}</option>
+                    </select>
+                    <span @click="addNodeToContext(context)" title="Add"><i class="fas fa-plus"></i></span>
+                </span>
+                </td>
+
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+    <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
+        Multi-context is not allowed
+    </div>
+
+    <section id="applicationDetails" v-if="admin && hasFeature('MULTI_CONTEXT')">
+<div class="column configuration">
+    <form id="contextForm">
+                <ul>
+                    <li>
+                        <span>Context Name</span>
+                        <span><input v-model="newContext.context"/></span>
+                    </li>
+                    <li>
+                        <span>Nodes</span>
+                        <span>
+                            <div v-for="node in newContext.nodes">
+                                <span class="nodeName">{{node.name}}</span>
+                                <input type="checkbox" v-model="node.selected"/> Add
+                            </div>
+                        </span>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span><button @click.prevent="createContext()" class="button">Save</button></span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+</section>
+</span>
