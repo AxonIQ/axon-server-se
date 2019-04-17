@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.replication.DefaultSnapshotContext;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.cluster.replication.DefaultSnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
@@ -15,18 +15,17 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
 
 import static java.lang.String.format;
 
@@ -64,14 +63,16 @@ public class ReplicatorPeer {
 
     private class InstallSnapshotState implements ReplicatorPeerState {
 
-        @Value("axoniq.axonserver.maxmessagesize")
-        private int MAX_MESSAGE_SIZE;
+        private static final int RESERVED_FOR_OTHER_FIELDS = 10000;
+
+        private final int GRPC_CONFIGURED_MAX_MESSAGE_SIZE = raftGroup.raftConfiguration().maxMessageSize();
+        private  final int SNAPSHOT_CHUNKS_BUFFER_SIZE = raftGroup.raftConfiguration().maxSnapshotNoOfChunksPerBatch();
+        private final int MAX_MESSAGE_SIZE;
 
         private final SnapshotContext snapshotInstallationContext;
         private Registration registration;
         private Subscription subscription;
         private int offset;
-        private int currentMessageSize = 0;
         private volatile int lastReceivedOffset;
         private volatile boolean done = false;
         private volatile long lastAppliedIndex;
@@ -79,16 +80,7 @@ public class ReplicatorPeer {
         public InstallSnapshotState(
                 SnapshotContext snapshotInstallationContext) {
             this.snapshotInstallationContext = snapshotInstallationContext;
-        }
-
-        private boolean isOverLimit(int serializedObjectSize){
-            if (serializedObjectSize+currentMessageSize > MAX_MESSAGE_SIZE){
-                currentMessageSize=serializedObjectSize;
-                return true;
-            } else {
-                currentMessageSize = currentMessageSize + serializedObjectSize;
-                return false;
-            }
+            this.MAX_MESSAGE_SIZE = GRPC_CONFIGURED_MAX_MESSAGE_SIZE - RESERVED_FOR_OTHER_FIELDS;
         }
 
         @Override
@@ -101,9 +93,11 @@ public class ReplicatorPeer {
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();
+            AtomicInteger currentMessageSize = new AtomicInteger(0);
+            AtomicInteger currentNoOfMessages  = new AtomicInteger(0);
             snapshotManager.streamSnapshotData(snapshotInstallationContext)
                            //Buffer serializedObjects until the max grpc message size is met
-                           .bufferUntil(p -> isOverLimit(p.getSerializedSize()),true)
+                           .bufferUntil(p -> isOverLimit(p.getSerializedSize(),currentMessageSize,currentNoOfMessages),true)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override
                                public void onSubscribe(Subscription s) {
@@ -243,6 +237,21 @@ public class ReplicatorPeer {
             return subscription != null &&
                     running &&
                     offset - lastReceivedOffset < raftGroup.raftConfiguration().flowBuffer();
+        }
+
+        private boolean isOverLimit(int serializedObjectSize, AtomicInteger currentMessageSize,
+                                    AtomicInteger currentNoOfMessages){
+            if (serializedObjectSize + currentMessageSize.intValue() >= MAX_MESSAGE_SIZE ||
+                    currentNoOfMessages.intValue() + 1 > SNAPSHOT_CHUNKS_BUFFER_SIZE){
+
+                currentMessageSize.set(serializedObjectSize); //prepare for next request
+                currentNoOfMessages.set(1);
+                return true;
+            } else {
+                currentMessageSize.set(currentMessageSize.get() + serializedObjectSize);
+                currentNoOfMessages.incrementAndGet();
+                return false;
+            }
         }
 
         @Override

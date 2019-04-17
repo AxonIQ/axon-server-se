@@ -20,6 +20,7 @@ import io.axoniq.axonserver.cluster.replication.file.IndexManager;
 import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManager;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
@@ -44,14 +45,17 @@ public class GrpcRaftGroup implements RaftGroup {
     private final LogEntryProcessor logEntryProcessor;
     private final LocalEventStore localEventStore;
     private final GrpcRaftClientFactory clientFactory;
+    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
 
     public GrpcRaftGroup(String localNodeId, String groupId,
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
                          RaftProperties storageOptions,
                          Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory,
                          LocalEventStore localEventStore,
-                         GrpcRaftClientFactory clientFactory) {
+                         GrpcRaftClientFactory clientFactory,
+                         MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.clientFactory = clientFactory;
+        this.messagingPlatformConfiguration=messagingPlatformConfiguration;
         context = groupId;
         this.localEventStore = localEventStore;
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
@@ -130,6 +134,16 @@ public class GrpcRaftGroup implements RaftGroup {
             @Override
             public int maxReplicationRound() {
                 return storageOptions.getMaxReplicationRound();
+            }
+
+            @Override
+            public int maxSnapshotNoOfChunksPerBatch() {
+                return storageOptions.getMaxSnapshotChunksPerBatch();
+            }
+
+            @Override
+            public int maxMessageSize() {
+                return messagingPlatformConfiguration.getMaxTransactionSize();
             }
         };
 
