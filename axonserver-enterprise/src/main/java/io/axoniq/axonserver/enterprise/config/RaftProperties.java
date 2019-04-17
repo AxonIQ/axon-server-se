@@ -17,6 +17,7 @@ public class RaftProperties extends StorageProperties {
     private int heartbeatTimeout = 100;
     private int maxEntriesPerBatch = 100;
     private int flowBuffer = 1000;
+    private int maxSnapshotChunksPerBatch = 10;
 
     private final SystemInfoProvider systemInfoProvider;
     private int maxReplicationRound = 10;
@@ -99,5 +100,13 @@ public class RaftProperties extends StorageProperties {
 
     public void setLogRetentionHours(int logRetentionHours) {
         this.logRetentionHours = Math.max(logRetentionHours, 1);
+    }
+
+    public int getMaxSnapshotChunksPerBatch() {
+        return maxSnapshotChunksPerBatch;
+    }
+
+    public void setMaxSnapshotChunksPerBatch(int maxSnapshotChunksPerBatch) {
+        this.maxSnapshotChunksPerBatch = maxSnapshotChunksPerBatch;
     }
 }
