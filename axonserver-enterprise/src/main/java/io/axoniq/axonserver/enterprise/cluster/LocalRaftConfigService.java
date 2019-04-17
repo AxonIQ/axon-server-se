@@ -336,8 +336,16 @@ class LocalRaftConfigService implements RaftConfigService {
         }
         List<String> contexts = nodeInfo.getContextsList().stream().map(ContextRole::getName).collect(Collectors
                                                                                                               .toList());
-        if (contexts.isEmpty()) {
+        if ((contexts.size() == 1) && contexts.get(0).equals("_none")) {
+            logger.debug("join(): Joining to no contexts.");
+            contexts.clear();
+        }
+        else if (contexts.isEmpty()) {
+            logger.debug("join(): Joining to all contexts.");
             contexts = contextController.getContexts().map(Context::getName).collect(Collectors.toList());
+        }
+        else {
+            logger.debug("join(): Joining to a specified set of contexts.");
         }
 
         String nodeLabel = generateNodeLabel(nodeInfo.getNodeName());

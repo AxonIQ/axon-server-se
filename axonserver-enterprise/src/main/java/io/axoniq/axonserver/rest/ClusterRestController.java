@@ -13,6 +13,8 @@ import io.axoniq.axonserver.features.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.rest.json.RestResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -37,6 +40,8 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 @RestController("ClusterRestController")
 @RequestMapping("/v1/cluster")
 public class ClusterRestController {
+
+    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
@@ -68,12 +73,19 @@ public class ClusterRestController {
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
         String context = jsonClusterNode.getContext();
+        // Check for both context and noContext
         if (context != null && !context.isEmpty()) {
             if (!isAdmin(context) && !contextNameValidation.test(context)) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
                                                      "Invalid context name: " + context);
             }
+            logger.debug("add(): Registering myself and adding me to context \"{}\".", context);
             nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context).build());
+        } else if ((jsonClusterNode.getNoContexts() != null) && jsonClusterNode.getNoContexts()) {
+            logger.debug("add(): Registering myself and adding me to no contexts.");
+            nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName("_none").build());
+        } else {
+            logger.debug("add(): Registering myself and adding me to all contexts.");
         }
 
         try {
@@ -200,6 +212,7 @@ public class ClusterRestController {
         private Integer internalGrpcPort;
 
         private String context;
+        private Boolean noContexts;
 
         public String getInternalHostName() {
             return internalHostName;
@@ -223,6 +236,14 @@ public class ClusterRestController {
 
         public void setContext(String context) {
             this.context = context;
+        }
+
+        public Boolean getNoContexts() {
+            return noContexts;
+        }
+
+        public void setNoContexts(Boolean noContexts) {
+            this.noContexts = noContexts;
         }
     }
 }

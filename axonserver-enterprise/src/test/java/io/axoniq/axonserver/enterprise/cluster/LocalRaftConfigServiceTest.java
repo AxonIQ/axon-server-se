@@ -375,6 +375,14 @@ public class LocalRaftConfigServiceTest {
     }
 
     @Test
+    public void joinNoContexts() {
+        when(adminNode.isLeader()).thenReturn(true);
+        testSubject.join(NodeInfo.newBuilder().setNodeName("node3").setInternalHostName("node3").setHostName("node3")
+                .addContexts(ContextRole.newBuilder().setName("_none")).build());
+
+    }
+
+    @Test
     public void init() {
         adminDB.contextMap.clear();
         adminDB.nodeMap.clear();
