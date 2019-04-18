@@ -58,7 +58,7 @@ public class ClusterFlowControlStreamObserverTest {
         assertEquals( QUERY_RESPONSE, delegate.responseList.get(1).getRequestCase());
         assertEquals( FLOW_CONTROL, delegate.responseList.get(2).getRequestCase());
         testSubject.onNext(ConnectorCommand.newBuilder().setQueryResponse(QueryResponse.newBuilder().build()).build());
-        assertEquals(4, delegate.count);
+        assertEquals(5, delegate.count);
         assertEquals( QUERY_RESPONSE, delegate.responseList.get(3).getRequestCase());
     }
     @Test
