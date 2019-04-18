@@ -5,7 +5,8 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import java.util.Iterator;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class SegmentEntryIterator implements AutoCloseable, Iterator<Entry> {
 

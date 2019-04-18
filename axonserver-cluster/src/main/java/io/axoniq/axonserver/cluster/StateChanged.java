@@ -3,7 +3,8 @@ package io.axoniq.axonserver.cluster;
 import java.util.Date;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class StateChanged {
 

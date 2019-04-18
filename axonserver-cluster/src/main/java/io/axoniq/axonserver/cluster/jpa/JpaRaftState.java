@@ -4,7 +4,8 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @Entity
 public class JpaRaftState {

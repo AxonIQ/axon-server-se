@@ -21,7 +21,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public abstract class SegmentBasedLogEntryStore {
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedLogEntryStore.class);
@@ -157,28 +158,6 @@ public abstract class SegmentBasedLogEntryStore {
         if( next == null) return filenames;
         return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
     }
-
-//    @Override
-//    public void health(Health.Builder builder) {
-//        String storage = storageProperties.getStorage(context);
-//        SegmentBasedLogEntryStore n = next;
-//        Path path = Paths.get(storage);
-//        try {
-//            FileStore store = Files.getFileStore(path);
-//            builder.withDetail(context + ".free",store.getUsableSpace());
-//            builder.withDetail(context + ".path",path.toString());
-//        } catch (IOException e) {
-//            logger.warn("Failed to retrieve filestore for {}", path, e);
-//        }
-//        while( n != null) {
-//            if( ! storage.equals(next.storageProperties.getStorage(context))) {
-//                n.health(builder);
-//                return;
-//            }
-//            n = n.next;
-//        }
-//    }
-
 
     /**
      * @param segment gets an EntrySource for the segment

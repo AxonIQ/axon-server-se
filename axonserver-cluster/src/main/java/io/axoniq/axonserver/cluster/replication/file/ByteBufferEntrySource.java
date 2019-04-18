@@ -10,7 +10,7 @@ import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import java.nio.ByteBuffer;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ByteBufferEntrySource implements EntrySource {
 

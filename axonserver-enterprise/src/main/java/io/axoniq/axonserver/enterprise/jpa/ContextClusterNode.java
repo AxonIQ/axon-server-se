@@ -30,8 +30,6 @@ public class ContextClusterNode implements Serializable {
     @EmbeddedId
     private Key key;
 
-    private boolean storage;
-    private boolean messaging;
     private String clusterNodeLabel;
 
     public ContextClusterNode() {
@@ -46,22 +44,6 @@ public class ContextClusterNode implements Serializable {
 
     public Key getKey() {
         return key;
-    }
-
-    public boolean isStorage() {
-        return storage;
-    }
-
-    public void setStorage(boolean storage) {
-        this.storage = storage;
-    }
-
-    public boolean isMessaging() {
-        return messaging;
-    }
-
-    public void setMessaging(boolean messaging) {
-        this.messaging = messaging;
     }
 
     public void setKey(Key key) {

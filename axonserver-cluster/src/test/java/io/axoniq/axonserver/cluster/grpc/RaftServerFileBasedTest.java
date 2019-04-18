@@ -31,7 +31,7 @@ import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
 import static junit.framework.TestCase.assertNotNull;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RaftServerFileBasedTest {
 

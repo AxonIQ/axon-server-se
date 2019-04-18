@@ -3,7 +3,7 @@ package io.axoniq.axonserver.cluster.replication.file;
 import java.util.Comparator;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WritePosition implements Comparable<WritePosition> {
     static final WritePosition INVALID = new WritePosition(Long.MAX_VALUE, Integer.MAX_VALUE, null, null);

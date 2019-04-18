@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.util.AssertUtils;
@@ -36,7 +45,7 @@ public class InputStreamReaderTest {
     @Before
     public void setUp() {
         testSubject = new EventStreamReader(testStorageContainer.getDatafileManagerChain(),
-                                            testStorageContainer.getEventWriter());
+                                            testStorageContainer.getEventWriter()::registerEventListener, new EventStreamExecutor(1));
     }
 
     @Test
@@ -60,7 +69,7 @@ public class InputStreamReaderTest {
             counter.incrementAndGet();
         }, Throwable::printStackTrace);
 
-        controller.update(testStorageContainer.getEventWriter().getLastToken() - 1, 100);
+        controller.update(testStorageContainer.getDatafileManagerChain().getLastToken() - 1, 100);
         AssertUtils.assertWithin(1000, TimeUnit.MILLISECONDS, () -> Assert.assertEquals(2, counter.get()));
     }
 

@@ -28,15 +28,19 @@ public class GrpcInternalQueryDispatcherListener extends GrpcFlowControlledDispa
     @Override
     protected boolean send(WrappedQuery message) {
         SerializedQuery request = validate(message, queryDispatcher, logger);
-        if( request == null) return false;
+        if (request == null) {
+            return false;
+        }
 
-        logger.warn("Sending query to {}: {}", message.queryRequest().client(), message.queryRequest().query());
+        if (logger.isTraceEnabled()) {
+            logger.trace("Sending query to {}: {}", request.client(), request.query());
+        }
         inboundStream.onNext(ConnectorResponse.newBuilder()
                                               .setQuery(
-                                                    ForwardedQuery.newBuilder()
-                                                                  .setClient(message.client().getClient())
-                                                                  .setContext(message.client().getContext())
-                                                                  .setQuery(request.toByteString()))
+                                                      ForwardedQuery.newBuilder()
+                                                                    .setClient(request.client())
+                                                                    .setContext(request.context())
+                                                                    .setQuery(request.toByteString()))
                                               .build());
         return true;
     }
