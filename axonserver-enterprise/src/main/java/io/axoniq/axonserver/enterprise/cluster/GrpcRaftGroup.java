@@ -141,7 +141,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public int maxMessageSize() {
-                return messagingPlatformConfiguration.getMaxTransactionSize();
+                return messagingPlatformConfiguration.getMaxMessageSize();
             }
         };
 
