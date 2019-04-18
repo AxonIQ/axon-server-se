@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc;
 
 import com.google.protobuf.ByteString;
@@ -6,7 +15,8 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 
 /**
- * Author: marc
+ * Wrapper around {@link QueryRequest} to reduce serialization/deserialization.
+ * @author Marc Gathier
  */
 public class SerializedQuery  {
 
@@ -32,6 +42,15 @@ public class SerializedQuery  {
         serializedData = readByteArray;
     }
 
+
+    /**
+     * Creates a copy of the object with client set to {@code newClient}.
+     * @param newClient the new clientId
+     * @return a copy of the serialized query
+     */
+    public SerializedQuery withClient(String newClient) {
+        return new SerializedQuery(context, newClient, serializedData);
+    }
 
     public QueryRequest query() {
         if( query == null) {

@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FileUtils {
     public static final Logger logger = LoggerFactory.getLogger(FileUtils.class);

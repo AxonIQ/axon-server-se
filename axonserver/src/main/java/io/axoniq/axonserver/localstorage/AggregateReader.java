@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage;
 
 import java.util.Optional;
@@ -7,11 +16,11 @@ import java.util.function.Consumer;
  * @author Marc Gathier
  */
 public class AggregateReader {
-    private final EventStore datafileManagerChain;
+    private final EventStorageEngine eventStorageEngine;
     private final SnapshotReader snapshotReader;
 
-    public AggregateReader(EventStore datafileManagerChain, SnapshotReader snapshotReader) {
-        this.datafileManagerChain = datafileManagerChain;
+    public AggregateReader(EventStorageEngine eventStorageEngine, SnapshotReader snapshotReader) {
+        this.eventStorageEngine = eventStorageEngine;
         this.snapshotReader = snapshotReader;
     }
 
@@ -24,7 +33,7 @@ public class AggregateReader {
                 actualMinSequenceNumber = snapshot.get().asEvent().getAggregateSequenceNumber() + 1;
             }
         }
-        datafileManagerChain.streamByAggregateId(aggregateId, actualMinSequenceNumber, eventConsumer);
+        eventStorageEngine.processEventsPerAggregate(aggregateId, actualMinSequenceNumber, eventConsumer);
 
     }
     public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
@@ -34,6 +43,6 @@ public class AggregateReader {
     }
 
     public long readHighestSequenceNr(String aggregateId) {
-        return datafileManagerChain.getLastSequenceNumber(aggregateId).orElse(-1L);
+        return eventStorageEngine.getLastSequenceNumber(aggregateId).orElse(-1L);
     }
 }

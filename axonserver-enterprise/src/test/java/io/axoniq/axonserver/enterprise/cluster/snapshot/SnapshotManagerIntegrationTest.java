@@ -19,7 +19,7 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.Loa
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -88,10 +88,10 @@ public class SnapshotManagerIntegrationTest {
     private AxonServerSnapshotManager leaderSnapshotManager;
     private AxonServerSnapshotManager followerSnapshotManager;
 
-    private EventStore leaderEventStore;
-    private EventStore leaderSnapshotStore;
-    private EventStore followerEventStore;
-    private EventStore followerSnapshotStore;
+    private EventStorageEngine leaderEventStore;
+    private EventStorageEngine leaderSnapshotStore;
+    private EventStorageEngine followerEventStore;
+    private EventStorageEngine followerSnapshotStore;
 
     @Before
     public void setUp() {
@@ -185,32 +185,32 @@ public class SnapshotManagerIntegrationTest {
         assertProcessorLoadBalancing(processorLoadBalancing1, processorLoadBalancingList.get(0));
     }
 
-    private EventStore eventStore(EmbeddedDBProperties embeddedDBProperties) {
+    private EventStorageEngine eventStore(EmbeddedDBProperties embeddedDBProperties) {
         IndexManager eventIndexManager = new IndexManager(CONTEXT, embeddedDBProperties.getEvent());
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
-        EventStore eventStore = new PrimaryEventStore(new EventTypeContext(CONTEXT, EventType.EVENT),
-                                                      eventIndexManager,
-                                                      eventTransformerFactory,
-                                                      embeddedDBProperties.getEvent());
+        EventStorageEngine eventStore = new PrimaryEventStore(new EventTypeContext(CONTEXT, EventType.EVENT),
+                                                              eventIndexManager,
+                                                              eventTransformerFactory,
+                                                              embeddedDBProperties.getEvent());
         eventStore.init(false);
         return eventStore;
     }
 
-    private EventStore snapshotStore(EmbeddedDBProperties embeddedDBProperties) {
+    private EventStorageEngine snapshotStore(EmbeddedDBProperties embeddedDBProperties) {
         IndexManager snapshotIndexManager = new IndexManager(CONTEXT, embeddedDBProperties.getSnapshot());
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
-        EventStore snapshotStore = new PrimaryEventStore(new EventTypeContext(CONTEXT, EventType.SNAPSHOT),
-                                                         snapshotIndexManager,
-                                                         eventTransformerFactory,
-                                                         embeddedDBProperties.getSnapshot());
+        EventStorageEngine snapshotStore = new PrimaryEventStore(new EventTypeContext(CONTEXT, EventType.SNAPSHOT),
+                                                                 snapshotIndexManager,
+                                                                 eventTransformerFactory,
+                                                                 embeddedDBProperties.getSnapshot());
         snapshotStore.init(false);
         return snapshotStore;
     }
 
-    private AxonServerSnapshotManager axonServerSnapshotManager(EventStore eventStore, EventStore snapshotStore) {
+    private AxonServerSnapshotManager axonServerSnapshotManager(EventStorageEngine eventStore, EventStorageEngine snapshotStore) {
         EventStoreFactory eventStoreFactory = mock(EventStoreFactory.class);
-        when(eventStoreFactory.createEventManagerChain(CONTEXT)).thenReturn(eventStore);
-        when(eventStoreFactory.createSnapshotManagerChain(CONTEXT)).thenReturn(snapshotStore);
+        when(eventStoreFactory.createEventStorageEngine(CONTEXT)).thenReturn(eventStore);
+        when(eventStoreFactory.createSnapshotStorageEngine(CONTEXT)).thenReturn(snapshotStore);
         when(eventStoreFactory.createTransactionManager(eventStore)).thenReturn(new SingleInstanceTransactionManager(eventStore));
         when(eventStoreFactory.createTransactionManager(snapshotStore)).thenReturn(new SingleInstanceTransactionManager(snapshotStore));
 
@@ -250,7 +250,7 @@ public class SnapshotManagerIntegrationTest {
         return embeddedDBProperties;
     }
 
-    private void setupEventStore(EventStore eventStore, int numOfTransactions, int numOfEvents, boolean snapshot)
+    private void setupEventStore(EventStorageEngine eventStore, int numOfTransactions, int numOfEvents, boolean snapshot)
             throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
@@ -270,7 +270,7 @@ public class SnapshotManagerIntegrationTest {
         latch.await(5, TimeUnit.SECONDS);
     }
 
-    private void assertEventStores(EventStore eventStore1, EventStore eventStore2, long firstToken, long limitToken) {
+    private void assertEventStores(EventStorageEngine eventStore1, EventStorageEngine eventStore2, long firstToken, long limitToken) {
         Iterator<SerializedTransactionWithToken> iterator1 = eventStore1.transactionIterator(firstToken, limitToken);
         Iterator<SerializedTransactionWithToken> iterator2 = eventStore2.transactionIterator(firstToken, limitToken);
 

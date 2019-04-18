@@ -6,7 +6,7 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.Process
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface ProcessorLoadBalancingControllerFacade {
 

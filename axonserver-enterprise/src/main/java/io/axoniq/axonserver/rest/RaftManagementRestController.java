@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.swagger.annotations.Api;
@@ -44,8 +45,13 @@ public class RaftManagementRestController {
      */
     @PostMapping(path = "context/{context}/cleanLogEntries/{seconds}")
     public void cleanLogOlderThen(@PathVariable("context") String context, @PathVariable("seconds") long seconds) {
+        RaftNode raftNode = localNode(context);
+        if (raftNode == null){
+            logger.info("Cannot perform log compaction: context {} not found.", context);
+            return;
+        }
         logger.info("Cleaning RAFT log for context {} older than {} seconds.", context, seconds);
-        localNode(context).forceLogCleaning(seconds, SECONDS);
+        raftNode.forceLogCleaning(seconds, SECONDS);
         logger.info("RAFT log cleared for context {} older than {} seconds.", context, seconds);
     }
 
@@ -74,7 +80,7 @@ public class RaftManagementRestController {
     }
 
     private RaftNode localNode(String context) {
-        return grpcRaftController.getRaftGroup(context)
-                                 .localNode();
+        RaftGroup raftGroup = grpcRaftController.getRaftGroup(context);
+        return raftGroup == null ? null : raftGroup.localNode();
     }
 }

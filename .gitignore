@@ -1,5 +1,7 @@
 # IntelliJ / Eclipse
-.idea
+!.idea/
+.idea/*
+!/.idea/runConfigurations/
 *.iml
 .settings
 .classpath
@@ -22,3 +24,8 @@ package-lock.json
 */node/
 */node_modules/
 */src/main/resources/static/dist/
+
+#dev running env
+dev/node1/**
+dev/node2/**
+dev/node3/**

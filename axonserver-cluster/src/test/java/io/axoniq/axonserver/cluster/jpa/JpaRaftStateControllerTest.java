@@ -12,7 +12,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = JpaRaftStateRepository.class)

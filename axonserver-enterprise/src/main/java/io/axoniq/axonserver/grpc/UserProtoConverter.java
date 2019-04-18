@@ -6,7 +6,8 @@ import io.axoniq.axonserver.grpc.internal.User;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * Convert between JPA {@link io.axoniq.axonserver.access.jpa.User} object and Protobuf {@link User} object and vice versa.
+ * @author Marc Gathier
  */
 public class UserProtoConverter {
     public static io.axoniq.axonserver.access.jpa.User createJpaUser(User user) {

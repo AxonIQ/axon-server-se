@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @Component
 public class RaftConfigServiceFactory {

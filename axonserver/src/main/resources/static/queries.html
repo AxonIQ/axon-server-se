@@ -1,12 +1,17 @@
+<!--
+  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~ under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+
 <script src="js/queries.js" language="JavaScript"></script>
 <noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript
     being enabled. Please enable Javascript and reload this page!</h2></noscript>
 <span id="query">
-     <span v-if="!hasFeature('BASIC_APP_MONITORING')" class="msg warning">
-        View is not allowed
-    </span>
-
-    <div class="content results" v-if="hasFeature('BASIC_APP_MONITORING')" >
+    <div class="content results">
         <table id="queries" class="table table-striped">
             <thead>
             <tr>

@@ -4,7 +4,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.storage.transaction.RaftTransactionManager;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import org.springframework.context.event.EventListener;
@@ -30,7 +30,7 @@ public class ClusterTransactionManagerFactory implements StorageTransactionManag
     }
 
     @Override
-    public StorageTransactionManager createTransactionManager(EventStore eventStore) {
+    public StorageTransactionManager createTransactionManager(EventStorageEngine eventStore) {
         RaftTransactionManager raftTransactionManager = new RaftTransactionManager(eventStore, raftController, configuration);
         transactionManagersPerContext.computeIfAbsent(eventStore.getType().getContext(),
                                                       k -> new CopyOnWriteArraySet<>()).add(raftTransactionManager);

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import static io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter.asSerializedTransactionWithToken;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class EventLogEntryConsumer implements LogEntryConsumer {
