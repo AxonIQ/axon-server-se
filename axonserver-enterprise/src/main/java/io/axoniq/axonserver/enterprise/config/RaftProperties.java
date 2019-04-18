@@ -102,10 +102,18 @@ public class RaftProperties extends StorageProperties {
         this.logRetentionHours = Math.max(logRetentionHours, 1);
     }
 
+    /**
+     * Returns the maximum number of serializedObjects to be sent in a single InstallSnapshotRequest.
+     * @return maximum number of serializedObjects sent in a single InstallSnapshotRequest
+     */
     public int getMaxSnapshotChunksPerBatch() {
         return maxSnapshotChunksPerBatch;
     }
 
+    /**
+     * Sets the maximum number of serializedObjects to be sent in a single InstallSanpshotRequest.
+     * @param maxSnapshotChunksPerBatch the maximum number of serializedObjects
+     */
     public void setMaxSnapshotChunksPerBatch(int maxSnapshotChunksPerBatch) {
         this.maxSnapshotChunksPerBatch = maxSnapshotChunksPerBatch;
     }

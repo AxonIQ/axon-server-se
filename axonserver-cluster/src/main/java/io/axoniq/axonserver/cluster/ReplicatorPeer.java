@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
+import io.axoniq.axonserver.cluster.util.ReplicatorPeerUtil;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -65,9 +66,9 @@ public class ReplicatorPeer {
 
         private static final int RESERVED_FOR_OTHER_FIELDS = 10000;
 
-        private final int GRPC_CONFIGURED_MAX_MESSAGE_SIZE = raftGroup.raftConfiguration().maxMessageSize();
-        private  final int SNAPSHOT_CHUNKS_BUFFER_SIZE = raftGroup.raftConfiguration().maxSnapshotNoOfChunksPerBatch();
-        private final int MAX_MESSAGE_SIZE;
+        private final int grpcConfiguredMaxMessageSize = raftGroup.raftConfiguration().maxMessageSize();
+        private  final int snapshotChunksBufferSize = raftGroup.raftConfiguration().maxSnapshotNoOfChunksPerBatch();
+        private final int maxMessageSize;
 
         private final SnapshotContext snapshotInstallationContext;
         private Registration registration;
@@ -80,7 +81,7 @@ public class ReplicatorPeer {
         public InstallSnapshotState(
                 SnapshotContext snapshotInstallationContext) {
             this.snapshotInstallationContext = snapshotInstallationContext;
-            this.MAX_MESSAGE_SIZE = GRPC_CONFIGURED_MAX_MESSAGE_SIZE - RESERVED_FOR_OTHER_FIELDS;
+            this.maxMessageSize = grpcConfiguredMaxMessageSize - RESERVED_FOR_OTHER_FIELDS;
         }
 
         @Override
@@ -96,8 +97,12 @@ public class ReplicatorPeer {
             AtomicInteger currentMessageSize = new AtomicInteger(0);
             AtomicInteger currentNoOfMessages  = new AtomicInteger(0);
             snapshotManager.streamSnapshotData(snapshotInstallationContext)
-                           //Buffer serializedObjects until the max grpc message size is met
-                           .bufferUntil(p -> isOverLimit(p.getSerializedSize(),currentMessageSize,currentNoOfMessages),true)
+                           //Buffer serializedObjects until the max grpc message & chunk size is met
+                           .bufferUntil(p -> ReplicatorPeerUtil.isOverLimit(p.getSerializedSize(),
+                                                                            currentMessageSize,
+                                                                            maxMessageSize,
+                                                                            currentNoOfMessages,
+                                                                            snapshotChunksBufferSize), true)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override
                                public void onSubscribe(Subscription s) {
@@ -237,21 +242,6 @@ public class ReplicatorPeer {
             return subscription != null &&
                     running &&
                     offset - lastReceivedOffset < raftGroup.raftConfiguration().flowBuffer();
-        }
-
-        private boolean isOverLimit(int serializedObjectSize, AtomicInteger currentMessageSize,
-                                    AtomicInteger currentNoOfMessages){
-            if (serializedObjectSize + currentMessageSize.intValue() >= MAX_MESSAGE_SIZE ||
-                    currentNoOfMessages.intValue() + 1 > SNAPSHOT_CHUNKS_BUFFER_SIZE){
-
-                currentMessageSize.set(serializedObjectSize); //prepare for next request
-                currentNoOfMessages.set(1);
-                return true;
-            } else {
-                currentMessageSize.set(currentMessageSize.get() + serializedObjectSize);
-                currentNoOfMessages.incrementAndGet();
-                return false;
-            }
         }
 
         @Override

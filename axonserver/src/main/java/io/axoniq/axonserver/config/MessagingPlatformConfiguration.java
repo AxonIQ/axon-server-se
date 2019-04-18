@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.util.StringUtils;
+import io.grpc.internal.GrpcUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -17,7 +18,7 @@ import java.net.UnknownHostException;
 public class MessagingPlatformConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(MessagingPlatformConfiguration.class);
     private static final int RESERVED = 10000;
-    private static final int DEFAULT_MAX_TRANSACTION_SIZE = 4194304-RESERVED;
+    private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE-RESERVED;
     /**
      * gRPC port for axonserver platform
      */
@@ -92,7 +93,7 @@ public class MessagingPlatformConfiguration {
     private int bossThreads;
     private int workerThreads;
     private String controldbBackupLocation = ".";
-    private int maxMessageSize = 0;
+    private int maxMessageSize = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE;
     private String pidFileLocation = ".";
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {

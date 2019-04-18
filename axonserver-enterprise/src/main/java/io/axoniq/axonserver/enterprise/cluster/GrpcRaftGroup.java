@@ -45,7 +45,6 @@ public class GrpcRaftGroup implements RaftGroup {
     private final LogEntryProcessor logEntryProcessor;
     private final LocalEventStore localEventStore;
     private final GrpcRaftClientFactory clientFactory;
-    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
 
     public GrpcRaftGroup(String localNodeId, String groupId,
                          JpaRaftStateRepository raftStateRepository, JpaRaftGroupNodeRepository nodeRepository,
@@ -55,7 +54,6 @@ public class GrpcRaftGroup implements RaftGroup {
                          GrpcRaftClientFactory clientFactory,
                          MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.clientFactory = clientFactory;
-        this.messagingPlatformConfiguration=messagingPlatformConfiguration;
         context = groupId;
         this.localEventStore = localEventStore;
         raftStateController = new JpaRaftStateController(groupId, raftStateRepository);
