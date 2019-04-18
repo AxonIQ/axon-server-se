@@ -5,7 +5,7 @@ import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
-import io.axoniq.axonserver.cluster.util.ReplicatorPeerUtil;
+import io.axoniq.axonserver.cluster.util.MaxMessageSizePredicate;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -94,15 +94,10 @@ public class ReplicatorPeer {
             registration = raftPeer.registerInstallSnapshotResponseListener(this::handleResponse);
             lastAppliedIndex = lastAppliedIndex();
             long lastIncludedTerm = lastAppliedTerm();
-            AtomicInteger currentMessageSize = new AtomicInteger(0);
-            AtomicInteger currentNoOfMessages  = new AtomicInteger(0);
+            MaxMessageSizePredicate maxMessageSizePredicate = new MaxMessageSizePredicate(maxMessageSize,snapshotChunksBufferSize);
             snapshotManager.streamSnapshotData(snapshotInstallationContext)
                            //Buffer serializedObjects until the max grpc message & chunk size is met
-                           .bufferUntil(p -> ReplicatorPeerUtil.isOverLimit(p.getSerializedSize(),
-                                                                            currentMessageSize,
-                                                                            maxMessageSize,
-                                                                            currentNoOfMessages,
-                                                                            snapshotChunksBufferSize), true)
+                           .bufferUntil(p -> maxMessageSizePredicate.test(p.getSerializedSize()), true)
                            .subscribe(new Subscriber<List<SerializedObject>>() {
                                @Override
                                public void onSubscribe(Subscription s) {
