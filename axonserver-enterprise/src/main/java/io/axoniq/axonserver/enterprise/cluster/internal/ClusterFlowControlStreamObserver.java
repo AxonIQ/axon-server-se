@@ -41,7 +41,7 @@ public class ClusterFlowControlStreamObserver extends SendingStreamObserver<Conn
             case QUERY_RESPONSE:
                 if( remainingQueryPermits.decrementAndGet() == 0 ) {
                     super.onNext(newQueryPermitsRequest);
-                    remainingCommandPermits.addAndGet(newQueryPermits);
+                    remainingQueryPermits.addAndGet(newQueryPermits);
                 }
                 break;
             default:
