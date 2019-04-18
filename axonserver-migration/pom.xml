@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
 		<groupId>io.axoniq.axonserver</groupId>
-		<artifactId>axonserver-parent</artifactId>
+		<artifactId>axonserver-ee</artifactId>
         <version>4.1.1-SNAPSHOT</version>
     </parent>
     <artifactId>axonserver-migration</artifactId>
