@@ -1,4 +1,4 @@
-This is the Axon Server Enterprise Edition, version 4.1
+This is the Axon Server Enterprise Edition, version 4.1.1
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
@@ -27,6 +27,25 @@ For more information on setting up clusters and context check the reference guid
 https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
+
+Changes in Axon Server 4.1.1
+----------------------------
+
+- Default controldb connection settings changed
+
+- gRPC version update
+
+- Register node no longer needs to be sent to leader of _admin context
+
+- Merge tracking event processor not always available when it should
+
+- Logging changes
+
+- Fix for queries timeout
+
+- Fix for replication with large messages
+
+- Added axonserver-cli.jar to release package (axoniq-cli.jar is deprecated)
 
 
 Changes in Axon Server 4.1

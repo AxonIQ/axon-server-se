@@ -7,7 +7,7 @@
     <packaging>pom</packaging>
     <version>4.1.1-SNAPSHOT</version>
 
-    <name>AxonIQ AxonServer EE</name>
+    <name>AxonIQ Axon Server EE</name>
 
     <modules>
         <module>axonserver-connector-api</module>
@@ -51,8 +51,8 @@
 
         <netty.version>4.1.32.Final</netty.version>
         <axonserver.api.version>4.1</axonserver.api.version>
-        <axonserver.se.version>4.1.1-RC1</axonserver.se.version>
-        <axon.version>4.0.3</axon.version>
+        <axonserver.se.version>4.1.1</axonserver.se.version>
+        <axon.version>4.1.1</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
 
