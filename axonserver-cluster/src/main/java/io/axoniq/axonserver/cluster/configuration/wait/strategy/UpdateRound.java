@@ -53,7 +53,6 @@ public class UpdateRound implements WaitStrategy {
             emitter.onDispose(registration::cancel);
         });
         Disposable disposable = flux
-                .timeout(Duration.ofSeconds(5))
                 .subscribe(matchIndex -> {
                     if (matchIndex >= stopRoundAt) {
                         roundCompleted.complete(null);
