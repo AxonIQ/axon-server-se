@@ -7,7 +7,7 @@
     <packaging>pom</packaging>
     <version>4.1.1-SNAPSHOT</version>
 
-    <name>AxonIQ Axon Server</name>
+    <name>AxonIQ Axon Server SE</name>
     <inceptionYear>2019</inceptionYear>
     <url>https://www.axoniq.io</url>
 	
@@ -131,14 +131,14 @@
 
     <distributionManagement>
         <snapshotRepository>
-            <id>sonatype</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-            <uniqueVersion>true</uniqueVersion>
+            <id>axoniq-nexus</id>
+            <url>https://dev-nexus.axoniq.io/repository/products-snapshots</url>
+            <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
         <repository>
-            <id>sonatype</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-            <uniqueVersion>false</uniqueVersion>
+            <id>axoniq-nexus</id>
+            <url>https://dev-nexus.axoniq.io/repository/products-releases</url>
+            <uniqueVersion>true</uniqueVersion>
         </repository>
     </distributionManagement>
 
@@ -203,36 +203,5 @@
             </roles>
         </developer>
     </developers>
-
-    <profiles>
-        <profile>
-            <id>release-sign-artifacts</id>
-            <activation>
-                <property>
-                    <name>performRelease</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <!--suppress MavenModelInspection -->
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 
 </project>

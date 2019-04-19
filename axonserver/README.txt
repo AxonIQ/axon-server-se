@@ -9,6 +9,7 @@ Release Notes for version 4.1.1
 * Sources now available in public GitHub repository
 * Merge tracking event processor not always available when it should
 * Logging changes
+* GRPC version update
 
 Release Notes for version 4.1
 -------------------------------
