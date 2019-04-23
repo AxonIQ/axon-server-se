@@ -127,6 +127,11 @@ public class HttpStreamingQueryTest {
             public long nextToken() {
                 return 0;
             }
+
+            @Override
+            public void deleteAllEventData() {
+
+            }
         };
         LocalEventStore localEventStore = new LocalEventStore(new EventStoreFactory() {
             @Override
