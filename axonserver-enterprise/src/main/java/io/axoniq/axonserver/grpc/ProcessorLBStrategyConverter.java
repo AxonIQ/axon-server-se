@@ -5,7 +5,7 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.Process
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ProcessorLBStrategyConverter {
     public static ProcessorLBStrategy createProcessorLBStrategy(ProcessorLoadBalancing processorLoadBalancing) {

@@ -1,8 +1,16 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.axoniq.axonserver.connector.ConnectorEvent;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.MetaDataValue;
@@ -22,7 +30,7 @@ import static org.apache.commons.compress.utils.IOUtils.toByteArray;
  * Wrapper around an Event that keeps track of the Serialized form of the Event, to prevent unnecessary
  * (un)marshalling of Event messages.
  */
-public class SerializedEvent implements ConnectorEvent {
+public class SerializedEvent  {
 
     private final byte[] serializedData;
     private volatile Event event;
@@ -71,57 +79,46 @@ public class SerializedEvent implements ConnectorEvent {
         return asEvent().getAggregateSequenceNumber();
     }
 
-    @Override
     public byte[] getPayload() {
         return asEvent().getPayload().getData().toByteArray();
     }
 
-    @Override
     public String getIdentifier() {
         return asEvent().getMessageIdentifier();
     }
 
-    @Override
     public String getAggregateType() {
         return asEvent().getAggregateType();
     }
 
-    @Override
     public String getPayloadType() {
         return asEvent().getPayload().getType();
     }
 
-    @Override
     public String getPayloadRevision() {
         return asEvent().getPayload().getRevision();
     }
 
-    @Override
     public long getTimestamp() {
         return asEvent().getTimestamp();
     }
 
-    @Override
     public boolean isDomainEvent() {
         return ! StringUtils.isEmpty(getAggregateIdentifier());
     }
 
-    @Override
     public String getAggregateIdentifier() {
         return asEvent().getAggregateIdentifier();
     }
 
-    @Override
     public long getSequenceNumber() {
         return asEvent().getAggregateSequenceNumber();
     }
 
-    @Override
     public String getType() {
         return asEvent().getAggregateType();
     }
 
-    @Override
     public Map<String, Object> getMetaData() {
         Map<String,Object> metaData = new HashMap<>();
         asEvent().getMetaDataMap().forEach((key, value) -> metaData.put(key, asObject(value)));

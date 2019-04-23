@@ -133,7 +133,8 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                                                     raftProperties,
                                                     snapshotDataProviders,
                                                     localEventStore,
-                                                    grpcRaftClientFactory);
+                                                    grpcRaftClientFactory,
+                                                    messagingPlatformConfiguration);
 
             if (!isAdmin(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

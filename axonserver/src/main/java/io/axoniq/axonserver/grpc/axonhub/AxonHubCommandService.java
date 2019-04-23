@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc.axonhub;
 
 import io.axoniq.axonserver.grpc.AxonServerClientService;
@@ -17,7 +26,7 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
  * Entry point to accept axonhub client commands in Axon Server. Difference between Axon Server and AxonHub client is the service name.
- * Delegets the request to the normal (Axon Server) Command Service
+ * Delegates the request to the normal (Axon Server) {@link CommandService}
  * @author Marc Gathier
  */
 @Component

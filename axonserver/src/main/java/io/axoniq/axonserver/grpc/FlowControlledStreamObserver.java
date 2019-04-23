@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc;
 
 import io.grpc.stub.StreamObserver;
@@ -8,8 +17,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
- * Created by Sara Pellegrini on 11/06/2018.
- * sara.pellegrini@gmail.com
+ * Version of StreamObserver that has notion of number of messages it may send based on the number of permits.
+ * When it tries to send a message while out of permits it throws an exception.
+ * @author Sara Pellegrini
  */
 public class FlowControlledStreamObserver<T> implements StreamObserver<T> {
 

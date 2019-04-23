@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -78,13 +87,6 @@ public class LifecycleController {
         });
     }
 
-    public void configurationError(String parameter) {
-        logger.error("Cannot start AxonServer: Missing required configuration parameter: {}", parameter);
-        SpringApplication.exit(applicationContext, () -> {
-            System.exit(1);
-            return 1;
-        });
-    }
     public void licenseError(String parameter) {
         logger.error(parameter);
         SpringApplication.exit(applicationContext, () -> {

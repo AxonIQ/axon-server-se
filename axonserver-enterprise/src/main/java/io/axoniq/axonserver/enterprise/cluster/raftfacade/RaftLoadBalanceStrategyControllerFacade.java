@@ -9,7 +9,8 @@ import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.serializer.Printable;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class RaftLoadBalanceStrategyControllerFacade implements LoadBalanceStrategyControllerFacade {
 

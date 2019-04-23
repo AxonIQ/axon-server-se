@@ -1,0 +1,64 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="AxonServerEnterprise Node3" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="axonserver-enterprise" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="io.axoniq.axonserver.AxonServerEnterprise" />
+    <option name="ACTIVE_PROFILES" value="internal" />
+    <option name="VM_PARAMETERS" value="-Dlicense=dev/developer.license" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <additionalParameters>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.name" />
+        <option name="value" value="axonserver-enterprise-3" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.cluster.enabled" />
+        <option name="value" value="true" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="logging.file" />
+        <option name="value" value="./dev/node3/log/axonserver3.log" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.event.storage" />
+        <option name="value" value="./dev/node3/eventstorage" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.snapshot.storage" />
+        <option name="value" value="./dev/node3/snapshotstorage" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.replication.log-storage-folder" />
+        <option name="value" value="./dev/node3/logstorage" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.controldb-path" />
+        <option name="value" value="./dev/node3/controldb" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="server.port" />
+        <option name="value" value="7024" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.port" />
+        <option name="value" value="7124" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.internal-port" />
+        <option name="value" value="7224" />
+      </param>
+    </additionalParameters>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -3,30 +3,31 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.axoniq.axonserver</groupId>
-    <artifactId>axonserver-parent</artifactId>
+    <artifactId>axonserver-ee</artifactId>
     <packaging>pom</packaging>
     <version>4.2-SNAPSHOT</version>
 
-    <name>AxonIQ AxonServer</name>
+    <name>AxonIQ Axon Server EE</name>
 
     <modules>
         <module>axonserver-connector-api</module>
-        <module>axonserver</module>
+        <!--<module>axonserver</module>-->
         <module>sample-applications/sample-command-processor-axonhub-client</module>
         <module>sample-applications/sample-command-processor-axonserver-client</module>
         <module>axonserver-internal-grpc</module>
-        <module>axonserver-grpc</module>
+        <!--<module>axonserver-grpc</module>-->
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
-        <module>axonserver-cli</module>
+        <!--<module>axonserver-cli</module>-->
         <module>axonserver-compatibility-tests</module>
         <module>package-axonserver-enterprise</module>
         <module>axondb-migration</module>
-        <module>plugins/axonserver-metrics-graphite</module>
-        <module>plugins/axonserver-metrics-prometheus</module>
-        <module>plugins/axonserver-rabbitmq-connector</module>
-        <module>plugins/axonserver-kafka-connector</module>
+        <!--<module>plugins/axonserver-metrics-graphite</module>-->
+        <!--<module>plugins/axonserver-metrics-prometheus</module>-->
+        <!--<module>plugins/axonserver-rabbitmq-connector</module>-->
+        <!--<module>plugins/axonserver-kafka-connector</module>-->
         <module>axonserver-cluster</module>
+        <!--<module>query-parser</module>-->
     </modules>
 
     <properties>
@@ -40,11 +41,18 @@
 
         <kotlin.version>1.1.61</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <grpc.version>1.17.1</grpc.version>
-        <netty.version>4.1.32.Final</netty.version>
+        <!--
+            Please note that there are dependencies between the gRPC and Netty TcNative versions.
+            gRPC is quite specific about the version of Netty TcNative, so check the dependencies on
+            https://github.com/grpc/grpc-java/blob/master/SECURITY.md
+        -->
+        <grpc.version>1.19.0</grpc.version>
         <netty.tcnative.version>2.0.20.Final</netty.tcnative.version>
+
+        <netty.version>4.1.32.Final</netty.version>
         <axonserver.api.version>4.1</axonserver.api.version>
-        <axon.version>4.0.3</axon.version>
+        <axonserver.se.version>4.1.1</axonserver.se.version>
+        <axon.version>4.1.1</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
 
@@ -131,13 +139,22 @@
                     <arguments>-Dmaven.javadoc.skip=true -Dsource.skip=true</arguments>
                 </configuration>
             </plugin>
+            <!--Docker-->
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>1.0.0</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
     <scm>
-        <connection>scm:git:https://github.com/AxonIQ/axoniq-axonhub-server.git</connection>
-        <developerConnection>scm:git:https://github.com/AxonIQ/axoniq-axonhub-server.git</developerConnection>
-        <url>https://github.com/AxonIQ/axoniq-axonhub-server</url>
+        <connection>scm:git:git://github.com/AxonIQ/axon-server.git</connection>
+        <developerConnection>scm:git:git@github.com:AxonIQ/axon-server.git</developerConnection>
+        <url>https://github.com/AxonIQ/axon-server</url>
         <tag>master</tag>
     </scm>
 

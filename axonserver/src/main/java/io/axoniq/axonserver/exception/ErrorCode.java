@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.exception;
 
 import io.grpc.Status;
@@ -5,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 
 /**
+ * Error codes and their mappings to gRPC errors and HTTP errors.
+ *
  * @author Marc Gathier
  */
 public enum ErrorCode {
@@ -70,7 +81,14 @@ public enum ErrorCode {
     DIRECTORY_CREATION_FAILED("AXONIQ-9102", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
     VALIDATION_FAILED("AXONIQ-9200", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
     TRANSACTION_ROLLED_BACK("AXONIQ-9900", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
+    INTERRUPTED("AXONIQ-9500", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
     NO_EVENTSTORE("AXONIQ-6000", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE),
+
+    //cluster error
+    SERVER_TOO_SLOW("AXONIQ-10001", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
+    UNCOMMITTED_CONFIGURATION("AXONIQ-10002", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
+    REPLICATION_TIMEOUT("AXONIQ-10003", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
+
     //
     OTHER("AXONIQ-0001", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR);
 

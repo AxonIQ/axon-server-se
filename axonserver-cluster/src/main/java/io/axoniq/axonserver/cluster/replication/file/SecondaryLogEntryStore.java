@@ -26,7 +26,8 @@ import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     private final ScheduledExecutorService scheduledExecutorService;

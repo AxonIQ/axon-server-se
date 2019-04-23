@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ApplicationProtoConverter {
     public static ApplicationContextRole createApplicationContextRole(

@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
@@ -12,9 +21,9 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
-public class FakeEventStore implements EventStore {
+public class FakeEventStore implements EventStorageEngine {
 
     private final EventType eventType;
 
@@ -33,24 +42,19 @@ public class FakeEventStore implements EventStore {
     }
 
     @Override
-    public boolean streamEvents(long token, Predicate<SerializedEventWithToken> onEvent) {
-        return onEvent.test(new SerializedEventWithToken(token, Event.newBuilder().build()));
-    }
-
-    @Override
     public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
         return Optional.empty();
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber,
-                                    Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+                                          Consumer<SerializedEvent> eventConsumer) {
 
     }
 
     @Override
-    public void streamByAggregateId(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber,
-                                    int maxResults, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber,
+                                          int maxResults, Consumer<SerializedEvent> eventConsumer) {
 
     }
 

@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
@@ -52,15 +61,15 @@ public class QueryServiceTest {
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
         ClientIdentification name = new ClientIdentification(Topology.DEFAULT_CONTEXT, "name");
-        queryQueue.put(name.toString(), new WrappedQuery(name,
+        queryQueue.put(name.toString(), new WrappedQuery(
                                                         new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
                                                                      QueryRequest.newBuilder()
                                                                                  .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
                                                                                  .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put(name.toString(), new WrappedQuery(name,
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
+        queryQueue.put(name.toString(), new WrappedQuery(
+                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
         verify(queryDispatcher).removeFromCache(any());

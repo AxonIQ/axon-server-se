@@ -1,0 +1,44 @@
+global:
+    # How frequently to scrape targets by default.
+    scrape_interval: 1m
+    # How long until a scrape request times out.
+    scrape_timeout: 10s
+    # How frequently to evaluate rules.
+    evaluation_interval: 1m
+
+rule_files:
+    - "/etc/prometheus/alert.rules"
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+
+scrape_configs:
+    # The job name assigned to scraped metrics by default.
+    - job_name: "axonserver-enterprise-1"
+      # How frequently to scrape targets from this job.
+      scrape_interval: 5s
+      # The HTTP resource path on which to fetch metrics from targets.
+      metrics_path: '/actuator/prometheus'
+      # List of labeled statically configured targets for this job.
+      static_configs:
+        - targets: ['axonserver-enterprise-1:8024']
+    # The job name assigned to scraped metrics by default.
+    - job_name: "axonserver-enterprise-2"
+      # How frequently to scrape targets from this job.
+      scrape_interval: 5s
+      # The HTTP resource path on which to fetch metrics from targets.
+      metrics_path: '/actuator/prometheus'
+      # List of labeled statically configured targets for this job.
+      static_configs:
+        - targets: ['axonserver-enterprise-2:8025']
+    - job_name: "axonserver-enterprise-3"
+      # How frequently to scrape targets from this job.
+      scrape_interval: 5s
+      # The HTTP resource path on which to fetch metrics from targets.
+      metrics_path: '/actuator/prometheus'
+      # List of labeled statically configured targets for this job.
+      static_configs:
+        - targets: ['axonserver-enterprise-3:8026']

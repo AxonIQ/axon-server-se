@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class FakeClock extends Clock {
     private Instant instant;

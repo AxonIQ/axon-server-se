@@ -12,28 +12,12 @@ spring:
       use-new-id-generator-mappings: false
 
   datasource:
-    url: jdbc:h2:nio:${axoniq.axonserver.controldb-path:./data}/axonserver-controldb
+    url: jdbc:h2:retry:${axoniq.axonserver.controldb-path:./data}/axonserver-controldb
 
   h2:
     console:
       enabled: true
       path: /h2-console
-
-axoniq:
-  axonserver:
-    port: 8124
-    internal-port: 8224
-    accesscontrol:
-      enabled: false
-    ssl:
-      enabled: false
-    cluster:
-      enbaled: false
-    metrics-interval: 15
-    metrics-synchronization-rate: 2500
-    connect2contexts: node-contexts
-    devtools:
-      enabled: false
 
 logging:
   level:
