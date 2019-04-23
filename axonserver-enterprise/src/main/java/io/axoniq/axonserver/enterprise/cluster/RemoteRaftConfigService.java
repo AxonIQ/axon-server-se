@@ -24,7 +24,8 @@ import java.util.stream.Collectors;
 import static io.axoniq.axonserver.enterprise.CompetableFutureUtils.getFuture;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class RemoteRaftConfigService implements RaftConfigService {
     private static final Logger logger = LoggerFactory.getLogger(RemoteRaftConfigService.class);

@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.access.user;
 
 import io.axoniq.axonserver.access.jpa.User;
@@ -37,8 +46,7 @@ public class UserController {
         return userRepository.findAll();
     }
 
-    @Transactional
-    public User syncUser(String username, String password, String[] roles) {
+    private User syncUser(String username, String password, String[] roles) {
         synchronized (userRepository) {
             if (password == null) {
                 password = userRepository.findById(username).map(User::getPassword).orElse(null);
@@ -54,10 +62,7 @@ public class UserController {
         return syncUser(username, password == null ? null: passwordEncoder.encode(password), roles);
     }
 
-    public void clearUsers() {
-        userRepository.deleteAll();
-    }
-
+    @Transactional
     public void syncUser(User jpaUser) {
         synchronized (userRepository) {
             userRepository.save(jpaUser);

@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LogEntryProcessor {
     private static final Logger logger = LoggerFactory.getLogger(LogEntryProcessor.class);

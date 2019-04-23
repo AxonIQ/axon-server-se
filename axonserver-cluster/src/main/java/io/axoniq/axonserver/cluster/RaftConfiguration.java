@@ -62,4 +62,20 @@ public interface RaftConfiguration {
     default int logRetentionHours() {
         return 1;
     }
+
+    /**
+     * Defines maximum message size for communication between nodes. Defaults to 4MB.
+     * @return maximum message size
+     */
+    default int maxMessageSize() {
+        return 4184304;
+    }
+
+    /**
+     * Defines the maximum number of serializedObjects to be sent in a single InstallSnapshotRequest. Defaults to 10.
+     * @return maximum number of serializedObjects sent in a single InstallSnapshotRequest
+     */
+    default int maxSnapshotNoOfChunksPerBatch(){
+        return 10;
+    }
 }

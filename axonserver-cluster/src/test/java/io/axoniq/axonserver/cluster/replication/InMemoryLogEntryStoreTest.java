@@ -11,7 +11,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InMemoryLogEntryStoreTest {
     private InMemoryLogEntryStore testSubject;

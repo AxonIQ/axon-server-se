@@ -49,7 +49,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
                                EventTransformerFactory eventTransformerFactory,
                                StorageProperties storageProperties) {
         super(context, indexManager, storageProperties);
-        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(context + "-file-cleanup-"));
+        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(context + "-file-close-"));
         this.eventTransformerFactory = eventTransformerFactory;
     }
 
@@ -127,7 +127,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void cleanup() {
+    public void close() {
         lruMap.forEach((s, source) -> {
             ByteBufferEventSource eventSource = source.get();
             if( eventSource != null) {

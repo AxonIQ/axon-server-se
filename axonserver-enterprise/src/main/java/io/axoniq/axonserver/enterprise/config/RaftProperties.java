@@ -7,7 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 @ConfigurationProperties(prefix = "axoniq.axonserver.replication")
 @Configuration
@@ -17,6 +18,7 @@ public class RaftProperties extends StorageProperties {
     private int heartbeatTimeout = 100;
     private int maxEntriesPerBatch = 100;
     private int flowBuffer = 1000;
+    private int maxSnapshotChunksPerBatch = 10;
 
     private final SystemInfoProvider systemInfoProvider;
     private int maxReplicationRound = 10;
@@ -99,5 +101,21 @@ public class RaftProperties extends StorageProperties {
 
     public void setLogRetentionHours(int logRetentionHours) {
         this.logRetentionHours = Math.max(logRetentionHours, 1);
+    }
+
+    /**
+     * Returns the maximum number of serializedObjects to be sent in a single InstallSnapshotRequest.
+     * @return maximum number of serializedObjects sent in a single InstallSnapshotRequest
+     */
+    public int getMaxSnapshotChunksPerBatch() {
+        return maxSnapshotChunksPerBatch;
+    }
+
+    /**
+     * Sets the maximum number of serializedObjects to be sent in a single InstallSanpshotRequest.
+     * @param maxSnapshotChunksPerBatch the maximum number of serializedObjects
+     */
+    public void setMaxSnapshotChunksPerBatch(int maxSnapshotChunksPerBatch) {
+        this.maxSnapshotChunksPerBatch = maxSnapshotChunksPerBatch;
     }
 }

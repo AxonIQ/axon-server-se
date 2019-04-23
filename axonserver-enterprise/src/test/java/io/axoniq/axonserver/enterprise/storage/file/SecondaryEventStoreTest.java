@@ -22,7 +22,7 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class SecondaryEventStoreTest {
     private SecondaryEventStore testSubject;

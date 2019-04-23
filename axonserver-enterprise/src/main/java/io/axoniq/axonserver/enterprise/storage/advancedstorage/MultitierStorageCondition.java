@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage.advancedstorage;
 
-import io.axoniq.axonserver.features.Feature;
-import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.licensing.Feature;
+import io.axoniq.axonserver.config.FeatureChecker;
 import org.springframework.context.annotation.Condition;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.core.type.AnnotatedTypeMetadata;

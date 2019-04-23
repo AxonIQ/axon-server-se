@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>axonserver-parent</artifactId>
+        <artifactId>axonserver-ee</artifactId>
         <groupId>io.axoniq.axonserver</groupId>
         <version>4.2-SNAPSHOT</version>
     </parent>
@@ -12,18 +12,14 @@
     <artifactId>axonserver-enterprise</artifactId>
     <properties>
         <exec.plugin.version>1.6.0</exec.plugin.version>
-        <allatori-jar.full-path>${allatori.dir}\lib\allatori.jar</allatori-jar.full-path>
-
-        <gcloud.project.name>axoniq-platform</gcloud.project.name>
-        <gcloud.registry>eu.gcr.io</gcloud.registry>
-        <docker.certspath>${env.HOMEDRIVE}${env.HOMEPATH}/.docker/machine/certs</docker.certspath>
+        <allatori-jar.full-path>${allatori.dir}/lib/allatori.jar</allatori-jar.full-path>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver</artifactId>
-            <version>${project.parent.version}</version>
+            <version>${axonserver.se.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.axoniq.axonserver</groupId>
@@ -31,7 +27,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-connector-api</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver-internal-grpc</artifactId>
@@ -72,10 +72,6 @@
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
             <version>2.3.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>io.axoniq.axonserver</groupId>
-            <artifactId>axonserver-cluster</artifactId>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
@@ -328,87 +324,6 @@
                                         </artifact>
                                     </artifacts>
                                 </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>docker</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>io.fabric8</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <version>0.26.0</version>
-                        <configuration>
-                            <images>
-                                <image>
-                                    <alias>axonserver-enterprise</alias>
-                                    <name>
-                                        ${gcloud.registry}/${gcloud.project.name}/axonserver-enterprise:${project.version}
-                                    </name>
-
-                                    <build>
-                                        <from>openjdk:8-jdk-alpine</from>
-                                        <dockerFileDir>${basedir}/src/main/docker</dockerFileDir>
-                                        <assembly>
-                                            <inline>
-                                                <files>
-                                                    <file>
-                                                        <source>
-                                                            ${project.build.directory}/${project.artifactId}-${project.version}-exec.jar
-                                                        </source>
-                                                    </file>
-                                                </files>
-                                                <dependencySets>
-                                                    <dependencySet>
-                                                        <includes>
-                                                            <include>io.axoniq.axonserver:axonserver-cli:jar:exec
-                                                            </include>
-                                                        </includes>
-                                                        <outputDirectory>.</outputDirectory>
-                                                        <outputFileNameMapping>axoniq-cli.jar</outputFileNameMapping>
-                                                    </dependencySet>
-                                                </dependencySets>
-                                            </inline>
-                                        </assembly>
-                                        <args>
-                                            <JAR_FILE>maven/${project.build.finalName}-exec.jar</JAR_FILE>
-                                        </args>
-                                    </build>
-
-                                    <run>
-                                        <namingStrategy>alias</namingStrategy>
-                                        <network>
-                                            <name>axoniq</name>
-                                            <alias>axonserver</alias>
-                                        </network>
-                                        <hostname>axonserver.axoniq</hostname>
-                                        <ports>
-                                            <port>8024:8024</port>
-                                            <port>8124:8124</port>
-                                            <port>8224:8224</port>
-                                        </ports>
-                                        <wait>
-                                            <log>Tomcat started</log>
-                                            <time>30000</time>
-                                        </wait>
-                                    </run>
-                                </image>
-                            </images>
-                            <certPath>${docker.certspath}</certPath>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>start</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>build</goal>
-                                    <!-- goal>push</goal -->
-                                </goals>
                             </execution>
                         </executions>
                     </plugin>

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @Component
 public class AdminDeleteNodeConsumer implements LogEntryConsumer {

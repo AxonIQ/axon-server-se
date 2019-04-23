@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public interface JpaContextApplicationRepository extends JpaRepository<JpaContextApplication, Long> {
 

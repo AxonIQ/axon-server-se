@@ -9,7 +9,7 @@ import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
 import java.util.List;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RaftProcessorLoadBalancingControllerFacade implements ProcessorLoadBalancingControllerFacade {
 

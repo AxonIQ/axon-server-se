@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.features.Feature;
-import io.axoniq.axonserver.features.FeatureChecker;
+import io.axoniq.axonserver.licensing.Feature;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.PlatformService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

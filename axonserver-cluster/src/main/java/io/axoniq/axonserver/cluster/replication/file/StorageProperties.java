@@ -3,7 +3,7 @@ package io.axoniq.axonserver.cluster.replication.file;
 import java.io.File;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class StorageProperties {
 

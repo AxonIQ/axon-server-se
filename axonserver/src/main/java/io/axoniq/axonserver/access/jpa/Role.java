@@ -1,6 +1,13 @@
-package io.axoniq.axonserver.access.jpa;
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
 
-import io.axoniq.axonserver.KeepNames;
+package io.axoniq.axonserver.access.jpa;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -12,8 +19,9 @@ import javax.persistence.Enumerated;
 import javax.persistence.Id;
 
 /**
- * Created by Sara Pellegrini on 08/03/2018.
- * sara.pellegrini@gmail.com
+ * Holds defined roles. Roles may be defined on an application or user level.
+ *
+ * @author Sara Pellegrini
  */
 @Entity
 public class Role {
@@ -26,7 +34,6 @@ public class Role {
     private Set<Type> types = new HashSet<>();
 
 
-    @KeepNames
     public enum Type {
         USER,APPLICATION
     }

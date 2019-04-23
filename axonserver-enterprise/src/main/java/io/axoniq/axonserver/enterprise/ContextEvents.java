@@ -5,7 +5,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class ContextEvents {
 

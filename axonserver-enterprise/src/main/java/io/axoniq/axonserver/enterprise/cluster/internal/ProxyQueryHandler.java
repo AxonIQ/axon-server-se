@@ -11,10 +11,10 @@ import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 
 /**
- * Handler for a query to be sent to another AxonHub node.
+ * Handler for a query to be sent to another AxonServer node.
  * Updates the message with a new message id and adds the original message id in the processing instructions, as one query may
- * lead to multiple messages to be sent to other AxonHub nodes.
- * Also adds the target client to the processing instructions, so the target AxonHub node knows where to send the request to.
+ * lead to multiple messages to be sent to other AxonServer nodes.
+ * Also adds the target client to the processing instructions, so the target AxonServer node knows where to send the request to.
  * @author Marc Gathier
  */
 public class ProxyQueryHandler extends QueryHandler<ConnectorResponse> {
@@ -47,7 +47,7 @@ public class ProxyQueryHandler extends QueryHandler<ConnectorResponse> {
 
     @Override
     public void enqueue(SerializedQuery request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
-        queryQueue.put(queueName() , new WrappedQuery(getClient(), request, timeout));
+        queryQueue.put(queueName() , new WrappedQuery(request.withClient(getClientId()), timeout));
     }
 
     @Override
