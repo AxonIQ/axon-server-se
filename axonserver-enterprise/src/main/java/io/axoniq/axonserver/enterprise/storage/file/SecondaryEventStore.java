@@ -156,6 +156,11 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         }
     }
 
+    @Override
+    public void deleteAllEventData() {
+        throw new UnsupportedOperationException("Development mode deletion is not supported in clustered environments");
+    }
+
     private void removeSegment(long segment) {
         if( segments.remove(segment)) {
             WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);

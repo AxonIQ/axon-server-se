@@ -204,4 +204,9 @@ public interface EventStorageEngine {
      * @return the next token
      */
     long nextToken();
+
+    /**
+     * Deletes all event data in the Event Store (Only intended for development environments).
+     */
+    void deleteAllEventData();
 }

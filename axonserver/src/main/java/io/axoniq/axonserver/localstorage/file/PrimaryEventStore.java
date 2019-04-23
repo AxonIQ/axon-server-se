@@ -415,6 +415,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return writePositionRef.get().sequence;
     }
 
+    @Override
+    public void deleteAllEventData() {
+        rollback(-1);
+    }
+
     private WritableEventSource getOrOpenDatafile(long segment)  {
         File file= storageProperties.dataFile(context, segment);
         long size = storageProperties.getSegmentSize();

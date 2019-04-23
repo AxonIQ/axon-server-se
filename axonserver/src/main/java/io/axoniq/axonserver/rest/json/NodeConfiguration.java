@@ -23,6 +23,7 @@ public class NodeConfiguration {
     private boolean clustered;
     private boolean ssl;
     private boolean adminNode;
+    private boolean developmentMode;
     private Iterable<String> storageContextNames;
     private Iterable<String> contextNames;
 
@@ -52,6 +53,21 @@ public class NodeConfiguration {
 
     public void setSsl(boolean ssl) {
         this.ssl = ssl;
+    }
+
+    /**
+     * @return whether development mode is enabled
+     */
+    public boolean isDevelopmentMode() {
+        return developmentMode;
+    }
+
+    /**
+     * Setting to <code>true</code> enables features for development convenience (disabled by default)
+     * @param developmentMode
+     */
+    public void setDevelopmentMode(boolean developmentMode) {
+        this.developmentMode = developmentMode;
     }
 
     public String getHostName() {

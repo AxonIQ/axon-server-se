@@ -23,6 +23,7 @@ import io.axoniq.axonserver.rest.json.UserInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,6 +53,8 @@ public class PublicRestController {
     private final AccessControlConfiguration accessControlConfiguration;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
 
+    @Value("${axoniq.axonserver.devtools.enabled:false}")
+    private boolean isDevelopmentMode;
 
     public PublicRestController(Topology topology,
                                 CommandDispatcher commandDispatcher,
@@ -90,6 +93,7 @@ public class PublicRestController {
         node.setAuthentication(accessControlConfiguration.isEnabled());
         node.setSsl(sslConfiguration.isEnabled());
         node.setAdminNode(topology.isAdminNode());
+        node.setDevelopmentMode(isDevelopmentMode);
         node.setContextNames(topology.getMyContextNames());
         node.setStorageContextNames(topology.getMyStorageContextNames());
         node.setClustered(features.isEnterprise());

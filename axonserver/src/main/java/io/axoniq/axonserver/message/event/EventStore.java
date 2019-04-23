@@ -53,4 +53,10 @@ public interface EventStore {
     StreamObserver<QueryEventsRequest> queryEvents(String context, StreamObserver<QueryEventsResponse> responseObserver);
 
     void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseObserver);
+
+    /**
+     * Deletes all event data in a given context (Only intended for development environments).
+     * @param context the context to be deleted
+     */
+    void deleteAllEventData(String context);
 }
