@@ -99,6 +99,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workers.close();
     }
 
+    @Override
+    public void deleteAllEventData(String context) {
+        Workers workers = workersMap.get(context);
+        if (workers == null) {
+            return;
+        }
+        workers.eventDatafileManagerChain.deleteAllEventData();
+        workers.snapshotDatafileManagerChain.deleteAllEventData();
+    }
+
     public void cancel(String context) {
         Workers workers = workersMap.get(context);
         if( workers == null) return;

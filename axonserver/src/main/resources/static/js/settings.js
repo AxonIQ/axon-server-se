@@ -23,6 +23,12 @@ globals.pageView = new Vue({
     }, methods: {
         reloadStatus: function () {
             axios.get("v1/public/status").then(response => { this.status = response.data });
+        },
+        resetEvents() {
+            if(confirm("Are you sure you want to delete all event and snapshot data?")){
+                axios.delete("v1/devtools/delete-events").then(response => {this.reloadStatus()});
+            }
+
         }
     }
         });
