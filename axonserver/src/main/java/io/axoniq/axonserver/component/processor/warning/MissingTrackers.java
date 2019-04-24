@@ -37,7 +37,7 @@ public class MissingTrackers implements Warning {
             ids.add(segmentId);
         }
 
-        return completion != 1;
+        return completion < 1;
     }
 
     @Override
