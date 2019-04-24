@@ -59,9 +59,9 @@ public class ComponentClientProcessors implements ClientProcessors {
      * @param component          the component name of the client application
      * @param context            the context of the client application
      */
-    public ComponentClientProcessors(ClientProcessors allEventProcessors,
-                                     String component,
-                                     String context) {
+    ComponentClientProcessors(ClientProcessors allEventProcessors,
+                              String component,
+                              String context) {
         this(allEventProcessors, new ProcessorsInComponent(context, component, allEventProcessors));
     }
 
@@ -92,7 +92,7 @@ public class ComponentClientProcessors implements ClientProcessors {
         private final Iterable<String> processors;
 
         ProcessorsInComponent(String context, String component, ClientProcessors allEventProcessors) {
-            this(context, new ProcessorNames(new ComponentItems<>(component, component, allEventProcessors)));
+            this(context, new ProcessorNames(new ComponentItems<>(component, context, allEventProcessors)));
         }
 
         ProcessorsInComponent(String context, Iterable<String> processors) {
