@@ -18,4 +18,8 @@ public class JdbcEventStore extends JdbcAbstractStore{
         return "DOMAIN_EVENT_ENTRY";
     }
 
+    @Override
+    public void deleteAllEventData() {
+        throw new UnsupportedOperationException("Development mode deletion is not supported in Jdbc backed event stores");
+    }
 }

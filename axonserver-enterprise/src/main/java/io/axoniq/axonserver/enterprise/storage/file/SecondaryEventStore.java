@@ -49,7 +49,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
                                EventTransformerFactory eventTransformerFactory,
                                StorageProperties storageProperties) {
         super(context, indexManager, storageProperties);
-        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(context + "-file-cleanup-"));
+        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(context + "-file-close-"));
         this.eventTransformerFactory = eventTransformerFactory;
     }
 
@@ -127,7 +127,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void cleanup() {
+    public void close() {
         lruMap.forEach((s, source) -> {
             ByteBufferEventSource eventSource = source.get();
             if( eventSource != null) {
@@ -154,6 +154,11 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         if( segments.isEmpty() && next != null) {
             next.rollback(token);
         }
+    }
+
+    @Override
+    public void deleteAllEventData() {
+        throw new UnsupportedOperationException("Development mode deletion is not supported in clustered environments");
     }
 
     private void removeSegment(long segment) {

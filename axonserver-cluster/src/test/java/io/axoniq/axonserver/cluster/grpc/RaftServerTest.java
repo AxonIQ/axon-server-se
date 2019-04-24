@@ -31,7 +31,7 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotNull;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class RaftServerTest {
 

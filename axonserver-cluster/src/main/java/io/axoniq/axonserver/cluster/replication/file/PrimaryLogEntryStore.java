@@ -30,7 +30,8 @@ import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     private static final Logger logger = LoggerFactory.getLogger(PrimaryLogEntryStore.class);

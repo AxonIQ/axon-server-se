@@ -6,7 +6,8 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import java.util.Iterator;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public interface EntryIterator extends Iterator<Entry>, AutoCloseable {
 

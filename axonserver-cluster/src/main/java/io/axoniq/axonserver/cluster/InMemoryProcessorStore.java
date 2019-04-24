@@ -3,7 +3,7 @@ package io.axoniq.axonserver.cluster;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class InMemoryProcessorStore implements ProcessorStore {
     private final AtomicLong lastApplied = new AtomicLong();

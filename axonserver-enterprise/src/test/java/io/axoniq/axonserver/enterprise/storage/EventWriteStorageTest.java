@@ -4,7 +4,7 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.EventStore;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -30,7 +30,7 @@ public class EventWriteStorageTest {
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
     private EventWriteStorage testSubject;
-    private EventStore datafileManagerChain;
+    private EventStorageEngine datafileManagerChain;
 
     @Before
     public void setUp() {
@@ -40,7 +40,7 @@ public class EventWriteStorageTest {
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
                                                                             new DefaultStorageTransactionManagerFactory());
-        datafileManagerChain = eventStoreFactory.createEventManagerChain("default");
+        datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");
         datafileManagerChain.init(false);
         testSubject = new EventWriteStorage(new SingleInstanceTransactionManager(datafileManagerChain));
     }

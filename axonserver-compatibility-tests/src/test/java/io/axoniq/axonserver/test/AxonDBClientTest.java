@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class AxonDBClientTest {
     private AxonServerFixture fixture = new AxonServerFixture();

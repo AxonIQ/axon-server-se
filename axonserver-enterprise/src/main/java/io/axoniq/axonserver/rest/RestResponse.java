@@ -3,7 +3,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.KeepNames;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 @KeepNames
 public class RestResponse {

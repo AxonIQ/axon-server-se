@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
 import static junit.framework.TestCase.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class PrimaryLogEntryStoreTest {
 

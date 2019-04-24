@@ -26,7 +26,7 @@ import java.util.function.Consumer;
 import static org.junit.Assert.*;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class LeaderStateTest {
 

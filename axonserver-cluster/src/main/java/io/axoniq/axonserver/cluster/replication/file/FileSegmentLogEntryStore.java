@@ -39,7 +39,7 @@ import java.util.stream.Stream;
  *      Data: bytes: Protobuf bytes
  *  EOF: int, -1 when file is complete
  *
- * Author: marc
+ * @author Marc Gathier
  */
 public class FileSegmentLogEntryStore implements LogEntryStore {
     private final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);

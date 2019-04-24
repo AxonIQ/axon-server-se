@@ -94,7 +94,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @EventListener
     public void on(ContextEvents.ContextDeleted contextDeleted) {
-        logger.warn("{}: cleanup context", contextDeleted.getContext());
+        logger.warn("{}: close context", contextDeleted.getContext());
         localEventStore.cleanupContext(contextDeleted.getContext());
     }
 
@@ -142,20 +142,16 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         if( isMaster( context)) {
             return localEventStore;
         }
-        String master = getMaster(context);
+        String master = masterProvider.apply(context);
         if( master == null) return null;
         return new RemoteEventStore(clusterNodeSupplier.apply(master), messagingPlatformConfiguration);
     }
 
-    public String getMaster(String context) {
-        return masterProvider.apply(context);
-    }
-
     private boolean isMaster(String context) {
-        return isMaster(nodeName, context);
+        return isLeader(nodeName, context);
     }
 
-    public boolean isMaster(String nodeName, String context) {
+    public boolean isLeader(String nodeName, String context) {
         String master = masterProvider.apply(context);
         return master != null && master.equals(nodeName);
     }

@@ -1,8 +1,6 @@
 package io.axoniq.axonserver.licensing;
 
-import io.axoniq.axonserver.features.Feature;
-import io.axoniq.axonserver.features.FeatureChecker;
-import io.axoniq.axonserver.features.FeatureStatus;
+import io.axoniq.axonserver.config.FeatureChecker;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -50,8 +48,11 @@ public class Limits implements FeatureChecker  {
         return LicenseConfiguration.getInstance().getContexts();
     }
 
-    public List<FeatureStatus> getFeatureList() {
-        return Arrays.stream(Feature.values()).map(f -> new FeatureStatus(f, f.enabled(this))).collect(Collectors.toList());
+    public List<String> getFeatureList() {
+        return Arrays.stream(Feature.values())
+                     .filter(f -> f.enabled(this))
+                     .map(Enum::name)
+                     .collect(Collectors.toList());
     }
 
     @Override

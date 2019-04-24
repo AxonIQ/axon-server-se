@@ -7,7 +7,8 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Author: marc
+ * @author Marc Gathier
+ * @since 4.1
  */
 public class MultiSegmentIterator implements EntryIterator {
 

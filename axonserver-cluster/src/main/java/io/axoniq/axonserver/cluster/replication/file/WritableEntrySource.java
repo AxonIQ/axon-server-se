@@ -8,7 +8,7 @@ import java.nio.MappedByteBuffer;
 import java.util.Arrays;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public class WritableEntrySource extends ByteBufferEntrySource {
     private static final Logger logger = LoggerFactory.getLogger(WritableEntrySource.class);

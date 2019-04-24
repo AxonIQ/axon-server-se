@@ -3,7 +3,7 @@ package io.axoniq.axonserver.enterprise.logconsumer;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 /**
- * Author: marc
+ * @author Marc Gathier
  */
 public interface LogEntryConsumer {
     void consumeLogEntry(String groupId, Entry entry);
