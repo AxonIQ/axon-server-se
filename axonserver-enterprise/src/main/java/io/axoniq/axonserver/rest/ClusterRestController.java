@@ -75,7 +75,10 @@ public class ClusterRestController {
         String context = jsonClusterNode.getContext();
         // Check for both context and noContext
         if (context != null && !context.isEmpty()) {
-            if (!isAdmin(context) && !contextNameValidation.test(context)) {
+            if ((jsonClusterNode.getNoContexts() != null) && jsonClusterNode.getNoContexts()) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                        "Cannot combine joining context with noContexts.");
+            } else if (!isAdmin(context) && !contextNameValidation.test(context)) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
                                                      "Invalid context name: " + context);
             }
