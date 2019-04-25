@@ -1,7 +1,13 @@
 package io.axoniq.axonserver.cluster.grpc;
 
 import io.axoniq.axonserver.cluster.RaftNode;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.cluster.exception.ErrorCode;
+import io.axoniq.axonserver.cluster.exception.LogException;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +65,11 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             public void onNext(InstallSnapshotRequest installSnapshotRequest) {
                 if( ! running) return;
                 RaftNode target = raftGroupManager.raftNode(installSnapshotRequest.getGroupId());
+                if( target == null) {
+                    running = false;
+                    responseObserver.onError(new LogException(ErrorCode.NO_SUCH_NODE, installSnapshotRequest.getGroupId() + " not found"));
+                    return;
+                }
                 try {
                     synchronized (target) {
                         InstallSnapshotResponse response = target.installSnapshot(installSnapshotRequest);

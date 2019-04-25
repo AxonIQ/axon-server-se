@@ -2,6 +2,8 @@ package io.axoniq.axonserver.cluster.grpc;
 
 import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.cluster.Registration;
+import io.axoniq.axonserver.cluster.exception.ErrorCode;
+import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -12,6 +14,7 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.grpc.stub.StreamObserver;
+import io.netty.util.internal.OutOfDirectMemoryError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,7 +125,7 @@ public class GrpcRaftPeer implements RaftPeer {
             requestStreamRef.compareAndSet(null, initStreamObserver());
             StreamObserver<InstallSnapshotRequest> stream = requestStreamRef.get();
             if( stream != null) {
-                stream.onNext(request);
+                send(stream,request);
             }
         }
 
@@ -170,7 +173,7 @@ public class GrpcRaftPeer implements RaftPeer {
 
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
             if( stream != null) {
-                stream.onNext(request);
+                send(stream, request);
             } else {
                 logger.warn("{}: Not sending AppendEntriesRequest {}", node.getNodeId(), request);
             }
@@ -213,6 +216,21 @@ public class GrpcRaftPeer implements RaftPeer {
                     }
                 }
             });
+        }
+    }
+
+    private <T> void send(StreamObserver<T> stream, T request) {
+        try {
+            stream.onNext(request);
+        } catch( RuntimeException | OutOfDirectMemoryError e) {
+            logger.warn("Error while sending message: {}", e.getMessage(), e);
+            try {
+                // Cancel RPC
+                stream.onError(e);
+            } catch (Throwable ex) {
+                // Ignore further exception on cancelling the RPC
+            }
+            throw new LogException(ErrorCode.SENDING_FAILED, e.getMessage());
         }
     }
 }
