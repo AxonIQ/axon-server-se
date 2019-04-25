@@ -61,10 +61,10 @@ public class PublicRestControllerTest {
         nodes.add(other);
         when(clusterController.getRemoteConnections()).thenReturn(nodes);
         when(clusterController.getMe()).thenReturn(me);
-        when(eventDispatcher.getNrOfEvents()).thenReturn(200L);
+//        when(eventDispatcher.getNrOfEvents()).thenReturn(200L);
 
-        when(queryDispatcher.getNrOfQueries()).thenReturn(300L);
-        when(commandDispatcher.getNrOfCommands()).thenReturn(100L);
+//        when(queryDispatcher.getQueryRate()).thenReturn(300L);
+//        when(commandDispatcher.getCommandRate()).thenReturn(100L);
     }
 
     @Test
@@ -95,10 +95,10 @@ public class PublicRestControllerTest {
 
     @Test
     public void status() {
-        StatusInfo status = testSubject.status();
-        assertEquals(100, status.getNrOfCommands());
+        StatusInfo status = testSubject.status(Topology.DEFAULT_CONTEXT);
+        assertEquals(100, status.getCommandRate());
         assertEquals(200, status.getNrOfEvents());
-        assertEquals(300, status.getNrOfQueries());
+        assertEquals(300, status.getQueryRate());
         assertEquals(500, status.getNrOfSubscriptionQueries());
         assertEquals(400, status.getNrOfActiveSubscriptionQueries());
         assertEquals(1000, status.getNrOfSubscriptionQueriesUpdates());

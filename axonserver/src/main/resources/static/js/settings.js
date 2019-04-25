@@ -14,15 +14,47 @@ globals.pageView = new Vue({
                 license: {},
                 status: {},
                 node: {},
-                nodes: []
+                timer: null,
+                nodes: [],
+                contexts: [],
+                context: null
             }, mounted() {
         this.reloadStatus();
         axios.get("v1/public/license").then(response => { this.license = response.data });
         axios.get("v1/public/me").then(response => { this.node = response.data });
         axios.get("v1/public").then(response => { this.nodes = response.data });
+        this.timer = setInterval(this.reloadStatus, 5000);
+        if( globals.isEnterprise()) {
+            if( globals.adminNode) {
+                let me = this;
+                axios.get("v1/public/context").then(response => {
+                    for( let i = 0; i < response.data.length; i++) {
+                        me.contexts.push(response.data[i].context);
+                        if( ! me.context && ! response.data[i].context.startsWith("_")) me.context = response.data[i].context;
+                    }
+                    me.reloadStatus()
+                });
+            } else {
+                axios.get("v1/public/mycontexts").then(response => {
+                    this.contexts = response.data;
+                    if( this.contexts.length > 0) {
+                        this.context = this.contexts[0];
+                    }
+                    this.reloadStatus()
+                });
+            }
+
+        } else {
+            this.context = "default";
+            this.reloadStatus();
+        }
     }, methods: {
         reloadStatus: function () {
-            axios.get("v1/public/status").then(response => { this.status = response.data });
+            if( this.context) {
+                axios.get("v1/public/status?context=" + this.context).then(response => {
+                    this.status = response.data
+                });
+            }
         },
         resetEvents() {
             if(confirm("Are you sure you want to delete all event and snapshot data?")){
@@ -30,5 +62,7 @@ globals.pageView = new Vue({
             }
 
         }
+    }, beforeDestroy: function() {
+        clearInterval(this.timer);
     }
         });

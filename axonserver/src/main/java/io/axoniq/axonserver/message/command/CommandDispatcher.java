@@ -17,7 +17,7 @@ import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.micrometer.core.instrument.Counter;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -40,20 +40,19 @@ import java.util.stream.Collectors;
 @Component("CommandDispatcher")
 public class CommandDispatcher {
 
-    private static final String COMMAND_COUNTER_NAME = "axon.commands.count";
+    private static final String COMMAND_COUNTER_NAME = "axon.commands";
     private static final String ACTIVE_COMMANDS_GAUGE = "axon.commands.active";
     private final CommandRegistrationCache registrations;
     private final CommandCache commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed());
-    private final Counter commandCounter;
+    private final Map<String, MeterFactory.RateMeter> commandCounter = new ConcurrentHashMap<>();
 
     public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache, CommandMetricsRegistry metricRegistry) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
-        this.commandCounter = metricRegistry.counter(COMMAND_COUNTER_NAME);
         metricRegistry.gauge(ACTIVE_COMMANDS_GAUGE, commandCache, ConcurrentHashMap::size);
     }
 
@@ -63,10 +62,14 @@ public class CommandDispatcher {
             CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
             dispatchToCommandHandler( request, handler, responseObserver);
         } else {
-            commandCounter.increment();
+            commandCounter(context).mark();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
             dispatchToCommandHandler( request, commandHandler, responseObserver);
         }
+    }
+
+    private MeterFactory.RateMeter commandCounter(String context) {
+        return commandCounter.computeIfAbsent(context, c->  metricRegistry.rateMeter(COMMAND_COUNTER_NAME, c));
     }
 
     @EventListener
@@ -167,11 +170,11 @@ public class CommandDispatcher {
         });
     }
 
-    public long getNrOfCommands() {
-        return (long)commandCounter.count();
+    public MeterFactory.RateMeter commandRate(String context) {
+        return commandCounter(context);
     }
 
-    public int commandCount() {
+    public int activeCommandCount() {
         return commandCache.size();
     }
 
