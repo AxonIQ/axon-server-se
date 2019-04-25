@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 4.2
  */
 @RestController("DevelopmentRestController")
-@ConditionalOnProperty("axoniq.axonserver.devtools.enabled")
-@RequestMapping("/v1/devtools")
+@ConditionalOnProperty("axoniq.axonserver.devmode.enabled")
+@RequestMapping("/v1/devmode")
 public class DevelopmentRestController {
 
     @Autowired
@@ -26,7 +26,7 @@ public class DevelopmentRestController {
     /**
      * REST endpoint handling requests to reset the events and snapshots in Axon Server
      */
-    @DeleteMapping("delete-events")
+    @DeleteMapping("purge-events")
     @ApiOperation(value="Clears all event and snapshot data from Axon Server", notes = "Only for development/test environments.")
     public void resetEventStore(){
         eventStoreLocator.getEventStore("default").deleteAllEventData("default");

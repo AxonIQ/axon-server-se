@@ -53,7 +53,7 @@ public class PublicRestController {
     private final AccessControlConfiguration accessControlConfiguration;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
 
-    @Value("${axoniq.axonserver.devtools.enabled:false}")
+    @Value("${axoniq.axonserver.devmode.enabled:false}")
     private boolean isDevelopmentMode;
 
     public PublicRestController(Topology topology,
