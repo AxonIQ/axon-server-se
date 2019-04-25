@@ -31,4 +31,6 @@ public interface StorageTransactionManager {
     default void cancelPendingTransactions() {
 
     }
+
+    void deleteAllEventData();
 }

@@ -47,4 +47,7 @@ public class SnapshotWriteStorage {
         return storageTransactionManager.waitingTransactions();
     }
 
+    public void deleteAllEventData() {
+        storageTransactionManager.deleteAllEventData();
+    }
 }

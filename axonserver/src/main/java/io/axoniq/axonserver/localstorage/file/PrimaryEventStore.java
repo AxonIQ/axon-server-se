@@ -32,7 +32,6 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -54,14 +53,12 @@ import java.util.stream.Stream;
  */
 public class PrimaryEventStore extends SegmentBasedEventStore {
     private static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
-    private static final int MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK = 10;
 
     private final EventTransformerFactory eventTransformerFactory;
     private final Synchronizer synchronizer;
     private final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     private final AtomicLong lastToken = new AtomicLong(-1);
     private final ConcurrentNavigableMap<Long, Map<String, SortedSet<PositionInfo>>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
-    private final Map<String, AtomicLong> sequenceNumbersPerAggregate = new ConcurrentHashMap<>();
     private final Map<Long, ByteBufferEventSource> readBuffers = new ConcurrentHashMap<>();
     private EventTransformer eventTransformer;
 
@@ -85,7 +82,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         WritableEventSource buffer = getOrOpenDatafile(first);
         FileUtils.delete(storageProperties.index(context, first));
         FileUtils.delete(storageProperties.bloomFilter(context, first));
-        sequenceNumbersPerAggregate.clear();
         long sequence = first;
         try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first) ) {
             Map<String, SortedSet<PositionInfo>> aggregatePositions = new ConcurrentHashMap<>();
@@ -98,9 +94,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                                       .add(new PositionInfo(event.getPosition(),
                                                             event.getEvent().getAggregateSequenceNumber()));
 
-                    sequenceNumbersPerAggregate.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                                k -> new AtomicLong()).set(event.getEvent()
-                                                                                                .getAggregateSequenceNumber());
                 }
                 sequence++;
             }
@@ -117,9 +110,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                                           .add(new PositionInfo(event.getPosition(),
                                                                 event.getEvent().getAggregateSequenceNumber()));
 
-                        sequenceNumbersPerAggregate.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                                    k -> new AtomicLong()).set(event.getEvent()
-                                                                                                    .getAggregateSequenceNumber());
                     }
                     sequence++;
                 }
@@ -226,28 +216,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return lastToken.get();
     }
 
-    @Override
-    public void reserveSequenceNumbers(List<SerializedEvent> events) {
-        Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
-        events.stream()
-              .map(SerializedEvent::asEvent)
-              .filter(this::isDomainEvent)
-              .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(), i -> new MinMaxPair(e.getAggregateIdentifier(), e.getAggregateSequenceNumber())).setMax(e.getAggregateSequenceNumber()));
-
-        Map<String, Long> oldSequenceNumberPerAggregate = new HashMap<>();
-        for( Map.Entry<String,MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
-            AtomicLong current = sequenceNumbersPerAggregate.computeIfAbsent(entry.getKey(),
-                                                                             id -> lastSequenceForAggregate(id, entry.getValue().getMin() > 0));
-
-            if( ! current.compareAndSet(entry.getValue().getMin() - 1, entry.getValue().getMax())) {
-                oldSequenceNumberPerAggregate.forEach((aggregateId, sequenceNumber) -> sequenceNumbersPerAggregate.put(aggregateId, new AtomicLong(sequenceNumber)));
-                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE, String.format("Invalid sequence number %d for aggregate %s, expected %d",
-                                                                                               entry.getValue().getMin(), entry.getKey(), current.get()+1));
-            }
-            oldSequenceNumberPerAggregate.putIfAbsent(entry.getKey(), entry.getValue().getMin() - 1);
-        }
-    }
-
     private AtomicLong lastSequenceForAggregate(String aggregateId, boolean checkAll) {
         return new AtomicLong( getLastSequenceNumber(aggregateId,
                                                      checkAll ? Integer.MAX_VALUE : MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK).orElse(-1L));
@@ -256,11 +224,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
         return next!= null ? next.getBackupFilenames(lastSegmentBackedUp): Stream.empty();
-    }
-
-    @Override
-    public void clearReservedSequenceNumbers() {
-        sequenceNumbersPerAggregate.clear();
     }
 
     @Override
@@ -354,7 +317,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         if( next != null) {
             next.handover(writePosition.segment, () -> {
                 positionsPerSegmentMap.remove(writePosition.segment);
-                sequenceNumbersPerAggregate.clear();
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
                 logger.debug("Handed over {}, remaining segments: {}", writePosition.segment, positionsPerSegmentMap.keySet());
                 source.clean(storageProperties.getPrimaryCleanupDelay());

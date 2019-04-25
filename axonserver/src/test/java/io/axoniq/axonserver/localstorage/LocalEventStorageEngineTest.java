@@ -70,6 +70,11 @@ public class LocalEventStorageEngineTest {
                     public void cancelPendingTransactions() {
                         pendingTransactions.forEach(p -> p.completeExceptionally(new RuntimeException("Transaction cancelled")));
                     }
+
+                    @Override
+                    public void deleteAllEventData() {
+
+                    }
                 };
             }
         }, 5);

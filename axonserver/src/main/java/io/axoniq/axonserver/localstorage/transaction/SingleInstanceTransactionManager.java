@@ -20,10 +20,12 @@ import java.util.concurrent.CompletableFuture;
  */
 public class SingleInstanceTransactionManager implements StorageTransactionManager{
     private final EventStorageEngine eventStorageEngine;
+    private final SequenceNumberCache sequenceNumberCache;
 
     public SingleInstanceTransactionManager(
             EventStorageEngine eventStorageEngine) {
         this.eventStorageEngine = eventStorageEngine;
+        this.sequenceNumberCache = new SequenceNumberCache(eventStorageEngine);
     }
 
     @Override
@@ -33,6 +35,12 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
 
     @Override
     public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
-        eventStorageEngine.reserveSequenceNumbers(eventList);
+        sequenceNumberCache.reserveSequenceNumbers(eventList);
+    }
+
+    @Override
+    public void deleteAllEventData() {
+        sequenceNumberCache.clear();
+        eventStorageEngine.deleteAllEventData();
     }
 }

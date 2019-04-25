@@ -66,9 +66,10 @@ public interface EventStorageEngine {
     /**
      * Retrieves the last sequence number for a specific aggregate. Returns empty optional when aggregate is not found.
      * @param aggregateIdentifier the aggregate identifier
+     * @param checkAll search entire event store
      * @return the last sequence number
      */
-    Optional<Long> getLastSequenceNumber(String aggregateIdentifier);
+    Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll);
 
     /**
      * Close the storage engine. Free all resources used by the storage engine.
@@ -84,13 +85,6 @@ public interface EventStorageEngine {
      * @return optional containing the latest event
      */
     Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber);
-
-    /**
-     * Reserve the sequence numbers of the aggregates in the provided list to avoid collisions during store.
-     * @param events list of events to store
-     */
-    default void reserveSequenceNumbers(List<SerializedEvent> events) {
-    }
 
     /**
      * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
@@ -177,13 +171,6 @@ public interface EventStorageEngine {
      * @param token the last token to keep.
      */
     default void rollback(long token) {
-    }
-
-    /**
-     * Removes all reserved sequence numbers from storage engine.
-     */
-    default void clearReservedSequenceNumbers() {
-
     }
 
     /**

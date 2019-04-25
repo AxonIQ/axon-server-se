@@ -105,8 +105,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if (workers == null) {
             return;
         }
-        workers.eventStorageEngine.deleteAllEventData();
-        workers.snapshotStorageEngine.deleteAllEventData();
+        workers.deleteAllEventData();
     }
 
     public void cancel(String context) {
@@ -471,6 +470,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         Set<EventStreamController> eventStreamControllers() {
             return eventStreamControllerSet;
+        }
+
+        public void deleteAllEventData() {
+            eventWriteStorage.deleteAllEventData();
+            snapshotWriteStorage.deleteAllEventData();
         }
     }
 }

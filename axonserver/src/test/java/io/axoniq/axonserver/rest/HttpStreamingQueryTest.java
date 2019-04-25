@@ -59,7 +59,7 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public Optional<Long> getLastSequenceNumber(String aggregateIdentifier) {
+            public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll) {
                 return Optional.empty();
             }
 

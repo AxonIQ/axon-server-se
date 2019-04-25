@@ -43,6 +43,6 @@ public class AggregateReader {
     }
 
     public long readHighestSequenceNr(String aggregateId) {
-        return eventStorageEngine.getLastSequenceNumber(aggregateId).orElse(-1L);
+        return eventStorageEngine.getLastSequenceNumber(aggregateId, true).orElse(-1L);
     }
 }

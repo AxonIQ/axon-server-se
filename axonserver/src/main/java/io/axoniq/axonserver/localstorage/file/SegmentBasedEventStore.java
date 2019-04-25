@@ -56,6 +56,7 @@ import java.util.stream.Stream;
  */
 public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
+    protected static final int MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK = 10;
 
     private static final int TRANSACTION_LENGTH_BYTES = 4;
     private static final int NUMBER_OF_EVENTS_BYTES = 2;
@@ -187,8 +188,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier) {
-        return getLastSequenceNumber(aggregateIdentifier, Integer.MAX_VALUE);
+    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll) {
+        return getLastSequenceNumber(aggregateIdentifier, checkAll ? Integer.MAX_VALUE : MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK);
     }
 
      public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegments) {

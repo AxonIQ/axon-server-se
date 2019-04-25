@@ -89,4 +89,8 @@ public class EventWriteStorage {
     public void cancelPendingTransactions() {
         storageTransactionManager.cancelPendingTransactions();
     }
+
+    public void deleteAllEventData() {
+        storageTransactionManager.deleteAllEventData();
+    }
 }
