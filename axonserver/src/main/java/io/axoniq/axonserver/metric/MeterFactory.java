@@ -9,17 +9,16 @@
 
 package io.axoniq.axonserver.metric;
 
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.AtomicDouble;
-import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.Media;
+import io.axoniq.axonserver.serializer.Printable;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 
@@ -32,13 +31,12 @@ import java.util.function.ToDoubleFunction;
 @Service
 public class MeterFactory {
 
-    private final MetricRegistry rateMetricRegistry;
     private final MeterRegistry meterRegistry;
     private final MetricCollector clusterMetrics;
+    private final Clock clock = Clock.systemDefaultZone();
 
     public MeterFactory(MeterRegistry meterRegistry,
                         MetricCollector clusterMetrics) {
-        this.rateMetricRegistry = new MetricRegistry();
         this.meterRegistry = meterRegistry;
         this.clusterMetrics = clusterMetrics;
     }
@@ -65,18 +63,18 @@ public class MeterFactory {
     }
 
     public class RateMeter implements Printable {
-        private final Meter meter;
+        private final IntervalCounter meter;
+
         private final Counter counter;
         private final String name;
 
         private RateMeter(String name) {
             this.name = name;
-            meter = rateMetricRegistry.meter(name);
+            meter = new IntervalCounter(clock);
             counter = meterRegistry.counter(name + ".count");
-            meterRegistry.gauge(name + ".meanRate", meter, Meter::getMeanRate);
-            meterRegistry.gauge(name + ".oneMinuteRate", meter, Meter::getOneMinuteRate);
-            meterRegistry.gauge(name + ".fiveMinuteRate", meter, Meter::getFiveMinuteRate);
-            meterRegistry.gauge(name + ".fifteenMinuteRate", meter, Meter::getFifteenMinuteRate);
+            meterRegistry.gauge(name + ".oneMinuteRate", meter, IntervalCounter::getOneMinuteRate);
+            meterRegistry.gauge(name + ".fiveMinuteRate", meter, IntervalCounter::getFiveMinuteRate);
+            meterRegistry.gauge(name + ".fifteenMinuteRate", meter, IntervalCounter::getFifteenMinuteRate);
         }
 
 
@@ -86,7 +84,7 @@ public class MeterFactory {
         }
 
         public long getCount() {
-            AtomicLong count = new AtomicLong(meter.getCount());
+            AtomicLong count = new AtomicLong(meter.count());
             new Metrics(name + ".count", clusterMetrics).forEach(m -> count.addAndGet(m.size()));
             return count.get();
         }
@@ -94,12 +92,6 @@ public class MeterFactory {
         public double getOneMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getOneMinuteRate());
             new Metrics(name + ".oneMinuteRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
-            return rate.get();
-        }
-
-        public double getMeanRate() {
-            AtomicDouble rate = new AtomicDouble(meter.getMeanRate());
-            new Metrics(name + ".meanRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
             return rate.get();
         }
 
@@ -125,7 +117,6 @@ public class MeterFactory {
             media.with("oneMinuteRate", getOneMinuteRate());
             media.with("fiveMinuteRate", getFiveMinuteRate());
             media.with("fifteenMinuteRate", getFifteenMinuteRate());
-            media.with("meanRate", getMeanRate());
         }
     }
 }

@@ -93,9 +93,9 @@
 
         Vue.filter('formatRate', function (rate) {
             if( rate) {
-                return Number(rate.oneMinuteRate).toFixed(3);
+                return Number(rate.oneMinuteRate).toFixed(0);
             } else {
-                return Number(0).toFixed(3);
+                return Number(0).toFixed(0);
             }
         });
 
