@@ -13,6 +13,9 @@ import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.grpc.stub.CallStreamObserver;
+import io.grpc.stub.ClientCallStreamObserver;
+import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,9 +118,19 @@ public class GrpcRaftPeer implements RaftPeer {
         return node.getNodeId();
     }
 
+    @Override
+    public boolean isReadyForAppendEntries() {
+        return appendEntiesStreamRef.get() == null || appendEntiesStreamRef.get().isReady();
+    }
+
+    @Override
+    public boolean isReadyForSnapshot() {
+        return installSnapshotStreamRef.get() == null || installSnapshotStreamRef.get().isReady();
+    }
+
     private class InstallSnapshotStream {
 
-        private final AtomicReference<StreamObserver<InstallSnapshotRequest>> requestStreamRef = new AtomicReference<>();
+        private final AtomicReference<CallStreamObserver<InstallSnapshotRequest>> requestStreamRef = new AtomicReference<>();
 
         public void onNext(InstallSnapshotRequest request) {
             logger.trace("{} Send {}", node.getNodeId(), request);
@@ -128,9 +141,14 @@ public class GrpcRaftPeer implements RaftPeer {
             }
         }
 
-        private StreamObserver<InstallSnapshotRequest> initStreamObserver() {
+        private CallStreamObserver<InstallSnapshotRequest> initStreamObserver() {
             LogReplicationServiceGrpc.LogReplicationServiceStub stub = clientFactory.createLogReplicationServiceStub(node);
-            return stub.installSnapshot(new StreamObserver<InstallSnapshotResponse>() {
+            return (CallStreamObserver<InstallSnapshotRequest>) stub.installSnapshot(new ClientResponseObserver<InstallSnapshotRequest,InstallSnapshotResponse>() {
+                @Override
+                public void beforeStart(ClientCallStreamObserver<InstallSnapshotRequest> clientCallStreamObserver) {
+                    clientCallStreamObserver.setOnReadyHandler(() -> logger.trace("{}: install snapshot ready", node.getNodeId()));
+                }
+
                 @Override
                 public void onNext(InstallSnapshotResponse installSnapshotResponse) {
                     if( installSnapshotResponse.hasFailure()) {
@@ -158,12 +176,16 @@ public class GrpcRaftPeer implements RaftPeer {
                 }
             });
         }
+
+        public boolean isReady() {
+            return requestStreamRef.get() == null || requestStreamRef.get().isReady();
+        }
     }
 
 
     private class AppendEntriesStream {
 
-        private final AtomicReference<StreamObserver<AppendEntriesRequest>> requestStreamRef = new AtomicReference<>();
+        private final AtomicReference<CallStreamObserver<AppendEntriesRequest>> requestStreamRef = new AtomicReference<>();
         private final AtomicLong lastMessageReceived = new AtomicLong();
 
         public void onNext(AppendEntriesRequest request) {
@@ -183,10 +205,16 @@ public class GrpcRaftPeer implements RaftPeer {
         }
 
 
-        private StreamObserver<AppendEntriesRequest> initStreamObserver() {
+        private CallStreamObserver<AppendEntriesRequest> initStreamObserver() {
             lastMessageReceived.set(System.currentTimeMillis());
             LogReplicationServiceGrpc.LogReplicationServiceStub stub = clientFactory.createLogReplicationServiceStub(node);
-            return stub.appendEntries(new StreamObserver<AppendEntriesResponse>() {
+            return (CallStreamObserver<AppendEntriesRequest>) stub.appendEntries(new ClientResponseObserver<AppendEntriesRequest, AppendEntriesResponse>() {
+
+                @Override
+                public void beforeStart(ClientCallStreamObserver<AppendEntriesRequest> clientCallStreamObserver) {
+                    clientCallStreamObserver.setOnReadyHandler(() -> logger.trace("{}: append entries ready", node.getNodeId()));
+                }
+
                 @Override
                 public void onNext(AppendEntriesResponse appendEntriesResponse) {
                     lastMessageReceived.set(System.currentTimeMillis());
@@ -215,6 +243,10 @@ public class GrpcRaftPeer implements RaftPeer {
                     }
                 }
             });
+        }
+
+        public boolean isReady() {
+            return requestStreamRef.get() == null || requestStreamRef.get().isReady();
         }
     }
 

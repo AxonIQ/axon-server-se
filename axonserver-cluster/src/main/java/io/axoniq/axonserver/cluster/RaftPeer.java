@@ -23,4 +23,12 @@ public interface RaftPeer {
     Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener);
 
     String nodeId();
+
+    default boolean isReadyForAppendEntries() {
+        return true;
+    }
+
+    default boolean isReadyForSnapshot() {
+        return true;
+    }
 }

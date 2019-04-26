@@ -236,6 +236,7 @@ public class ReplicatorPeer {
         private boolean canSend() {
             return subscription != null &&
                     running &&
+                    raftPeer.isReadyForSnapshot() &&
                     offset - lastReceivedOffset < raftGroup.raftConfiguration().flowBuffer();
         }
 
@@ -283,7 +284,7 @@ public class ReplicatorPeer {
                 }
 
                 if (logCannotSend && !canSend()) {
-                    logger.info("{} in term {}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
+                    logger.trace("{} in term {}: Trying to send to {} (nextIndex = {}, matchIndex = {}, lastLog = {})",
                                 groupId(),
                                 currentTerm(),
                                 raftPeer.nodeId(),
@@ -416,8 +417,9 @@ public class ReplicatorPeer {
         }
 
         private boolean canSend() {
-            return running && matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < raftGroup
-                    .raftConfiguration().flowBuffer();
+            return running &&
+                    raftPeer.isReadyForAppendEntries() &&
+                    (matchIndex.get() == 0 || nextIndex.get() - matchIndex.get() < raftGroup.raftConfiguration().flowBuffer());
         }
 
         @Override
