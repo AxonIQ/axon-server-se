@@ -68,8 +68,7 @@
                         </span>
                     </li>
                     <li>
-                        <span>Last event token</span>
-                        <span id="nrEvents" class="number">{{status.nrOfEvents}}</span>
+                        <span><b>One minute rates</b></span>
                     </li>
                     <li>
                         <span>Events stored / second</span>
@@ -88,6 +87,12 @@
                         <span id="queryRate" class="number">{{status.queryRate | formatRate}}</span>
                     </li>
 
+                    <li>
+                        <span style="display: block; height: 10px"></span>
+                    <li>
+                        <span>Last event token</span>
+                        <span id="nrEvents" class="number">{{status.nrOfEvents}}</span>
+                    </li>
                     <li>
                         <span>#Active Subscription Queries</span>
                         <span class="number">{{status.nrOfActiveSubscriptionQueries}}</span>
