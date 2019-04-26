@@ -14,7 +14,6 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.grpc.stub.StreamObserver;
-import io.netty.util.internal.OutOfDirectMemoryError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -222,7 +221,7 @@ public class GrpcRaftPeer implements RaftPeer {
     private <T> void send(StreamObserver<T> stream, T request) {
         try {
             stream.onNext(request);
-        } catch( RuntimeException | OutOfDirectMemoryError e) {
+        } catch( Throwable e) {
             logger.warn("Error while sending message: {}", e.getMessage(), e);
             try {
                 // Cancel RPC
