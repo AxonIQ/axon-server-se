@@ -1,6 +1,16 @@
+/*
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.component.ComponentItems;
+import io.axoniq.axonserver.component.processor.balancing.SameProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import org.jetbrains.annotations.NotNull;
@@ -102,11 +112,8 @@ public class ComponentClientProcessors implements ClientProcessors {
 
         @Override
         public boolean test(ClientProcessor p) {
-            if (!p.belongsToContext(context)) {
-                return false;
-            }
             for (String processorName : processors) {
-                if (p.eventProcessorInfo().getProcessorName().equals(processorName)) {
+                if (new SameProcessor(() -> context, () -> processorName).test(p)) {
                     return true;
                 }
             }
