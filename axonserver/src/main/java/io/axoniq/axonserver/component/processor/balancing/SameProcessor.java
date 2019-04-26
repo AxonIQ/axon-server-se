@@ -12,23 +12,48 @@ package io.axoniq.axonserver.component.processor.balancing;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
- * Created by Sara Pellegrini on 13/08/2018.
- * sara.pellegrini@gmail.com
+ * Predicate which checks if a {@link ClientProcessor} belongs to specific event processor
+ * @author Sara Pellegrini
  */
 public class SameProcessor implements Predicate<ClientProcessor> {
 
-    private final TrackingEventProcessor processor;
+    private final Supplier<String> context;
 
+    private final Supplier<String> processorName;
+
+    /**
+     * Creates an instance with specified {@link TrackingEventProcessor}
+     *
+     * @param processor the tracking event processor
+     */
     public SameProcessor(TrackingEventProcessor processor) {
-        this.processor = processor;
+        this(processor::context, processor::name);
     }
 
+    /**
+     * Creates an instance with specified context and processor name.
+     *
+     * @param context       the context of the event processor
+     * @param processorName the name of the event processor
+     */
+    public SameProcessor(Supplier<String> context, Supplier<String> processorName) {
+        this.context = context;
+        this.processorName = processorName;
+    }
+
+    /**
+     * Checks if the {@link ClientProcessor} belongs to the the correct event processor,
+     * verifying that both context and processor name match.
+     *
+     * @param processor the {@link ClientProcessor} to be tested
+     * @return true if the {@link ClientProcessor} belongs to the the correct event processor, false otherwise.
+     */
     @Override
-    public boolean test(ClientProcessor p) {
-        return p.belongsToComponent(processor.component()) &&
-                p.belongsToContext(processor.context()) &&
-                p.eventProcessorInfo().getProcessorName().equals(processor.name());
+    public boolean test(ClientProcessor processor) {
+        return processor.belongsToContext(context.get()) &&
+                processor.eventProcessorInfo().getProcessorName().equals(processorName.get());
     }
 }
