@@ -85,7 +85,7 @@ public class LoadBalancingManagementRestController {
     @GetMapping("components/{component}/processors/loadbalance/strategies")
     public Map<String, String> getComponentStrategies(@PathVariable("component") String component,
                                                       @RequestParam("context") String context) {
-        return processorController.findByComponentAndContext(component, context).stream()
+        return processorController.findByContext(context).stream()
                                   .collect(toMap(o -> o.processor().name(), ProcessorLoadBalancing::strategy));
     }
 
