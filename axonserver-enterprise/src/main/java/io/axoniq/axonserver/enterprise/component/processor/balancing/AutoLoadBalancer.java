@@ -11,7 +11,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,8 +18,9 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Created by Sara Pellegrini on 10/08/2018.
- * sara.pellegrini@gmail.com
+ * Automatically balance the load between client application any time it is needed.
+ *
+ * @author Sara Pellegrini
  */
 @Component
 public class AutoLoadBalancer {
@@ -30,8 +30,6 @@ public class AutoLoadBalancer {
     private final Function<String,Boolean> coordinatorForContext;
 
     private final Map<TrackingEventProcessor, Collection<String>> cache = new ConcurrentHashMap<>();
-
-    private final Map<String, String> componentMap = new HashMap<>();
 
     @Autowired
     public AutoLoadBalancer(UpdatedLoadBalance balancer, RaftLeaderProvider raftLeaderProvider) {
@@ -45,21 +43,12 @@ public class AutoLoadBalancer {
     }
 
     @EventListener
-    public void onClientConnected(TopologyEvents.ApplicationConnected event) {
-        componentMap.put(event.getClient(), event.getComponentName());
-    }
-
-    @EventListener
     public void onEventProcessorStatusChange(EventProcessorEvents.EventProcessorStatusUpdated event) {
         ClientEventProcessorStatus status = ClientEventProcessorStatusProtoConverter.toProto(event.eventProcessorStatus());
         String context = status.getContext();
         String client = status.getClient();
-        if (!componentMap.containsKey(client)) {
-            return;
-        }
-        String component = componentMap.get(client);
         String processor = status.getEventProcessorInfo().getProcessorName();
-        TrackingEventProcessor current = new TrackingEventProcessor(processor, component, context);
+        TrackingEventProcessor current = new TrackingEventProcessor(processor, context);
         Collection<String> clients = cache.computeIfAbsent(current, s -> new LinkedList<>());
 
         if (!clients.contains(client)) {
@@ -70,7 +59,6 @@ public class AutoLoadBalancer {
 
     @EventListener
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
-        componentMap.remove(event.getClient());
         cache.forEach((processor, clients) -> {
             boolean removed = clients.remove(event.getClient());
             if (removed){
