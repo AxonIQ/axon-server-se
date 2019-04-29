@@ -12,5 +12,5 @@ public interface ProcessorLoadBalancingControllerFacade {
 
     void save(ProcessorLoadBalancing processorLoadBalancing);
 
-    List<ProcessorLoadBalancing> findByContext(String context);
+    List<ProcessorLoadBalancing> findByComponentAndContext(String component, String context);
 }

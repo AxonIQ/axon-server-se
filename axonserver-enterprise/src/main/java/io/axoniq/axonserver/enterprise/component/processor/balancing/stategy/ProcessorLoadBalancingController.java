@@ -35,7 +35,7 @@ public class ProcessorLoadBalancingController  {
         return repository.findByStrategy(strategyName);
     }
 
-    public List<ProcessorLoadBalancing> findByContext(String context) {
-        return repository.findByContext(context);
+    public List<ProcessorLoadBalancing> findByComponentAndContext(String component, String context) {
+        return repository.findByComponentAndContext(component, context);
     }
 }

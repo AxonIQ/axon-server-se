@@ -16,6 +16,9 @@ public interface ProcessorLoadBalancingRepository extends JpaRepository<Processo
 
     List<ProcessorLoadBalancing> findByStrategy(String strategyName);
 
+    @Query("select p from ProcessorLoadBalancing p where p.processor.component = ?1 and p.processor.context = ?2")
+    List<ProcessorLoadBalancing> findByComponentAndContext(String component, String context);
+
     @Query("select p from ProcessorLoadBalancing p where p.processor.context = ?1")
     List<ProcessorLoadBalancing> findByContext(String context);
 

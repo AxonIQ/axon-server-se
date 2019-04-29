@@ -30,7 +30,7 @@ public class RaftProcessorLoadBalancingControllerFacade implements ProcessorLoad
     }
 
     @Override
-    public List<ProcessorLoadBalancing> findByContext(String context) {
-        return processorLoadBalancingController.findByContext(context);
+    public List<ProcessorLoadBalancing> findByComponentAndContext(String component, String context) {
+        return processorLoadBalancingController.findByComponentAndContext(component, context);
     }
 }

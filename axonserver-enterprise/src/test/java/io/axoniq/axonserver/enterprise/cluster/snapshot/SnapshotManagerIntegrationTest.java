@@ -130,8 +130,8 @@ public class SnapshotManagerIntegrationTest {
                                                                                 "factoryBean");
         loadBalanceStrategyRepository.save(loadBalancingStrategy);
 
-        TrackingEventProcessor tep1 = new TrackingEventProcessor("tep1", CONTEXT);
-        TrackingEventProcessor tep2 = new TrackingEventProcessor("tep2", "default");
+        TrackingEventProcessor tep1 = new TrackingEventProcessor("tep1", "component", CONTEXT);
+        TrackingEventProcessor tep2 = new TrackingEventProcessor("tep2", "component", "default");
         ProcessorLoadBalancing processorLoadBalancing1 = new ProcessorLoadBalancing(tep1, "strategy1");
         ProcessorLoadBalancing processorLoadBalancing2 = new ProcessorLoadBalancing(tep2, "strategy2");
         processorLoadBalancingRepository.save(processorLoadBalancing1);
@@ -349,6 +349,8 @@ public class SnapshotManagerIntegrationTest {
     }
 
     private void assertProcessors(TrackingEventProcessor tep1, TrackingEventProcessor tep2) {
-        assertEquals(tep1, tep2);
+        assertEquals(tep1.name(), tep2.name());
+        assertEquals(tep1.context(), tep2.context());
+        assertEquals(tep1.component(), tep2.component());
     }
 }
