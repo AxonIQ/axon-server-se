@@ -7,8 +7,11 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 
 /**
- * Created by Sara Pellegrini on 13/08/2018.
- * sara.pellegrini@gmail.com
+ * This entity represent the strategy to be used for auto balancing a tracking event processor.
+ * The primary key is semantic key used to uniquely define the event processor, while the strategy
+ * is the unique identifier need to define the strategy to be used.
+ *
+ * @author Sara Pellegrini
  */
 @Entity
 public class ProcessorLoadBalancing  {
@@ -28,10 +31,19 @@ public class ProcessorLoadBalancing  {
 
     private String strategy;
 
+    /**
+     * Returns the tracking event processor, identified by context and processor name.
+     *
+     * @return the tracking event processor
+     */
     public TrackingEventProcessor processor() {
         return processor;
     }
 
+    /**
+     * Returns the strategy set for this Tracking Event Processor auto balancing operations.
+     * @return the strategy
+     */
     public String strategy() {
         return strategy;
     }

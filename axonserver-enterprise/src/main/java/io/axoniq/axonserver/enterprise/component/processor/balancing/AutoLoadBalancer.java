@@ -10,16 +10,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
  * Automatically balance the load between client application any time it is needed.
- *
+ * In this implementation, the balance operation is performed only if the node instance is the current leader for the context.
  * @author Sara Pellegrini
  */
 @Component
@@ -29,7 +29,7 @@ public class AutoLoadBalancer {
 
     private final Function<String,Boolean> coordinatorForContext;
 
-    private final Map<TrackingEventProcessor, Collection<String>> cache = new ConcurrentHashMap<>();
+    private final Map<TrackingEventProcessor, Set<String>> cache = new ConcurrentHashMap<>();
 
     @Autowired
     public AutoLoadBalancer(UpdatedLoadBalance balancer, RaftLeaderProvider raftLeaderProvider) {
@@ -42,6 +42,11 @@ public class AutoLoadBalancer {
         this.coordinatorForContext = coordinatorForContext;
     }
 
+    /**
+     * Listens to any update of the event processors status and balance the load if this node is the current leader.
+     *
+     * @param event the internal event describing the new status of the event processor
+     */
     @EventListener
     public void onEventProcessorStatusChange(EventProcessorEvents.EventProcessorStatusUpdated event) {
         ClientEventProcessorStatus status = ClientEventProcessorStatusProtoConverter.toProto(event.eventProcessorStatus());
@@ -49,14 +54,14 @@ public class AutoLoadBalancer {
         String client = status.getClient();
         String processor = status.getEventProcessorInfo().getProcessorName();
         TrackingEventProcessor current = new TrackingEventProcessor(processor, context);
-        Collection<String> clients = cache.computeIfAbsent(current, s -> new LinkedList<>());
-
-        if (!clients.contains(client)) {
-            clients.add(client);
-            balance(current);
-        }
+        cache.computeIfAbsent(current, s -> new HashSet<>()).add(client);
+        balance(current);
     }
 
+    /**
+     *  Listens to any client disconnected and balance the load of its event processors if this node is the current leader.
+     * @param event the internal event describing the client application disconnected from the Axon Server cluster
+     */
     @EventListener
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
         cache.forEach((processor, clients) -> {

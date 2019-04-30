@@ -2,17 +2,19 @@ package io.axoniq.axonserver.enterprise.component.processor.balancing.stategy;
 
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import org.springframework.stereotype.Controller;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Controller of {@link ProcessorLoadBalancing}s
+ * Service responsible for the management of {@link ProcessorLoadBalancing}s.
+ * This implementation use a JPA repository to save, update and queries {@link ProcessorLoadBalancing}s.
+ *
  * @author Sara Pellegrini
  */
-@Controller
-public class ProcessorLoadBalancingController  {
+@Service
+public class ProcessorLoadBalancingController {
 
     private final ProcessorLoadBalancingRepository repository;
 

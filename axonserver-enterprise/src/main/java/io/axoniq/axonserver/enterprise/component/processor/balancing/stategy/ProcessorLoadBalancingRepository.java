@@ -18,14 +18,14 @@ public interface ProcessorLoadBalancingRepository
         extends JpaRepository<ProcessorLoadBalancing, TrackingEventProcessor> {
 
     /**
-     * Lists all {@link ProcessorLoadBalancing} for the specified strategy
+     * Lists all persisted {@link ProcessorLoadBalancing} filtered by the specified strategy
      *
      * @param strategyName the strategy
      */
     List<ProcessorLoadBalancing> findByStrategy(String strategyName);
 
     /**
-     * Lists all {@link ProcessorLoadBalancing} for the specified context
+     * Lists all persisted {@link ProcessorLoadBalancing} filtered by the specified context
      *
      * @param context the context
      */
