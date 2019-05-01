@@ -667,7 +667,7 @@ class LocalRaftConfigService implements RaftConfigService {
             RaftNode admin = grpcRaftController.getRaftNode(getAdmin());
             if( admin.isLeader()) {
                 Context context = contextController.getContext(contextName);
-                if( context.isChangePending()) {
+                if( context != null && context.isChangePending()) {
                     ContextConfiguration configuration = createContextConfigBuilder(context).setPending(false).build();
                     admin.appendEntry(ContextConfiguration.class.getName(), configuration.toByteArray());
                 }

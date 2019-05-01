@@ -190,7 +190,7 @@ public class ReplicatorPeer {
 
                 if( sent == 0 &&
                     lastMessageSent.get() + raftGroup.raftConfiguration().heartbeatTimeout() < System.currentTimeMillis()) {
-                        logger.info("{} in term {}: Send heartbeat in install snapshot to {}.",
+                        logger.trace("{} in term {}: Send heartbeat in install snapshot to {}.",
                                      groupId(),
                                      currentTerm(),
                                     nodeId());

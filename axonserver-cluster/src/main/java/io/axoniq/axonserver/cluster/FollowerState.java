@@ -256,7 +256,7 @@ public class FollowerState extends AbstractMembershipState {
             long after = System.currentTimeMillis();
 
             if( after - before > raftGroup().raftConfiguration().heartbeatTimeout()) {
-                logger.info("{} in term {}: Install snapshot took {}ms", groupId(),currentTerm(), after-before);
+                logger.trace("{} in term {}: Install snapshot took {}ms", groupId(),currentTerm(), after-before);
             }
             processing.set(false);
         }
