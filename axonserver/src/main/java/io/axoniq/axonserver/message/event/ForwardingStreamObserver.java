@@ -10,13 +10,15 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.util.ReadyStreamObserver;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 
 /**
  * @author Marc Gathier
  */
-public class ForwardingStreamObserver<T> implements StreamObserver<T> {
+public class ForwardingStreamObserver<T> implements ReadyStreamObserver<T> {
 
     private final Logger logger;
     private final String request;
@@ -43,5 +45,14 @@ public class ForwardingStreamObserver<T> implements StreamObserver<T> {
     @Override
     public void onCompleted() {
         responseObserver.onCompleted();
+    }
+
+    /**
+     * Checks if stream observer is ready for next request.
+     * @return true if stream observer is ready to handle new message
+     */
+    @Override
+    public boolean isReady() {
+        return ((CallStreamObserver)responseObserver).isReady();
     }
 }

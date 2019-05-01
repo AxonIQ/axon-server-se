@@ -19,6 +19,7 @@ import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
@@ -124,7 +125,7 @@ public class EventDispatcherTest {
 
             }
         };
-        when(eventStoreClient.listEvents(any(), any(StreamObserver.class))).then(a -> {
+        when(eventStoreClient.listEvents(any(), any(ReadyStreamObserver.class))).then(a -> {
             eventStoreOutputStreamRef.set((StreamObserver<InputStream>) a.getArguments()[1]);
             return eventStoreResponseStream;
         });

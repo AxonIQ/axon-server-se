@@ -20,8 +20,10 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.topology.EventStoreLocator;
+import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -392,7 +394,15 @@ public class EventDispatcher implements AxonServerClientService {
                 trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClientId(), context,getEventsRequest.getTrackingToken()-1);
                 try {
                     eventStoreRequestObserver =
-                            eventStore.listEvents(context, new StreamObserver<InputStream>() {
+                            eventStore.listEvents(context, new ReadyStreamObserver<InputStream>() {
+                                @Override
+                                public boolean isReady() {
+                                    if( responseObserver instanceof ForwardingStreamObserver) {
+                                        return ((ForwardingStreamObserver<InputStream>) responseObserver).isReady();
+                                    }
+                                    return ((CallStreamObserver)responseObserver).isReady();
+                                }
+
                                 @Override
                                 public void onNext(InputStream eventWithToken) {
                                     responseObserver.onNext(eventWithToken);

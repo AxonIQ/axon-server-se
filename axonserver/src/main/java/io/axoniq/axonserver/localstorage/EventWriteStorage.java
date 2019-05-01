@@ -18,8 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
-import java.util.stream.IntStream;
+import java.util.function.BiConsumer;
 
 /**
  * @author Marc Gathier
@@ -27,7 +26,7 @@ import java.util.stream.IntStream;
 public class EventWriteStorage {
     private static final Logger logger = LoggerFactory.getLogger(EventWriteStorage.class);
 
-    private final Map<String, Consumer<SerializedEventWithToken>> listeners = new ConcurrentHashMap<>();
+    private final Map<String, BiConsumer<Long, List<SerializedEvent>>> listeners = new ConcurrentHashMap<>();
     private final StorageTransactionManager storageTransactionManager;
 
 
@@ -45,13 +44,8 @@ public class EventWriteStorage {
                     completableFuture.complete(null);
 
                     if( ! listeners.isEmpty()) {
-                        IntStream.range(0, eventList.size())
-                                 .forEach(i -> {
-                                     SerializedEventWithToken event = new SerializedEventWithToken(firstToken + i,
-                                                                                                   eventList.get(i));
-                                     listeners.values()
-                                              .forEach(consumer -> safeForwardEvent(consumer, event));
-                                 });
+                        listeners.values()
+                                 .forEach(consumer -> consumer.accept(firstToken, eventList));
                     }
                 } else {
                     completableFuture.completeExceptionally(cause);
@@ -63,19 +57,11 @@ public class EventWriteStorage {
         return completableFuture;
     }
 
-    private void safeForwardEvent(Consumer<SerializedEventWithToken> consumer, SerializedEventWithToken event) {
-        try {
-            consumer.accept(event);
-        } catch( RuntimeException re) {
-            logger.warn("Failed to forward event", re);
-        }
-    }
-
     private void validate(List<SerializedEvent> eventList) {
         storageTransactionManager.reserveSequenceNumbers(eventList);
     }
 
-    public Registration registerEventListener(Consumer<SerializedEventWithToken> listener) {
+    public Registration registerEventListener(BiConsumer<Long, List<SerializedEvent>> listener) {
         String id = UUID.randomUUID().toString();
         listeners.put(id, listener);
         return () -> listeners.remove(id);

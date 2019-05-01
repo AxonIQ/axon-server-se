@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.util.StringUtils;
+import io.grpc.internal.GrpcUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -100,7 +101,7 @@ public class MessagingPlatformConfiguration {
     /*
      * Maximum inbound message size for gRPC (0 keeps gRPC default size)
      */
-    private int maxMessageSize = 0;
+    private int maxMessageSize = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE;
     /**
      * Location where AxonServer creates its pid file.
      */

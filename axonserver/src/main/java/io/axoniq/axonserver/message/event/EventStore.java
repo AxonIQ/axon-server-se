@@ -22,6 +22,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.stub.StreamObserver;
 
 import java.io.InputStream;
@@ -39,7 +40,7 @@ public interface EventStore {
     void listAggregateEvents(String context, GetAggregateEventsRequest request,
                              StreamObserver<InputStream> responseStreamObserver);
 
-    StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseStreamObserver);
+    StreamObserver<GetEventsRequest> listEvents(String context, ReadyStreamObserver<InputStream> responseStreamObserver);
 
     void getFirstToken(String context, GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver);
 

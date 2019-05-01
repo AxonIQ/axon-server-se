@@ -26,6 +26,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
+import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,18 +43,16 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
- * Component that handles the actual interaction with the event store
+ * Component that handles the actual interaction with the event store.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
@@ -212,26 +211,26 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public StreamObserver<GetEventsRequest> listEvents(String context,
-                                                       StreamObserver<InputStream> responseStreamObserver) {
-        EventStreamController controller = workers(context).createController(
-                eventWithToken -> responseStreamObserver.onNext(eventWithToken.asInputStream()),responseStreamObserver::onError);
+                                                       ReadyStreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
+            private volatile TrackingEventManager.EventTracker controller;
             @Override
             public void onNext(GetEventsRequest getEventsRequest) {
-                controller.update(getEventsRequest.getTrackingToken(), getEventsRequest.getNumberOfPermits());
+                if( controller == null) {
+                    controller = workers(context).createEventTracker(getEventsRequest,responseStreamObserver);
+                } else {
+                    controller.addPermits((int)getEventsRequest.getNumberOfPermits());
+                }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                if( workersMap.containsKey(context))
-                    workersMap.get(context).stop(controller);
-
+                if( controller != null) controller.close();
             }
 
             @Override
             public void onCompleted() {
-                if( workersMap.containsKey(context))
-                    workersMap.get(context).stop(controller);
+                if( controller != null) controller.close();
             }
         };
     }
@@ -328,7 +327,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      * @return the iterator
      */
     public Iterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken, long toToken) {
-        return workersMap.get(context).eventStreamReader.transactionIterator(fromToken, toToken);
+        return workersMap.get(context).eventStorageEngine.transactionIterator(fromToken, toToken);
     }
 
     /**
@@ -340,7 +339,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      * @return the iterator
      */
     public Iterator<SerializedTransactionWithToken> snapshotTransactionsIterator(String context, long fromToken, long toToken) {
-        return workersMap.get(context).snapshotStreamReader.transactionIterator(fromToken, toToken);
+        return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
     public long syncEvents(String context, SerializedTransactionWithToken value) {
@@ -385,11 +384,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
-    Set<EventStreamController> eventStreamControllers(String context) {
-        return workers(context).eventStreamControllers();
-    }
-
-
     private class Workers {
         private final EventWriteStorage eventWriteStorage;
         private final SnapshotWriteStorage snapshotWriteStorage;
@@ -402,7 +396,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final SyncStorage eventSyncStorage;
         private final SyncStorage snapshotSyncStorage;
         private final AtomicBoolean initialized = new AtomicBoolean();
-        private final Set<EventStreamController> eventStreamControllerSet = new CopyOnWriteArraySet<>();
+        private final TrackingEventManager trackingEventManager;
+
 
         public Workers(String context) {
             this.eventStorageEngine = eventStoreFactory.createEventStorageEngine(context);
@@ -411,10 +406,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
             this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
             this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
-            this.eventStreamReader = new EventStreamReader(eventStorageEngine, eventWriteStorage::registerEventListener, eventStreamExecutor);
-            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine,  consumer -> null, eventStreamExecutor);
+            this.trackingEventManager = new TrackingEventManager(eventStorageEngine);
+
+            this.eventStreamReader = new EventStreamReader(eventStorageEngine);
+            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine);
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
+            this.eventWriteStorage.registerEventListener((token, events) -> this.trackingEventManager.reschedule());
         }
 
         public synchronized void init(boolean validate) {
@@ -432,35 +430,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             snapshotStorageEngine.close();
         }
 
-        private EventStreamController createController(Consumer<SerializedEventWithToken> consumer, Consumer<Throwable> errorCallback) {
-            EventStreamController controller = eventStreamReader.createController(consumer, errorCallback);
-            eventStreamControllerSet.add(controller);
-            return controller;
+        private TrackingEventManager.EventTracker createEventTracker(GetEventsRequest request, ReadyStreamObserver<InputStream> eventStream) {
+            return trackingEventManager.createEventTracker(request, eventStream);
         }
 
-        public void stop(EventStreamController controller) {
-            eventStreamControllerSet.remove(controller);
-            controller.stop();
-        }
 
         private void cancelTrackingEventProcessors() {
-            eventStreamControllerSet.forEach(EventStreamController::cancel);
-            eventStreamControllerSet.clear();
+            trackingEventManager.stopAll();
         }
 
         private void validateActiveConnections() {
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
-            eventStreamControllerSet.forEach(controller -> {
-                    if( controller.missingNewPermits(minLastPermits)) {
-                        logger.warn("{}: Closing connection as waiting for new permits", context) ;
-                        controller.cancel();
-                        eventStreamControllerSet.remove(controller);
-                    }
-            });
-        }
-
-        Set<EventStreamController> eventStreamControllers() {
-            return eventStreamControllerSet;
+            trackingEventManager.validateActiveConnections(minLastPermits);
         }
     }
 }
