@@ -19,7 +19,7 @@ public class AxonThreadFactory implements ThreadFactory {
     @Override
     public Thread newThread( Runnable r) {
         Thread thread = new Thread(r);
-        thread.setName(prefix + "-" + index.getAndDecrement());
+        thread.setName(prefix + "-" + index.getAndIncrement());
         return thread;
     }
 }

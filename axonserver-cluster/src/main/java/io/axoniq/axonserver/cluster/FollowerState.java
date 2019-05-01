@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -78,8 +79,43 @@ public class FollowerState extends AbstractMembershipState {
         }
     }
 
+    /**
+     * Adds the provided entries to the raft log on this node. During this action the process will not check for timeouts
+     * in the follower state.
+     * @param request the entries to add
+     * @return success or failure response
+     */
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        processing.set(true);
+        long before = checkTime();
+        try {
+            return appendEntriesWorker(request);
+        } finally {
+            long after = System.currentTimeMillis();
+
+            if( after - before > raftGroup().raftConfiguration().heartbeatTimeout()) {
+                logger.trace("{} in term {}: Append entries took {}ms", groupId(),currentTerm(), after-before);
+            }
+            processing.set(false);
+        }
+    }
+
+    /**
+     * logs a message if the time since last message received is less than twice the heartbeat time. Indicates that
+     * the follower is not receiving messages at the expected speed.
+     * @return the current timestamp
+     */
+    private long checkTime() {
+        long start = System.currentTimeMillis();
+        if( logger.isTraceEnabled() && start - lastMessage.get() > 2*raftGroup().raftConfiguration().heartbeatTimeout()) {
+            logger.trace("{} in term {}: Not received any messages for  {}ms", groupId(),currentTerm(), start-lastMessage.get());
+        }
+        return start;
+    }
+
+    private AppendEntriesResponse appendEntriesWorker(AppendEntriesRequest request) {
+
         try {
             String cause = format("%s in term %s: %s received AppendEntriesRequest with term = %s from %s",
                                   groupId(),
@@ -204,8 +240,30 @@ public class FollowerState extends AbstractMembershipState {
         return requestVoteResponse(request.getRequestId(), voteGranted);
     }
 
+    /**
+     * Applies the provided entries. During this action the process will not check for timeouts
+     * in the follower state.
+     * @param request the snapshot entries to apply
+     * @return success or failure response
+     */
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+        processing.set(true);
+        long before = checkTime();
+        try {
+            return installSnapshotWorker(request);
+        } finally {
+            long after = System.currentTimeMillis();
+
+            if( after - before > raftGroup().raftConfiguration().heartbeatTimeout()) {
+                logger.info("{} in term {}: Install snapshot took {}ms", groupId(),currentTerm(), after-before);
+            }
+            processing.set(false);
+        }
+    }
+
+    private final AtomicBoolean processing = new AtomicBoolean();
+    private InstallSnapshotResponse installSnapshotWorker(InstallSnapshotRequest request) {
         String cause = format("%s in term %s: %s received InstallSnapshotRequest with term = %s from %s",
                               groupId(),
                               currentTerm(),
@@ -301,9 +359,13 @@ public class FollowerState extends AbstractMembershipState {
                 TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Checks if the follower is still in valid state. Follower changes its state to candidate if it has not received a message from leader
+     * within a timeout (random value between minElectionTimeout and maxElectionTimeout).
+     */
     private void checkMessageReceived() {
         long now = scheduler.get().clock().millis();
-        if (nextTimeout.get() < now) {
+        if (!processing.get() && nextTimeout.get() < now) {
             String message = format("%s in term %s: Timeout in follower state: %s ms.",
                                     groupId(),
                                     currentTerm(),

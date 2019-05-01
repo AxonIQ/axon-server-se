@@ -26,6 +26,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
+import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -212,26 +213,26 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public StreamObserver<GetEventsRequest> listEvents(String context,
-                                                       StreamObserver<InputStream> responseStreamObserver) {
-        EventStreamController controller = workers(context).createController(
-                eventWithToken -> responseStreamObserver.onNext(eventWithToken.asInputStream()),responseStreamObserver::onError);
+                                                       ReadyStreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
+            private volatile TrackingEventManager.EventTracker controller;
             @Override
             public void onNext(GetEventsRequest getEventsRequest) {
-                controller.update(getEventsRequest.getTrackingToken(), getEventsRequest.getNumberOfPermits());
+                if( controller == null) {
+                    controller = workers(context).createEventTracker(getEventsRequest,responseStreamObserver);
+                } else {
+                    controller.addPermits((int)getEventsRequest.getNumberOfPermits());
+                }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                if( workersMap.containsKey(context))
-                    workersMap.get(context).stop(controller);
-
+                if( controller != null) controller.close();
             }
 
             @Override
             public void onCompleted() {
-                if( workersMap.containsKey(context))
-                    workersMap.get(context).stop(controller);
+                if( controller != null) controller.close();
             }
         };
     }
@@ -403,6 +404,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final SyncStorage snapshotSyncStorage;
         private final AtomicBoolean initialized = new AtomicBoolean();
         private final Set<EventStreamController> eventStreamControllerSet = new CopyOnWriteArraySet<>();
+        private final TrackingEventManager trackingEventManager;
 
         public Workers(String context) {
             this.eventStorageEngine = eventStoreFactory.createEventStorageEngine(context);
@@ -411,10 +413,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
             this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
             this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
+            this.trackingEventManager = new TrackingEventManager(eventStorageEngine);
             this.eventStreamReader = new EventStreamReader(eventStorageEngine, eventWriteStorage::registerEventListener, eventStreamExecutor);
             this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine,  consumer -> null, eventStreamExecutor);
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
+            this.eventWriteStorage.registerEventListener(e -> this.trackingEventManager.reschedule());
         }
 
         public synchronized void init(boolean validate) {
@@ -436,6 +440,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             EventStreamController controller = eventStreamReader.createController(consumer, errorCallback);
             eventStreamControllerSet.add(controller);
             return controller;
+        }
+
+        private TrackingEventManager.EventTracker createEventTracker(GetEventsRequest request, ReadyStreamObserver<InputStream> eventStream) {
+            return trackingEventManager.createEventTracker(request, eventStream);
         }
 
         public void stop(EventStreamController controller) {

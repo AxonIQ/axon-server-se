@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -201,25 +202,28 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private void checkStepdown() {
-        if (otherNodesCount() == 0) {
+        long otherNodesCount = otherNodesCount();
+        if (otherNodesCount == 0) {
             scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
             return;
         }
-        long now = scheduler.get().clock().millis();
-        long lastReceived = replicators.lastMessageTimeFromMajority();
-        if (now - lastReceived > maxElectionTimeout()) {
-            String message = format("%s in term %s: StepDown as no messages received for %s ms.",
+        List<Long> lastTimeAgo = replicators.lastMessages();
+        long lastTimeAgoFromMajority = lastTimeAgo.stream().skip((int)Math.floor((otherNodesCount-1d)/2)).findFirst().orElse(0L);
+        if (lastTimeAgoFromMajority > maxElectionTimeout()) {
+            String message = format("%s in term %s: StepDown as no messages received for %s ms (%s) other nodes(%d).",
                                     groupId(),
                                     currentTerm(),
-                                    (now - lastReceived));
+                                    lastTimeAgoFromMajority,
+                                    lastTimeAgo,
+                                    otherNodesCount);
             logger.info(message);
             changeStateTo(stateFactory().followerState(), message);
         } else {
             logger.trace("{} in term {}: Reschedule checkStepdown after {}ms",
                          groupId(),
                          currentTerm(),
-                         maxElectionTimeout() - (now - lastReceived));
-            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout() - (now - lastReceived), MILLISECONDS);
+                         maxElectionTimeout() - lastTimeAgoFromMajority);
+            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout() - lastTimeAgoFromMajority, MILLISECONDS);
         }
     }
 
@@ -368,7 +372,7 @@ public class LeaderState extends AbstractMembershipState {
                             while (runsWithoutChanges < 3) {
                                 int sent = 0;
                                 for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
-                                    sent += raftPeer.sendNextMessage(fromNotify);
+                                    sent += time(() -> raftPeer.sendNextMessage(fromNotify), raftPeer.nodeId());
                                 }
                                 if (sent == 0) {
                                     runsWithoutChanges++;
@@ -378,11 +382,25 @@ public class LeaderState extends AbstractMembershipState {
                             }
                         } finally {
                             schedulerInstance.schedule(() -> replicate(false),
-                                                       raftGroup().raftConfiguration().heartbeatTimeout(),
+                                                       raftGroup().raftConfiguration().heartbeatTimeout()/2,
                                                        MILLISECONDS);
                             replicationRunning.set(false);
                         }
                     });
+        }
+
+        private int time(Supplier<Integer> operation, String target) {
+            long before = System.currentTimeMillis();
+            try {
+                return operation.get();
+            } finally {
+                if( logger.isTraceEnabled()) {
+                    long after = System.currentTimeMillis();
+                    if (after - raftGroup().raftConfiguration().heartbeatTimeout() > before) {
+                        logger.trace("{}: Action took {}ms", target, after - before);
+                    }
+                }
+            }
         }
 
         private void updateCommitIndex(long matchIndex) {
@@ -404,20 +422,9 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-            replicate(true);
-        }
-
-        private long lastMessageTimeFromMajority() {
-            if (logger.isTraceEnabled()) {
-                logger.trace("{} in term {}: Last messages received: {}",
-                             groupId(),
-                             currentTerm(),
-                             replicatorPeerMap.values().stream().map(ReplicatorPeer::lastMessageReceived).collect(
-                                     Collectors.toList()));
+            if( ! replicationRunning.get()) {
+                scheduler.get().execute(() -> replicate(true));
             }
-            return replicatorPeerMap.values().stream().map(ReplicatorPeer::lastMessageReceived)
-                                    .sorted()
-                                    .skip((int) Math.floor(otherNodesCount() / 2f)).findFirst().orElse(0L);
         }
 
         public void updateNodes(List<Node> nodes) {
@@ -474,6 +481,11 @@ public class LeaderState extends AbstractMembershipState {
                     removed.stop();
                 }
             };
+        }
+
+        public List<Long> lastMessages() {
+            long now = System.currentTimeMillis();
+            return replicatorPeerMap.values().stream().map(peer -> now - peer.lastMessageReceived()).sorted().collect(Collectors.toList());
         }
     }
 }

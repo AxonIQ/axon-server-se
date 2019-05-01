@@ -78,4 +78,12 @@ public interface RaftConfiguration {
     default int maxSnapshotNoOfChunksPerBatch(){
         return 10;
     }
+
+    /**
+     * Defines the number of install snapshot requests that can be sent to peer without having a confirmation.
+     * @return flow buffer for install snapshot requests
+     */
+    default int snapshotFlowBuffer() {
+        return 100;
+    }
 }
