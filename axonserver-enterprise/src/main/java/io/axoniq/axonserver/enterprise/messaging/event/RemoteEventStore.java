@@ -24,6 +24,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
+import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.stub.AbstractStub;
@@ -34,7 +35,9 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Client for the event store used by Axon Server when the leader of the event store is on a different Axon Server node.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class RemoteEventStore implements io.axoniq.axonserver.message.event.EventStore {
     private final ClusterNode clusterNode;
@@ -97,7 +100,7 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
 
     @Override
     public StreamObserver<GetEventsRequest> listEvents(String context,
-                                                       StreamObserver<InputStream> responseStreamObserver) {
+                                                       ReadyStreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
         return stub.listEvents(new RemoteAxonServerStreamObserver<>(responseStreamObserver));
     }

@@ -16,9 +16,23 @@ public class RaftProperties extends StorageProperties {
     private int minElectionTimeout = 1000;
     private int maxElectionTimeout = 2500;
     private int heartbeatTimeout = 100;
-    private int maxEntriesPerBatch = 100;
+    /**
+     * Maximum number of append entry messages sent to one peer before moving to the next.
+     */
+    private int maxEntriesPerBatch = 10;
+
+    /**
+     * Number of unconfirmed append entry messages that may be sent to peer.
+     */
     private int flowBuffer = 1000;
-    private int maxSnapshotChunksPerBatch = 10;
+    /**
+     * Number of unconfirmed install snapshot messages that may be sent to peer.
+     */
+    private int snapshotFlowBuffer = 500;
+    /**
+     * Maximum number of objects that can be sent in a single install snapshot message.
+     */
+    private int maxSnapshotChunksPerBatch = 1000;
 
     private final SystemInfoProvider systemInfoProvider;
     private int maxReplicationRound = 10;
@@ -112,10 +126,18 @@ public class RaftProperties extends StorageProperties {
     }
 
     /**
-     * Sets the maximum number of serializedObjects to be sent in a single InstallSanpshotRequest.
+     * Sets the maximum number of serializedObjects to be sent in a single InstallSnapshotRequest.
      * @param maxSnapshotChunksPerBatch the maximum number of serializedObjects
      */
     public void setMaxSnapshotChunksPerBatch(int maxSnapshotChunksPerBatch) {
         this.maxSnapshotChunksPerBatch = maxSnapshotChunksPerBatch;
+    }
+
+    public int getSnapshotFlowBuffer() {
+        return snapshotFlowBuffer;
+    }
+
+    public void setSnapshotFlowBuffer(int snapshotFlowBuffer) {
+        this.snapshotFlowBuffer = snapshotFlowBuffer;
     }
 }

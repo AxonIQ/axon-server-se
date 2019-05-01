@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +15,7 @@ import java.util.function.Function;
  * @author Sara Pellegrini
  * @since 4.1
  */
-public class SSEEmitterStreamObserver<M> implements StreamObserver<M> {
+public class SSEEmitterStreamObserver<M> implements ReadyStreamObserver<M> {
 
     private final Logger logger = LoggerFactory.getLogger(SSEEmitterStreamObserver.class);
     private final SseEmitter sseEmitter;
@@ -51,6 +52,11 @@ public class SSEEmitterStreamObserver<M> implements StreamObserver<M> {
             logger.debug("Error on sending completed", e);
         }
         sseEmitter.complete();
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
     }
 }
 
