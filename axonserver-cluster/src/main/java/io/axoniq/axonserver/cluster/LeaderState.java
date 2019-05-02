@@ -245,7 +245,7 @@ public class LeaderState extends AbstractMembershipState {
                     replicators.updateCommitIndex(e.getIndex());
                     replicators.notifySenders();
                 } catch (Exception ex) {
-                    logger.error("{} in term {}: problem happened during replicators update.", groupId(), currentTerm());
+                    logger.error("{} in term {}: problem happened during replicators update.", groupId(), currentTerm(), ex);
                 }
             }
         });
@@ -390,12 +390,12 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         private int time(Supplier<Integer> operation, String target) {
-            long before = System.currentTimeMillis();
+            long before = scheduler.get().clock().millis();
             try {
                 return operation.get();
             } finally {
                 if( logger.isTraceEnabled()) {
-                    long after = System.currentTimeMillis();
+                    long after = scheduler.get().clock().millis();
                     if (after - raftGroup().raftConfiguration().heartbeatTimeout() > before) {
                         logger.trace("{}: Action took {}ms", target, after - before);
                     }
@@ -484,7 +484,7 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         public List<Long> lastMessages() {
-            long now = System.currentTimeMillis();
+            long now = scheduler.get().clock().millis();
             return replicatorPeerMap.values().stream().map(peer -> now - peer.lastMessageReceived()).sorted().collect(Collectors.toList());
         }
     }
