@@ -136,9 +136,7 @@ public class PublicRestController {
             statusInfo.setNrOfEvents(eventDispatcher.getNrOfEvents(context));
             statusInfo.setEventTrackers(eventDispatcher.eventTrackerStatus(context));
         }
-        statusInfo.setNrOfSubscriptionQueries(subscriptionMetrics.totalCount());
         statusInfo.setNrOfActiveSubscriptionQueries(subscriptionMetrics.activesCount());
-        statusInfo.setNrOfSubscriptionQueriesUpdates(subscriptionMetrics.updatesCount());
         return statusInfo;
     }
 

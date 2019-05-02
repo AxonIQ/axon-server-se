@@ -62,6 +62,10 @@ public class MeterFactory {
         return clusterMetrics;
     }
 
+    /**
+     * Meter to keep rates of events. These are implemented using an IntervalCounter (that counts number of events in a specific timebucket), and
+     * exposed to the actuator/metrics endpoints by {@link Gauge}s.
+     */
     public class RateMeter implements Printable {
         private final IntervalCounter meter;
 

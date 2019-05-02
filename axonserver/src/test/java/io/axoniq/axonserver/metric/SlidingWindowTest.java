@@ -52,12 +52,12 @@ public class SlidingWindowTest {
     public void reduce() {
         testSubject.current().incrementAndGet();
         clock.forward(TimeUnit.SECONDS.toMillis(20));
-        assertEquals(1, testSubject.reduce(1, TimeUnit.MINUTES).get());
+        assertEquals(1, testSubject.aggregate(1, TimeUnit.MINUTES).get());
         testSubject.current().incrementAndGet();
-        assertEquals(2, testSubject.reduce(1, TimeUnit.MINUTES).get());
+        assertEquals(2, testSubject.aggregate(1, TimeUnit.MINUTES).get());
         clock.forward(TimeUnit.SECONDS.toMillis(41));
-        assertEquals(1, testSubject.reduce(1, TimeUnit.MINUTES).get());
+        assertEquals(1, testSubject.aggregate(1, TimeUnit.MINUTES).get());
         clock.forward(TimeUnit.SECONDS.toMillis(20));
-        assertEquals(0, testSubject.reduce(1, TimeUnit.MINUTES).get());
+        assertEquals(0, testSubject.aggregate(1, TimeUnit.MINUTES).get());
     }
 }
