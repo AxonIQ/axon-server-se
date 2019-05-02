@@ -24,7 +24,6 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
-import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.stub.AbstractStub;
@@ -100,7 +99,7 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
 
     @Override
     public StreamObserver<GetEventsRequest> listEvents(String context,
-                                                       ReadyStreamObserver<InputStream> responseStreamObserver) {
+                                                       StreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
         return stub.listEvents(new RemoteAxonServerStreamObserver<>(responseStreamObserver));
     }
