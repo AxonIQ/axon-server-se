@@ -38,21 +38,28 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @author Marc Gathier
  * @since 4.1.2
  */
-public class TrackingEventManager {
+public class TrackingEventProcessorManager {
 
     private static final int MAX_EVENTS_PER_RUN = 500;
     private final ScheduledExecutorService scheduledExecutorService;
     private final EventStorageEngine eventStorageEngine;
     private final Set<EventTracker> eventTrackerSet = new CopyOnWriteArraySet<>();
     private final AtomicBoolean replicationRunning = new AtomicBoolean();
-    private final Logger logger = LoggerFactory.getLogger(TrackingEventManager.class);
+    private final Logger logger = LoggerFactory.getLogger(TrackingEventProcessorManager.class);
 
-    public TrackingEventManager(EventStorageEngine eventStorageEngine) {
+    public TrackingEventProcessorManager(EventStorageEngine eventStorageEngine) {
         this.eventStorageEngine = eventStorageEngine;
+        // Use 2 threads (one to send events and one to avoid queuing of reschedules.
         this.scheduledExecutorService = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory(
                 "trackers-" + eventStorageEngine.getType().getContext()));
     }
 
+    /**
+     * Send events to all tracking event processors until there are no new events or no tracking event processors ready to
+     * receive events. If there are tracking event processors left after processing one run, it reschedules to try again
+     * after 100ms.
+     * Only one instance of this operation will run.
+     */
     private void sendEvents() {
         if (!replicationRunning.compareAndSet(false, true)) {
             // it's fine, replication is already in progress
@@ -98,6 +105,12 @@ public class TrackingEventManager {
     }
 
 
+    /**
+     * Registers a new event tracker and starts sending events.
+     * @param request the initial request to start the tracking event processor
+     * @param eventStream the output stream
+     * @return an EventTracker
+     */
     EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
         EventTracker eventTracker = new EventTracker(request, eventStream);
         eventTrackerSet.add(eventTracker);
@@ -105,20 +118,33 @@ public class TrackingEventManager {
         return eventTracker;
     }
 
+    /**
+     * Starts the sendEvents operation if it is not running.
+     */
     public void reschedule() {
         if (!replicationRunning.get()) {
             this.scheduledExecutorService.execute(this::sendEvents);
         }
     }
 
+    /**
+     * Stop all tracking event processors.
+     */
     public void stopAll() {
         eventTrackerSet.forEach(EventTracker::stop);
     }
 
+    /**
+     * Killls all tracking event processors that are waiting for permits and not received any permits since minLastPermits.
+     * @param minLastPermits expected minimum timestamp for new permits request
+     */
     public void validateActiveConnections(long minLastPermits) {
         eventTrackerSet.forEach(t -> t.validateActiveConnection(minLastPermits));
     }
 
+    /**
+     * CLeans up manager by stopping all tracking event processors and stopping the scheduling service.
+     */
     public void close() {
         stopAll();
         scheduledExecutorService.shutdown();
