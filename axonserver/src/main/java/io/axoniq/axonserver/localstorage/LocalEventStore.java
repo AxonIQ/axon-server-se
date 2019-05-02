@@ -26,7 +26,6 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
-import io.axoniq.axonserver.util.ReadyStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -211,7 +210,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public StreamObserver<GetEventsRequest> listEvents(String context,
-                                                       ReadyStreamObserver<InputStream> responseStreamObserver) {
+                                                       StreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
             private volatile TrackingEventManager.EventTracker controller;
             @Override
@@ -425,12 +424,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
 
         public void close() {
-            cancelTrackingEventProcessors();
+            trackingEventManager.close();
             eventStorageEngine.close();
             snapshotStorageEngine.close();
         }
 
-        private TrackingEventManager.EventTracker createEventTracker(GetEventsRequest request, ReadyStreamObserver<InputStream> eventStream) {
+        private TrackingEventManager.EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
             return trackingEventManager.createEventTracker(request, eventStream);
         }
 

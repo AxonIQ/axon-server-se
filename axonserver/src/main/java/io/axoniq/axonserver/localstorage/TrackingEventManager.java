@@ -13,7 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.util.ReadyStreamObserver;
+import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -38,7 +37,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  *
  * @author Marc Gathier
  * @since 4.1.2
- *
  */
 public class TrackingEventManager {
 
@@ -47,14 +45,12 @@ public class TrackingEventManager {
     private final EventStorageEngine eventStorageEngine;
     private final Set<EventTracker> eventTrackerSet = new CopyOnWriteArraySet<>();
     private final AtomicBoolean replicationRunning = new AtomicBoolean();
-    private final AtomicBoolean reschedule = new AtomicBoolean(true);
     private final Logger logger = LoggerFactory.getLogger(TrackingEventManager.class);
 
     public TrackingEventManager(EventStorageEngine eventStorageEngine) {
         this.eventStorageEngine = eventStorageEngine;
-        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(
+        this.scheduledExecutorService = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory(
                 "trackers-" + eventStorageEngine.getType().getContext()));
-        this.scheduledExecutorService.schedule(this::sendEvents, 100, TimeUnit.MILLISECONDS);
     }
 
     private void sendEvents() {
@@ -76,11 +72,11 @@ public class TrackingEventManager {
                     }
                 }
                 if (!failedReplicators.isEmpty()) {
-                    logger.warn("{}: removing {} replicators",
+                    logger.debug("{}: removing {} replicators",
                                 eventStorageEngine.getType().getContext(),
                                 failedReplicators.size());
                     eventTrackerSet.removeAll(failedReplicators);
-                    logger.warn("{}: {} replicators remaining",
+                    logger.debug("{}: {} replicators remaining",
                                 eventStorageEngine.getType().getContext(),
                                 eventTrackerSet.size());
                 }
@@ -92,7 +88,7 @@ public class TrackingEventManager {
                 }
             }
         } finally {
-            if( reschedule.get()) {
+            if (!eventTrackerSet.isEmpty()) {
                 scheduledExecutorService.schedule(this::sendEvents,
                                                   100,
                                                   MILLISECONDS);
@@ -102,7 +98,7 @@ public class TrackingEventManager {
     }
 
 
-    EventTracker createEventTracker(GetEventsRequest request, ReadyStreamObserver<InputStream> eventStream) {
+    EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
         EventTracker eventTracker = new EventTracker(request, eventStream);
         eventTrackerSet.add(eventTracker);
         reschedule();
@@ -110,16 +106,22 @@ public class TrackingEventManager {
     }
 
     public void reschedule() {
+        if (!replicationRunning.get()) {
+            this.scheduledExecutorService.execute(this::sendEvents);
+        }
     }
 
     public void stopAll() {
-        reschedule.set(false);
         eventTrackerSet.forEach(EventTracker::stop);
-        scheduledExecutorService.shutdown();
     }
 
     public void validateActiveConnections(long minLastPermits) {
         eventTrackerSet.forEach(t -> t.validateActiveConnection(minLastPermits));
+    }
+
+    public void close() {
+        stopAll();
+        scheduledExecutorService.shutdown();
     }
 
     /**
@@ -139,11 +141,11 @@ public class TrackingEventManager {
          * Keeps timestamp when the tracker last ran out of permits.
          */
         private final AtomicLong lastPermitTimestamp;
-        private final ReadyStreamObserver<InputStream> eventStream;
+        private final StreamObserver<InputStream> eventStream;
         private volatile CloseableIterator<SerializedEventWithToken> eventIterator;
         private volatile boolean running = true;
 
-        private EventTracker(GetEventsRequest request, ReadyStreamObserver<InputStream> eventStream) {
+        private EventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
             permits = new AtomicInteger((int) request.getNumberOfPermits());
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(request.getTrackingToken());
@@ -152,7 +154,7 @@ public class TrackingEventManager {
 
         private int sendNext() {
             if (!running) {
-                throw new RuntimeException("tracker is closed");
+                throw new MessagingPlatformException(ErrorCode.OTHER, "Tracking event processor stopped");
             }
             if (eventIterator == null) {
                 eventIterator = eventStorageEngine.getGlobalIterator(nextToken.get());
@@ -164,7 +166,6 @@ public class TrackingEventManager {
                         && permits.get() > 0
                         && count < MAX_EVENTS_PER_RUN
                         && eventIterator.hasNext()
-                        && eventStream.isReady()
                 ) {
                     eventStream.onNext(eventIterator.next().asInputStream());
                     if (permits.decrementAndGet() == 0) {
@@ -203,7 +204,7 @@ public class TrackingEventManager {
 
         public void stop() {
             close();
-            sendError(new MessagingPlatformException(ErrorCode.NO_LEADER_AVAILABLE, "Leader stepped down"));
+            sendError(new MessagingPlatformException(ErrorCode.OTHER, "Tracking event processor stopped by server"));
         }
 
         public void validateActiveConnection(long minLastPermits) {

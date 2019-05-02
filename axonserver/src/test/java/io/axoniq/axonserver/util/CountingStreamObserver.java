@@ -9,13 +9,15 @@
 
 package io.axoniq.axonserver.util;
 
+import io.grpc.stub.StreamObserver;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * @author Marc Gathier
  */
-public class CountingStreamObserver<T> implements ReadyStreamObserver<T> {
+public class CountingStreamObserver<T> implements StreamObserver<T> {
     public int count;
     public Throwable error;
     public boolean completed;
@@ -35,10 +37,5 @@ public class CountingStreamObserver<T> implements ReadyStreamObserver<T> {
     @Override
     public void onCompleted() {
         completed = true;
-    }
-
-    @Override
-    public boolean isReady() {
-        return true;
     }
 }
