@@ -10,16 +10,11 @@ import javax.sql.DataSource;
 public class JdbcSnapshotStore extends JdbcAbstractStore{
 
     public JdbcSnapshotStore(EventTypeContext eventTypeContext,
-                             DataSource dataSource) {
-        super(eventTypeContext, dataSource);
+                             DataSource dataSource,
+                             MetaDataSerializer metaDataSerializer,
+                             MultiContextStrategy multiContextStrategy,
+                             SyncStrategy syncStrategy) {
+        super(eventTypeContext, dataSource, metaDataSerializer, multiContextStrategy, syncStrategy);
     }
 
-    protected String getTableName() {
-        return "SNAPSHOT_EVENT_ENTRY";
-    }
-
-    @Override
-    public void deleteAllEventData() {
-        throw new UnsupportedOperationException("Development mode deletion is not supported in Jdbc backed snapshot stores");
-    }
 }

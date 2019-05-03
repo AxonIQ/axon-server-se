@@ -10,16 +10,10 @@ import javax.sql.DataSource;
 public class JdbcEventStore extends JdbcAbstractStore{
 
     public JdbcEventStore(EventTypeContext eventTypeContext,
-                          DataSource dataSource) {
-        super(eventTypeContext, dataSource);
-    }
-
-    protected String getTableName() {
-        return "DOMAIN_EVENT_ENTRY";
-    }
-
-    @Override
-    public void deleteAllEventData() {
-        throw new UnsupportedOperationException("Development mode deletion is not supported in Jdbc backed event stores");
+                          DataSource dataSource,
+                          MetaDataSerializer metaDataSerializer,
+                          MultiContextStrategy multiContextStrategy,
+                          SyncStrategy syncStrategy) {
+        super(eventTypeContext, dataSource, metaDataSerializer, multiContextStrategy, syncStrategy);
     }
 }

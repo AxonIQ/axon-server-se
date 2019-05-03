@@ -1,11 +1,16 @@
 package io.axoniq.axonserver.enterprise.storage;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.H2Specific;
 import io.axoniq.axonserver.enterprise.storage.jdbc.JdbcEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.jdbc.ProtoMetaDataSerializer;
+import io.axoniq.axonserver.enterprise.storage.jdbc.SingleSchemaMultiContextStrategy;
 import io.axoniq.axonserver.enterprise.storage.jdbc.StorageProperties;
+import io.axoniq.axonserver.enterprise.storage.jdbc.StoreAlwaysSyncStrategy;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.grpc.stub.StreamObserver;
 import junit.framework.TestCase;
 import org.junit.*;
@@ -26,7 +31,11 @@ public class JpaLocalEventStoreTest {
 
     @Before
     public void setup() {
-        testSubject = new LocalEventStore(new JdbcEventStoreFactory(new StorageProperties()));
+        testSubject = new LocalEventStore(new JdbcEventStoreFactory(new StorageProperties(),
+                                                                    SingleInstanceTransactionManager::new,
+                                                                    new ProtoMetaDataSerializer(),
+                                                                    new SingleSchemaMultiContextStrategy(new H2Specific()),
+                                                                    new StoreAlwaysSyncStrategy()));
         testSubject.initContext("default", false);
     }
 
