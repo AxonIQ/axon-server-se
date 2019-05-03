@@ -65,7 +65,7 @@ public class PrimaryEventStoreTest {
     @Test
     public void transactionsIterator() throws InterruptedException {
         setupEvents(1000, 1000);
-        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0);
+        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0, Long.MAX_VALUE);
 
         long counter = 0;
         while(transactionWithTokenIterator.hasNext()) {

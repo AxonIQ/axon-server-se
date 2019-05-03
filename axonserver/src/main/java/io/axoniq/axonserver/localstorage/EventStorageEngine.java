@@ -116,13 +116,6 @@ public interface EventStorageEngine {
     /**
      * Creates an iterator that iterates over the transactions stored in the storage engine.
      * @param firstToken first tracking token to include in the iterator
-     * @return iterator of transactions
-     */
-    Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken);
-
-    /**
-     * Creates an iterator that iterates over the transactions stored in the storage engine.
-     * @param firstToken first tracking token to include in the iterator
      * @param limitToken last tracking token to include in the iterator (exclusive)
      * @return iterator of transactions
      */

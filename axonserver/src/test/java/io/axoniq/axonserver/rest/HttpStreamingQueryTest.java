@@ -87,11 +87,6 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken) {
-                return null;
-            }
-
-            @Override
             public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
                 return null;
             }

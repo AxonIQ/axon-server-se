@@ -25,7 +25,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
     public SingleInstanceTransactionManager(
             EventStorageEngine eventStorageEngine) {
         this.eventStorageEngine = eventStorageEngine;
-        this.sequenceNumberCache = new SequenceNumberCache(eventStorageEngine);
+        this.sequenceNumberCache = new SequenceNumberCache(eventStorageEngine::getLastSequenceNumber);
     }
 
     @Override

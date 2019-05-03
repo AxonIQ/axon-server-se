@@ -335,11 +335,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Iterator<SerializedTransactionWithToken> transactionIterator(long token) {
-        return new TransactionWithTokenIterator(token);
-    }
-
-    @Override
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         return new TransactionWithTokenIterator(firstToken, limitToken);
     }
@@ -478,7 +473,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     protected boolean isDomainEvent(Event e) {
-        return ! StringUtils.isEmpty(e.getAggregateIdentifier());
+        return ! StringUtils.isEmpty(e.getAggregateType());
     }
 
 

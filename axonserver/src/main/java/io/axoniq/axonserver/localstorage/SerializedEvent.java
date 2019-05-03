@@ -104,7 +104,7 @@ public class SerializedEvent  {
     }
 
     public boolean isDomainEvent() {
-        return ! StringUtils.isEmpty(getAggregateIdentifier());
+        return ! StringUtils.isEmpty(getAggregateType());
     }
 
     public String getAggregateIdentifier() {
