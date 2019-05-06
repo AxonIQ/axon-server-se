@@ -207,14 +207,15 @@ public class LeaderState extends AbstractMembershipState {
             scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
             return;
         }
-        List<Long> lastTimeAgo = replicators.lastMessages();
-        long lastTimeAgoFromMajority = lastTimeAgo.stream().skip((int)Math.floor((otherNodesCount-1d)/2)).findFirst().orElse(0L);
-        if (lastTimeAgoFromMajority > maxElectionTimeout()) {
+        List<Long> timeSinceLastMessages = replicators.lastMessages();
+        long timeSinceLastMessageFromMajority = calculateLastMessageFromMajority(timeSinceLastMessages, otherNodesCount);
+
+        if (timeSinceLastMessageFromMajority > maxElectionTimeout()) {
             String message = format("%s in term %s: StepDown as no messages received for %s ms (%s) other nodes(%d).",
                                     groupId(),
                                     currentTerm(),
-                                    lastTimeAgoFromMajority,
-                                    lastTimeAgo,
+                                    timeSinceLastMessageFromMajority,
+                                    timeSinceLastMessages,
                                     otherNodesCount);
             logger.info(message);
             changeStateTo(stateFactory().followerState(), message);
@@ -222,9 +223,22 @@ public class LeaderState extends AbstractMembershipState {
             logger.trace("{} in term {}: Reschedule checkStepdown after {}ms",
                          groupId(),
                          currentTerm(),
-                         maxElectionTimeout() - lastTimeAgoFromMajority);
-            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout() - lastTimeAgoFromMajority, MILLISECONDS);
+                         maxElectionTimeout() - timeSinceLastMessageFromMajority);
+            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout() - timeSinceLastMessageFromMajority, MILLISECONDS);
         }
+    }
+
+    /**
+     * Calculates the elapsed time since the leader has received a message from the majority of the peers.
+     * @param timeSinceLastMessages sorted list containing elapsed time since last message per peer
+     * @param nrOfRemotePeers number of other peers
+     * @return elapsed time since last message from majority of peers
+     */
+    private long calculateLastMessageFromMajority(List<Long> timeSinceLastMessages, long nrOfRemotePeers) {
+        return timeSinceLastMessages.stream()
+                                    .skip((int)Math.floor((nrOfRemotePeers-1d)/2))
+                                    .findFirst()
+                                    .orElse(0L);
     }
 
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {

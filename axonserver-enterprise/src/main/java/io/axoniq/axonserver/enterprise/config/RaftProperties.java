@@ -13,8 +13,19 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "axoniq.axonserver.replication")
 @Configuration
 public class RaftProperties extends StorageProperties {
+    /**
+     * Minimal time (in ms.) that a follower waits before moving to candidate state, if it has not received any messages
+     * from a leader.
+     */
     private int minElectionTimeout = 1000;
+    /**
+     * Maximal time (in ms.) that a follower waits before moving to candidate state, if it has not received any messages
+     * from a leader. Also, time that leader waits before stepping down if it has not heard from the majority of its followers.
+     */
     private int maxElectionTimeout = 2500;
+    /**
+     * Leader sends a heartbeat to followers if it has not sent any other messages to a follower for this time.
+     */
     private int heartbeatTimeout = 100;
     /**
      * Maximum number of append entry messages sent to one peer before moving to the next.

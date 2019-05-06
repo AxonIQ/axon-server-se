@@ -47,6 +47,7 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
     private final AtomicLong lastSnapshotChunk = new AtomicLong(-1);
+    private final AtomicBoolean processing = new AtomicBoolean();
 
     private FollowerState(Builder builder) {
         super(builder);
@@ -69,6 +70,7 @@ public class FollowerState extends AbstractMembershipState {
         scheduleElectionTimeoutChecker();
         heardFromLeader = false;
         leaderId.set(null);
+        // initialize lastMessage with current time to get a meaningful message in case of initial timeout
         lastMessage.set(scheduler.get().clock().millis());
     }
 
@@ -88,9 +90,9 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         processing.set(true);
-        long before = checkTime();
+        long before = startTimer();
         try {
-            return appendEntriesWorker(request);
+            return doAppendEntries(request);
         } finally {
             long after = System.currentTimeMillis();
 
@@ -106,7 +108,7 @@ public class FollowerState extends AbstractMembershipState {
      * the follower is not receiving messages at the expected speed.
      * @return the current timestamp
      */
-    private long checkTime() {
+    private long startTimer() {
         long start = System.currentTimeMillis();
         if( logger.isTraceEnabled() && start - lastMessage.get() > 2*raftGroup().raftConfiguration().heartbeatTimeout()) {
             logger.trace("{} in term {}: Not received any messages for  {}ms", groupId(),currentTerm(), start-lastMessage.get());
@@ -114,7 +116,7 @@ public class FollowerState extends AbstractMembershipState {
         return start;
     }
 
-    private AppendEntriesResponse appendEntriesWorker(AppendEntriesRequest request) {
+    private AppendEntriesResponse doAppendEntries(AppendEntriesRequest request) {
 
         try {
             String cause = format("%s in term %s: %s received AppendEntriesRequest with term = %s from %s",
@@ -249,9 +251,9 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
         processing.set(true);
-        long before = checkTime();
+        long before = startTimer();
         try {
-            return installSnapshotWorker(request);
+            return doInstallSnapshot(request);
         } finally {
             long after = System.currentTimeMillis();
 
@@ -262,8 +264,7 @@ public class FollowerState extends AbstractMembershipState {
         }
     }
 
-    private final AtomicBoolean processing = new AtomicBoolean();
-    private InstallSnapshotResponse installSnapshotWorker(InstallSnapshotRequest request) {
+    private InstallSnapshotResponse doInstallSnapshot(InstallSnapshotRequest request) {
         String cause = format("%s in term %s: %s received InstallSnapshotRequest with term = %s from %s",
                               groupId(),
                               currentTerm(),
