@@ -188,8 +188,7 @@ public class ReplicatorPeer {
                              offset,
                              lastReceivedOffset);
 
-                if( sent == 0 &&
-                    lastMessageSent.get() + raftGroup.raftConfiguration().heartbeatTimeout() < System.currentTimeMillis()) {
+                if( lastMessageSent.get() + raftGroup.raftConfiguration().heartbeatTimeout() < System.currentTimeMillis()) {
                         logger.trace("{} in term {}: Send heartbeat in install snapshot to {}.",
                                      groupId(),
                                      currentTerm(),
