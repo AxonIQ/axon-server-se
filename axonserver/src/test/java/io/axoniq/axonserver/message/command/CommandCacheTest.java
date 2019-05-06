@@ -45,7 +45,7 @@ public class CommandCacheTest {
 
     }
 
-    private class ChangeableClock extends Clock {
+    public static class ChangeableClock extends Clock {
         Instant instant = Instant.now();
 
         @Override
@@ -63,7 +63,7 @@ public class CommandCacheTest {
             return instant;
         }
 
-        void forward( long millis) {
+        public void forward( long millis) {
             instant = instant.plusMillis(millis);
         }
     }

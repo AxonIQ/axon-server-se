@@ -13,6 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.message.command.CommandCacheTest;
 import org.junit.*;
 
 import java.util.Optional;
@@ -24,7 +25,9 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class SequenceNumberCacheTest {
-    private SequenceNumberCache testSubject = new SequenceNumberCache(SequenceNumberCacheTest::dummySequenceNumberProvider, 1);
+    private CommandCacheTest.ChangeableClock clock = new CommandCacheTest.ChangeableClock();
+    private SequenceNumberCache testSubject = new SequenceNumberCache(SequenceNumberCacheTest::dummySequenceNumberProvider,
+                                                                      clock, 1);
 
     private static Optional<Long> dummySequenceNumberProvider(String aggregateId, Boolean readAll) {
         switch (aggregateId) {
@@ -119,6 +122,9 @@ public class SequenceNumberCacheTest {
                 serializedEvent("OTHER", "SampleAgg", 11)));
         testSubject.reserveSequenceNumbers(asList(
                 serializedEvent("SECOND_OTHER", "SampleAgg", 11)));
+
+        clock.forward(11);
+        testSubject.clearOld(10);
         testSubject.reserveSequenceNumbers(asList(
                 serializedEvent("OTHER", "SampleAgg", 11)));
     }

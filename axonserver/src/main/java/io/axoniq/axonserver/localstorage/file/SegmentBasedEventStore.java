@@ -11,7 +11,6 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -23,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
-import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -471,12 +469,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
         }
     }
-
-    protected boolean isDomainEvent(Event e) {
-        return ! StringUtils.isEmpty(e.getAggregateType());
-    }
-
-
 
     /**
      * @param segment gets an EventSource for the segment

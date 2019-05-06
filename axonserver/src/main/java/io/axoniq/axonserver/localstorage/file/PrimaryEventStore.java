@@ -88,7 +88,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             positionsPerSegmentMap.put(first, aggregatePositions);
             while (sequence < nextToken && iterator.hasNext()) {
                 EventInformation event = iterator.next();
-                if (isDomainEvent(event.getEvent())) {
+                if (event.isDomainEvent()) {
                     aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
                                                        k -> new ConcurrentSkipListSet<>())
                                       .add(new PositionInfo(event.getPosition(),
@@ -104,7 +104,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                         nextToken,
                         pendingEvents.size());
                 for (EventInformation event : pendingEvents) {
-                    if (isDomainEvent(event.getEvent())) {
+                    if (event.isDomainEvent()) {
                         aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
                                                            k -> new ConcurrentSkipListSet<>())
                                           .add(new PositionInfo(event.getPosition(),

@@ -12,7 +12,6 @@ package io.axoniq.axonserver.localstorage.transformation;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import org.springframework.util.StringUtils;
 
 import java.util.Map;
 
@@ -85,7 +84,7 @@ public class WrappedEvent implements ProcessedEvent {
 
     @Override
     public boolean isDomainEvent() {
-        return ! StringUtils.isEmpty(getAggregateType());
+        return event.isDomainEvent();
     }
 
     private Event event() {

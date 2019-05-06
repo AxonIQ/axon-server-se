@@ -11,16 +11,16 @@ package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import org.springframework.util.StringUtils;
 
+import java.time.Clock;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
 /**
@@ -31,26 +31,21 @@ import java.util.function.BiFunction;
  */
 public class SequenceNumberCache {
 
+    private final int maxSize;
     private final BiFunction<String, Boolean, Optional<Long>> aggregateSequenceNumberProvider;
-    private final Map<String, AtomicLong> sequenceNumbersPerAggregate;
+    private final Clock clock;
+    private final Map<String, SequenceNumber> sequenceNumbersPerAggregate = new ConcurrentHashMap<>();
 
 
     public SequenceNumberCache(BiFunction<String, Boolean, Optional<Long>> aggregateSequenceNumberProvider) {
-        this(aggregateSequenceNumberProvider, 10_000);
+        this(aggregateSequenceNumberProvider, Clock.systemUTC(), 100_000);
     }
 
-    public SequenceNumberCache(BiFunction<String, Boolean, Optional<Long>> aggregateSequenceNumberProvider,
-                               int maxSize) {
+    public SequenceNumberCache(BiFunction<String, Boolean, Optional<Long>> aggregateSequenceNumberProvider, Clock clock, int maxSize) {
         this.aggregateSequenceNumberProvider = aggregateSequenceNumberProvider;
-        // TODO: map is not thread-safe
-        sequenceNumbersPerAggregate = new LinkedHashMap<String, AtomicLong>() {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, AtomicLong> eldest) {
-                return size() > maxSize;
-            }
-        };
+        this.clock = clock;
+        this.maxSize = maxSize;
     }
-
     /**
      * Reserve the sequence numbers of the aggregates in the provided list to avoid collisions during store.
      *
@@ -59,43 +54,50 @@ public class SequenceNumberCache {
     public void reserveSequenceNumbers(List<SerializedEvent> events) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
+              .filter(SerializedEvent::isDomainEvent)
               .map(SerializedEvent::asEvent)
-              .filter(this::isDomainEvent)
               .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(),
                                                                i -> new MinMaxPair(e.getAggregateIdentifier(),
                                                                                    e.getAggregateSequenceNumber()))
                                               .setMax(e.getAggregateSequenceNumber()));
 
-        Map<String, Long> oldSequenceNumberPerAggregate = new HashMap<>();
+        Set<String> aggregatesUpdated = new HashSet<>();
         for (Map.Entry<String, MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
-            AtomicLong current = sequenceNumbersPerAggregate.computeIfAbsent(entry.getKey(),
-                                                                             id -> new AtomicLong(
-                                                                                     aggregateSequenceNumberProvider
-                                                                                             .apply(id,
-                                                                                                    entry.getValue()
-                                                                                                         .getMin() > 0)
-                                                                                             .orElse(-1L)));
-
-            if (!current.compareAndSet(entry.getValue().getMin() - 1, entry.getValue().getMax())) {
-                oldSequenceNumberPerAggregate.forEach((aggregateId, sequenceNumber) -> sequenceNumbersPerAggregate
-                        .put(aggregateId, new AtomicLong(sequenceNumber)));
+            SequenceNumber updated = sequenceNumbersPerAggregate.compute(entry.getKey(),
+                                                                         (aggId, old) -> updateSequenceNumber(aggId, old, entry.getValue()));
+            if( ! updated.isValid() ) {
+                aggregatesUpdated.forEach(sequenceNumbersPerAggregate::remove);
                 throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
                                                      String.format(
                                                              "Invalid sequence number %d for aggregate %s, expected %d",
                                                              entry.getValue().getMin(),
                                                              entry.getKey(),
-                                                             current.get() + 1));
+                                                             updated.get() + 1));
             }
-            oldSequenceNumberPerAggregate.putIfAbsent(entry.getKey(), entry.getValue().getMin() - 1);
+            aggregatesUpdated.add(entry.getKey());
         }
     }
 
-    private boolean isDomainEvent(Event e) {
-        return !StringUtils.isEmpty(e.getAggregateType());
+    private SequenceNumber updateSequenceNumber(String aggId, SequenceNumber old, MinMaxPair entry) {
+        if( old == null) {
+            old = new SequenceNumber(aggregateSequenceNumberProvider.apply(aggId, entry.min > 0).orElse(-1L));
+        }
+        if( entry.getMin() == old.get() + 1) {
+            return new SequenceNumber(entry.max);
+        }
+
+        return old.invalid();
     }
 
     public void clear() {
         sequenceNumbersPerAggregate.clear();
+    }
+
+    public void clearOld(long timeout) {
+        if( sequenceNumbersPerAggregate.size() > maxSize) {
+            long minTimestamp = clock.millis() - timeout;
+            sequenceNumbersPerAggregate.entrySet().removeIf(e -> e.getValue().timestamp() < minTimestamp);
+        }
     }
 
 
@@ -129,6 +131,44 @@ public class SequenceNumberCache {
                                                              this.max + 1));
             }
             this.max = max;
+        }
+    }
+
+    private class SequenceNumber {
+
+        private final long sequence;
+        private final boolean valid;
+        private final long timestamp;
+
+        private SequenceNumber(long sequence) {
+            this(sequence, true);
+        }
+
+        private SequenceNumber(long sequence, boolean valid) {
+            this.sequence = sequence;
+            this.valid = valid;
+            this.timestamp = clock.millis();
+        }
+
+        public boolean isValid() {
+            return valid;
+        }
+
+        public long get() {
+            return sequence;
+        }
+
+        public long timestamp() {
+            return timestamp;
+        }
+
+        public SequenceNumber minus(int i) {
+            return new SequenceNumber(sequence -i);
+        }
+
+        public SequenceNumber invalid() {
+            if( !valid) return this;
+            return new SequenceNumber(sequence, false);
         }
     }
 }

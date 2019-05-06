@@ -88,7 +88,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
             Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {
                 EventInformation event = iterator.next();
-                if (isDomainEvent(event.getEvent())) {
+                if (event.isDomainEvent()) {
                     aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
                                                        k -> new ConcurrentSkipListSet<>())
                                       .add(new PositionInfo(event.getPosition(),

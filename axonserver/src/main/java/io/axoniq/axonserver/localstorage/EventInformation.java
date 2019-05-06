@@ -33,6 +33,10 @@ public class EventInformation {
         return position;
     }
 
+    public boolean isDomainEvent() {
+        return event.getSerializedEvent().isDomainEvent();
+    }
+
     public Event getEvent() {
         return event.asEvent();
     }
