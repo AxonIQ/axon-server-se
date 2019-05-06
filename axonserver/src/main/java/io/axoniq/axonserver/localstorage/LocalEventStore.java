@@ -191,7 +191,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                 counter.incrementAndGet();
                                                             });
         if( counter.get() == 0) {
-            logger.error("Aggregate not found: {}", request);
+            logger.debug("Aggregate not found: {}", request);
         }
         responseStreamObserver.onCompleted();
     }
