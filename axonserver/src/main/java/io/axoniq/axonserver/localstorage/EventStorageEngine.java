@@ -78,6 +78,13 @@ public interface EventStorageEngine {
     }
 
     /**
+     * Registers a listener that will be called when the storage engine is closed.
+     * @param listener the listener to call
+     * @return a registration that can be used to unregister the listener
+     */
+    Registration registerCloseListener(Runnable listener);
+
+    /**
      * Retrieves the last event for a specific aggregate id with a sequence number higher than or equal to the given sequence number.
      * Returns empty optional if aggregate is not found or no event with higher sequence number is found.
      * @param aggregateId the aggregate identifier

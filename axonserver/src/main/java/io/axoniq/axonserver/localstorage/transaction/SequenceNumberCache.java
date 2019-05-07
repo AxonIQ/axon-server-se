@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage.transaction;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.time.Clock;
 import java.util.HashMap;
@@ -21,6 +22,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 
 /**
@@ -30,11 +35,13 @@ import java.util.function.BiFunction;
  * @since 4.2
  */
 public class SequenceNumberCache {
+    private static final ScheduledExecutorService SCHEDULED_EXECUTOR_SERVICE = Executors.newScheduledThreadPool(1, new CustomizableThreadFactory("cache-cleanup"));
 
     private final int maxSize;
     private final BiFunction<String, Boolean, Optional<Long>> aggregateSequenceNumberProvider;
     private final Clock clock;
     private final Map<String, SequenceNumber> sequenceNumbersPerAggregate = new ConcurrentHashMap<>();
+    private final ScheduledFuture<?> cleanupTask;
 
 
     public SequenceNumberCache(BiFunction<String, Boolean, Optional<Long>> aggregateSequenceNumberProvider) {
@@ -45,7 +52,9 @@ public class SequenceNumberCache {
         this.aggregateSequenceNumberProvider = aggregateSequenceNumberProvider;
         this.clock = clock;
         this.maxSize = maxSize;
+        this.cleanupTask = SCHEDULED_EXECUTOR_SERVICE.scheduleAtFixedRate(() -> clearOld(TimeUnit.MINUTES.toMillis(30)), 15, 15, TimeUnit.MINUTES);
     }
+
     /**
      * Reserve the sequence numbers of the aggregates in the provided list to avoid collisions during store.
      *
@@ -97,6 +106,12 @@ public class SequenceNumberCache {
         if( sequenceNumbersPerAggregate.size() > maxSize) {
             long minTimestamp = clock.millis() - timeout;
             sequenceNumbersPerAggregate.entrySet().removeIf(e -> e.getValue().timestamp() < minTimestamp);
+        }
+    }
+
+    public void close() {
+        if( cleanupTask != null && ! cleanupTask.isDone()) {
+            cleanupTask.cancel(true);
         }
     }
 

@@ -15,6 +15,7 @@ import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -61,6 +62,11 @@ public class HttpStreamingQueryTest {
             @Override
             public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll) {
                 return Optional.empty();
+            }
+
+            @Override
+            public Registration registerCloseListener(Runnable listener) {
+                return () -> {};
             }
 
             @Override

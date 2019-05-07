@@ -435,6 +435,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
         }
 
+        /**
+         * Close all activity on a context and release all resources.
+         */
         public void close() {
             cancelTrackingEventProcessors();
             eventStorageEngine.close();

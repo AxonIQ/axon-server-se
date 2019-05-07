@@ -42,6 +42,11 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
+    public Registration registerCloseListener(Runnable listener) {
+        return () -> {};
+    }
+
+    @Override
     public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
         return Optional.empty();
     }

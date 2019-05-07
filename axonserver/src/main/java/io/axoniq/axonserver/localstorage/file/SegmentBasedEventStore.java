@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -36,11 +37,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -69,6 +72,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final StorageProperties storageProperties;
     protected volatile SegmentBasedEventStore next;
     private final EventTypeContext type;
+    protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager, StorageProperties storageProperties) {
         this.type = eventTypeContext;
@@ -301,6 +305,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public EventTypeContext getType() {
         return type;
+    }
+
+    @Override
+    public Registration registerCloseListener(Runnable listener) {
+        closeListeners.add(listener);
+        return () -> closeListeners.remove(listener);
     }
 
     public abstract void initSegments(long maxValue);
