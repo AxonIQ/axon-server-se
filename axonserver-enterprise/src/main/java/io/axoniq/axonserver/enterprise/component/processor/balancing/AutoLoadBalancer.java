@@ -54,7 +54,9 @@ public class AutoLoadBalancer {
         ClientEventProcessorStatus status = ClientEventProcessorStatusProtoConverter.toProto(event.eventProcessorStatus());
         String context = status.getContext();
         String client = status.getClient();
-        if (!componentMap.containsKey(client)) return;
+        if (!componentMap.containsKey(client)) {
+            return;
+        }
         String component = componentMap.get(client);
         String processor = status.getEventProcessorInfo().getProcessorName();
         TrackingEventProcessor current = new TrackingEventProcessor(processor, component, context);
