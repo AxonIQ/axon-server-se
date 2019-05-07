@@ -17,6 +17,7 @@ import java.util.function.Supplier;
 /**
  * Predicate which checks if a {@link ClientProcessor} belongs to specific event processor
  * @author Sara Pellegrini
+ * @since 4.0
  */
 public class SameProcessor implements Predicate<ClientProcessor> {
 
