@@ -9,7 +9,7 @@ import java.util.Optional;
 
 /**
  * Service responsible for the management of {@link ProcessorLoadBalancing}s.
- * This implementation use a JPA repository to save, update and queries {@link ProcessorLoadBalancing}s.
+ * This implementation uses a JPA repository to save, update and query {@link ProcessorLoadBalancing}s.
  *
  * @author Sara Pellegrini
  */
@@ -39,7 +39,8 @@ public class ProcessorLoadBalancingController {
     }
 
     /**
-     * Saves or updates the {@link ProcessorLoadBalancing}
+     * Saves or updates the {@link ProcessorLoadBalancing}.
+     
      * @param processorLoadBalancing the processor load balancing strategy to persist
      */
     public void save(ProcessorLoadBalancing processorLoadBalancing){
@@ -47,7 +48,8 @@ public class ProcessorLoadBalancingController {
     }
 
     /**
-     * Provides the list of {@link ProcessorLoadBalancing} for the specified strategy
+     * Provides the list of {@link ProcessorLoadBalancing} for the specified strategy.
+     
      * @param strategyName the strategy
      * @return the list of processor load balancing for the strategy
      */
@@ -56,7 +58,7 @@ public class ProcessorLoadBalancingController {
     }
 
     /**
-     * Provides the list of {@link ProcessorLoadBalancing} for the specified context
+     * Provides the list of {@link ProcessorLoadBalancing} for the specified context.
      *
      * @param context the context
      * @return the list of processor load balancing strategies for the context

@@ -7,9 +7,9 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 
 /**
- * This entity represent the strategy to be used for auto balancing a tracking event processor.
+ * This entity represents the strategy to be used for auto-balancing a tracking event processor.
  * The primary key is semantic key used to uniquely define the event processor, while the strategy
- * is the unique identifier need to define the strategy to be used.
+ * is the unique identifier needed to define the strategy to be used.
  *
  * @author Sara Pellegrini
  * @since 4.0
