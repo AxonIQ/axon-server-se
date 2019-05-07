@@ -16,10 +16,10 @@ public class ClusterEvents {
     }
 
     @KeepNames
-    public static class AxonServerNodeReceived {
+    public static class AxonServerNodeConnected {
         private final NodeInfo nodeInfo;
 
-        public AxonServerNodeReceived(NodeInfo nodeInfo) {
+        public AxonServerNodeConnected(NodeInfo nodeInfo) {
             this.nodeInfo = nodeInfo;
         }
 

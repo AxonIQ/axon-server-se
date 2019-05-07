@@ -8,8 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Configuration property allowing users to define labels for their Axon Server nodes. This allows, for example, clients
- * to make decisions about which node to connect to.
+ * Configuration property allowing users to define tags (or labels) for their Axon Server nodes. This allows, for example,
+ * clients to make decisions about which node to connect to.
  *
  * @author Greg Woods
  * @since 4.2
@@ -17,7 +17,7 @@ import java.util.Map;
  */
 @ConfigurationProperties("axoniq.axonserver")
 @Configuration
-public class TagConfiguration {
+public class TagsConfiguration {
 
     private Map<String,String> tags = new HashMap<>();
 

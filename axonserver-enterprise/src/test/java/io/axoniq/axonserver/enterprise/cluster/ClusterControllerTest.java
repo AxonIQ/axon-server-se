@@ -10,7 +10,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
-import io.axoniq.axonserver.enterprise.config.TagConfiguration;
+import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.config.FeatureChecker;
@@ -103,8 +103,8 @@ public class ClusterControllerTest {
 
         Map<String,String> tagMap = new HashMap<String,String>(){{put("some","tag");}};
 
-        TagConfiguration tagConfiguration = new TagConfiguration();
-        tagConfiguration.setTags(tagMap);
+        TagsConfiguration tagsConfiguration = new TagsConfiguration();
+        tagsConfiguration.setTags(tagMap);
 
         ClusterConfiguration clusterConfiguration = new ClusterConfiguration();
 
@@ -130,7 +130,7 @@ public class ClusterControllerTest {
                                                                                                                                Node.newBuilder().setNodeId("MyName").setNodeName("MyName").build())));
         CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
-        testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration, tagConfiguration,
+        testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration, tagsConfiguration,
                                             entityManager, stubFactory, nodeSelectionStrategy,
                                             mockRaftGroupRepositoryManager,
                                             queryDispatcher, commandDispatcher,

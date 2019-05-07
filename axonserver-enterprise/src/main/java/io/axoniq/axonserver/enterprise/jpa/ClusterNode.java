@@ -110,10 +110,16 @@ public class ClusterNode implements Serializable, AxonServerNode {
         return name;
     }
 
+    /**
+     * @param tags the tags that are configured for this node
+     */
     public void setTags(Map<String,String> tags){
         this.tags=tags;
     }
 
+    /**
+     * @return the tags configured for this node
+     */
     public Map<String,String> getTags(){
         return tags;
     }

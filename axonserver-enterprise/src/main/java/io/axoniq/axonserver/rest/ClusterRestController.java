@@ -45,7 +45,7 @@ public class ClusterRestController {
     private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
-    private ClusterTagsCache clusterTagsCache;
+    private final ClusterTagsCache clusterTagsCache;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
@@ -190,7 +190,7 @@ public class ClusterRestController {
         }
 
         public void setTags(Map<String,String> tags){
-            this.tags=tags;
+            this.tags = tags;
         }
 
         public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected, ClusterTagsCache clusterTagsCache) {

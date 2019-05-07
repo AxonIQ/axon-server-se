@@ -2,7 +2,7 @@ package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.config.TagConfiguration;
+import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import org.junit.*;
 
@@ -21,10 +21,10 @@ public class ClusterTagsCacheTest {
         platformConfiguration.setName("ClusterNode1");
 
         Map<String,String> tagMap = new HashMap<String,String>(){{put("region","Amsterdam-East");}};
-        TagConfiguration tagConfiguration = new TagConfiguration();
-        tagConfiguration.setTags(tagMap);
+        TagsConfiguration tagsConfiguration = new TagsConfiguration();
+        tagsConfiguration.setTags(tagMap);
 
-        testSubject = new ClusterTagsCache(platformConfiguration,tagConfiguration);
+        testSubject = new ClusterTagsCache(platformConfiguration, tagsConfiguration);
     }
 
     @Test
@@ -35,7 +35,7 @@ public class ClusterTagsCacheTest {
                                     .putAllTags(new HashMap<String,String>(){{put("region","Utrecht");}})
                                     .setNodeName("ClusterNode2")
                                     .build();
-        ClusterEvents.AxonServerNodeReceived nodeReceived = new ClusterEvents.AxonServerNodeReceived(nodeInfo);
+        ClusterEvents.AxonServerNodeConnected nodeReceived = new ClusterEvents.AxonServerNodeConnected(nodeInfo);
 
         testSubject.on(nodeReceived);
 
@@ -62,7 +62,7 @@ public class ClusterTagsCacheTest {
                                     .putAllTags(new HashMap<String,String>(){{put("region","Utrecht");}})
                                     .setNodeName("ClusterNode1")
                                     .build();
-        ClusterEvents.AxonServerNodeReceived nodeReceived = new ClusterEvents.AxonServerNodeReceived(nodeInfo);
+        ClusterEvents.AxonServerNodeConnected nodeReceived = new ClusterEvents.AxonServerNodeConnected(nodeInfo);
 
         testSubject.on(nodeReceived);
         assertEquals(newNodeTags,testSubject.getClusterTags().get("ClusterNode1"));
