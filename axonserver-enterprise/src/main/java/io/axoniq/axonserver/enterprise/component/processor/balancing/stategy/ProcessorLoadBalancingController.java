@@ -58,7 +58,7 @@ public class ProcessorLoadBalancingController {
     }
 
     /**
-     * Provides the list of {@link ProcessorLoadBalancing} for the specified context
+     * Provides the list of {@link ProcessorLoadBalancing} for the specified context.
      *
      * @param context the context
      * @return the list of processor load balancing strategies for the context
