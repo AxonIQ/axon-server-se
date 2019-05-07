@@ -29,6 +29,7 @@ public class MySqlSpecificTest {
     }
 
     @Test
+    @Ignore
     public void createTableIfNotExists() throws Exception {
         testSubject.createSchemaIfNotExists("DEMO_SCHEMA2", connection);
         testSubject.createTableIfNotExists("DEMO_SCHEMA2", "DEMO", connection);
@@ -37,6 +38,7 @@ public class MySqlSpecificTest {
     }
 
     @Test
+    @Ignore
     public void createSchemaIfNotExists() throws Exception {
         testSubject.createSchemaIfNotExists("DEMO_SCHEMA", connection);
         testSubject.createSchemaIfNotExists("DEMO_SCHEMA", connection);
@@ -44,6 +46,7 @@ public class MySqlSpecificTest {
     }
 
     @Test
+    @Ignore
     public void dropSchema() {
     }
 }

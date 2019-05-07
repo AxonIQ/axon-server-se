@@ -4,8 +4,6 @@ import org.junit.*;
 
 import java.sql.Connection;
 
-import static org.junit.Assert.*;
-
 /**
  * @author Marc Gathier
  */

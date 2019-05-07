@@ -22,8 +22,8 @@ public class JdbcEventStoreConfiguration {
     @Bean
     public EventStoreFactory eventStoreFactory(StorageProperties storageProperties,
                                                StorageTransactionManagerFactory storageTransactionManagerFactory,
-                                               RaftLeaderProvider raftLeaderProvider) {
-        return new JdbcEventStoreFactory(storageProperties, storageTransactionManagerFactory, metaDataSerializer(), multiContextStrategy(storageProperties), syncStrategy(storageProperties, raftLeaderProvider));
+                                               RaftLeaderProvider leaderProvider) {
+        return new JdbcEventStoreFactory(storageProperties, storageTransactionManagerFactory, metaDataSerializer(), multiContextStrategy(storageProperties), syncStrategy(storageProperties, leaderProvider));
     }
 
     private MultiContextStrategy multiContextStrategy(StorageProperties storageProperties) {

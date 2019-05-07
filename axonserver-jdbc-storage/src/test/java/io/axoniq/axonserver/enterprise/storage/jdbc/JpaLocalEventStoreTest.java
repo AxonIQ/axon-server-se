@@ -1,11 +1,5 @@
-package io.axoniq.axonserver.enterprise.storage;
+package io.axoniq.axonserver.enterprise.storage.jdbc;
 
-import io.axoniq.axonserver.enterprise.storage.jdbc.H2Specific;
-import io.axoniq.axonserver.enterprise.storage.jdbc.JdbcEventStoreFactory;
-import io.axoniq.axonserver.enterprise.storage.jdbc.ProtoMetaDataSerializer;
-import io.axoniq.axonserver.enterprise.storage.jdbc.SingleSchemaMultiContextStrategy;
-import io.axoniq.axonserver.enterprise.storage.jdbc.StorageProperties;
-import io.axoniq.axonserver.enterprise.storage.jdbc.StoreAlwaysSyncStrategy;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;

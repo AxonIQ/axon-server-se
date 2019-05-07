@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -27,7 +28,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -61,6 +64,8 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     private final MetaDataSerializer metaDataSerializer;
     private final MultiContextStrategy multiContextStrategy;
     private final SyncStrategy syncStrategy;
+    private final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
+
 
     protected JdbcAbstractStore(EventTypeContext eventTypeContext,
                                 DataSource dataSource,
@@ -215,6 +220,17 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     @Override
     public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
         return getGlobalIterator(start, Long.MAX_VALUE);
+    }
+
+    @Override
+    public void close() {
+        closeListeners.forEach(Runnable::run);
+    }
+
+    @Override
+    public Registration registerCloseListener(Runnable listener) {
+        closeListeners.add(listener);
+        return () -> closeListeners.remove(listener);
     }
 
     private CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start, long end) {

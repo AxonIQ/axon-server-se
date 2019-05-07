@@ -6,14 +6,12 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
+import junit.framework.TestCase;
 import org.junit.*;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.UUID;
-
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 
 /**
  * @author Marc Gathier
@@ -48,7 +46,7 @@ public class JdbcEventStoreTest {
 
         while( iterator.hasNext()) {
             SerializedTransactionWithToken transactionWithToken = iterator.next();
-            assertEquals(0, transactionWithToken.getToken());
+            TestCase.assertEquals(0, transactionWithToken.getToken());
         }
 
         preparedTransaction = jdbcEventStore
@@ -56,8 +54,8 @@ public class JdbcEventStoreTest {
 
         jdbcEventStore.store(preparedTransaction);
 
-        assertTrue( iterator.hasNext());
-        assertEquals(1, iterator.next().getToken());
+        TestCase.assertTrue(iterator.hasNext());
+        TestCase.assertEquals(1, iterator.next().getToken());
 
 
 

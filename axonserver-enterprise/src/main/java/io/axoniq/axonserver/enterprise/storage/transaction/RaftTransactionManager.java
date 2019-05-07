@@ -53,6 +53,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
         this.entryType = "Append." + eventStorageEngine.getType().getEventType();
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.sequenceNumberCache = new SequenceNumberCache(eventStorageEngine::getLastSequenceNumber);
+        eventStorageEngine.registerCloseListener(this.sequenceNumberCache::close);
     }
 
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
