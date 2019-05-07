@@ -33,7 +33,7 @@ public interface ProcessorLoadBalancingRepository
     List<ProcessorLoadBalancing> findByContext(String context);
 
     /**
-     * Deletes all {@link ProcessorLoadBalancing} with the specified context
+     * Deletes all {@link ProcessorLoadBalancing} with the specified context.
      *
      * @param context the context
      */
