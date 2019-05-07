@@ -5,6 +5,7 @@ import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
 import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -29,6 +30,7 @@ import io.axoniq.axonserver.grpc.internal.User;
 import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -638,5 +640,42 @@ class LocalRaftConfigService implements RaftConfigService {
                                              loadBalancingStrategy.getName());
                              }
                          });
+    }
+
+    /**
+     * Event handler for {@link io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.LeaderConfirmation} events.
+     * Checks if there were configuration changes pending when the leader changed, and if so, removes the flag.
+     * @param leaderConfirmation the event
+     */
+    @EventListener
+    public void on(ClusterEvents.LeaderConfirmation leaderConfirmation) {
+        checkPendingChanges(leaderConfirmation.getContext());
+    }
+
+    /**
+     * Event handler for {@link io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.BecomeLeader} events.
+     * Checks if there were configuration changes pending when the leader changed, and if so, removes the flag.
+     * @param becomeLeader the event
+     */
+    @EventListener
+    public void on(ClusterEvents.BecomeLeader becomeLeader) {
+        checkPendingChanges(becomeLeader.getContext());
+    }
+
+    private void checkPendingChanges(String contextName) {
+        try {
+            RaftNode admin = grpcRaftController.getRaftNode(getAdmin());
+            if( admin.isLeader()) {
+                Context context = contextController.getContext(contextName);
+                if( context != null && context.isChangePending()) {
+                    ContextConfiguration configuration = createContextConfigBuilder(context).setPending(false).build();
+                    admin.appendEntry(ContextConfiguration.class.getName(), configuration.toByteArray());
+                }
+            }
+        } catch(MessagingPlatformException ex) {
+            if( !ErrorCode.CONTEXT_NOT_FOUND.equals(ex.getErrorCode())) {
+                logger.warn("Error checking pending changes", ex);
+            }
+        }
     }
 }

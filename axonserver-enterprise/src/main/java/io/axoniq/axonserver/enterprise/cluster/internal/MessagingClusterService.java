@@ -465,7 +465,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
         @Override
         public void onError(Throwable throwable) {
-            logger.info("{}: Error on connection from AxonHub node - {}", messagingServerName, throwable.getMessage());
+            logger.warn("{}: Error on connection from AxonServer node - {}", messagingServerName, throwable.getMessage());
             closeConnections();
         }
 

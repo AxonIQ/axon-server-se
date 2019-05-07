@@ -34,7 +34,9 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Client for the event store used by Axon Server when the leader of the event store is on a different Axon Server node.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class RemoteEventStore implements io.axoniq.axonserver.message.event.EventStore {
     private final ClusterNode clusterNode;

@@ -140,6 +140,11 @@ public class GrpcRaftGroup implements RaftGroup {
             }
 
             @Override
+            public int snapshotFlowBuffer() {
+                return storageOptions.getSnapshotFlowBuffer();
+            }
+
+            @Override
             public int maxMessageSize() {
                 return messagingPlatformConfiguration.getMaxMessageSize();
             }

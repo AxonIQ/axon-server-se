@@ -23,4 +23,20 @@ public interface RaftPeer {
     Registration registerInstallSnapshotResponseListener(Consumer<InstallSnapshotResponse> listener);
 
     String nodeId();
+
+    /**
+     * Checks if connection is ready to send appendEntries requests.
+     * @return true if connection is ready
+     */
+    default boolean isReadyForAppendEntries() {
+        return true;
+    }
+
+    /**
+     * Checks if connection is ready to send installSnapshot requests.
+     * @return true if connection is ready
+     */
+    default boolean isReadyForSnapshot() {
+        return true;
+    }
 }
