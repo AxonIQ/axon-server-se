@@ -39,7 +39,8 @@ public class ProcessorLoadBalancingController {
     }
 
     /**
-     * Saves or updates the {@link ProcessorLoadBalancing}
+     * Saves or updates the {@link ProcessorLoadBalancing}.
+     
      * @param processorLoadBalancing the processor load balancing strategy to persist
      */
     public void save(ProcessorLoadBalancing processorLoadBalancing){
