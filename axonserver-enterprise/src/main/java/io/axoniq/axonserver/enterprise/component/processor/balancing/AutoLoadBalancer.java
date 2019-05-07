@@ -43,7 +43,7 @@ public class AutoLoadBalancer {
     }
 
     /**
-     * Listens to any update of the event processors status and balance the load if this node is the current leader.
+     * Listens to any update of the event processors status and balances the load if this node is the current leader.
      *
      * @param event the internal event describing the new status of the event processor
      */
