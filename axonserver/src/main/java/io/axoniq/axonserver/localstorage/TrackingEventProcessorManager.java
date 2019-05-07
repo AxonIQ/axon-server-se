@@ -135,7 +135,7 @@ public class TrackingEventProcessorManager {
     }
 
     /**
-     * Killls all tracking event processors that are waiting for permits and not received any permits since minLastPermits.
+     * Kills all tracking event processors that are waiting for permits and not received any permits since minLastPermits.
      * @param minLastPermits expected minimum timestamp for new permits request
      */
     public void validateActiveConnections(long minLastPermits) {
@@ -143,7 +143,7 @@ public class TrackingEventProcessorManager {
     }
 
     /**
-     * CLeans up manager by stopping all tracking event processors and stopping the scheduling service.
+     * Cleans up manager by stopping all tracking event processors and stopping the scheduling service.
      */
     public void close() {
         stopAll();
