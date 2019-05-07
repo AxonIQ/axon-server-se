@@ -9,7 +9,7 @@ import java.util.Optional;
 
 /**
  * Service responsible for the management of {@link ProcessorLoadBalancing}s.
- * This implementation use a JPA repository to save, update and queries {@link ProcessorLoadBalancing}s.
+ * This implementation uses a JPA repository to save, update and query {@link ProcessorLoadBalancing}s.
  *
  * @author Sara Pellegrini
  */
