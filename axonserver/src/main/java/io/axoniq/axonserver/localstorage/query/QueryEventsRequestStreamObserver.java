@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.event.RowResponse;
 import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.Registration;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.query.result.AbstractMapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.BooleanExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.DefaultQueryResult;
@@ -93,7 +94,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 pipeLine = new QueryProcessor().buildPipeline(query, this::send);
                 sendColumns(pipeLine);
                 if (queryEventsRequest.getLiveEvents()) {
-                    registration = eventWriteStorage.registerEventListener(event -> pushEventFromStream(event.asEventWithToken(), pipeLine));
+                    registration = eventWriteStorage.registerEventListener((token,events) -> pushEventFromStream(token, events, pipeLine));
                 }
                 senderService.submit(() -> {
                     eventStreamReader.query(minConnectionToken,
@@ -111,11 +112,17 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
     }
 
-    private void pushEventFromStream(EventWithToken event, Pipeline pipeLine) {
+    private void pushEventFromStream(long firstToken, List<SerializedEvent> events, Pipeline pipeLine) {
         logger.debug("Push event from stream");
-        if( !pushEvent(event, pipeLine)) {
-            logger.debug("Cancelling registation");
-            registration.cancel();
+        for (SerializedEvent event : events) {
+            EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event.asEvent()).setToken(firstToken++)
+                                                          .build();
+            if( !pushEvent(eventWithToken, pipeLine)) {
+                logger.debug("Cancelling registation");
+                registration.cancel();
+                return;
+            }
+
         }
     }
 

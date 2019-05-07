@@ -152,7 +152,6 @@ public class LocalEventStorageEngineTest {
         StreamObserver<GetEventsRequest> requestStreamObserver = testSubject.listEvents(
                 SAMPLE_CONTEXT,
                 countingStreamObserver);
-        assertEquals(1, testSubject.eventStreamControllers(SAMPLE_CONTEXT).size());
         requestStreamObserver.onNext(GetEventsRequest.newBuilder()
                                                      .setTrackingToken(100)
                                                      .setNumberOfPermits(10)
@@ -164,8 +163,6 @@ public class LocalEventStorageEngineTest {
         assertWithin(2000, TimeUnit.MILLISECONDS, () -> assertEquals(20, countingStreamObserver.count));
 
         requestStreamObserver.onCompleted();
-
-        assertEquals(0, testSubject.eventStreamControllers(SAMPLE_CONTEXT).size());
     }
 
     @Test
