@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Automatically balance the load between client application any time it is needed.
+ * Automatically balance the load between client applications any time it is needed.
  * In this implementation, the balance operation is performed only if the node instance is the current leader for the context.
  * @author Sara Pellegrini
  */
