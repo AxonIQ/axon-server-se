@@ -224,7 +224,6 @@ class LocalRaftConfigService implements RaftConfigService {
                                                                context));
         }
 
-        ;
         removeNodeFromContext(contextDef, raftGroupServiceFactory.getRaftGroupService(context), node, nodeLabel);
     }
 
@@ -263,6 +262,10 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void deleteNode(String name) {
         ClusterNode clusterNode = contextController.getNode(name);
+        if( clusterNode == null) {
+            logger.warn("Delete Node: {} - Node node found.", name);
+            return;
+        }
         Set<ContextClusterNode> membersToDelete =
                 clusterNode.getContexts()
                            .stream()

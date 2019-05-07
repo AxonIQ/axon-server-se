@@ -39,7 +39,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         }
                     }
                 } catch( RuntimeException ex) {
-                    logger.warn("Failed to process request {}", appendEntriesRequest, ex);
+                    logger.warn("Failed to process request {}", appendEntriesRequest.getPrevLogIndex() + 1, ex);
                     responseObserver.onError(ex);
                 }
             }
@@ -80,7 +80,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         }
                     }
                 } catch( RuntimeException ex) {
-                    logger.warn("Failed to process request {}", installSnapshotRequest, ex);
+                    logger.warn("Failed to process InstallSnapshotRequest {}", installSnapshotRequest.getOffset(), ex);
                     responseObserver.onError(ex);
                 }
             }
