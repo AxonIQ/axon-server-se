@@ -43,6 +43,8 @@ public class ClusterRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+    public static final String CONTEXT_NONE = "_none";
+
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
     private final GrpcRaftController grpcRaftController;
@@ -86,7 +88,7 @@ public class ClusterRestController {
             nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context).build());
         } else if ((jsonClusterNode.getNoContexts() != null) && jsonClusterNode.getNoContexts()) {
             logger.debug("add(): Registering myself and adding me to no contexts.");
-            nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName("_none").build());
+            nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(CONTEXT_NONE).build());
         } else {
             logger.debug("add(): Registering myself and adding me to all contexts.");
         }
@@ -233,18 +235,41 @@ public class ClusterRestController {
             this.internalGrpcPort = internalGrpcPort;
         }
 
+        /**
+         * Return the context this node should join. If {@code null} and {@link #noContexts} equals {@code true},
+         * then the node should join no context. If both are {@code null}, the node should join all contexts.
+         *
+         * @return the context to join.
+         */
         public String getContext() {
             return context;
         }
 
+        /**
+         * Set the context to join.
+         *
+         * @param context the name of the context, or {@code null} for all/none. See {@link #getContext()} and {@link #getNoContexts()}.
+         */
         public void setContext(String context) {
             this.context = context;
         }
 
+        /**
+         * Return the (optional) field to indicate if this node should be joined to no contexts. A value of {@code null}
+         * indicates that the old behaviour is expected, which means that the node will be added to a single or all
+         * contexts known to the "_admin" leader. If {@code true}, {@link #context} should not be used.
+         *
+         * @return {@code true} if the node should be joined to no contexts.
+         */
         public Boolean getNoContexts() {
             return noContexts;
         }
 
+        /**
+         * Set the (optional) {@link #noContexts} field. Typically, only {@code true} or {@code null} make sense.
+         *
+         * @param noContexts the value for this field.
+         */
         public void setNoContexts(Boolean noContexts) {
             this.noContexts = noContexts;
         }
