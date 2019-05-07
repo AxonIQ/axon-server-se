@@ -133,7 +133,11 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         try {
             return pipeLine.process(new DefaultQueryResult(new EventExpressionResult(event)));
         } catch (RuntimeException re) {
-            responseObserver.onError(re);
+            try {
+                responseObserver.onError(re);
+            } catch( Exception ex ) {
+                //ignore
+            }
             return false;
         }
     }

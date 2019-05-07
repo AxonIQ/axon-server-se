@@ -97,7 +97,7 @@ public class HttpStreamingQuery {
                                 break;
                         }
                     } catch (Exception exception) {
-                        logger.warn("Failed to write to emitter", exception);
+                        logger.debug("Failed to write to emitter", exception);
                         closed = true;
                         stop();
                     }
@@ -106,12 +106,12 @@ public class HttpStreamingQuery {
                 @Override
                 public void onError(Throwable throwable) {
                     try {
-                        logger.warn("Error while processing query {} - {}", query, throwable.getMessage(), throwable);
+                        logger.warn("Error while processing query {} - {}", query, throwable.getMessage());
                         sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
-                    } catch (IOException ignore) {
+                        sseEmitter.complete();
+                    } catch (Exception ignore) {
                         // ignore exception on sending error to client
                     }
-                    sseEmitter.complete();
                 }
 
                 @Override
