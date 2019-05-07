@@ -25,7 +25,7 @@ public interface ProcessorLoadBalancingRepository
     List<ProcessorLoadBalancing> findByStrategy(String strategyName);
 
     /**
-     * Lists all persisted {@link ProcessorLoadBalancing} filtered by the specified context
+     * Lists all persisted {@link ProcessorLoadBalancing} filtered by the specified context.
      *
      * @param context the context
      */
