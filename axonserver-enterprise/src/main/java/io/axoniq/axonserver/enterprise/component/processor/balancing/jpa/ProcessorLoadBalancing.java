@@ -12,6 +12,7 @@ import javax.persistence.Id;
  * is the unique identifier need to define the strategy to be used.
  *
  * @author Sara Pellegrini
+ * @since 4.0
  */
 @Entity
 public class ProcessorLoadBalancing  {
