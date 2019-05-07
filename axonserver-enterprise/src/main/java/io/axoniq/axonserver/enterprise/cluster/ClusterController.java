@@ -475,9 +475,14 @@ public class ClusterController implements SmartLifecycle {
      * sets up a connection to a node received through a newconfiguration log entry.
      * Node information does not contain full information of the remote node (only name, internal hostname and internal port)
      * so if it is an unknown host it will set-up a temporary connection that is updated once the remote node connects.
+     *
      * @param node the node to connect to
      */
     public void connect(Node node) {
-        startRemoteConnection(new ClusterNode(node), true);
+        ClusterNode existingClusterNode = entityManager.find(ClusterNode.class, node.getNodeName());
+
+        if (existingClusterNode == null) {
+            startRemoteConnection(new ClusterNode(node), true);
+        }
     }
 }

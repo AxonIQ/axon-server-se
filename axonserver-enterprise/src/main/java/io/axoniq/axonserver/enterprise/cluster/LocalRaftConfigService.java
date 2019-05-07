@@ -48,6 +48,7 @@ import static io.axoniq.axonserver.enterprise.CompetableFutureUtils.getFuture;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteApplicationConsumer.DELETE_APPLICATION;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStrategyConsumer.DELETE_LOAD_BALANCING_STRATEGY;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteUserConsumer.DELETE_USER;
+import static io.axoniq.axonserver.rest.ClusterRestController.CONTEXT_NONE;
 
 /**
  * Service to orchestrate configuration changes. This service is executed on the leader of the _admin context.
@@ -336,8 +337,16 @@ class LocalRaftConfigService implements RaftConfigService {
         }
         List<String> contexts = nodeInfo.getContextsList().stream().map(ContextRole::getName).collect(Collectors
                                                                                                               .toList());
-        if (contexts.isEmpty()) {
+        if ((contexts.size() == 1) && contexts.get(0).equals(CONTEXT_NONE)) {
+            logger.debug("join(): Joining to no contexts.");
+            contexts.clear();
+        }
+        else if (contexts.isEmpty()) {
+            logger.debug("join(): Joining to all contexts.");
             contexts = contextController.getContexts().map(Context::getName).collect(Collectors.toList());
+        }
+        else {
+            logger.debug("join(): Joining to a specified set of contexts.");
         }
 
         String nodeLabel = generateNodeLabel(nodeInfo.getNodeName());
