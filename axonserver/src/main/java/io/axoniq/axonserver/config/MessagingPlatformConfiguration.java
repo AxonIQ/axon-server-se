@@ -99,7 +99,7 @@ public class MessagingPlatformConfiguration {
      */
     private String controldbBackupLocation = ".";
     /*
-     * Maximum inbound message size for gRPC (0 keeps gRPC default size)
+     * Maximum inbound message size for gRPC
      */
     private int maxMessageSize = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE;
     /**

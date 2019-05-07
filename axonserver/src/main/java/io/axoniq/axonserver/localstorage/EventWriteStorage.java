@@ -45,7 +45,7 @@ public class EventWriteStorage {
 
                     if( ! listeners.isEmpty()) {
                         listeners.values()
-                                 .forEach(consumer -> consumer.accept(firstToken, eventList));
+                                 .forEach(consumer -> eventsStored(consumer, firstToken, eventList));
                     }
                 } else {
                     completableFuture.completeExceptionally(cause);
@@ -55,6 +55,17 @@ public class EventWriteStorage {
             completableFuture.completeExceptionally(cause);
         }
         return completableFuture;
+    }
+
+    private void eventsStored(
+            BiConsumer<Long, List<SerializedEvent>> consumer,
+            Long firstToken, List<SerializedEvent> eventList) {
+        try {
+            consumer.accept(firstToken, eventList);
+        } catch(Exception ex) {
+            logger.debug("Listener failed", ex);
+        }
+
     }
 
     private void validate(List<SerializedEvent> eventList) {

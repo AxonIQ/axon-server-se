@@ -29,6 +29,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -42,16 +43,22 @@ public class TrackingEventProcessorManager {
 
     private static final int MAX_EVENTS_PER_RUN = 500;
     private final ScheduledExecutorService scheduledExecutorService;
-    private final EventStorageEngine eventStorageEngine;
     private final Set<EventTracker> eventTrackerSet = new CopyOnWriteArraySet<>();
     private final AtomicBoolean replicationRunning = new AtomicBoolean();
     private final Logger logger = LoggerFactory.getLogger(TrackingEventProcessorManager.class);
+    private final String context;
+    private final Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder;
 
     public TrackingEventProcessorManager(EventStorageEngine eventStorageEngine) {
-        this.eventStorageEngine = eventStorageEngine;
+        this(eventStorageEngine.getType().getContext(), eventStorageEngine::getGlobalIterator);
+    }
+
+    TrackingEventProcessorManager(String context, Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder) {
+        this.context = context;
+        this.iteratorBuilder = iteratorBuilder;
         // Use 2 threads (one to send events and one to avoid queuing of reschedules.
         this.scheduledExecutorService = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory(
-                "trackers-" + eventStorageEngine.getType().getContext()));
+                "trackers-" + context));
     }
 
     /**
@@ -80,11 +87,11 @@ public class TrackingEventProcessorManager {
                 }
                 if (!failedReplicators.isEmpty()) {
                     logger.debug("{}: removing {} replicators",
-                                eventStorageEngine.getType().getContext(),
+                                context,
                                 failedReplicators.size());
                     eventTrackerSet.removeAll(failedReplicators);
                     logger.debug("{}: {} replicators remaining",
-                                eventStorageEngine.getType().getContext(),
+                                context,
                                 eventTrackerSet.size());
                 }
 
@@ -183,7 +190,7 @@ public class TrackingEventProcessorManager {
                 throw new MessagingPlatformException(ErrorCode.OTHER, "Tracking event processor stopped");
             }
             if (eventIterator == null) {
-                eventIterator = eventStorageEngine.getGlobalIterator(nextToken.get());
+                eventIterator = iteratorBuilder.apply(nextToken.get());
             }
 
             int count = 0;
