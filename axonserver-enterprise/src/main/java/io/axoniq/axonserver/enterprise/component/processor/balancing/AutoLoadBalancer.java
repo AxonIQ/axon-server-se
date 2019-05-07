@@ -21,6 +21,8 @@ import java.util.function.Function;
  * Automatically balance the load between client applications any time it is needed.
  * In this implementation, the balance operation is performed only if the node instance is the current leader for the context.
  * @author Sara Pellegrini
+ * @since 4.0
+ *
  */
 @Component
 public class AutoLoadBalancer {
@@ -59,7 +61,7 @@ public class AutoLoadBalancer {
     }
 
     /**
-     *  Listens to any client disconnected and balance the load of its event processors if this node is the current leader.
+     *  Listens to any client disconnected and balances the load of its event processors if this node is the current leader.
      * @param event the internal event describing the client application disconnected from the Axon Server cluster
      */
     @EventListener
