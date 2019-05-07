@@ -48,7 +48,8 @@ public class ProcessorLoadBalancingController {
     }
 
     /**
-     * Provides the list of {@link ProcessorLoadBalancing} for the specified strategy
+     * Provides the list of {@link ProcessorLoadBalancing} for the specified strategy.
+     
      * @param strategyName the strategy
      * @return the list of processor load balancing for the strategy
      */
