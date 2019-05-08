@@ -201,7 +201,7 @@ public class CommandService implements AxonServerClientService {
         SerializedCommand request = new SerializedCommand(command);
         String clientId = command.getClientId();
         if (logger.isTraceEnabled()) {
-            logger.trace("{}: Received command: {}", clientId, command);
+            logger.trace("{}: Received command: {}", clientId, command.getName());
         }
         try {
             commandDispatcher.dispatch(contextProvider.getContext(), request, commandResponse -> safeReply(clientId,

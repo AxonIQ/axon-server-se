@@ -177,24 +177,6 @@ public class GatewayTest {
     }
 
     @Test
-    public void testContextInterceptor() {
-        routingConfiguration.getAccesscontrol().setEnabled(false);
-        AxonServerClientService dummyPlatformService = new DummyPlatformService();
-        testSubject = new Gateway(routingConfiguration,
-                                  Collections.singletonList(dummyPlatformService),
-                                  accessController);
-        testSubject.start();
-
-        Channel channel = NettyChannelBuilder.forAddress("localhost", routingConfiguration.getPort()).usePlaintext()
-                                             .build();
-        PlatformInfo result = PlatformServiceGrpc.newBlockingStub(channel)
-                                                 .withInterceptors(getClientInterceptor(GrpcMetadataKeys.CONTEXT_MD_KEY,
-                                                                                        "Sample"))
-                                                 .getPlatformServer(ClientIdentification.newBuilder().build());
-        assertEquals("Sample", result.getPrimary().getNodeName());
-    }
-
-    @Test
     public void testSmallMaxMessageSize() {
         int size = 100;
         routingConfiguration.setMaxMessageSize(size);
@@ -274,7 +256,7 @@ public class GatewayTest {
     private static class DummyPlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             implements AxonServerClientService {
 
-        private GrpcContextProvider contextProvider = new GrpcContextProvider();
+        private ContextProvider contextProvider = new DefaultContextProvider();
 
         @Override
         public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {

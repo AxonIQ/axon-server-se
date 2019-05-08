@@ -13,16 +13,16 @@ import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Controller;
 
 /**
- * Implementation of {@link ContextProvider} that retrieves the context from gRPC threadlocal.
+ * Default implementation of a {@link ContextProvider}. Always returns the default context.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Controller
-public class GrpcContextProvider implements ContextProvider {
+public class DefaultContextProvider implements ContextProvider {
+
 
     @Override
     public String getContext() {
-        String context = GrpcMetadataKeys.CONTEXT_KEY.get();
-
-        return context == null ? Topology.DEFAULT_CONTEXT : context;
+        return Topology.DEFAULT_CONTEXT;
     }
 }
