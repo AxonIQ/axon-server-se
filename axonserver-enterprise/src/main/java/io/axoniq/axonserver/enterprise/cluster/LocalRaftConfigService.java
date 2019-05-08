@@ -263,7 +263,7 @@ class LocalRaftConfigService implements RaftConfigService {
     public void deleteNode(String name) {
         ClusterNode clusterNode = contextController.getNode(name);
         if( clusterNode == null) {
-            logger.warn("Delete Node: {} - Node node found.", name);
+            logger.info("Delete Node: {} - Node not found.", name);
             return;
         }
         Set<ContextClusterNode> membersToDelete =
