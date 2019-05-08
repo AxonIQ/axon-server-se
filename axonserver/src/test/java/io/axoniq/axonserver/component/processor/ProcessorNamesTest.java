@@ -12,6 +12,7 @@ import java.util.Iterator;
 import static org.junit.Assert.*;
 
 /**
+ * Unit tests for {@link ProcessorNames}
  * @author Sara Pellegrini
  * @since 4.2
  */

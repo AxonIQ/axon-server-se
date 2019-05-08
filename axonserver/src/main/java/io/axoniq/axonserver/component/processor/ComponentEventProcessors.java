@@ -22,6 +22,7 @@ import java.util.Set;
  * Iterable of {@link EventProcessor}s defined by a specific component.
  *
  * @author Sara Pellegrini
+ * @since 4.0
  */
 public class ComponentEventProcessors implements Iterable<EventProcessor> {
 

@@ -16,6 +16,7 @@ import javax.annotation.Nonnull;
 /**
  * Represents the tracking event processor semantic key.
  * @author Sara Pellegrini
+ * @since 4.0
  */
 public final class TrackingEventProcessor implements Serializable {
 
