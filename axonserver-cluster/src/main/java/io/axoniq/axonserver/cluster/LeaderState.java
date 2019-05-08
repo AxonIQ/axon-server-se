@@ -280,9 +280,8 @@ public class LeaderState extends AbstractMembershipState {
                 lastConfirmed.set(e.getIndex());
             } else {
                 logger.warn(
-                        "Failed to retrieve waiting call for log entry index {} - entry = {}, could not complete the request.",
-                        e.getIndex(),
-                        e);
+                        "Failed to retrieve waiting call for log entry index {}, could not complete the request.",
+                        e.getIndex());
             }
         } catch (InterruptedException e1) {
             Thread.currentThread().interrupt();

@@ -33,6 +33,9 @@ public class RaftErrorMapping implements Function<Throwable, ErrorMessage> {
      */
     @Override
     public ErrorMessage apply(Throwable throwable) {
+        if( throwable == null) {
+            return ErrorMessage.newBuilder().setCode(ErrorCode.CLUSTER_ERROR.code()).setMessage("Internal errror").build();
+        }
         ErrorCode error = codes.getOrDefault(throwable.getClass(), ErrorCode.CLUSTER_ERROR);
         String message = throwable.getMessage();
         return ErrorMessage.newBuilder().setCode(error.code()).setMessage(message).build();

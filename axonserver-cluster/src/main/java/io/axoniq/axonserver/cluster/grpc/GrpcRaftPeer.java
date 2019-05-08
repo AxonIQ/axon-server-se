@@ -133,7 +133,7 @@ public class GrpcRaftPeer implements RaftPeer {
         private final AtomicReference<CallStreamObserver<InstallSnapshotRequest>> requestStreamRef = new AtomicReference<>();
 
         public void onNext(InstallSnapshotRequest request) {
-            logger.trace("{} Send {}", node.getNodeId(), request);
+            logger.trace("{} Send InstallSnapshot {}", node.getNodeId(), request.getOffset());
             requestStreamRef.compareAndSet(null, initStreamObserver());
             StreamObserver<InstallSnapshotRequest> stream = requestStreamRef.get();
             if( stream != null) {
@@ -189,14 +189,14 @@ public class GrpcRaftPeer implements RaftPeer {
         private final AtomicLong lastMessageReceived = new AtomicLong();
 
         public void onNext(AppendEntriesRequest request) {
-            logger.trace("{} Send {}", node.getNodeId(), request);
+            logger.trace("{} Send appendEntries - {}", node.getNodeId(), request.getPrevLogIndex() + 1);
             requestStreamRef.updateAndGet(current -> current == null || noMessagesReceived() ?  initStreamObserver(): current);
 
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
             if( stream != null) {
                 send(stream, request);
             } else {
-                logger.warn("{}: Not sending AppendEntriesRequest {}", node.getNodeId(), request);
+                logger.warn("{}: Not sending AppendEntriesRequest {}", node.getNodeId(), request.getPrevLogIndex() + 1);
             }
         }
 
