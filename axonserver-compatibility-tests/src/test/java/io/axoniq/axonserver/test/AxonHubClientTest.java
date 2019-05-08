@@ -29,7 +29,7 @@ public class AxonHubClientTest {
     public void platformServiceTest() throws ExecutionException, InterruptedException {
         AxonHubConfiguration axonHubConfiguration = AxonHubConfiguration.newBuilder("localhost:" + fixture.getPort(), "Sample").build();
         axonHubConfiguration.setToken("1234");
-        axonHubConfiguration.setContext("SAMPLE");
+        axonHubConfiguration.setContext("default");
         PlatformConnectionManager platformConnectionManager = new PlatformConnectionManager(axonHubConfiguration);
         AxonDBClient axonDBClient = new AxonDBClient(axonHubConfiguration, platformConnectionManager);
 
