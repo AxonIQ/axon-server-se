@@ -15,6 +15,7 @@ import org.springframework.stereotype.Controller;
 /**
  * Default implementation of a {@link ContextProvider}. Always returns the default context.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Controller
 public class DefaultContextProvider implements ContextProvider {
