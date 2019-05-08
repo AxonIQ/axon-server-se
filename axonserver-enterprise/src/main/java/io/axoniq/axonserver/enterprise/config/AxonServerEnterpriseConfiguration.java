@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.config;
 
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.access.user.UserController;
+import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.config.AxonServerStandardConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
@@ -13,13 +14,13 @@ import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftLoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftProcessorLoadBalancingControllerFacade;
+import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftUserControllerFacade;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyController;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingService;
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
-import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftUserControllerFacade;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -30,7 +31,6 @@ import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -106,7 +106,8 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(ProcessorLoadBalancingControllerFacade.class)
     public ProcessorLoadBalancingControllerFacade processorLoadBalancingControllerFacade(
-            ProcessorLoadBalancingController processorLoadBalancingController, RaftConfigServiceFactory raftServiceFactory) {
+            ProcessorLoadBalancingService processorLoadBalancingController,
+            RaftConfigServiceFactory raftServiceFactory) {
         return new RaftProcessorLoadBalancingControllerFacade(processorLoadBalancingController, raftServiceFactory);
     }
 

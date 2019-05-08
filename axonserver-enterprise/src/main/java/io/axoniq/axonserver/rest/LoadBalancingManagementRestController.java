@@ -4,7 +4,7 @@ import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrat
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyController;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingService;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,17 +32,17 @@ public class LoadBalancingManagementRestController {
 
     private final RaftConfigServiceFactory raftServiceFactory;
 
-    private final ProcessorLoadBalancingController processorController;
+    private final ProcessorLoadBalancingService processorService;
 
     private final LoadBalanceStrategyController strategyController;
 
 
     public LoadBalancingManagementRestController(
             RaftConfigServiceFactory raftServiceFactory,
-            ProcessorLoadBalancingController processorController,
+            ProcessorLoadBalancingService processorService,
             LoadBalanceStrategyController strategyController) {
         this.raftServiceFactory = raftServiceFactory;
-        this.processorController = processorController;
+        this.processorService = processorService;
         this.strategyController = strategyController;
     }
 
@@ -84,8 +84,8 @@ public class LoadBalancingManagementRestController {
     @GetMapping("components/{component}/processors/loadbalance/strategies")
     public Map<String, String> getComponentStrategies(@PathVariable("component") String component,
                                                       @RequestParam("context") String context) {
-        return processorController.findByContext(context).stream()
-                                  .collect(toMap(o -> o.processor().name(), ProcessorLoadBalancing::strategy));
+        return processorService.findByContext(context).stream()
+                               .collect(toMap(o -> o.processor().name(), ProcessorLoadBalancing::strategy));
     }
 
 }

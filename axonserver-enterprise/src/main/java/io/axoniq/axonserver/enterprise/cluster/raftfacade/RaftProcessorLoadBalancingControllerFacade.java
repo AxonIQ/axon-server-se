@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.raftfacade;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingService;
 import io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter;
 import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
 
@@ -13,12 +13,12 @@ import java.util.List;
  */
 public class RaftProcessorLoadBalancingControllerFacade implements ProcessorLoadBalancingControllerFacade {
 
-    private final ProcessorLoadBalancingController processorLoadBalancingController;
+    private final ProcessorLoadBalancingService processorLoadBalancingService;
     private final RaftConfigServiceFactory raftServiceFactory;
 
-    public RaftProcessorLoadBalancingControllerFacade(ProcessorLoadBalancingController processorLoadBalancingController,
+    public RaftProcessorLoadBalancingControllerFacade(ProcessorLoadBalancingService processorLoadBalancingService,
                                                       RaftConfigServiceFactory raftServiceFactory) {
-        this.processorLoadBalancingController = processorLoadBalancingController;
+        this.processorLoadBalancingService = processorLoadBalancingService;
         this.raftServiceFactory = raftServiceFactory;
     }
 
@@ -31,6 +31,6 @@ public class RaftProcessorLoadBalancingControllerFacade implements ProcessorLoad
 
     @Override
     public List<ProcessorLoadBalancing> findByContext(String context) {
-        return processorLoadBalancingController.findByContext(context);
+        return processorLoadBalancingService.findByContext(context);
     }
 }

@@ -14,16 +14,16 @@ import java.util.Optional;
  * @author Sara Pellegrini
  */
 @Service
-public class ProcessorLoadBalancingController {
+public class ProcessorLoadBalancingService {
 
     private final ProcessorLoadBalancingRepository repository;
 
     /**
-     * Instantiates a {@link ProcessorLoadBalancingController} based on the specified JPA Repository.
+     * Instantiates a {@link ProcessorLoadBalancingService} based on the specified JPA Repository.
      *
      * @param repository the JPA repository for {@link ProcessorLoadBalancing}s entities
      */
-    public ProcessorLoadBalancingController(ProcessorLoadBalancingRepository repository) {
+    public ProcessorLoadBalancingService(ProcessorLoadBalancingRepository repository) {
         this.repository = repository;
     }
 
