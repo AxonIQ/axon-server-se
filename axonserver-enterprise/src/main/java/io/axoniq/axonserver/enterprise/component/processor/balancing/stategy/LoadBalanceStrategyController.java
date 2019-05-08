@@ -3,7 +3,6 @@ package io.axoniq.axonserver.enterprise.component.processor.balancing.stategy;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyHolder;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
@@ -21,19 +20,15 @@ import java.util.stream.Collectors;
 @Primary
 public class LoadBalanceStrategyController implements LoadBalanceStrategyHolder {
 
-    private final ProcessorLoadBalancingController processorLoadBalancingController;
+    private final ProcessorLoadBalancingService processorLoadBalancingService;
 
     private final LoadBalanceStrategyRepository repository;
 
-    private final ApplicationEventPublisher eventPublisher;
-
     public LoadBalanceStrategyController(
-            ProcessorLoadBalancingController processorLoadBalancingController,
-            LoadBalanceStrategyRepository repository,
-            ApplicationEventPublisher eventPublisher) {
-        this.processorLoadBalancingController = processorLoadBalancingController;
+            ProcessorLoadBalancingService processorLoadBalancingService,
+            LoadBalanceStrategyRepository repository) {
+        this.processorLoadBalancingService = processorLoadBalancingService;
         this.repository = repository;
-        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -65,7 +60,7 @@ public class LoadBalanceStrategyController implements LoadBalanceStrategyHolder 
             throw new IllegalArgumentException("Cannot delete default load balancing strategy.");
         }
 
-        List<ProcessorLoadBalancing> processors = processorLoadBalancingController.findByStrategy(strategyName);
+        List<ProcessorLoadBalancing> processors = processorLoadBalancingService.findByStrategy(strategyName);
         if (processors.size() > 0){
             throw new IllegalStateException("Impossible to delete " + strategyName + " because is currently used.");
         }
