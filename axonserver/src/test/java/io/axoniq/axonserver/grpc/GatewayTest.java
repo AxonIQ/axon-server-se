@@ -274,7 +274,7 @@ public class GatewayTest {
     private static class DummyPlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             implements AxonServerClientService {
 
-        private GrpcContextProvider contextProvider = new GrpcContextProvider();
+        private ContextProvider contextProvider = new DefaultContextProvider();
 
         @Override
         public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {
