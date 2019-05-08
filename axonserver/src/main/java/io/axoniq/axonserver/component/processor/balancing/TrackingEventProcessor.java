@@ -14,14 +14,13 @@ import java.util.Objects;
 import javax.annotation.Nonnull;
 
 /**
- * Created by Sara Pellegrini on 07/08/2018.
- * sara.pellegrini@gmail.com
+ * Represents the tracking event processor semantic key.
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public final class TrackingEventProcessor implements Serializable {
 
     private String name;
-
-    private String component;
 
     private String context;
 
@@ -29,20 +28,30 @@ public final class TrackingEventProcessor implements Serializable {
     public TrackingEventProcessor() {
     }
 
-    public TrackingEventProcessor(@Nonnull String name, @Nonnull String component, @Nonnull String context) {
+    /**
+     * Creates an instance with the specified name and context
+     *
+     * @param name    the name of the tracking event processor
+     * @param context the context of the tracking event processor
+     */
+    public TrackingEventProcessor(@Nonnull String name, @Nonnull String context) {
         this.name = name;
-        this.component = component;
         this.context = context;
     }
 
+    /**
+     * Returns the name of the tracking event processor
+     *
+     * @return the name of the tracking event processor
+     */
     public String name() {
         return name;
     }
 
-    public String component() {
-        return component;
-    }
-
+    /**
+     * Returns the context of the tracking event processor
+     * @return the context of the tracking event processor
+     */
     public String context() {
         return context;
     }
@@ -57,20 +66,18 @@ public final class TrackingEventProcessor implements Serializable {
         }
         TrackingEventProcessor that = (TrackingEventProcessor) o;
         return Objects.equals(name, that.name) &&
-                Objects.equals(component, that.component) &&
                 Objects.equals(context, that.context);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, component, context);
+        return Objects.hash(name, context);
     }
 
     @Override
     public String toString() {
         return "TrackingEventProcessor{" +
                 "name='" + name + '\'' +
-                ", component='" + component + '\'' +
                 ", context='" + context + '\'' +
                 '}';
     }

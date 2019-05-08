@@ -36,7 +36,9 @@ public class ComponentProcessorsTest {
                                                          new FakeClientProcessor("clientId", false, EventProcessorInfo.getDefaultInstance()))
                 .iterator();
 
-        ComponentProcessors processors = new ComponentProcessors("component", Topology.DEFAULT_CONTEXT, clientProcessors);
+        ComponentEventProcessors processors = new ComponentEventProcessors("component",
+                                                                           Topology.DEFAULT_CONTEXT,
+                                                                           clientProcessors);
         Iterator<EventProcessor> iterator = processors.iterator();
         assertTrue(iterator.hasNext());
         iterator.next();

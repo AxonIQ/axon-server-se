@@ -315,12 +315,19 @@
                         }
                 );
             },
-            enableStatusLoader(processor) {
+            enableStatusLoader(processor, timeout) {
+                var backup = Object.assign({}, processor);
+                backup.loading = false;
                 processor.loading = true;
                 processor.canPause = false;
                 processor.canPlay = false;
                 processor.canSplit = false;
                 processor.canMerge = false;
+                setTimeout(() => {
+                    if (processor.loading) {
+                        Object.assign(processor, backup)
+                    }
+                }, 5000);
             },
             canMoveFrom(clientId) {
                 let freeThreadInstances = this.selected.freeThreadInstances;
