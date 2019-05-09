@@ -102,11 +102,11 @@ public class TrackingEventProcessorManager {
                 }
             }
         } finally {
+            replicationRunning.set(false);
             if (!eventTrackerSet.isEmpty()) {
                 scheduledExecutorService.schedule(this::sendEvents,
                                                   100,
                                                   MILLISECONDS);
-                replicationRunning.set(false);
             }
         }
     }
