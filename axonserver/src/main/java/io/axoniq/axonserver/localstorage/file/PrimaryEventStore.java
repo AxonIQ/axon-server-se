@@ -199,7 +199,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public void close() {
         synchronizer.shutdown(true);
-        readBuffers.forEach((s, source) -> source.clean(5));
+        readBuffers.forEach((s, source) -> source.clean(0));
         if( next != null) next.close();
     }
 
