@@ -113,8 +113,11 @@ class LocalRaftConfigService implements RaftConfigService {
                                                          handleContextUpdateResult(context, node, "add", oldConfiguration, result, throwable));
         } catch( RuntimeException throwable) {
             logger.error("{}: Failed to add node {}", context, node, throwable);
-            appendToAdmin(oldConfiguration.getClass().getName(),
-                          oldConfiguration.toByteArray());
+            try {
+                appendToAdmin(oldConfiguration.getClass().getName(), oldConfiguration.toByteArray());
+            } catch (Exception second) {
+                logger.debug("{}: Error while restoring old configuration {}", context, second.getMessage());
+            }
             throw throwable;
         }
     }
@@ -130,12 +133,18 @@ class LocalRaftConfigService implements RaftConfigService {
                              result.getMessage());
             }
             ContextConfiguration updatedConfiguration = createContextConfiguration(context, result);
-            appendToAdmin(updatedConfiguration.getClass().getName(),
-                          updatedConfiguration.toByteArray());
+            try {
+                appendToAdmin(updatedConfiguration.getClass().getName(), updatedConfiguration.toByteArray());
+            } catch (Exception second) {
+                logger.debug("{}: Error while updating configuration {}", context, second.getMessage());
+            }
         } else {
             logger.error("{}: Failed to {} node {}", context, action, node, throwable);
-            appendToAdmin(oldConfiguration.getClass().getName(),
-                          oldConfiguration.toByteArray());
+            try {
+                appendToAdmin(oldConfiguration.getClass().getName(), oldConfiguration.toByteArray());
+            } catch (Exception second) {
+                logger.debug("{}: Error while restoring old configuration {}", context, second.getMessage());
+            }
         }
     }
 
@@ -194,8 +203,11 @@ class LocalRaftConfigService implements RaftConfigService {
                                                                                                      .setLabel(c.getClusterNodeLabel())
                           .setNode(c.getClusterNode().toNodeInfo())));
             }
-
-            appendToAdmin(ContextConfiguration.class.getName(), updatedContextConfigurationBuilder.build().toByteArray());
+            try {
+                appendToAdmin(ContextConfiguration.class.getName(), updatedContextConfigurationBuilder.build().toByteArray());
+            } catch (Exception second) {
+                logger.debug("{}: Error while updating configuration {}", context, second.getMessage());
+            }
         });
     }
 
@@ -251,8 +263,11 @@ class LocalRaftConfigService implements RaftConfigService {
                                    });
         } catch (Exception ex) {
             logger.error("{}: Failed to delete node {}", context, node, ex);
-            appendToAdmin(oldConfiguration.getClass().getName(),
-                          oldConfiguration.toByteArray());
+            try {
+                appendToAdmin(ContextConfiguration.class.getName(), oldConfiguration.toByteArray());
+            } catch (Exception second) {
+                logger.debug("{}: Error while restoring configuration {}", context, second.getMessage());
+            }
             removeDone.completeExceptionally(ex);
         }
 
@@ -391,10 +406,18 @@ class LocalRaftConfigService implements RaftConfigService {
                                                if (throwable == null) {
                                                    ContextConfiguration confirmConfiguration = ContextConfiguration
                                                            .newBuilder(newContext).setPending(false).build();
-                                                   appendToAdmin(confirmConfiguration.getClass().getName(), confirmConfiguration.toByteArray());
+                                                   try {
+                                                       appendToAdmin(confirmConfiguration.getClass().getName(), confirmConfiguration.toByteArray());
+                                                   } catch (Exception second) {
+                                                       logger.debug("{}: Error while restoring updating configuration in admin {}", c, second.getMessage());
+                                                   }
                                                } else {
                                                    logger.warn("{}: Error while creating context", c, throwable);
-                                                   appendToAdmin(old.getClass().getName(), old.toByteArray());
+                                                   try {
+                                                       appendToAdmin(old.getClass().getName(), old.toByteArray());
+                                                   } catch (Exception second) {
+                                                       logger.debug("{}: Error while restoring old configuration {}", c, second.getMessage());
+                                                   }
 
                                                }
                                            });
@@ -402,7 +425,11 @@ class LocalRaftConfigService implements RaftConfigService {
             } catch( Exception ex) {
                 logger.warn("{}: Error while adding node {}", c, node.getNodeName(), ex);
                 if( oldConfiguration != null) {
-                    appendToAdmin(ContextConfiguration.class.getName(), oldConfiguration.toByteArray());
+                    try {
+                        appendToAdmin(ContextConfiguration.class.getName(), oldConfiguration.toByteArray());
+                    } catch (Exception second) {
+                        logger.debug("{}: Error while restoring old configuration {}", c, second.getMessage());
+                    }
                 }
             }
         });
@@ -427,12 +454,8 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     private void appendToAdmin(String name, byte[] bytes) {
-        try {
-            getFuture(raftGroupServiceFactory.getRaftGroupService(getAdmin())
+        getFuture(raftGroupServiceFactory.getRaftGroupService(getAdmin())
                                              .appendEntry(getAdmin(), name, bytes), 5, TimeUnit.SECONDS);
-        } catch(Exception ex) {
-            logger.warn("{}: append entry {} failed", getAdmin(), name, ex);
-        }
     }
 
     private NodeInfoWithLabel newNodeInfoWithLabel(String nodeLabel, NodeInfo nodeInfo) {

@@ -167,6 +167,7 @@ public class EventProcessorSynchronizer {
      * @param event a {@link MergeSegmentRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
+    @EventListener
     public void on(MergeSegmentRequest event) {
         if( event.isProxied()) return;
         ClientEventProcessorSegment mergeSegmentRequest =
