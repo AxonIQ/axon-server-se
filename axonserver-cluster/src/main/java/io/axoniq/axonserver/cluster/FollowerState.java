@@ -48,6 +48,7 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicReference<String> leaderId = new AtomicReference<>();
     private final AtomicLong lastSnapshotChunk = new AtomicLong(-1);
     private final AtomicBoolean processing = new AtomicBoolean();
+    private long followerStateStated;
 
     private FollowerState(Builder builder) {
         super(builder);
@@ -66,12 +67,14 @@ public class FollowerState extends AbstractMembershipState {
     @Override
     public void start() {
         scheduler.set(schedulerFactory().get());
-        nextTimeout.set(scheduler.get().clock().millis() + random(minElectionTimeout(), maxElectionTimeout()));
-        scheduleElectionTimeoutChecker();
         heardFromLeader = false;
         leaderId.set(null);
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
         lastMessage.set(scheduler.get().clock().millis());
+        followerStateStated = lastMessage.get();
+        // initially the timeout is increased to prevent leader elections when node restarts
+        nextTimeout.set(scheduler.get().clock().millis() + random(initialElectionTimeout() + minElectionTimeout(), initialElectionTimeout() + maxElectionTimeout()));
+        scheduleElectionTimeoutChecker();
     }
 
     @Override
@@ -119,6 +122,14 @@ public class FollowerState extends AbstractMembershipState {
     private AppendEntriesResponse doAppendEntries(AppendEntriesRequest request) {
 
         try {
+            if (!heardFromLeader) {
+                logger.info("{} in term {}: {} received first AppendEntriesRequest after {}ms",
+                            groupId(),
+                            currentTerm(),
+                            me(),
+                            System.currentTimeMillis() - followerStateStated
+                );
+            }
             String cause = format("%s in term %s: %s received AppendEntriesRequest with term = %s from %s",
                                   groupId(),
                                   currentTerm(),

@@ -14,6 +14,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RaftProperties extends StorageProperties {
     /**
+     * Extra time that follower waits initially before moving to candidate state.
+     */
+    private int initialElectionTimeout = 2500;
+    /**
      * Minimal time (in ms.) that a follower waits before moving to candidate state, if it has not received any messages
      * from a leader.
      */
@@ -49,6 +53,10 @@ public class RaftProperties extends StorageProperties {
     private int maxReplicationRound = 10;
     private boolean logCompactionEnabled = true;
     private int logRetentionHours = 1;
+    /**
+     * Option to force new members to first receive a snapshot when they join a cluster
+     */
+    private boolean forceSnapshotOnJoin = true;
 
     public RaftProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -150,5 +158,21 @@ public class RaftProperties extends StorageProperties {
 
     public void setSnapshotFlowBuffer(int snapshotFlowBuffer) {
         this.snapshotFlowBuffer = snapshotFlowBuffer;
+    }
+
+    public int getInitialElectionTimeout() {
+        return initialElectionTimeout;
+    }
+
+    public void setInitialElectionTimeout(int initialElectionTimeout) {
+        this.initialElectionTimeout = initialElectionTimeout;
+    }
+
+    public boolean isForceSnapshotOnJoin() {
+        return forceSnapshotOnJoin;
+    }
+
+    public void setForceSnapshotOnJoin(boolean forceSnapshotOnJoin) {
+        this.forceSnapshotOnJoin = forceSnapshotOnJoin;
     }
 }

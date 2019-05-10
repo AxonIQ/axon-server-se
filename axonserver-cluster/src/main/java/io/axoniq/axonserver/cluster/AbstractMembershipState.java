@@ -298,6 +298,10 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup.raftConfiguration().maxElectionTimeout();
     }
 
+    protected int initialElectionTimeout() {
+        return raftGroup.raftConfiguration().initialElectionTimeout();
+    }
+
     protected int minElectionTimeout() {
         return raftGroup.raftConfiguration().minElectionTimeout();
     }

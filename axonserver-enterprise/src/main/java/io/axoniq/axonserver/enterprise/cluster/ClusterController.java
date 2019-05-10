@@ -270,7 +270,8 @@ public class ClusterController implements SmartLifecycle {
     public synchronized ClusterNode addConnection(NodeInfo nodeInfo) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
-            throw new MessagingPlatformException(ErrorCode.SAME_NODE_NAME, "Cannot join cluster with same node name");
+            logger.warn("Trying to join with current node name: {}", nodeInfo.getNodeName());
+            return getMe();
         }
         if (nodeInfo.getInternalHostName().equals(messagingPlatformConfiguration.getInternalHostname())
                 && nodeInfo.getGrpcInternalPort() == messagingPlatformConfiguration.getInternalPort()) {
@@ -287,12 +288,12 @@ public class ClusterController implements SmartLifecycle {
 
 
     private void checkLimit(String nodeName) {
-        if (remoteConnections.containsKey(nodeName)) {
+        if (remoteConnections.containsKey(nodeName) || messagingPlatformConfiguration.getName().equals(nodeName)) {
             return;
         }
         if (limits.getMaxClusterSize() == remoteConnections.size() + 1) {
             throw new MessagingPlatformException(ErrorCode.MAX_CLUSTER_SIZE_REACHED,
-                                                 "Maximum allowed number of nodes reached");
+                                                 "Maximum allowed number of nodes reached " + nodeName);
         }
     }
 

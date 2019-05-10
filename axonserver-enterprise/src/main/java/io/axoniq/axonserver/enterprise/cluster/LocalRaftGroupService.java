@@ -24,6 +24,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,7 @@ import static java.util.stream.Collectors.toSet;
 @Component
 public class LocalRaftGroupService implements RaftGroupService {
     private final Logger logger = LoggerFactory.getLogger(LocalRaftGroupService.class);
+    private final ExecutorService asyncPool = Executors.newCachedThreadPool();
 
     private GrpcRaftController grpcRaftController;
 
@@ -50,12 +53,30 @@ public class LocalRaftGroupService implements RaftGroupService {
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
         Set<String> members = raftNode.currentGroupMembers().stream().map(Node::getNodeName).collect(toSet());
         if (members.contains(node.getNodeName())){
-            MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
-                                                                           "Node is already part of this context.");
-            result.completeExceptionally(ex);
+//            MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
+//                                                                           "Node is already part of this context.");
+            result.complete(ContextUpdateConfirmation.newBuilder()
+                                                     .setSuccess(true)
+                                                     .addAllMembers(raftNode.currentGroupMembers()
+                                                                            .stream()
+                                                                            .map(n -> ContextMember.newBuilder()
+                                                                                                   .setNodeName(n.getNodeName())
+                                                                                                   .setNodeId(n.getNodeId())
+                                                                                                   .setPort(n.getPort())
+                                                                                                   .setHost(n.getHost())
+                                                                                                   .build())
+                                                                            .collect(Collectors.toList()))
+                                                     .build());
         } else {
-            raftNode.addNode(node).whenComplete((configChangeResult, throwable) -> {
-            if( throwable != null) {
+            asyncPool.submit(() -> addNodeAsync(context, node, result, raftNode));
+        }
+        return result;
+    }
+
+    private void addNodeAsync(String context, Node node, CompletableFuture<ContextUpdateConfirmation> result,
+                              RaftNode raftNode) {
+        raftNode.addNode(node).whenComplete((configChangeResult, throwable) -> {
+            if (throwable != null) {
                 logger.error("{}: Exception while adding node {}", context, node.getNodeName(), throwable);
             }
             ContextUpdateConfirmation contextUpdateConfirmation = createContextUpdateConfirmation(raftNode,
@@ -63,10 +84,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                                                   throwable);
 
             result.complete(contextUpdateConfirmation);
-
         });
-        }
-        return result;
     }
 
     @Override

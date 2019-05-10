@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -92,8 +93,7 @@ class LocalRaftConfigService implements RaftConfigService {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, String.format("Node %s not found", node));
         }
         if (clusterNode.getContextNames().contains(context)) {
-            throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
-                                                 String.format("Node %s already member of context %s", node, context));
+            return;
         }
         ContextConfiguration oldConfiguration = createContextConfigBuilder(contextDefinition).build();
         String nodeLabel = generateNodeLabel(node);
@@ -358,15 +358,24 @@ class LocalRaftConfigService implements RaftConfigService {
             ContextConfiguration newContext;
             try {
                 if (context != null) {
-                    oldConfiguration = createContextConfigBuilder(context).build();
-                    ContextConfiguration old = oldConfiguration;
-                    ContextConfiguration pending = ContextConfiguration.newBuilder(old).setPending(true).build();
+                    if(  context.getNodeNames().contains(nodeInfo.getNodeName())) {
+                        logger.info("{}: Node {} is already member", c, node.getNodeName());
+                    } else {
+                        oldConfiguration = createContextConfigBuilder(context).build();
+                        ContextConfiguration old = oldConfiguration;
+                        ContextConfiguration pending = ContextConfiguration.newBuilder(old).setPending(true).build();
 
-                    getFuture(adminNode.appendEntry(ContextConfiguration.class.getName(), pending.toByteArray()));
-                    raftGroupServiceFactory.getRaftGroupService(c)
-                                           .addNodeToContext(c, node)
-                                           .whenComplete((result, throwable) ->
-                                                                 handleContextUpdateResult(c, node.getNodeName(), "add", old, result, throwable));
+                        appendToAdmin(ContextConfiguration.class.getName(), pending.toByteArray());
+                        raftGroupServiceFactory.getRaftGroupService(c)
+                                               .addNodeToContext(c, node)
+                                               .whenComplete((result, throwable) ->
+                                                                     handleContextUpdateResult(c,
+                                                                                               node.getNodeName(),
+                                                                                               "add",
+                                                                                               old,
+                                                                                               result,
+                                                                                               throwable));
+                    }
                 } else {
                     context = new Context(c);
                     oldConfiguration = createContextConfigBuilder(context).build();
@@ -419,14 +428,8 @@ class LocalRaftConfigService implements RaftConfigService {
 
     private void appendToAdmin(String name, byte[] bytes) {
         try {
-            raftGroupServiceFactory.getRaftGroupService(getAdmin()).appendEntry(
-                    getAdmin(),
-                    name,
-                    bytes).whenComplete((result, throwable) -> {
-                if (throwable != null) {
-                    logger.warn("{}: append entry {} failed", getAdmin(), name, throwable);
-                }
-            });
+            getFuture(raftGroupServiceFactory.getRaftGroupService(getAdmin())
+                                             .appendEntry(getAdmin(), name, bytes), 5, TimeUnit.SECONDS);
         } catch(Exception ex) {
             logger.warn("{}: append entry {} failed", getAdmin(), name, ex);
         }
@@ -442,8 +445,8 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void init(List<String> contexts) {
         if (!grpcRaftController.getContexts().isEmpty()){
-            throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
-                    "This node is already part of a cluster and cannot be initialized again.");
+            logger.warn("This node is already part of a cluster and cannot be initialized again.");
+            return;
         }
         for (String context : contexts) {
             if (!contextNameValidation.test(context)) {

@@ -68,7 +68,8 @@ public class ClusterMetricSynchronizer {
                 }
             }
         });
-        clusterPublisher.publish(ConnectorCommand.newBuilder().setMetrics(metrics).build());
+        clusterPublisher.publish(ConnectorCommand.newBuilder()
+                                                 .setMetrics(metrics).build());
     }
 
     private double getPercentile(HistogramSnapshot snapshot, double percentile) {

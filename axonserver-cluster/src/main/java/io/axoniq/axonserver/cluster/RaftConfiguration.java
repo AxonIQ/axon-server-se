@@ -86,4 +86,20 @@ public interface RaftConfiguration {
     default int snapshotFlowBuffer() {
         return 100;
     }
+
+    /**
+     * Defines extra time to wait (in ms.) for initial message in Follower state.
+     * @return the extra time to wait
+     */
+    default int initialElectionTimeout() {
+        return maxElectionTimeout();
+    }
+
+    /**
+     * Option to force new members to first receive a snapshot when they join a cluster
+     * @return true if option enabled
+     */
+    default boolean forceSnapshotOnJoin() {
+        return false;
+    }
 }

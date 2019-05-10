@@ -3,6 +3,8 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
+import io.axoniq.axonserver.cluster.exception.ErrorCode;
+import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
@@ -254,12 +256,18 @@ public class LeaderState extends AbstractMembershipState {
                 logger.warn("{} in term {}: Storing entry failed", groupId(), currentTerm(), failure);
                 appendEntryDone.completeExceptionally(failure);
             } else {
-                pendingEntries.put(e.getIndex(), appendEntryDone);
                 try {
-                    replicators.updateCommitIndex(e.getIndex());
-                    replicators.notifySenders();
+                    if( replicators == null) {
+                        appendEntryDone.completeExceptionally(new LogException(ErrorCode.CLUSTER_ERROR,
+                                                                               "Replicators null when processing entry in LeaderState"));
+                    } else {
+                        pendingEntries.put(e.getIndex(), appendEntryDone);
+                        replicators.updateCommitIndex(e.getIndex());
+                        replicators.notifySenders();
+                    }
                 } catch (Exception ex) {
-                    logger.error("{} in term {}: problem happened during replicators update.", groupId(), currentTerm(), ex);
+                    logger.info("{} in term {}: problem happened during replicators update.", groupId(), currentTerm(), ex);
+                    appendEntryDone.completeExceptionally(ex);
                 }
             }
         });
@@ -279,7 +287,7 @@ public class LeaderState extends AbstractMembershipState {
                 completableFuture.complete(null);
                 lastConfirmed.set(e.getIndex());
             } else {
-                logger.warn(
+                logger.debug(
                         "Failed to retrieve waiting call for log entry index {}, could not complete the request.",
                         e.getIndex());
             }

@@ -445,9 +445,21 @@ public class ReplicatorPeer {
             lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 
+        private boolean forceSnapshot() {
+            if( ! raftGroup.raftConfiguration().forceSnapshotOnJoin()) return false;
+            return matchIndex() == 0 && nextIndex() <= 1;
+        }
+
         private EntryIterator updateEntryIterator() {
             LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
-            if (logEntryStore.firstLogIndex() <= 1 || nextIndex() - 1 >= logEntryStore.firstLogIndex()) {
+            logger.info("{} in term {}: updateEntryIterator nextIndex = {}, matchIndex = {}",
+                        groupId(),
+                        currentTerm(),
+                        nextIndex(),
+                        matchIndex());
+
+            if ( ! forceSnapshot() && (logEntryStore.firstLogIndex() <= 1 ||
+                                        nextIndex() - 1 >= logEntryStore.firstLogIndex())) {
                 entryIterator = logEntryStore.createIterator(nextIndex());
                 return entryIterator;
             } else {

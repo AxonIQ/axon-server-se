@@ -349,11 +349,10 @@ public class RaftNode {
             try {
                 consumer.accept(e);
             } catch (Exception ex) {
-                logger.warn("{} in term {}: Error while applying entry {}: {}",
+                logger.warn("{} in term {}: Error while applying entry {}",
                             groupId(),
                             currentTerm(),
                             e.getIndex(),
-                            e,
                             ex);
             }
         });

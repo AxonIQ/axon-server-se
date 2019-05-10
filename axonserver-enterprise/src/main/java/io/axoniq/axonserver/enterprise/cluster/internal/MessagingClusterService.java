@@ -491,6 +491,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
                     client.getContext(), null, client.getClient(), messagingServerName
             )));
+            clusterController.closeConnection(messagingServerName);
             eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
         }
 
