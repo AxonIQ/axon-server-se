@@ -294,12 +294,7 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void addExistingMemberToContext() {
-        try {
-            testSubject.addNodeToContext("sample", "node1");
-            fail("Expect exception");
-        } catch( MessagingPlatformException mpe) {
-            assertEquals(ErrorCode.ALREADY_MEMBER_OF_CLUSTER, mpe.getErrorCode());
-        }
+        testSubject.addNodeToContext("sample", "node1");
     }
 
     @Test
