@@ -3,6 +3,14 @@ This is the Axon Server Standard Edition, version 4.1.
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.1.2
+-------------------------------
+
+* Status displayed for tracking event processors fixed when segments are running in different applications
+* Tracking event processors are updated in separate thread
+* Logging does not show application data anymore
+* Changed some gRPC error codes returned to avoid clients to disconnect when no command handler found for a command
+
 Release Notes for version 4.1.1
 -------------------------------
 
