@@ -28,6 +28,30 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.1.2
+-------------------------------
+
+- Improvements in replication to nodes that have been down for a long time
+
+- Tracking event processor auto-loadbalancing fixes
+
+- Status displayed for tracking event processors fixed when segments are running in different applications
+
+- Tracking event processors are updated in separate thread
+
+- Logging does not show application data anymore
+
+- Fixed Axon Dashboard list of cluster nodes missing hostname and ports
+
+- Changed some gRPC error codes returned to avoid clients to disconnect
+
+- CLI commands init-cluster/register-node/add-node-to-context are now idempotent
+
+- Register node returns faster (no longer waits for synchronization to new node)
+
+- Reduced risk of re-election if a node restarts
+
+
 Changes in Axon Server 4.1.1
 ----------------------------
 
