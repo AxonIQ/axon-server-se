@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-ee</artifactId>
     <packaging>pom</packaging>
-    <version>4.1.2-SNAPSHOT</version>
+    <version>4.1.2</version>
 
     <name>AxonIQ Axon Server EE</name>
 
@@ -140,7 +140,7 @@
         <connection>scm:git:git://github.com/AxonIQ/axon-server.git</connection>
         <developerConnection>scm:git:git@github.com:AxonIQ/axon-server.git</developerConnection>
         <url>https://github.com/AxonIQ/axon-server</url>
-        <tag>axonserver-4.1</tag>
+        <tag>axonserver-ee-4.1.2</tag>
     </scm>
 
     <distributionManagement>
