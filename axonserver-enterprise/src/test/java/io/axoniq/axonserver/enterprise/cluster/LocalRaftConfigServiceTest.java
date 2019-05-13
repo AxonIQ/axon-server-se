@@ -144,8 +144,8 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public void getStatus(Consumer<Context> contextConsumer) {
-
+        public CompletableFuture<Void> getStatus(Consumer<Context> contextConsumer) {
+            return CompletableFuture.completedFuture(null);
         }
 
         @Override

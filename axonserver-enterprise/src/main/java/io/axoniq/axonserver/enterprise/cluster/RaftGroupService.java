@@ -27,7 +27,7 @@ public interface RaftGroupService {
      */
     CompletableFuture<ContextUpdateConfirmation> addNodeToContext(String context, Node node);
 
-    void getStatus(Consumer<Context> contextConsumer);
+    CompletableFuture<Void> getStatus(Consumer<Context> contextConsumer);
 
     CompletableFuture<Void> initContext(String context, List<Node> nodes);
 

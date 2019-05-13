@@ -116,7 +116,7 @@ class LocalRaftConfigService implements RaftConfigService {
             try {
                 appendToAdmin(oldConfiguration.getClass().getName(), oldConfiguration.toByteArray());
             } catch (Exception second) {
-                logger.debug("{}: Error while restoring old configuration {}", context, second.getMessage());
+                logger.debug("{}: Error while restoring old configuration in admin {}", context, second.getMessage());
             }
             throw throwable;
         }
@@ -134,16 +134,16 @@ class LocalRaftConfigService implements RaftConfigService {
             }
             ContextConfiguration updatedConfiguration = createContextConfiguration(context, result);
             try {
-                appendToAdmin(updatedConfiguration.getClass().getName(), updatedConfiguration.toByteArray());
-            } catch (Exception second) {
-                logger.debug("{}: Error while updating configuration {}", context, second.getMessage());
+                sendToAdmin(updatedConfiguration.getClass().getName(), updatedConfiguration.toByteArray());
+            } catch (Exception exception) {
+                logger.warn("{}: Error sending updated configuration to admin {}", context, exception.getMessage());
             }
         } else {
             logger.error("{}: Failed to {} node {}", context, action, node, throwable);
             try {
                 appendToAdmin(oldConfiguration.getClass().getName(), oldConfiguration.toByteArray());
-            } catch (Exception second) {
-                logger.debug("{}: Error while restoring old configuration {}", context, second.getMessage());
+            } catch (Exception adminException) {
+                logger.debug("{}: Error while restoring old configuration in admin {}", context, adminException.getMessage());
             }
         }
     }
@@ -407,16 +407,16 @@ class LocalRaftConfigService implements RaftConfigService {
                                                    ContextConfiguration confirmConfiguration = ContextConfiguration
                                                            .newBuilder(newContext).setPending(false).build();
                                                    try {
-                                                       appendToAdmin(confirmConfiguration.getClass().getName(), confirmConfiguration.toByteArray());
+                                                       sendToAdmin(confirmConfiguration.getClass().getName(), confirmConfiguration.toByteArray());
                                                    } catch (Exception second) {
-                                                       logger.debug("{}: Error while restoring updating configuration in admin {}", c, second.getMessage());
+                                                       logger.warn("{}: Error while restoring updated configuration in admin {}", c, second.getMessage());
                                                    }
                                                } else {
                                                    logger.warn("{}: Error while creating context", c, throwable);
                                                    try {
                                                        appendToAdmin(old.getClass().getName(), old.toByteArray());
                                                    } catch (Exception second) {
-                                                       logger.debug("{}: Error while restoring old configuration {}", c, second.getMessage());
+                                                       logger.debug("{}: Error while restoring old configuration in admin {}", c, second.getMessage());
                                                    }
 
                                                }
@@ -458,6 +458,10 @@ class LocalRaftConfigService implements RaftConfigService {
                                              .appendEntry(getAdmin(), name, bytes), 5, TimeUnit.SECONDS);
     }
 
+    private void sendToAdmin(String name, byte[] bytes) {
+        raftGroupServiceFactory.getRaftGroupService(getAdmin()).appendEntry(getAdmin(), name, bytes);
+    }
+
     private NodeInfoWithLabel newNodeInfoWithLabel(String nodeLabel, NodeInfo nodeInfo) {
         return NodeInfoWithLabel.newBuilder()
                                 .setLabel(nodeLabel)
@@ -467,10 +471,6 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void init(List<String> contexts) {
-        if (!grpcRaftController.getContexts().isEmpty()){
-            logger.warn("This node is already part of a cluster and cannot be initialized again.");
-            return;
-        }
         for (String context : contexts) {
             if (!contextNameValidation.test(context)) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME, "Invalid context name: "+ context);

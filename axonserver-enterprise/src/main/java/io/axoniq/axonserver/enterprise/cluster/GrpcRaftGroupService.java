@@ -35,7 +35,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        logger.warn("Init context: {}", request);
+        logger.debug("Init context: {}", request);
         try {
             localRaftGroupService.initContext(request.getName(),
                                               request.getMembersList()

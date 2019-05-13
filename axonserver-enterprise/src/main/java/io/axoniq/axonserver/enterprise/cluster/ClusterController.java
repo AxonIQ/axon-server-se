@@ -20,6 +20,7 @@ import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -298,28 +299,30 @@ public class ClusterController implements SmartLifecycle {
     }
 
     private ClusterNode merge(NodeInfo nodeInfo) {
-        ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
-        if (existing == null) {
-            existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
-                                                                      nodeInfo.getGrpcInternalPort());
-            if (existing != null) {
-                entityManager.remove(existing);
-                entityManager.flush();
-                RemoteConnection remoteConnection = remoteConnections.remove(existing.getName());
-                if (remoteConnection != null) {
-                    remoteConnection.close();
+        synchronized (entityManager) {
+            ClusterNode existing = entityManager.find(ClusterNode.class, nodeInfo.getNodeName());
+            if (existing == null) {
+                existing = findFirstByInternalHostNameAndGrpcInternalPort(nodeInfo.getInternalHostName(),
+                                                                          nodeInfo.getGrpcInternalPort());
+                if (existing != null) {
+                    entityManager.remove(existing);
+                    entityManager.flush();
+                    RemoteConnection remoteConnection = remoteConnections.remove(existing.getName());
+                    if (remoteConnection != null) {
+                        remoteConnection.close();
+                    }
                 }
+                existing = ClusterNode.from(nodeInfo);
+                entityManager.persist(existing);
+            } else {
+                existing.setGrpcInternalPort(nodeInfo.getGrpcInternalPort());
+                existing.setGrpcPort(nodeInfo.getGrpcPort());
+                existing.setHostName(nodeInfo.getHostName());
+                existing.setHttpPort(nodeInfo.getHttpPort());
+                existing.setInternalHostName(nodeInfo.getInternalHostName());
             }
-            existing = ClusterNode.from(nodeInfo);
-            entityManager.persist(existing);
-        } else {
-            existing.setGrpcInternalPort(nodeInfo.getGrpcInternalPort());
-            existing.setGrpcPort(nodeInfo.getGrpcPort());
-            existing.setHostName(nodeInfo.getHostName());
-            existing.setHttpPort(nodeInfo.getHttpPort());
-            existing.setInternalHostName(nodeInfo.getInternalHostName());
+            return existing;
         }
-        return existing;
     }
 
     private ClusterNode findFirstByInternalHostNameAndGrpcInternalPort(String internalHostName, int grpcInternalPort) {
@@ -367,9 +370,8 @@ public class ClusterController implements SmartLifecycle {
                                                  "No active Axon servers found for context: " + context);
         }
         String nodeName = nodeSelectionStrategy.selectNode(new ClientIdentification(context,clientName), componentName, activeNodes);
-        if (remoteConnections.containsKey(nodeName)) {
-            return remoteConnections.get(nodeName).getClusterNode();
-        }
+        ClusterNode node = getNode(nodeName);
+        if( node != null && ! StringUtils.isEmpty(node.getHostName())) return node;
         return getMe();
     }
 

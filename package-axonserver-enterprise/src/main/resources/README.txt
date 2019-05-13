@@ -51,6 +51,10 @@ Changes in Axon Server 4.1.2
 
 - Reduced risk of re-election if a node restarts
 
+- Fixed occasional NullPointerException when client connects to a newly registered Axon Server node
+
+- Fixed incorrect leader returned in context API and multiple leaders warning in log
+
 
 Changes in Axon Server 4.1.1
 ----------------------------

@@ -304,7 +304,10 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public Iterator<ReplicatorPeer> replicatorPeers() {
-        return replicators.replicatorPeerMap.values().iterator();
+        return replicators.replicatorPeerMap.values()
+                                            .stream()
+                                            .filter(peer -> ! replicators.nonVotingReplica.contains(peer.nodeId()))
+                                            .iterator();
     }
 
     @Override

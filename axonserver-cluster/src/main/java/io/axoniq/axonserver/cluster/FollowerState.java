@@ -150,7 +150,11 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             heardFromLeader = true;
-            leader = request.getLeaderId();
+            if( ! request.getLeaderId().equals(leader)) {
+                leader = request.getLeaderId();
+                logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leader);
+                raftGroup().localNode().receivedNewLeader(leader);
+            }
             rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
             LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();

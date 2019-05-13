@@ -66,6 +66,7 @@ public class EventProcessorSynchronizer {
      * @param event a {@link PauseEventProcessorRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
+    @EventListener
     public void on(PauseEventProcessorRequest event) {
         if( event.isProxied()) return;
         ClientEventProcessor pauseProcessorRequest = ClientEventProcessor.newBuilder()
@@ -86,6 +87,7 @@ public class EventProcessorSynchronizer {
      * @param event a {@link StartEventProcessorRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
+    @EventListener
     public void on(StartEventProcessorRequest event) {
         if( event.isProxied()) return;
         ClientEventProcessor startProcessorRequest = ClientEventProcessor.newBuilder()
@@ -106,6 +108,7 @@ public class EventProcessorSynchronizer {
      * @param event a {@link ReleaseSegmentRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
+    @EventListener
     public void on(ReleaseSegmentRequest event) {
         if( event.isProxied()) return;
 
