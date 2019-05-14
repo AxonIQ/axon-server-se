@@ -184,9 +184,9 @@ public class PrimaryLogEntryStoreTest {
 
     @Test
     public void createIteratorMultipleSegments() throws InterruptedException, ExecutionException, TimeoutException {
-        SerializedObject so = SerializedObject.newBuilder().setType("Demo").setData(ByteString.copyFromUtf8("Hello, world")).build();
-        CompletableFuture[] futures = new CompletableFuture[100000];
-        IntStream.range(0,futures.length).parallel().forEach(i ->
+        SerializedObject so = SerializedObject.newBuilder().setType("Demo").setData(ByteString.copyFromUtf8(randomString(4000))).build();
+        CompletableFuture[] futures = new CompletableFuture[3000];
+        IntStream.range(0,futures.length).forEach(i ->
                                                                      futures[i] = testSubject.write(i+1, Entry.DataCase.SERIALIZEDOBJECT.getNumber(), so.toByteArray()));
 
         CompletableFuture.allOf(futures).get(1, TimeUnit.SECONDS);

@@ -29,6 +29,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
+import static java.lang.String.format;
+
 /**
  * Entry point to clustering features.
  *
@@ -349,11 +351,10 @@ public class RaftNode {
             try {
                 consumer.accept(e);
             } catch (Exception ex) {
-                logger.warn("{} in term {}: Error while applying entry {}: {}",
+                logger.warn("{} in term {}: Error while applying entry {}",
                             groupId(),
                             currentTerm(),
                             e.getIndex(),
-                            e,
                             ex);
             }
         });
@@ -527,5 +528,21 @@ public class RaftNode {
     // TODO: 2/28/2019 do we really want to expose these???
     public Iterator<ReplicatorPeer> replicatorPeers() {
         return state.get().replicatorPeers();
+    }
+
+    public void receivedNewLeader(String leaderId) {
+        stateChangeListeners.forEach(stateChangeListeners -> {
+            try {
+                StateChanged change = new StateChanged(groupId(),
+                                                       nodeId,
+                                                       toString(state.get()),
+                                                       toString(state.get()),
+                                                       format("Leader changed to %s",leaderId),
+                                                       currentTerm());
+                stateChangeListeners.accept(change);
+            } catch (Exception ex) {
+                logger.warn("{} in term {}: Failed to handle event", groupId(), currentTerm(), ex);
+            }
+        });
     }
 }

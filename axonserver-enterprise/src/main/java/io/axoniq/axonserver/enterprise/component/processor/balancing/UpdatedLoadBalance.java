@@ -6,7 +6,7 @@ import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.strategy.ProcessorLoadBalanceStrategy;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,7 +40,8 @@ public class UpdatedLoadBalance {
 
     private final ProcessorLoadBalanceStrategy delegate;
 
-    private final ProcessorLoadBalancingController processorLoadBalancingController;
+    private final ProcessorLoadBalancingService processorLoadBalancingService;
+
     private final ApplicationEventPublisher eventPublisher;
 
     private final Map<TrackingEventProcessor, ExecutorService> executors = new HashMap<>();
@@ -49,11 +50,11 @@ public class UpdatedLoadBalance {
 
     public UpdatedLoadBalance(Clients clients,
                               ProcessorLoadBalanceStrategy delegate,
-                              ProcessorLoadBalancingController processorLoadBalancingController,
+                              ProcessorLoadBalancingService processorLoadBalancingService,
                               ApplicationEventPublisher eventPublisher) {
         this.clients = clients;
         this.delegate = delegate;
-        this.processorLoadBalancingController = processorLoadBalancingController;
+        this.processorLoadBalancingService = processorLoadBalancingService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -84,9 +85,9 @@ public class UpdatedLoadBalance {
                 boolean updated = count.await(10, SECONDS);
                 updateListeners.remove(consumer);
                 if (updated){
-                    String strategyName = processorLoadBalancingController.findById(processor)
-                                                    .map(ProcessorLoadBalancing::strategy)
-                                                    .orElse("default");
+                    String strategyName = processorLoadBalancingService.findById(processor)
+                                                                       .map(ProcessorLoadBalancing::strategy)
+                                                                       .orElse("default");
 
                     delegate.balance(processor, strategyName).perform();
                 }

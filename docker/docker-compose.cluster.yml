@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.3'
 
 services:
   axonserver-enterprise-1:
@@ -6,66 +6,82 @@ services:
     hostname: axonserver-enterprise-1
     environment:
       - AXONIQ_AXONSERVER_EVENT_STORAGE=/eventstorage
+      - AXONIQ_AXONSERVER_SNAPSHOT_STORAGE=/eventstorage
       - AXONIQ_AXONSERVER_CONTROLDB-PATH=/controldb
       - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-1
       - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-1
-      - AXONIQ_AXONSERVER_CLUSTER_ENABLED=true
+      - AXONIQ_AXONSERVER_REPLICATION_FLOW-BUFFER=50
+      - AXONIQ_AXONSERVER_REPLICATION_MAX-SNAPSHOT-CHUNKS-PER-BATCH=10
+      - AXONIQ_AXONSERVER_REPLICATION_MAX-ENTRIES-PER-BATCH=10
+      - AXONIQ_AXONSERVER_REPLICATION_LOG-STORAGE-FOLDER=/raft-log
+      - SPRING_PROFILES_ACTIVE=internal
       - LOGGING_FILE=/axon-server-logs/axonserver-enterprise-1.log
     volumes:
+      - axonserver-enterprise-1-log:/raft-log
       - axonserver-enterprise-1-eventstore:/eventstorage
       - axonserver-enterprise-1-controldb:/controldb
       - axonserver-logs:/axon-server-logs
     ports:
       - '8024:8024'
       - '8124:8124'
-      - '8224:8224'
   axonserver-enterprise-2:
     image: axonserver-enterprise
     hostname: axonserver-enterprise-2
     environment:
       - AXONIQ_AXONSERVER_EVENT_STORAGE=/eventstorage
+      - AXONIQ_AXONSERVER_SNAPSHOT_STORAGE=/eventstorage
       - AXONIQ_AXONSERVER_CONTROLDB-PATH=/controldb
       - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-2
       - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-2
-      - AXONIQ_AXONSERVER_CLUSTER_ENABLED=true
       - SERVER_PORT=8025
       - AXONIQ_AXONSERVER_PORT=8125
-      - AXONIQ_AXONSERVER_INTERNAL-PORT=8225
+      - AXONIQ_AXONSERVER_REPLICATION_FLOW-BUFFER=50
+      - AXONIQ_AXONSERVER_REPLICATION_MAX-SNAPSHOT-CHUNKS-PER-BATCH=10
+      - AXONIQ_AXONSERVER_REPLICATION_MAX-ENTRIES-PER-BATCH=10
+      - AXONIQ_AXONSERVER_REPLICATION_LOG-STORAGE-FOLDER=/raft-log
+      - SPRING_PROFILES_ACTIVE=internal
       - LOGGING_FILE=/axon-server-logs/axonserver-enterprise-2.log
     volumes:
+      - axonserver-enterprise-2-log:/raft-log
       - axonserver-enterprise-2-eventstore:/eventstorage
       - axonserver-enterprise-2-controldb:/controldb
       - axonserver-logs:/axon-server-logs
     ports:
       - '8025:8025'
       - '8125:8125'
-      - '8225:8225'
   axonserver-enterprise-3:
     image: axonserver-enterprise
     hostname: axonserver-enterprise-3
     environment:
       - AXONIQ_AXONSERVER_EVENT_STORAGE=/eventstorage
+      - AXONIQ_AXONSERVER_SNAPSHOT_STORAGE=/eventstorage
       - AXONIQ_AXONSERVER_CONTROLDB-PATH=/controldb
       - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-3
       - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-3
-      - AXONIQ_AXONSERVER_CLUSTER_ENABLED=true
       - SERVER_PORT=8026
       - AXONIQ_AXONSERVER_PORT=8126
-      - AXONIQ_AXONSERVER_INTERNAL-PORT=8226
+      - AXONIQ_AXONSERVER_REPLICATION_FLOW-BUFFER=50
+      - AXONIQ_AXONSERVER_REPLICATION_MAX-SNAPSHOT-CHUNKS-PER-BATCH=10
+      - AXONIQ_AXONSERVER_REPLICATION_MAX-ENTRIES-PER-BATCH=10
+      - AXONIQ_AXONSERVER_REPLICATION_LOG-STORAGE-FOLDER=/raft-log
+      - SPRING_PROFILES_ACTIVE=internal
       - LOGGING_FILE=/axon-server-logs/axonserver-enterprise-3.log
     volumes:
+      - axonserver-enterprise-3-log:/raft-log
       - axonserver-enterprise-3-eventstore:/eventstorage
       - axonserver-enterprise-3-controldb:/controldb
       - axonserver-logs:/axon-server-logs
     ports:
       - '8026:8026'
       - '8126:8126'
-      - '8226:8226'
 volumes:
+  axonserver-enterprise-1-log:
   axonserver-enterprise-1-eventstore:
   axonserver-enterprise-1-controldb:
+  axonserver-enterprise-2-log:
   axonserver-enterprise-2-eventstore:
   axonserver-enterprise-2-controldb:
+  axonserver-enterprise-3-log:
   axonserver-enterprise-3-eventstore:
   axonserver-enterprise-3-controldb:
   axonserver-logs:

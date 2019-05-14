@@ -33,7 +33,7 @@ public class GrpcInternalQueryDispatcherListener extends GrpcFlowControlledDispa
         }
 
         if (logger.isTraceEnabled()) {
-            logger.trace("Sending query to {}: {}", request.client(), request.query());
+            logger.trace("Sending query to {}: {}", request.client(), request.query().getQuery());
         }
         inboundStream.onNext(ConnectorResponse.newBuilder()
                                               .setQuery(

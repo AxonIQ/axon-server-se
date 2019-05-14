@@ -455,7 +455,7 @@ message LoadBalanceStrategy {
 }
 
 message ProcessorLBStrategy {
-    string component = 1;
+    //    string component = 1; this field is obsoleted, the line is commented in order not to use this index for other purposes
     string processor = 2;
     string context = 3;
     string strategy = 4;

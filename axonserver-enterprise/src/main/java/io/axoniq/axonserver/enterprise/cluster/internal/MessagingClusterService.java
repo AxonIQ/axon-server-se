@@ -465,7 +465,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
         @Override
         public void onError(Throwable throwable) {
-            logger.info("{}: Error on connection from AxonHub node - {}", messagingServerName, throwable.getMessage());
+            logger.warn("{}: Error on connection from AxonServer node - {}", messagingServerName, throwable.getMessage());
             closeConnections();
         }
 
@@ -491,6 +491,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
                     client.getContext(), null, client.getClient(), messagingServerName
             )));
+            clusterController.closeConnection(messagingServerName);
             eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
         }
 
