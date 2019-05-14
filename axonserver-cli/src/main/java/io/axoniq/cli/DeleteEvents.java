@@ -15,7 +15,7 @@ public class DeleteEvents{
     public static void run(String[] args) throws IOException {
         // check args
         CommandLine commandLine = processCommandLine(args[0], args, CommandOptions.TOKEN);
-        String url = createUrl(commandLine, "/v1/devtools/delete-events");
+        String url = createUrl(commandLine, "/v1/devmode/purge-events");
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
             delete(httpclient, url, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
         }

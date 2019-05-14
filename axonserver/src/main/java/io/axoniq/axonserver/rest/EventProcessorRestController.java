@@ -12,7 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.component.processor.ComponentProcessors;
+import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import org.jetbrains.annotations.NotNull;
@@ -63,7 +63,7 @@ public class EventProcessorRestController {
     @GetMapping("components/{component}/processors")
     public Iterable componentProcessors(@PathVariable("component") String component,
                                         @RequestParam("context") String context) {
-        return new ComponentProcessors(component, context, eventProcessors);
+        return new ComponentEventProcessors(component, context, eventProcessors);
     }
 
     @PatchMapping("components/{component}/processors/{processor}/pause")

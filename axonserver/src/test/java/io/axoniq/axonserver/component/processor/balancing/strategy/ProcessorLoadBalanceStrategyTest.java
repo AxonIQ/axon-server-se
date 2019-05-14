@@ -19,7 +19,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -42,12 +42,12 @@ public class ProcessorLoadBalanceStrategyTest {
 
     @Test
     public void balanceThreadNumber() {
-        testSubject.balance(new TrackingEventProcessor("testProcessor", "testComponent", "default"), "threadNumber").perform();
+        testSubject.balance(new TrackingEventProcessor("testProcessor", "default"), "threadNumber").perform();
     }
 
     @Test
     public void balanceDefault() {
-        testSubject.balance(new TrackingEventProcessor("testProcessor", "testComponent", "default"), "default").perform();
+        testSubject.balance(new TrackingEventProcessor("testProcessor", "default"), "default").perform();
     }
 
 }

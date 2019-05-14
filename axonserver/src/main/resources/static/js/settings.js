@@ -26,7 +26,7 @@ globals.pageView = new Vue({
         },
         resetEvents() {
             if(confirm("Are you sure you want to delete all event and snapshot data?")){
-                axios.delete("v1/devtools/delete-events").then(response => {this.reloadStatus()});
+                axios.delete("v1/devmode/purge-events").then(response => {this.reloadStatus()});
             }
 
         }

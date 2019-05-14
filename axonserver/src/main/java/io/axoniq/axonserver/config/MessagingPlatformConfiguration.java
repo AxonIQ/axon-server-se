@@ -99,9 +99,9 @@ public class MessagingPlatformConfiguration {
      */
     private String controldbBackupLocation = ".";
     /*
-     * Maximum inbound message size for gRPC (defaults to same gRPC default size)
+     * Maximum inbound message size for gRPC
      */
-    private int maxMessageSize = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE;;
+    private int maxMessageSize = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE;
     /**
      * Location where AxonServer creates its pid file.
      */
