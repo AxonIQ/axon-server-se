@@ -1,7 +1,10 @@
 package io.axoniq.sample;
 
+import org.axonframework.common.jpa.EntityManagerProvider;
+import org.axonframework.springboot.util.jpa.ContainerManagedEntityManagerProvider;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 /**
  * @author Marc Gathier
@@ -10,6 +13,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class MyApplication {
     public static void main(String[] args) {
         SpringApplication.run(MyApplication.class, args);
+    }
+
+    @Bean
+    public EntityManagerProvider entityManagerProvider() {
+        return new ContainerManagedEntityManagerProvider();
     }
 
 //    @Bean

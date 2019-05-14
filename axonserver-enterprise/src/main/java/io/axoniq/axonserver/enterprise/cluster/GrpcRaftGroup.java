@@ -105,6 +105,16 @@ public class GrpcRaftGroup implements RaftGroup {
             }
 
             @Override
+            public int initialElectionTimeout() {
+                return storageOptions.getInitialElectionTimeout();
+            }
+
+            @Override
+            public boolean forceSnapshotOnJoin() {
+                return storageOptions.isForceSnapshotOnJoin();
+            }
+
+            @Override
             public int heartbeatTimeout() {
                 return storageOptions.getHeartbeatTimeout();
             }
@@ -137,6 +147,11 @@ public class GrpcRaftGroup implements RaftGroup {
             @Override
             public int maxSnapshotNoOfChunksPerBatch() {
                 return storageOptions.getMaxSnapshotChunksPerBatch();
+            }
+
+            @Override
+            public int snapshotFlowBuffer() {
+                return storageOptions.getSnapshotFlowBuffer();
             }
 
             @Override

@@ -80,7 +80,8 @@ public class RemoteRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public void getStatus(Consumer<Context> contextConsumer) {
+    public CompletableFuture<Void> getStatus(Consumer<Context> contextConsumer) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
         stub.getStatus(Context.getDefaultInstance(), new StreamObserver<Context>() {
             @Override
             public void onNext(Context context) {
@@ -91,14 +92,17 @@ public class RemoteRaftGroupService implements RaftGroupService {
             public void onError(Throwable throwable) {
                 // log only
                 logger.debug("Failed to retrieve status");
+                result.complete(null);
             }
 
             @Override
             public void onCompleted() {
                 // no further action needed
+                result.complete(null);
             }
         });
 
+        return result;
     }
 
     @Override

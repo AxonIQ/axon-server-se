@@ -9,18 +9,33 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
+ * JpaRepository for {@link ProcessorLoadBalancing}
+ *
  * @author Marc Gathier
  */
 @Transactional
-public interface ProcessorLoadBalancingRepository extends JpaRepository<ProcessorLoadBalancing, TrackingEventProcessor> {
+public interface ProcessorLoadBalancingRepository
+        extends JpaRepository<ProcessorLoadBalancing, TrackingEventProcessor> {
 
+    /**
+     * Lists all persisted {@link ProcessorLoadBalancing} filtered by the specified strategy.
+     *
+     * @param strategyName the strategy
+     */
     List<ProcessorLoadBalancing> findByStrategy(String strategyName);
 
-    @Query("select p from ProcessorLoadBalancing p where p.processor.component = ?1 and p.processor.context = ?2")
-    List<ProcessorLoadBalancing> findByComponentAndContext(String component, String context);
-
+    /**
+     * Lists all persisted {@link ProcessorLoadBalancing} filtered by the specified context.
+     *
+     * @param context the context
+     */
     @Query("select p from ProcessorLoadBalancing p where p.processor.context = ?1")
     List<ProcessorLoadBalancing> findByContext(String context);
 
+    /**
+     * Deletes all {@link ProcessorLoadBalancing} with the specified context.
+     *
+     * @param context the context
+     */
     void deleteAllByProcessorContext(String context);
 }

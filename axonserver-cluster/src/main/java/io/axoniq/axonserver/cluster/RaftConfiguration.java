@@ -78,4 +78,28 @@ public interface RaftConfiguration {
     default int maxSnapshotNoOfChunksPerBatch(){
         return 10;
     }
+
+    /**
+     * Defines the number of install snapshot requests that can be sent to peer without having a confirmation.
+     * @return flow buffer for install snapshot requests
+     */
+    default int snapshotFlowBuffer() {
+        return 100;
+    }
+
+    /**
+     * Defines extra time to wait (in ms.) for initial message in Follower state.
+     * @return the extra time to wait
+     */
+    default int initialElectionTimeout() {
+        return maxElectionTimeout();
+    }
+
+    /**
+     * Option to force new members to first receive a snapshot when they join a cluster
+     * @return true if option enabled
+     */
+    default boolean forceSnapshotOnJoin() {
+        return false;
+    }
 }

@@ -24,6 +24,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -36,7 +38,9 @@ import static java.util.stream.Collectors.toSet;
  */
 @Component
 public class LocalRaftGroupService implements RaftGroupService {
+
     private final Logger logger = LoggerFactory.getLogger(LocalRaftGroupService.class);
+    private final ExecutorService asyncPool = Executors.newCachedThreadPool();
 
     private GrpcRaftController grpcRaftController;
 
@@ -49,13 +53,31 @@ public class LocalRaftGroupService implements RaftGroupService {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
         Set<String> members = raftNode.currentGroupMembers().stream().map(Node::getNodeName).collect(toSet());
-        if (members.contains(node.getNodeName())){
-            MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
-                                                                           "Node is already part of this context.");
-            result.completeExceptionally(ex);
+        if (members.contains(node.getNodeName())) {
+//            MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
+//                                                                           "Node is already part of this context.");
+            result.complete(ContextUpdateConfirmation.newBuilder()
+                                                     .setSuccess(true)
+                                                     .addAllMembers(raftNode.currentGroupMembers()
+                                                                            .stream()
+                                                                            .map(n -> ContextMember.newBuilder()
+                                                                                                   .setNodeName(n.getNodeName())
+                                                                                                   .setNodeId(n.getNodeId())
+                                                                                                   .setPort(n.getPort())
+                                                                                                   .setHost(n.getHost())
+                                                                                                   .build())
+                                                                            .collect(Collectors.toList()))
+                                                     .build());
         } else {
-            raftNode.addNode(node).whenComplete((configChangeResult, throwable) -> {
-            if( throwable != null) {
+            asyncPool.submit(() -> addNodeAsync(context, node, result, raftNode));
+        }
+        return result;
+    }
+
+    private void addNodeAsync(String context, Node node, CompletableFuture<ContextUpdateConfirmation> result,
+                              RaftNode raftNode) {
+        raftNode.addNode(node).whenComplete((configChangeResult, throwable) -> {
+            if (throwable != null) {
                 logger.error("{}: Exception while adding node {}", context, node.getNodeName(), throwable);
             }
             ContextUpdateConfirmation contextUpdateConfirmation = createContextUpdateConfirmation(raftNode,
@@ -63,15 +85,13 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                                                   throwable);
 
             result.complete(contextUpdateConfirmation);
-
         });
-        }
-        return result;
     }
 
     @Override
-    public void getStatus(Consumer<Context> contextConsumer) {
+    public CompletableFuture<Void> getStatus(Consumer<Context> contextConsumer) {
         grpcRaftController.raftGroups().forEach(name -> contextConsumer.accept(getStatus(name)));
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override
@@ -105,7 +125,7 @@ public class LocalRaftGroupService implements RaftGroupService {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
         raftNode.removeNode(node).whenComplete(((configChangeResult, throwable) -> {
-            if( throwable != null) {
+            if (throwable != null) {
                 logger.error("{}: Exception while deleting node {}", context, node, throwable);
             }
             ContextUpdateConfirmation contextUpdateConfirmation = createContextUpdateConfirmation(raftNode,
@@ -120,25 +140,27 @@ public class LocalRaftGroupService implements RaftGroupService {
 
     @NotNull
     private ContextUpdateConfirmation createContextUpdateConfirmation(RaftNode raftNode,
-                                                                              ConfigChangeResult configChangeResult,
-                                                                              Throwable throwable) {
+                                                                      ConfigChangeResult configChangeResult,
+                                                                      Throwable throwable) {
         ContextUpdateConfirmation.Builder builder = ContextUpdateConfirmation.newBuilder();
 
         raftNode.currentGroupMembers().forEach(n -> builder.addMembers(ContextMember.newBuilder()
-                                                                                .setNodeId(n.getNodeId())
-                                                                                .setNodeName(n.getNodeName())
-                                                                                .setPort(n.getPort())
-                                                                                .setHost(n.getHost())));
+                                                                                    .setNodeId(n.getNodeId())
+                                                                                    .setNodeName(n.getNodeName())
+                                                                                    .setPort(n.getPort())
+                                                                                    .setHost(n.getHost())));
 
 
         builder.setPending(raftNode.isCurrentConfigurationPending());
 
-        if(throwable != null) {
+        if (throwable != null) {
             builder.setSuccess(false);
             builder.setMessage(throwable.getMessage());
         } else {
-            if( configChangeResult.hasFailure()) {
-                logger.error("{}: Exception while changing configuration: {}", raftNode.groupId(), configChangeResult.getFailure());
+            if (configChangeResult.hasFailure()) {
+                logger.error("{}: Exception while changing configuration: {}",
+                             raftNode.groupId(),
+                             configChangeResult.getFailure());
                 builder.setSuccess(false);
                 builder.setMessage(configChangeResult.getFailure().toString());
             } else {
@@ -186,7 +208,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public void stepDown(String context) {
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        if (raftNode != null ) {
+        if (raftNode != null) {
             raftNode.stepdown();
         }
     }
@@ -234,7 +256,7 @@ public class LocalRaftGroupService implements RaftGroupService {
         RaftNode raftNode = null;
         try {
             raftNode = grpcRaftController.getRaftNode(context);
-        } catch(MessagingPlatformException ex) {
+        } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
         return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context));
