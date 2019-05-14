@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -83,7 +84,7 @@ public class HttpStreamingQueryTest {
 
             @Override
             public EventTypeContext getType() {
-                return null;
+                return new EventTypeContext(Topology.DEFAULT_CONTEXT, EventType.EVENT);
             }
 
             @Override

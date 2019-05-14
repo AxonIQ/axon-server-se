@@ -12,9 +12,6 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.boot.actuate.health.Health;
 
-import java.util.Iterator;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -23,25 +20,9 @@ import java.util.function.Predicate;
  */
 public class EventStreamReader {
     private final EventStorageEngine eventStorageEngine;
-    private final Function<Consumer<SerializedEventWithToken>, Registration> liveEventRegistrationFunction;
-    private final EventStreamExecutor eventStreamExecutor;
 
-    public EventStreamReader(EventStorageEngine datafileManagerChain,
-                             Function<Consumer<SerializedEventWithToken>, Registration> liveEventRegistrationFunction,
-                             EventStreamExecutor eventStreamExecutor) {
+    public EventStreamReader(EventStorageEngine datafileManagerChain) {
         this.eventStorageEngine = datafileManagerChain;
-        this.liveEventRegistrationFunction = liveEventRegistrationFunction;
-        this.eventStreamExecutor = eventStreamExecutor;
-    }
-
-    public EventStreamController createController(Consumer<SerializedEventWithToken> eventWithTokenConsumer,
-                                                  Consumer<Throwable> errorCallback) {
-        return new EventStreamController(eventWithTokenConsumer, errorCallback, eventStorageEngine,
-                                         liveEventRegistrationFunction, eventStreamExecutor);
-    }
-
-    public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
-        return eventStorageEngine.transactionIterator(firstToken, limitToken);
     }
 
     public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {

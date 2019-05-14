@@ -26,11 +26,10 @@ public abstract class ReceivingStreamObserver<T> implements StreamObserver<T> {
 
     @Override
     public void onNext(T message) {
-        if( logger.isTraceEnabled()) logger.trace("{}: Received: {}", sender(), message);
         try {
             consume(message);
         } catch( RuntimeException cause) {
-            logger.warn("{}: Execution of command {} failed", sender(), message, cause.getMessage(), cause);
+            logger.warn("{}: Processing of message failed", sender(), cause);
         }
     }
 
