@@ -16,7 +16,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
@@ -137,8 +136,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                      .orElse(0L);
     }
 
-    @Override
-    public FilePreparedTransaction prepareTransaction( List<SerializedEvent> origEventList) {
+    private FilePreparedTransaction prepareTransaction( List<SerializedEvent> origEventList) {
         List<ProcessedEvent>eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
                 Collectors.toList());
         int eventSize = eventBlockSize(eventList);
@@ -147,10 +145,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public CompletableFuture<Long> store(PreparedTransaction basePreparedTransaction) {
+    public CompletableFuture<Long> store(List<SerializedEvent> origEventList) {
+
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
-            FilePreparedTransaction preparedTransaction = (FilePreparedTransaction)basePreparedTransaction;
+            FilePreparedTransaction preparedTransaction = prepareTransaction(origEventList);
             List<ProcessedEvent> eventList = preparedTransaction.getEventList();
             int eventSize = preparedTransaction.getEventSize();
             WritePosition writePosition = preparedTransaction.getWritePosition();
@@ -219,11 +218,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public long getLastToken() {
         return lastToken.get();
-    }
-
-    private AtomicLong lastSequenceForAggregate(String aggregateId, boolean checkAll) {
-        return new AtomicLong( getLastSequenceNumber(aggregateId,
-                                                     checkAll ? Integer.MAX_VALUE : MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK).orElse(-1L));
     }
 
     @Override
@@ -412,35 +406,5 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             size += 4 + event.getSerializedSize();
         }
         return size;
-    }
-
-    private class MinMaxPair {
-
-        private final String key;
-        private final long min;
-        private volatile long max;
-
-        MinMaxPair(String key, long min) {
-            this.key = key;
-            this.min = min;
-            this.max = min-1;
-        }
-
-        public long getMin() {
-            return min;
-        }
-
-        public long getMax() {
-            return max;
-        }
-
-        public void setMax(long max) {
-            if( max != this.max + 1) {
-                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE, String.format("Invalid sequence number %d for aggregate %s, expected %d",
-                                                                                               max, key, this.max+1));
-
-            }
-            this.max = max;
-        }
     }
 }

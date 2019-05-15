@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 
@@ -27,6 +26,7 @@ import java.util.stream.Stream;
  * A single storage engine manages events or snapshots for one context.
  *
  * @author Marc Gathier
+ * @since 4.1
  */
 public interface EventStorageEngine {
 
@@ -37,21 +37,14 @@ public interface EventStorageEngine {
     void init(boolean validate);
 
     /**
-     * Prepare a list of events for storing in the event store. Determines the first token for the group of events.
-     * @param eventList list of events
-     * @return prepared transaction, containing all information to store the events
-     */
-    PreparedTransaction prepareTransaction(List<SerializedEvent> eventList);
-
-    /**
-     * Stores the {@link PreparedTransaction}.
+     * Stores a number of events.
      * Completes the returned completable future when the write is confirmed.
-     * @param eventList the prepared transaction
-     * @return completable future containing the first token from the prepared transaction
+     * @param eventList list of events
+     * @return completable future containing the token of the first stored event
      */
-    default CompletableFuture<Long> store(PreparedTransaction eventList) {
+    default CompletableFuture<Long> store(List<SerializedEvent> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
-        completableFuture.completeExceptionally(new UnsupportedOperationException("Cannot create writable datafile"));
+        completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;
     }
 
@@ -87,30 +80,30 @@ public interface EventStorageEngine {
     /**
      * Retrieves the last event for a specific aggregate id with a sequence number higher than or equal to the given sequence number.
      * Returns empty optional if aggregate is not found or no event with higher sequence number is found.
-     * @param aggregateId the aggregate identifier
+     * @param aggregateIdentifier the aggregate identifier
      * @param minSequenceNumber the minimum sequence number
      * @return optional containing the latest event
      */
-    Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber);
+    Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber);
 
     /**
      * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
      * @param aggregateId the aggregate identifier
-     * @param actualMinSequenceNumber the first sequence number to retrieve
+     * @param minSequenceNumber the first sequence number to retrieve
      * @param eventConsumer the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+    void processEventsPerAggregate(String aggregateId, long minSequenceNumber,
                                    Consumer<SerializedEvent> eventConsumer);
 
     /**
      * Find events for an aggregate and execute the consumer for each event.
      * @param aggregateId the aggregate identifier
-     * @param actualMinSequenceNumber the first sequence number to retrieve
-     * @param actualMaxSequenceNumber the last sequence number to retrieve
+     * @param minSequenceNumber the first sequence number to retrieve
+     * @param maxSequenceNumber the last sequence number to retrieve
      * @param maxResults maximum number of events to apply
      * @param eventConsumer the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber,
+    void processEventsPerAggregate(String aggregateId, long minSequenceNumber, long maxSequenceNumber,
                                    int maxResults, Consumer<SerializedEvent> eventConsumer);
 
 

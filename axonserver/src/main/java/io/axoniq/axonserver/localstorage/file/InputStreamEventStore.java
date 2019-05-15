@@ -11,11 +11,13 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
@@ -63,11 +65,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     @Override
     protected SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
         return indexManager.getPositions(segment, aggregateId   );
-    }
-
-    @Override
-    public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
-        throw new UnsupportedOperationException();
     }
 
     @Override

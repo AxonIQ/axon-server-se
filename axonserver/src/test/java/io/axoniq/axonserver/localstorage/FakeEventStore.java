@@ -11,11 +11,9 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.data.util.CloseableIterator;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -61,11 +59,6 @@ public class FakeEventStore implements EventStorageEngine {
     public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber,
                                           int maxResults, Consumer<SerializedEvent> eventConsumer) {
 
-    }
-
-    @Override
-    public PreparedTransaction prepareTransaction( List<SerializedEvent> eventList) {
-        return null;
     }
 
     @Override

@@ -31,7 +31,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
 
     @Override
     public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
-        return eventStorageEngine.store(eventStorageEngine.prepareTransaction(eventList));
+        return eventStorageEngine.store(eventList);
     }
 
     @Override
