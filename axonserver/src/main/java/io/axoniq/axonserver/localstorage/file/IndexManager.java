@@ -74,8 +74,11 @@ public class IndexManager {
         PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment).getAbsolutePath(),
                                                                positionsPerAggregate.keySet().size(), storageProperties.getBloomIndexFpp());
         filter.create();
+        logger.warn("Add to bloom filter {}", positionsPerAggregate.keySet());
         filter.insertAll(positionsPerAggregate.keySet());
         filter.store();
+
+        getIndex(segment);
     }
 
     public SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
@@ -178,7 +181,7 @@ public class IndexManager {
 
         public SortedSet<PositionInfo> getPositions(String aggregateId) {
             logger.warn("Checking index for {}", aggregateId);
-            logger.warn("Posistions {}", positions.keySet());
+            logger.warn("Positions {}", positions.keySet());
             SortedSet<PositionInfo> aggregatePositions = positions.get(aggregateId);
             return aggregatePositions == null ? Collections.emptySortedSet() : aggregatePositions;
         }
