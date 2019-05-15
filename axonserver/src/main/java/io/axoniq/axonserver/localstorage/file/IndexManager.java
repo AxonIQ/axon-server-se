@@ -74,12 +74,15 @@ public class IndexManager {
         PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment).getAbsolutePath(),
                                                                positionsPerAggregate.keySet().size(), storageProperties.getBloomIndexFpp());
         filter.create();
+        logger.warn("Add to bloom filter {}", positionsPerAggregate.keySet());
         filter.insertAll(positionsPerAggregate.keySet());
         filter.store();
+
+        getIndex(segment);
     }
 
     public SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
-        if(notInBloomIndex(segment,aggregateId)) {
+        if(! indexMap.containsKey(segment) && notInBloomIndex(segment,aggregateId)) {
             return Collections.emptySortedSet();
         }
 
@@ -120,6 +123,7 @@ public class IndexManager {
     }
 
     private boolean notInBloomIndex(Long segment, String aggregateId) {
+        logger.warn("Checking bloom index for {}", aggregateId);
         PersistedBloomFilter persistedBloomFilter = bloomFilterPerSegment.computeIfAbsent(segment, i->loadBloomFilter(segment));
         return persistedBloomFilter != null && !persistedBloomFilter.mightContain(aggregateId);
     }
@@ -176,6 +180,8 @@ public class IndexManager {
         }
 
         public SortedSet<PositionInfo> getPositions(String aggregateId) {
+            logger.warn("Checking index for {}", aggregateId);
+            logger.warn("Positions {}", positions.keySet());
             SortedSet<PositionInfo> aggregatePositions = positions.get(aggregateId);
             return aggregatePositions == null ? Collections.emptySortedSet() : aggregatePositions;
         }

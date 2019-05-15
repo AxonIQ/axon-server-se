@@ -30,6 +30,7 @@ import static junit.framework.TestCase.assertTrue;
  */
 public class InputStreamEventStoreTest {
     private InputStreamEventStore testSubject;
+    private EmbeddedDBProperties embeddedDBProperties;
 
     @Before
     public void setUp()  {
