@@ -120,6 +120,7 @@ public class IndexManager {
     }
 
     private boolean notInBloomIndex(Long segment, String aggregateId) {
+        logger.warn("Checking bloom index for {}", aggregateId);
         PersistedBloomFilter persistedBloomFilter = bloomFilterPerSegment.computeIfAbsent(segment, i->loadBloomFilter(segment));
         return persistedBloomFilter != null && !persistedBloomFilter.mightContain(aggregateId);
     }
@@ -176,6 +177,8 @@ public class IndexManager {
         }
 
         public SortedSet<PositionInfo> getPositions(String aggregateId) {
+            logger.warn("Checking index for {}", aggregateId);
+            logger.warn("Posistions {}", positions.keySet());
             SortedSet<PositionInfo> aggregatePositions = positions.get(aggregateId);
             return aggregatePositions == null ? Collections.emptySortedSet() : aggregatePositions;
         }
