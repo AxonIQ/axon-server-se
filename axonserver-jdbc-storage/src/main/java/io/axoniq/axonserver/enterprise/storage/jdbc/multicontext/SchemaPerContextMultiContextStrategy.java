@@ -1,5 +1,7 @@
-package io.axoniq.axonserver.enterprise.storage.jdbc;
+package io.axoniq.axonserver.enterprise.storage.jdbc.multicontext;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.MultiContextStrategy;
+import io.axoniq.axonserver.enterprise.storage.jdbc.VendorSpecific;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import org.jetbrains.annotations.NotNull;
@@ -30,7 +32,7 @@ public class SchemaPerContextMultiContextStrategy implements MultiContextStrateg
     }
 
     @NotNull
-    String schema(String context) {
+    public String schema(String context) {
         return ("axon_" + context);
     }
 

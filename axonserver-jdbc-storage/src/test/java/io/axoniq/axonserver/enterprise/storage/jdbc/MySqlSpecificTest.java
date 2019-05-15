@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.specific.MySqlSpecific;
 import org.junit.*;
 
 import java.sql.Connection;

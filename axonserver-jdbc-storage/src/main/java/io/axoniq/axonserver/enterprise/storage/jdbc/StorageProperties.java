@@ -1,5 +1,8 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.specific.H2Specific;
+import io.axoniq.axonserver.enterprise.storage.jdbc.specific.MySqlSpecific;
+import io.axoniq.axonserver.enterprise.storage.jdbc.specific.OracleSpecific;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Configuration;
@@ -9,18 +12,40 @@ import java.sql.SQLException;
 import javax.sql.DataSource;
 
 /**
+ * Specific properties for RDMBS storage.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
 @ConfigurationProperties(prefix = "axoniq.axonserver.storage.jdbc")
 @Configuration
 public class StorageProperties {
+
+    /**
+     * The URL for the database connection
+     */
     private String url = "jdbc:h2:mem:test_mem";
+    /**
+     * The database driver to use
+     */
     private String driver = "org.h2.Driver";
+    /**
+     * THe username to logon to the database
+     */
     private String user;
+    /**
+     * The password to logon to the database
+     */
     private String password;
     private VendorSpecific vendorSpecific;
 
-    private MultiContextValue multiContextValue = MultiContextValue.SINGLE_SCHEMA;
+    /**
+     * The strategy to apply for multi-context
+     */
+    private MultiContextOption multiContextStrategy = MultiContextOption.SINGLE_SCHEMA;
+    /**
+     * Store events only when current node is leader
+     */
     private boolean storeOnLeaderOnly;
 
     public String getUrl() {
@@ -64,12 +89,12 @@ public class StorageProperties {
                                 .build();
     }
 
-    public MultiContextValue getMultiContextValue() {
-        return multiContextValue;
+    public MultiContextOption getMultiContextStrategy() {
+        return multiContextStrategy;
     }
 
-    public void setMultiContextValue(MultiContextValue multiContextValue) {
-        this.multiContextValue = multiContextValue;
+    public void setMultiContextStrategy(MultiContextOption multiContextStrategy) {
+        this.multiContextStrategy = multiContextStrategy;
     }
 
     public VendorSpecific getVendorSpecific() throws SQLException {

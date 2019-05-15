@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.multicontext.SchemaPerContextMultiContextStrategy;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import org.junit.*;

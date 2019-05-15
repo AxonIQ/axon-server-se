@@ -1,5 +1,8 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.multicontext.SingleSchemaMultiContextStrategy;
+import io.axoniq.axonserver.enterprise.storage.jdbc.serializer.ProtoMetaDataSerializer;
+import io.axoniq.axonserver.enterprise.storage.jdbc.specific.H2Specific;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -29,7 +32,7 @@ public class JpaLocalEventStoreTest {
                                                                     SingleInstanceTransactionManager::new,
                                                                     new ProtoMetaDataSerializer(),
                                                                     new SingleSchemaMultiContextStrategy(new H2Specific()),
-                                                                    new StoreAlwaysSyncStrategy()));
+                                                                    null));
         testSubject.initContext("default", false);
     }
 

@@ -1,5 +1,7 @@
-package io.axoniq.axonserver.enterprise.storage.jdbc;
+package io.axoniq.axonserver.enterprise.storage.jdbc.multicontext;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.MultiContextStrategy;
+import io.axoniq.axonserver.enterprise.storage.jdbc.VendorSpecific;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 
 import java.sql.Connection;

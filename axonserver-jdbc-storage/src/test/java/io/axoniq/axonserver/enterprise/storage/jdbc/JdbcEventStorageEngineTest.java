@@ -1,11 +1,14 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
+import io.axoniq.axonserver.enterprise.storage.jdbc.multicontext.SingleSchemaMultiContextStrategy;
+import io.axoniq.axonserver.enterprise.storage.jdbc.serializer.ProtoMetaDataSerializer;
+import io.axoniq.axonserver.enterprise.storage.jdbc.specific.H2Specific;
+import io.axoniq.axonserver.enterprise.storage.jdbc.sync.StoreAlwaysSyncStrategy;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import junit.framework.TestCase;
 import org.junit.*;
 
@@ -16,12 +19,12 @@ import java.util.UUID;
 /**
  * @author Marc Gathier
  */
-public class JdbcEventStoreTest {
-    private JdbcEventStore jdbcEventStore;
+public class JdbcEventStorageEngineTest {
+    private JdbcEventStorageEngine jdbcEventStore;
 
     @Before
     public void setUp()  {
-        jdbcEventStore = new JdbcEventStore(new EventTypeContext("DEMO", EventType.EVENT),
+        jdbcEventStore = new JdbcEventStorageEngine(new EventTypeContext("DEMO", EventType.EVENT),
                                             new StorageProperties().dataSource(),
                                             new ProtoMetaDataSerializer(),
                                             new SingleSchemaMultiContextStrategy(new H2Specific()),
@@ -36,10 +39,7 @@ public class JdbcEventStoreTest {
 
     @Test
     public void transactionIterator() {
-        PreparedTransaction preparedTransaction = jdbcEventStore
-                .prepareTransaction(Arrays.asList(serializedEvent("DemoType","DEMO", 0)));
-
-        jdbcEventStore.store(preparedTransaction);
+        jdbcEventStore.store(Arrays.asList(serializedEvent("DemoType","DEMO", 0)));
 
         Iterator<SerializedTransactionWithToken> iterator = jdbcEventStore
                 .transactionIterator(0, 100);
@@ -49,10 +49,7 @@ public class JdbcEventStoreTest {
             TestCase.assertEquals(0, transactionWithToken.getToken());
         }
 
-        preparedTransaction = jdbcEventStore
-                .prepareTransaction(Arrays.asList(serializedEvent("DemoType","DEMO", 1)));
-
-        jdbcEventStore.store(preparedTransaction);
+        jdbcEventStore.store(Arrays.asList(serializedEvent("DemoType","DEMO", 1)));
 
         TestCase.assertTrue(iterator.hasNext());
         TestCase.assertEquals(1, iterator.next().getToken());

@@ -16,6 +16,8 @@ import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 
 import java.sql.Connection;
@@ -41,9 +43,14 @@ import javax.sql.DataSource;
 import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
 
 /**
+ * Implementation of the {@link EventStorageEngine} that stores events in a relational database.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
-public abstract class JdbcAbstractStore implements EventStorageEngine {
+public class JdbcEventStorageEngine implements EventStorageEngine {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JdbcEventStorageEngine.class);
     private static final byte VERSION = 0;
 
     private final String maxGlobalIndex;
@@ -59,6 +66,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     private final String minToken;
 
     private final AtomicLong nextToken = new AtomicLong(0);
+    private final AtomicLong lastToken = new AtomicLong(-1);
     private final EventTypeContext eventTypeContext;
     private final DataSource dataSource;
     private final MetaDataSerializer metaDataSerializer;
@@ -67,11 +75,20 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     private final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
 
 
-    protected JdbcAbstractStore(EventTypeContext eventTypeContext,
-                                DataSource dataSource,
-                                MetaDataSerializer metaDataSerializer,
-                                MultiContextStrategy multiContextStrategy,
-                                SyncStrategy syncStrategy) {
+    /**
+     * Constructs the storage engine
+     *
+     * @param eventTypeContext     the combination of type (event/snapshot) and context for this engine
+     * @param dataSource           the datasource to use
+     * @param metaDataSerializer   serializer to store/retrieve event meta data
+     * @param multiContextStrategy strategy how to handle multi-context
+     * @param syncStrategy         strategy to handle synchronization
+     */
+    public JdbcEventStorageEngine(EventTypeContext eventTypeContext,
+                                  DataSource dataSource,
+                                  MetaDataSerializer metaDataSerializer,
+                                  MultiContextStrategy multiContextStrategy,
+                                  SyncStrategy syncStrategy) {
         this.eventTypeContext = eventTypeContext;
         this.dataSource = dataSource;
         this.metaDataSerializer = metaDataSerializer;
@@ -80,16 +97,25 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
 
         maxGlobalIndex = String.format("select max(global_index) from %s", getTableName());
         deleteAllData = String.format("delete from %s", getTableName());
-        insertEvent = String.format("insert into %s(global_index, aggregate_identifier, event_identifier, meta_data, payload, payload_revision, payload_type, sequence_number, time_stamp, type) values (?,?,?,?,?,?,?,?,?,?)", getTableName());
-        maxSeqnrForAggid = String.format("select max(sequence_number) from %s where aggregate_identifier = ?", getTableName());
-        readEvents = String.format("select * from %s where global_index >= ? order by global_index asc", getTableName());
+        insertEvent = String.format(
+                "insert into %s(global_index, aggregate_identifier, event_identifier, meta_data, payload, payload_revision, payload_type, sequence_number, time_stamp, type) values (?,?,?,?,?,?,?,?,?,?)",
+                getTableName());
+        maxSeqnrForAggid = String.format("select max(sequence_number) from %s where aggregate_identifier = ?",
+                                         getTableName());
+        readEvents = String.format("select * from %s where global_index >= ? order by global_index asc",
+                                   getTableName());
 
-        readEventsForAggidWithinRangeDesc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? and sequence_number <= ? order by sequence_number desc", getTableName());
-        readEventsForAggidDesc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number desc", getTableName());
-        readEventsForAggidAsc = String.format("select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number asc", getTableName());
+        readEventsForAggidWithinRangeDesc = String.format(
+                "select * from %s where aggregate_identifier = ? and sequence_number >= ? and sequence_number <= ? order by sequence_number desc",
+                getTableName());
+        readEventsForAggidDesc = String.format(
+                "select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number desc",
+                getTableName());
+        readEventsForAggidAsc = String.format(
+                "select * from %s where aggregate_identifier = ? and sequence_number >= ? order by sequence_number asc",
+                getTableName());
         tokenAt = String.format("select min(global_index) from %s where time_stamp >= ?", getTableName());
         minToken = String.format("select min(global_index) from %s", getTableName());
-
     }
 
     @Override
@@ -97,19 +123,34 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
         return eventTypeContext;
     }
 
+    /**
+     * Returns an iterator to iterate through the transactions in the store. As the transaction information is not
+     * stored in
+     * the database, each event will be returned as a transaction.
+     *
+     * @param firstToken first tracking token to include in the iterator
+     * @param limitToken last tracking token to include in the iterator (exclusive)
+     * @return iterator of transactions
+     */
     @Override
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         CloseableIterator<SerializedEventWithToken> globalIterator = getGlobalIterator(firstToken, limitToken);
         return new Iterator<SerializedTransactionWithToken>() {
             @Override
             public boolean hasNext() {
-                return globalIterator.hasNext();
+                boolean next = globalIterator.hasNext();
+                if (!next) {
+                    globalIterator.close();
+                }
+                return next;
             }
 
             @Override
             public SerializedTransactionWithToken next() {
                 SerializedEventWithToken event = globalIterator.next();
-                return new SerializedTransactionWithToken(event.getToken(), VERSION, Collections.singletonList(event.getSerializedEvent()));
+                return new SerializedTransactionWithToken(event.getToken(),
+                                                          VERSION,
+                                                          Collections.singletonList(event.getSerializedEvent()));
             }
         };
     }
@@ -123,7 +164,10 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
                  ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
                     Number last = (Number) resultSet.getObject(1);
-                    if (last != null) nextToken.set(last.longValue()+1);
+                    if (last != null) {
+                        nextToken.set(last.longValue() + 1);
+                        lastToken.set(last.longValue());
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -139,16 +183,18 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
                         deleteAllData);
             }
             nextToken.set(0);
+            lastToken.set(-1);
         } catch (SQLException e) {
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         }
     }
 
 
-    @Override
-    public PreparedTransaction prepareTransaction( List<SerializedEvent> eventList) {
+    private PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
         long firstToken = nextToken.getAndAdd(eventList.size());
-        return new PreparedTransaction(firstToken, eventList.stream().map(e -> new WrappedEvent(e, NoOpEventTransformer.INSTANCE)).collect(Collectors.toList()));
+        return new PreparedTransaction(firstToken,
+                                       eventList.stream().map(e -> new WrappedEvent(e, NoOpEventTransformer.INSTANCE))
+                                                .collect(Collectors.toList()));
     }
 
     @Override
@@ -157,8 +203,9 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     }
 
     @Override
-    public CompletableFuture<Long> store(PreparedTransaction preparedTransaction) {
-        if (!syncStrategy.storeOnNode(eventTypeContext)) {
+    public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
+        PreparedTransaction preparedTransaction = prepareTransaction(eventList);
+        if (!syncStrategy.storeOnNode()) {
             return CompletableFuture.completedFuture(preparedTransaction.getToken());
         }
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
@@ -169,7 +216,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
                     insertEvent)) {
                 for (ProcessedEvent event : preparedTransaction.getEventList()) {
                     insert.setLong(1, firstToken++);
-                    if( event.isDomainEvent()) {
+                    if (event.isDomainEvent()) {
                         insert.setString(2, event.getAggregateIdentifier());
                     } else {
                         insert.setString(2, event.getMessageIdentifier());
@@ -186,6 +233,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
                 }
             }
             connection.commit();
+            lastToken.addAndGet(preparedTransaction.getEventList().size());
             completableFuture.complete(preparedTransaction.getToken());
         } catch (SQLException e) {
             completableFuture.completeExceptionally(e);
@@ -195,7 +243,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
 
     @Override
     public long getLastToken() {
-        return nextToken.get()-1;
+        return lastToken.get();
     }
 
     @Override
@@ -207,7 +255,9 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
                     Number last = (Number) resultSet.getObject(1);
-                    if (last != null) return Optional.of(last.longValue());
+                    if (last != null) {
+                        return Optional.of(last.longValue());
+                    }
                 }
                 return Optional.empty();
             }
@@ -236,35 +286,46 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     private CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start, long end) {
         try {
             AtomicReference<Connection> connection = new AtomicReference<>(dataSource.getConnection());
-            AtomicReference<PreparedStatement> preparedStatement = new AtomicReference<>(connection.get().prepareStatement(readEvents));
+            AtomicReference<PreparedStatement> preparedStatement = new AtomicReference<>(connection.get()
+                                                                                                   .prepareStatement(
+                                                                                                           readEvents));
             preparedStatement.get().setLong(1, start);
             AtomicReference<ResultSet> resultSet = new AtomicReference<>(preparedStatement.get().executeQuery());
 
             return new CloseableIterator<SerializedEventWithToken>() {
                 long nextIndex = start;
                 boolean hasNext = start < end && resultSet.get().next();
+
                 @Override
                 public void close() {
+                    close(true);
+                }
+
+                private void close(boolean disconnect) {
                     try {
                         resultSet.get().close();
                         preparedStatement.get().close();
-                        connection.get().close();
+                        if (disconnect) {
+                            connection.get().close();
+                        }
                     } catch (SQLException e) {
                         // Ignore exceptions on close
+                        LOGGER.warn("Failed to close connection", e);
                     }
                 }
 
                 @Override
                 public boolean hasNext() {
-                    if( ! hasNext && nextIndex < end && nextIndex <= getLastToken()) {
+                    if (!hasNext && nextIndex < end && nextIndex <= getLastToken()) {
                         try {
-                        connection.set(dataSource.getConnection());
-                        preparedStatement.set(connection.get().prepareStatement(readEvents));
-                        preparedStatement.get().setLong(1, nextIndex);
-                        resultSet.set( preparedStatement.get().executeQuery());
-                        hasNext = resultSet.get().next();
+                            LOGGER.debug("Create new query at {}", nextIndex);
+                            preparedStatement.set(connection.get().prepareStatement(readEvents));
+                            preparedStatement.get().setLong(1, nextIndex);
+                            resultSet.set(preparedStatement.get().executeQuery());
+                            hasNext = resultSet.get().next();
                         } catch (SQLException e) {
                             // Ignore exceptions on close
+                            LOGGER.warn("Failed to restart query", e);
                         }
                     }
                     return hasNext;
@@ -272,16 +333,16 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
 
                 @Override
                 public SerializedEventWithToken next() {
-                    if( !hasNext) {
+                    if (!hasNext) {
                         throw new NoSuchElementException("No more elements");
                     }
 
                     try {
-                        SerializedEventWithToken event =  readEventWithToken(resultSet.get());
+                        SerializedEventWithToken event = readEventWithToken(resultSet.get());
                         nextIndex = event.getToken() + 1;
                         hasNext = nextIndex < end && resultSet.get().next();
-                        if( !hasNext) {
-                            close();
+                        if (!hasNext) {
+                            close(false);
                         }
                         return event;
                     } catch (SQLException e) {
@@ -300,7 +361,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     }
 
     private SerializedEvent readEvent(ResultSet resultSet) throws SQLException {
-        String type =resultSet.getString("type");
+        String type = resultSet.getString("type");
         Event.Builder builder = Event.newBuilder()
                                      .setAggregateSequenceNumber(resultSet.getLong("sequence_number"))
                                      .setMessageIdentifier(resultSet.getString("event_identifier"))
@@ -316,7 +377,7 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
                                      .setTimestamp(resultSet.getLong("time_stamp"))
                                      .setAggregateType(type);
 
-        if( type != null) {
+        if (type != null) {
             builder.setAggregateIdentifier(resultSet.getString("aggregate_identifier"));
         }
         return new SerializedEvent(builder.build());
@@ -342,7 +403,9 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     }
 
     @Override
-    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+                                          long actualMaxSequenceNumber, int maxResults,
+                                          Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidWithinRangeDesc)) {
@@ -361,7 +424,8 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
     }
 
     @Override
-    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+                                          Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidAsc)) {
@@ -412,7 +476,9 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             while (resultSet.next()) {
                 Object value = resultSet.getObject(1);
-                if (value != null) defaultValue = ((Number) value).longValue();
+                if (value != null) {
+                    defaultValue = ((Number) value).longValue();
+                }
             }
         }
         return defaultValue;
@@ -420,26 +486,25 @@ public abstract class JdbcAbstractStore implements EventStorageEngine {
 
     @Override
     public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
-        String query = String.format("select * from %s where global_index >= ? and time_stamp >= ? order by global_index desc", getTableName());
+        String query = String.format(
+                "select * from %s where global_index >= ? and time_stamp >= ? order by global_index desc",
+                getTableName());
         try (Connection connection = dataSource.getConnection();
-            PreparedStatement preparedStatement = connection.prepareStatement(
+             PreparedStatement preparedStatement = connection.prepareStatement(
                      query)) {
             preparedStatement.setLong(1, minToken);
             preparedStatement.setLong(2, minTimestamp);
 
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while( resultSet.next()) {
+                while (resultSet.next()) {
                     SerializedEventWithToken serializedEventWithToken = readEventWithToken(resultSet);
-                    if( ! consumer.test(serializedEventWithToken.asEventWithToken())) {
+                    if (!consumer.test(serializedEventWithToken.asEventWithToken())) {
                         return;
                     }
                 }
-
             }
-
         } catch (Exception e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }
-
     }
 }

@@ -1,9 +1,9 @@
-package io.axoniq.axonserver.enterprise.storage.jdbc;
+package io.axoniq.axonserver.enterprise.storage.jdbc.serializer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.enterprise.storage.jdbc.MetaDataSerializer;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.internal.MetaData;
-import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;

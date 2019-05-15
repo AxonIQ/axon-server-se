@@ -1,12 +1,17 @@
-package io.axoniq.axonserver.enterprise.storage.jdbc;
+package io.axoniq.axonserver.enterprise.storage.jdbc.specific;
+
+import io.axoniq.axonserver.enterprise.storage.jdbc.JdbcUtils;
+import io.axoniq.axonserver.enterprise.storage.jdbc.VendorSpecific;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 /**
+ * Creation and deletion of database objects specific for a H2 database.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
 public class H2Specific implements VendorSpecific {
 
@@ -45,23 +50,7 @@ public class H2Specific implements VendorSpecific {
                 fullyQualifiedName(schema, table),
                 table);
 
-
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    createTable);
-            try (Statement statement2 = connection.createStatement()) {
-                statement2.execute(
-                        createIndexAggidSeqnr);
-            }
-            try (Statement statement2 = connection.createStatement()) {
-                statement2.execute(
-                        createIndexEventId);
-            }
-        } catch (SQLException sql) {
-            System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
-        }
-
-
+        JdbcUtils.executeStatements(connection, createTable, createIndexAggidSeqnr, createIndexEventId);
     }
 
     private String fullyQualifiedName(String schema, String table) {
@@ -78,22 +67,15 @@ public class H2Specific implements VendorSpecific {
                 return;
             }
         }
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    "create schema " + schema);
-        } catch (SQLException sql) {
-            System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
-        }
+        JdbcUtils.executeStatements(connection, "create schema " + schema);
     }
 
     @Override
     public void dropSchema(String schema, Connection connection) {
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    "drop schema " + schema + " cascade");
+        try {
+            JdbcUtils.executeStatements(connection, "drop schema " + schema + " cascade");
         } catch (SQLException sql) {
             System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
         }
-
     }
 }

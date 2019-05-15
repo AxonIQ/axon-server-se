@@ -1,11 +1,17 @@
-package io.axoniq.axonserver.enterprise.storage.jdbc;
+package io.axoniq.axonserver.enterprise.storage.jdbc.specific;
+
+import io.axoniq.axonserver.enterprise.storage.jdbc.JdbcUtils;
+import io.axoniq.axonserver.enterprise.storage.jdbc.VendorSpecific;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 /**
+ * Creation and deletion of database objects specific for an Oracle database. Oracle does not support create schema command,
+ * so for multi-context option schema-per-context it creates a user per context.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
 public class OracleSpecific implements VendorSpecific {
 
@@ -15,7 +21,7 @@ public class OracleSpecific implements VendorSpecific {
     }
 
     @Override
-    public void createTableIfNotExists(String schema, String table, Connection connection) {
+    public void createTableIfNotExists(String schema, String table, Connection connection) throws SQLException {
         String createTable = String.format(
                 "create table %s.%s ("
                         + "global_index int not null, "
@@ -34,44 +40,20 @@ public class OracleSpecific implements VendorSpecific {
         String createIndexEventId = String.format(
                 "alter table %s.%s add constraint %s_uk2 unique (event_identifier)", schema, table, table);
 
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    createTable);
-            try (Statement statement2 = connection.createStatement()) {
-                statement2.execute(
-                        createIndexAggidSeqnr);
-            }
-            try (Statement statement2 = connection.createStatement()) {
-                statement2.execute(
-                        createIndexEventId);
-            }
-        } catch (SQLException sql) {
-            System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
-        }
-
-
-
+        JdbcUtils.executeStatements(connection, createTable, createIndexAggidSeqnr, createIndexEventId);
     }
 
     @Override
-    public void createSchemaIfNotExists(String schema, Connection connection) {
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    "create user " + schema + " identified by " + schema);
-            try (Statement statement2 = connection.createStatement()) {
-                statement2.execute(
-                        "grant resource to " + schema);
-            }
-        } catch (SQLException sql) {
-            System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
-        }
+    public void createSchemaIfNotExists(String schema, Connection connection) throws SQLException {
+        JdbcUtils.executeStatements(connection, "create user " + schema + " identified by " + schema,
+                                    "grant resource to " + schema);
     }
 
     @Override
     public void dropSchema(String schema, Connection connection) {
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    "create drop " + schema + " cascade");
+        try {
+            JdbcUtils.executeStatements(connection,
+                                    "create drop " + schema + " cascade");
         } catch (SQLException sql) {
             System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
         }

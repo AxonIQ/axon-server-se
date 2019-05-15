@@ -21,6 +21,7 @@
         <module>axondb-migration</module>
         <module>axonserver-cluster</module>
         <module>axonserver-jdbc-storage</module>
+        <module>axonserver-spanner-storage</module>
     </modules>
 
     <properties>

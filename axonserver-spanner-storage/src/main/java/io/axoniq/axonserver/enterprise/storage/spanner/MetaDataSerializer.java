@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.storage.jdbc;
+package io.axoniq.axonserver.enterprise.storage.spanner;
 
 import io.axoniq.axonserver.grpc.MetaDataValue;
 
