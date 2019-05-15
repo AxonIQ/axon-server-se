@@ -79,7 +79,7 @@ public class IndexManager {
     }
 
     public SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
-        if(notInBloomIndex(segment,aggregateId)) {
+        if(! indexMap.containsKey(segment) && notInBloomIndex(segment,aggregateId)) {
             return Collections.emptySortedSet();
         }
 
