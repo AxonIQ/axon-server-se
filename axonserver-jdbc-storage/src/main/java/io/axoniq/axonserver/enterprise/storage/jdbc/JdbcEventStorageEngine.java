@@ -16,6 +16,7 @@ import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
@@ -377,7 +378,7 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
                                      .setTimestamp(resultSet.getLong("time_stamp"))
                                      .setAggregateType(type);
 
-        if (type != null) {
+        if (!StringUtils.isEmpty(type)) {
             builder.setAggregateIdentifier(resultSet.getString("aggregate_identifier"));
         }
         return new SerializedEvent(builder.build());
@@ -441,7 +442,7 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
         }
     }
 
-    protected String getTableName() {
+    private String getTableName() {
         return multiContextStrategy.getTableName(eventTypeContext);
     }
 
