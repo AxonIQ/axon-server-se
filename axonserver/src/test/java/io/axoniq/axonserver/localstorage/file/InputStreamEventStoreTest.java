@@ -86,15 +86,6 @@ public class InputStreamEventStoreTest {
 
     @Test
     public void getAggregatePositions() throws InterruptedException {
-        int retries = 10;
-        while(retries > 0 && ! embeddedDBProperties.getEvent().bloomFilter(Topology.DEFAULT_CONTEXT, 0).exists()) {
-            Thread.sleep(10);
-            retries--;
-        }
-        assertTrue(embeddedDBProperties.getEvent().bloomFilter(Topology.DEFAULT_CONTEXT, 0) + " Exists",
-                   embeddedDBProperties.getEvent().bloomFilter(Topology.DEFAULT_CONTEXT, 0).exists());
-        assertTrue(embeddedDBProperties.getEvent().index(Topology.DEFAULT_CONTEXT, 0) + " Exists",
-                   embeddedDBProperties.getEvent().index(Topology.DEFAULT_CONTEXT, 0).exists());
         SortedSet<PositionInfo> positions = testSubject.getPositions(0, "a83e55b8-68ac-4287-bd9f-e9b90e5bb55c");
         assertEquals(1, positions.size());
     }
