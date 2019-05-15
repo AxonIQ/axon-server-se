@@ -8,6 +8,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NettyChannelBuilder;
 import io.netty.handler.ssl.SslContext;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,41 +28,49 @@ public class ManagedChannelHelper {
 
     public static ManagedChannel createManagedChannel(MessagingPlatformConfiguration messagingPlatformConfiguration, ClusterNode clusterNode) {
 
-        ManagedChannel channel = channelPerNode.get(clusterNode.getName());
-        if( channel != null) return channel;
-
-        channel = createManagedChannel(messagingPlatformConfiguration, clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
-        if( channel != null) {
-            channelPerNode.put(clusterNode.getName(), channel);
-        }
-        return channel;
+        return createManagedChannel(messagingPlatformConfiguration, clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
     }
 
     public static ManagedChannel createManagedChannel(MessagingPlatformConfiguration messagingPlatformConfiguration,  String host, int port) {
-        ManagedChannel channel = null;
-        try {
-            NettyChannelBuilder builder = NettyChannelBuilder.forAddress(host, port);
 
-            if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
-                builder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
-                       .keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS)
-                       .keepAliveWithoutCalls(true);
+        String key = channelKey(host, port);
+        if( channelPerNode.containsKey(key)) return channelPerNode.get(key);
+
+        synchronized (channelPerNode) {
+            if( channelPerNode.containsKey(key)) return channelPerNode.get(key);
+            ManagedChannel channel = null;
+            try {
+                NettyChannelBuilder builder = NettyChannelBuilder.forAddress(host, port);
+
+                if (messagingPlatformConfiguration.getKeepAliveTime() > 0) {
+                    builder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
+                           .keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(),
+                                             TimeUnit.MILLISECONDS)
+                           .keepAliveWithoutCalls(true);
+                }
+                if (messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl()
+                                                                                                     .isEnabled()) {
+                    addTlsConfig(messagingPlatformConfiguration, builder);
+                } else {
+                    builder.usePlaintext();
+                }
+                if (messagingPlatformConfiguration.getMaxMessageSize() > 0) {
+                    builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
+                }
+                builder.directExecutor();
+                channel = builder.build();
+                channelPerNode.put(key, channel);
+            } catch (Exception ex) {
+                logger.warn("Error while building channel - {}", ex.getMessage());
+                return null;
             }
-            if( messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl().isEnabled()) {
-                addTlsConfig(messagingPlatformConfiguration, builder);
-            } else {
-                builder.usePlaintext();
-            }
-            if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
-                builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
-            }
-            builder.directExecutor();
-            channel = builder.build();
-        } catch(Exception ex) {
-            logger.warn("Error while building channel - {}", ex.getMessage());
-            return null;
+            return channel;
         }
-        return channel;
+    }
+
+    @NotNull
+    private static String channelKey(String host, int port) {
+        return host + ":" + port;
     }
 
     private static void addTlsConfig(MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -84,11 +93,11 @@ public class ManagedChannelHelper {
         }
     }
 
-    public static void checkShutdownNeeded(String name, Throwable throwable) {
+    public static void checkShutdownNeeded(String name, int port, Throwable throwable) {
         if( throwable instanceof StatusRuntimeException) {
             StatusRuntimeException sre = (StatusRuntimeException)throwable;
             if( sre.getStatus().getCode().equals(Status.Code.UNAVAILABLE) || sre.getStatus().getCode().equals(Status.Code.INTERNAL)) {
-                ManagedChannel channel = channelPerNode.remove(name);
+                ManagedChannel channel = channelPerNode.remove(channelKey(name, port));
                 if( channel != null) {
                     try {
                         channel.shutdown().awaitTermination(100, TimeUnit.MILLISECONDS);

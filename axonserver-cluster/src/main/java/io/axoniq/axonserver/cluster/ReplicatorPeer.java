@@ -368,6 +368,8 @@ public class ReplicatorPeer {
                                 raftPeer.nodeId(),
                                 after-maxTime);
                 }
+            } catch (IllegalStateException ex) {
+                // Remote peer has sent failure and connection is closed, wait before sending more
             } catch (RuntimeException ex) {
                 logger.warn("{} in term {}: Sending nextEntries to {} failed.",
                             groupId(),

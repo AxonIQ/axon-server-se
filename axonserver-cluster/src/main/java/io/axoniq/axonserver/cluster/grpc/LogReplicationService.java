@@ -34,7 +34,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
                         responseObserver.onNext(response);
                         if (response.hasFailure()) {
-                            responseObserver.onCompleted();
+//                            responseObserver.onCompleted();
                             running = false;
                         }
                     }
@@ -53,6 +53,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             @Override
             public void onCompleted() {
                 logger.debug("Connection completed by peer");
+                responseObserver.onCompleted();
             }
         };
     }
@@ -75,7 +76,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         InstallSnapshotResponse response = target.installSnapshot(installSnapshotRequest);
                         responseObserver.onNext(response);
                         if (response.hasFailure()) {
-                            responseObserver.onCompleted();
+//                            responseObserver.onCompleted();
                             running = false;
                         }
                     }
@@ -94,6 +95,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
             @Override
             public void onCompleted() {
                 logger.debug("Connection completed by peer");
+                responseObserver.onCompleted();
             }
         };
     }
