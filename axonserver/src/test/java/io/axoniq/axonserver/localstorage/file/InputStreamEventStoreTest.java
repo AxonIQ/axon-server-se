@@ -31,10 +31,11 @@ import static junit.framework.TestCase.assertTrue;
  */
 public class InputStreamEventStoreTest {
     private InputStreamEventStore testSubject;
+    private EmbeddedDBProperties embeddedDBProperties;
 
     @Before
     public void setUp() throws IOException {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
+        embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
         embeddedDBProperties.getEvent().setStorage(TestUtils
                                                            .fixPathOnWindows(InputStreamEventStore.class.getResource("/data").getFile()));
         String context = Topology.DEFAULT_CONTEXT;
@@ -84,7 +85,16 @@ public class InputStreamEventStoreTest {
     }
 
     @Test
-    public void getAggregatePositions() {
+    public void getAggregatePositions() throws InterruptedException {
+        int retries = 10;
+        while(retries > 0 && ! embeddedDBProperties.getEvent().bloomFilter(Topology.DEFAULT_CONTEXT, 0).exists()) {
+            Thread.sleep(10);
+            retries--;
+        }
+        assertTrue(embeddedDBProperties.getEvent().bloomFilter(Topology.DEFAULT_CONTEXT, 0) + " Exists",
+                   embeddedDBProperties.getEvent().bloomFilter(Topology.DEFAULT_CONTEXT, 0).exists());
+        assertTrue(embeddedDBProperties.getEvent().index(Topology.DEFAULT_CONTEXT, 0) + " Exists",
+                   embeddedDBProperties.getEvent().index(Topology.DEFAULT_CONTEXT, 0).exists());
         SortedSet<PositionInfo> positions = testSubject.getPositions(0, "a83e55b8-68ac-4287-bd9f-e9b90e5bb55c");
         assertEquals(1, positions.size());
     }
