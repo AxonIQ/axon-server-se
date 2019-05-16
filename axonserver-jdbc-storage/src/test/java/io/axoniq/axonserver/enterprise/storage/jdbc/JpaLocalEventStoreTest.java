@@ -2,7 +2,6 @@ package io.axoniq.axonserver.enterprise.storage.jdbc;
 
 import io.axoniq.axonserver.enterprise.storage.jdbc.multicontext.SingleSchemaMultiContextStrategy;
 import io.axoniq.axonserver.enterprise.storage.jdbc.serializer.ProtoMetaDataSerializer;
-import io.axoniq.axonserver.enterprise.storage.jdbc.specific.H2Specific;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -14,6 +13,7 @@ import org.junit.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -27,11 +27,12 @@ public class JpaLocalEventStoreTest {
     private LocalEventStore testSubject;
 
     @Before
-    public void setup() {
-        testSubject = new LocalEventStore(new JdbcEventStoreFactory(new StorageProperties(),
+    public void setup() throws SQLException {
+        StorageProperties storageProperties = new StorageProperties();
+        testSubject = new LocalEventStore(new JdbcEventStoreFactory(storageProperties,
                                                                     SingleInstanceTransactionManager::new,
                                                                     new ProtoMetaDataSerializer(),
-                                                                    new SingleSchemaMultiContextStrategy(new H2Specific()),
+                                                                    new SingleSchemaMultiContextStrategy(storageProperties.getVendorSpecific()),
                                                                     null));
         testSubject.initContext("default", false);
     }

@@ -2,7 +2,7 @@
 
 _Experimental_
 
-Stores events in a relational database. Currently tested with H2, MySQL and Oracle.
+Stores events in a relational database. Currently tested with H2, MySQL, PostgreSQL and Oracle.
 
 ## Set up
 
@@ -13,6 +13,7 @@ In axonserver.properties set the following properties to use a relational databa
     axoniq.axonserver.storage.jdbc.driver=<DriverClass>
     axoniq.axonserver.storage.jdbc.user=<UserId to connect to the database>
     axoniq.axonserver.storage.jdbc.password=<Password to connect to the database>
+    axoniq.axonserver.storage.jdbc.default-schema=schema
     axoniq.axonserver.storage.jdbc.multi-context-strategy=schema-per-context or single-schema
     axoniq.axonserver.storage.jdbc.store-on-leader-only=true or false
     
@@ -24,7 +25,8 @@ context:
 
 1. schema-per-context, creates a separate schema per context (for Oracle this is a separate user per context)
    
-1. single-schema, creates an event and a snapshot table per context in the current schema
+1. single-schema, creates an event and a snapshot table per context in the current schema 
+   (use default-schema property if you want to use another schema than 'public' in PostgreSQL)
 
 Note that the JDBC storage engine uses the same connection information for all contexts, so the user
 connecting to the database needs to have the right credentials to create the objects or they have to 

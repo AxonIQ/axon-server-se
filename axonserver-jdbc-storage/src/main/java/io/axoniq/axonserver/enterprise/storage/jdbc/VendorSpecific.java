@@ -42,4 +42,8 @@ public interface VendorSpecific {
      * @param connection the connection to use
      */
     void dropSchema(String schema, Connection connection);
+
+    default String fullyQualified(String tableName) {
+        return tableName;
+    }
 }

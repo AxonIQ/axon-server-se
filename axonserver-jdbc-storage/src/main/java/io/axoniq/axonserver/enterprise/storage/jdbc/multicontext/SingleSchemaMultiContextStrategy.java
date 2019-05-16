@@ -19,11 +19,14 @@ public class SingleSchemaMultiContextStrategy implements MultiContextStrategy {
 
     @Override
     public String getTableName(EventTypeContext eventTypeContext) {
+        return vendorSpecific.fullyQualified(tableName(eventTypeContext));
+    }
+    private String tableName(EventTypeContext eventTypeContext) {
         return eventTypeContext.getContext() + "_" + eventTypeContext.getEventType().name();
     }
 
     @Override
     public void init(EventTypeContext eventTypeContext, Connection connection) throws SQLException {
-        vendorSpecific.createTableIfNotExists(getTableName(eventTypeContext), connection);
+        vendorSpecific.createTableIfNotExists(tableName(eventTypeContext), connection);
     }
 }
