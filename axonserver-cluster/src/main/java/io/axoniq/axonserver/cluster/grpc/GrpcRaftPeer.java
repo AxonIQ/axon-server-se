@@ -40,9 +40,6 @@ public class GrpcRaftPeer implements RaftPeer {
     private final AtomicReference<InstallSnapshotStream> installSnapshotStreamRef = new AtomicReference<>();
     private final AtomicReference<Consumer<InstallSnapshotResponse>> installSnapshotResponseListener = new AtomicReference<>();
 
-    public GrpcRaftPeer(Node node) {
-        this(node, new DefaultGrpcRaftClientFactory(), 5000);
-    }
 
     public GrpcRaftPeer(Node node, GrpcRaftClientFactory clientFactory, long idleConnectionTimeout) {
         this.node = node;

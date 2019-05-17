@@ -3,13 +3,12 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.cluster.grpc.GrpcRaftClientFactory;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
-import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.grpc.cluster.LeaderElectionServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.grpc.Channel;
 import io.grpc.ClientInterceptor;
-import io.grpc.ManagedChannel;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -19,27 +18,28 @@ import org.springframework.stereotype.Controller;
  */
 @Controller
 public class AxonServerGrpcRaftClientFactory implements GrpcRaftClientFactory {
-    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final ClientInterceptor[] interceptors;
+    private final ChannelProvider channelProvider;
 
     public AxonServerGrpcRaftClientFactory(
-            MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+            MessagingPlatformConfiguration messagingPlatformConfiguration,
+            ChannelProvider channelProvider) {
         this.interceptors = new ClientInterceptor[]{
                 new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken())
         };
 
+        this.channelProvider = channelProvider;
     }
 
     @Override
     public LogReplicationServiceGrpc.LogReplicationServiceStub createLogReplicationServiceStub(Node node) {
-        ManagedChannel channel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, new ClusterNode(node));
+        Channel channel = channelProvider.get(node);
         return LogReplicationServiceGrpc.newStub(channel).withInterceptors(interceptors);
     }
 
     @Override
     public LeaderElectionServiceGrpc.LeaderElectionServiceStub createLeaderElectionStub(Node node) {
-        ManagedChannel channel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, new ClusterNode(node));
+        Channel channel = channelProvider.get(node);
         return LeaderElectionServiceGrpc.newStub(channel).withInterceptors(interceptors);
     }
 }

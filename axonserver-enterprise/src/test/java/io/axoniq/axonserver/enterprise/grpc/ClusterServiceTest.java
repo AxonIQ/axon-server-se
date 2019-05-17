@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 
 /**
  * @author Marc Gathier
@@ -58,6 +58,7 @@ public class ClusterServiceTest {
                 .setComponentName("component")
                 .setClientId("client")
                 .build();
+
         AtomicReference<PlatformInfo> clusterInfoRef = new AtomicReference<>();
         AtomicBoolean completed = new AtomicBoolean(false);
         testSubject.getPlatformServer(request, new StreamObserver<PlatformInfo>() {

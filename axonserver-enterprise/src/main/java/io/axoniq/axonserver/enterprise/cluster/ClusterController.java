@@ -13,6 +13,7 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ChannelCloser;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -65,6 +66,7 @@ public class ClusterController implements SmartLifecycle {
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String,ClusterNode> nodeMap = new ConcurrentHashMap<>();
+    private final ChannelCloser channelCloser;
     private volatile boolean running;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -76,8 +78,8 @@ public class ClusterController implements SmartLifecycle {
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
                              ApplicationEventPublisher applicationEventPublisher,
-                             FeatureChecker limits
-    ) {
+                             FeatureChecker limits,
+                             ChannelCloser channelCloser) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.clusterConfiguration = clusterConfiguration;
         this.entityManager = entityManager;
@@ -88,6 +90,7 @@ public class ClusterController implements SmartLifecycle {
         this.commandDispatcher = commandDispatcher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
+        this.channelCloser = channelCloser;
     }
 
 
@@ -219,7 +222,8 @@ public class ClusterController implements SmartLifecycle {
                 RemoteConnection remoteConnection = new RemoteConnection(this, clusterNode,
                                                                          stubFactory,
                                                                          queryDispatcher,
-                                                                         commandDispatcher);
+                                                                         commandDispatcher,
+                                                                         channelCloser);
                 remoteConnections.put(clusterNode.getName(), remoteConnection);
 
                 if (connect) {

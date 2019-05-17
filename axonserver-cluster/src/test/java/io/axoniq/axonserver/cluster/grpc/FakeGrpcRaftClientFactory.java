@@ -8,7 +8,7 @@ import io.grpc.netty.NettyChannelBuilder;
 /**
  * @author Marc Gathier
  */
-public class DefaultGrpcRaftClientFactory implements GrpcRaftClientFactory {
+public class FakeGrpcRaftClientFactory implements GrpcRaftClientFactory {
 
     @Override
     public LogReplicationServiceGrpc.LogReplicationServiceStub createLogReplicationServiceStub(Node node) {

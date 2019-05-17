@@ -126,7 +126,9 @@ public class RaftServerTest {
 
         private void initializePeers(List<Node> nodes) {
             raftPeerMap.clear();
-            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(node)));
+            nodes.forEach(node -> raftPeerMap
+                    .put(node.getNodeId(), new GrpcRaftPeer(node, new FakeGrpcRaftClientFactory(), 5000)));
+
         }
 
         @Override
@@ -156,7 +158,7 @@ public class RaftServerTest {
 
         @Override
         public RaftPeer peer(Node node) {
-            return new GrpcRaftPeer(node);
+            return new GrpcRaftPeer(node, new FakeGrpcRaftClientFactory(), 5000);
         }
 
         @Override

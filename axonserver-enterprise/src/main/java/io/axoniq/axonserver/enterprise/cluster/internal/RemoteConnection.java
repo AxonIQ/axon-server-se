@@ -4,6 +4,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.grpc.ChannelCloser;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.ProcessingKey;
@@ -61,17 +62,21 @@ public class RemoteConnection  {
     private volatile String errorMessage;
     private final long connectionWaitTime;
     private final AtomicInteger repeatedErrorCount = new AtomicInteger(IGNORE_SAME_ERROR_COUNT);
+    private final ChannelCloser channelCloser;
+
 
     public RemoteConnection(ClusterController clusterController, ClusterNode clusterNode,
                             StubFactory stubFactory,
                             QueryDispatcher queryDispatcher,
-                            CommandDispatcher commandDispatcher) {
+                            CommandDispatcher commandDispatcher,
+                            ChannelCloser channelCloser) {
         this.clusterController = clusterController;
         this.clusterNode = clusterNode;
         this.stubFactory = stubFactory;
         this.queryDispatcher = queryDispatcher;
         this.commandDispatcher = commandDispatcher;
         this.connectionWaitTime = clusterController.getConnectionWaitTime();
+        this.channelCloser = channelCloser;
     }
 
     public synchronized RemoteConnection init() {
@@ -176,7 +181,7 @@ public class RemoteConnection  {
                     @Override
                     public void onError(Throwable throwable) {
                         if (!String.valueOf(throwable.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
-                            ManagedChannelHelper.checkShutdownNeeded(clusterNode.getName(), throwable);
+                            channelCloser.shutdownIfNeeded(clusterNode, throwable);
                             logger.warn("Error on {}:{} - {}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort(), throwable.getMessage());
                             errorMessage = String.valueOf(throwable.getMessage());
                             repeatedErrorCount.set(IGNORE_SAME_ERROR_COUNT);
