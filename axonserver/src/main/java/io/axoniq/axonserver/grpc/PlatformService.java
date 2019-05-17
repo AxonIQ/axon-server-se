@@ -16,6 +16,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmen
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.MergeEventProcessorSegment;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
@@ -103,6 +104,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     @Override
     public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {
         String context = contextProvider.getContext();
+        eventPublisher.publishEvent(new ClientTagsUpdate(request.getClientId(), context, request.getTagsMap()));
         try {
             AxonServerNode connectTo = topology.findNodeForClient(request.getClientId(),
                                                                   request.getComponentName(),
