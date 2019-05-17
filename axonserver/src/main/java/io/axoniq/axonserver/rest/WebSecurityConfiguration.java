@@ -224,7 +224,10 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
 
         private boolean isLocalRequest(HttpServletRequest httpServletRequest) {
-            return ( httpServletRequest.getRequestURI().startsWith("/v1/cluster") ||
+            return (
+                    (httpServletRequest.getRequestURI().startsWith("/v1/public")
+                            && httpServletRequest.getMethod().equals("GET")) ||
+                            httpServletRequest.getRequestURI().startsWith("/v1/cluster") ||
                     httpServletRequest.getRequestURI().startsWith("/v1/context") ||
                     httpServletRequest.getRequestURI().startsWith("/v1/users") ||
                     httpServletRequest.getRequestURI().startsWith("/v1/applications") )
