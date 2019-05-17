@@ -73,7 +73,7 @@ public class TrackingEventProcessorManagerTest {
                 }
             };
         };
-        testSubject = new TrackingEventProcessorManager("demo", iteratorBuilder);
+        testSubject = new TrackingEventProcessorManager("demo", iteratorBuilder, 1000);
     }
 
     @Test

@@ -68,15 +68,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long newPermitsTimeout=120000;
 
     private final int maxEventCount;
+    private final int blacklistedSendAfter;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
-        this(eventStoreFactory, Short.MAX_VALUE);
+        this(eventStoreFactory, Short.MAX_VALUE, 1000);
     }
 
     @Autowired
-    public LocalEventStore(EventStoreFactory eventStoreFactory, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount) {
+    public LocalEventStore(EventStoreFactory eventStoreFactory,
+                           @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
+                           @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter) {
         this.eventStoreFactory = eventStoreFactory;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
+        this.blacklistedSendAfter = blacklistedSendAfter;
     }
 
     public void initContext(String context, boolean validating) {
@@ -223,6 +227,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     controller = workers(context).createEventTracker(getEventsRequest,responseStreamObserver);
                 } else {
                     controller.addPermits((int)getEventsRequest.getNumberOfPermits());
+                }
+                if( getEventsRequest.getBlacklistCount() > 0) {
+                    controller.addBlacklist(getEventsRequest.getBlacklistList());
                 }
             }
 
@@ -408,7 +415,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
             this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
             this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
-            this.trackingEventManager = new TrackingEventProcessorManager(eventStorageEngine);
+            this.trackingEventManager = new TrackingEventProcessorManager(eventStorageEngine, blacklistedSendAfter);
 
             this.eventStreamReader = new EventStreamReader(eventStorageEngine);
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
