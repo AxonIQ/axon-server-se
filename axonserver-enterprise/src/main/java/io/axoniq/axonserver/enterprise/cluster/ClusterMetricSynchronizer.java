@@ -64,11 +64,13 @@ public class ClusterMetricSynchronizer {
                         metrics.addMetrics(
                                 Metric.newBuilder().setName(meter.getId().getName())
                                       .setSize((long) ((Gauge)meter).value())
+                                      .setMean(((Gauge)meter).value())
                         );
                 }
             }
         });
-        clusterPublisher.publish(ConnectorCommand.newBuilder().setMetrics(metrics).build());
+        clusterPublisher.publish(ConnectorCommand.newBuilder()
+                                                 .setMetrics(metrics).build());
     }
 
     private double getPercentile(HistogramSnapshot snapshot, double percentile) {

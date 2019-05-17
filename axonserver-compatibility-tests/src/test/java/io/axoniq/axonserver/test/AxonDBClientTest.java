@@ -29,7 +29,7 @@ public class AxonDBClientTest {
 
         AxonDBConfiguration axonDBConfiguration = AxonDBConfiguration.newBuilder("localhost:" + fixture.getPort()).build();
         axonDBConfiguration.setToken("1234");
-        axonDBConfiguration.setContext("SAMPLE");
+        axonDBConfiguration.setContext("default");
         AxonDBClient axonDBClient = new AxonDBClient(axonDBConfiguration);
 
         io.axoniq.axondb.grpc.TrackingToken token = axonDBClient.getFirstToken().get();

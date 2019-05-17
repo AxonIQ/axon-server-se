@@ -144,8 +144,8 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public void getStatus(Consumer<Context> contextConsumer) {
-
+        public CompletableFuture<Void> getStatus(Consumer<Context> contextConsumer) {
+            return CompletableFuture.completedFuture(null);
         }
 
         @Override
@@ -294,12 +294,7 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void addExistingMemberToContext() {
-        try {
-            testSubject.addNodeToContext("sample", "node1");
-            fail("Expect exception");
-        } catch( MessagingPlatformException mpe) {
-            assertEquals(ErrorCode.ALREADY_MEMBER_OF_CLUSTER, mpe.getErrorCode());
-        }
+        testSubject.addNodeToContext("sample", "node1");
     }
 
     @Test
@@ -371,6 +366,14 @@ public class LocalRaftConfigServiceTest {
     public void joinAllContexts() {
         when(adminNode.isLeader()).thenReturn(true);
         testSubject.join(NodeInfo.newBuilder().setNodeName("node3").setInternalHostName("node3").setHostName("node3").build());
+
+    }
+
+    @Test
+    public void joinNoContexts() {
+        when(adminNode.isLeader()).thenReturn(true);
+        testSubject.join(NodeInfo.newBuilder().setNodeName("node3").setInternalHostName("node3").setHostName("node3")
+                .addContexts(ContextRole.newBuilder().setName("_none")).build());
 
     }
 

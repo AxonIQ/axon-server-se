@@ -253,7 +253,11 @@ public class RemoteConnection  {
 
     public void close() {
         if (connected.compareAndSet(true, false) && requestStreamObserver != null) {
-            requestStreamObserver.onCompleted();
+            try {
+                requestStreamObserver.onCompleted();
+            } catch (Exception ex) {
+                // Ignore exception in onCompleted
+            }
         }
     }
 

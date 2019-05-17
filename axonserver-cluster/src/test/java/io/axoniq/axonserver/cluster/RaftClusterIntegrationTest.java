@@ -26,7 +26,7 @@ public class RaftClusterIntegrationTest {
 
     @Parameterized.Parameters(name = "{0} nodes")
     public static Collection<?> data() {
-        return Arrays.asList(3, 5, 7, 9);
+        return Arrays.asList(3, 5);
     }
 
     @Before

@@ -10,14 +10,22 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static java.util.concurrent.ConcurrentHashMap.newKeySet;
 
 /**
- * Informs the world about leadership changes in the cluster.
+ * Retrieves leader information about contexts where this node is not a member of. Admin nodes need this information to send
+ * admin requests to the right node.
  *
  * @author Marc Gathier
  * @since 4.1
@@ -31,7 +39,6 @@ public class LeadershipStatusNotifier {
     private final RaftGroupServiceFactory raftServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ApplicationEventPublisher eventPublisher;
-    private final Map<String, Set<String>> leadersPerContext = new ConcurrentHashMap<>();
 
     /**
      * Creates an instance of Leadership Status Notifier.
@@ -56,44 +63,73 @@ public class LeadershipStatusNotifier {
      * context.
      * Sent to all nodes, each node will reply for its contexts.
      */
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedRate = 5000)
     public void updateStatus() {
-        checkLeadershipChanges();
-        leadersPerContext.clear();
-        updateLeadership();
+        Map<String, Set<String>> leadersPerContext = new ConcurrentHashMap<>();
+        updateLeadership(leadersPerContext);
+        checkLeadershipChanges(leadersPerContext);
     }
 
-    private void checkLeadershipChanges() {
+    private void checkLeadershipChanges(
+            Map<String, Set<String>> leadersPerContext) {
+        Collection<String> myContexts = contextController.getMyContextNames();
+        // Ignore information for contexts that I am a member of as leader information for these contexts
+        // is updated through the raft groups
+//        leadersPerContext.entrySet().removeIf(e -> myContexts.contains(e.getKey()));
         leadersPerContext.forEach((context, leaders) -> {
             String lastKnownLeader = raftLeaderProvider.getLeader(context);
-            if (leaders.size() == 0) {
-                if (lastKnownLeader != null) {
-                    publishLeaderConfirmation(context, null);
-                }
-            } else {
-                if (leaders.size() > 1) {
-                    logger.warn("Found {} leaders for context {}. They are {}.",
-                                leaders.size(),
-                                context,
-                                String.join(",", leaders));
-                }
-                if (lastKnownLeader == null || !leaders.contains(lastKnownLeader)) {
+            logger.debug("{}: lastKnown {}, leaders: {}", context, lastKnownLeader, leaders);
+            if (myContexts.contains(context)) {
+                // On registration of a node there is no event from raft with the leader
+                // TODO: MGA: find a better way for this
+                if (lastKnownLeader == null && !leaders.isEmpty()) {
                     String anyLeader = leaders.stream()
                                               .findAny()
                                               .get();
                     publishLeaderConfirmation(context, anyLeader);
                 }
+            } else {
+                if (leaders.isEmpty()) {
+                    if (lastKnownLeader != null) {
+                        publishLeaderConfirmation(context, null);
+                    }
+                } else {
+                    if (leaders.size() > 1) {
+                        logger.warn("Found {} leaders for context {}. They are {}.",
+                                    leaders.size(),
+                                    context,
+                                    String.join(",", leaders));
+                    }
+                    if (lastKnownLeader == null || !leaders.contains(lastKnownLeader)) {
+                        String anyLeader = leaders.stream()
+                                                  .findAny()
+                                                  .get();
+                        publishLeaderConfirmation(context, anyLeader);
+                    }
+                }
             }
         });
     }
 
-    private void updateLeadership() {
+    private void updateLeadership(Map<String, Set<String>> leadersPerContext) {
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
         contextController.getRemoteNodes()
-                         .forEach(node -> raftServiceFactory.getRaftGroupServiceForNode(node)
-                                                            .getStatus(this::updateLeader));
+                         .forEach(node -> futures.add(raftServiceFactory.getRaftGroupServiceForNode(node)
+                                                            .getStatus(context -> updateLeader(context, leadersPerContext))));
+
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            logger.info("Exception while waiting for status from remote nodes", e);
+        } catch (TimeoutException e) {
+            // Ignore timeout
+            logger.info("Timeout while waiting for status from remote nodes");
+        }
     }
 
-    private void updateLeader(Context context) {
+    private void updateLeader(Context context, Map<String, Set<String>> leadersPerContext) {
         context.getMembersList()
                .stream()
                .filter(cm -> State.LEADER.getNumber() == cm.getState().getNumber())

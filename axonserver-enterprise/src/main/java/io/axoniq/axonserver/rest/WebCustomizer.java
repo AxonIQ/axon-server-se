@@ -28,7 +28,7 @@ public class WebCustomizer {
 
     @GetMapping("pages")
     public List<PageDefinition> pages() {
-        logger.info("Pages: {}", pages);
+        logger.debug("Pages: {}", pages);
         return pages.stream().map(PageDefinition::new).collect(Collectors.toList());
     }
 

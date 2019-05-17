@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
  */
 public class EventProcessorSynchronizerTest {
 
-    private static final boolean PROXIED = true;
+    private static final boolean PROXIED = false;
     private static final String CLIENT_NAME = "clientName";
     private static final String PROCESSOR_NAME = "processorName";
     private static final int SEGMENT_ID = 1;

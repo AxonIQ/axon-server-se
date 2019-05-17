@@ -7,8 +7,9 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
+import io.axoniq.axonserver.grpc.ContextProvider;
+import io.axoniq.axonserver.grpc.DefaultContextProvider;
 import io.axoniq.axonserver.grpc.Gateway;
-import io.axoniq.axonserver.grpc.GrpcContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.axonhub.AxonHubEventService;
@@ -56,7 +57,7 @@ public class AxonServerFixture {
         accessController = new AxonServerAccessController() {
             @Override
             public boolean allowed(String fullMethodName, String context, String token) {
-                return token.equals("1234") && context.equals("SAMPLE");
+                return token.equals("1234") && context.equals("default");
             }
 
             @Override
@@ -110,8 +111,8 @@ public class AxonServerFixture {
         doAnswer(invocation -> {
             StreamObserver<TrackingToken> trackingTokenStreamObserver = (StreamObserver<TrackingToken>) invocation
                     .getArguments()[1];
-            GrpcContextProvider grpcContextProvider = new GrpcContextProvider();
-            if( "SAMPLE".equals(grpcContextProvider.getContext())) {
+            ContextProvider grpcContextProvider = new DefaultContextProvider();
+            if( "default".equals(grpcContextProvider.getContext())) {
                 trackingTokenStreamObserver.onNext(TrackingToken.newBuilder().setToken(1000).build());
                 trackingTokenStreamObserver.onCompleted();
             } else {

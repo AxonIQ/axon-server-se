@@ -35,7 +35,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        logger.warn("Init context: {}", request);
+        logger.debug("Init context: {}", request);
         try {
             localRaftGroupService.initContext(request.getName(),
                                               request.getMembersList()
@@ -98,7 +98,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void appendEntry(ContextEntry request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(), request.getEntryName(), request.getContextBytes().toByteArray());
+        CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(), request.getEntryName(), request.getEntry().toByteArray());
         confirm(responseObserver, completable);
     }
 

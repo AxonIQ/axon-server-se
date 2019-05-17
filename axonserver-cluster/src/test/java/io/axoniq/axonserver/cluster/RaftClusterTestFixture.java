@@ -136,6 +136,7 @@ public class RaftClusterTestFixture {
 
     public void shutdown() {
         remoteCommunication.shutdownNow();
+        clusterNodes.forEach((name,node) -> node.stop());
     }
 
     private <S, R> CompletableFuture<R> communicateRemote(S request, Function<S, R> replyBuilder, String origin, String destination) {
