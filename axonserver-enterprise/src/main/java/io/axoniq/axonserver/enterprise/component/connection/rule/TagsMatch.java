@@ -7,6 +7,9 @@ import java.util.Objects;
 import java.util.function.Function;
 
 /**
+ * {@link Rule} implementation that calculates the {@link ConnectionValue}
+ * as the number of matching tags between client and server.
+ *
  * @author Sara Pellegrini
  * @since 4.2
  */
@@ -15,12 +18,25 @@ public class TagsMatch implements Rule {
     private final Function<String, Map<String, String>> clusterTagsProvider;
     private final Function<ClientIdentification, Map<String, String>> clientTagsProvider;
 
+    /**
+     * Creates an instance based on the cluster and clients tags providers.
+     *
+     * @param clusterTagsProvider the provider for cluster tags
+     * @param clientTagsProvider  the provider for clients tags
+     */
     public TagsMatch(Function<String, Map<String, String>> clusterTagsProvider,
                      Function<ClientIdentification, Map<String, String>> clientTagsProvider) {
         this.clusterTagsProvider = clusterTagsProvider;
         this.clientTagsProvider = clientTagsProvider;
     }
 
+    /**
+     * Returns the number of the matching tags between client and server
+     *
+     * @param client the client
+     * @param server the axon server node instance
+     * @return the number of the matching tags between client and server
+     */
     @Override
     public ConnectionValue apply(ClientIdentification client, String server) {
         return () -> {
