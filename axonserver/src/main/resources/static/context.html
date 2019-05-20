@@ -40,7 +40,15 @@
 
                     },
                     deleteNodeFromContext(node, context) {
-                        if (confirm("Delete node " + node + " from context " + context.context)) {
+                        if(context.nodes.length == 1) {
+                            if (confirm("Deleting the last node from context " + context.context
+                                                + ". This will delete the context! Continue?")) {
+                                axios.delete("v1/context/" + context.context + "/" + node).then(
+                                        response => this.loadContexts()
+                                )
+                            }
+                        }
+                        else if (confirm("Delete node " + node + " from context " + context.context)) {
                             axios.delete("v1/context/" + context.context + "/" + node).then(
                                     response => this.loadContexts()
                             )
