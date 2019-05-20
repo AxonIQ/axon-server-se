@@ -223,6 +223,14 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     || lowercaseHeader.startsWith("wget");
         }
 
+        /**
+         * Returns true if the request comes from localhost and is allowed to be call without authentication.
+         * This is required mainly to enable CLI requests that comes from the same host of Axon Server.
+         *
+         * @param httpServletRequest the request
+         * @return true if the request comes from localhost and is allowed to be call without authentication,
+         * false otherwise
+         */
         private boolean isLocalRequest(HttpServletRequest httpServletRequest) {
             return (
                     (httpServletRequest.getRequestURI().startsWith("/v1/public")
