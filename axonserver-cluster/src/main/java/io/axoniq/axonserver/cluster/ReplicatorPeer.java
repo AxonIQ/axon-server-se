@@ -106,6 +106,7 @@ public class ReplicatorPeer {
 
                                @Override
                                public void onNext(List<SerializedObject> serializedObjects) {
+                                   int offsetValue = offset.getAndIncrement();
                                    InstallSnapshotRequest.Builder requestBuilder =
                                            InstallSnapshotRequest.newBuilder()
                                                                  .setRequestId(UUID.randomUUID().toString())
@@ -114,14 +115,14 @@ public class ReplicatorPeer {
                                                                  .setLeaderId(me())
                                                                  .setLastIncludedTerm(lastIncludedTerm)
                                                                  .setLastIncludedIndex(lastAppliedIndex)
-                                                                 .setOffset(offset.getAndIncrement())
+                                                                 .setOffset(offsetValue)
                                                                  .setDone(done)
                                                                  .addAllData(serializedObjects);
                                    logger.trace("{} in term {}: Sending install snapshot chunk with offset: {}",
                                                 groupId(),
                                                 currentTerm(),
                                                 offset);
-                                   if (firstChunk()) {
+                                   if (firstChunk(offsetValue)) {
                                        requestBuilder.setLastConfig(raftGroup.raftConfiguration().config());
                                    }
                                    send(requestBuilder.build());
@@ -155,8 +156,8 @@ public class ReplicatorPeer {
                            });
         }
 
-        private boolean firstChunk() {
-            return offset.get() == 0;
+        private boolean firstChunk(int offsetValue) {
+            return offsetValue == 0;
         }
 
         @Override
@@ -406,18 +407,25 @@ public class ReplicatorPeer {
                     updateCurrentTerm.accept(response.getTerm(), cause);
                     return;
                 }
-                setMatchIndex(response.getFailure().getLastAppliedIndex());
-                nextIndex.set(matchIndex.get() + 1);
+                //update match and next index. Next index always set to lastAppliedIndex + 1
+                setMatchIndexOnFailure(response.getFailure().getLastAppliedIndex());
                 snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
+                //update match and next index. Next index set to lastLogIndex + 1 if this is more than current value
                 setMatchIndex(response.getSuccess().getLastLogIndex());
             }
 
             if (canSend()) {
                 logCannotSend = true;
             }
+        }
+
+        private void setMatchIndexOnFailure(long lastAppliedIndex) {
+            long matchIndexValue = matchIndex.updateAndGet(old -> (old < lastAppliedIndex) ? lastAppliedIndex : old);
+            matchIndexCallback.accept(matchIndexValue);
+            nextIndex.set(lastAppliedIndex+1);
         }
 
         public void sendHeartbeat() {
@@ -589,6 +597,7 @@ public class ReplicatorPeer {
     private void setMatchIndex(long newMatchIndex) {
         long matchIndexValue = matchIndex.updateAndGet(old -> (old < newMatchIndex) ? newMatchIndex : old);
         matchIndexCallback.accept(matchIndexValue);
-        nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, matchIndexValue + 1));
+        nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, newMatchIndex + 1));
     }
+
 }

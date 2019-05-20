@@ -124,17 +124,31 @@ public class LocalRaftGroupService implements RaftGroupService {
     public CompletableFuture<ContextUpdateConfirmation> deleteNode(String context, String node) {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        raftNode.removeNode(node).whenComplete(((configChangeResult, throwable) -> {
-            if (throwable != null) {
-                logger.error("{}: Exception while deleting node {}", context, node, throwable);
-            }
-            ContextUpdateConfirmation contextUpdateConfirmation = createContextUpdateConfirmation(raftNode,
-                                                                                                  configChangeResult,
-                                                                                                  throwable);
+        try {
+            raftNode.removeNode(node).whenComplete(((configChangeResult, throwable) -> {
+                if (throwable != null) {
+                    logger.error("{}: Exception while deleting node {}", context, node, throwable);
+                }
+                try {
+                    ContextUpdateConfirmation contextUpdateConfirmation = createContextUpdateConfirmation(raftNode,
+                                                                                                          configChangeResult,
+                                                                                                          throwable);
 
-            result.complete(contextUpdateConfirmation);
-        }));
-
+                    result.complete(contextUpdateConfirmation);
+                } catch (UnsupportedOperationException ex) {
+                    // If leader is deleted from group there is no configuration available anymore.
+                    // return empty configuration
+                    ContextUpdateConfirmation contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder().setSuccess(true).build();
+                    result.complete(contextUpdateConfirmation);
+                } catch (Exception ex) {
+                    logger.error("{}: Exception while deleting node {}", context, node, ex);
+                    result.completeExceptionally(ex);
+                }
+            }));
+        } catch (Exception ex) {
+            logger.error("{}: Exception while deleting node {}", context, node, ex);
+            result.completeExceptionally(ex);
+        }
         return result;
     }
 

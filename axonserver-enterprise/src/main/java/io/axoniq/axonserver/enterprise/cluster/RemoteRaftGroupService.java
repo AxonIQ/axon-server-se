@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
@@ -15,6 +16,8 @@ import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,7 +167,29 @@ public class RemoteRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> deleteContext(String context) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteContext(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver<>(result, logger,TO_VOID));
+        stub.deleteContext(ContextName.newBuilder().setContext(context).build(), new StreamObserver<Confirmation>() {
+            @Override
+            public void onNext(Confirmation value) {
+                result.complete(null);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                // If the remote server is unavailable, handle as if the deleteContext was completed successfully.
+                if(throwable instanceof StatusRuntimeException && ((StatusRuntimeException) throwable).getStatus().getCode().equals(Status.Code.UNAVAILABLE)) {
+                        result.complete(null);
+                        return;
+                }
+
+                logger.warn("Remote action failed", throwable);
+                result.completeExceptionally(GrpcExceptionBuilder.parse(throwable));
+            }
+
+            @Override
+            public void onCompleted() {
+
+            }
+        });
         return result;
     }
 
