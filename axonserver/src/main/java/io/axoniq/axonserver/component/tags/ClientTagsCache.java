@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
+ * Provides the tags of all clients connected directly to the local Axon Server instance.
+ *
  * @author Sara Pellegrini
  * @since 4.2
  */
@@ -19,16 +21,32 @@ public class ClientTagsCache implements Function<ClientIdentification, Map<Strin
 
     private final Map<ClientIdentification, Map<String, String>> tags = new HashMap<>();
 
+    /**
+     * Returns a map of all tags defined from the specified client.
+     *
+     * @param client the client identifier
+     * @return the tags map
+     */
     @Override
     public Map<String, String> apply(ClientIdentification client) {
-        return tags.getOrDefault(client, Collections.emptyMap());
+        return Collections.unmodifiableMap(tags.getOrDefault(client, Collections.emptyMap()));
     }
 
+    /**
+     * Updates the tags cached for a specific client when the client connects to the local instance.
+     *
+     * @param update the update event
+     */
     @EventListener
     public void on(ClientTagsUpdate update) {
         tags.put(update.client(), update.tags());
     }
 
+    /**
+     * Deletes the tags cached for a specific client when the client disconnects from the local instance.
+     *
+     * @param evt the client disconnection event
+     */
     @EventListener
     public void on(ApplicationDisconnected evt) {
         ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClient());
