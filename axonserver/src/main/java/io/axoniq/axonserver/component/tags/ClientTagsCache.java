@@ -5,6 +5,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -20,7 +21,7 @@ public class ClientTagsCache implements Function<ClientIdentification, Map<Strin
 
     @Override
     public Map<String, String> apply(ClientIdentification client) {
-        return tags.get(client);
+        return tags.getOrDefault(client, Collections.emptyMap());
     }
 
     @EventListener

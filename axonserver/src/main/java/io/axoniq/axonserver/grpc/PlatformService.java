@@ -141,6 +141,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
                 if (instruction.hasRegister()) {
                     ClientIdentification client = instruction.getRegister();
+                    eventPublisher.publishEvent(new ClientTagsUpdate(client.getClientId(),
+                                                                     context,
+                                                                     client.getTagsMap()));
                     clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
                     registerClient(clientComponent, sendingStreamObserver);
                 }
