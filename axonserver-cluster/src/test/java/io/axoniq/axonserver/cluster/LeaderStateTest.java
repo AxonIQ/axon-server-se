@@ -140,6 +140,7 @@ public class LeaderStateTest {
                                  .raftGroup(raftGroup)
                                  .snapshotManager(new FakeSnapshotManager())
                                  .schedulerFactory(() -> fakeScheduler)
+                                 .matchStrategy(nextCommitCandidate -> true)
                                  .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler,
                                                                        termUpdateHandler,
                                                                        new FakeSnapshotManager()))
@@ -149,7 +150,7 @@ public class LeaderStateTest {
     @Test
     public void startAndStop() throws InterruptedException, TimeoutException, ExecutionException {
         testSubject.start();
-        Thread.sleep(100);
+        Thread.sleep(10);
         fakeScheduler.timeElapses(500);
         assertTrue(stateRef.get() instanceof FollowerState);
     }

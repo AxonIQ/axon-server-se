@@ -178,20 +178,11 @@ public class RaftServerTest {
         public void delete() {
 
         }
-//        @Override
-//        public int minElectionTimeout() {
-//            return 1000;
-//        }
-//
-//        @Override
-//        public int maxElectionTimeout() {
-//            return 3000;
-//        }
-////
-//        @Override
-//        public int heartbeatTimeout() {
-//            return 100;
-//        }
+
+        @Override
+        public int maxElectionTimeout() {
+            return 3000;
+        }
 
         @Override
         public void update(List<Node> nodes) {

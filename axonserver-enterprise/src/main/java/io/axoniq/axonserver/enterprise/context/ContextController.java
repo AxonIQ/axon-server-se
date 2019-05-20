@@ -13,6 +13,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,5 +115,9 @@ public class ContextController {
     @Transactional
     public void addNode(NodeInfo nodeInfo) {
         clusterController.addConnection(nodeInfo);
+    }
+
+    public Collection<String> getMyContextNames() {
+        return clusterController.getMe().getContextNames();
     }
 }

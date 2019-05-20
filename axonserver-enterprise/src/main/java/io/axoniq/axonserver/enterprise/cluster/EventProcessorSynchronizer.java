@@ -48,8 +48,9 @@ public class EventProcessorSynchronizer {
      * @param event a {@link EventProcessorStatusUpdate} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
-    @EventListener(condition = "!#a0.proxied")
+    @EventListener
     public void on(EventProcessorStatusUpdate event) {
+        if( event.isProxied()) return;
         ConnectorCommand connectorCommand =
                 ConnectorCommand.newBuilder()
                                 .setClientEventProcessorStatus(toProto(event.eventProcessorStatus()))
@@ -65,8 +66,9 @@ public class EventProcessorSynchronizer {
      * @param event a {@link PauseEventProcessorRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
-    @EventListener(condition = "!#a0.proxied")
+    @EventListener
     public void on(PauseEventProcessorRequest event) {
+        if( event.isProxied()) return;
         ClientEventProcessor pauseProcessorRequest = ClientEventProcessor.newBuilder()
                                                                          .setClient(event.clientName())
                                                                          .setProcessorName(event.processorName())
@@ -85,8 +87,9 @@ public class EventProcessorSynchronizer {
      * @param event a {@link StartEventProcessorRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
-    @EventListener(condition = "!#a0.proxied")
+    @EventListener
     public void on(StartEventProcessorRequest event) {
+        if( event.isProxied()) return;
         ClientEventProcessor startProcessorRequest = ClientEventProcessor.newBuilder()
                                                                          .setClient(event.clientName())
                                                                          .setProcessorName(event.processorName())
@@ -105,8 +108,10 @@ public class EventProcessorSynchronizer {
      * @param event a {@link ReleaseSegmentRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
-    @EventListener(condition = "!#a0.proxied")
+    @EventListener
     public void on(ReleaseSegmentRequest event) {
+        if( event.isProxied()) return;
+
         ClientEventProcessorSegment releaseSegmentRequest =
                 ClientEventProcessorSegment.newBuilder()
                                            .setClient(event.getClientName())
@@ -124,8 +129,9 @@ public class EventProcessorSynchronizer {
      * @param event a {@link ProcessorStatusRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
-    @EventListener(condition = "!#a0.proxied")
+    @EventListener
     public void on(ProcessorStatusRequest event) {
+        if( event.isProxied()) return;
         ClientEventProcessor processorStatusRequest = ClientEventProcessor.newBuilder()
                                                                           .setClient(event.clientName())
                                                                           .setProcessorName(event.processorName())
@@ -144,8 +150,9 @@ public class EventProcessorSynchronizer {
      * @param event a {@link SplitSegmentRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
-    @EventListener(condition = "!#a0.proxied")
+    @EventListener
     public void on(SplitSegmentRequest event) {
+        if( event.isProxied()) return;
         ClientEventProcessorSegment splitSegmentRequest =
                 ClientEventProcessorSegment.newBuilder()
                                            .setClient(event.getClientName())
@@ -163,8 +170,9 @@ public class EventProcessorSynchronizer {
      * @param event a {@link MergeSegmentRequest} to be wrapped in a {@link ConnectorCommand} to be propagated
      *              throughout the rest of the cluster
      */
-    @EventListener(condition = "!#a0.proxied")
+    @EventListener
     public void on(MergeSegmentRequest event) {
+        if( event.isProxied()) return;
         ClientEventProcessorSegment mergeSegmentRequest =
                 ClientEventProcessorSegment.newBuilder()
                                            .setClient(event.getClientName())

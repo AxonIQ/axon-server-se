@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingController;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingService;
 import io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
@@ -13,11 +13,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProcessorLBStrategyConsumer implements LogEntryConsumer {
 
-    private final ProcessorLoadBalancingController processorLoadBalancingController;
+    private final ProcessorLoadBalancingService processorLoadBalancingService;
 
     public ProcessorLBStrategyConsumer(
-            ProcessorLoadBalancingController processorLoadBalancingController) {
-        this.processorLoadBalancingController = processorLoadBalancingController;
+            ProcessorLoadBalancingService processorLoadBalancingService) {
+        this.processorLoadBalancingService = processorLoadBalancingService;
     }
 
     @Override
@@ -25,7 +25,7 @@ public class ProcessorLBStrategyConsumer implements LogEntryConsumer {
         if( entryType(entry, ProcessorLBStrategy.class)) {
             try {
                 ProcessorLBStrategy processorLBStrategy = ProcessorLBStrategy.parseFrom(entry.getSerializedObject().getData());
-                processorLoadBalancingController.save(ProcessorLBStrategyConverter
+                processorLoadBalancingService.save(ProcessorLBStrategyConverter
                                                               .createJpaProcessorLoadBalancing(processorLBStrategy));
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();

@@ -13,17 +13,50 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "axoniq.axonserver.replication")
 @Configuration
 public class RaftProperties extends StorageProperties {
+    /**
+     * Extra time that follower waits initially before moving to candidate state.
+     */
+    private int initialElectionTimeout = 2500;
+    /**
+     * Minimal time (in ms.) that a follower waits before moving to candidate state, if it has not received any messages
+     * from a leader.
+     */
     private int minElectionTimeout = 1000;
+    /**
+     * Maximal time (in ms.) that a follower waits before moving to candidate state, if it has not received any messages
+     * from a leader. Also, time that leader waits before stepping down if it has not heard from the majority of its followers.
+     */
     private int maxElectionTimeout = 2500;
+    /**
+     * Leader sends a heartbeat to followers if it has not sent any other messages to a follower for this time.
+     */
     private int heartbeatTimeout = 100;
-    private int maxEntriesPerBatch = 100;
+    /**
+     * Maximum number of append entry messages sent to one peer before moving to the next.
+     */
+    private int maxEntriesPerBatch = 10;
+
+    /**
+     * Number of unconfirmed append entry messages that may be sent to peer.
+     */
     private int flowBuffer = 1000;
-    private int maxSnapshotChunksPerBatch = 10;
+    /**
+     * Number of unconfirmed install snapshot messages that may be sent to peer.
+     */
+    private int snapshotFlowBuffer = 500;
+    /**
+     * Maximum number of objects that can be sent in a single install snapshot message.
+     */
+    private int maxSnapshotChunksPerBatch = 1000;
 
     private final SystemInfoProvider systemInfoProvider;
     private int maxReplicationRound = 10;
     private boolean logCompactionEnabled = true;
     private int logRetentionHours = 1;
+    /**
+     * Option to force new members to first receive a snapshot when they join a cluster
+     */
+    private boolean forceSnapshotOnJoin = true;
 
     public RaftProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -112,10 +145,34 @@ public class RaftProperties extends StorageProperties {
     }
 
     /**
-     * Sets the maximum number of serializedObjects to be sent in a single InstallSanpshotRequest.
+     * Sets the maximum number of serializedObjects to be sent in a single InstallSnapshotRequest.
      * @param maxSnapshotChunksPerBatch the maximum number of serializedObjects
      */
     public void setMaxSnapshotChunksPerBatch(int maxSnapshotChunksPerBatch) {
         this.maxSnapshotChunksPerBatch = maxSnapshotChunksPerBatch;
+    }
+
+    public int getSnapshotFlowBuffer() {
+        return snapshotFlowBuffer;
+    }
+
+    public void setSnapshotFlowBuffer(int snapshotFlowBuffer) {
+        this.snapshotFlowBuffer = snapshotFlowBuffer;
+    }
+
+    public int getInitialElectionTimeout() {
+        return initialElectionTimeout;
+    }
+
+    public void setInitialElectionTimeout(int initialElectionTimeout) {
+        this.initialElectionTimeout = initialElectionTimeout;
+    }
+
+    public boolean isForceSnapshotOnJoin() {
+        return forceSnapshotOnJoin;
+    }
+
+    public void setForceSnapshotOnJoin(boolean forceSnapshotOnJoin) {
+        this.forceSnapshotOnJoin = forceSnapshotOnJoin;
     }
 }

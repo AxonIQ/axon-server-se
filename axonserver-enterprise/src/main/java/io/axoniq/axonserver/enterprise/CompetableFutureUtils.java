@@ -5,6 +5,8 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author Marc Gathier
@@ -18,8 +20,12 @@ public class CompetableFutureUtils {
      * @return the completed value
      */
     public static <T> T getFuture(CompletableFuture<T> completableFuture) {
+        return getFuture(completableFuture, 1, TimeUnit.HOURS);
+    }
+
+    public static <T> T getFuture(CompletableFuture<T> completableFuture, int timeout, TimeUnit timeUnit) {
         try {
-            return completableFuture.get();
+            return completableFuture.get(timeout, timeUnit);
         } catch (InterruptedException e) {
            Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
@@ -29,6 +35,8 @@ public class CompetableFutureUtils {
             }
 
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getCause().getMessage(), e.getCause());
+        } catch (TimeoutException e) {
+            throw new MessagingPlatformException(ErrorCode.REPLICATION_TIMEOUT, "Timeout while waiting for result", e);
         }
     }
 }

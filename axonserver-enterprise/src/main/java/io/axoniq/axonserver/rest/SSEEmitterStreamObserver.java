@@ -52,5 +52,6 @@ public class SSEEmitterStreamObserver<M> implements StreamObserver<M> {
         }
         sseEmitter.complete();
     }
+
 }
 
