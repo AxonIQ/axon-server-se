@@ -1,12 +1,16 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-//import io.axoniq.axonserver.ClusterTagsCache;
-
+import io.axoniq.axonserver.ClusterTagsCache;
+import io.axoniq.axonserver.component.tags.ClientTagsCache;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.component.connection.ConnectionProvider;
 import io.axoniq.axonserver.enterprise.component.connection.rule.Rule;
 import io.axoniq.axonserver.enterprise.component.connection.rule.RuleBasedConnectionProvider;
+import io.axoniq.axonserver.enterprise.component.connection.rule.TagsMatch;
 import io.axoniq.axonserver.message.ClientIdentification;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
@@ -17,18 +21,18 @@ import javax.annotation.Nonnull;
  * @since 4.2
  */
 @ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "tagsMatch")
-//@Component
+@Component
 public class TagMatchNodeSelectionStrategy implements NodeSelectionStrategy {
 
     @Nonnull private final ConnectionProvider connectionProvider;
 
     @Nonnull private final String thisNodeName;
 
-//    @Autowired
-//    public TagMatchNodeSelectionStrategy(ClusterTagsCache clusterTags, ClientTagsCache clientsTags,
-//                                         MessagingPlatformConfiguration configuration) {
-//        this(new TagsMatch(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName());
-//    }
+    @Autowired
+    public TagMatchNodeSelectionStrategy(ClusterTagsCache clusterTags, ClientTagsCache clientsTags,
+                                         MessagingPlatformConfiguration configuration) {
+        this(new TagsMatch(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName());
+    }
 
     public TagMatchNodeSelectionStrategy(Rule tagsMatchRule, String thisNodeName) {
         this(new RuleBasedConnectionProvider(tagsMatchRule), thisNodeName);
