@@ -3,7 +3,7 @@ package io.axoniq.axonserver.enterprise.component.connection.rule;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Represent the convenience of the connection of a specified client with one server node in the cluster.
+ * Represent the suitability of the connection of a specified client with one server node in the cluster.
  * Highest value represents a better choice.
  *
  * @author Sara Pellegrini

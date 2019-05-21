@@ -9,7 +9,7 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for {@link TagsMatch}
+ * Unit tests for {@link MatchingTags}
  *
  * @author Sara Pellegrini
  * @since 4.2
@@ -18,7 +18,7 @@ public class TagsMatchTest {
 
     private Map<String, Map<String, String>> clusterTags;
     private Map<ClientIdentification, Map<String, String>> clientsTags;
-    private TagsMatch testSubject;
+    private MatchingTags testSubject;
 
     @Before
     public void setUp() throws Exception {
@@ -45,7 +45,7 @@ public class TagsMatchTest {
         client3.put("city", "Amsterdam");
         client3.put("region", "Europe");
 
-        testSubject = new TagsMatch(node -> clusterTags.get(node), client -> clientsTags.get(client));
+        testSubject = new MatchingTags(node -> clusterTags.get(node), client -> clientsTags.get(client));
     }
 
     @Test

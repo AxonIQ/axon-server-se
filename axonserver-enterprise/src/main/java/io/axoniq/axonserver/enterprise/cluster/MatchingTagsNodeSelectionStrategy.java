@@ -4,9 +4,9 @@ import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.component.connection.ConnectionProvider;
+import io.axoniq.axonserver.enterprise.component.connection.rule.MatchingTags;
 import io.axoniq.axonserver.enterprise.component.connection.rule.Rule;
 import io.axoniq.axonserver.enterprise.component.connection.rule.RuleBasedConnectionProvider;
-import io.axoniq.axonserver.enterprise.component.connection.rule.TagsMatch;
 import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,25 +22,25 @@ import javax.annotation.Nonnull;
  * @author Sara Pellegrini
  * @since 4.2
  */
-@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "tagsMatch")
+@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "tagMatch")
 @Component
-public class TagMatchNodeSelectionStrategy implements NodeSelectionStrategy {
+public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy {
 
     @Nonnull private final ConnectionProvider connectionProvider;
 
     @Nonnull private final String thisNodeName;
 
     /**
-     * Default contructor that uses the {@link TagsMatch} rule to find the best node.
+     * Default contructor that uses the {@link MatchingTags} rule to find the best node.
      *
      * @param clusterTags   the provider of cluster tags
      * @param clientsTags   the provider of clients tags
      * @param configuration the messaging platform configuration
      */
     @Autowired
-    public TagMatchNodeSelectionStrategy(ClusterTagsCache clusterTags, ClientTagsCache clientsTags,
-                                         MessagingPlatformConfiguration configuration) {
-        this(new TagsMatch(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName());
+    public MatchingTagsNodeSelectionStrategy(ClusterTagsCache clusterTags, ClientTagsCache clientsTags,
+                                             MessagingPlatformConfiguration configuration) {
+        this(new MatchingTags(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName());
     }
 
     /**
@@ -50,7 +50,7 @@ public class TagMatchNodeSelectionStrategy implements NodeSelectionStrategy {
      * @param tagsMatchRule a {@link Rule} that returns a value of each node equals to the number of tags matching
      * @param thisNodeName the local node identifier
      */
-    public TagMatchNodeSelectionStrategy(Rule tagsMatchRule, String thisNodeName) {
+    public MatchingTagsNodeSelectionStrategy(Rule tagsMatchRule, String thisNodeName) {
         this(new RuleBasedConnectionProvider(tagsMatchRule), thisNodeName);
     }
 
@@ -60,7 +60,7 @@ public class TagMatchNodeSelectionStrategy implements NodeSelectionStrategy {
      * @param connectionProvider the {@link ConnectionProvider} that return the node with the highest number of tags matching
      * @param thisNode the local node identifier
      */
-    public TagMatchNodeSelectionStrategy(@Nonnull ConnectionProvider connectionProvider, @Nonnull String thisNode) {
+    public MatchingTagsNodeSelectionStrategy(@Nonnull ConnectionProvider connectionProvider, @Nonnull String thisNode) {
         this.connectionProvider = connectionProvider;
         this.thisNodeName = thisNode;
     }

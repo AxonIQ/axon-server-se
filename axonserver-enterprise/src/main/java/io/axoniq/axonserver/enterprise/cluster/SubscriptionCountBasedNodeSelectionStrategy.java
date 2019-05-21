@@ -20,7 +20,7 @@ import java.util.Map;
 /**
  * @author Marc Gathier
  */
-@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "subscriptionsCount")
+@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "subscriptionCount")
 @Component("SubscriptionCountBasedNodeSelectionStrategy")
 public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectionStrategy {
     private final Logger logger = LoggerFactory.getLogger(SubscriptionCountBasedNodeSelectionStrategy.class);

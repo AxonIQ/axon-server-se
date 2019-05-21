@@ -28,7 +28,7 @@ spring:
 axoniq:
   axonserver:
     metrics-synchronization-rate: 2500
-    clients-connection-strategy: subscriptionsCount
+    clients-connection-strategy: subscriptionCount
 
 logging:
   level:

@@ -13,7 +13,7 @@ import java.util.function.Function;
  * @author Sara Pellegrini
  * @since 4.2
  */
-public class TagsMatch implements Rule {
+public class MatchingTags implements Rule {
 
     private final Function<String, Map<String, String>> clusterTagsProvider;
     private final Function<ClientIdentification, Map<String, String>> clientTagsProvider;
@@ -24,8 +24,8 @@ public class TagsMatch implements Rule {
      * @param clusterTagsProvider the provider for cluster tags
      * @param clientTagsProvider  the provider for clients tags
      */
-    public TagsMatch(Function<String, Map<String, String>> clusterTagsProvider,
-                     Function<ClientIdentification, Map<String, String>> clientTagsProvider) {
+    public MatchingTags(Function<String, Map<String, String>> clusterTagsProvider,
+                        Function<ClientIdentification, Map<String, String>> clientTagsProvider) {
         this.clusterTagsProvider = clusterTagsProvider;
         this.clientTagsProvider = clientTagsProvider;
     }
