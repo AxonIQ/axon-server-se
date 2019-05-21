@@ -22,7 +22,7 @@ import javax.annotation.Nonnull;
  * @author Sara Pellegrini
  * @since 4.2
  */
-@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "tagMatch")
+@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "matchingTags")
 @Component
 public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy {
 
