@@ -9,8 +9,10 @@
 
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.PayloadDescription;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
@@ -69,11 +71,16 @@ public class TrackingEventProcessorManagerTest {
                 @Override
                 public SerializedEventWithToken next() {
                     eventsLeft.decrementAndGet();
-                    return new SerializedEventWithToken(nextToken.getAndIncrement(), Event.newBuilder().build());
+                    return new SerializedEventWithToken(nextToken.getAndIncrement(),
+                                                        Event.newBuilder()
+                                                             .setPayload(SerializedObject.newBuilder()
+                                                             .setType("DemoType")
+                                                             .setRevision("1.0"))
+                                                             .build());
                 }
             };
         };
-        testSubject = new TrackingEventProcessorManager("demo", iteratorBuilder, 1000);
+        testSubject = new TrackingEventProcessorManager("demo", iteratorBuilder, 5);
     }
 
     @Test
@@ -116,5 +123,41 @@ public class TrackingEventProcessorManagerTest {
         tracker.stop();
         assertTrue(failed.get());
         assertWithin(10, TimeUnit.MILLISECONDS, () -> assertTrue(iteratorClosed.get()));
+    }
+
+
+    @Test
+    public void blacklist() throws InterruptedException {
+        eventsLeft.set(50);
+        GetEventsRequest request = GetEventsRequest.newBuilder()
+                                                   .setTrackingToken(100)
+                                                   .setNumberOfPermits(50)
+                                                   .addBlacklist( PayloadDescription.newBuilder()
+                                                   .setType("DemoType")
+                                                   .setRevision("1.0"))
+                                                   .build();
+        AtomicInteger messagesReceived = new AtomicInteger();
+        AtomicBoolean completed = new AtomicBoolean();
+        AtomicBoolean failed = new AtomicBoolean();
+        TrackingEventProcessorManager.EventTracker tracker =
+                testSubject.createEventTracker(request,
+                                               new StreamObserver<InputStream>() {
+                                                   @Override
+                                                   public void onNext(
+                                                           InputStream value) {
+                                                       messagesReceived.incrementAndGet();
+                                                   }
+
+                                                   @Override
+                                                   public void onError(Throwable t) {
+                                                       failed.set(true);
+                                                   }
+
+                                                   @Override
+                                                   public void onCompleted() {
+                                                       completed.set(true);
+                                                   }
+                                               });
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(10, messagesReceived.get()));
     }
 }

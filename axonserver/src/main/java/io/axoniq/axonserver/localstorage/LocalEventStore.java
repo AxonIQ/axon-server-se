@@ -226,10 +226,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if( controller == null) {
                     controller = workers(context).createEventTracker(getEventsRequest,responseStreamObserver);
                 } else {
-                    controller.addPermits((int)getEventsRequest.getNumberOfPermits());
-                }
-                if( getEventsRequest.getBlacklistCount() > 0) {
-                    controller.addBlacklist(getEventsRequest.getBlacklistList());
+                    controller.addPermits((int) getEventsRequest.getNumberOfPermits());
+                    if (getEventsRequest.getBlacklistCount() > 0) {
+                        controller.addBlacklist(getEventsRequest.getBlacklistList());
+                    }
                 }
             }
 

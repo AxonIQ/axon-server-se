@@ -187,6 +187,9 @@ public class TrackingEventProcessorManager {
             permits = new AtomicInteger((int) request.getNumberOfPermits());
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(request.getTrackingToken());
+            if( request.getBlacklistCount() > 0) {
+                addBlacklist(request.getBlacklistList());
+            }
             this.eventStream = eventStream;
         }
 
