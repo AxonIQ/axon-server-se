@@ -42,9 +42,14 @@ public class TagsMatch implements Rule {
         return () -> {
             double connectionValue = 0;
             Map<String, String> clientTags = clientTagsProvider.apply(client);
+            Map<String, String> nodeTags = clusterTagsProvider.apply(server);
+
+            if (clientTags == null || nodeTags == null) {
+                return 0;
+            }
             for (String tag : clientTags.keySet()) {
                 String clientTag = clientTags.get(tag);
-                String nodeTag = clusterTagsProvider.apply(server).get(tag);
+                String nodeTag = nodeTags.get(tag);
                 double tagValue = Objects.equals(clientTag, nodeTag) ? 1 : 0;
                 connectionValue += tagValue;
             }

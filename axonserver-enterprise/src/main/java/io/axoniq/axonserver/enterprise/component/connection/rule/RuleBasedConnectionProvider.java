@@ -31,6 +31,13 @@ public class RuleBasedConnectionProvider implements ConnectionProvider {
      */
     @Override
     public String bestMatch(ClientIdentification client, Iterable<String> nodes) {
+        if (client == null) {
+            throw new IllegalArgumentException("Client cannot be null");
+        }
+
+        if (nodes == null) {
+            throw new IllegalArgumentException("Nodes cannot be null");
+        }
         String best = null;
         for (String node : nodes) {
             if (best == null) {
