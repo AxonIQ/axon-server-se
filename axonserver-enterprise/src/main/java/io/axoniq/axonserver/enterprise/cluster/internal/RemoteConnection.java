@@ -176,7 +176,7 @@ public class RemoteConnection  {
                     @Override
                     public void onError(Throwable throwable) {
                         if (!String.valueOf(throwable.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
-                            ManagedChannelHelper.checkShutdownNeeded(clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort(), throwable);
+                            ManagedChannelHelper.checkShutdownNeeded(clusterNode.getName(), throwable);
                             logger.warn("Error on {}:{} - {}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort(), throwable.getMessage());
                             errorMessage = String.valueOf(throwable.getMessage());
                             repeatedErrorCount.set(IGNORE_SAME_ERROR_COUNT);
