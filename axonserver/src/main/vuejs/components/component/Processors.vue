@@ -107,7 +107,7 @@
                         <td><div>{{tracker.tokenPosition}}</div></td>
                         <td>1/{{tracker.onePartOf}}</td>
                         <td>
-                            <i v-if="tracker.errorState !== ''" class="fas fa-exclamation-triangle"></i>
+                            <i v-if="tracker.errorState !== ''" class="fas fa-exclamation-triangle" :title="'Processor in error state: '+ tracker.errorState"></i>
                             <i v-if="!tracker.caughtUp" class="fas fa-sign-in-alt" style="color: red"></i>
                             <i v-if="tracker.replaying" class="fas fa-history" style="color: red"></i>
                             <span v-if="canMoveFrom(tracker.clientId)" @click="showMoveSegment(tracker)" title="Move">
