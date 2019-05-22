@@ -407,7 +407,7 @@ public class ReplicatorPeer {
                     return;
                 }
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
-                nextIndex.set(matchIndex.get() + 1);
+                nextIndex.set(response.getFailure().getLastAppliedIndex() + 1);
                 snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
                 updateEntryIterator();
             } else {
