@@ -1,4 +1,4 @@
-This is the Axon Server Enterprise Edition, version 4.1.1
+This is the Axon Server Enterprise Edition, version 4.1.3
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
@@ -27,6 +27,15 @@ For more information on setting up clusters and context check the reference guid
 https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
+
+Changes in Axon Server 4.1.3
+-------------------------------
+
+- Improved recovery of cluster after disk failure
+
+- Fix for updating configuration during install snapshot
+
+- CLI commands now can be performed locally without token.
 
 Changes in Axon Server 4.1.2
 -------------------------------
