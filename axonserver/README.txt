@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.1.
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.1.3
+-------------------------------
+* CLI commands now can be performed locally without token.
+
 Release Notes for version 4.1.2
 -------------------------------
 
