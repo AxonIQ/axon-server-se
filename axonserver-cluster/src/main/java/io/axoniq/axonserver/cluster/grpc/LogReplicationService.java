@@ -38,15 +38,18 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                             running = false;
                         }
                     }
-                } catch( RuntimeException ex) {
-                    logger.warn("Failed to process request {}", appendEntriesRequest.getPrevLogIndex() + 1, ex);
+                } catch( IllegalStateException ex) {
+                    logger.warn("{}: Failed to process AppendEntriesRequest {} - {}", appendEntriesRequest.getGroupId(), appendEntriesRequest.getPrevLogIndex() + 1, ex.getMessage());
+                    responseObserver.onError(ex);
+               } catch( RuntimeException ex) {
+                    logger.warn("{}: Failed to process AppendEntriesRequest {}", appendEntriesRequest.getGroupId(), appendEntriesRequest.getPrevLogIndex() + 1, ex);
                     responseObserver.onError(ex);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                logger.trace("Failure on appendEntries on leader connection- {}", throwable.getMessage());
+                logger.trace("Failure on appendEntries on leader connection - {}", throwable.getMessage());
 
             }
 
@@ -80,8 +83,11 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                             running = false;
                         }
                     }
+                } catch( IllegalStateException ex) {
+                    logger.warn("{}: Failed to process InstallSnapshotRequest {} - {}", installSnapshotRequest.getGroupId(), installSnapshotRequest.getOffset(), ex.getMessage());
+                    responseObserver.onError(ex);
                 } catch( RuntimeException ex) {
-                    logger.warn("Failed to process InstallSnapshotRequest {}", installSnapshotRequest.getOffset(), ex);
+                    logger.warn("{}: Failed to process InstallSnapshotRequest {}", installSnapshotRequest.getGroupId(), installSnapshotRequest.getOffset(), ex);
                     responseObserver.onError(ex);
                 }
             }
