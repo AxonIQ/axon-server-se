@@ -33,6 +33,15 @@ connecting to the database needs to have the right credentials to create the obj
 be pre-created.    
 
 
+### Synchronization strategy
+
+When running in a cluster you can configure whether to store the events on all nodes, or only on the leader.
+Store only on the leader when all nodes are using the same database (this is the default behavior).
+Set axoniq.axonserver.storage.jdbc.store-on-leader-only to false if you want this node to store all 
+events on synchronization, even when it is not the leader. 
+
+
+
 ## Usage from IntelliJ
 
 Add dependency to axonserver-enterprise module:

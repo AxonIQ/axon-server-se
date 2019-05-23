@@ -248,7 +248,7 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
     }
 
     @Override
-    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll) {
+    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, EventStorageEngine.SearchHint... searchHints) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      maxSeqnrForAggid)) {

@@ -329,7 +329,7 @@ public class SpannerEventStorageEngine implements EventStorageEngine {
     }
 
     @Override
-    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll) {
+    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, EventStorageEngine.SearchHint... searchHints) {
         Statement statement = Statement.newBuilder(maxSeqnrForAggid).bind("aggregateIdentifier").to(aggregateIdentifier).build();
         com.google.cloud.spanner.ResultSet resultSet = dbClient.singleUse().executeQuery(statement);
         if( resultSet.next() && ! resultSet.isNull(0)) {

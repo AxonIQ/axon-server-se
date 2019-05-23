@@ -10,7 +10,7 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 
 /**
- * Factory to create  {@link EventStorageEngine} instances that store data in a relational database.
+ * Factory to create  {@link EventStorageEngine} instances that store data in a Google spanner database.
  *
  * @author Marc Gathier
  * @since 4.2

@@ -10,7 +10,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
+ * This strategy uses a separate database schema per context for storing events. Implementation depends on capabilities
+ * of the RDBMS type.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
 public class SchemaPerContextMultiContextStrategy implements MultiContextStrategy {
     private final VendorSpecific vendorSpecific;

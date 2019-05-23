@@ -50,7 +50,7 @@ public class StorageProperties {
     /**
      * Store events only when current node is leader
      */
-    private boolean storeOnLeaderOnly;
+    private boolean storeOnLeaderOnly = true;
 
     public String getUrl() {
         return url;

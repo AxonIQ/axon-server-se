@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 
 
 /**
- * Spring Boot autoconfiguration class to setup the event store on this node to store the events in a relational
+ * Spring Boot autoconfiguration class to setup the event store on this node to store the events in a Google spanner
  * database.
  *
  * @author Marc Gathier

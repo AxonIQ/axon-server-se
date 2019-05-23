@@ -8,7 +8,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
+ * This strategy uses a single database schema for all contexts for storing events. Implementation depends on capabilities
+ * of the RDBMS type.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
 public class SingleSchemaMultiContextStrategy implements MultiContextStrategy {
     private final VendorSpecific vendorSpecific;
