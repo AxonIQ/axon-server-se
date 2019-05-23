@@ -78,6 +78,7 @@ public class WrappedEvent implements ProcessedEvent {
         return event().getAggregateType();
     }
 
+    @Override
     public Map<String, MetaDataValue> getMetaData() {
         return event().getMetaDataMap();
     }

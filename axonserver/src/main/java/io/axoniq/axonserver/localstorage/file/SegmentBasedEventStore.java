@@ -12,7 +12,6 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.Registration;
@@ -51,6 +50,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.commons.lang3.ArrayUtils.contains;
 
 /**
  * @author Marc Gathier
@@ -190,8 +191,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll) {
-        return getLastSequenceNumber(aggregateIdentifier, checkAll ? Integer.MAX_VALUE : MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK);
+    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
+        return getLastSequenceNumber(aggregateIdentifier, contains(hints, SearchHint.RECENT_ONLY) ?
+                MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE);
     }
 
      public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegments) {

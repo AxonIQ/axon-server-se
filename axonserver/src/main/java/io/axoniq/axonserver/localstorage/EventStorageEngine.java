@@ -30,6 +30,10 @@ import java.util.stream.Stream;
  */
 public interface EventStorageEngine {
 
+    enum SearchHint {
+        RECENT_ONLY
+    }
+
     /**
      * Initializes the storage engine.
      * @param validate perform validations on the existing data
@@ -57,12 +61,16 @@ public interface EventStorageEngine {
     }
 
     /**
-     * Retrieves the last sequence number for a specific aggregate. Returns empty optional when aggregate is not found.
+     * Retrieves the last sequence number for a specific aggregate. In some implementations
+     * searching for a non-existing aggregate may be an expensive operation, in which case you could
+     * provide {@link SearchHint} RECENT_ONLY, to only look for the aggregate in recent events (the exact meaning of recent
+     * depends on the EventStorageEngine implementation)
+     * Returns empty optional when aggregate is not found.
      * @param aggregateIdentifier the aggregate identifier
-     * @param checkAll search entire event store
+     * @param searchHints flags to optimize serarch process
      * @return the last sequence number
      */
-    Optional<Long> getLastSequenceNumber(String aggregateIdentifier, boolean checkAll);
+    Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint... searchHints);
 
     /**
      * Close the storage engine. Free all resources used by the storage engine.

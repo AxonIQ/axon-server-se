@@ -7,13 +7,16 @@
  *
  */
 
-package io.axoniq.axonserver.localstorage;
+package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 
 /**
+ * Holds event with token and its position in the event store segment.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class EventInformation {
 
@@ -33,6 +36,10 @@ public class EventInformation {
         return position;
     }
 
+    /**
+     * Determines if the contained event is a domain event (has aggregate information in it).
+     * @return true if the event is a domain event
+     */
     public boolean isDomainEvent() {
         return event.getSerializedEvent().isDomainEvent();
     }

@@ -12,8 +12,9 @@ package io.axoniq.axonserver.localstorage.transaction;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.message.command.CommandCacheTest;
+import io.axoniq.axonserver.util.ChangeableClock;
 import org.junit.*;
 
 import java.util.Optional;
@@ -25,11 +26,12 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class SequenceNumberCacheTest {
-    private CommandCacheTest.ChangeableClock clock = new CommandCacheTest.ChangeableClock();
+    private ChangeableClock clock = new ChangeableClock();
     private SequenceNumberCache testSubject = new SequenceNumberCache(SequenceNumberCacheTest::dummySequenceNumberProvider,
                                                                       clock, 1);
 
-    private static Optional<Long> dummySequenceNumberProvider(String aggregateId, Boolean readAll) {
+    private static Optional<Long> dummySequenceNumberProvider(String aggregateId,
+                                                              EventStorageEngine.SearchHint... searchHints) {
         switch (aggregateId) {
             case "NEW":
                 return Optional.empty();
