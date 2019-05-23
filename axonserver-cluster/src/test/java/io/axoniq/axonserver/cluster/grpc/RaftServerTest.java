@@ -79,7 +79,7 @@ public class RaftServerTest {
 
         try {
 
-            assertWithin(5, TimeUnit.SECONDS, () -> {
+            assertWithin(15, TimeUnit.SECONDS, () -> {
                 RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
                 assertNotNull(leader);
             });
