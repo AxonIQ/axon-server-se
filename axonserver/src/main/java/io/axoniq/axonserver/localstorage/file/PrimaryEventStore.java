@@ -185,15 +185,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void close() {
+    public void close(boolean deleteData) {
         synchronizer.shutdown(true);
         readBuffers.forEach((s, source) -> {
-            positionsPerSegmentMap.remove(s);
             source.clean(0);
+            if( deleteData) removeSegment(s);
         });
-        if (next != null) {
-            next.close();
-        }
+
+        if( next != null) next.close(deleteData);
 
         closeListeners.forEach(Runnable::run);
     }
@@ -394,6 +393,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             size = file.length();
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
+            logger.warn("Opening file {}", file);
             positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             buffer.put(VERSION);

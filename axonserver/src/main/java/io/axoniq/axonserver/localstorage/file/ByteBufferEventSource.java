@@ -99,7 +99,7 @@ public class ByteBufferEventSource implements EventSource {
 
     public void clean(long delay) {
         if( main ) {
-            CleanUtils.cleanDirectBuffer(getBuffer(), () -> duplicatesCount.get() == 0, delay, path);
+            CleanUtils.cleanDirectBuffer(getBuffer(), () -> true, delay, path);
         }
     }
 
