@@ -210,7 +210,7 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public CompletableFuture<Void> deleteContext(String context) {
+        public CompletableFuture<Void> deleteContext(String context, boolean deleteData) {
             groupDBs.remove(context);
             return CompletableFuture.completedFuture(null);
         }
@@ -318,14 +318,14 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void deleteContext() {
-        testSubject.deleteContext("sample");
+        testSubject.deleteContext("sample", false);
         assertNull( adminDB.contextMap.get("sample"));
     }
 
     @Test
     public void deleteAdminContext() {
         try {
-            testSubject.deleteContext("_admin");
+            testSubject.deleteContext("_admin", false);
             fail("Expect exception");
         } catch(MessagingPlatformException mpe) {
             assertEquals(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT, mpe.getErrorCode());
@@ -334,7 +334,7 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void deleteNonExistingContext() {
-        testSubject.deleteContext("demo");
+        testSubject.deleteContext("demo", false);
     }
 
     @Test

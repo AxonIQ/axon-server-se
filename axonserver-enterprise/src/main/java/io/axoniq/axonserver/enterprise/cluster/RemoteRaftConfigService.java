@@ -4,8 +4,8 @@ import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
-import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextNames;
+import io.axoniq.axonserver.grpc.internal.DeleteContextRequest;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -56,9 +56,12 @@ public class RemoteRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void deleteContext(String context) {
+    public void deleteContext(String context, boolean deleteData) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.deleteContext(ContextName.newBuilder().setContext(context).build(),
+        raftConfigServiceStub.deleteContext(DeleteContextRequest.newBuilder()
+                                                                .setContext(context)
+                                                                .setDeleteData(deleteData)
+                                                                .build(),
                                             new CompletableStreamObserver<>(completableFuture,
                                                                             "deleteContext",
                                                                             logger));

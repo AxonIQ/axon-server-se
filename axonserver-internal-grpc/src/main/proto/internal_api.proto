@@ -28,7 +28,7 @@ service RaftConfigService {
 
     rpc DeleteNodeFromContext(NodeContext) returns (Confirmation) {}
 
-    rpc DeleteContext(ContextName) returns (Confirmation) {}
+    rpc DeleteContext(DeleteContextRequest) returns (Confirmation) {}
 
     rpc UpdateApplication(Application) returns (Application) {}
 
@@ -57,7 +57,7 @@ service RaftGroupService {
     rpc InitContext (Context) returns (ContextConfiguration) {
     }
 
-    rpc DeleteContext (ContextName) returns (Confirmation) {}
+    rpc DeleteContext (DeleteContextRequest) returns (Confirmation) {}
 
     rpc AddServer (Context) returns (ContextUpdateConfirmation) {}
 
@@ -89,7 +89,10 @@ service RaftGroupService {
 
 }
 
-
+message DeleteContextRequest {
+    string context = 1;
+    bool delete_data = 2;
+}
 
 message NodeContext {
     string node_name = 1;

@@ -124,12 +124,13 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void close() {
+    public void close(boolean deleteData) {
         lruMap.forEach((s, source) -> {
             ByteBufferEventSource eventSource = source.get();
             if( eventSource != null) {
                 eventSource.clean(0);
             }
+            if( deleteData) removeSegment(s);
         });
         indexManager.cleanup();
     }
