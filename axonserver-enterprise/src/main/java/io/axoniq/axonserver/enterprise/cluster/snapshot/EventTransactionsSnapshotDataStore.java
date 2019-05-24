@@ -47,6 +47,8 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
         if( adminContext) return Flux.empty();
         long fromToken = installationContext.fromEventSequence();
         long toToken = localEventStore.getLastToken(context) + 1;
+
+        if( fromToken >= toToken) return Flux.empty();
         return Flux.fromIterable(() -> localEventStore.eventTransactionsIterator(context, fromToken, toToken))
                    .map(transactionWithToken -> SerializedObject.newBuilder()
                                                                 .setType(SNAPSHOT_TYPE)

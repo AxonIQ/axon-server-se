@@ -71,7 +71,8 @@ public class ContextRestController {
     }
 
     @DeleteMapping(path = "context/{name}")
-    public ResponseEntity<RestResponse> deleteContext(@PathVariable("name") String name) {
+    public ResponseEntity<RestResponse> deleteContext(@PathVariable("name") String name,
+                                                      @RequestParam(name = "deleteData", defaultValue = "false", required = false) boolean deleteData) {
         logger.info("Delete request received for context: {}", name);
         try {
             if (name.startsWith("_")) {
@@ -80,7 +81,7 @@ public class ContextRestController {
                         name))
                         .asResponseEntity(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT);
             }
-            raftServiceFactory.getRaftConfigService().deleteContext(name);
+            raftServiceFactory.getRaftConfigService().deleteContext(name, deleteData);
             return ResponseEntity.accepted()
                                  .body(new RestResponse(true,
                                                         "Accepted delete request"));

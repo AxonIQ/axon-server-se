@@ -12,6 +12,7 @@ import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.DeleteContextRequest;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
@@ -162,9 +163,12 @@ public class RemoteRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteContext(String context) {
+    public CompletableFuture<Void> deleteContext(String context, boolean deleteData) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteContext(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver<>(result, logger,TO_VOID));
+        stub.deleteContext(DeleteContextRequest.newBuilder()
+                                               .setContext(context)
+                                               .setDeleteData(deleteData)
+                                               .build(), new CompletableStreamObserver<>(result, logger, TO_VOID));
         return result;
     }
 
