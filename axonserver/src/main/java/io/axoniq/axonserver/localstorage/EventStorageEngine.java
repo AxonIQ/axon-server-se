@@ -75,7 +75,7 @@ public interface EventStorageEngine {
     /**
      * Close the storage engine. Free all resources used by the storage engine.
      */
-    default void close() {
+    default void close(boolean deleteData) {
     }
 
     /**

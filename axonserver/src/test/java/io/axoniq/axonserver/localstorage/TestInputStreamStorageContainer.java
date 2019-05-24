@@ -96,7 +96,7 @@ public class TestInputStreamStorageContainer {
     }
 
     public void close() {
-        datafileManagerChain.close();
-        snapshotManagerChain.close();
+        datafileManagerChain.close(false);
+        snapshotManagerChain.close(false);
     }
 }
