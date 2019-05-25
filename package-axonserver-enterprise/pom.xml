@@ -94,4 +94,51 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>upload-on-download-server</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>wagon-maven-plugin</artifactId>
+                        <version>2.0.0</version>
+                        <executions>
+                            <execution>
+                                <id>upload-axonserver-ee-zip</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>upload</goal>
+                                </goals>
+                                <configuration>
+                                    <serverId>axoniq-download</serverId>
+                                    <fromDir>${project.build.directory}</fromDir>
+                                    <includes>axonserver-enterprise-${project.parent.version}-bin.zip</includes>
+                                    <url>scp://download.axoniq.io</url>
+                                    <toDir>var/www/html/axoniq/axonserver</toDir>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>update-symbolic-link</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>sshexec</goal>
+                                </goals>
+                                <configuration>
+                                    <serverId>axoniq-download</serverId>
+                                    <url>scp://download.axoniq.io</url>
+                                    <commands>
+                                        <command>ln -sf
+                                            /var/www/html/axoniq/axonserver/axonserver-enterprise-${project.parent.version}-bin.zip
+                                            /var/www/html/axoniq/axonserver/AxonServerEnterprise.zip
+                                        </command>
+                                    </commands>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
