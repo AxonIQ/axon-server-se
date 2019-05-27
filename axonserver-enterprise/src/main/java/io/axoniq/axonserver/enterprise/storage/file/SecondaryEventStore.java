@@ -2,9 +2,8 @@ package io.axoniq.axonserver.enterprise.storage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.file.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.ByteBufferEventSource;
 import io.axoniq.axonserver.localstorage.file.EventByteBufferIterator;
 import io.axoniq.axonserver.localstorage.file.EventSource;
@@ -13,7 +12,6 @@ import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.PositionInfo;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
 import io.axoniq.axonserver.localstorage.file.StorageProperties;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
@@ -25,7 +23,6 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
@@ -67,7 +64,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
         while( iterator.hasNext()) {
             EventInformation event = iterator.next();
-            if( isDomainEvent(event.getEvent())) {
+            if( event.isDomainEvent()) {
                 aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
                                                    k -> new ConcurrentSkipListSet<>())
                                   .add(new PositionInfo(event.getPosition(),
@@ -136,12 +133,6 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         });
         indexManager.cleanup();
     }
-
-    @Override
-    public PreparedTransaction prepareTransaction( List<SerializedEvent> eventList) {
-        throw new UnsupportedOperationException();
-    }
-
 
     @Override
     public void rollback( long token) {

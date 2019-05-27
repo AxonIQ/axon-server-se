@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.file.EventInformation;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;

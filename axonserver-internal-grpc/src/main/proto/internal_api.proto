@@ -484,3 +484,7 @@ message ContextProcessorLBStrategy {
     string context = 1;
     ProcessorLBStrategy processorLBStrategy = 2;
 }
+
+message MetaData {
+    map<string, MetaDataValue> meta_data = 1;
+}
