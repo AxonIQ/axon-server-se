@@ -21,7 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 /**
+ * Handles write actions for events.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class EventWriteStorage {
     private static final Logger logger = LoggerFactory.getLogger(EventWriteStorage.class);
@@ -78,12 +80,23 @@ public class EventWriteStorage {
         return () -> listeners.remove(id);
     }
 
-
+    /**
+     * Returns the number of transactions in progress for appending events.
+     * @return number of transactions
+     */
     public long waitingTransactions() {
         return storageTransactionManager.waitingTransactions();
     }
 
     public void cancelPendingTransactions() {
         storageTransactionManager.cancelPendingTransactions();
+    }
+
+    /**
+     * Deletes all events from the event store for this context. Delegates to the transaction manager, so it can clean
+     * up its data.
+     */
+    public void deleteAllEventData() {
+        storageTransactionManager.deleteAllEventData();
     }
 }

@@ -17,7 +17,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.junit.*;
@@ -65,7 +64,7 @@ public class PrimaryEventStoreTest {
     @Test
     public void transactionsIterator() throws InterruptedException {
         setupEvents(1000, 1000);
-        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0);
+        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0, Long.MAX_VALUE);
 
         long counter = 0;
         while(transactionWithTokenIterator.hasNext()) {
@@ -114,8 +113,7 @@ public class PrimaryEventStoreTest {
                                                        .setAggregateType("Demo")
                                                        .setPayload(SerializedObject.newBuilder().build()).build()));
             });
-            PreparedTransaction preparedTransaction = testSubject.prepareTransaction(newEvents);
-            testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
+            testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });
 
         latch.await(5, TimeUnit.SECONDS);
@@ -125,8 +123,7 @@ public class PrimaryEventStoreTest {
         CountDownLatch latch = new CountDownLatch(1);
         SerializedEvent newEvent = new SerializedEvent(Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
                                                             .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
-        PreparedTransaction preparedTransaction = testSubject.prepareTransaction(Collections.singletonList(newEvent));
-        testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
+        testSubject.store(Collections.singletonList(newEvent)).thenAccept(t -> latch.countDown());
     }
 
     @Test
@@ -140,8 +137,7 @@ public class PrimaryEventStoreTest {
                 newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
                                                        .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
             });
-            PreparedTransaction preparedTransaction = testSubject.prepareTransaction( newEvents);
-            testSubject.store(preparedTransaction).thenAccept(t -> latch.countDown());
+            testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });
 
         latch.await(5, TimeUnit.SECONDS);

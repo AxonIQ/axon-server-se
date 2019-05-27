@@ -97,8 +97,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if (workers == null) {
             return;
         }
-        workers.eventStorageEngine.deleteAllEventData();
-        workers.snapshotStorageEngine.deleteAllEventData();
+        workers.deleteAllEventData();
     }
 
     public void cancel(String context) {
@@ -425,6 +424,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
         }
 
+        /**
+         * Close all activity on a context and release all resources.
+         */
         public void close() {
             trackingEventManager.close();
             eventStorageEngine.close();
@@ -440,9 +442,22 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             trackingEventManager.stopAll();
         }
 
+        /**
+         * Checks if there are any tracking event processors that are waiting for new permits for a long time.
+         * This may indicate that the connection to the client application has gone. If a tracking event processor
+         * is waiting too long, the connection will be cancelled and the client needs to restart a tracker.
+         */
         private void validateActiveConnections() {
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
             trackingEventManager.validateActiveConnections(minLastPermits);
+        }
+
+        /**
+         * Deletes all event and snapshot data for this context.
+         */
+        public void deleteAllEventData() {
+            eventWriteStorage.deleteAllEventData();
+            snapshotWriteStorage.deleteAllEventData();
         }
     }
 }

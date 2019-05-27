@@ -9,6 +9,10 @@
 
 package io.axoniq.axonserver.localstorage.transformation;
 
+import io.axoniq.axonserver.grpc.MetaDataValue;
+
+import java.util.Map;
+
 /**
  * @author Marc Gathier
  */
@@ -35,4 +39,6 @@ public interface ProcessedEvent {
     String getAggregateType();
 
     boolean isDomainEvent();
+
+    Map<String, MetaDataValue> getMetaData();
 }

@@ -9,13 +9,14 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.localstorage.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
@@ -66,11 +67,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void deleteAllEventData() {
         throw new UnsupportedOperationException("Development mode deletion is not supported in InputStreamEventStore");
     }
@@ -88,7 +84,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
             Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {
                 EventInformation event = iterator.next();
-                if (isDomainEvent(event.getEvent())) {
+                if (event.isDomainEvent()) {
                     aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
                                                        k -> new ConcurrentSkipListSet<>())
                                       .add(new PositionInfo(event.getPosition(),
