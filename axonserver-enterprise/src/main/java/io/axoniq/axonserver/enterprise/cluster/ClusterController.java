@@ -239,7 +239,7 @@ public class ClusterController implements SmartLifecycle {
 
     /**
      * Received connection from another Axon Server node. Update configuration if this node is not known.
-     * Needs to be synchronized as it can be called in paralllel with same node information, which would
+     * Needs to be synchronized as it can be called in parallel with same node information, which would
      * cause a unique key violation.
      * Only accepts connections if the other node is member of a context of this node or it is an admin node.
      * @param nodeInfo the node information of the node connecting to this node
