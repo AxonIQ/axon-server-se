@@ -135,11 +135,6 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                                                           throwable);
 
                     result.complete(contextUpdateConfirmation);
-                } catch (UnsupportedOperationException ex) {
-                    // If leader is deleted from group there is no configuration available anymore.
-                    // return empty configuration
-                    ContextUpdateConfirmation contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder().setSuccess(true).build();
-                    result.complete(contextUpdateConfirmation);
                 } catch (Exception ex) {
                     logger.error("{}: Exception while deleting node {}", context, node, ex);
                     result.completeExceptionally(ex);
@@ -163,7 +158,6 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                                     .setNodeName(n.getNodeName())
                                                                                     .setPort(n.getPort())
                                                                                     .setHost(n.getHost())));
-
 
         builder.setPending(raftNode.isCurrentConfigurationPending());
 

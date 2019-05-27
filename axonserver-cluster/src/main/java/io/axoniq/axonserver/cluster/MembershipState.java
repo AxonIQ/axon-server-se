@@ -65,6 +65,16 @@ public interface MembershipState extends ClusterConfiguration{
     }
 
     default CurrentConfiguration currentConfiguration() {
-        throw new UnsupportedOperationException("CurrentConfiguration is not available in this state.");
+        return new CurrentConfiguration() {
+            @Override
+            public List<Node> groupMembers() {
+                return currentGroupMembers();
+            }
+
+            @Override
+            public boolean isUncommitted() {
+                return false;
+            }
+        };
     }
 }
