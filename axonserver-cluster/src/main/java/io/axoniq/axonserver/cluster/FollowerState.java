@@ -149,8 +149,9 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             heardFromLeader = true;
-            if (!request.getLeaderId().equals(leaderId.get()) && currentGroupMembers().stream().anyMatch(m -> m.getNodeId()
-                                                                                                       .equals(request.getLeaderId()))) {
+            if (!request.getLeaderId().equals(leaderId.get()) && currentGroupMembers().stream().anyMatch(m -> m
+                    .getNodeId()
+                    .equals(request.getLeaderId()))) {
                 // only update the leader if it is member of the current configuration
                 leaderId.set(request.getLeaderId());
                 logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
