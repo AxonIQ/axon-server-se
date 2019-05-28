@@ -69,6 +69,7 @@ public class FollowerState extends AbstractMembershipState {
         scheduler.set(schedulerFactory().get());
         heardFromLeader = false;
         leaderId.set(null);
+        leader = null;
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
         lastMessage.set(scheduler.get().clock().millis());
         followerStateStated = lastMessage.get();
@@ -150,7 +151,9 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             heardFromLeader = true;
-            if( ! request.getLeaderId().equals(leader)) {
+            if (!request.getLeaderId().equals(leader) && currentGroupMembers().stream().anyMatch(m -> m.getNodeId()
+                                                                                                       .equals(request.getLeaderId()))) {
+                // only update the leader if it is member of the current configuration
                 leader = request.getLeaderId();
                 logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leader);
                 raftGroup().localNode().receivedNewLeader(leader);

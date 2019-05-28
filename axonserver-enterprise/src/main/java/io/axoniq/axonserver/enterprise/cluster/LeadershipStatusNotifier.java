@@ -73,22 +73,12 @@ public class LeadershipStatusNotifier {
     private void checkLeadershipChanges(
             Map<String, Set<String>> leadersPerContext) {
         Collection<String> myContexts = contextController.getMyContextNames();
-        // Ignore information for contexts that I am a member of as leader information for these contexts
-        // is updated through the raft groups
-//        leadersPerContext.entrySet().removeIf(e -> myContexts.contains(e.getKey()));
         leadersPerContext.forEach((context, leaders) -> {
-            String lastKnownLeader = raftLeaderProvider.getLeader(context);
-            logger.debug("{}: lastKnown {}, leaders: {}", context, lastKnownLeader, leaders);
-            if (myContexts.contains(context)) {
-                // On registration of a node there is no event from raft with the leader
-                // TODO: MGA: find a better way for this
-                if (lastKnownLeader == null && !leaders.isEmpty()) {
-                    String anyLeader = leaders.stream()
-                                              .findAny()
-                                              .get();
-                    publishLeaderConfirmation(context, anyLeader);
-                }
-            } else {
+            // Ignore information for contexts that I am a member of as leader information for these contexts
+            // is updated through the raft groups
+            if (!myContexts.contains(context)) {
+                String lastKnownLeader = raftLeaderProvider.getLeader(context);
+                logger.debug("{}: lastKnown {}, leaders: {}", context, lastKnownLeader, leaders);
                 if (leaders.isEmpty()) {
                     if (lastKnownLeader != null) {
                         publishLeaderConfirmation(context, null);
