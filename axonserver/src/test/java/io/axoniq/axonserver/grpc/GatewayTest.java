@@ -122,7 +122,7 @@ public class GatewayTest {
         accessController = new AxonServerAccessController() {
             @Override
             public boolean allowed(String fullMethodName, String context, String token) {
-                return "1234".equals(token);
+                return "1234".equals(token) && context == "Test";
             }
 
             @Override
@@ -162,6 +162,7 @@ public class GatewayTest {
         try {
             PlatformServiceGrpc.newBlockingStub(channel)
                                .withInterceptors(getClientInterceptor(GrpcMetadataKeys.TOKEN_KEY, "2345"))
+                               .withInterceptors(getClientInterceptor(GrpcMetadataKeys.CONTEXT_MD_KEY, "Test"))
                                .getPlatformServer(ClientIdentification.newBuilder().build());
             fail("Expected exception");
         } catch (StatusRuntimeException sre) {

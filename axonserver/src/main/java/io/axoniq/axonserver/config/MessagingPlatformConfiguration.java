@@ -107,6 +107,14 @@ public class MessagingPlatformConfiguration {
      */
     private String pidFileLocation = ".";
 
+    /**
+     * The initial flow control setting for gRPC level messages. This is the number of messages that may may be en-route
+     * before the sender stops emitting messages. This setting is per-request and only affects streaming requests or
+     * responses. Application-level flow control settings and buffer restriction settings are still in effect.
+     * Defaults to 500.
+     */
+    private int grpcBufferedMessages = 500;
+
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
@@ -287,5 +295,13 @@ public class MessagingPlatformConfiguration {
 
     public void setPidFileLocation(String pidFileLocation) {
         this.pidFileLocation = pidFileLocation;
+    }
+
+    public int getGrpcBufferedMessages() {
+        return grpcBufferedMessages;
+    }
+
+    public void setGrpcBufferedMessages(int grpcBufferedMessages) {
+        this.grpcBufferedMessages = grpcBufferedMessages;
     }
 }
