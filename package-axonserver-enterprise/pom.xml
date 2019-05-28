@@ -9,6 +9,12 @@
     <packaging>pom</packaging>
     <artifactId>package-axonserver-enterprise</artifactId>
 
+    <properties>
+        <downlaod-server>download.axoniq.io</downlaod-server>
+        <zip-symlink>AxonServerEnterprise.zip</zip-symlink>
+    </properties>
+
+
     <dependencies>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
@@ -28,6 +34,13 @@
     </dependencies>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.wagon</groupId>
+                <artifactId>wagon-ssh</artifactId>
+                <version>3.0.0</version>
+            </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -114,7 +127,7 @@
                                     <serverId>axoniq-download</serverId>
                                     <fromDir>${project.build.directory}</fromDir>
                                     <includes>axonserver-enterprise-${project.parent.version}-bin.zip</includes>
-                                    <url>scp://download.axoniq.io</url>
+                                    <url>scp://${downlaod-server}</url>
                                     <toDir>var/www/html/axoniq/axonserver</toDir>
                                 </configuration>
                             </execution>
@@ -126,11 +139,9 @@
                                 </goals>
                                 <configuration>
                                     <serverId>axoniq-download</serverId>
-                                    <url>scp://download.axoniq.io</url>
+                                    <url>scp://${downlaod-server}</url>
                                     <commands>
-                                        <command>ln -sf
-                                            /var/www/html/axoniq/axonserver/axonserver-enterprise-${project.parent.version}-bin.zip
-                                            /var/www/html/axoniq/axonserver/AxonServerEnterprise.zip
+                                        <command>ln -sf /var/www/html/axoniq/axonserver/axonserver-enterprise-${project.parent.version}-bin.zip /var/www/html/axoniq/axonserver/${zip-symlink}
                                         </command>
                                     </commands>
                                 </configuration>
