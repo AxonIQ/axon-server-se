@@ -42,7 +42,6 @@ public class FollowerState extends AbstractMembershipState {
 
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private volatile boolean heardFromLeader;
-    private volatile String leader;
     private final AtomicLong nextTimeout = new AtomicLong();
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
@@ -69,7 +68,6 @@ public class FollowerState extends AbstractMembershipState {
         scheduler.set(schedulerFactory().get());
         heardFromLeader = false;
         leaderId.set(null);
-        leader = null;
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
         lastMessage.set(scheduler.get().clock().millis());
         followerStateStated = lastMessage.get();
@@ -151,12 +149,12 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             heardFromLeader = true;
-            if (!request.getLeaderId().equals(leader) && currentGroupMembers().stream().anyMatch(m -> m.getNodeId()
+            if (!request.getLeaderId().equals(leaderId.get()) && currentGroupMembers().stream().anyMatch(m -> m.getNodeId()
                                                                                                        .equals(request.getLeaderId()))) {
                 // only update the leader if it is member of the current configuration
-                leader = request.getLeaderId();
-                logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leader);
-                raftGroup().localNode().receivedNewLeader(leader);
+                leaderId.set(request.getLeaderId());
+                logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
+                raftGroup().localNode().receivedNewLeader(leaderId.get());
             }
             rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
@@ -368,7 +366,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public String getLeader() {
-        return leader;
+        return leaderId.get();
     }
 
     private void scheduleElectionTimeoutChecker() {
