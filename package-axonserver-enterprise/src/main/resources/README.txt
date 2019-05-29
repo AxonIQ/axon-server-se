@@ -35,6 +35,11 @@ Changes in Axon Server 4.1.4
 
 - Fix for appendEvent with no events in stream
 
+- Stop log cleaning task when context is deleted or node is removed from context
+
+- Fix for NullPointerException on lost connection
+
+
 Changes in Axon Server 4.1.3
 -------------------------------
 
