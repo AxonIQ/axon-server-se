@@ -37,6 +37,7 @@ public class EventWriteStorage {
     }
 
     public CompletableFuture<Void> store(List<SerializedEvent> eventList) {
+        if( eventList.isEmpty()) return CompletableFuture.completedFuture(null);
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         try {
             validate(eventList);

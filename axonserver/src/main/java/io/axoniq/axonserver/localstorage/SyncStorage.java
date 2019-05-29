@@ -31,6 +31,7 @@ public class SyncStorage {
     }
 
     public void sync(long token, List<SerializedEvent> eventList) {
+        if( eventList.isEmpty()) return;
         if (token < eventStore.nextToken()) {
             logger.debug("{}: {} with token {} already stored",
                         eventStore.getType().getContext(),

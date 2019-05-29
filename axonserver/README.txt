@@ -1,7 +1,11 @@
-This is the Axon Server Standard Edition, version 4.1.
+This is the Axon Server Standard Edition, version 4.1.4
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.1.4
+-------------------------------
+* Fix for appendEvent with no events in stream
 
 Release Notes for version 4.1.3
 -------------------------------
