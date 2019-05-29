@@ -98,7 +98,11 @@ public class CandidateState extends AbstractMembershipState {
                         currentTerm());
             return;
         }
-        newElection().result().subscribe(this::onElectionResult, error -> logger.warn("Failed to run election", error));
+        newElection().result().subscribe(this::onElectionResult,
+                                         error -> logger.warn("{} in term {}: Failed to run election. {}",
+                                                              groupId(),
+                                                              currentTerm(),
+                                                              error));
         resetElectionTimeout();
     }
 

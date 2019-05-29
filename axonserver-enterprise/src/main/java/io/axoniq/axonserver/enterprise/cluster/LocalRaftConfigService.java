@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -67,6 +68,8 @@ class LocalRaftConfigService implements RaftConfigService {
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
+    private final CopyOnWriteArraySet<String> contextsInProgress = new CopyOnWriteArraySet<>();
+
 
     public LocalRaftConfigService(GrpcRaftController grpcRaftController, ContextController contextController,
                                   RaftGroupServiceFactory raftGroupServiceFactory,
@@ -315,6 +318,9 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void addContext(String context, List<String> nodes) {
+        if (!contextsInProgress.add(context)){
+            throw new UnsupportedOperationException("The creation of the context is already in progress.");
+        }
         Context contextDef = contextController.getContext(context);
         if( contextDef != null ) {
             throw new MessagingPlatformException(ErrorCode.CONTEXT_EXISTS, String.format("Context %s already exists", context));
@@ -343,7 +349,9 @@ class LocalRaftConfigService implements RaftConfigService {
                                                                                                        .build();
                                        return config.appendEntry(ContextConfiguration.class.getName(),
                                                                  contextConfiguration.toByteArray());
-                                   }));
+                                   })
+                                   .whenComplete((success, error) -> contextsInProgress.remove(context)
+                                   ));
     }
 
     @Override
