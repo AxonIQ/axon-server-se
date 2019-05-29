@@ -33,6 +33,8 @@ Changes in Axon Server 4.1.4
 
 - Avoided multiple concurrent creation of the same context
 
+- Fix for appendEvent with no events in stream
+
 Changes in Axon Server 4.1.3
 -------------------------------
 

@@ -53,6 +53,11 @@ public class EventWriteStorageTest {
     }
 
     @Test
+    public void addEmptyEventList() throws ExecutionException, InterruptedException {
+        testSubject.store(Collections.emptyList()).get();
+    }
+
+    @Test
     public void addNonDomainEvent() throws ExecutionException, InterruptedException {
         Event event = Event.newBuilder().setMessageIdentifier("1").setPayload(SerializedObject.newBuilder().build()).build();
         testSubject.store(Collections.singletonList(new SerializedEvent(event))).get();
