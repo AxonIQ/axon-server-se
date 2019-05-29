@@ -206,14 +206,12 @@ public class RaftNode {
             return;
         }
         if (raftGroup.logEntryProcessor().lastAppliedIndex() > raftGroup.localLogEntryStore().lastLogIndex()) {
-            logger.warn(
-                    "{} in term {}: Last applied index {} is higher than last log index {}, resetting to last log index",
+            logger.error(
+                    "{} in term {}: Last applied index {} is higher than last log index {}",
                     groupId(),
                     currentTerm(),
                     raftGroup.logEntryProcessor().lastAppliedIndex(),
                     raftGroup.localLogEntryStore().lastLogIndex());
-//            TermIndex lastLog = raftGroup.localLogEntryStore().lastLog();
-//            raftGroup.logEntryProcessor().updateLastApplied(lastLog.getIndex(), lastLog.getTerm());
         }
         updateState(state.get(), stateFactory.followerState(), "Node started");
         applyTask = scheduler.scheduleWithFixedDelay(() -> raftGroup.logEntryProcessor()
