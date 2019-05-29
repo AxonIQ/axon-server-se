@@ -50,7 +50,7 @@
 
         <netty.version>4.1.32.Final</netty.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
-        <axonserver.api.version>4.1</axonserver.api.version>
+        <axonserver.api.version>4.2-SNAPSHOT</axonserver.api.version>
     </properties>
 
     <dependencyManagement>
@@ -146,6 +146,19 @@
         <name>AxonIQ BV</name>
         <url>http://axoniq.io</url>
     </organization>
+
+    <repositories>
+        <repository>
+            <id>sonatype</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </repository>
+    </repositories>
 
     <developers>
         <developer>
