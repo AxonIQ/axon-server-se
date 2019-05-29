@@ -31,6 +31,8 @@ Once Axon Server is running you can view its configuration using the Axon Dashbo
 Changes in Axon Server 4.1.4
 -------------------------------
 
+- Fix on RAFT Leader detection
+
 - Avoided multiple concurrent creation of the same context
 
 - Fix for appendEvent with no events in stream
