@@ -205,6 +205,16 @@ public class RaftNode {
             logger.warn("{} in term {}: Node is already started!", groupId(), currentTerm());
             return;
         }
+        if (raftGroup.logEntryProcessor().lastAppliedIndex() > raftGroup.localLogEntryStore().lastLogIndex()) {
+            logger.warn(
+                    "{} in term {}: Last applied index {} is higher than last log index {}, resetting to last log index",
+                    groupId(),
+                    currentTerm(),
+                    raftGroup.logEntryProcessor().lastAppliedIndex(),
+                    raftGroup.localLogEntryStore().lastLogIndex());
+//            TermIndex lastLog = raftGroup.localLogEntryStore().lastLog();
+//            raftGroup.logEntryProcessor().updateLastApplied(lastLog.getIndex(), lastLog.getTerm());
+        }
         updateState(state.get(), stateFactory.followerState(), "Node started");
         applyTask = scheduler.scheduleWithFixedDelay(() -> raftGroup.logEntryProcessor()
                                                                     .apply(raftGroup
@@ -449,6 +459,7 @@ public class RaftNode {
     public CompletableFuture<Void> removeGroup() {
         logger.info("{} in term {}: Remove a group.", groupId(), currentTerm());
         state.get().stop();
+        stopLogCleaning();
         raftGroup.delete();
         logger.info("{} in term {}: Group removed.", groupId(), currentTerm());
         return CompletableFuture.completedFuture(null);
