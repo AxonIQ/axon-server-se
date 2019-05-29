@@ -28,6 +28,20 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.1.4
+-------------------------------
+
+- Fix on RAFT Leader detection
+
+- Avoided multiple concurrent creation of the same context
+
+- Fix for appendEvent with no events in stream
+
+- Stop log cleaning task when context is deleted or node is removed from context
+
+- Fix for NullPointerException on lost connection
+
+
 Changes in Axon Server 4.1.3
 -------------------------------
 

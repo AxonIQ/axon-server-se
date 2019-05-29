@@ -346,6 +346,12 @@ public class LocalRaftConfigServiceTest {
         testSubject.addContext("second", Arrays.asList("node1", "node2"));
     }
 
+    @Test(expected = Throwable.class)
+    public void addContextTwice() {
+        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
+        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
+    }
+
     @Test
     public void join() {
         when(adminNode.isLeader()).thenReturn(true);

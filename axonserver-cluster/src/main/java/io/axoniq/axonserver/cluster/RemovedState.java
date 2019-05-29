@@ -37,7 +37,7 @@ public class RemovedState implements MembershipState {
 
     @Override
     public void start() {
-        raftGroup.delete();
+        raftGroup.localNode().removeGroup();
 
     }
 
