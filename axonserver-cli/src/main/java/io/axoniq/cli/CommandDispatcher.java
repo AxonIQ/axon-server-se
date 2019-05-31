@@ -39,7 +39,7 @@ public class CommandDispatcher {
         executorMap.put("users", ListUsers::run);
         executorMap.put("metrics", Metrics::run);
         executorMap.put("init-cluster", InitNode::run);
-        executorMap.put("delete-all-events", DeleteEvents::run);
+        executorMap.put("purge-events", DeleteEvents::run);
     }
 
     public static void main(String[] args)  {

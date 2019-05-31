@@ -30,6 +30,7 @@ public class ClusterNode {
     private boolean master;
 
     private String context;
+    private Boolean noContexts;
 
     public ClusterNode(String internalHostName, Integer internalGrpcPort) {
         this.internalHostName = internalHostName;
@@ -109,5 +110,13 @@ public class ClusterNode {
 
     public void setContext(String context) {
         this.context = context;
+    }
+
+    public Boolean getNoContexts() {
+        return noContexts;
+    }
+
+    public void setNoContexts(Boolean noContexts) {
+        this.noContexts = noContexts;
     }
 }

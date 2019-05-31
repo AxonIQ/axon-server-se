@@ -11,11 +11,9 @@ package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.util.ChangeableClock;
 import org.junit.*;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertNotNull;
@@ -43,28 +41,5 @@ public class CommandCacheTest {
         testSubject.clearOnTimeout();
         assertNotNull(responseAtomicReference.get());
 
-    }
-
-    public static class ChangeableClock extends Clock {
-        Instant instant = Instant.now();
-
-        @Override
-        public ZoneId getZone() {
-            return null;
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            return this;
-        }
-
-        @Override
-        public Instant instant() {
-            return instant;
-        }
-
-        public void forward( long millis) {
-            instant = instant.plusMillis(millis);
-        }
     }
 }

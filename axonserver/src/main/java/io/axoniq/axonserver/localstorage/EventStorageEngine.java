@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 
@@ -27,8 +26,13 @@ import java.util.stream.Stream;
  * A single storage engine manages events or snapshots for one context.
  *
  * @author Marc Gathier
+ * @since 4.1
  */
 public interface EventStorageEngine {
+
+    enum SearchHint {
+        RECENT_ONLY
+    }
 
     /**
      * Initializes the storage engine.
@@ -37,21 +41,14 @@ public interface EventStorageEngine {
     void init(boolean validate);
 
     /**
-     * Prepare a list of events for storing in the event store. Determines the first token for the group of events.
-     * @param eventList list of events
-     * @return prepared transaction, containing all information to store the events
-     */
-    PreparedTransaction prepareTransaction(List<SerializedEvent> eventList);
-
-    /**
-     * Stores the {@link PreparedTransaction}.
+     * Stores a number of events.
      * Completes the returned completable future when the write is confirmed.
-     * @param eventList the prepared transaction
-     * @return completable future containing the first token from the prepared transaction
+     * @param eventList list of events
+     * @return completable future containing the token of the first stored event
      */
-    default CompletableFuture<Long> store(PreparedTransaction eventList) {
+    default CompletableFuture<Long> store(List<SerializedEvent> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
-        completableFuture.completeExceptionally(new UnsupportedOperationException("Cannot create writable datafile"));
+        completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;
     }
 
@@ -64,11 +61,16 @@ public interface EventStorageEngine {
     }
 
     /**
-     * Retrieves the last sequence number for a specific aggregate. Returns empty optional when aggregate is not found.
+     * Retrieves the last sequence number for a specific aggregate. In some implementations
+     * searching for a non-existing aggregate may be an expensive operation, in which case you could
+     * provide {@link SearchHint} RECENT_ONLY, to only look for the aggregate in recent events (the exact meaning of recent
+     * depends on the EventStorageEngine implementation)
+     * Returns empty optional when aggregate is not found.
      * @param aggregateIdentifier the aggregate identifier
+     * @param searchHints flags to optimize serarch process
      * @return the last sequence number
      */
-    Optional<Long> getLastSequenceNumber(String aggregateIdentifier);
+    Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint... searchHints);
 
     /**
      * Close the storage engine. Free all resources used by the storage engine.
@@ -77,39 +79,39 @@ public interface EventStorageEngine {
     }
 
     /**
+     * Registers a listener that will be called when the storage engine is closed.
+     * @param listener the listener to call
+     * @return a registration that can be used to unregister the listener
+     */
+    Registration registerCloseListener(Runnable listener);
+
+    /**
      * Retrieves the last event for a specific aggregate id with a sequence number higher than or equal to the given sequence number.
      * Returns empty optional if aggregate is not found or no event with higher sequence number is found.
-     * @param aggregateId the aggregate identifier
+     * @param aggregateIdentifier the aggregate identifier
      * @param minSequenceNumber the minimum sequence number
      * @return optional containing the latest event
      */
-    Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber);
-
-    /**
-     * Reserve the sequence numbers of the aggregates in the provided list to avoid collisions during store.
-     * @param events list of events to store
-     */
-    default void reserveSequenceNumbers(List<SerializedEvent> events) {
-    }
+    Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber);
 
     /**
      * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
      * @param aggregateId the aggregate identifier
-     * @param actualMinSequenceNumber the first sequence number to retrieve
+     * @param minSequenceNumber the first sequence number to retrieve
      * @param eventConsumer the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+    void processEventsPerAggregate(String aggregateId, long minSequenceNumber,
                                    Consumer<SerializedEvent> eventConsumer);
 
     /**
      * Find events for an aggregate and execute the consumer for each event.
      * @param aggregateId the aggregate identifier
-     * @param actualMinSequenceNumber the first sequence number to retrieve
-     * @param actualMaxSequenceNumber the last sequence number to retrieve
+     * @param minSequenceNumber the first sequence number to retrieve
+     * @param maxSequenceNumber the last sequence number to retrieve
      * @param maxResults maximum number of events to apply
      * @param eventConsumer the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long actualMaxSequenceNumber,
+    void processEventsPerAggregate(String aggregateId, long minSequenceNumber, long maxSequenceNumber,
                                    int maxResults, Consumer<SerializedEvent> eventConsumer);
 
 
@@ -118,13 +120,6 @@ public interface EventStorageEngine {
      * @return the context and type
      */
     EventTypeContext getType();
-
-    /**
-     * Creates an iterator that iterates over the transactions stored in the storage engine.
-     * @param firstToken first tracking token to include in the iterator
-     * @return iterator of transactions
-     */
-    Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken);
 
     /**
      * Creates an iterator that iterates over the transactions stored in the storage engine.
@@ -177,13 +172,6 @@ public interface EventStorageEngine {
      * @param token the last token to keep.
      */
     default void rollback(long token) {
-    }
-
-    /**
-     * Removes all reserved sequence numbers from storage engine.
-     */
-    default void clearReservedSequenceNumbers() {
-
     }
 
     /**

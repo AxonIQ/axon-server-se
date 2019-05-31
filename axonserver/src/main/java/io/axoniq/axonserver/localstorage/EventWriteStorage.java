@@ -18,16 +18,17 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
-import java.util.stream.IntStream;
+import java.util.function.BiConsumer;
 
 /**
+ * Handles write actions for events.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class EventWriteStorage {
     private static final Logger logger = LoggerFactory.getLogger(EventWriteStorage.class);
 
-    private final Map<String, Consumer<SerializedEventWithToken>> listeners = new ConcurrentHashMap<>();
+    private final Map<String, BiConsumer<Long, List<SerializedEvent>>> listeners = new ConcurrentHashMap<>();
     private final StorageTransactionManager storageTransactionManager;
 
 
@@ -36,6 +37,7 @@ public class EventWriteStorage {
     }
 
     public CompletableFuture<Void> store(List<SerializedEvent> eventList) {
+        if( eventList.isEmpty()) return CompletableFuture.completedFuture(null);
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         try {
             validate(eventList);
@@ -45,13 +47,8 @@ public class EventWriteStorage {
                     completableFuture.complete(null);
 
                     if( ! listeners.isEmpty()) {
-                        IntStream.range(0, eventList.size())
-                                 .forEach(i -> {
-                                     SerializedEventWithToken event = new SerializedEventWithToken(firstToken + i,
-                                                                                                   eventList.get(i));
-                                     listeners.values()
-                                              .forEach(consumer -> safeForwardEvent(consumer, event));
-                                 });
+                        listeners.values()
+                                 .forEach(consumer -> eventsStored(consumer, firstToken, eventList));
                     }
                 } else {
                     completableFuture.completeExceptionally(cause);
@@ -63,30 +60,44 @@ public class EventWriteStorage {
         return completableFuture;
     }
 
-    private void safeForwardEvent(Consumer<SerializedEventWithToken> consumer, SerializedEventWithToken event) {
+    private void eventsStored(
+            BiConsumer<Long, List<SerializedEvent>> consumer,
+            Long firstToken, List<SerializedEvent> eventList) {
         try {
-            consumer.accept(event);
-        } catch( RuntimeException re) {
-            logger.warn("Failed to forward event", re);
+            consumer.accept(firstToken, eventList);
+        } catch(Exception ex) {
+            logger.debug("Listener failed", ex);
         }
+
     }
 
     private void validate(List<SerializedEvent> eventList) {
         storageTransactionManager.reserveSequenceNumbers(eventList);
     }
 
-    public Registration registerEventListener(Consumer<SerializedEventWithToken> listener) {
+    public Registration registerEventListener(BiConsumer<Long, List<SerializedEvent>> listener) {
         String id = UUID.randomUUID().toString();
         listeners.put(id, listener);
         return () -> listeners.remove(id);
     }
 
-
+    /**
+     * Returns the number of transactions in progress for appending events.
+     * @return number of transactions
+     */
     public long waitingTransactions() {
         return storageTransactionManager.waitingTransactions();
     }
 
     public void cancelPendingTransactions() {
         storageTransactionManager.cancelPendingTransactions();
+    }
+
+    /**
+     * Deletes all events from the event store for this context. Delegates to the transaction manager, so it can clean
+     * up its data.
+     */
+    public void deleteAllEventData() {
+        storageTransactionManager.deleteAllEventData();
     }
 }

@@ -12,8 +12,10 @@ package io.axoniq.axonserver.component.processor.listener;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 /**
- * Created by Sara Pellegrini on 30/03/2018.
- * sara.pellegrini@gmail.com
+ * {@link ClientProcessor} Fake implementation for test purpose .
+ *
+ * @author Sara Pellegrini
+ *
  */
 public class FakeClientProcessor implements ClientProcessor {
 
@@ -21,12 +23,20 @@ public class FakeClientProcessor implements ClientProcessor {
 
     private final boolean belongsToComponent;
 
+    private final boolean belongsToContext;
+
     private final EventProcessorInfo eventProcessorInfo;
 
     public FakeClientProcessor(String clientId, boolean belongsToComponent,
                                EventProcessorInfo eventProcessorInfo) {
+        this(clientId, belongsToComponent, true, eventProcessorInfo);
+    }
+
+    public FakeClientProcessor(String clientId, boolean belongsToComponent, boolean belongsToContext,
+                               EventProcessorInfo eventProcessorInfo) {
         this.clientId = clientId;
         this.belongsToComponent = belongsToComponent;
+        this.belongsToContext = belongsToContext;
         this.eventProcessorInfo = eventProcessorInfo;
     }
 
@@ -47,6 +57,6 @@ public class FakeClientProcessor implements ClientProcessor {
 
     @Override
     public boolean belongsToContext(String context) {
-        return true;
+        return belongsToContext;
     }
 }

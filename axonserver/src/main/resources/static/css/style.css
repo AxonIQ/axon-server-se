@@ -581,7 +581,7 @@ tbody.selectable tr:hover {
 table svg, .refresh svg{
     color: #f35c00;
     cursor: pointer;
-	padding-left: 10px;
+    margin-right: 10px;
 }
 
 .table-button:hover, .button:hover, table svg:hover  {

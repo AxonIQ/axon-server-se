@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Set;
 
 /**
+ * Rest APIs related to the load balancing of tracking event processors over client applications.
+ *
  * @author Sara Pellegrini
  * @since 4.1
  */
@@ -57,7 +59,7 @@ public class LoadBalancingRestController {
                             @PathVariable("processor") String processor,
                             @RequestParam("context") String context,
                             @RequestParam("strategy") String strategyName) {
-        TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, component, context);
+        TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context);
         processorLoadBalanceStrategy.balance(trackingProcessor, strategyName).perform();
     }
 }

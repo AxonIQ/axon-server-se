@@ -184,7 +184,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     @Override
     public void query(QueryRequest request, StreamObserver<QueryResponse> responseObserver) {
         if (logger.isTraceEnabled()) {
-            logger.trace("{}: Received query: {}", request.getClientId(), request);
+            logger.trace("{}: Received query: {}", request.getClientId(), request.getQuery());
         }
         GrpcQueryResponseConsumer responseConsumer = new GrpcQueryResponseConsumer(responseObserver);
         queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),

@@ -15,8 +15,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Created by Sara Pellegrini on 22/03/2018.
- * sara.pellegrini@gmail.com
+ * {@link Warning} implementation that activates when the trackers for a event processor have not covered all segments.
+ *
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class MissingTrackers implements Warning {
 
@@ -37,7 +39,7 @@ public class MissingTrackers implements Warning {
             ids.add(segmentId);
         }
 
-        return completion != 1;
+        return completion < 1;
     }
 
     @Override

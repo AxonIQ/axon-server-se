@@ -20,7 +20,7 @@ import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.json.UserInfo;
-import io.axoniq.axonserver.topology.AxonServerNode;
+import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.topology.Topology;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +35,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -45,6 +46,7 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping("/v1/public")
 public class PublicRestController {
 
+    private final Iterable<AxonServer> axonServerProvider;
     private final Topology topology;
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
@@ -54,16 +56,18 @@ public class PublicRestController {
     private final AccessControlConfiguration accessControlConfiguration;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
 
-    @Value("${axoniq.axonserver.devtools.enabled:false}")
+    @Value("${axoniq.axonserver.devmode.enabled:false}")
     private boolean isDevelopmentMode;
 
-    public PublicRestController(Topology topology,
+    public PublicRestController(Iterable<AxonServer> axonServerProvider,
+                                Topology topology,
                                 CommandDispatcher commandDispatcher,
                                 QueryDispatcher queryDispatcher,
                                 EventDispatcher eventDispatcher,
                                 FeatureChecker features,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
+        this.axonServerProvider = axonServerProvider;
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
@@ -79,12 +83,9 @@ public class PublicRestController {
     @ApiOperation(value="Retrieves all nodes in the cluster that the current node knows about.", notes = "For _admin nodes the result contains all nodes, for non _admin nodes the"
             + "result only contains nodes from contexts available on this node and the _admin nodes.")
     public List<JsonServerNode> getClusterNodes() {
-        List<AxonServerNode> nodes = topology.getRemoteConnections();
-
-        nodes.add(topology.getMe());
-        return nodes.stream()
-                    .map(n -> new JsonServerNode(n, topology.isActive(n)))
-                    .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
+        return StreamSupport.stream(axonServerProvider.spliterator(), false)
+                                               .map(n -> new JsonServerNode(n))
+                                               .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 
     @GetMapping(path = "me")
@@ -156,41 +157,40 @@ public class PublicRestController {
 
     public static class JsonServerNode {
 
-        private final AxonServerNode wrapped;
-        private final boolean connected;
+        private final AxonServer wrapped;
 
-        public JsonServerNode(AxonServerNode axonServerNode, boolean connected) {
-            this.wrapped = axonServerNode;
-            this.connected = connected;
+        JsonServerNode(AxonServer n) {
+            wrapped = n;
+
         }
 
 
         public String getHostName() {
-            return wrapped.getHostName();
+            return wrapped.node().getHostName();
         }
 
         public Integer getGrpcPort() {
-            return wrapped.getGrpcPort();
+            return wrapped.node().getGrpcPort();
         }
 
         public String getInternalHostName() {
-            return wrapped.getInternalHostName();
+            return wrapped.node().getInternalHostName();
         }
 
         public Integer getGrpcInternalPort() {
-            return wrapped.getGrpcInternalPort();
+            return wrapped.node().getGrpcInternalPort();
         }
 
         public Integer getHttpPort() {
-            return wrapped.getHttpPort();
+            return wrapped.node().getHttpPort();
         }
 
         public String getName() {
-            return wrapped.getName();
+            return wrapped.node().getName();
         }
 
         public boolean isConnected() {
-            return connected;
+            return wrapped.isActive();
         }
     }
 }

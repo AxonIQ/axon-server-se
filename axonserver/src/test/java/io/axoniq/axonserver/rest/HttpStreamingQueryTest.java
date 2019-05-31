@@ -13,12 +13,13 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -37,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
@@ -54,13 +55,13 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public PreparedTransaction prepareTransaction(List<SerializedEvent> eventList) {
-                return null;
+            public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint... searchHints) {
+                return Optional.empty();
             }
 
             @Override
-            public Optional<Long> getLastSequenceNumber(String aggregateIdentifier) {
-                return Optional.empty();
+            public Registration registerCloseListener(Runnable listener) {
+                return () -> {};
             }
 
             @Override
@@ -83,12 +84,7 @@ public class HttpStreamingQueryTest {
 
             @Override
             public EventTypeContext getType() {
-                return null;
-            }
-
-            @Override
-            public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken) {
-                return null;
+                return new EventTypeContext(Topology.DEFAULT_CONTEXT, EventType.EVENT);
             }
 
             @Override

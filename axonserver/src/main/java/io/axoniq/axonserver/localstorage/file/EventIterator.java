@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.localstorage.EventInformation;
-
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -51,13 +49,14 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
         if (hasNext()) {
             EventInformation event = next();
             if (event.getEvent().getTimestamp() <= instant) {
-                long token = currentSequenceNumber + 1;
-                while (hasNext() && next().getEvent().getTimestamp() <= instant) {
-                    token++;
+                while (hasNext() ) {
+                    event = next();
+                    if( event.getEvent().getTimestamp() > instant) {
+                        return event.getToken()-1;
+                    }
                 }
-
-                return token - 1;
             }
+            return event.getToken()-1;
         }
         return null;
     }

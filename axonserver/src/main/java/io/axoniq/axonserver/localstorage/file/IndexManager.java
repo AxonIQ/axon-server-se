@@ -76,6 +76,8 @@ public class IndexManager {
         filter.create();
         filter.insertAll(positionsPerAggregate.keySet());
         filter.store();
+
+        getIndex(segment);
     }
 
     public SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
