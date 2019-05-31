@@ -45,7 +45,7 @@ public class SlidingWindowTest {
         long now = clock.millis();
         long b1 = testSubject.bucket(now);
         long b2 = testSubject.bucket(now + TimeUnit.SECONDS.toMillis(5));
-        assertEquals(b1+1, b2);
+        assertEquals(b1+5, b2);
     }
 
     @Test

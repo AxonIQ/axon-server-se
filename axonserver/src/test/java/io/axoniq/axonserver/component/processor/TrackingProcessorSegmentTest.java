@@ -32,7 +32,7 @@ public class TrackingProcessorSegmentTest {
                                                         .build();
         TrackingProcessorSegment tracker = new TrackingProcessorSegment("myClient", eventTrackerInfo);
         tracker.printOn(gsonMedia);
-        assertEquals("{\"clientId\":\"myClient\",\"segmentId\":1,\"caughtUp\":true,\"replaying\":false,\"onePartOf\":2}",
+        assertEquals("{\"clientId\":\"myClient\",\"segmentId\":1,\"caughtUp\":true,\"replaying\":false,\"tokenPosition\":0,\"errorState\":\"\",\"onePartOf\":2}",
                     gsonMedia.toString());
     }
 }
