@@ -28,6 +28,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Comparator;
@@ -125,17 +126,18 @@ public class PublicRestController {
 
     @GetMapping(path = "status")
     @ApiOperation(value="Retrieves status information, used by UI")
-    public StatusInfo status() {
+    public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
-        statusInfo.setNrOfCommands(commandDispatcher.getNrOfCommands());
-        statusInfo.setNrOfQueries(queryDispatcher.getNrOfQueries());
-        statusInfo.setNrOfEvents(eventDispatcher.getNrOfEvents());
-        statusInfo.setNrOfSnapshots(eventDispatcher.getNrOfSnapshots());
-        statusInfo.setEventTrackers(eventDispatcher.eventTrackerStatus());
-        statusInfo.setNrOfSubscriptionQueries(subscriptionMetrics.totalCount());
+        statusInfo.setCommandRate(commandDispatcher.commandRate(context));
+        statusInfo.setQueryRate(queryDispatcher.queryRate(context));
+        if( ! context.startsWith("_")) {
+            statusInfo.setEventRate(eventDispatcher.eventRate(context));
+            statusInfo.setSnapshotRate(eventDispatcher.snapshotRate(context));
+            statusInfo.setNrOfEvents(eventDispatcher.getNrOfEvents(context));
+            statusInfo.setEventTrackers(eventDispatcher.eventTrackerStatus(context));
+        }
         statusInfo.setNrOfActiveSubscriptionQueries(subscriptionMetrics.activesCount());
-        statusInfo.setNrOfSubscriptionQueriesUpdates(subscriptionMetrics.updatesCount());
         return statusInfo;
     }
 

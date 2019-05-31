@@ -16,6 +16,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
@@ -57,8 +58,8 @@ public class EventDispatcherTest {
         when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
-                                          Metrics.globalRegistry,
-                                          new DefaultMetricCollector());
+                                          new MeterFactory(Metrics.globalRegistry,
+                                          new DefaultMetricCollector()));
     }
 
     @Test
@@ -133,7 +134,7 @@ public class EventDispatcherTest {
         assertEquals(1, responseObserver.count);
         assertTrue(responseObserver.completed);
         testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "myComponent", "sampleClient"));
-        assertTrue(testSubject.eventTrackerStatus().isEmpty());
+        assertTrue(testSubject.eventTrackerStatus(Topology.DEFAULT_CONTEXT).isEmpty());
     }
 
 

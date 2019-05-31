@@ -59,34 +59,42 @@
                     <span @click="reloadStatus" class="icon reset" title="Refresh"><i class="fas fa-sync"></i></span>
 
                 <ul>
+                    <li v-if="isEnterprise()">
+                        <span>Context</span>
+                        <span id="context" class="number">
+                            <select v-model="context" @change="reloadStatus">
+                                <option v-for="n in contexts">{{n}}</option>
+                            </select>
+                        </span>
+                    </li>
                     <li>
-                        <span>#Events</span>
+                        <span>Last event token</span>
                         <span id="nrEvents" class="number">{{status.nrOfEvents}}</span>
                     </li>
+                </ul>
+
+                <h3>Activity in the last minute</h3>
+
+                <ul>
                     <li>
-                        <span>#Snapshots</span>
-                        <span id="nrSnapshots" class="number">{{status.nrOfSnapshots}}</span>
+                        <span>Commands received / second</span>
+                        <span id="commandRate" class="number">{{status.commandRate | formatRate}}</span>
                     </li>
                     <li>
-                        <span>#Commands</span>
-                        <span id="nrCommands" class="number">{{status.nrOfCommands}}</span>
-                    </li>
-                    <li>
-                        <span>#Queries</span>
-                        <span id="nrQueries" class="number">{{status.nrOfQueries}}</span>
-                    </li>
-                    <li>
-                        <span>#Subscription Queries</span>
-                        <span class="number">{{status.nrOfSubscriptionQueries}}</span>
+                        <span>Queries received / second</span>
+                        <span id="queryRate" class="number">{{status.queryRate | formatRate}}</span>
                     </li>
 
                     <li>
-                        <span>#Active Subscription Queries</span>
-                        <span class="number">{{status.nrOfActiveSubscriptionQueries}}</span>
+                        <span>Events stored / second</span>
+                        <span id="eventRate" class="number">{{status.eventRate | formatRate}}</span>
                     </li>
                     <li>
-                        <span>#Subscription Queries Updates</span>
-                        <span class="number">{{status.nrOfSubscriptionQueriesUpdates}}</span>
+                        <span>Snapshots stored / second</span>
+                        <span id="snapshotRate" class="number">{{status.snapshotRate | formatRate}}</span>
+                    </li>
+                    <li>
+                        <span style="display: block; height: 10px"></span>
                     </li>
                     <li>
                         <div v-if="node.developmentMode && !node.clustered">

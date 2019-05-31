@@ -12,6 +12,7 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry.QueryMetric;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
@@ -26,7 +27,7 @@ public class QueryMetricsRegistryTest {
     private ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT, "processor");
     @Before
     public void setUp() {
-        testSubject = new QueryMetricsRegistry(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        testSubject = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
     }
 
     @Test

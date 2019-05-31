@@ -91,7 +91,7 @@ public class CommandRestController {
 
     @GetMapping("commands/count")
     public int count() {
-        return commandDispatcher.commandCount();
+        return commandDispatcher.activeCommandCount();
     }
 
     public static class JsonClientMapping {
