@@ -32,9 +32,9 @@ public class Fonts {
         Graphics2D g = (Graphics2D) img.getGraphics();
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        String montserratItalic = "static/fonts/Montserrat-Italic.ttf";
-        String latoBold = "static/fonts/lato-bold.ttf";
-        String montserrat = "static/fonts/Montserrat-Regular.ttf";
+        String montserratItalic = "src/main/resources/static/fonts/Montserrat-Italic.ttf";
+        String latoBold = "src/main/resources/static/fonts/lato-bold.ttf";
+        String montserrat = "src/main/resources/static/fonts/Montserrat-Regular.ttf";
         this.type = new FontResource(g, montserratItalic, 10f);
         this.eventStore = new FontResource(g, latoBold, 12f);
         this.client = new FontResource(g, montserratItalic, 9f);
