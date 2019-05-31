@@ -77,7 +77,7 @@ public class LocalEventStorageEngineTest {
                     }
                 };
             }
-        }, 5);
+        }, 5, 1000);
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
 
