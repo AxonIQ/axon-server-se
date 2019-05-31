@@ -12,7 +12,6 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.grpc.stub.StreamObserver;
-import io.netty.util.internal.OutOfDirectMemoryError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +35,7 @@ public class SendingStreamObserver<T> implements StreamObserver<T> {
         guard.lock();
         try {
             delegate.onNext(t);
-        } catch( RuntimeException | OutOfDirectMemoryError e) {
+        } catch( RuntimeException | OutOfMemoryError e) {
             logger.warn("Error while sending message: {}", e.getMessage(), e);
             try {
                 // Cancel RPC

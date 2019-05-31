@@ -37,6 +37,9 @@
                     }
                     return false;
             },
+            isEnterprise: function() {
+                return globals.license === 'enterprise edition'
+            },
 
             webSocketInfo: {
                 stompConnected: false,
@@ -88,7 +91,16 @@
             }
         });
 
+        Vue.filter('formatRate', function (rate) {
+            if( rate) {
+                return Number(rate.oneMinuteRate).toFixed(0);
+            } else {
+                return Number(0).toFixed(0);
+            }
+        });
+
         Vue.prototype.hasFeature = globals.hasFeature;
+        Vue.prototype.isEnterprise = globals.isEnterprise;
 
         $(document).ready(function () {
 

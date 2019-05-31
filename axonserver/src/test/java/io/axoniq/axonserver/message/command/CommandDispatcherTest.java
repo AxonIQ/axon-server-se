@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -50,8 +51,7 @@ public class CommandDispatcherTest {
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(new SimpleMeterRegistry(),
-                                                     new DefaultMetricCollector());
+        metricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry);
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
         Set<CommandRegistrationCache.RegistrationEntry> commands =

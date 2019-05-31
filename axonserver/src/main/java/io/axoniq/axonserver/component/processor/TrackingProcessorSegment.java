@@ -25,7 +25,16 @@ public class TrackingProcessorSegment implements Printable {
 
     public TrackingProcessorSegment(String clientId, EventProcessorInfo.EventTrackerInfo eventTrackerInfo) {
         this.clientId = clientId;
+
         this.eventTrackerInfo = eventTrackerInfo;
+    }
+
+    public String clientId() {
+        return clientId;
+    }
+
+    public int segmentId() {
+        return eventTrackerInfo.getSegmentId();
     }
 
     @Override
@@ -34,6 +43,8 @@ public class TrackingProcessorSegment implements Printable {
              .with("segmentId", eventTrackerInfo.getSegmentId())
              .with("caughtUp", eventTrackerInfo.getCaughtUp())
              .with("replaying", eventTrackerInfo.getReplaying())
+             .with("tokenPosition", eventTrackerInfo.getTokenPosition())
+             .with("errorState", eventTrackerInfo.getErrorState())
              .with("onePartOf", eventTrackerInfo.getOnePartOf());
     }
 }

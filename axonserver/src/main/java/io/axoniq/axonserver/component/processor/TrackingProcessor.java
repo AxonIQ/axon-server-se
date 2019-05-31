@@ -18,6 +18,7 @@ import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -103,6 +104,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
                 .stream()
                 .flatMap(client -> client.eventProcessorInfo().getEventTrackersInfoList().stream()
                                          .map(tracker -> new TrackingProcessorSegment(client.clientId(), tracker)))
+                .sorted(Comparator.comparingInt(TrackingProcessorSegment::segmentId).thenComparing(TrackingProcessorSegment::clientId))
                 .collect(toList());
     }
 

@@ -9,14 +9,18 @@
 
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.metric.MeterFactory;
+
 import java.util.Map;
 
 /**
  * @author Marc Gathier
  */
 public class StatusInfo {
-    private long nrOfCommands;
-    private long nrOfQueries;
+    private MeterFactory.RateMeter commandRate;
+    private MeterFactory.RateMeter queryRate;
+    private MeterFactory.RateMeter eventRate;
+    private MeterFactory.RateMeter snapshotRate;
     private long nrOfEvents;
     private long nrOfSnapshots;
     private long nrOfSubscriptionQueries;
@@ -24,20 +28,20 @@ public class StatusInfo {
     private long nrOfSubscriptionQueriesUpdates;
     private Map<String, Iterable<Long>> eventTrackers;
 
-    public long getNrOfCommands() {
-        return nrOfCommands;
+    public MeterFactory.RateMeter getCommandRate() {
+        return commandRate;
     }
 
-    public void setNrOfCommands(long nrOfCommands) {
-        this.nrOfCommands = nrOfCommands;
+    public void setCommandRate(MeterFactory.RateMeter commandRate) {
+        this.commandRate = commandRate;
     }
 
-    public long getNrOfQueries() {
-        return nrOfQueries;
+    public MeterFactory.RateMeter getQueryRate() {
+        return queryRate;
     }
 
-    public void setNrOfQueries(long nrOfQueries) {
-        this.nrOfQueries = nrOfQueries;
+    public void setQueryRate(MeterFactory.RateMeter queryRate) {
+        this.queryRate = queryRate;
     }
 
     public long getNrOfEvents() {
@@ -86,5 +90,21 @@ public class StatusInfo {
 
     public void setNrOfSubscriptionQueriesUpdates(long nrOfSubscriptionQueriesUpdates) {
         this.nrOfSubscriptionQueriesUpdates = nrOfSubscriptionQueriesUpdates;
+    }
+
+    public MeterFactory.RateMeter getSnapshotRate() {
+        return snapshotRate;
+    }
+
+    public void setSnapshotRate(MeterFactory.RateMeter snapshotRate) {
+        this.snapshotRate = snapshotRate;
+    }
+
+    public MeterFactory.RateMeter getEventRate() {
+        return eventRate;
+    }
+
+    public void setEventRate(MeterFactory.RateMeter eventRate) {
+        this.eventRate = eventRate;
     }
 }

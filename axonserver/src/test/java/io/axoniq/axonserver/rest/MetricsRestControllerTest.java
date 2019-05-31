@@ -21,6 +21,7 @@ import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.jetbrains.annotations.NotNull;
@@ -62,7 +63,7 @@ public class MetricsRestControllerTest {
                 return 0;
             }
         });
-        commandMetricsRegistry = new CommandMetricsRegistry(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientIdentification("context", "testclient");
@@ -74,7 +75,7 @@ public class MetricsRestControllerTest {
 
             }
         });
-        queryMetricsRegistry = new QueryMetricsRegistry(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
         testSubject = new MetricsRestController(commandRegistrationCache, commandMetricsRegistry,
                                                 queryRegistrationCache, queryMetricsRegistry);
     }
