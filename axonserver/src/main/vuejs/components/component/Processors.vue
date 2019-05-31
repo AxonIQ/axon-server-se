@@ -26,7 +26,7 @@
                         <th><div>Processing Mode</div></th>
                         <th><div>Active Threads</div></th>
                         <th><div>Processor Operations</div></th>
-                        <th v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" style="text-align: center">Auto Load Balancing</th>
+                        <th v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" style="text-align: center"><div>Auto Load Balancing</div></th>
                         <th><div></div></th>
                     </tr>
                     </thead>
@@ -86,15 +86,17 @@
 
                 <table class="nodes" v-if="selected.mode === 'Tracking'">
                     <colgroup>
-                        <col width="20%">
+                        <col width="10%">
                         <col width="40%">
                         <col width="15%">
+                        <col width="10%">
                         <col width="15%">
                     </colgroup>
                     <thead>
                     <tr>
                         <th><div>Segment</div></th>
                         <th><div>ClientId</div></th>
+                        <th><div>Position</div></th>
                         <th><div>Size</div></th>
                     </tr>
                     </thead>
@@ -102,8 +104,10 @@
                     <tr v-for="tracker in selected.trackers">
                         <td><div>{{tracker.segmentId}}</div></td>
                         <td><div>{{tracker.clientId}}</div></td>
+                        <td><div>{{tracker.tokenPosition}}</div></td>
                         <td>1/{{tracker.onePartOf}}</td>
                         <td>
+                            <i v-if="tracker.errorState !== ''" class="fas fa-exclamation-triangle" :title="'Processor in error state: '+ tracker.errorState"></i>
                             <i v-if="!tracker.caughtUp" class="fas fa-sign-in-alt" style="color: red"></i>
                             <i v-if="tracker.replaying" class="fas fa-history" style="color: red"></i>
                             <span v-if="canMoveFrom(tracker.clientId)" @click="showMoveSegment(tracker)" title="Move">
