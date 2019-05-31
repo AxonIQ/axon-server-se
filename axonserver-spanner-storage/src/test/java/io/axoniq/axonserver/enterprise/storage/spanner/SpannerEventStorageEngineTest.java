@@ -38,7 +38,7 @@ public class SpannerEventStorageEngineTest {
     public void addEvents() {
         testSubject.store(Arrays.asList(serializedEvent("Aggregate1", "AggregateType", 0, "Payload", "payload")));
 
-        Optional<Long> seqNr = testSubject.getLastSequenceNumber("Aggregate1", true);
+        Optional<Long> seqNr = testSubject.getLastSequenceNumber("Aggregate1");
         assertTrue(seqNr.isPresent());
         assertEquals(Optional.of(0L), seqNr);
 
