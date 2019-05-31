@@ -51,10 +51,21 @@ public class TrackingEventProcessorManager {
     private final Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder;
     private final int blacklistedSendAfter;
 
+    /**
+     * Constructor for {@link TrackingEventProcessorManager}.
+     * @param eventStorageEngine the event storage engine
+     * @param blacklistedSendAfter max number of ignored events before sending next event
+     */
     public TrackingEventProcessorManager(EventStorageEngine eventStorageEngine, int blacklistedSendAfter) {
         this(eventStorageEngine.getType().getContext(), eventStorageEngine::getGlobalIterator, blacklistedSendAfter);
     }
 
+    /**
+     * Constructor for {@link TrackingEventProcessorManager} for easier testing.
+     * @param context the context for the storage engine
+     * @param iteratorBuilder function that creates an event iterator
+     * @param blacklistedSendAfter max number of ignored events before sending next event
+     */
     TrackingEventProcessorManager(String context, Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder, int blacklistedSendAfter) {
         this.context = context;
         this.iteratorBuilder = iteratorBuilder;
@@ -187,7 +198,7 @@ public class TrackingEventProcessorManager {
             permits = new AtomicInteger((int) request.getNumberOfPermits());
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(request.getTrackingToken());
-            if( request.getBlacklistCount() > 0) {
+            if (request.getBlacklistCount() > 0) {
                 addBlacklist(request.getBlacklistList());
             }
             this.eventStream = eventStream;

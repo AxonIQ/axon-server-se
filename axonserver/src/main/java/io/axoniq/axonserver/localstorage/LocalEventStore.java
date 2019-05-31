@@ -68,6 +68,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long newPermitsTimeout=120000;
 
     private final int maxEventCount;
+
+    /**
+     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all events
+     * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
+     */
     private final int blacklistedSendAfter;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
