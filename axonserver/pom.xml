@@ -24,9 +24,6 @@
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
         <exec.plugin.version>1.6.0</exec.plugin.version>
 
-        <frontend-maven-plugin.version>1.6</frontend-maven-plugin.version>
-        <frontend-maven-plugin.nodeVersion>v9.7.1</frontend-maven-plugin.nodeVersion>
-        <frontend-maven-plugin.npmVersion>5.6.0</frontend-maven-plugin.npmVersion>
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
 
         <mapdb.version>3.0.7</mapdb.version>
@@ -200,56 +197,9 @@
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
-                <excludes>
-                    <exclude>**/*.ttf</exclude>
-                    <exclude>**/*.ico</exclude>
-                    <exclude>**/*.png</exclude>
-                    <exclude>**/*.gif</exclude>
-                </excludes>
-            </resource>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>false</filtering>
-                <includes>
-                    <include>**/*.ttf</include>
-                    <include>**/*.ico</include>
-                    <include>**/*.png</include>
-                    <include>**/*.gif</include>
-                </includes>
             </resource>
         </resources>
-
-        <extensions>
-            <!-- resolves ${os.detected.classifier} -->
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.4.0.Final</version>
-            </extension>
-        </extensions>
-
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>com.github.eirslett</groupId>
-                    <artifactId>frontend-maven-plugin</artifactId>
-                    <version>${frontend-maven-plugin.version}</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-clean-plugin</artifactId>
-                <configuration>
-                    <filesets>
-                        <fileset>
-                            <directory>src/main/resources/static/dist</directory>
-                        </fileset>
-                    </filesets>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -353,93 +303,19 @@
 
     <profiles>
         <profile>
-            <id>node-and-npm</id>
-            <activation>
-                <file>
-                    <missing>node</missing>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>install node and npm</id>
-                                <goals>
-                                    <goal>install-node-and-npm</goal>
-                                </goals>
-                                <phase>initialize</phase>
-                                <configuration>
-                                    <nodeVersion>${frontend-maven-plugin.nodeVersion}</nodeVersion>
-                                    <npmVersion>${frontend-maven-plugin.npmVersion}</npmVersion>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>npm-install</id>
-            <activation>
-                <file>
-                    <missing>node_modules</missing>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>npm install</id>
-                                <goals>
-                                    <goal>npm</goal>
-                                </goals>
-                                <phase>initialize</phase>
-                                <configuration>
-                                    <arguments>install --no-optional</arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-
-        <profile>
-            <id>npm-build</id>
+            <id>frontend</id>
             <activation>
                 <property>
                     <name>!skipFrontend</name>
                 </property>
             </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>npm build</id>
-                                <goals>
-                                    <goal>npm</goal>
-                                </goals>
-                                <configuration>
-                                    <arguments>run build</arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>io.axoniq.axonserver</groupId>
+                    <artifactId>axonserver-dashboard</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
         </profile>
-
     </profiles>
-
 </project>

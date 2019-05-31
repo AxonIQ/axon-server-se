@@ -1,11 +1,11 @@
 {
-  "name": "axon-server",
-  "description": "Axon Server",
+  "name": "axonserver-dashboard",
+  "description": "Axon Server Dashboard",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_ENV=development webpack-dev-server --open --hot",
-    "build": "cross-env NODE_ENV=production webpack --progress --hide-modules",
-    "watch": "webpack --watch"
+    "dev": "../axonserver-dashboard/node_modules/.bin/cross-env NODE_ENV=development webpack-dev-server --open --hot",
+    "build": "../axonserver-dashboard/node_modules/.bin/cross-env NODE_ENV=production webpack --progress --hide-modules",
+    "watch": "../axonserver-dashboard/node_modules/.bin/webpack --watch"
   },
   "dependencies": {
     "vue": "^2.5.13"

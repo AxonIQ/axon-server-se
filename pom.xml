@@ -204,4 +204,19 @@
         </developer>
     </developers>
 
+
+    <profiles>
+        <profile>
+            <id>frontend</id>
+            <activation>
+                <property>
+                    <name>!skipFrontend</name>
+                </property>
+            </activation>
+            <modules>
+                <module>axonserver-dashboard</module>
+            </modules>
+        </profile>
+    </profiles>
+
 </project>
