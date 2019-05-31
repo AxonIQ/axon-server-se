@@ -10,12 +10,24 @@ package io.axoniq.axonserver.grpc;
 
 import io.grpc.*;
 
-import javax.annotation.Nullable;
-
+/**
+ * Interceptor that immediately requests a number of messages from the connected component, to increase the flow of
+ * messages.
+ * <p>
+ * As an additional message is requested by default each time a message is received, setting an initial request amount
+ * will allow that number of messages to be "in transit" before the server stops sending more.
+ */
 public class GrpcBufferingInterceptor implements ClientInterceptor, ServerInterceptor {
     private final int additionalBuffer;
 
-    public GrpcBufferingInterceptor(int additionalBuffer) {this.additionalBuffer = additionalBuffer;}
+    /**
+     * Initialize the interceptor to ask for {@code additionalBuffer} amount of messages from the server.
+     *
+     * @param additionalBuffer The number of messages the server may send before waiting for permits to be renewed
+     */
+    public GrpcBufferingInterceptor(int additionalBuffer) {
+        this.additionalBuffer = additionalBuffer;
+    }
 
     @Override
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
@@ -36,39 +48,19 @@ public class GrpcBufferingInterceptor implements ClientInterceptor, ServerInterc
         return listener;
     }
 
-    private static class AdditionalMessageRequestingCall<ReqT, RespT> extends ClientCall<ReqT, RespT> {
-        private final ClientCall<ReqT, RespT> call;
+    private static class AdditionalMessageRequestingCall<ReqT, RespT> extends ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT> {
+
         private final int additionalBuffer;
 
-        public AdditionalMessageRequestingCall(ClientCall<ReqT, RespT> call,
-                                               int additionalBuffer) {this.call = call;
+        public AdditionalMessageRequestingCall(ClientCall<ReqT, RespT> call, int additionalBuffer) {
+            super(call);
             this.additionalBuffer = additionalBuffer;
         }
 
         @Override
         public void start(Listener<RespT> responseListener, Metadata headers) {
-            call.start(responseListener, headers);
-            call.request(additionalBuffer);
-        }
-
-        @Override
-        public void request(int numMessages) {
-            call.request(numMessages);
-        }
-
-        @Override
-        public void cancel(@Nullable String message, @Nullable Throwable cause) {
-            call.cancel(message, cause);
-        }
-
-        @Override
-        public void halfClose() {
-            call.halfClose();
-        }
-
-        @Override
-        public void sendMessage(ReqT message) {
-            call.sendMessage(message);
+            super.start(responseListener, headers);
+            request(additionalBuffer);
         }
     }
 }
