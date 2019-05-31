@@ -45,10 +45,6 @@ public class MeterFactory {
         return new RateMeter(String.join(".", name));
     }
 
-    public Counter counter(String name) {
-        return Counter.builder(name).register(meterRegistry);
-    }
-
     public Timer timer(String name) {
         return meterRegistry.timer(name);
     }

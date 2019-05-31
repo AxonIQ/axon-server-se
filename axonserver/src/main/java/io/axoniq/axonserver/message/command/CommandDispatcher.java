@@ -40,14 +40,14 @@ import java.util.stream.Collectors;
 @Component("CommandDispatcher")
 public class CommandDispatcher {
 
-    private static final String COMMAND_COUNTER_NAME = "axon.commands";
+    private static final String COMMANDRATE_NAME = "axon.commands";
     private static final String ACTIVE_COMMANDS_GAUGE = "axon.commands.active";
     private final CommandRegistrationCache registrations;
     private final CommandCache commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed());
-    private final Map<String, MeterFactory.RateMeter> commandCounter = new ConcurrentHashMap<>();
+    private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
 
     public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache, CommandMetricsRegistry metricRegistry) {
         this.registrations = registrations;
@@ -62,14 +62,14 @@ public class CommandDispatcher {
             CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
             dispatchToCommandHandler( request, handler, responseObserver);
         } else {
-            commandCounter(context).mark();
+            commandRate(context).mark();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
             dispatchToCommandHandler( request, commandHandler, responseObserver);
         }
     }
 
-    private MeterFactory.RateMeter commandCounter(String context) {
-        return commandCounter.computeIfAbsent(context, c->  metricRegistry.rateMeter(COMMAND_COUNTER_NAME, c));
+    public MeterFactory.RateMeter commandRate(String context) {
+        return commandRatePerContext.computeIfAbsent(context, c->  metricRegistry.rateMeter(COMMANDRATE_NAME, c));
     }
 
     @EventListener
@@ -168,10 +168,6 @@ public class CommandDispatcher {
                         .build()));
             }
         });
-    }
-
-    public MeterFactory.RateMeter commandRate(String context) {
-        return commandCounter(context);
     }
 
     public int activeCommandCount() {

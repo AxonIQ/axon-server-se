@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
  */
 @Component("QueryDispatcher")
 public class QueryDispatcher {
-    private static final String QUERY_COUNTER_NAME = "axon.queries";
+    private static final String QUERY_RATE_NAME = "axon.queries";
     private static final String ACTIVE_QUERY_GAUGE = "axon.queries.active";
 
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
@@ -45,7 +45,7 @@ public class QueryDispatcher {
     private final QueryCache queryCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed());
-    private final Map<String, MeterFactory.RateMeter> queryCounter= new ConcurrentHashMap<>();
+    private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache, QueryMetricsRegistry queryMetricsRegistry) {
         this.registrationCache = registrationCache;
@@ -114,12 +114,9 @@ public class QueryDispatcher {
         return queryQueue;
     }
 
-    public MeterFactory.RateMeter queryRate(String context) {
-        return queryCounter(context);
-    }
 
     public void query(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
-        queryCounter(serializedQuery.context()).mark();
+        queryRate(serializedQuery.context()).mark();
         QueryRequest query = serializedQuery.query();
         long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         Set<? extends QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
@@ -146,8 +143,8 @@ public class QueryDispatcher {
         }
     }
 
-    private MeterFactory.RateMeter queryCounter(String context) {
-        return queryCounter.computeIfAbsent(context, c -> queryMetricsRegistry.rateMeter(QUERY_COUNTER_NAME, c));
+    public MeterFactory.RateMeter queryRate(String context) {
+        return queryRatePerContext.computeIfAbsent(context, c -> queryMetricsRegistry.rateMeter(QUERY_RATE_NAME, c));
     }
 
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {

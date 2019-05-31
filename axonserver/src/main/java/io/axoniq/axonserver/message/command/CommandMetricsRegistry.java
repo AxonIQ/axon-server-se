@@ -15,7 +15,6 @@ import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.Metrics;
 import io.axoniq.axonserver.metric.SnapshotMetric;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -66,10 +65,6 @@ public class CommandMetricsRegistry {
 
     public CommandMetric commandMetric(String command, ClientIdentification clientId, String componentName) {
         return new CommandMetric(command,clientId.metricName(), componentName, clusterMetric(command, clientId).size());
-    }
-
-    public Counter counter(String commandCounterName) {
-        return meterFactory.counter(commandCounterName);
     }
 
     public <T> Gauge gauge(String activeCommandsGauge, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
