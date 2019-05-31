@@ -29,6 +29,7 @@
         <module>axonserver-grpc</module>
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
+        <module>docker/axonserver-docker-hub</module>
     </modules>
 
     <properties>
