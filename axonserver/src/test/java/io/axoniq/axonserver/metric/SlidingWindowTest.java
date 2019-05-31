@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.metric;
 
-import io.axoniq.axonserver.message.command.CommandCacheTest;
+import io.axoniq.axonserver.util.ChangeableClock;
 import org.junit.*;
 
 import java.util.concurrent.TimeUnit;
@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
  */
 public class SlidingWindowTest {
     private SlidingWindow<AtomicLong> testSubject;
-    private CommandCacheTest.ChangeableClock clock = new CommandCacheTest.ChangeableClock();
+    private ChangeableClock clock = new ChangeableClock();
 
     @Before
     public void init() {

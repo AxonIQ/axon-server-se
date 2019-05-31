@@ -17,7 +17,6 @@ import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.FakeSubscriptionMetrics;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
-import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServers;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
@@ -31,7 +30,6 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -67,12 +65,6 @@ public class PublicRestControllerTest {
                                                messagePlatformConfiguration,
                                                () -> new FakeSubscriptionMetrics(500, 400, 1000));
 
-        AxonServerNode other = new SimpleAxonServerNode("node2", "host2", 100, 200);
-        AxonServerNode me = new SimpleAxonServerNode("node1", "host1", 100, 200);
-        List<AxonServerNode> nodes = new ArrayList<>();
-        nodes.add(other);
-        when(clusterController.getRemoteConnections()).thenReturn(nodes);
-        when(clusterController.getMe()).thenReturn(me);
     }
 
     @Test
@@ -99,15 +91,4 @@ public class PublicRestControllerTest {
         assertEquals("Standard edition", licenseInfo.getEdition());
     }
 
-
-    @Test
-    public void status() {
-        StatusInfo status = testSubject.status(Topology.DEFAULT_CONTEXT);
-        assertEquals(100, status.getCommandRate());
-        assertEquals(200, status.getNrOfEvents());
-        assertEquals(300, status.getQueryRate());
-        assertEquals(500, status.getNrOfSubscriptionQueries());
-        assertEquals(400, status.getNrOfActiveSubscriptionQueries());
-        assertEquals(1000, status.getNrOfSubscriptionQueriesUpdates());
-    }
 }
