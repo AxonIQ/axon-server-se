@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
@@ -29,7 +30,7 @@ public class CommandMetricsRegistryTest {
 
     @Before
     public void setUp() {
-        testSubject = new CommandMetricsRegistry(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        testSubject = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
     }
 
     @Test
