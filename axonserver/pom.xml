@@ -313,7 +313,7 @@
                 <dependency>
                     <groupId>io.axoniq.axonserver</groupId>
                     <artifactId>axonserver-dashboard</artifactId>
-                    <version>${project.version}</version>
+                    <version>${project.parent.version}</version>
                 </dependency>
             </dependencies>
         </profile>
