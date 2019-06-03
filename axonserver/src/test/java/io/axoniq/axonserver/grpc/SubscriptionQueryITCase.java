@@ -81,7 +81,7 @@ public class SubscriptionQueryITCase {
     }
 
     private boolean checkObjectGarbageCollected(Reference<Object> ref, ReferenceQueue<Object> referenceQueue) {
-        Reference<? extends Object> polledRef = referenceQueue.poll();
+        Reference<?> polledRef = referenceQueue.poll();
         return polledRef == ref;
     }
 }
