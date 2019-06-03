@@ -262,6 +262,9 @@
                         <goals>
                             <goal>start</goal>
                         </goals>
+                        <configuration>
+                            <wait>45000</wait>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>post-integration-test</id>
