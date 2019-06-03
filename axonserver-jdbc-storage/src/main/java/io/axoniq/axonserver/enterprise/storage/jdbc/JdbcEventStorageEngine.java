@@ -137,17 +137,25 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
     public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         CloseableIterator<SerializedEventWithToken> globalIterator = getGlobalIterator(firstToken, limitToken);
         return new Iterator<SerializedTransactionWithToken>() {
+            boolean closed;
             @Override
             public boolean hasNext() {
+                if (closed) {
+                    return false;
+                }
                 boolean next = globalIterator.hasNext();
                 if (!next) {
                     globalIterator.close();
+                    closed = true;
                 }
                 return next;
             }
 
             @Override
             public SerializedTransactionWithToken next() {
+                if (closed) {
+                    throw new NoSuchElementException();
+                }
                 SerializedEventWithToken event = globalIterator.next();
                 return new SerializedTransactionWithToken(event.getToken(),
                                                           VERSION,

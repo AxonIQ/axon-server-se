@@ -33,7 +33,7 @@ public class JpaLocalEventStoreTest {
                                                                     SingleInstanceTransactionManager::new,
                                                                     new ProtoMetaDataSerializer(),
                                                                     new SingleSchemaMultiContextStrategy(storageProperties.getVendorSpecific()),
-                                                                    null));
+                                                                    c-> true));
         testSubject.initContext("default", false);
     }
 

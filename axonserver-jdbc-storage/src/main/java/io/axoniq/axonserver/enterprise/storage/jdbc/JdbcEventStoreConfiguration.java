@@ -42,7 +42,7 @@ public class JdbcEventStoreConfiguration {
                                          storageTransactionManagerFactory,
                                          metaDataSerializer(),
                                          multiContextStrategy(storageProperties),
-                                         leaderProvider);
+                                         leaderProvider::isLeader);
     }
 
     /**

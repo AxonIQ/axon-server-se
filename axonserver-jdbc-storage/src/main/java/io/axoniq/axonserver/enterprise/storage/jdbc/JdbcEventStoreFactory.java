@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.storage.jdbc.sync.StoreAlwaysSyncStrategy;
 import io.axoniq.axonserver.enterprise.storage.jdbc.sync.StoreOnLeaderSyncStrategy;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -9,6 +8,8 @@ import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+
+import java.util.function.Predicate;
 
 /**
  * Factory to create  {@link EventStorageEngine} instances that store data in a relational database.
@@ -23,13 +24,13 @@ public class JdbcEventStoreFactory implements EventStoreFactory {
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final MetaDataSerializer metaDataSerializer;
     private final MultiContextStrategy multiContextStrategy;
-    private final RaftLeaderProvider leaderProvider;
+    private final Predicate<String> leaderProvider;
 
     public JdbcEventStoreFactory(StorageProperties storageProperties,
                                  StorageTransactionManagerFactory storageTransactionManagerFactory,
                                  MetaDataSerializer metaDataSerializer,
                                  MultiContextStrategy multiContextStrategy,
-                                 RaftLeaderProvider leaderProvider) {
+                                 Predicate<String> leaderProvider) {
         this.storageProperties = storageProperties;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
         this.metaDataSerializer = metaDataSerializer;
@@ -62,11 +63,11 @@ public class JdbcEventStoreFactory implements EventStoreFactory {
     /**
      * Returns the sychronization strategy to use. Can be either store-on-leader-only (event store only stores events when it is leader) or
      * store-always (event store always stores the events, for instance when running in a cluster with multiple storage formats)
-     * @return
+     * @return defined sychronization strategy
      */
     private SyncStrategy syncStrategy(String context) {
         if( storageProperties.isStoreOnLeaderOnly()) {
-            return new StoreOnLeaderSyncStrategy(context, leaderProvider::isLeader);
+            return new StoreOnLeaderSyncStrategy(context, leaderProvider);
         }
         return new StoreAlwaysSyncStrategy();
     }

@@ -8,9 +8,11 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import junit.framework.TestCase;
 import org.junit.*;
+import org.springframework.data.util.CloseableIterator;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -51,11 +53,7 @@ public class JdbcEventStorageEngineTest {
 
         jdbcEventStore.store(Arrays.asList(serializedEvent("DemoType","DEMO", 1)));
 
-        TestCase.assertTrue(iterator.hasNext());
-        TestCase.assertEquals(1, iterator.next().getToken());
-
-
-
+        TestCase.assertFalse(iterator.hasNext());
     }
 
     private SerializedEvent serializedEvent(String aggregateType, String aggregateId, int aggregateSeq) {
@@ -69,14 +67,21 @@ public class JdbcEventStorageEngineTest {
     }
 
     @Test
-    public void prepareTransaction() {
-    }
-
-    @Test
-    public void store() {
-    }
-
-    @Test
     public void getGlobalIterator() {
+        jdbcEventStore.store(Arrays.asList(serializedEvent("DemoType","DEMO", 0)));
+
+        try (CloseableIterator<SerializedEventWithToken> iterator = jdbcEventStore
+                .getGlobalIterator(0)) {
+
+            while (iterator.hasNext()) {
+                SerializedEventWithToken transactionWithToken = iterator.next();
+                TestCase.assertEquals(0, transactionWithToken.getToken());
+            }
+
+            jdbcEventStore.store(Arrays.asList(serializedEvent("DemoType", "DEMO", 1)));
+
+            TestCase.assertTrue(iterator.hasNext());
+            TestCase.assertEquals(1, iterator.next().getToken());
+        }
     }
 }
