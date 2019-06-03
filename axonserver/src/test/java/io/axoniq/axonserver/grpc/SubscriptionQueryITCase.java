@@ -62,7 +62,7 @@ public class SubscriptionQueryITCase {
         connectionManager.shutdown();
     }
 
-    public SubscriptionQueryResult invokeQuery() {
+    private SubscriptionQueryResult invokeQuery() {
         GenericSubscriptionQueryMessage<String, String, String> query =
                 new GenericSubscriptionQueryMessage<>("hi",
                                                       "test",
