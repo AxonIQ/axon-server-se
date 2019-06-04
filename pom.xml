@@ -37,7 +37,7 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
-
+        <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
 
         <!--
@@ -114,7 +114,6 @@
                     <mavenExecutorId>forked-path</mavenExecutorId>
                     <localCheckout>true</localCheckout>
                     <goals>deploy</goals>
-                    <pushChanges>false</pushChanges>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <arguments>-Dmaven.javadoc.skip=true -Dsource.skip=true</arguments>
                 </configuration>
