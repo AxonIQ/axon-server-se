@@ -163,8 +163,6 @@ public class QueryDispatcherTest {
 
         AtomicInteger callbackCount = new AtomicInteger(0);
 
-        when(registrationCache.find(anyObject(), anyObject())).thenReturn(null);
-
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
         queryDispatcher.dispatchProxied(forwardedQuery, r -> callbackCount.incrementAndGet(), s->{});
         assertEquals(1, callbackCount.get());

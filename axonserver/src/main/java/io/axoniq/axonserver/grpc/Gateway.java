@@ -12,8 +12,6 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.grpc.Server;
-import io.grpc.ServerInterceptor;
-import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +20,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -95,14 +92,11 @@ public class Gateway implements SmartLifecycle {
 
 
         // Note that the last interceptor is executed first
-        List<ServerInterceptor> interceptorList = new ArrayList<>();
+        serverBuilder.intercept(new GrpcBufferingInterceptor(routingConfiguration.getGrpcBufferedMessages()));
         if( routingConfiguration.getAccesscontrol().isEnabled()) {
-            interceptorList.add( new AuthenticationInterceptor(axonServerAccessController));
+            serverBuilder.intercept(new AuthenticationInterceptor(axonServerAccessController));
         }
-        interceptorList.add(new ContextInterceptor());
-
-        axonServerClientServices.forEach(s -> serverBuilder.addService(ServerInterceptors.intercept(s,interceptorList)));
-
+        serverBuilder.intercept(new ContextInterceptor());
 
         if( routingConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
