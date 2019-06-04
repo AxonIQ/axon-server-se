@@ -263,8 +263,7 @@ public class SnapshotManagerIntegrationTest {
                                                                                             .setAggregateType("Demo")
                                                                                             .setPayload(SerializedObject.newBuilder().build())
                                                                                             .build())));
-            PreparedTransaction preparedTransaction = eventStore.prepareTransaction(newEvents);
-            eventStore.store(preparedTransaction).thenAccept(t -> latch.countDown());
+            eventStore.store(newEvents).thenAccept(t -> latch.countDown());
         });
 
         latch.await(5, TimeUnit.SECONDS);

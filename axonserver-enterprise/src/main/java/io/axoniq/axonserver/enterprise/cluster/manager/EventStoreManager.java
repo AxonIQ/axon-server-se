@@ -94,7 +94,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @EventListener
     public void on(ContextEvents.ContextDeleted contextDeleted) {
-        logger.warn("{}: close context", contextDeleted.getContext());
+        logger.info("{}: close context", contextDeleted.getContext());
         localEventStore.cleanupContext(contextDeleted.getContext());
     }
 

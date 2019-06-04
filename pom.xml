@@ -11,23 +11,17 @@
 
     <modules>
         <module>axonserver-connector-api</module>
-        <!--<module>axonserver</module>-->
         <module>sample-applications/sample-command-processor-axonhub-client</module>
         <module>sample-applications/sample-command-processor-axonserver-client</module>
         <module>axonserver-internal-grpc</module>
-        <!--<module>axonserver-grpc</module>-->
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
-        <!--<module>axonserver-cli</module>-->
         <module>axonserver-compatibility-tests</module>
         <module>package-axonserver-enterprise</module>
         <module>axondb-migration</module>
-        <!--<module>plugins/axonserver-metrics-graphite</module>-->
-        <!--<module>plugins/axonserver-metrics-prometheus</module>-->
-        <!--<module>plugins/axonserver-rabbitmq-connector</module>-->
-        <!--<module>plugins/axonserver-kafka-connector</module>-->
         <module>axonserver-cluster</module>
-        <!--<module>query-parser</module>-->
+        <module>axonserver-jdbc-storage</module>
+        <module>axonserver-spanner-storage</module>
     </modules>
 
     <properties>
@@ -50,7 +44,7 @@
         <netty.tcnative.version>2.0.20.Final</netty.tcnative.version>
 
         <netty.version>4.1.32.Final</netty.version>
-        <axonserver.api.version>4.1</axonserver.api.version>
+        <axonserver.api.version>4.2-SNAPSHOT</axonserver.api.version>
         <axonserver.se.version>4.2-SNAPSHOT</axonserver.se.version>
         <axon.version>4.1.1</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
