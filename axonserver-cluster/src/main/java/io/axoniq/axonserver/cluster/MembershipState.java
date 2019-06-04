@@ -77,4 +77,12 @@ public interface MembershipState extends ClusterConfiguration{
             }
         };
     }
+
+    /**
+     * Starts process to transfer leadership from this node to another. No-op when the current node is not a leader.
+     * @return completable future that completes when other node is up to date.
+     */
+    default CompletableFuture<Void> transferLeadership() {
+        return CompletableFuture.completedFuture(null);
+    }
 }

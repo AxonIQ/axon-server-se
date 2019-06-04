@@ -269,4 +269,14 @@ public class LocalRaftGroupService implements RaftGroupService {
         }
         return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context));
     }
+
+    @Override
+    public CompletableFuture<Void> transferLeadership(String context) {
+        try {
+            RaftNode raftNode = grpcRaftController.getRaftNode(context);
+            return raftNode.transferLeadership();
+        } catch (MessagingPlatformException ex) {
+            return CompletableFuture.completedFuture(null);
+        }
+    }
 }

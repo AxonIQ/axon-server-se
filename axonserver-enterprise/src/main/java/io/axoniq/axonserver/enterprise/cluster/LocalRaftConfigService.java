@@ -303,12 +303,11 @@ class LocalRaftConfigService implements RaftConfigService {
         if (contextDef.getNodeNames().size() == 1) {
             deleteContext(context);
         } else {
-            removeNodeFromContext(contextDef, raftGroupServiceFactory.getRaftGroupService(context), node, nodeLabel);
+            removeNodeFromContext(contextDef,  node, nodeLabel);
         }
     }
 
     private CompletableFuture<Void> removeNodeFromContext(Context context,
-                                                          RaftGroupService raftGroupService,
                                                           String node, String nodeLabel) {
         RaftNode config = grpcRaftController.getRaftNode(getAdmin());
         CompletableFuture<Void> removeDone = new CompletableFuture<>();
@@ -319,7 +318,19 @@ class LocalRaftConfigService implements RaftConfigService {
                                                                         .build();
         getFuture(config.appendEntry(ContextConfiguration.class.getName(), contextConfiguration.toByteArray()));
         try {
-            raftGroupService.deleteNode(context.getName(), nodeLabel)
+            String leader = raftGroupServiceFactory.getLeader(context.getName());
+            if( node.equals(leader)) {
+                raftGroupServiceFactory.getRaftGroupService(context.getName()).transferLeadership(context.getName()).get();
+                leader = raftGroupServiceFactory.getLeader(context.getName());
+                int retries = 10;
+                while( (leader == null || leader.equals(node)) && retries > 0) {
+                    Thread.sleep(250);
+                    leader = raftGroupServiceFactory.getLeader(context.getName());
+                    retries--;
+                }
+            }
+
+            raftGroupServiceFactory.getRaftGroupService(context.getName()).deleteNode(context.getName(), nodeLabel)
                             .whenComplete((result, exception) -> {
                                 handleRemoveNodeResult(context.getName(),
                                                        node,
@@ -358,11 +369,6 @@ class LocalRaftConfigService implements RaftConfigService {
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         membersToDelete.forEach(contextClusterNode ->
                                         completableFutures.add(removeNodeFromContext(contextClusterNode.getContext(),
-                                                                                     raftGroupServiceFactory
-                                                                                             .getRaftGroupService(
-                                                                                                     contextClusterNode
-                                                                                                             .getContext()
-                                                                                                             .getName()),
                                                                                      contextClusterNode.getClusterNode()
                                                                                                        .getName(),
                                                                                      contextClusterNode

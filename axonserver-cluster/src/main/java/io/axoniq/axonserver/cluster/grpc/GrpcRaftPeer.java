@@ -13,6 +13,8 @@ import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.TimeoutNowRequest;
+import io.axoniq.axonserver.grpc.cluster.TimeoutNowResponse;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
@@ -31,6 +33,7 @@ import java.util.function.Consumer;
  */
 public class GrpcRaftPeer implements RaftPeer {
     private static final Logger logger = LoggerFactory.getLogger(GrpcRaftPeer.class);
+    private final String raftGroup;
     public final Node node;
     private final GrpcRaftClientFactory clientFactory;
     private final long idleConnectionTimeout;
@@ -40,11 +43,24 @@ public class GrpcRaftPeer implements RaftPeer {
     private final AtomicReference<InstallSnapshotStream> installSnapshotStreamRef = new AtomicReference<>();
     private final AtomicReference<Consumer<InstallSnapshotResponse>> installSnapshotResponseListener = new AtomicReference<>();
 
-    public GrpcRaftPeer(Node node) {
-        this(node, new DefaultGrpcRaftClientFactory(), 5000);
+    /**
+     * Constuctor for a {@link RaftPeer} that communicates over gRPC.
+     * @param raftGroup the name of the raft group
+     * @param node the node information of the remote peer
+     */
+    public GrpcRaftPeer(String raftGroup, Node node) {
+        this(raftGroup, node, new DefaultGrpcRaftClientFactory(), 5000);
     }
 
-    public GrpcRaftPeer(Node node, GrpcRaftClientFactory clientFactory, long idleConnectionTimeout) {
+    /**
+     * Constuctor for a {@link RaftPeer} that communicates over gRPC.
+     * @param raftGroup the name of the raft group
+     * @param node the node information of the remote peer
+     * @param clientFactory factory to create client stubs
+     * @param idleConnectionTimeout timeout to mark stream as idle
+     */
+    public GrpcRaftPeer(String raftGroup, Node node, GrpcRaftClientFactory clientFactory, long idleConnectionTimeout) {
+        this.raftGroup = raftGroup;
         this.node = node;
         this.clientFactory = clientFactory;
         this.idleConnectionTimeout = idleConnectionTimeout;
@@ -77,6 +93,29 @@ public class GrpcRaftPeer implements RaftPeer {
             }
         });
         return response;
+    }
+
+    @Override
+    public void sendTimeoutNow() {
+        LogReplicationServiceGrpc.LogReplicationServiceStub stub = clientFactory.createLogReplicationServiceStub(node);
+        stub.timeoutNow(TimeoutNowRequest.newBuilder()
+                                         .setGroupId(raftGroup)
+                                         .build(), new StreamObserver<TimeoutNowResponse>() {
+            @Override
+            public void onNext(TimeoutNowResponse value) {
+
+            }
+
+            @Override
+            public void onError(Throwable cause) {
+                logger.warn( "{}: Received error on timeoutNow - {}", node.getNodeId(), cause.getMessage());
+            }
+
+            @Override
+            public void onCompleted() {
+
+            }
+        });
     }
 
     @Override
@@ -137,7 +176,9 @@ public class GrpcRaftPeer implements RaftPeer {
             requestStreamRef.compareAndSet(null, initStreamObserver());
             StreamObserver<InstallSnapshotRequest> stream = requestStreamRef.get();
             if( stream != null) {
-                send(stream,request);
+                synchronized (requestStreamRef) {
+                    send(stream, request);
+                }
             }
         }
 
@@ -194,7 +235,9 @@ public class GrpcRaftPeer implements RaftPeer {
 
             StreamObserver<AppendEntriesRequest> stream = requestStreamRef.get();
             if( stream != null) {
-                send(stream, request);
+                synchronized (requestStreamRef) {
+                    send(stream, request);
+                }
             } else {
                 logger.warn("{}: Not sending AppendEntriesRequest {}", node.getNodeId(), request.getPrevLogIndex() + 1);
             }

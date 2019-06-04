@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
+import io.axoniq.axonserver.cluster.exception.LeadershipTransferInProgressException;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
@@ -29,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -55,6 +57,7 @@ public class LeaderState extends AbstractMembershipState {
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private final MatchStrategy matchStrategy;
     private final AtomicLong lastConfirmed = new AtomicLong();
+    private final AtomicBoolean leadershipTransferInProgress = new AtomicBoolean();
     private volatile Replicators replicators;
 
     private LeaderState(Builder builder) {
@@ -128,6 +131,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        leadershipTransferInProgress.set(false);
         replicators = new Replicators();
         scheduler.set(schedulerFactory().get());
         lastConfirmed.set(0);
@@ -185,6 +189,9 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
+        if( leadershipTransferInProgress.get()) {
+            throw new LeadershipTransferInProgressException("Transferring leadership");
+        }
         return createEntry(currentTerm(), entryType, entryData);
     }
 
@@ -241,6 +248,38 @@ public class LeaderState extends AbstractMembershipState {
                                     .skip((int)Math.floor((nrOfRemotePeers-1d)/2))
                                     .findFirst()
                                     .orElse(0L);
+    }
+
+
+    /**
+     * Stops accepting new requests from client and waits until one of the followers is up to date. When
+     * a follower is up to date, if sends a timeout now message to the follower to force a new election.
+     * @return completable future that completes when a condidate leader is updated
+     */
+    public CompletableFuture<Void> transferLeadership() {
+        if( leadershipTransferInProgress.compareAndSet(false,true)) {
+            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+            waitForFollowerUpdated(completableFuture);
+            return completableFuture;
+
+        }
+        throw new LeadershipTransferInProgressException("Transfer leadership already in progress");
+    }
+
+    private void waitForFollowerUpdated(CompletableFuture<Void> completableFuture) {
+        long lastLogEntry = raftGroup().localLogEntryStore().lastLogIndex();
+        Optional<ReplicatorPeer> updatedFollower = replicators.replicatorPeerMap.entrySet().stream()
+                .filter(e -> e.getValue().nextIndex() > lastLogEntry)
+                .map(Map.Entry::getValue)
+                .findFirst();
+
+        if( updatedFollower.isPresent()) {
+            updatedFollower.get().sendTimeoutNow();
+            completableFuture.complete(null);
+        } else {
+            scheduler.get().schedule(() -> waitForFollowerUpdated(completableFuture), 10, TimeUnit.MILLISECONDS);
+        }
+
     }
 
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {

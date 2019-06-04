@@ -208,6 +208,11 @@ public class LocalRaftConfigServiceTest {
             }
             return CompletableFuture.completedFuture(null);
         }
+
+        @Override
+        public CompletableFuture<Void> transferLeadership(String context) {
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     @Before

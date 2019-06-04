@@ -8,6 +8,9 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
+import io.axoniq.axonserver.grpc.cluster.TimeoutNowRequest;
+import io.axoniq.axonserver.grpc.cluster.TimeoutNowResponse;
+import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,5 +99,22 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                 logger.debug("Connection completed by peer");
             }
         };
+    }
+
+    /**
+     * Receives timeout now request from other node.
+     * @param request containing the raft group name
+     * @param responseObserver stream to send confirmation
+     */
+    @Override
+    public void timeoutNow(TimeoutNowRequest request, StreamObserver<TimeoutNowResponse> responseObserver) {
+        Context.current().fork().wrap(() -> doTimeoutNow(request, responseObserver)).run();
+    }
+
+    private void doTimeoutNow(TimeoutNowRequest request, StreamObserver<TimeoutNowResponse> responseObserver) {
+        RaftNode target = raftGroupManager.raftNode(request.getGroupId());
+        target.stepdown();
+        responseObserver.onNext(TimeoutNowResponse.newBuilder().build());
+        responseObserver.onCompleted();
     }
 }

@@ -101,6 +101,11 @@ public class FakeRaftPeer implements RaftPeer {
         return nodeId;
     }
 
+    @Override
+    public void sendTimeoutNow() {
+
+    }
+
     public long term() {
         return term;
     }

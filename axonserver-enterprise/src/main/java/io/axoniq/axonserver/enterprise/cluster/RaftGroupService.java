@@ -68,4 +68,11 @@ public interface RaftGroupService {
      * @return the completable future containing the current context configuration
      */
     CompletableFuture<ContextConfiguration> configuration(String context);
+
+    /**
+     * Initiates leadership transfer for the specified {@code context}.
+     * @param context the name of the context
+     * @return completable future that completes when follower is up-to-date and signalled to start election
+     */
+    CompletableFuture<Void> transferLeadership(String context);
 }

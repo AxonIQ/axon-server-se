@@ -39,4 +39,9 @@ public interface RaftPeer {
     default boolean isReadyForSnapshot() {
         return true;
     }
+
+    /**
+     * Sends a message to the peer to timeout immediately, causing it to start a new election.
+     */
+    void sendTimeoutNow();
 }

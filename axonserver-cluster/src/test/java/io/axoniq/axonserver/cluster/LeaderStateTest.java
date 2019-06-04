@@ -2,11 +2,13 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
+import io.axoniq.axonserver.cluster.exception.LeadershipTransferInProgressException;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -18,7 +20,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -32,6 +36,8 @@ public class LeaderStateTest {
 
     private LeaderState testSubject;
     AtomicReference<RaftNode> nodeRef = new AtomicReference<>();
+    private AtomicReference<String> timeoutTarget = new AtomicReference<>();
+    private AtomicInteger responseDelay = new AtomicInteger(1000);
     FakeScheduler fakeScheduler = new FakeScheduler();
     AtomicReference<MembershipState> stateRef = new AtomicReference<>();
 
@@ -87,6 +93,7 @@ public class LeaderStateTest {
             @Override
             public RaftPeer peer(String nodeId) {
                 return new RaftPeer() {
+                    Consumer<AppendEntriesResponse> listener;
                     @Override
                     public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
                         return null;
@@ -94,7 +101,12 @@ public class LeaderStateTest {
 
                     @Override
                     public void appendEntries(AppendEntriesRequest request) {
-
+                        AppendEntriesResponse response = AppendEntriesResponse.newBuilder()
+                                                                              .setSuccess(AppendEntrySuccess.newBuilder()
+                                                                                                            .setLastLogIndex(request.getPrevLogIndex() + request.getEntriesCount())
+                                                                                                            .build())
+                                                                              .build();
+                        fakeScheduler.schedule(() -> listener.accept(response), responseDelay.get(), TimeUnit.MILLISECONDS);
                     }
 
                     @Override
@@ -105,7 +117,8 @@ public class LeaderStateTest {
                     @Override
                     public Registration registerAppendEntriesResponseListener(
                             Consumer<AppendEntriesResponse> listener) {
-                        return null;
+                        this.listener = listener;
+                        return () -> this.listener = null;
                     }
 
                     @Override
@@ -117,6 +130,11 @@ public class LeaderStateTest {
                     @Override
                     public String nodeId() {
                         return nodeId;
+                    }
+
+                    @Override
+                    public void sendTimeoutNow() {
+                        timeoutTarget.set(nodeId);
                     }
                 };
             }
@@ -153,5 +171,28 @@ public class LeaderStateTest {
         Thread.sleep(10);
         fakeScheduler.timeElapses(500);
         assertTrue(stateRef.get() instanceof FollowerState);
+    }
+
+    @Test
+    public void transferLeadership() throws Exception {
+        responseDelay.set(5);
+        testSubject.start();
+        Thread.sleep(10);
+
+        testSubject.appendEntry("Sample", "Sample".getBytes());
+
+        CompletableFuture<Void> transferDone = testSubject.transferLeadership();
+        try {
+            testSubject.appendEntry("Sample", "Sample".getBytes());
+            fail("Cannot append entry when transferring leadership");
+        } catch( LeadershipTransferInProgressException ex) {
+        }
+
+        fakeScheduler.timeElapses(100);
+
+        assertNotNull(timeoutTarget.get());
+        assertTrue(transferDone.isDone());
+
+
     }
 }

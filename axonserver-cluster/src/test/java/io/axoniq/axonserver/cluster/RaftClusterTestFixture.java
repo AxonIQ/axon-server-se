@@ -311,6 +311,9 @@ public class RaftClusterTestFixture {
                 return nodeId;
             }
 
+            @Override
+            public void sendTimeoutNow() {
+            }
         }
 
     }

@@ -153,4 +153,22 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
                                  responseObserver.onCompleted();
                              });
     }
+
+    @Override
+    public void transferLeadership(ContextName request, StreamObserver<Confirmation> responseObserver) {
+        io.grpc.Context.current().fork().wrap(() -> doTransferLeadership(request, responseObserver)).run();
+
+    }
+
+    private void doTransferLeadership(ContextName request,
+                                      StreamObserver<Confirmation> responseObserver) {
+        localRaftGroupService.transferLeadership(request.getContext())
+                             .thenAccept(c -> {
+                                 responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+                                 responseObserver.onCompleted();
+                             }).exceptionally(cause -> {
+                                responseObserver.onError(cause);
+                                return null;
+                             });
+    }
 }

@@ -83,6 +83,9 @@ service RaftGroupService {
     rpc AppendEntry(ContextEntry) returns (Confirmation) {}
 
     rpc Configuration(ContextName) returns (ContextConfiguration) {}
+
+    rpc TransferLeadership(ContextName) returns (Confirmation) {}
+
 }
 
 

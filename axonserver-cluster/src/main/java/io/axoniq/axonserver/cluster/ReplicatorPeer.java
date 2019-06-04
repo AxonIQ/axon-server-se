@@ -547,6 +547,10 @@ public class ReplicatorPeer {
         changeStateTo(new IdleReplicatorPeerState());
     }
 
+    public void sendTimeoutNow() {
+        raftPeer.sendTimeoutNow();
+    }
+
     public long lastMessageReceived() {
         return lastMessageReceived.get();
     }

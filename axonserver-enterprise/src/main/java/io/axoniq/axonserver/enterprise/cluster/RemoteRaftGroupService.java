@@ -199,4 +199,11 @@ public class RemoteRaftGroupService implements RaftGroupService {
         stub.configuration(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver<>(result, logger));
         return result;
     }
+
+    @Override
+    public CompletableFuture<Void> transferLeadership(String context) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        stub.transferLeadership(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver<>(result, logger,TO_VOID));
+        return result;
+    }
 }
