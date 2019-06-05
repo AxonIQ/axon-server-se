@@ -319,14 +319,18 @@ class LocalRaftConfigService implements RaftConfigService {
         getFuture(config.appendEntry(ContextConfiguration.class.getName(), contextConfiguration.toByteArray()));
         try {
             String leader = raftGroupServiceFactory.getLeader(context.getName());
-            if( node.equals(leader)) {
-                raftGroupServiceFactory.getRaftGroupService(context.getName()).transferLeadership(context.getName()).get();
+            if (node.equals(leader)) {
+                raftGroupServiceFactory.getRaftGroupService(context.getName()).transferLeadership(context.getName())
+                                       .get();
                 leader = raftGroupServiceFactory.getLeader(context.getName());
                 int retries = 10;
-                while( (leader == null || leader.equals(node)) && retries > 0) {
+                while ((leader == null || leader.equals(node)) && retries > 0) {
                     Thread.sleep(250);
                     leader = raftGroupServiceFactory.getLeader(context.getName());
                     retries--;
+                }
+                if ((leader == null || leader.equals(node))) {
+                    throw new MessagingPlatformException(ErrorCode.OTHER, "Moving leader to other node failed");
                 }
             }
 
@@ -340,7 +344,7 @@ class LocalRaftConfigService implements RaftConfigService {
                                 removeDone.complete(null);
                             });
         } catch (Exception ex) {
-            logger.error("{}: Failed to delete node {}", context, node, ex);
+            logger.warn("{}: Failed to delete node {}", context, node, ex);
             try {
                 appendToAdmin(ContextConfiguration.class.getName(), oldConfiguration.toByteArray());
             } catch (Exception second) {

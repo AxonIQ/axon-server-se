@@ -257,29 +257,45 @@ public class LeaderState extends AbstractMembershipState {
      * @return completable future that completes when a condidate leader is updated
      */
     public CompletableFuture<Void> transferLeadership() {
-        if( leadershipTransferInProgress.compareAndSet(false,true)) {
+        if (otherNodesCount() == 0) {
+            throw new LogException(ErrorCode.VALIDATION_FAILED,
+                                   "Cannot transfer leadership if no other nodes avaiable");
+        }
+
+        if (leadershipTransferInProgress.compareAndSet(false, true)) {
             CompletableFuture<Void> completableFuture = new CompletableFuture<>();
             waitForFollowerUpdated(completableFuture);
             return completableFuture;
-
         }
         throw new LeadershipTransferInProgressException("Transfer leadership already in progress");
     }
 
     private void waitForFollowerUpdated(CompletableFuture<Void> completableFuture) {
-        long lastLogEntry = raftGroup().localLogEntryStore().lastLogIndex();
-        Optional<ReplicatorPeer> updatedFollower = replicators.replicatorPeerMap.entrySet().stream()
-                .filter(e -> e.getValue().nextIndex() > lastLogEntry)
-                .map(Map.Entry::getValue)
-                .findFirst();
+        Optional<ReplicatorPeer> updatedFollower =
+                findUpToDatePeer();
 
-        if( updatedFollower.isPresent()) {
+        if (updatedFollower.isPresent()) {
             updatedFollower.get().sendTimeoutNow();
             completableFuture.complete(null);
         } else {
             scheduler.get().schedule(() -> waitForFollowerUpdated(completableFuture), 10, TimeUnit.MILLISECONDS);
         }
+    }
 
+    /**
+     * Finds a (voting) peer that has confirmed to have received all log entries from the leader.
+     *
+     * @return optional replicator peer
+     */
+    private Optional<ReplicatorPeer> findUpToDatePeer() {
+        long lastLogEntry = raftGroup().localLogEntryStore().lastLogIndex();
+        return replicators.replicatorPeerMap
+                .entrySet()
+                .stream()
+                .filter(e -> !replicators.nonVotingReplica.contains(e.getKey()))
+                .filter(e -> e.getValue().nextIndex() > lastLogEntry)
+                .map(Map.Entry::getValue)
+                .findFirst();
     }
 
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {
