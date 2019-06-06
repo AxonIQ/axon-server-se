@@ -54,6 +54,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     @Override
     public void initSegments(long lastInitialized) {
+        logger.info("Initializing {} segment of '{}' context.", lastInitialized, context);
         File storageDir  = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
         logEntryTransformer = logEntryTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
@@ -147,6 +148,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     private CompletableFuture<Long> store(long term, int type, PreparedTransaction preparedTransaction) {
+        logger.trace("Storing in {} term log entry of {} type for '{}' context.", term, type, context);
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
             WritePosition writePosition = preparedTransaction.getClaim();
@@ -215,23 +217,24 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     @Override
-    public void rollback( long token) {
-        if( token >= getLastToken()) {
+    public void rollback(long token) {
+        logger.info("Rolling back to the {} token of '{}' context.", token, context);
+        if (token >= getLastToken()) {
             return;
         }
         synchronizer.shutdown(false);
 
-        for( long segment: getSegments()) {
-            if( segment > token) {
+        for (long segment : getSegments()) {
+            if (segment > token) {
                 removeSegment(segment);
             }
         }
 
-        if( positionsPerSegmentMap.isEmpty() && next != null) {
+        if (positionsPerSegmentMap.isEmpty() && next != null) {
             next.rollback(token);
         }
 
-        initLatestSegment(Long.MAX_VALUE, token+1, new File(storageProperties.getStorage(context)), true);
+        initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)), true);
     }
 
     @Override
@@ -240,6 +243,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     protected void removeSegment(long segment) {
+        logger.info("Removing {} segment of '{}' context.", segment, context);
         positionsPerSegmentMap.remove(segment);
         ByteBufferEntrySource eventSource = readBuffers.remove(segment);
         if( eventSource != null) eventSource.clean(0);
@@ -248,6 +252,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     private void completeSegment(WritePosition writePosition) {
         try {
+            logger.info("Completing segment {} of '{}' context.", writePosition.segment, context);
             indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment), false);
         } catch( RuntimeException re) {
             logger.warn("Failed to create index", re);
@@ -301,28 +306,61 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         return writePosition;
     }
 
-    private WritableEntrySource getOrOpenDatafile(long segment)  {
-        File file= storageProperties.logFile(context, segment);
+    private WritableEntrySource getOrOpenDatafile(long segment) {
+        File file = storageProperties.logFile(context, segment);
         long size = storageProperties.getSegmentSize();
         boolean exists = file.exists();
-        if( exists) {
+        if (exists) {
             size = file.length();
+            logger.info("Segment file {} of '{}' context already exists with size {}. Reopening.",
+                        segment,
+                        context,
+                        size);
+        } else {
+            logger.info("Segment file {} of '{}' context does not exist. Creating a new one with size of {}.",
+                        segment,
+                        context,
+                        size);
         }
-        logger.debug("Open file: {}", file);
-        try(FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
+        try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
-            if(!exists) {
+            int bufferLimit = buffer.limit();
+            logger.info("Opened buffer for segment file {} of '{}' context with limit {}.",
+                        segment,
+                        context,
+                        bufferLimit);
+            checkBuffer(segment, size, bufferLimit);
+            if (!exists) {
                 buffer.put(VERSION);
                 buffer.putInt(storageProperties.getFlags());
             } else {
                 buffer.position(5);
             }
-            WritableEntrySource writableEventSource = new WritableEntrySource(buffer, logEntryTransformer, storageProperties.isCleanerHackNeeded());
+            WritableEntrySource writableEventSource = new WritableEntrySource(buffer,
+                                                                              logEntryTransformer,
+                                                                              storageProperties.isCleanerHackNeeded());
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {
             throw new LogException(ErrorCode.DATAFILE_READ_ERROR, "Failed to open segment: " + segment, ioException);
+        }
+    }
+
+    private void checkBuffer(long segment, long size, int bufferLimit) {
+        if (bufferLimit != size) {
+            logger.warn(
+                    "Buffer limit of {} and segment size of {} do not match for '{}' context. Did you change segment size in storage properties?",
+                    bufferLimit,
+                    size,
+                    context);
+        }
+        if (bufferLimit == 0) {
+            String message =
+                    "Segment file " + segment + " of '" + context + "' context has 0 buffer limit and size of " + size
+                            + ". It looks like it's corrupted. Aborting.";
+            logger.error(message);
+            throw new LogException(ErrorCode.DATAFILE_READ_ERROR, message);
         }
     }
 
@@ -331,6 +369,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     public void clear(long lastIndex) {
+        logger.info("Clearing log entries from {} index for '{}' context.", lastIndex, context);
         if (next != null ) {
             next.getSegments().forEach(segment -> next.removeSegment(segment));
         }
@@ -343,6 +382,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
 
     public void delete() {
+        logger.info("Deleting '{}' context.", context);
         clear(0);
         File storageDir  = new File(storageProperties.getStorage(context));
         storageDir.delete();
