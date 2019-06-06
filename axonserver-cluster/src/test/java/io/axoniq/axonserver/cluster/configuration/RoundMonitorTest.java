@@ -4,8 +4,8 @@ import io.axoniq.axonserver.cluster.configuration.wait.strategy.FastUpdateRound;
 import io.axoniq.axonserver.cluster.configuration.wait.strategy.MultipleUpdateRound;
 import io.axoniq.axonserver.cluster.configuration.wait.strategy.UpdateRound;
 import io.axoniq.axonserver.cluster.exception.ServerTooSlowException;
-import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
+import reactor.core.publisher.EmitterProcessor;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -22,20 +22,15 @@ public class RoundMonitorTest {
 
     @Test
     public void testSuccess() throws ExecutionException, InterruptedException {
-        AtomicLong lastIndex = new AtomicLong(10L);
         AtomicLong currentTime = new AtomicLong(100L);
-        roundMonitor = new MultipleUpdateRound(
-                () -> 3,
-                new FastUpdateRound(currentTime::get,
-                                    () -> 300L,
-                                    new UpdateRound(lastIndex::get,
-                                                    consumer -> {
-                                                        currentTime.addAndGet(100L);
-                                                        consumer.accept(10L);
-                                                        return () -> {};
-                                                    })));
+        EmitterProcessor<Long> processor = EmitterProcessor.create(1);
+        UpdateRound updateRound = new UpdateRound(() -> 10L, processor.replay().autoConnect());
+        FastUpdateRound fastUpdateRound = new FastUpdateRound(currentTime::get, () -> 300L, updateRound);
+        roundMonitor = new MultipleUpdateRound(() -> 3, fastUpdateRound);
 
         CompletableFuture<Void> serverUpdated = roundMonitor.await();
+        currentTime.addAndGet(200L);
+        processor.sink().next(10L);
         serverUpdated.get();
         assertTrue(serverUpdated.isDone());
     }
@@ -43,24 +38,19 @@ public class RoundMonitorTest {
     @Test
     public void testFailure() {
 
-        AtomicLong lastIndex = new AtomicLong(10L);
         AtomicLong currentTime = new AtomicLong(100L);
-        roundMonitor = new MultipleUpdateRound(
-                () -> 3,
-                new FastUpdateRound(currentTime::get,
-                                    () -> 300L,
-                                    new UpdateRound(lastIndex::get,
-                                                    consumer -> {
-                                                        long prevLastIndex = lastIndex.getAndAdd(10L);
-                                                        currentTime.addAndGet(1000L);
-                                                        consumer.accept(prevLastIndex);
-                                                        return () -> {};
-                                                    })));
-        CompletableFuture<Void> result = roundMonitor.await();
+        EmitterProcessor<Long> processor = EmitterProcessor.create(1);
+        UpdateRound updateRound = new UpdateRound(() -> 10L, processor.replay().autoConnect());
+        FastUpdateRound fastUpdateRound = new FastUpdateRound(currentTime::get, () -> 300L, updateRound);
+        roundMonitor = new MultipleUpdateRound(() -> 3, fastUpdateRound);
+
+        CompletableFuture<Void> serverUpdated = roundMonitor.await();
+        currentTime.addAndGet(500L);
+        processor.sink().next(10L);
         try {
-            result.get();
+            serverUpdated.get();
         } catch (Exception e) {
-            assertTrue(result.isCompletedExceptionally());
+            assertTrue(serverUpdated.isCompletedExceptionally());
             assertTrue(e.getCause() instanceof ServerTooSlowException);
         }
     }

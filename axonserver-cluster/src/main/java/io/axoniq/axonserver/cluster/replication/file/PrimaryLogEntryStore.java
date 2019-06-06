@@ -132,9 +132,9 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     private long getFirstFile(long lastInitialized, File events) {
-        String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getLogSuffix());
+        String[] entrylogFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getLogSuffix());
 
-        return Arrays.stream(eventFiles)
+        return Arrays.stream(entrylogFiles)
                      .map(this::getSegment)
                      .filter(segment -> segment < lastInitialized)
                      .max(Long::compareTo)

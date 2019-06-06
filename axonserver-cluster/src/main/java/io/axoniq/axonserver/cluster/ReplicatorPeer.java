@@ -16,6 +16,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.FluxSink;
 
 import java.time.Clock;
 import java.util.List;
@@ -25,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static java.lang.String.format;
@@ -489,7 +489,7 @@ public class ReplicatorPeer {
     private static final Logger logger = LoggerFactory.getLogger(ReplicatorPeer.class);
 
     private final RaftPeer raftPeer;
-    private final Consumer<Long> matchIndexCallback;
+    private final FluxSink<Long> matchIndexUpdates;
     private final AtomicReference<SnapshotContext> snapshotContext = new AtomicReference<>(new SnapshotContext() {
     });
     private final AtomicLong nextIndex = new AtomicLong(1);
@@ -504,14 +504,14 @@ public class ReplicatorPeer {
     private final BiConsumer<Long, String> updateCurrentTerm;
 
     public ReplicatorPeer(RaftPeer raftPeer,
-                          Consumer<Long> matchIndexCallback,
+                          FluxSink<Long> matchIndexUpdates,
                           Clock clock,
                           RaftGroup raftGroup,
                           SnapshotManager snapshotManager,
                           BiConsumer<Long, String> updateCurrentTerm,
                           Supplier<Long> lastLogIndex) {
         this.raftPeer = raftPeer;
-        this.matchIndexCallback = matchIndexCallback;
+        this.matchIndexUpdates = matchIndexUpdates;
         this.clock = clock;
         this.updateCurrentTerm = updateCurrentTerm;
         lastMessageReceived.set(clock.millis());
@@ -537,7 +537,7 @@ public class ReplicatorPeer {
     public void start() {
         logger.info("{} in term {}: Starting the replicator peer for {}.", groupId(), currentTerm(), nodeId());
         running = true;
-        matchIndexCallback.accept(matchIndex.get());
+        matchIndexUpdates.next(matchIndex.get());
         changeStateTo(new AppendEntryState());
     }
 
@@ -589,7 +589,7 @@ public class ReplicatorPeer {
 
     private void setMatchIndex(long newMatchIndex) {
         long matchIndexValue = matchIndex.updateAndGet(old -> (old < newMatchIndex) ? newMatchIndex : old);
-        matchIndexCallback.accept(matchIndexValue);
+        matchIndexUpdates.next(matchIndexValue);
         nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, matchIndexValue + 1));
     }
 }
