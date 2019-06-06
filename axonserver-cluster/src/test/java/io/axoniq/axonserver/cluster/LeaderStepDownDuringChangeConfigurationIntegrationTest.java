@@ -13,7 +13,9 @@ import org.junit.*;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.junit.Assert.*;
@@ -63,8 +65,7 @@ public class LeaderStepDownDuringChangeConfigurationIntegrationTest {
     @Test
     public void testLeaderStepDownWhenAddingNewNode() throws InterruptedException, ExecutionException {
         raftNode.start();
-        Thread.sleep(3000);
-        assertTrue(raftNode.isLeader());
+        assertWithin(3, TimeUnit.SECONDS, () -> assertTrue(raftNode.isLeader()));
         CompletableFuture<ConfigChangeResult> result = raftNode.addNode(newNode());
         Thread.sleep(1000);
         raftNode.stepdown();
