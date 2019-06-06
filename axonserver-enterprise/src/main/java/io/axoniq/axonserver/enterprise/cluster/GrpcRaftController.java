@@ -88,7 +88,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             try {
                 createRaftGroup(context.getGroupId(), context.getNodeId());
             } catch (Exception ex) {
-                logger.warn("{}: Failed to initialize context", context, ex);
+                logger.warn("{}: Failed to initialize context", context.getGroupId(), ex);
             }
         });
         running = true;
