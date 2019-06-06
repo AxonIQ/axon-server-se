@@ -71,7 +71,7 @@ public class LeaderStepDownDuringChangeConfigurationIntegrationTest {
         raftNode.stepdown();
         ConfigChangeResult configChangeResult = result.get();
         assertTrue(configChangeResult.hasFailure());
-        assertEquals("AXONIQ-10004", configChangeResult.getFailure().getError().getCode());
+        assertEquals("AXONIQ-10006", configChangeResult.getFailure().getError().getCode());
     }
 
     private Node newNode() {
