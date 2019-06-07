@@ -24,12 +24,17 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Marc Gathier
  */
 public class IndexManager {
+
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String AGGREGATE_MAP = "aggregateMap";
     private final StorageProperties storageProperties;
@@ -43,36 +48,38 @@ public class IndexManager {
         this.context = context;
     }
 
-
     public void createIndex(Long segment, Map<String, SortedSet<PositionInfo>> positionsPerAggregate, boolean force) {
         File tempFile = storageProperties.indexTemp(context, segment);
-        if( tempFile.exists() && (! force || ! FileUtils.delete(tempFile))) {
+        if (tempFile.exists() && (!force || !FileUtils.delete(tempFile))) {
             return;
         }
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
-        if( storageProperties.isUseMmapIndex()) {
+        if (storageProperties.isUseMmapIndex()) {
             maker.fileMmapEnable();
-            if( storageProperties.isCleanerHackEnabled()) {
+            if (storageProperties.isCleanerHackEnabled()) {
                 maker.cleanerHackEnable();
             }
         } else {
             maker.fileChannelEnable();
         }
-        DB db =  maker.make();
+        DB db = maker.make();
         try (HTreeMap<String, SortedSet<PositionInfo>> map = db.hashMap(AGGREGATE_MAP,
-                                                                   Serializer.STRING,
-                                                                   PositionInfoSerializer.get())
-                                                          .createOrOpen() ) {
+                                                                        Serializer.STRING,
+                                                                        PositionInfoSerializer.get())
+                                                               .createOrOpen()) {
             map.putAll(positionsPerAggregate);
         }
         db.close();
 
-        if( ! tempFile.renameTo(storageProperties.index(context, segment)) ) {
-            throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR, "Failed to rename index file:" + tempFile);
+        if (!tempFile.renameTo(storageProperties.index(context, segment))) {
+            throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
+                                                 "Failed to rename index file:" + tempFile);
         }
 
-        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment).getAbsolutePath(),
-                                                               positionsPerAggregate.keySet().size(), storageProperties.getBloomIndexFpp());
+        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment)
+                                                                                .getAbsolutePath(),
+                                                               positionsPerAggregate.keySet().size(),
+                                                               storageProperties.getBloomIndexFpp());
         filter.create();
         filter.insertAll(positionsPerAggregate.keySet());
         filter.store();
@@ -81,12 +88,12 @@ public class IndexManager {
     }
 
     public SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
-        if(notInBloomIndex(segment,aggregateId)) {
+        if (notInBloomIndex(segment, aggregateId)) {
             return Collections.emptySortedSet();
         }
 
         RuntimeException lastError = new RuntimeException();
-        for(int retry = 0 ; retry < 3; retry++ ) {
+        for (int retry = 0; retry < 3; retry++) {
             try (Index idx = getIndex(segment)) {
                 return idx.getPositions(aggregateId);
             } catch (RuntimeException ex) {
@@ -98,9 +105,11 @@ public class IndexManager {
 
     public Index getIndex(long segment) {
         Index index = indexMap.get(segment);
-        if( index == null || index.db.isClosed()) {
-            if( ! storageProperties.index(context, segment).exists()) return null;
-            index = new Index(segment, false);
+        if (index == null || index.db.isClosed()) {
+            if (!storageProperties.index(context, segment).exists()) {
+                return null;
+            }
+            index = new Index(segment);
             indexMap.put(segment, index);
             indexCleanup();
         }
@@ -108,27 +117,30 @@ public class IndexManager {
     }
 
     private void indexCleanup() {
-        while( indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
+        while (indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
             Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
             logger.debug("Closing index {}", entry.getKey());
             scheduledExecutorService.schedule(() -> entry.getValue().db.close(), 2, TimeUnit.SECONDS);
         }
 
-        while( bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
+        while (bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
             Map.Entry<Long, PersistedBloomFilter> removed = bloomFilterPerSegment.pollFirstEntry();
             logger.debug("Removed bloomfilter for {} from memory", removed.getKey());
         }
-
     }
 
     private boolean notInBloomIndex(Long segment, String aggregateId) {
-        PersistedBloomFilter persistedBloomFilter = bloomFilterPerSegment.computeIfAbsent(segment, i->loadBloomFilter(segment));
+        PersistedBloomFilter persistedBloomFilter = bloomFilterPerSegment.computeIfAbsent(segment,
+                                                                                          i -> loadBloomFilter(segment));
         return persistedBloomFilter != null && !persistedBloomFilter.mightContain(aggregateId);
     }
 
     private PersistedBloomFilter loadBloomFilter(Long segment) {
-        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment).getAbsolutePath(), 0, 0.03f);
-        if( ! filter.fileExists()) return null;
+        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment)
+                                                                                .getAbsolutePath(), 0, 0.03f);
+        if (!filter.fileExists()) {
+            return null;
+        }
         filter.load();
         return filter;
     }
@@ -142,30 +154,16 @@ public class IndexManager {
         return false;
     }
 
-    public void cleanup() {
-        bloomFilterPerSegment.clear();
-        indexMap.forEach((segment, index) -> index.close());
-    }
-
-    public void remove(Long s) {
-        Index index = indexMap.remove(s);
-        if( index != null) index.close();
-        bloomFilterPerSegment.remove(s);
-    }
-
-
     public class Index implements Closeable {
 
         private final Map<String, SortedSet<PositionInfo>> positions;
         private final DB db;
-        private final boolean managed;
 
-        private Index(long  segment, boolean managed) {
-            this.managed = managed;
+        private Index(long segment) {
             DBMaker.Maker maker = DBMaker.fileDB(storageProperties.index(context, segment))
-                                             .readOnly()
-                                             .fileLockDisable();
-            if( storageProperties.isUseMmapIndex()) {
+                                         .readOnly()
+                                         .fileLockDisable();
+            if (storageProperties.isUseMmapIndex()) {
                 maker.fileMmapEnable();
                 if (storageProperties.isCleanerHackEnabled()) {
                     maker.cleanerHackEnable();
@@ -182,13 +180,8 @@ public class IndexManager {
             return aggregatePositions == null ? Collections.emptySortedSet() : aggregatePositions;
         }
 
-        public Set<String> getKeys() {
-            return positions.keySet();
-        }
-
         public void close() {
-            if( !managed) db.close();
+            db.close();
         }
     }
-
 }
