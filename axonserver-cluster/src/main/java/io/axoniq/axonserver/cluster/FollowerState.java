@@ -422,15 +422,6 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private boolean voteGrantedFor(RequestVoteRequest request) {
-        //0. Reply false if requester is not a cluster member
-        if (!member(request.getCandidateId())) {
-            logger.info("{} in term {}: Vote not granted. Candidate {} is not a cluster member.",
-                        groupId(),
-                        currentTerm(),
-                        request.getCandidateId());
-            return false;
-        }
-
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
             logger.info("{} in term {}: Vote not granted. Current term is greater than requested {}.",

@@ -129,19 +129,6 @@ public class FollowerStateTest {
     }
 
     @Test
-    public void testRequestVoteNotGrantedWhenCandidateIsNotAMember() {
-        RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
-                                                                                   .setCandidateId("node4")
-                                                                                   .setGroupId("defaultGroup")
-                                                                                   .setTerm(1)
-                                                                                   .build());
-        assertFalse(response.getVoteGranted());
-        assertEquals(1L, response.getTerm());
-        assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
-    }
-
-    @Test
     public void testRequestVoteGrantedAfterAppendAndAfterMinElectionTimeoutHasPassed() {
         followerState.appendEntries(firstAppend());
 
