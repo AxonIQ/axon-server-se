@@ -33,7 +33,7 @@ public class DefaultResponseFactoryTest {
     private final DefaultResponseFactory testSubject = new DefaultResponseFactory(raftGroup);
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         ElectionStore electionStore = mock(ElectionStore.class);
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         LogEntryProcessor logEntryProcessor = mock(LogEntryProcessor.class);
