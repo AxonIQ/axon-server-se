@@ -8,13 +8,30 @@ import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -208,11 +225,6 @@ public class RaftClusterTestFixture {
         @Override
         public RaftConfiguration raftConfiguration() {
             return this;
-        }
-
-        @Override
-        public RaftPeer peer(String nodeId) {
-            return new StubNode(nodeId);
         }
 
         @Override

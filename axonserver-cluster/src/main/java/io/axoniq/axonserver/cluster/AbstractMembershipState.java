@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * Abstract state defining common behavior for all Raft states.
@@ -310,16 +311,9 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup().raftConfiguration().groupId();
     }
 
-    protected Stream<Node> nodesStream() {
-        return currentConfiguration.groupMembers().stream();
-    }
-
-    protected Stream<String> otherNodesId() {
-        return nodesStream().map(Node::getNodeId).filter(id -> !id.equals(me()));
-    }
 
     protected Stream<RaftPeer> otherPeersStream() {
-        return otherNodesId().map(raftGroup::peer);
+        return stream(new OtherPeers(raftGroup, currentConfiguration).spliterator(), false);
     }
 
     protected Election newElection() {
@@ -327,7 +321,9 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected long otherNodesCount() {
-        return otherNodesId().count();
+        return currentConfiguration.groupMembers().stream()
+                                   .filter(node -> !node.getNodeId().equals(me()))
+                                   .count();
     }
 
     protected int random(int min, int max) {
@@ -400,6 +396,4 @@ public abstract class AbstractMembershipState implements MembershipState {
     public List<Node> currentGroupMembers() {
         return currentConfiguration.groupMembers();
     }
-
-
 }

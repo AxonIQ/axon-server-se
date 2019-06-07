@@ -75,7 +75,6 @@ public class LeaderStateTestWithFakeTransition {
     private void addClusterNode(String nodeId, FakeRaftPeer peer) {
         Node node = Node.newBuilder().setNodeId(nodeId).build();
         raftConfiguration.addNode(node);
-        when(raftGroup.peer(nodeId)).thenReturn(peer);
         when(raftGroup.peer(node)).thenReturn(peer);
         peer.setTerm(1);
     }
