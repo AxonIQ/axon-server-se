@@ -73,7 +73,8 @@ public class CandidateState extends AbstractMembershipState {
                     groupId(),
                     currentTerm(),
                     request.getTerm());
-        return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a candidate");
+        return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                      "Request rejected because I'm a candidate");
     }
 
     @Override

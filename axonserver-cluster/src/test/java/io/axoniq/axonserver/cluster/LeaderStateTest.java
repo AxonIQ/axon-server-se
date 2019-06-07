@@ -85,45 +85,8 @@ public class LeaderStateTest {
             }
 
             @Override
-            public RaftPeer peer(String nodeId) {
-                return new RaftPeer() {
-                    @Override
-                    public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
-                        return null;
-                    }
-
-                    @Override
-                    public void appendEntries(AppendEntriesRequest request) {
-
-                    }
-
-                    @Override
-                    public void installSnapshot(InstallSnapshotRequest request) {
-
-                    }
-
-                    @Override
-                    public Registration registerAppendEntriesResponseListener(
-                            Consumer<AppendEntriesResponse> listener) {
-                        return null;
-                    }
-
-                    @Override
-                    public Registration registerInstallSnapshotResponseListener(
-                            Consumer<InstallSnapshotResponse> listener) {
-                        return null;
-                    }
-
-                    @Override
-                    public String nodeId() {
-                        return nodeId;
-                    }
-                };
-            }
-
-            @Override
             public RaftPeer peer(Node node) {
-                return peer(node.getNodeId());
+                return new MyRaftPeer(node.getNodeId());
             }
 
             @Override
@@ -145,6 +108,49 @@ public class LeaderStateTest {
                                                                        termUpdateHandler,
                                                                        new FakeSnapshotManager()))
                                  .build();
+    }
+
+    ;
+
+    private static class MyRaftPeer implements RaftPeer {
+
+        private final String nodeId;
+
+        private MyRaftPeer(String nodeId) {
+            this.nodeId = nodeId;
+        }
+
+        @Override
+        public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
+            return null;
+        }
+
+        @Override
+        public void appendEntries(AppendEntriesRequest request) {
+
+        }
+
+        @Override
+        public void installSnapshot(InstallSnapshotRequest request) {
+
+        }
+
+        @Override
+        public Registration registerAppendEntriesResponseListener(
+                Consumer<AppendEntriesResponse> listener) {
+            return null;
+        }
+
+        @Override
+        public Registration registerInstallSnapshotResponseListener(
+                Consumer<InstallSnapshotResponse> listener) {
+            return null;
+        }
+
+        @Override
+        public String nodeId() {
+            return nodeId;
+        }
     }
 
     @Test

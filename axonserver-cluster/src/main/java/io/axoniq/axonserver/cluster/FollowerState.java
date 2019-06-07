@@ -6,12 +6,10 @@ import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotSuccess;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
@@ -145,7 +143,7 @@ public class FollowerState extends AbstractMembershipState {
                                                     request.getTerm(),
                                                     currentTerm());
                 logger.info(failureCause);
-                return appendEntriesFailure(request.getRequestId(), failureCause);
+                return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             heardFromLeader = true;
@@ -168,7 +166,7 @@ public class FollowerState extends AbstractMembershipState {
                                                     logEntryStore.lastLogIndex());
 
                 logger.info(failureCause);
-                return appendEntriesFailure(request.getRequestId(), failureCause);
+                return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -183,7 +181,7 @@ public class FollowerState extends AbstractMembershipState {
                                                     e.getMessage());
                 logger.warn(failureCause, e);
                 stop();
-                return appendEntriesFailure(request.getRequestId(), failureCause);
+                return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -199,20 +197,14 @@ public class FollowerState extends AbstractMembershipState {
                 last = request.getPrevLogIndex();
                 logger.trace("{} in term {}: Updated last to {}", groupId(), currentTerm(), last);
             }
-            return AppendEntriesResponse.newBuilder()
-                                        .setResponseHeader(responseHeader(request.getRequestId()))
-                                        .setGroupId(groupId())
-                                        .setTerm(currentTerm())
-                                        .setSuccess(buildAppendEntrySuccess(last))
-                                        .setTerm(currentTerm())
-                                        .build();
+            return responseFactory().appendEntriesSuccess(request.getRequestId(), last);
         } catch (Exception ex) {
             String failureCause = String.format("%s in term %s: failed to append events: %s",
                                                 groupId(),
                                                 currentTerm(),
                                                 Arrays.toString(ex.getStackTrace()));
             logger.error(failureCause, ex);
-            return appendEntriesFailure(request.getRequestId(), failureCause);
+            return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
         }
     }
 
@@ -240,7 +232,7 @@ public class FollowerState extends AbstractMembershipState {
                     groupId(),
                     currentTerm(),
                     request.getCandidateId());
-            return requestVoteResponse(request.getRequestId(), false);
+            return responseFactory().voteRejected(request.getRequestId());
         }
         String cause = format("%s in term %s: %s received RequestVoteRequest with term = %s from %s",
                               groupId(),
@@ -253,7 +245,7 @@ public class FollowerState extends AbstractMembershipState {
         if (voteGranted) {
             rescheduleElection(request.getTerm());
         }
-        return requestVoteResponse(request.getRequestId(), voteGranted);
+        return responseFactory().voteResponse(request.getRequestId(), voteGranted);
     }
 
     /**
@@ -296,7 +288,7 @@ public class FollowerState extends AbstractMembershipState {
                     request.getTerm(),
                     currentTerm());
             logger.info(failureCause);
-            return installSnapshotFailure(request.getRequestId(), failureCause);
+            return responseFactory().installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
         rescheduleElection(request.getTerm());
@@ -311,7 +303,7 @@ public class FollowerState extends AbstractMembershipState {
                                          (lastSnapshotChunk.get() + 1)
             );
             logger.warn(failureCause);
-            return installSnapshotFailure(request.getRequestId(), failureCause);
+            return responseFactory().installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
         if (request.hasLastConfig()) {
@@ -336,7 +328,7 @@ public class FollowerState extends AbstractMembershipState {
                     currentTerm(),
                     ex.getMessage());
             logger.error(failureCause, ex);
-            return installSnapshotFailure(request.getRequestId(), failureCause);
+            return responseFactory().installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
         lastSnapshotChunk.set(request.getOffset());
@@ -353,13 +345,7 @@ public class FollowerState extends AbstractMembershipState {
                         raftGroup().localLogEntryStore().lastLogIndex(),
                         raftGroup().logEntryProcessor().commitIndex());
         }
-
-        return InstallSnapshotResponse.newBuilder()
-                                      .setResponseHeader(responseHeader(request.getRequestId()))
-                                      .setTerm(currentTerm())
-                                      .setGroupId(groupId())
-                                      .setSuccess(buildInstallSnapshotSuccess(request.getOffset()))
-                                      .build();
+        return responseFactory().installSnapshotSuccess(request.getRequestId(), request.getOffset());
     }
 
     @Override
@@ -404,18 +390,6 @@ public class FollowerState extends AbstractMembershipState {
             lastMessage.set(scheduler.get().clock().millis());
             nextTimeout.set(lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout()));
         }
-    }
-
-    private AppendEntrySuccess buildAppendEntrySuccess(long lastLogIndex) {
-        return AppendEntrySuccess.newBuilder()
-                                 .setLastLogIndex(lastLogIndex)
-                                 .build();
-    }
-
-    private InstallSnapshotSuccess buildInstallSnapshotSuccess(int offset) {
-        return InstallSnapshotSuccess.newBuilder()
-                                     .setLastReceivedOffset(offset)
-                                     .build();
     }
 
     private boolean voteGrantedFor(RequestVoteRequest request) {
