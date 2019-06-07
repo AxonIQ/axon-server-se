@@ -22,7 +22,7 @@ public class RaftErrorMapping implements Function<Throwable, ErrorMessage> {
     public RaftErrorMapping() {
         codes.put(ServerTooSlowException.class, ErrorCode.SERVER_TOO_SLOW);
         codes.put(UncommittedConfigException.class, ErrorCode.UNCOMMITTED_CONFIGURATION);
-        codes.put(ReplicationTimeoutException.class, ErrorCode.REPLICATION_TIMEOUT);
+        codes.put(ReplicationInterruptedException.class, ErrorCode.REPLICATION_INTERRUPTED);
     }
 
     /**
