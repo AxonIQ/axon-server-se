@@ -84,6 +84,7 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void addNodeToContext(String context, String node) {
+        logger.info("Add node request invoked for node: {} - and context: {}", node, context);
         RaftNode config = grpcRaftController.getRaftNode(getAdmin());
         Context contextDefinition = contextController.getContext(context);
 
@@ -165,6 +166,7 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void deleteContext(String context) {
+        logger.info("Delete context invoked for context: {}", context);
         if (isAdmin(context)) {
             throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT,
                                                  String.format("Deletion of internal context %s not allowed", context));
@@ -217,6 +219,7 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void deleteNodeFromContext(String context, String node) {
+        logger.info("Delete node from context invoked for context: {} - and node: {}", context, node);
         Context contextDef = contextController.getContext(context);
         String nodeLabel = contextDef.getNodeLabel(node);
 
