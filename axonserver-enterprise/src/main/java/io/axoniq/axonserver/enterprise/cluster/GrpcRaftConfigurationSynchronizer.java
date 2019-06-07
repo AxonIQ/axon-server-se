@@ -78,7 +78,9 @@ public class GrpcRaftConfigurationSynchronizer {
             ContextConfiguration c = leader.configuration(context).get();
             return c != null && !c.getPending() && sameNodes.test(configuration, c);
         } catch (Exception e) {
-            logger.warn("Impossible to get the current configuration from the leader of the context {}", context, e);
+            logger.warn("Impossible to get the current configuration from the leader of the context {}: {}",
+                        context,
+                        e.getMessage());
             return false;
         }
     }
