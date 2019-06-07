@@ -170,7 +170,7 @@ public class LeaderState extends AbstractMembershipState {
                     currentTerm(),
                     request.getLeaderId(),
                     request.getTerm());
-        return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
+        return responseFactory().appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
     @Override
