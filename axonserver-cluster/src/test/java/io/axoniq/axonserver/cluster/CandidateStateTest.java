@@ -120,18 +120,6 @@ public class CandidateStateTest {
     }
 
     @Test
-    public void requestVoteNonMember() {
-        candidateState.start();
-        RequestVoteRequest request = RequestVoteRequest.newBuilder()
-                                                       .setCandidateId("node3")
-                                                       .setTerm(10)
-                                                       .build();
-        RequestVoteResponse response = candidateState.requestVote(request);
-        assertFalse(response.getVoteGranted());
-        assertFalse(response.getGoAway());
-    }
-
-    @Test
     public void requestVoteLowerTerm() {
         candidateState.start();
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(0).build();

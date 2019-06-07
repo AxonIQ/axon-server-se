@@ -147,10 +147,7 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             heardFromLeader = true;
-            if (!request.getLeaderId().equals(leaderId.get()) && currentGroupMembers().stream().anyMatch(m -> m
-                    .getNodeId()
-                    .equals(request.getLeaderId()))) {
-                // only update the leader if it is member of the current configuration
+            if (!request.getLeaderId().equals(leaderId.get())) {
                 leaderId.set(request.getLeaderId());
                 logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
                 raftGroup().localNode().receivedNewLeader(leaderId.get());
@@ -396,15 +393,6 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private boolean voteGrantedFor(RequestVoteRequest request) {
-        //0. Reply false if requester is not a cluster member
-        if (!member(request.getCandidateId())) {
-            logger.info("{} in term {}: Vote not granted. Candidate {} is not a cluster member.",
-                        groupId(),
-                        currentTerm(),
-                        request.getCandidateId());
-            return false;
-        }
-
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
             logger.info("{} in term {}: Vote not granted. Current term is greater than requested {}.",
