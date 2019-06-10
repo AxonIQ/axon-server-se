@@ -29,11 +29,14 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * @author Marc Gathier
  */
 public class IndexManager {
+
+    private final ReentrantReadWriteLock indexLock = new ReentrantReadWriteLock(true);
 
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String AGGREGATE_MAP = "aggregateMap";
@@ -92,8 +95,8 @@ public class IndexManager {
 
         RuntimeException lastError = new RuntimeException();
         for (int retry = 0; retry < 3; retry++) {
-            try (Index idx = getIndex(segment)) {
-                return idx.getPositions(aggregateId);
+            try {
+                return getIndex(segment).getPositions(aggregateId);
             } catch (RuntimeException ex) {
                 lastError = ex;
             }
@@ -102,23 +105,35 @@ public class IndexManager {
     }
 
     public Index getIndex(long segment) {
-        Index index = indexMap.get(segment);
-        if (index == null || index.db.isClosed()) {
-            if (!storageProperties.index(context, segment).exists()) {
-                return null;
+        try {
+            indexLock.readLock().lock();
+            Index index = indexMap.get(segment);
+            if (index == null || index.db.isClosed()) {
+                if (!storageProperties.index(context, segment).exists()) {
+                    return null;
+                }
+                index = new Index(segment);
+                indexMap.put(segment, index);
+                indexCleanup();
             }
-            index = new Index(segment);
-            indexMap.put(segment, index);
-            indexCleanup();
+            return index;
+        } finally {
+            indexLock.readLock().unlock();
         }
-        return index;
     }
 
     private void indexCleanup() {
         while (indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
             Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
             logger.debug("Closing index {}", entry.getKey());
-            scheduledExecutorService.schedule(() -> entry.getValue().db.close(), 2, TimeUnit.SECONDS);
+            scheduledExecutorService.schedule(() -> {
+                try {
+                    indexLock.writeLock().lock();
+                    entry.getValue().close();
+                } finally {
+                    indexLock.writeLock().unlock();
+                }
+            }, 2, TimeUnit.SECONDS);
         }
 
         while (bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
@@ -178,6 +193,7 @@ public class IndexManager {
             return aggregatePositions == null ? Collections.emptySortedSet() : aggregatePositions;
         }
 
+        @Override
         public void close() {
             db.close();
         }
