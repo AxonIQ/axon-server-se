@@ -125,7 +125,7 @@ class LocalRaftConfigService implements RaftConfigService {
         }
     }
 
-    private void handleContextUpdateResult(String context, String node, String action, ContextConfiguration oldConfiguration,
+   private void handleContextUpdateResult(String context, String node, String action, ContextConfiguration oldConfiguration,
                                            ContextUpdateConfirmation result, Throwable throwable) {
         if (throwable == null) {
             if (!result.getSuccess()) {
@@ -172,8 +172,11 @@ class LocalRaftConfigService implements RaftConfigService {
 
         Context contextInAdmin = contextController.getContext(context);
         if (contextInAdmin == null) {
-            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                 String.format("Context %s not found", context));
+            logger.warn("Could not find context {} in admin tables, sending deleteContext to all nodes", context);
+            contextController.getRemoteNodes().forEach(node -> raftGroupServiceFactory.getRaftGroupServiceForNode(node).deleteContext(context));
+            raftGroupServiceFactory.getRaftGroupServiceForNode(this.messagingPlatformConfiguration.getName()).deleteContext(context);
+            contextsInProgress.remove(context);
+            return;
         }
         Collection<String> nodeNames = contextInAdmin.getNodeNames();
         @SuppressWarnings("unchecked")
@@ -211,6 +214,7 @@ class LocalRaftConfigService implements RaftConfigService {
             } catch (Exception second) {
                 logger.debug("{}: Error while updating configuration {}", context, second.getMessage());
             }
+            contextsInProgress.remove(context);
         });
     }
 
@@ -323,10 +327,10 @@ class LocalRaftConfigService implements RaftConfigService {
         }
         Context contextDef = contextController.getContext(context);
         if( contextDef != null ) {
+            contextsInProgress.remove(context);
             throw new MessagingPlatformException(ErrorCode.CONTEXT_EXISTS, String.format("Context %s already exists", context));
         }
 
-        RaftNode config = grpcRaftController.getRaftNode(getAdmin());
         List<Node> raftNodes = new ArrayList<>();
         List<NodeInfoWithLabel> clusterNodes = new ArrayList<>();
         nodes.forEach(n -> {
@@ -340,18 +344,16 @@ class LocalRaftConfigService implements RaftConfigService {
 
         getFuture(
             raftGroupServiceFactory.getRaftGroupServiceForNode(target.getNodeName()).initContext(context, raftNodes)
-                                   .thenCompose(r -> {
-                                       ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
-                                                                                                       .setContext(
-                                                                                                               context)
-                                                                                                       .addAllNodes(
-                                                                                                               clusterNodes)
-                                                                                                       .build();
-                                       return config.appendEntry(ContextConfiguration.class.getName(),
+                                   .thenAccept(r -> {
+                                       ContextConfiguration contextConfiguration =
+                                               ContextConfiguration.newBuilder()
+                                                                   .setContext(context)
+                                                                   .addAllNodes(clusterNodes)
+                                                                   .build();
+                                       appendToAdmin(ContextConfiguration.class.getName(),
                                                                  contextConfiguration.toByteArray());
                                    })
-                                   .whenComplete((success, error) -> contextsInProgress.remove(context)
-                                   ));
+                                   .whenComplete((success, error) -> contextsInProgress.remove(context)));
     }
 
     @Override
