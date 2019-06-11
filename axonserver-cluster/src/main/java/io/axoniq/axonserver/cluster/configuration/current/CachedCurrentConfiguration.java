@@ -39,7 +39,7 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
 
     @Override
     public List<Node> groupMembers() {
-        if (cachedNodes.get() == null){
+        if (cachedNodes.get() == null || cachedNodes.get().isEmpty()){
             update();
         }
         return cachedNodes.get();
