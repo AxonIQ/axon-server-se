@@ -156,6 +156,18 @@ public class IndexManager {
         return false;
     }
 
+    public void cleanup() {
+        bloomFilterPerSegment.clear();
+        indexMap.forEach((segment, index) -> index.close());
+    }
+
+    public void remove(Long s) {
+        Index index = indexMap.remove(s);
+        if( index != null) index.close();
+        bloomFilterPerSegment.remove(s);
+    }
+
+
     public class Index implements Closeable {
 
         private final Map<String, SortedSet<PositionInfo>> positions;
