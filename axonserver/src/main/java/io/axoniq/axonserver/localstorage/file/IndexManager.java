@@ -34,6 +34,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class IndexManager {
 
+    private final Object indexLock = new Object();
+
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String AGGREGATE_MAP = "aggregateMap";
     private final StorageProperties storageProperties;
@@ -104,16 +106,18 @@ public class IndexManager {
     }
 
     public Index getIndex(long segment) {
-        Index index = indexMap.get(segment);
-        if (index == null || index.db.isClosed()) {
-            if (!storageProperties.index(context, segment).exists()) {
-                return null;
+        synchronized (indexLock) {
+            Index index = indexMap.get(segment);
+            if (index == null || index.db.isClosed()) {
+                if (!storageProperties.index(context, segment).exists()) {
+                    return null;
+                }
+                index = new Index(segment);
+                indexMap.put(segment, index);
+                indexCleanup();
             }
-            index = new Index(segment);
-            indexMap.put(segment, index);
-            indexCleanup();
+            return index;
         }
-        return index;
     }
 
     private void indexCleanup() {
