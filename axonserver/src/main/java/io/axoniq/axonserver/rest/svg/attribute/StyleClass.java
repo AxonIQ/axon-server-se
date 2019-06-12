@@ -27,6 +27,7 @@ public class StyleClass implements Printable {
     public static final String STORAGE = "axondb";
     public static final String MASTER = "master";
     public static final String CLIENT = "client";
+    public static final String ADMIN = "admin";
 
     private final String styleClass;
 

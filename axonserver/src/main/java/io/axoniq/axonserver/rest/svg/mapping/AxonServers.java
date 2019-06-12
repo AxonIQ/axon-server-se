@@ -26,14 +26,15 @@ import javax.annotation.Nonnull;
  */
 @Component
 public class AxonServers implements Iterable<AxonServer> {
+    public static final String ADMIN = "_admin";
 
     private final Topology clusterController;
-    private final EventStoreLocator eventStoreManager;
+    private final EventStoreLocator eventStoreLocator;
 
     public AxonServers(Topology clusterController,
-                       EventStoreLocator eventStoreManager) {
+                       EventStoreLocator eventStoreLocator) {
         this.clusterController = clusterController;
-        this.eventStoreManager = eventStoreManager;
+        this.eventStoreLocator = eventStoreLocator;
     }
 
     @Override
@@ -69,9 +70,14 @@ public class AxonServers implements Iterable<AxonServer> {
 
                                              @Override
                                              public boolean master() {
-                                                 return eventStoreManager.isLeader(node.getName(), contextName);
+                                                 return eventStoreLocator.isLeader(node.getName(), contextName);
                                              }
                                          } ).sorted(Comparator.comparing(Storage::context)).collect(Collectors.toList());
+                                     }
+
+                                     @Override
+                                     public boolean isAdminLeader() {
+                                         return eventStoreLocator.isLeader(((AxonServerNode) node).getName(), ADMIN);
                                      }
                                  }).iterator();
     }

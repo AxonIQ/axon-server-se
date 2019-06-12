@@ -57,6 +57,9 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
         if( name.equals(currentNode)) {
             extraClass += " " + StyleClass.CURRENT;
         }
+        if( showContexts && hub.isAdminLeader()) {
+            extraClass += " " + StyleClass.ADMIN;
+        }
         String nodeType = StyleClass.AXONSERVER + " " + extraClass;
         lines.add(new TextLine(name, fonts.messaging(), nodeType));
         Iterable<String> contextNames = hub.contexts();
