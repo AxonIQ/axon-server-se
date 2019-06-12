@@ -538,7 +538,7 @@ public class RaftNode {
         return state.get().replicatorPeers();
     }
 
-    public void receivedNewLeader(String leaderId) {
+    public void notifyNewLeader(String leaderId) {
         stateChangeListeners.forEach(stateChangeListeners -> {
             try {
                 StateChanged change = new StateChanged(groupId(),

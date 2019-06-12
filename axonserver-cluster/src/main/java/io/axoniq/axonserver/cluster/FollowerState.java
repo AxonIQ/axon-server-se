@@ -46,6 +46,7 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicLong lastSnapshotChunk = new AtomicLong(-1);
     private final AtomicBoolean processing = new AtomicBoolean();
     private long followerStateStated;
+    private volatile boolean leaderChanged;
 
     private FollowerState(Builder builder) {
         super(builder);
@@ -66,6 +67,7 @@ public class FollowerState extends AbstractMembershipState {
         scheduler.set(schedulerFactory().get());
         heardFromLeader = false;
         leaderId.set(null);
+        leaderChanged = true;
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
         lastMessage.set(scheduler.get().clock().millis());
         followerStateStated = lastMessage.get();
@@ -149,9 +151,16 @@ public class FollowerState extends AbstractMembershipState {
             heardFromLeader = true;
             if (!request.getLeaderId().equals(leaderId.get())) {
                 leaderId.set(request.getLeaderId());
+                leaderChanged = true;
                 logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
-                raftGroup().localNode().receivedNewLeader(leaderId.get());
             }
+
+            if( leaderChanged && leaderInCurrentConfiguration()) {
+                // only send notification if leader is actually in current configuration
+                raftGroup().localNode().notifyNewLeader(leaderId.get());
+                leaderChanged = false;
+            }
+
             rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
             LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
@@ -206,6 +215,12 @@ public class FollowerState extends AbstractMembershipState {
             logger.error(failureCause, ex);
             return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
         }
+    }
+
+    private boolean leaderInCurrentConfiguration() {
+        if( leaderId.get() == null) return false;
+        return currentGroupMembers().stream()
+                                    .anyMatch(m -> m.getNodeId().equals(leaderId.get()));
     }
 
     /**
