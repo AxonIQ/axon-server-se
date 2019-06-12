@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;

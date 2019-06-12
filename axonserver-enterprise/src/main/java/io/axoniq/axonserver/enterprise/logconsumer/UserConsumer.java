@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.logconsumer;
 
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.User;

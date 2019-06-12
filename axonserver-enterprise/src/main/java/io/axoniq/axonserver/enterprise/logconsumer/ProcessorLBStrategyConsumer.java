@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingService;
 import io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter;
 import io.axoniq.axonserver.grpc.cluster.Entry;

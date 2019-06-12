@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.logconsumer;
+package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.Entry;
 

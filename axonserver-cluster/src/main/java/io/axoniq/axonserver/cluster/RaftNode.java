@@ -75,7 +75,7 @@ public class RaftNode {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
         this.logEntryApplier = new LogEntryApplier(raftGroup, scheduler, e -> state.get().applied(e));
-        this.registerEntryConsumer(this::updateConfig);
+        this.registerEntryConsumer((groupId, entry) -> updateConfig(entry));
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
                                                                       this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
@@ -339,7 +339,7 @@ public class RaftNode {
      * @param entryConsumer to consume committed log entries
      * @return a Runnable to be invoked in order to cancel this registration
      */
-    public Runnable registerEntryConsumer(Consumer<Entry> entryConsumer) {
+    public Runnable registerEntryConsumer(LogEntryConsumer entryConsumer) {
         return logEntryApplier.registerLogEntryConsumer(entryConsumer);
     }
 

@@ -13,7 +13,7 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
-import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -141,7 +141,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             }
             applicationContext.getBeansOfType(LogEntryConsumer.class)
                               .forEach((name, bean) -> raftGroup.localNode()
-                                                                .registerEntryConsumer(e -> bean.consumeLogEntry(groupId,e)));
+                                                                .registerEntryConsumer(bean));
             raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(),
                                                                                            stateChanged));
 

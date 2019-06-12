@@ -3,15 +3,12 @@ package io.axoniq.axonserver.enterprise.logconsumer;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.access.application.AppEvents;
 import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.Application;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
-
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
