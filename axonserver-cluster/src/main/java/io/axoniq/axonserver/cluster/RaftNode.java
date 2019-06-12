@@ -74,12 +74,12 @@ public class RaftNode {
     public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
+        this.logEntryApplier = new LogEntryApplier(raftGroup, scheduler, e -> state.get().applied(e));
         this.registerEntryConsumer(this::updateConfig);
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
                                                                       this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
-        logEntryApplier = new LogEntryApplier(raftGroup, scheduler, e -> state.get().applied(e));
     }
 
     private ScheduledRegistration scheduleLogCleaning() {
