@@ -11,7 +11,6 @@ import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -23,7 +22,6 @@ import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
-import io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
 import io.axoniq.axonserver.grpc.internal.Group;
@@ -42,16 +40,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.function.BiConsumer;
 import javax.annotation.PreDestroy;
 
 import static io.axoniq.axonserver.ProcessingInstructionHelper.targetClient;
@@ -84,9 +79,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final ClusterController clusterController;
     private final ApplicationEventPublisher eventPublisher;
 
-    private final Map<String, ConnectorReceivingStreamObserver> connections = new ConcurrentHashMap<>();
-    private final Map<RequestCase, Collection<BiConsumer<ConnectorCommand, Publisher<ConnectorResponse>>>> handlers
-            = new EnumMap<>(RequestCase.class);
+
+    private final Map<ClientIdentification, String> connectedClients = new ConcurrentHashMap<>();
 
     @Value("${axoniq.axonserver.cluster.connectionCheckRetries:5}")
     private int connectionCheckRetries = 5;
@@ -138,11 +132,23 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         return dispatchListeners;
     }
 
+    @EventListener
+    public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
+        String axonServerNode = applicationDisconnected.isProxied() ? applicationDisconnected.getProxy() : "LOCAL";
+        connectedClients.computeIfPresent(new ClientIdentification(applicationDisconnected.getContext(), applicationDisconnected.getClient()),
+                                          (client,current)-> current.equals(axonServerNode) ? null : current);
+    }
+
+    @EventListener
+    public void on(TopologyEvents.ApplicationConnected applicationConnected) {
+        String axonServerNode = applicationConnected.isProxied() ? applicationConnected.getProxy() : "LOCAL";
+        connectedClients.put(new ClientIdentification(applicationConnected.getContext(), applicationConnected.getClient()), axonServerNode);
+    }
+
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
 
         private static final boolean PROXIED = true;
 
-        private final CopyOnWriteArraySet<ClientIdentification> clients;
         private final SendingStreamObserver<ConnectorResponse> responseObserver;
         private volatile GrpcInternalCommandDispatcherListener commandQueueListener;
         private volatile GrpcInternalQueryDispatcherListener queryQueueListener;
@@ -153,14 +159,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         private ConnectorReceivingStreamObserver(SendingStreamObserver<ConnectorResponse> responseObserver) {
             super(logger);
             this.responseObserver = responseObserver;
-            clients = new CopyOnWriteArraySet<>();
         }
 
         @Override
         protected void consume(ConnectorCommand connectorCommand) {
-            handlers.getOrDefault(connectorCommand.getRequestCase(), Collections.emptySet())
-                    .forEach(consumer -> consumer.accept(connectorCommand, responseObserver::onNext));
-
             switch (connectorCommand.getRequestCase()) {
                 case CONNECT:
                     try {
@@ -173,7 +175,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             responseObserver.onNext(ConnectorResponse.newBuilder()
                                                                      .setConnectResponse(ConnectResponse.newBuilder())
                                                                      .build());
-                            connections.put(messagingServerName, this);
                         } else {
                             logger.warn(
                                     "Received connection from unknown node {}, closing connection", messagingServerName
@@ -425,7 +426,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void checkClient(String context, String component, String clientName) {
-            if (clients.add(new ClientIdentification(context, clientName))) {
+            if (!messagingServerName.equals(connectedClients.get((new ClientIdentification(context, clientName))))) {
                 eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
                                                                                     component,
                                                                                     clientName,
@@ -437,7 +438,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             ClientIdentification clientIdentification =
                     new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName());
             if (clientStatus.getConnected()) {
-                if (clients.add(clientIdentification)) {
+                if (! messagingServerName.equals(connectedClients.get(clientIdentification))) {
                     // Unknown client
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(
                             clientStatus.getContext(),
@@ -445,11 +446,13 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             clientStatus.getClientName(),
                             messagingServerName
                     ));
+                } else {
+                    logger.warn("Client {} connected to {} not forwarded, as already known to be connected to {}",
+                                clientIdentification.getClient(), messagingServerName, connectedClients.get(clientIdentification));
                 }
+
             } else {
-                if (clients.remove(clientIdentification)) {
-                    // Known client
-                    logger.info("Client disconnected: {}", clientStatus.getClientName());
+                if (messagingServerName.equals(connectedClients.get(clientIdentification))) {
                     commandHandlerPerContextClient.remove(clientIdentification);
                     queryHandlerPerContextClient.remove(clientIdentification);
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
@@ -458,6 +461,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             clientStatus.getClientName(),
                             messagingServerName
                     ));
+                } else {
+                    logger.warn("Client {} disconnected from {} not forwarded, as already known to be connected to {}",
+                                clientIdentification.getClient(), messagingServerName, connectedClients.get(clientIdentification));
                 }
             }
         }
@@ -486,10 +492,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 queryQueueListener = null;
             }
             if (messagingServerName != null) {
-                connections.remove(messagingServerName);
-                clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
-                        client.getContext(), null, client.getClient(), messagingServerName
-                )));
+                connectedClients.entrySet().stream()
+                                .filter(connectedClientEntry -> connectedClientEntry.getValue().equals(messagingServerName))
+                                .forEach(connectedClientEntry -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
+                                        connectedClientEntry.getKey().getContext(), null, connectedClientEntry.getKey().getClient(), messagingServerName
+                                )));
                 clusterController.closeConnection(messagingServerName);
                 eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
             }
