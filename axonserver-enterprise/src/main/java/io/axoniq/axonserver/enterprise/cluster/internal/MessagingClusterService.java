@@ -426,7 +426,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void checkClient(String context, String component, String clientName) {
-            if (!messagingServerName.equals(connectedClients.get((new ClientIdentification(context, clientName))))) {
+            if (messagingServerName != null && !messagingServerName.equals(connectedClients.get((new ClientIdentification(context, clientName))))) {
                 eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
                                                                                     component,
                                                                                     clientName,
