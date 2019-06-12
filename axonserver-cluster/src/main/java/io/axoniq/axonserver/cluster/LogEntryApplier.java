@@ -125,6 +125,7 @@ class LogEntryApplier {
         // TODO: 6/12/2019 commit transaction?
         restart();
         logEntryAppliedConsumer.accept(e);
+
     }
 
     private String groupId() {

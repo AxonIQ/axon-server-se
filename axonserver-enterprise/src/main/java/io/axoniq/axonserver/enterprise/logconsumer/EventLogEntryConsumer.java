@@ -37,8 +37,8 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
             }
             localEventStore.syncEvents(groupId, asSerializedTransactionWithToken(transactionWithToken));
         } else if (entryType(e, "Append.SNAPSHOT")) {
-            TransactionWithToken transactionWithToken = null;
-            transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
+            TransactionWithToken transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject()
+                                                                                        .getData());
             localEventStore.syncSnapshots(groupId, asSerializedTransactionWithToken(transactionWithToken));
         }
     }

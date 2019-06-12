@@ -11,6 +11,10 @@ public interface LogEntryConsumer {
 
     void consumeLogEntry(String groupId, Entry entry) throws Exception;
 
+    default void commit() {}
+
+    default void rollback() {}
+
     default int priority() {
         return 0;
     }
