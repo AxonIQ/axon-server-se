@@ -25,18 +25,13 @@ public class UserConsumer implements LogEntryConsumer {
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry e) {
-        if( entryType(e, User.class.getName())) {
-            User user = null;
-            try {
-                user = User.parseFrom(e.getSerializedObject().getData());
-                logger.debug("{}: Received user: {}", groupId, user);
-                io.axoniq.axonserver.access.jpa.User jpaUser = UserProtoConverter.createJpaUser(user);
-                userController.syncUser(jpaUser);
-                applicationEventPublisher.publishEvent(new UserEvents.UserUpdated(jpaUser, false));
-            } catch (Exception e1) {
-                logger.warn("Failed to update user: {}", user, e1);
-            }
+    public void consumeLogEntry(String groupId, Entry e) throws Exception {
+        if (entryType(e, User.class.getName())) {
+            User user = User.parseFrom(e.getSerializedObject().getData());
+            logger.debug("{}: Received user: {}", groupId, user);
+            io.axoniq.axonserver.access.jpa.User jpaUser = UserProtoConverter.createJpaUser(user);
+            userController.syncUser(jpaUser);
+            applicationEventPublisher.publishEvent(new UserEvents.UserUpdated(jpaUser, false));
         }
     }
 }

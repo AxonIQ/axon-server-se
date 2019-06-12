@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class LoadBalancingStrategyConsumer implements LogEntryConsumer {
+
     private final LoadBalanceStrategyController loadBalanceStrategyController;
 
     public LoadBalancingStrategyConsumer(
@@ -20,16 +21,11 @@ public class LoadBalancingStrategyConsumer implements LogEntryConsumer {
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry entry) {
-        if( entryType(entry, LoadBalanceStrategy.class.getName())) {
-            try {
-                LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
-                loadBalanceStrategyController.save(LoadBalancingStrategyConverter
-                                                           .createJpaLoadBalancingStrategy(strategy));
-            } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
-            }
+    public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
+        if (entryType(entry, LoadBalanceStrategy.class.getName())) {
+            LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
+            loadBalanceStrategyController.save(LoadBalancingStrategyConverter
+                                                       .createJpaLoadBalancingStrategy(strategy));
         }
     }
-
 }

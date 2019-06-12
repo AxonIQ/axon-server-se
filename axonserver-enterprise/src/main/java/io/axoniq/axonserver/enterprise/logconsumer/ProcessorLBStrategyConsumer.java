@@ -21,15 +21,12 @@ public class ProcessorLBStrategyConsumer implements LogEntryConsumer {
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry entry) {
-        if( entryType(entry, ProcessorLBStrategy.class)) {
-            try {
-                ProcessorLBStrategy processorLBStrategy = ProcessorLBStrategy.parseFrom(entry.getSerializedObject().getData());
-                processorLoadBalancingService.save(ProcessorLBStrategyConverter
-                                                              .createJpaProcessorLoadBalancing(processorLBStrategy));
-            } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
-            }
+    public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
+        if (entryType(entry, ProcessorLBStrategy.class)) {
+            ProcessorLBStrategy processorLBStrategy = ProcessorLBStrategy.parseFrom(entry.getSerializedObject()
+                                                                                         .getData());
+            processorLoadBalancingService.save(ProcessorLBStrategyConverter
+                                                       .createJpaProcessorLoadBalancing(processorLBStrategy));
         }
     }
 }

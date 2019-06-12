@@ -104,6 +104,7 @@ class LogEntryApplier {
 
     private void applyLogEntryConsumers(Entry e) {
         logger.trace("{} in term {}: apply {}", groupId(), currentTerm(), e.getIndex());
+        // TODO: 6/12/2019 start a transaction?
         for (Consumer<Entry> consumer : logEntryConsumers) {
             try {
                 consumer.accept(e);
@@ -117,9 +118,11 @@ class LogEntryApplier {
                             newSchedule,
                             ex);
                 reschedule(newSchedule);
-                return;
+                // TODO: 6/12/2019 rollback transaction?
+                throw ex;
             }
         }
+        // TODO: 6/12/2019 commit transaction?
         restart();
         logEntryAppliedConsumer.accept(e);
     }

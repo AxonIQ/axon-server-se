@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -17,6 +18,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
  */
 @Component
 public class AdminConfigConsumer implements LogEntryConsumer {
+
     private Logger logger = LoggerFactory.getLogger(AdminConfigConsumer.class);
 
     private final ContextController contextController;
@@ -29,16 +31,14 @@ public class AdminConfigConsumer implements LogEntryConsumer {
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry e) {
-        if( isAdmin(groupId) && entryType(e, ContextConfiguration.class)) {
-                try {
-                    ContextConfiguration contextConfiguration = ContextConfiguration.parseFrom(e.getSerializedObject().getData());
-                    logger.debug("{}: received data: {}", groupId, contextConfiguration);
-                    contextController.updateContext(contextConfiguration);
-                    eventPublisher.publishEvent(new ContextEvents.ContextUpdated(groupId));
-                } catch (Exception e1) {
-                    logger.warn("{}: Failed to process log entry: {}", groupId, e, e1);
-                }
+    public void consumeLogEntry(String groupId, Entry e) throws InvalidProtocolBufferException {
+        // TODO: 6/12/2019 should we check for the group here? shouldn't apply entry be propagated to correct group members already?
+        if (/*isAdmin(groupId) && */entryType(e, ContextConfiguration.class)) {
+            ContextConfiguration contextConfiguration = ContextConfiguration.parseFrom(e.getSerializedObject()
+                                                                                        .getData());
+            logger.debug("{}: received data: {}", groupId, contextConfiguration);
+            contextController.updateContext(contextConfiguration);
+            eventPublisher.publishEvent(new ContextEvents.ContextUpdated(groupId));
         }
     }
 }

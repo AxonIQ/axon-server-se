@@ -11,7 +11,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DeleteLoadBalancingStrategyConsumer implements LogEntryConsumer {
-    public static final String DELETE_LOAD_BALANCING_STRATEGY ="DELETE_LOAD_BALANCING_STRATEGY";
+
+    public static final String DELETE_LOAD_BALANCING_STRATEGY = "DELETE_LOAD_BALANCING_STRATEGY";
     private final LoadBalanceStrategyController loadBalanceStrategyController;
 
     public DeleteLoadBalancingStrategyConsumer(
@@ -20,15 +21,10 @@ public class DeleteLoadBalancingStrategyConsumer implements LogEntryConsumer {
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry entry) {
-        if( entryType(entry, DELETE_LOAD_BALANCING_STRATEGY)) {
-            try {
-                LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
-                loadBalanceStrategyController.delete(strategy.getName());
-            } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
-            }
+    public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
+        if (entryType(entry, DELETE_LOAD_BALANCING_STRATEGY)) {
+            LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
+            loadBalanceStrategyController.delete(strategy.getName());
         }
     }
-
 }

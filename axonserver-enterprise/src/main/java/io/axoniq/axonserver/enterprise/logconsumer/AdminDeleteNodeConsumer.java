@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
@@ -27,15 +28,12 @@ public class AdminDeleteNodeConsumer implements LogEntryConsumer {
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry e) {
-        if( isAdmin(groupId) && entryType(e, DeleteNode.class)) {
-                try {
-                    DeleteNode deleteNode = DeleteNode.parseFrom(e.getSerializedObject().getData());
-                    logger.warn("{}: received data: {}", groupId, deleteNode);
-                    eventPublisher.publishEvent(deleteNode);
-                } catch (Exception e1) {
-                    logger.warn("{}: Failed to process log entry: {}", groupId, e, e1);
-                }
+    public void consumeLogEntry(String groupId, Entry e) throws InvalidProtocolBufferException {
+        // TODO: 6/12/2019 should we check for the group here? shouldn't apply entry be propagated to correct group members already?
+        if ( /*isAdmin(groupId) && */entryType(e, DeleteNode.class)) {
+            DeleteNode deleteNode = DeleteNode.parseFrom(e.getSerializedObject().getData());
+            logger.warn("{}: received data: {}", groupId, deleteNode);
+            eventPublisher.publishEvent(deleteNode);
         }
     }
 }

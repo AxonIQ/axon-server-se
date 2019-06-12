@@ -25,23 +25,10 @@ public class LogEntryProcessor {
     }
 
     public void apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
-        int retries = 3;
-        while (retries > 0) {
-            int applied = applyEntries(entryIteratorSupplier, consumer);
-            if (applied > 0) {
-                retries = 0;
-            } else {
-                retries--;
-            }
-        }
-    }
-
-    public int applyEntries(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
-        int count = 0;
-        if( applyRunning.compareAndSet(false, true)) {
-            if( processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
+        if (applyRunning.compareAndSet(false, true)) {
+            if (processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
                 logger.trace("Start to apply entries at: {}", processorStore.lastAppliedIndex());
-                try(EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastAppliedIndex() + 1)) {
+                try (EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastAppliedIndex() + 1)) {
                     boolean beforeCommit = true;
                     while (beforeCommit && iterator.hasNext()) {
                         Entry entry = iterator.next();
@@ -49,7 +36,6 @@ public class LogEntryProcessor {
                         if (beforeCommit) {
                             consumer.accept(entry);
                             processorStore.updateLastApplied(entry.getIndex(), entry.getTerm());
-                            count++;
                             logAppliedListeners.forEach(listener -> listener.accept(entry));
                         }
                     }
@@ -58,7 +44,6 @@ public class LogEntryProcessor {
             }
             applyRunning.set(false);
         }
-        return count;
     }
 
     public void markCommitted(long committedIndex, long term) {
