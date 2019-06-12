@@ -45,8 +45,7 @@ public class RaftNode {
     private final RaftGroup raftGroup;
     private final MembershipStateFactory stateFactory;
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
-    private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
-    private volatile ScheduledRegistration applyTask;
+    private final LogEntryApplier logEntryApplier;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
     private final List<BiConsumer<Long, String>> termChangeListeners = new CopyOnWriteArrayList<>();
@@ -80,6 +79,7 @@ public class RaftNode {
                                                                       this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
+        logEntryApplier = new LogEntryApplier(raftGroup, scheduler, e -> state.get().applied(e));
     }
 
     private ScheduledRegistration scheduleLogCleaning() {
@@ -214,13 +214,7 @@ public class RaftNode {
                     raftGroup.localLogEntryStore().lastLogIndex());
         }
         updateState(state.get(), stateFactory.followerState(), "Node started");
-        applyTask = scheduler.scheduleWithFixedDelay(() -> raftGroup.logEntryProcessor()
-                                                                    .apply(raftGroup
-                                                                                   .localLogEntryStore()::createIterator,
-                                                                           this::applyEntryConsumers),
-                                                     0,
-                                                     1,
-                                                     TimeUnit.MILLISECONDS);
+        logEntryApplier.start();
         if (raftGroup.raftConfiguration().isLogCompactionEnabled()) {
             scheduledLogCleaning = scheduleLogCleaning();
         }
@@ -316,10 +310,7 @@ public class RaftNode {
     public void stop() {
         logger.info("{} in term {}: Stopping the node...", groupId(), currentTerm());
         updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
-        if (applyTask != null) {
-            applyTask.cancel(true);
-            applyTask = null;
-        }
+        logEntryApplier.stop();
         stopLogCleaning();
         logger.info("{} in term {}: Node stopped.", groupId(), currentTerm());
     }
@@ -349,24 +340,7 @@ public class RaftNode {
      * @return a Runnable to be invoked in order to cancel this registration
      */
     public Runnable registerEntryConsumer(Consumer<Entry> entryConsumer) {
-        this.entryConsumer.add(entryConsumer);
-        return () -> this.entryConsumer.remove(entryConsumer);
-    }
-
-    private void applyEntryConsumers(Entry e) {
-        logger.trace("{} in term {}: apply {}", groupId(), currentTerm(), e.getIndex());
-        entryConsumer.forEach(consumer -> {
-            try {
-                consumer.accept(e);
-            } catch (Exception ex) {
-                logger.warn("{} in term {}: Error while applying entry {}",
-                            groupId(),
-                            currentTerm(),
-                            e.getIndex(),
-                            ex);
-            }
-        });
-        state.get().applied(e);
+        return logEntryApplier.registerLogEntryConsumer(entryConsumer);
     }
 
     /**
