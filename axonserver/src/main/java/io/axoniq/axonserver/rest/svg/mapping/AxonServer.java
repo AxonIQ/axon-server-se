@@ -25,4 +25,9 @@ public interface AxonServer {
     Iterable<String> contexts();
 
     Iterable<Storage> storage();
+
+    default boolean isAdminLeader() {
+        return false;
+    }
+
 }
