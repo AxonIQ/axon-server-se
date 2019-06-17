@@ -5,7 +5,6 @@ import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -69,8 +68,8 @@ public class AccessControllerDB {
     }
 
     private PathMapping findByPrefix(String path) {
-        return pathMappingRepository.findAll().stream().filter(m -> m.getPath().endsWith("*"))
-                                    .filter(m -> path.startsWith(m.getPath().substring(0, m.getPath().length() -1)))
+        return pathMappingRepository.findAll().stream().filter(m -> m.getPath().endsWith("**"))
+                                    .filter(m -> path.startsWith(m.getPath().substring(0, m.getPath().length() - 2)))
                                     .findFirst().orElse(null);
     }
 
