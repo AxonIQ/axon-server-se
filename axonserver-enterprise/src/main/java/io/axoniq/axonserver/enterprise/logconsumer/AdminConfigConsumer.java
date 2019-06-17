@@ -13,6 +13,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
+ * Applies Context Configuration. Runs in Admin context only.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -30,14 +32,15 @@ public class AdminConfigConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return ContextConfiguration.class.getName();
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry e) throws InvalidProtocolBufferException {
-        // TODO: 6/12/2019 should we check for the group here? shouldn't apply entry be propagated to correct group members already?
-        if (/*isAdmin(groupId) && */entryType(e, ContextConfiguration.class)) {
-            ContextConfiguration contextConfiguration = ContextConfiguration.parseFrom(e.getSerializedObject()
-                                                                                        .getData());
-            logger.debug("{}: received data: {}", groupId, contextConfiguration);
-            contextController.updateContext(contextConfiguration);
-            eventPublisher.publishEvent(new ContextEvents.ContextUpdated(groupId));
-        }
+        ContextConfiguration contextConfiguration = ContextConfiguration.parseFrom(e.getSerializedObject().getData());
+        logger.debug("{}: received data: {}", groupId, contextConfiguration);
+        contextController.updateContext(contextConfiguration);
+        eventPublisher.publishEvent(new ContextEvents.ContextUpdated(groupId));
     }
 }

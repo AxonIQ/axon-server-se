@@ -9,21 +9,11 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
  */
 public interface LogEntryConsumer {
 
+    String entryType();
+
     void consumeLogEntry(String groupId, Entry entry) throws Exception;
-
-    default void commit() {}
-
-    default void rollback() {}
 
     default int priority() {
         return 0;
-    }
-
-    default boolean entryType(Entry e, String name) {
-        return e.hasSerializedObject() && e.getSerializedObject().getType().equals(name);
-    }
-
-    default boolean entryType(Entry e, Class clazz) {
-        return entryType(e, clazz.getName());
     }
 }

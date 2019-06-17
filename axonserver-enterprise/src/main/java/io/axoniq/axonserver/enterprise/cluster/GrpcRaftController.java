@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.cluster.NewConfigurationConsumer;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.RemovedState;
@@ -126,6 +127,9 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
             if( existingRaftGroup != null) return existingRaftGroup;
 
+            NewConfigurationConsumer newConfigurationConsumer = applicationContext
+                    .getBean(NewConfigurationConsumer.class);
+
             RaftGroup raftGroup = new GrpcRaftGroup(localNodeId,
                                                     groupId,
                                                     raftStateRepository,
@@ -134,7 +138,8 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                                                     snapshotDataProviders,
                                                     localEventStore,
                                                     grpcRaftClientFactory,
-                                                    messagingPlatformConfiguration);
+                                                    messagingPlatformConfiguration,
+                                                    newConfigurationConsumer);
 
             if (!isAdmin(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));

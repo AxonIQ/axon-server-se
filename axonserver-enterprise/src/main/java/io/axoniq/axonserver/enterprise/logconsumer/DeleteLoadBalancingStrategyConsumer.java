@@ -8,6 +8,8 @@ import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import org.springframework.stereotype.Component;
 
 /**
+ * Deletes load balancing strategies.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -22,10 +24,13 @@ public class DeleteLoadBalancingStrategyConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return DELETE_LOAD_BALANCING_STRATEGY;
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
-        if (entryType(entry, DELETE_LOAD_BALANCING_STRATEGY)) {
-            LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
-            loadBalanceStrategyController.delete(strategy.getName());
-        }
+        LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
+        loadBalanceStrategyController.delete(strategy.getName());
     }
 }

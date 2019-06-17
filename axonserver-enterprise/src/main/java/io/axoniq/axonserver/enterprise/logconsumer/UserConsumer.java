@@ -12,10 +12,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
+ * Applies user info log entries.
+ *
  * @author Marc Gathier
  */
 @Component
 public class UserConsumer implements LogEntryConsumer {
+
     private final Logger logger = LoggerFactory.getLogger(UserConsumer.class);
     private final UserController userController;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -26,13 +29,16 @@ public class UserConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return User.class.getName();
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry e) throws Exception {
-        if (entryType(e, User.class.getName())) {
-            User user = User.parseFrom(e.getSerializedObject().getData());
-            logger.debug("{}: Received user: {}", groupId, user);
-            io.axoniq.axonserver.access.jpa.User jpaUser = UserProtoConverter.createJpaUser(user);
-            userController.syncUser(jpaUser);
-            applicationEventPublisher.publishEvent(new UserEvents.UserUpdated(jpaUser, false));
-        }
+        User user = User.parseFrom(e.getSerializedObject().getData());
+        logger.debug("{}: Received user: {}", groupId, user);
+        io.axoniq.axonserver.access.jpa.User jpaUser = UserProtoConverter.createJpaUser(user);
+        userController.syncUser(jpaUser);
+        applicationEventPublisher.publishEvent(new UserEvents.UserUpdated(jpaUser, false));
     }
 }

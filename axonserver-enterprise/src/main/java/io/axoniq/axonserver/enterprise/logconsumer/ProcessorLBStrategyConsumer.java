@@ -9,6 +9,8 @@ import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.springframework.stereotype.Component;
 
 /**
+ * Applies Processor Load Balancing Strategy log entry.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -22,12 +24,14 @@ public class ProcessorLBStrategyConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return ProcessorLBStrategy.class.getName();
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
-        if (entryType(entry, ProcessorLBStrategy.class)) {
-            ProcessorLBStrategy processorLBStrategy = ProcessorLBStrategy.parseFrom(entry.getSerializedObject()
-                                                                                         .getData());
-            processorLoadBalancingService.save(ProcessorLBStrategyConverter
-                                                       .createJpaProcessorLoadBalancing(processorLBStrategy));
-        }
+        ProcessorLBStrategy processorLBStrategy = ProcessorLBStrategy.parseFrom(entry.getSerializedObject().getData());
+        processorLoadBalancingService.save(ProcessorLBStrategyConverter
+                                                   .createJpaProcessorLoadBalancing(processorLBStrategy));
     }
 }

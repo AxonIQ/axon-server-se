@@ -8,8 +8,8 @@ import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
-import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -55,9 +55,9 @@ public class RaftNode {
     /**
      * Instantiates a Raft Node.
      *
-     * @param nodeId          the node identifier
-     * @param raftGroup       the group this node belongs to
-     * @param snapshotManager manages snapshot creation/installation
+     * @param nodeId                   the node identifier
+     * @param raftGroup                the group this node belongs to
+     * @param snapshotManager          manages snapshot creation/installation
      */
     public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
         this(nodeId, raftGroup, new DefaultScheduler("raftNode-" + nodeId), snapshotManager);
@@ -66,16 +66,33 @@ public class RaftNode {
     /**
      * Instantiates a Raft Node.
      *
-     * @param nodeId          the node identifier
-     * @param raftGroup       the group this node belongs to
-     * @param scheduler       responsible for task scheduling
-     * @param snapshotManager manages snapshot creation/installation
+     * @param nodeId                   the node identifier
+     * @param raftGroup                the group this node belongs to
+     * @param scheduler                responsible for task scheduling
+     * @param snapshotManager          manages snapshot creation/installation
      */
     public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager) {
+        this(nodeId, raftGroup, scheduler, snapshotManager, newConfiguration -> {});
+    }
+
+    /**
+     * Instantiates a Raft Node.
+     *
+     * @param nodeId                   the node identifier
+     * @param raftGroup                the group this node belongs to
+     * @param scheduler                responsible for task scheduling
+     * @param snapshotManager          manages snapshot creation/installation
+     * @param newConfigurationConsumer consumes new configuration
+     */
+    public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager,
+                    NewConfigurationConsumer newConfigurationConsumer) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
-        this.logEntryApplier = new LogEntryApplier(raftGroup, scheduler, e -> state.get().applied(e));
-        this.registerEntryConsumer((groupId, entry) -> updateConfig(entry));
+        this.logEntryApplier = new LogEntryApplier(raftGroup,
+                                                   scheduler,
+                                                   e -> state.get().applied(e),
+                                                   newConfiguration -> updateConfig(newConfiguration,
+                                                                                    newConfigurationConsumer));
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
                                                                       this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
@@ -139,10 +156,9 @@ public class RaftNode {
         return false;
     }
 
-    private void updateConfig(Entry entry) {
-        if (entry.hasNewConfiguration()) {
-            raftGroup.raftConfiguration().update(entry.getNewConfiguration().getNodesList());
-        }
+    private void updateConfig(Config newConfiguration, NewConfigurationConsumer newConfigurationConsumer) {
+        raftGroup.raftConfiguration().update(newConfiguration.getNodesList());
+        newConfigurationConsumer.consume(newConfiguration);
     }
 
     private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {

@@ -11,10 +11,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
+ * Applies LogEntries with Application information. Runs in Admin context only.
+ *
  * @author Marc Gathier
- * <p>
- * Applies LogEntries with Application
- * Only run in Admin context
  */
 @Component
 public class AdminApplicationConsumer implements LogEntryConsumer {
@@ -29,15 +28,14 @@ public class AdminApplicationConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return Application.class.getName();
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry e) throws InvalidProtocolBufferException {
-        // TODO: 6/12/2019 should we check for the group here? shouldn't apply entry be propagated to correct group members already?
-//        if (!isAdmin(groupId)) {
-//            return;
-//        }
-        if (entryType(e, Application.class.getName())) {
-            Application application = Application.parseFrom(e.getSerializedObject().getData());
-            applicationController.synchronize(ApplicationProtoConverter.createJpaApplication(application));
-            applicationEventPublisher.publishEvent(new AppEvents.AppUpdated(application.getName()));
-        }
+        Application application = Application.parseFrom(e.getSerializedObject().getData());
+        applicationController.synchronize(ApplicationProtoConverter.createJpaApplication(application));
+        applicationEventPublisher.publishEvent(new AppEvents.AppUpdated(application.getName()));
     }
 }

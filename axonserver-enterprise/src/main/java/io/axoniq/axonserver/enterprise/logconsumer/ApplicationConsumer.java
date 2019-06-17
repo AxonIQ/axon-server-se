@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
+ * Applies entries in regard to Context Application.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -23,10 +25,13 @@ public class ApplicationConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return ContextApplication.class.getName();
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
-        if (entryType(entry, ContextApplication.class.getName())) {
-            ContextApplication application = ContextApplication.parseFrom(entry.getSerializedObject().getData());
-            applicationController.mergeApplication(application);
-        }
+        ContextApplication application = ContextApplication.parseFrom(entry.getSerializedObject().getData());
+        applicationController.mergeApplication(application);
     }
 }

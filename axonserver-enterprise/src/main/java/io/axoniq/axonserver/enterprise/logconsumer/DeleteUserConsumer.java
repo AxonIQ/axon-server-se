@@ -12,6 +12,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
+ * Deletes user.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -29,12 +31,15 @@ public class DeleteUserConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return DELETE_USER;
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry e) throws InvalidProtocolBufferException {
-        if (entryType(e, DELETE_USER)) {
-            User user = User.parseFrom(e.getSerializedObject().getData());
-            logger.debug("{}: Delete user: {}", groupId, user.getName());
-            userController.deleteUser(user.getName());
-            applicationEventPublisher.publishEvent(new UserEvents.UserDeleted(user.getName(), false));
-        }
+        User user = User.parseFrom(e.getSerializedObject().getData());
+        logger.debug("{}: Delete user: {}", groupId, user.getName());
+        userController.deleteUser(user.getName());
+        applicationEventPublisher.publishEvent(new UserEvents.UserDeleted(user.getName(), false));
     }
 }

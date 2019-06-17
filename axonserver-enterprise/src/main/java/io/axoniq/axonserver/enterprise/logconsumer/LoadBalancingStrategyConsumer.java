@@ -9,6 +9,8 @@ import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import org.springframework.stereotype.Component;
 
 /**
+ * Applies Load Balance Strategy entries.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -22,11 +24,13 @@ public class LoadBalancingStrategyConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return LoadBalanceStrategy.class.getName();
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
-        if (entryType(entry, LoadBalanceStrategy.class.getName())) {
-            LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
-            loadBalanceStrategyController.save(LoadBalancingStrategyConverter
-                                                       .createJpaLoadBalancingStrategy(strategy));
-        }
+        LoadBalanceStrategy strategy = LoadBalanceStrategy.parseFrom(entry.getSerializedObject().getData());
+        loadBalanceStrategyController.save(LoadBalancingStrategyConverter.createJpaLoadBalancingStrategy(strategy));
     }
 }

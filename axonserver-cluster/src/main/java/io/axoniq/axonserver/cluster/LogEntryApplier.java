@@ -6,8 +6,8 @@ import io.axoniq.axonserver.grpc.cluster.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -32,23 +32,26 @@ class LogEntryApplier {
 
     private final RaftGroup raftGroup;
     private final Scheduler scheduler;
-    private final List<LogEntryConsumer> logEntryConsumers = new CopyOnWriteArrayList<>();
+    private final Map<String, LogEntryConsumer> logEntryConsumers = new ConcurrentHashMap<>();
     private final Consumer<Entry> logEntryAppliedConsumer;
     private final AtomicReference<ScheduledRegistration> applyTaskRef = new AtomicReference<>();
     private final AtomicReference<Exception> lastError = new AtomicReference<>();
+    private final NewConfigurationConsumer newConfigurationConsumer;
 
     /**
      * Initializes Log Entry Applier.
      *
-     * @param raftGroup               the RAFT group
-     * @param scheduler               used to schedule applies
-     * @param logEntryAppliedConsumer invoked when all log entry consumers have applied the entry
+     * @param raftGroup                the RAFT group
+     * @param scheduler                used to schedule applies
+     * @param logEntryAppliedConsumer  invoked when all log entry consumers have applied the entry
+     * @param newConfigurationConsumer consumes new configuration
      */
-    LogEntryApplier(RaftGroup raftGroup, Scheduler scheduler,
-                    Consumer<Entry> logEntryAppliedConsumer) {
+    LogEntryApplier(RaftGroup raftGroup, Scheduler scheduler, Consumer<Entry> logEntryAppliedConsumer,
+                    NewConfigurationConsumer newConfigurationConsumer) {
         this.raftGroup = raftGroup;
         this.scheduler = scheduler;
         this.logEntryAppliedConsumer = logEntryAppliedConsumer;
+        this.newConfigurationConsumer = newConfigurationConsumer;
     }
 
     /**
@@ -75,8 +78,8 @@ class LogEntryApplier {
      * @return a Runnable to be invoked in order to cancel this registration
      */
     Runnable registerLogEntryConsumer(LogEntryConsumer logEntryConsumer) {
-        this.logEntryConsumers.add(logEntryConsumer);
-        return () -> this.logEntryConsumers.remove(logEntryConsumer);
+        this.logEntryConsumers.put(logEntryConsumer.entryType(), logEntryConsumer);
+        return () -> this.logEntryConsumers.remove(logEntryConsumer.entryType());
     }
 
     private void schedule(long delayMillis) {
@@ -100,31 +103,41 @@ class LogEntryApplier {
         schedule(toBeScheduled);
     }
 
-    private void restart() {
-        stop();
-        start();
-    }
-
     private void applyLogEntryConsumers(Entry e) {
         logger.trace("{} in term {}: apply {}", groupId(), currentTerm(), e.getIndex());
         // TODO: 6/12/2019 start a transaction?
-        for (LogEntryConsumer consumer : logEntryConsumers) {
-            try {
-                consumer.consumeLogEntry(groupId(), e);
-                lastError.set(null);
-            } catch (Exception ex) {
-                lastError.set(ex);
-                long newSchedule = 2 * currentDelayMillis.get();
-                logger.warn("{} in term {}: Error while applying entry {}. Rescheduling in {}ms.",
+        try {
+            if (e.hasNewConfiguration()) {
+                logger.info("{} in term {}: Received new configuration {}.",
                             groupId(),
                             currentTerm(),
-                            e.getIndex(),
-                            newSchedule,
-                            ex);
-                reschedule(newSchedule);
-                // TODO: 6/12/2019 rollback transaction?
-                throw new RuntimeException("Failed to apply entry", ex);
+                            e.getNewConfiguration());
+                newConfigurationConsumer.consume(e.getNewConfiguration());
             }
+            if (e.hasSerializedObject()) {
+                String entryType = e.getSerializedObject().getType();
+                if (logEntryConsumers.containsKey(entryType)) {
+                    logEntryConsumers.get(entryType).consumeLogEntry(groupId(), e);
+                    lastError.set(null);
+                } else {
+                    logger.warn("{} in term {}: There is no log entry processor for {} entry type.",
+                                groupId(),
+                                currentTerm(),
+                                entryType);
+                }
+            }
+        } catch (Exception ex) {
+            lastError.set(ex);
+            long newSchedule = 2 * currentDelayMillis.get();
+            logger.warn("{} in term {}: Error while applying entry {}. Rescheduling in {}ms.",
+                        groupId(),
+                        currentTerm(),
+                        e.getIndex(),
+                        newSchedule,
+                        ex);
+            reschedule(newSchedule);
+            // TODO: 6/12/2019 rollback transaction?
+            throw new RuntimeException("Failed to apply entry", ex);
         }
         // TODO: 6/12/2019 commit transaction?
         reschedule(1);

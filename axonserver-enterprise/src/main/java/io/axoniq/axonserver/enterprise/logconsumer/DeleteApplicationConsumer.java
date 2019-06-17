@@ -12,6 +12,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
+ * Deletes applications.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -29,12 +31,15 @@ public class DeleteApplicationConsumer implements LogEntryConsumer {
     }
 
     @Override
+    public String entryType() {
+        return DELETE_APPLICATION;
+    }
+
+    @Override
     public void consumeLogEntry(String groupId, Entry entry) throws InvalidProtocolBufferException {
-        if (entryType(entry, DELETE_APPLICATION)) {
-            Application application = Application.parseFrom(entry.getSerializedObject().getData());
-            logger.debug("{}: Delete application: {}", groupId, application.getName());
-            applicationController.delete(application.getName());
-            applicationEventPublisher.publishEvent(new AppEvents.AppDeleted(application.getName()));
-        }
+        Application application = Application.parseFrom(entry.getSerializedObject().getData());
+        logger.debug("{}: Delete application: {}", groupId, application.getName());
+        applicationController.delete(application.getName());
+        applicationEventPublisher.publishEvent(new AppEvents.AppDeleted(application.getName()));
     }
 }
