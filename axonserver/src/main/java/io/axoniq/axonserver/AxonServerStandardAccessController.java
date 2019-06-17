@@ -9,13 +9,13 @@
 
 package io.axoniq.axonserver;
 
+import com.google.common.collect.Sets;
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -48,8 +48,8 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public Set<String> getAdminRoles(String token) {
-        return isTokenFromConfigFile(token) ? Collections.singleton("ADMIN"): null;
+    public Set<String> getRoles(String token, String context) {
+        return isTokenFromConfigFile(token) ? Sets.newHashSet("ADMIN", "READ", "WRITE"): null;
     }
 
     private boolean isTokenFromConfigFile(String token) {
