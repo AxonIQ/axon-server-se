@@ -5,11 +5,8 @@ import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * @author Marc Gathier
@@ -33,11 +30,7 @@ public class AccessControllerDB {
         this.hasher = hasher;
     }
 
-    public Set<String> getAdminRoles(String token) {
-        return getRoles(token, getAdmin());
-    }
-
-    private Set<String> getRoles(String token, String group) {
+    public Set<String> getRoles(String token, String group) {
         Set<String> roles = contextApplicationRepository.findAllByContext(group)
                                                         .stream()
                                                         .filter(app -> hasher.checkpw(token, app.getHashedToken()))
