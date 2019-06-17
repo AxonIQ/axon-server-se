@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import com.google.common.collect.Sets;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
@@ -32,7 +33,6 @@ import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.FilterChain;
@@ -182,7 +182,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     SecurityContextHolder.getContext().setAuthentication(
                             new AuthenticationToken(true,
                                                     "LocalAdmin",
-                                                    Collections.singleton("ADMIN")));
+                                                    Sets.newHashSet("ADMIN", "READ", "WRITE")));
                 } else {
                     if (token != null) {
                         String context = request.getHeader(AxonServerAccessController.CONTEXT_PARAM);
