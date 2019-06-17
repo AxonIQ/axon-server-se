@@ -5,7 +5,10 @@ package io.axoniq.axonserver.cluster.replication.file;
  */
 public class PrimaryEventStoreFactory {
     public static PrimaryLogEntryStore create(String path) {
-        String context= "default";
+        return create(path, "default");
+    }
+
+    public static PrimaryLogEntryStore create(String path, String context) {
         LogEntryTransformerFactory eventTransformerFactory = new DefaultLogEntryTransformerFactory();
         StorageProperties storageOptions = new StorageProperties();
         storageOptions.setSegmentSize(1024*1024);

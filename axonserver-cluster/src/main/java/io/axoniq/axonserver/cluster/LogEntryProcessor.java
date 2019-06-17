@@ -25,38 +25,45 @@ public class LogEntryProcessor {
     }
 
     public void apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
-        int retries = 3;
-        while (retries > 0) {
-            int applied = applyEntries(entryIteratorSupplier, consumer);
-            if (applied > 0) {
-                retries = 0;
-            } else {
-                retries--;
+        try {
+            int retries = 3;
+            while (retries > 0) {
+                int applied = applyEntries(entryIteratorSupplier, consumer);
+                if (applied > 0) {
+                    retries = 0;
+                } else {
+                    retries--;
+                }
             }
+        } catch( Exception ex) {
+            logger.warn("Apply task failed - {}", ex.getMessage());
         }
     }
 
     public int applyEntries(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
         int count = 0;
         if( applyRunning.compareAndSet(false, true)) {
-            if( processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
-                logger.trace("Start to apply entries at: {}", processorStore.lastAppliedIndex());
-                try(EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastAppliedIndex() + 1)) {
-                    boolean beforeCommit = true;
-                    while (beforeCommit && iterator.hasNext()) {
-                        Entry entry = iterator.next();
-                        beforeCommit = entry.getIndex() <= processorStore.commitIndex();
-                        if (beforeCommit) {
-                            consumer.accept(entry);
-                            processorStore.updateLastApplied(entry.getIndex(), entry.getTerm());
-                            count++;
-                            logAppliedListeners.forEach(listener -> listener.accept(entry));
+            try {
+                if (processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
+                    logger.trace("Start to apply entries at: {}", processorStore.lastAppliedIndex());
+                    try (EntryIterator iterator = entryIteratorSupplier.apply(processorStore.lastAppliedIndex() + 1)) {
+                        boolean beforeCommit = true;
+                        while (beforeCommit && iterator.hasNext()) {
+                            Entry entry = iterator.next();
+                            beforeCommit = entry.getIndex() <= processorStore.commitIndex();
+                            if (beforeCommit) {
+                                consumer.accept(entry);
+                                processorStore.updateLastApplied(entry.getIndex(), entry.getTerm());
+                                count++;
+                                logAppliedListeners.forEach(listener -> listener.accept(entry));
+                            }
                         }
                     }
+                    logger.trace("Done apply entries at: {}", processorStore.lastAppliedIndex());
                 }
-                logger.trace("Done apply entries at: {}", processorStore.lastAppliedIndex());
+            } finally {
+                applyRunning.set(false);
             }
-            applyRunning.set(false);
         }
         return count;
     }
@@ -101,5 +108,10 @@ public class LogEntryProcessor {
      */
     public boolean isLastApplied(long index, long term){
         return index == lastAppliedIndex() && term == lastAppliedTerm();
+    }
+
+    public void reset() {
+        processorStore.updateCommit(0, 0);
+        processorStore.updateLastApplied(0, 0);
     }
 }

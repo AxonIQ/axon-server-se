@@ -38,6 +38,8 @@ import static java.lang.String.format;
  */
 public class ReplicatorPeer {
 
+    private static final int HEARTBEAT_OFFSET = -1;
+
     private interface ReplicatorPeerState {
 
         default void start() {
@@ -138,16 +140,22 @@ public class ReplicatorPeer {
                                @Override
                                public void onComplete() {
                                    done = true;
-                                   send(InstallSnapshotRequest.newBuilder()
-                                                              .setRequestId(UUID.randomUUID().toString())
-                                                              .setGroupId(groupId())
-                                                              .setTerm(currentTerm())
-                                                              .setLeaderId(me())
-                                                              .setLastIncludedTerm(lastIncludedTerm)
-                                                              .setLastIncludedIndex(lastAppliedIndex)
-                                                              .setOffset(offset.get())
-                                                              .setDone(done)
-                                                              .build());
+                                   int chunk = offset.getAndIncrement();
+                                   InstallSnapshotRequest.Builder requestBuilder =
+                                           InstallSnapshotRequest.newBuilder()
+                                                                 .setRequestId(UUID.randomUUID().toString())
+                                                                 .setGroupId(groupId())
+                                                                 .setTerm(currentTerm())
+                                                                 .setLeaderId(me())
+                                                                 .setLastIncludedTerm(lastIncludedTerm)
+                                                                 .setLastIncludedIndex(lastAppliedIndex)
+                                                                 .setOffset(chunk)
+                                                                 .setDone(done);
+                                   if (firstChunk(chunk)) {
+                                       requestBuilder.setLastConfig(raftGroup.raftConfiguration().config());
+                                   }
+                                   send(requestBuilder.build());
+
                                    logger.info("{} in term {}: Sending the last chunk for install snapshot to {}.",
                                                groupId(),
                                                currentTerm(),
@@ -202,7 +210,7 @@ public class ReplicatorPeer {
                                                       .setLeaderId(me())
                                                       .setLastIncludedTerm(lastAppliedTerm())
                                                       .setLastIncludedIndex(lastAppliedIndex)
-                                                      .setOffset(offset.getAndIncrement())
+                                                      .setOffset(HEARTBEAT_OFFSET)
                                                       .setDone(done);
                         send(requestBuilder.build());
                 }
@@ -231,11 +239,11 @@ public class ReplicatorPeer {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
                 lastReceivedOffset = response.getSuccess().getLastReceivedOffset();
                 if (done) {
-                    logger.info("{} in term {}: Install snapshot confirmation received: {}",
+                    setMatchIndex(lastAppliedIndex);
+                    logger.info("{} in term {}: Install snapshot confirmation received: {}, matchIndex {}, nextIndex {}",
                                 groupId(),
                                 currentTerm(),
-                                response);
-                    setMatchIndex(lastAppliedIndex);
+                                response, matchIndex.get(), nextIndex.get());
                     changeStateTo(new AppendEntryState());
                 }
             } else {
@@ -448,7 +456,7 @@ public class ReplicatorPeer {
 
         private boolean forceSnapshot() {
             if( ! raftGroup.raftConfiguration().forceSnapshotOnJoin()) return false;
-            return matchIndex() == 0 && nextIndex() <= 1;
+            return nextIndex() <= 1;
         }
 
         private EntryIterator updateEntryIterator() {

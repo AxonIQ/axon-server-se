@@ -114,6 +114,9 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
                 indexPositions.put(event.getIndex(), iterator.startPosition());
                 sequence++;
             }
+            if( context.equals("demo08")) {
+                logger.warn("demo08 lastToken = {}", sequence-1);
+            }
             lastToken.set(sequence - 1);
             buffer.position(iterator.startPosition());
         }
@@ -369,7 +372,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     public void clear(long lastIndex) {
-        logger.info("Clearing log entries from {} index for '{}' context.", lastIndex, context);
+        logger.info("Clearing log entries, setting last index to {} for '{}' context.", lastIndex, context);
         if (next != null ) {
             next.getSegments().forEach(segment -> next.removeSegment(segment));
         }

@@ -153,12 +153,7 @@ public class FollowerState extends AbstractMembershipState {
                 leaderId.set(request.getLeaderId());
                 leaderChanged = true;
                 logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
-            }
-
-            if( leaderChanged && leaderInCurrentConfiguration()) {
-                // only send notification if leader is actually in current configuration
                 raftGroup().localNode().notifyNewLeader(leaderId.get());
-                leaderChanged = false;
             }
 
             rescheduleElection(request.getTerm());
@@ -215,12 +210,6 @@ public class FollowerState extends AbstractMembershipState {
             logger.error(failureCause, ex);
             return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
         }
-    }
-
-    private boolean leaderInCurrentConfiguration() {
-        if( leaderId.get() == null) return false;
-        return currentGroupMembers().stream()
-                                    .anyMatch(m -> m.getNodeId().equals(leaderId.get()));
     }
 
     /**
@@ -308,6 +297,10 @@ public class FollowerState extends AbstractMembershipState {
 
         rescheduleElection(request.getTerm());
 
+        if( request.getOffset() < 0) {
+            return responseFactory().installSnapshotSuccess(request.getRequestId(), (int)lastSnapshotChunk.get());
+        }
+
         //Install snapshot chunks must arrive in the correct order. If the chunk doesn't have the expected index it will be rejected.
         //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
         if (request.getOffset() != 0 && (lastSnapshotChunk.get() + 1) != request.getOffset()) {
@@ -324,6 +317,7 @@ public class FollowerState extends AbstractMembershipState {
         if (request.hasLastConfig()) {
             logger.trace("{} in term {}: applying config {}", groupId(), currentTerm(), request.getLastConfig());
             raftGroup().raftConfiguration().update(request.getLastConfig().getNodesList());
+            raftGroup().localNode().notifyNewLeader(leaderId.get());
         }
 
         if (request.getOffset() == 0) {

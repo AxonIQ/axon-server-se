@@ -212,6 +212,7 @@ public class RaftNode {
                     currentTerm(),
                     raftGroup.logEntryProcessor().lastAppliedIndex(),
                     raftGroup.localLogEntryStore().lastLogIndex());
+            raftGroup.logEntryProcessor().reset();
         }
         updateState(state.get(), stateFactory.followerState(), "Node started");
         applyTask = scheduler.scheduleWithFixedDelay(() -> raftGroup.logEntryProcessor()
