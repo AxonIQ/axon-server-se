@@ -105,7 +105,7 @@ class LogEntryApplier {
 
     private void applyLogEntryConsumers(Entry e) {
         logger.trace("{} in term {}: apply {}", groupId(), currentTerm(), e.getIndex());
-        // TODO: 6/12/2019 start a transaction?
+       
         try {
             if (e.hasNewConfiguration()) {
                 logger.info("{} in term {}: Received new configuration {}.",
