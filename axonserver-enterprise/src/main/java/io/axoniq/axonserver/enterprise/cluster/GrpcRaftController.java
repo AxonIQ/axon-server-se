@@ -208,8 +208,14 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return 100;
     }
 
+    /**
+     * Wait for the newly created raftgroup to be fully initialized and having a leader. Needs to wait until it has at least
+     * applied the first entry (the fact that the current node is leader).
+     * @param group the raft group
+     * @return the raft node when it is leader
+     */
     RaftNode waitForLeader(RaftGroup group) {
-        while (! group.localNode().isLeader()) {
+        while (! group.localNode().isLeader() || group.logEntryProcessor().lastAppliedIndex() == 0) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {

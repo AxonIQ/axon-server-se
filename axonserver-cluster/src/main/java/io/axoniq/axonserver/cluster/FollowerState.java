@@ -170,6 +170,8 @@ public class FollowerState extends AbstractMembershipState {
                                                     logEntryStore.lastLogIndex());
 
                 logger.info(failureCause);
+                // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
+                rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
                 return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
@@ -295,7 +297,8 @@ public class FollowerState extends AbstractMembershipState {
             return responseFactory().installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
-        rescheduleElection(request.getTerm());
+        // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
+        rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
 
         if( request.getOffset() < 0) {
             return responseFactory().installSnapshotSuccess(request.getRequestId(), (int)lastSnapshotChunk.get());
@@ -395,9 +398,13 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void rescheduleElection(long term) {
+        rescheduleElection(term, 0);
+    }
+
+    private void rescheduleElection(long term, int extra) {
         if (term >= currentTerm()) {
             lastMessage.set(scheduler.get().clock().millis());
-            nextTimeout.set(lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout()));
+            nextTimeout.set(lastMessage.get() + extra +  random(minElectionTimeout(), maxElectionTimeout()));
         }
     }
 
