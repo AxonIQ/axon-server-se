@@ -3,7 +3,7 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 
 /**
- * Consumes log entries and applies them to the state machine. Implementations should be idempotent.
+ * Consumes log entries and applies them to the state machine. Implementations should be idempotent and transactional.
  *
  * @author Marc Gathier
  */
