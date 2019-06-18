@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -10,13 +12,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
-
 /**
+ * Applies Context Configuration. Runs in Admin context only.
+ *
  * @author Marc Gathier
  */
 @Component
 public class AdminConfigConsumer implements LogEntryConsumer {
+
     private Logger logger = LoggerFactory.getLogger(AdminConfigConsumer.class);
 
     private final ContextController contextController;
@@ -29,16 +32,15 @@ public class AdminConfigConsumer implements LogEntryConsumer {
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry e) {
-        if( isAdmin(groupId) && entryType(e, ContextConfiguration.class)) {
-                try {
-                    ContextConfiguration contextConfiguration = ContextConfiguration.parseFrom(e.getSerializedObject().getData());
-                    logger.debug("{}: received data: {}", groupId, contextConfiguration);
-                    contextController.updateContext(contextConfiguration);
-                    eventPublisher.publishEvent(new ContextEvents.ContextUpdated(groupId));
-                } catch (Exception e1) {
-                    logger.warn("{}: Failed to process log entry: {}", groupId, e, e1);
-                }
-        }
+    public String entryType() {
+        return ContextConfiguration.class.getName();
+    }
+
+    @Override
+    public void consumeLogEntry(String groupId, Entry e) throws InvalidProtocolBufferException {
+        ContextConfiguration contextConfiguration = ContextConfiguration.parseFrom(e.getSerializedObject().getData());
+        logger.debug("{}: received data: {}", groupId, contextConfiguration);
+        contextController.updateContext(contextConfiguration);
+        eventPublisher.publishEvent(new ContextEvents.ContextUpdated(groupId));
     }
 }

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.cluster.NewConfigurationConsumer;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.RemovedState;
@@ -13,7 +14,7 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
-import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -126,6 +127,9 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
             if( existingRaftGroup != null) return existingRaftGroup;
 
+            NewConfigurationConsumer newConfigurationConsumer = applicationContext
+                    .getBean(NewConfigurationConsumer.class);
+
             RaftGroup raftGroup = new GrpcRaftGroup(localNodeId,
                                                     groupId,
                                                     raftStateRepository,
@@ -134,14 +138,15 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                                                     snapshotDataProviders,
                                                     localEventStore,
                                                     grpcRaftClientFactory,
-                                                    messagingPlatformConfiguration);
+                                                    messagingPlatformConfiguration,
+                                                    newConfigurationConsumer);
 
             if (!isAdmin(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
             }
             applicationContext.getBeansOfType(LogEntryConsumer.class)
                               .forEach((name, bean) -> raftGroup.localNode()
-                                                                .registerEntryConsumer(e -> bean.consumeLogEntry(groupId,e)));
+                                                                .registerEntryConsumer(bean));
             raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(),
                                                                                            stateChanged));
 
