@@ -38,8 +38,6 @@ import static java.lang.String.format;
  */
 public class ReplicatorPeer {
 
-    private static final int HEARTBEAT_OFFSET = -1;
-
     private interface ReplicatorPeerState {
 
         default void start() {
@@ -190,30 +188,6 @@ public class ReplicatorPeer {
             if (canSend()) {
                 subscription.request(1);
                 sent++;
-            } else {
-                logger.trace("{} in term {}: Can't send Install Snapshot chunk. offset {}, lastReceivedOffset {}.",
-                             groupId(),
-                             currentTerm(),
-                             offset,
-                             lastReceivedOffset);
-
-                if( lastMessageSent.get() + raftGroup.raftConfiguration().heartbeatTimeout() < System.currentTimeMillis()) {
-                        logger.trace("{} in term {}: Send heartbeat in install snapshot to {}.",
-                                     groupId(),
-                                     currentTerm(),
-                                    nodeId());
-                        InstallSnapshotRequest.Builder requestBuilder =
-                                InstallSnapshotRequest.newBuilder()
-                                                      .setRequestId(UUID.randomUUID().toString())
-                                                      .setGroupId(groupId())
-                                                      .setTerm(currentTerm())
-                                                      .setLeaderId(me())
-                                                      .setLastIncludedTerm(lastAppliedTerm())
-                                                      .setLastIncludedIndex(lastAppliedIndex)
-                                                      .setOffset(HEARTBEAT_OFFSET)
-                                                      .setDone(done);
-                        send(requestBuilder.build());
-                }
             }
             return sent;
         }

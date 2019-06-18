@@ -46,7 +46,6 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicLong lastSnapshotChunk = new AtomicLong(-1);
     private final AtomicBoolean processing = new AtomicBoolean();
     private long followerStateStated;
-    private volatile boolean leaderChanged;
 
     private FollowerState(Builder builder) {
         super(builder);
@@ -67,7 +66,6 @@ public class FollowerState extends AbstractMembershipState {
         scheduler.set(schedulerFactory().get());
         heardFromLeader = false;
         leaderId.set(null);
-        leaderChanged = true;
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
         lastMessage.set(scheduler.get().clock().millis());
         followerStateStated = lastMessage.get();
@@ -151,7 +149,6 @@ public class FollowerState extends AbstractMembershipState {
             heardFromLeader = true;
             if (!request.getLeaderId().equals(leaderId.get())) {
                 leaderId.set(request.getLeaderId());
-                leaderChanged = true;
                 logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
                 raftGroup().localNode().notifyNewLeader(leaderId.get());
             }
@@ -299,10 +296,6 @@ public class FollowerState extends AbstractMembershipState {
 
         // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
         rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
-
-        if( request.getOffset() < 0) {
-            return responseFactory().installSnapshotSuccess(request.getRequestId(), (int)lastSnapshotChunk.get());
-        }
 
         //Install snapshot chunks must arrive in the correct order. If the chunk doesn't have the expected index it will be rejected.
         //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
