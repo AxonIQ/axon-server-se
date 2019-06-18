@@ -53,11 +53,12 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
         List<TextLine> lines = new ArrayList<>();
         lines.add(new TextLine("AxonServer", fonts.type(), StyleClass.TYPE));
         String name = hub.node().getName();
-        String extraClass = (hub.isActive() ? StyleClass.SERVER_TO_SERVER : StyleClass.SERVER_TO_SERVER + " " + StyleClass.DOWN);
-        if( name.equals(currentNode)) {
+        String extraClass = (hub.isActive() ? StyleClass.SERVER_TO_SERVER :
+                StyleClass.SERVER_TO_SERVER + " " + StyleClass.DOWN);
+        if (name.equals(currentNode)) {
             extraClass += " " + StyleClass.CURRENT;
         }
-        if( showContexts && hub.isAdminLeader()) {
+        if (showContexts && hub.isAdminLeader()) {
             extraClass += " " + StyleClass.ADMIN;
         }
         String nodeType = StyleClass.AXONSERVER + " " + extraClass;
@@ -73,17 +74,23 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
         Position dbPosition = new Position(position.x(), position.y() + contentHeight);
         List<Store> stores = new ArrayList<>();
         for (Storage axonDB : hub.storage()) {
-            Store newStore = new Store(showContexts ? new TextLine(axonDB.context(), fonts.messaging(), StyleClass.AXONSERVER):null, dbPosition, new StyleClass(StyleClass.STORAGE + (axonDB.master() ? " " + StyleClass.MASTER : "")));
+            Store newStore = new Store(showContexts ? new TextLine(axonDB.context(),
+                                                                   fonts.messaging(),
+                                                                   StyleClass.AXONSERVER) : null,
+                                       dbPosition,
+                                       new StyleClass(
+                                               StyleClass.STORAGE + (axonDB.master() ? " " + StyleClass.MASTER : "")));
             stores.add(newStore);
             dbPosition = new Position(dbPosition.x() + newStore.dimension().width() + 10, dbPosition.y());
         }
         int storesWidth = dbPosition.x() - position.x() - 10;
-        if( storesWidth < tmpContent.dimension().width()) {
-            stores = stores.stream().map(s -> s.move((tmpContent.dimension().width() - storesWidth)/2, 0)).collect(
+        if (storesWidth < tmpContent.dimension().width()) {
+            stores = stores.stream().map(s -> s.move((tmpContent.dimension().width() - storesWidth) / 2, 0)).collect(
                     Collectors.toList());
         }
 
-        int x = position.x() + Math.max(tmpContent.dimension().width(), storesWidth)/2 - tmpContent.dimension().width()/2;
+        int x = position.x() + Math.max(tmpContent.dimension().width(), storesWidth) / 2
+                - tmpContent.dimension().width() / 2;
         TextBox content = new TextBox(lines, new Position(x, position.y()), nodeType);
         Element element = new Clickable(content, showDetail);
         boxMap.put(name, content);
