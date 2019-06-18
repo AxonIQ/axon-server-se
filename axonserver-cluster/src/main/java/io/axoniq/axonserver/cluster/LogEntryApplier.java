@@ -138,7 +138,7 @@ class LogEntryApplier {
             // TODO: 6/12/2019 rollback transaction?
             throw new RuntimeException("Failed to apply entry", ex);
         }
-        // TODO: 6/12/2019 commit transaction?
+        
         reschedule(1);
         logEntryAppliedConsumer.accept(e);
     }
