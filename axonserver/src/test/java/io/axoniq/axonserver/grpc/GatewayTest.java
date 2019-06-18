@@ -136,7 +136,7 @@ public class GatewayTest {
             }
 
             @Override
-            public Set<String> getAdminRoles(String token) {
+            public Set<String> getRoles(String token, String context) {
                 return Collections.emptySet();
             }
         };

@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import com.google.common.collect.Sets;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
@@ -32,7 +33,6 @@ import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.FilterChain;
@@ -148,7 +148,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
 
         @Override
-        public void setAuthenticated(boolean b)  {
+        public void setAuthenticated(boolean b) {
             // authenticated is only set in constructor
         }
 
@@ -176,40 +176,50 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     token = request.getParameter(AxonServerAccessController.TOKEN_PARAM);
                 }
 
-                if( actuatorRequest(request)) {
+                if (actuatorRequest(request)) {
                     // No further action
-                } else if ( isLocalRequest(request)) {
+                } else if (isLocalRequest(request)) {
                     SecurityContextHolder.getContext().setAuthentication(
                             new AuthenticationToken(true,
                                                     "LocalAdmin",
-                                                    Collections.singleton("ADMIN")));
+                                                    Sets.newHashSet("ADMIN", "READ", "WRITE")));
                 } else {
                     if (token != null) {
-                        Set<String> roles = accessController.getAdminRoles(token);
-                        if (roles != null && ! roles.isEmpty()) {
+                        String context = request.getHeader(AxonServerAccessController.CONTEXT_PARAM);
+                        if (context == null) {
+                            context = "_admin";
+                        }
+                        Set<String> roles = accessController.getRoles(token, context);
+                        if (roles != null && !roles.isEmpty()) {
                             SecurityContextHolder.getContext().setAuthentication(
                                     new AuthenticationToken(true,
                                                             "AuthenticatedApp",
                                                             roles));
                         } else {
-                            HttpServletResponse httpServletResponse = (HttpServletResponse)servletResponse;
+                            HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
                             httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_INVALID_TOKEN.getHttpCode().value());
-                            try (ServletOutputStream outputStream = httpServletResponse.getOutputStream() ) {
+                            try (ServletOutputStream outputStream = httpServletResponse.getOutputStream()) {
                                 outputStream.println("Invalid token");
                             }
                             return;
                         }
-                    } else if( stopRedirect(request.getHeader(HttpHeaders.USER_AGENT))) {
-                        HttpServletResponse httpServletResponse = (HttpServletResponse)servletResponse;
+                    } else if (stopRedirect(request.getHeader(HttpHeaders.USER_AGENT))) {
+                        HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
                         httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_TOKEN_MISSING.getHttpCode().value());
-                        try (ServletOutputStream outputStream = httpServletResponse.getOutputStream() ) {
+                        try (ServletOutputStream outputStream = httpServletResponse.getOutputStream()) {
                             outputStream.println("Missing header: " + AxonServerStandardAccessController.TOKEN_PARAM);
                         }
                         return;
                     }
                 }
             }
-            filterChain.doFilter(servletRequest, servletResponse);
+            try {
+                filterChain.doFilter(servletRequest, servletResponse);
+            } finally {
+                if (SecurityContextHolder.getContext().getAuthentication() instanceof AuthenticationToken) {
+                    SecurityContextHolder.getContext().setAuthentication(null);
+                }
+            }
         }
 
         private boolean actuatorRequest(HttpServletRequest httpServletRequest) {
@@ -217,7 +227,9 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
 
         private boolean stopRedirect(String header) {
-            if( header == null) return false;
+            if (header == null) {
+                return false;
+            }
             String lowercaseHeader = header.toLowerCase();
             return lowercaseHeader.startsWith("apache-httpclient") || lowercaseHeader.startsWith("curl")
                     || lowercaseHeader.startsWith("wget");
@@ -234,11 +246,12 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         private boolean isLocalRequest(HttpServletRequest httpServletRequest) {
             return (
                     (httpServletRequest.getRequestURI().startsWith("/v1/public")
-                            && httpServletRequest.getMethod().equals("GET")) ||
-                            httpServletRequest.getRequestURI().startsWith("/v1/cluster") ||
-                    httpServletRequest.getRequestURI().startsWith("/v1/context") ||
-                    httpServletRequest.getRequestURI().startsWith("/v1/users") ||
-                    httpServletRequest.getRequestURI().startsWith("/v1/applications") )
+                            && httpServletRequest.getMethod().equals("GET"))
+                            || httpServletRequest.getRequestURI().startsWith("/v1/cluster")
+                            || httpServletRequest.getRequestURI().startsWith("/v1/context")
+                            || httpServletRequest.getRequestURI().startsWith("/v1/users")
+                            || httpServletRequest.getRequestURI().startsWith("/v1/applications")
+            )
                     && httpServletRequest.getLocalAddr().equals(httpServletRequest.getRemoteAddr());
         }
     }
