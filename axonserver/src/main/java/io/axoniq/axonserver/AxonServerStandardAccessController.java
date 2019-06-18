@@ -16,6 +16,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -49,7 +50,7 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
 
     @Override
     public Set<String> getRoles(String token, String context) {
-        return isTokenFromConfigFile(token) ? Sets.newHashSet("ADMIN", "READ", "WRITE"): null;
+        return isTokenFromConfigFile(token) ? Sets.newHashSet("ADMIN", "READ", "WRITE"): Collections.emptySet();
     }
 
     private boolean isTokenFromConfigFile(String token) {
