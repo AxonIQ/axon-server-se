@@ -113,8 +113,7 @@ class LogEntryApplier {
                             currentTerm(),
                             e.getNewConfiguration());
                 newConfigurationConsumer.consume(e.getNewConfiguration());
-            }
-            if (e.hasSerializedObject()) {
+            } else if (e.hasSerializedObject()) {
                 String entryType = e.getSerializedObject().getType();
                 if (logEntryConsumers.containsKey(entryType)) {
                     logEntryConsumers.get(entryType).consumeLogEntry(groupId(), e);
