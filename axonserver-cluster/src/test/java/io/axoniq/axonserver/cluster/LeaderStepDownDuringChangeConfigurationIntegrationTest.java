@@ -55,6 +55,7 @@ public class LeaderStepDownDuringChangeConfigurationIntegrationTest {
         when(raftGroup.localElectionStore()).thenReturn(new InMemoryElectionStore());
         RaftPeer raftPeer = mock(RaftPeer.class);
         when(raftPeer.nodeId()).thenReturn(newNode().getNodeId());
+        when(raftPeer.nodeName()).thenReturn(newNode().getNodeName());
         when(raftGroup.peer(newNode())).thenReturn(raftPeer);
 
         raftNode = new RaftNode("myNode", raftGroup, new DefaultScheduler(), mock(SnapshotManager.class));
