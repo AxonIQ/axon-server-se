@@ -145,6 +145,9 @@ public class SnapshotManagerIntegrationTest {
 
         assertNotNull(snapshotChunks);
         // Only 5 as events/snapshots are not included in _admin snapshot
+
+        IntStream.range(0, snapshotChunks.size()).forEach(i ->
+                System.out.printf("%d - %s", i, snapshotChunks.get(i)));
         //assertEquals(5, snapshotChunks.size());
         assertEquals(JpaApplication.class.getName(), snapshotChunks.get(0).getType());
         assertEquals(JpaApplication.class.getName(), snapshotChunks.get(1).getType());
