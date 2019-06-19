@@ -90,4 +90,15 @@ public class LogEntryProcessor {
     public boolean isLastApplied(long index, long term){
         return index == lastAppliedIndex() && term == lastAppliedTerm();
     }
+
+
+    /**
+     * Reset pointers of the log entry processor when applied entry is higher than last log entry. In this case we want to
+     * start from a snapshot again.
+     */
+    public void reset() {
+        processorStore.updateCommit(0, 0);
+        processorStore.updateLastApplied(0, 0);
+    }
+
 }

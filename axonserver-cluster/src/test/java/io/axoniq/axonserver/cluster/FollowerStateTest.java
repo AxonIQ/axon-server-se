@@ -384,7 +384,7 @@ public class FollowerStateTest {
         verify(raftConfiguration).update(request.getLastConfig().getNodesList());
         verify(snapshotManager).applySnapshotData(request.getDataList());
 
-        fakeScheduler.timeElapses(electionTimeout + 1);
+        fakeScheduler.timeElapses(MAX_ELECTION_TIMEOUT + electionTimeout + 1);
         verify(transitionHandler).updateState(any(), any(CandidateState.class), any());
     }
 

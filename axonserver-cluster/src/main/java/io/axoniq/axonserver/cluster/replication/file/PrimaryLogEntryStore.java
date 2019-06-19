@@ -369,7 +369,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     public void clear(long lastIndex) {
-        logger.info("Clearing log entries from {} index for '{}' context.", lastIndex, context);
+        logger.info("Clearing log entries, setting last index to {} for '{}' context.", lastIndex, context);
         if (next != null ) {
             next.getSegments().forEach(segment -> next.removeSegment(segment));
         }

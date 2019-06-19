@@ -117,6 +117,7 @@ public class SnapshotManagerIntegrationTest {
                 new ApplicationContext(CONTEXT, singletonList(applicationContextRole1));
         ApplicationContext defaultAppContext =
                 new ApplicationContext("default", singletonList(applicationContextRole2));
+        applicationRepository.deleteAll();
         JpaApplication app1 = new JpaApplication("app1", "app1Desc", "tokenPrefix", "hashedToken1", junitAppContext);
         JpaApplication app2 = new JpaApplication("app2", "app2Desc", "tokenPrefix", "hashedToken2", defaultAppContext);
         applicationRepository.save(app1);
@@ -145,6 +146,7 @@ public class SnapshotManagerIntegrationTest {
 
         assertNotNull(snapshotChunks);
         // Only 5 as events/snapshots are not included in _admin snapshot
+
         assertEquals(5, snapshotChunks.size());
         assertEquals(JpaApplication.class.getName(), snapshotChunks.get(0).getType());
         assertEquals(JpaApplication.class.getName(), snapshotChunks.get(1).getType());

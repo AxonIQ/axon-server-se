@@ -23,7 +23,7 @@ import static io.axoniq.axonserver.grpc.ApplicationProtoConverter.createJpaAppli
  */
 public class ApplicationSnapshotDataStore implements SnapshotDataStore {
 
-    private final String context;
+    private static final String ENTRY_TYPE = JpaApplication.class.getName();
     private final ApplicationController applicationController;
     private final boolean adminContext;
 
@@ -34,7 +34,6 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
      * @param applicationController the application controller used for retrieving/saving applications
      */
     public ApplicationSnapshotDataStore(String context, ApplicationController applicationController) {
-        this.context = context;
         this.applicationController = applicationController;
         this.adminContext = isAdmin(context);
     }
@@ -47,7 +46,7 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
     @Override
     public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
         if(! adminContext) return Flux.empty();
-        List<JpaApplication> applications = applicationController.getApplicationsForContext(context);
+        List<JpaApplication> applications = applicationController.getApplications();
 
         return Flux.fromIterable(applications)
                    .map(ApplicationProtoConverter::createApplication)
@@ -56,7 +55,7 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public boolean canApplySnapshotData(String type) {
-        return adminContext && JpaApplication.class.getName().equals(type);
+        return adminContext && ENTRY_TYPE.equals(type);
     }
 
 
@@ -75,13 +74,13 @@ public class ApplicationSnapshotDataStore implements SnapshotDataStore {
     @Override
     public void clear() {
         if( adminContext) {
-            applicationController.deleteByContext(context);
+            applicationController.clearApplications();
         }
     }
 
     private SerializedObject toSerializedObject(io.axoniq.axonserver.grpc.internal.Application application) {
         return SerializedObject.newBuilder()
-                               .setType(JpaApplication.class.getName())
+                               .setType(ENTRY_TYPE)
                                .setData(application.toByteString())
                                .build();
     }

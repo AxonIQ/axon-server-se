@@ -228,6 +228,7 @@ public class RaftNode {
                     currentTerm(),
                     raftGroup.logEntryProcessor().lastAppliedIndex(),
                     raftGroup.localLogEntryStore().lastLogIndex());
+            raftGroup.logEntryProcessor().reset();
         }
         updateState(state.get(), stateFactory.followerState(), "Node started");
         logEntryApplier.start();
@@ -528,7 +529,7 @@ public class RaftNode {
         return state.get().replicatorPeers();
     }
 
-    public void receivedNewLeader(String leaderId) {
+    public void notifyNewLeader(String leaderId) {
         stateChangeListeners.forEach(stateChangeListeners -> {
             try {
                 StateChanged change = new StateChanged(groupId(),

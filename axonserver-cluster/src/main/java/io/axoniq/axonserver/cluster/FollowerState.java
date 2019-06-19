@@ -150,8 +150,9 @@ public class FollowerState extends AbstractMembershipState {
             if (!request.getLeaderId().equals(leaderId.get())) {
                 leaderId.set(request.getLeaderId());
                 logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
-                raftGroup().localNode().receivedNewLeader(leaderId.get());
+                raftGroup().localNode().notifyNewLeader(leaderId.get());
             }
+
             rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
             LogEntryProcessor logEntryProcessor = raftGroup().logEntryProcessor();
@@ -166,6 +167,8 @@ public class FollowerState extends AbstractMembershipState {
                                                     logEntryStore.lastLogIndex());
 
                 logger.info(failureCause);
+                // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
+                rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
                 return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
@@ -291,7 +294,8 @@ public class FollowerState extends AbstractMembershipState {
             return responseFactory().installSnapshotFailure(request.getRequestId(), failureCause);
         }
 
-        rescheduleElection(request.getTerm());
+        // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
+        rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
 
         //Install snapshot chunks must arrive in the correct order. If the chunk doesn't have the expected index it will be rejected.
         //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
@@ -309,6 +313,7 @@ public class FollowerState extends AbstractMembershipState {
         if (request.hasLastConfig()) {
             logger.trace("{} in term {}: applying config {}", groupId(), currentTerm(), request.getLastConfig());
             raftGroup().raftConfiguration().update(request.getLastConfig().getNodesList());
+            raftGroup().localNode().notifyNewLeader(leaderId.get());
         }
 
         if (request.getOffset() == 0) {
@@ -386,9 +391,13 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void rescheduleElection(long term) {
+        rescheduleElection(term, 0);
+    }
+
+    private void rescheduleElection(long term, int extra) {
         if (term >= currentTerm()) {
             lastMessage.set(scheduler.get().clock().millis());
-            nextTimeout.set(lastMessage.get() + random(minElectionTimeout(), maxElectionTimeout()));
+            nextTimeout.set(lastMessage.get() + extra +  random(minElectionTimeout(), maxElectionTimeout()));
         }
     }
 
