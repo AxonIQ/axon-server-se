@@ -456,18 +456,13 @@ public class LeaderState extends AbstractMembershipState {
             Set<String> toRemove = new HashSet<>(replicatorPeerMap.keySet());
             for (Node node : nodes) {
                 toRemove.remove(node.getNodeId());
-                if (!replicatorPeerMap.containsKey(node.getNodeId()) && !node.getNodeId().equals(me())) {
-                    addNode(node);
+                if (!replicatorPeerMap.containsKey(node.getNodeName())
+                        && !node.getNodeId().equals(me())) {
+                    registerNode(raftGroup().peer(node));
                 }
             }
             toRemove.removeAll(nonVotingReplicaMap.keySet());
             toRemove.forEach(this::removeNode);
-        }
-
-        public void addNode(Node node) {
-            if (!node.getNodeId().equals(me())) {
-                registerNode(raftGroup().peer(node));
-            }
         }
 
         private void registerNode(RaftPeer raftPeer) {
@@ -476,23 +471,24 @@ public class LeaderState extends AbstractMembershipState {
             registrations.add(registerPeer(raftPeer, processor.sink()));
         }
 
-        public void removeNode(String nodeId) {
-            ReplicatorPeer removed = replicatorPeerMap.remove(nodeId);
+        public void removeNode(String nodeName) {
+            ReplicatorPeer removed = replicatorPeerMap.remove(nodeName);
             if (removed != null) {
                 removed.stop();
             }
         }
 
         private Disposable addNonVotingNode(Node node, FluxSink<Long> matchIndexUpdates) {
-            if (replicatorPeerMap.containsKey(node.getNodeId())) {
-                throw new IllegalArgumentException("Replicators already contain the node " + node.getNodeId());
+            String nodeName = node.getNodeName();
+            if (replicatorPeerMap.containsKey(nodeName)) {
+                throw new IllegalArgumentException("Replicators already contain the node " + node.getNodeName());
             }
             Registration registration = registerPeer(raftGroup().peer(node), matchIndexUpdates);
             Disposable replication = () -> {
                 registration.cancel();
-                nonVotingReplicaMap.remove(node.getNodeId());
+                nonVotingReplicaMap.remove(nodeName);
             };
-            nonVotingReplicaMap.put(node.getNodeId(), replication);
+            nonVotingReplicaMap.put(nodeName, replication);
             return replication;
         }
 
@@ -505,9 +501,9 @@ public class LeaderState extends AbstractMembershipState {
                                                                LeaderState.this::updateCurrentTerm,
                                                                LeaderState.this::lastLogIndex);
             replicatorPeer.start();
-            replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
+            replicatorPeerMap.put(raftPeer.nodeName(), replicatorPeer);
             return () -> {
-                ReplicatorPeer removed = replicatorPeerMap.remove(raftPeer.nodeId());
+                ReplicatorPeer removed = replicatorPeerMap.remove(raftPeer.nodeName());
                 if (removed != null) {
                     removed.stop();
                 }

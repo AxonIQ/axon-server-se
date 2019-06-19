@@ -119,6 +119,11 @@ public class GrpcRaftPeer implements RaftPeer {
     }
 
     @Override
+    public String nodeName() {
+        return node.getNodeName();
+    }
+
+    @Override
     public boolean isReadyForAppendEntries() {
         return appendEntiesStreamRef.get() == null || appendEntiesStreamRef.get().isReady();
     }

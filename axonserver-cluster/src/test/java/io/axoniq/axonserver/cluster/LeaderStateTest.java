@@ -115,9 +115,15 @@ public class LeaderStateTest {
     private static class MyRaftPeer implements RaftPeer {
 
         private final String nodeId;
+        private final String nodeName;
 
         private MyRaftPeer(String nodeId) {
+            this(nodeId, nodeId);
+        }
+
+        private MyRaftPeer(String nodeId, String nodeName) {
             this.nodeId = nodeId;
+            this.nodeName = nodeName;
         }
 
         @Override
@@ -150,6 +156,11 @@ public class LeaderStateTest {
         @Override
         public String nodeId() {
             return nodeId;
+        }
+
+        @Override
+        public String nodeName() {
+            return nodeName;
         }
     }
 
