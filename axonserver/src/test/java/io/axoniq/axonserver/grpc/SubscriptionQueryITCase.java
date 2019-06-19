@@ -19,7 +19,14 @@ import org.junit.*;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.reflect.Field;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 
 /**
@@ -28,7 +35,6 @@ import static org.junit.Assert.*;
  * @author Sara Pellegrini
  * @since 4.2
  */
-
 public class SubscriptionQueryITCase {
 
     private final AxonServerConfiguration configuration = AxonServerConfiguration.builder().build();
@@ -46,42 +52,47 @@ public class SubscriptionQueryITCase {
                                                                        QueryPriorityCalculator
                                                                                .defaultQueryPriorityCalculator());
 
+    private final List<String> initialResult = new ArrayList<>();
+    private final List<String> updates = new ArrayList<>();
+
     @Test
     public void testMemoryLeak() throws InterruptedException {
         Registration echo = axonServerQueryBus.subscribe("test", String.class, Message::getPayload);
         ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
         Reference<Object> ref = new PhantomReference<>(invokeQuery(), referenceQueue);
         queryBus.queryUpdateEmitter().emit(String.class, c -> true, "update");
-        assertFalse(checkObjectGarbageCollected(ref, referenceQueue));
+        assertNull(referenceQueue.poll());
         queryBus.queryUpdateEmitter().complete(String.class, c -> true);
-        System.gc();
+        //this sleep is needed to wait the gRPC call to be close
         Thread.sleep(1000);
         System.gc();
-        assertTrue(checkObjectGarbageCollected(ref, referenceQueue));
+        assertWithin(20, TimeUnit.MILLISECONDS, () -> assertEquals(ref, referenceQueue.poll()));
+        assertEquals(Collections.singletonList("hi"), initialResult);
+        assertEquals(Collections.singletonList("update"), updates);
         echo.cancel();
         connectionManager.shutdown();
     }
 
-    private SubscriptionQueryResult invokeQuery() {
+    private Object invokeQuery() throws InterruptedException {
         GenericSubscriptionQueryMessage<String, String, String> query =
                 new GenericSubscriptionQueryMessage<>("hi",
                                                       "test",
                                                       ResponseTypes.instanceOf(String.class),
                                                       ResponseTypes.instanceOf(String.class));
-        SubscriptionQueryResult<QueryResponseMessage<String>, SubscriptionQueryUpdateMessage<String>> result = queryBus
-                .subscriptionQuery(query);
-
-        result.updates()
-              .subscribe(
-                      System.out::println,
-                      System.out::println,
-                      () -> System.out.println("completed"));
-
-        return result;
+        SubscriptionQueryResult<QueryResponseMessage<String>, SubscriptionQueryUpdateMessage<String>> result =
+                axonServerQueryBus.subscriptionQuery(query);
+        initialResult.add(result.initialResult().block(Duration.ofSeconds(2)).getPayload());
+        result.updates().subscribe(message -> updates.add(message.getPayload()));
+        return getDefaultSubscriptionQueryResult(result);
     }
 
-    private boolean checkObjectGarbageCollected(Reference<Object> ref, ReferenceQueue<Object> referenceQueue) {
-        Reference<?> polledRef = referenceQueue.poll();
-        return polledRef == ref;
+    private Object getDefaultSubscriptionQueryResult(SubscriptionQueryResult result) {
+        try {
+            Field delegateField = result.getClass().getDeclaredField("delegate");
+            delegateField.setAccessible(true);
+            return delegateField.get(result);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
