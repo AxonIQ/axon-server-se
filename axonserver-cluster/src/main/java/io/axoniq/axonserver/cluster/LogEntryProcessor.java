@@ -25,24 +25,7 @@ public class LogEntryProcessor {
     }
 
     public void apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
-        try {
-            int retries = 3;
-            while (retries > 0) {
-                int applied = applyEntries(entryIteratorSupplier, consumer);
-                if (applied > 0) {
-                    retries = 0;
-                } else {
-                    retries--;
-                }
-            }
-        } catch( Exception ex) {
-            logger.warn("Apply task failed - {}", ex.getMessage());
-        }
-    }
-
-    public int applyEntries(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
-        int count = 0;
-        if( applyRunning.compareAndSet(false, true)) {
+        if (applyRunning.compareAndSet(false, true)) {
             try {
                 if (processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
                     logger.trace("Start to apply entries at: {}", processorStore.lastAppliedIndex());
@@ -54,7 +37,6 @@ public class LogEntryProcessor {
                             if (beforeCommit) {
                                 consumer.accept(entry);
                                 processorStore.updateLastApplied(entry.getIndex(), entry.getTerm());
-                                count++;
                                 logAppliedListeners.forEach(listener -> listener.accept(entry));
                             }
                         }
@@ -65,7 +47,6 @@ public class LogEntryProcessor {
                 applyRunning.set(false);
             }
         }
-        return count;
     }
 
     public void markCommitted(long committedIndex, long term) {
@@ -108,10 +89,5 @@ public class LogEntryProcessor {
      */
     public boolean isLastApplied(long index, long term){
         return index == lastAppliedIndex() && term == lastAppliedTerm();
-    }
-
-    public void reset() {
-        processorStore.updateCommit(0, 0);
-        processorStore.updateLastApplied(0, 0);
     }
 }
