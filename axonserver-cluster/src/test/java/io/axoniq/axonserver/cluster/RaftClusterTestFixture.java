@@ -273,13 +273,19 @@ public class RaftClusterTestFixture {
         private class StubNode implements RaftPeer {
 
             private final String nodeId;
+            private final String nodeName;
             private final StubRaftGroup remote;
             private Consumer<AppendEntriesResponse> appendEntriesResponseListener;
             private Consumer<InstallSnapshotResponse> installSnapshotResponseListener;
 
             public StubNode(String nodeId) {
+                this(nodeId, nodeId);
+            }
+
+            public StubNode(String nodeId, String nodeName) {
                 this.remote = clusterGroups.get(nodeId);
                 this.nodeId = nodeId;
+                this.nodeName = nodeName;
             }
 
             @Override
@@ -323,6 +329,10 @@ public class RaftClusterTestFixture {
                 return nodeId;
             }
 
+            @Override
+            public String nodeName() {
+                return nodeName;
+            }
         }
 
     }

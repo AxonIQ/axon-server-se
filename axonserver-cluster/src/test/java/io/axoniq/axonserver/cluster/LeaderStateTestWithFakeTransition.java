@@ -6,12 +6,17 @@ import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
+import io.axoniq.axonserver.grpc.cluster.ErrorMessage;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -49,14 +54,14 @@ public class LeaderStateTestWithFakeTransition {
         FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1");
         FakeRaftPeer node2 = new FakeRaftPeer(scheduler, "node2");
 
-        addClusterNode("node0", node0);
-        addClusterNode("node1", node1);
-        addClusterNode("node2", node2);
+        addClusterNode(node("node0"), node0);
+        addClusterNode(node("node1"), node1);
+        addClusterNode(node("node2"), node2);
 
         CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
-        when(currentConfiguration.groupMembers()).thenReturn(asList(node("node1"),
-                                                                    node("node2"),
-                                                                    node("node3")));
+        when(currentConfiguration.groupMembers()).thenReturn(asList(node("node0"),
+                                                                    node("node1"),
+                                                                    node("node2")));
 
         leaderState = LeaderState.builder()
                                  .raftGroup(raftGroup)
@@ -69,11 +74,11 @@ public class LeaderStateTestWithFakeTransition {
                                  .currentConfiguration(currentConfiguration)
                                  .registerConfigurationListenerFn(l -> () -> {
                                  })
+                                 .matchStrategy(nextCommitCandidate -> true)
                                  .build();
     }
 
-    private void addClusterNode(String nodeId, FakeRaftPeer peer) {
-        Node node = Node.newBuilder().setNodeId(nodeId).build();
+    private void addClusterNode(Node node, FakeRaftPeer peer) {
         raftConfiguration.addNode(node);
         when(raftGroup.peer(node)).thenReturn(peer);
         peer.setTerm(1);
@@ -142,5 +147,31 @@ public class LeaderStateTestWithFakeTransition {
         return Node.newBuilder()
                    .setNodeId(id)
                    .build();
+    }
+
+    @Test
+    public void addNewNodeTwiceTest() throws InterruptedException, ExecutionException {
+        Node nodeA = Node
+                .newBuilder()
+                .setNodeId("nodeId-1")
+                .setNodeName("nodeName")
+                .setHost("host")
+                .setPort(1234)
+                .build();
+        FakeRaftPeer raftPeerA = new FakeRaftPeer(scheduler, "nodeId-1", "nodeName");
+
+        addClusterNode(nodeA, raftPeerA);
+        Node nodeB = nodeA.toBuilder()
+                          .setNodeId("nodeId-2")
+                          .build();
+        addClusterNode(nodeB, new FakeRaftPeer(scheduler, "nodeId-2", "nodeName"));
+        leaderState.start();
+        CompletableFuture<ConfigChangeResult> futureA = leaderState.addServer(nodeA);
+        CompletableFuture<ConfigChangeResult> futureB = leaderState.addServer(nodeB);
+
+        ConfigChangeResult result = futureB.get();
+        assertTrue(result.hasFailure());
+        ErrorMessage error = result.getFailure().getError();
+        assertEquals("Replicators already contain the node nodeName", error.getMessage());
     }
 }
