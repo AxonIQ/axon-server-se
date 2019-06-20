@@ -48,6 +48,12 @@
                                         <resource>
                                             <directory>src/main/resources/common</directory>
                                         </resource>
+                                        <resource>
+                                            <directory>../..</directory>
+                                            <includes>
+                                                <include>LICENSE</include>
+                                            </includes>
+                                        </resource>
                                     </resources>
                                     <outputDirectory>${project.build.directory}/docker-jdk8</outputDirectory>
                                 </configuration>
@@ -66,8 +72,47 @@
                                         <resource>
                                             <directory>src/main/resources/common</directory>
                                         </resource>
+                                        <resource>
+                                            <directory>../..</directory>
+                                            <includes>
+                                                <include>LICENSE</include>
+                                            </includes>
+                                        </resource>
                                     </resources>
                                     <outputDirectory>${project.build.directory}/docker-jdk11</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
+                        <executions>
+                            <execution>
+                                <id>jdk-8-copy-and-rename-LICENSE</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>rename</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${project.build.directory}/docker-jdk8/LICENSE</sourceFile>
+                                    <destinationFile>${project.build.directory}/docker-jdk8/AXONIQ OPEN SOURCE
+                                        LICENSE.txt
+                                    </destinationFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>jdk-11-copy-and-rename-LICENSE</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>rename</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${project.build.directory}/docker-jdk11/LICENSE</sourceFile>
+                                    <destinationFile>${project.build.directory}/docker-jdk11/AXONIQ OPEN SOURCE
+                                        LICENSE.txt
+                                    </destinationFile>
                                 </configuration>
                             </execution>
                         </executions>
