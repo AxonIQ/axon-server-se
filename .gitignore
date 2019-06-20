@@ -29,3 +29,4 @@ package-lock.json
 dev/node1/**
 dev/node2/**
 dev/node3/**
+/data/
