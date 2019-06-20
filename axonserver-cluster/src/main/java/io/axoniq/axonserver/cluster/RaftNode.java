@@ -218,7 +218,7 @@ public class RaftNode {
     public void start() {
         logger.info("{} in term {}: Starting the node...", groupId(), currentTerm());
         if (!state.get().isIdle()) {
-            logger.warn("{} in term {}: Node is already started!", groupId(), currentTerm());
+            logger.debug("{} in term {}: Node is already started!", groupId(), currentTerm());
             return;
         }
         if (raftGroup.logEntryProcessor().lastAppliedIndex() > raftGroup.localLogEntryStore().lastLogIndex()) {

@@ -81,7 +81,7 @@ public class DefaultElection implements Election {
         node.requestVote(request).thenAccept(response -> this.onVoteResponse(response, sink));
     }
 
-    private synchronized void onVoteResponse(RequestVoteResponse response, MonoSink<Result> sink){
+    private void onVoteResponse(RequestVoteResponse response, MonoSink<Result> sink){
         String voter = response.getResponseHeader().getNodeId();
         logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {

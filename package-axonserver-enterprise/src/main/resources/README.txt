@@ -28,8 +28,21 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.1.5
+----------------------------
+
+- Fix for mismatch in connected applications after rebalance
+
+- Fixes in access control check on REST endpoints for events/snapshot endpoints and renew application token
+
+- Improved error handling in replication
+
+- Fixed occasional timing issue in create context
+
+- Improved recovery options after full data loss on node
+
 Changes in Axon Server 4.1.4
--------------------------------
+----------------------------
 
 - Fix on RAFT Leader detection
 
@@ -43,7 +56,7 @@ Changes in Axon Server 4.1.4
 
 
 Changes in Axon Server 4.1.3
--------------------------------
+----------------------------
 
 - Improved recovery of cluster after disk failure
 
