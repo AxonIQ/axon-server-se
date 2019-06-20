@@ -106,6 +106,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         if (!subscriptionQuery.isEmpty()) {
             unsubscribe(subscriptionQuery.get(0));
         }
+        responseObserver.onError(t);
     }
 
     @Override
@@ -113,6 +114,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         if (!subscriptionQuery.isEmpty()) {
             unsubscribe(subscriptionQuery.get(0));
         }
+        responseObserver.onCompleted();
     }
 
     private void unsubscribe(SubscriptionQuery cancel) {
