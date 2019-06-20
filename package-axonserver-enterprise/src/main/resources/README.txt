@@ -41,6 +41,14 @@ Changes in Axon Server 4.1.5
 
 - Improved recovery options after full data loss on node
 
+- Fix for authorization path mapping
+
+- Fix for subscription query memory leak
+
+- Improvements in error reporting in case of disconnected applications
+
+- Improvements in detection of insufficient disk space
+
 Changes in Axon Server 4.1.4
 ----------------------------
 
