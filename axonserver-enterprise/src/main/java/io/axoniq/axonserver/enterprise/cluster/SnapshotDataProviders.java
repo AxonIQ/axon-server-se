@@ -5,12 +5,14 @@ import io.axoniq.axonserver.access.application.JpaContextApplicationController;
 import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextApplicationSnapshotDataStore;
+import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.EventTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ProcessorLoadBalancingSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.UserSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -35,6 +37,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
     private final JpaContextApplicationController contextApplicationController;
+    private final ContextController contextController;
     private final ApplicationContext applicationContext;
 
     public SnapshotDataProviders(
@@ -42,11 +45,13 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
             UserRepository userRepository,
             ProcessorLoadBalancingRepository processorLoadBalancingRepository,
             JpaContextApplicationController contextApplicationController,
+            ContextController contextController,
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
         this.contextApplicationController = contextApplicationController;
+        this.contextController = contextController;
         this.applicationContext = applicationContext;
     }
 
@@ -57,7 +62,9 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
      */
     public List<SnapshotDataStore> apply(String context){
         LocalEventStore localEventStore = applicationContext.getBean(LocalEventStore.class);
-        return asList(new ApplicationSnapshotDataStore(context, applicationController),
+        return asList(
+                new ContextSnapshotDataStore(context, contextController),
+                new ApplicationSnapshotDataStore(context, applicationController),
                       new ContextApplicationSnapshotDataStore(context, contextApplicationController),
                       new EventTransactionsSnapshotDataStore(context, localEventStore),
                       new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),

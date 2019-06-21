@@ -154,11 +154,6 @@ public class RaftServerFileBasedTest {
         }
 
         @Override
-        public RaftPeer peer(String nodeId) {
-            return raftPeerMap.get(nodeId);
-        }
-
-        @Override
         public RaftPeer peer(Node node) {
             return new GrpcRaftPeer(node);
         }

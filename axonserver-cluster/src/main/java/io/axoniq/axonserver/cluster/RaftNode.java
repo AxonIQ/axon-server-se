@@ -8,8 +8,8 @@ import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
-import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -45,8 +45,7 @@ public class RaftNode {
     private final RaftGroup raftGroup;
     private final MembershipStateFactory stateFactory;
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
-    private final List<Consumer<Entry>> entryConsumer = new CopyOnWriteArrayList<>();
-    private volatile ScheduledRegistration applyTask;
+    private final LogEntryApplier logEntryApplier;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
     private final List<BiConsumer<Long, String>> termChangeListeners = new CopyOnWriteArrayList<>();
@@ -56,9 +55,9 @@ public class RaftNode {
     /**
      * Instantiates a Raft Node.
      *
-     * @param nodeId          the node identifier
-     * @param raftGroup       the group this node belongs to
-     * @param snapshotManager manages snapshot creation/installation
+     * @param nodeId                   the node identifier
+     * @param raftGroup                the group this node belongs to
+     * @param snapshotManager          manages snapshot creation/installation
      */
     public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
         this(nodeId, raftGroup, new DefaultScheduler("raftNode-" + nodeId), snapshotManager);
@@ -67,15 +66,33 @@ public class RaftNode {
     /**
      * Instantiates a Raft Node.
      *
-     * @param nodeId          the node identifier
-     * @param raftGroup       the group this node belongs to
-     * @param scheduler       responsible for task scheduling
-     * @param snapshotManager manages snapshot creation/installation
+     * @param nodeId                   the node identifier
+     * @param raftGroup                the group this node belongs to
+     * @param scheduler                responsible for task scheduling
+     * @param snapshotManager          manages snapshot creation/installation
      */
     public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager) {
+        this(nodeId, raftGroup, scheduler, snapshotManager, newConfiguration -> {});
+    }
+
+    /**
+     * Instantiates a Raft Node.
+     *
+     * @param nodeId                   the node identifier
+     * @param raftGroup                the group this node belongs to
+     * @param scheduler                responsible for task scheduling
+     * @param snapshotManager          manages snapshot creation/installation
+     * @param newConfigurationConsumer consumes new configuration
+     */
+    public RaftNode(String nodeId, RaftGroup raftGroup, Scheduler scheduler, SnapshotManager snapshotManager,
+                    NewConfigurationConsumer newConfigurationConsumer) {
         this.nodeId = nodeId;
         this.raftGroup = raftGroup;
-        this.registerEntryConsumer(this::updateConfig);
+        this.logEntryApplier = new LogEntryApplier(raftGroup,
+                                                   scheduler,
+                                                   e -> state.get().applied(e),
+                                                   newConfiguration -> updateConfig(newConfiguration,
+                                                                                    newConfigurationConsumer));
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
                                                                       this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
@@ -139,10 +156,9 @@ public class RaftNode {
         return false;
     }
 
-    private void updateConfig(Entry entry) {
-        if (entry.hasNewConfiguration()) {
-            raftGroup.raftConfiguration().update(entry.getNewConfiguration().getNodesList());
-        }
+    private void updateConfig(Config newConfiguration, NewConfigurationConsumer newConfigurationConsumer) {
+        raftGroup.raftConfiguration().update(newConfiguration.getNodesList());
+        newConfigurationConsumer.consume(newConfiguration);
     }
 
     private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
@@ -202,7 +218,7 @@ public class RaftNode {
     public void start() {
         logger.info("{} in term {}: Starting the node...", groupId(), currentTerm());
         if (!state.get().isIdle()) {
-            logger.warn("{} in term {}: Node is already started!", groupId(), currentTerm());
+            logger.debug("{} in term {}: Node is already started!", groupId(), currentTerm());
             return;
         }
         if (raftGroup.logEntryProcessor().lastAppliedIndex() > raftGroup.localLogEntryStore().lastLogIndex()) {
@@ -212,15 +228,10 @@ public class RaftNode {
                     currentTerm(),
                     raftGroup.logEntryProcessor().lastAppliedIndex(),
                     raftGroup.localLogEntryStore().lastLogIndex());
+            raftGroup.logEntryProcessor().reset();
         }
         updateState(state.get(), stateFactory.followerState(), "Node started");
-        applyTask = scheduler.scheduleWithFixedDelay(() -> raftGroup.logEntryProcessor()
-                                                                    .apply(raftGroup
-                                                                                   .localLogEntryStore()::createIterator,
-                                                                           this::applyEntryConsumers),
-                                                     0,
-                                                     1,
-                                                     TimeUnit.MILLISECONDS);
+        logEntryApplier.start();
         if (raftGroup.raftConfiguration().isLogCompactionEnabled()) {
             scheduledLogCleaning = scheduleLogCleaning();
         }
@@ -316,10 +327,7 @@ public class RaftNode {
     public void stop() {
         logger.info("{} in term {}: Stopping the node...", groupId(), currentTerm());
         updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
-        if (applyTask != null) {
-            applyTask.cancel(true);
-            applyTask = null;
-        }
+        logEntryApplier.stop();
         stopLogCleaning();
         logger.info("{} in term {}: Node stopped.", groupId(), currentTerm());
     }
@@ -348,25 +356,8 @@ public class RaftNode {
      * @param entryConsumer to consume committed log entries
      * @return a Runnable to be invoked in order to cancel this registration
      */
-    public Runnable registerEntryConsumer(Consumer<Entry> entryConsumer) {
-        this.entryConsumer.add(entryConsumer);
-        return () -> this.entryConsumer.remove(entryConsumer);
-    }
-
-    private void applyEntryConsumers(Entry e) {
-        logger.trace("{} in term {}: apply {}", groupId(), currentTerm(), e.getIndex());
-        entryConsumer.forEach(consumer -> {
-            try {
-                consumer.accept(e);
-            } catch (Exception ex) {
-                logger.warn("{} in term {}: Error while applying entry {}",
-                            groupId(),
-                            currentTerm(),
-                            e.getIndex(),
-                            ex);
-            }
-        });
-        state.get().applied(e);
+    public Runnable registerEntryConsumer(LogEntryConsumer entryConsumer) {
+        return logEntryApplier.registerLogEntryConsumer(entryConsumer);
     }
 
     /**
@@ -538,7 +529,7 @@ public class RaftNode {
         return state.get().replicatorPeers();
     }
 
-    public void receivedNewLeader(String leaderId) {
+    public void notifyNewLeader(String leaderId) {
         stateChangeListeners.forEach(stateChangeListeners -> {
             try {
                 StateChanged change = new StateChanged(groupId(),

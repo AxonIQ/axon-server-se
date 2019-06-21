@@ -16,8 +16,8 @@ public class ContextRoleMapping implements Function<ContextClusterNode, ContextR
     @Override
     public ContextRole apply(ContextClusterNode contextClusterNode) {
         return ContextRole.newBuilder()
-                   .setName(contextClusterNode.getClusterNode().getName())
-                   .setNodeLabel(contextClusterNode.getClusterNodeLabel())
-                   .build();
+                          .setName(contextClusterNode.getContext().getName())
+                          .setNodeLabel(contextClusterNode.getClusterNodeLabel())
+                          .build();
     }
 }

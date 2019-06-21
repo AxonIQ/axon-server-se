@@ -129,19 +129,6 @@ public class FollowerStateTest {
     }
 
     @Test
-    public void testRequestVoteNotGrantedWhenCandidateIsNotAMember() {
-        RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
-                                                                                   .setCandidateId("node4")
-                                                                                   .setGroupId("defaultGroup")
-                                                                                   .setTerm(1)
-                                                                                   .build());
-        assertFalse(response.getVoteGranted());
-        assertEquals(1L, response.getTerm());
-        assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
-    }
-
-    @Test
     public void testRequestVoteGrantedAfterAppendAndAfterMinElectionTimeoutHasPassed() {
         followerState.appendEntries(firstAppend());
 
@@ -397,7 +384,7 @@ public class FollowerStateTest {
         verify(raftConfiguration).update(request.getLastConfig().getNodesList());
         verify(snapshotManager).applySnapshotData(request.getDataList());
 
-        fakeScheduler.timeElapses(electionTimeout + 1);
+        fakeScheduler.timeElapses(MAX_ELECTION_TIMEOUT + electionTimeout + 1);
         verify(transitionHandler).updateState(any(), any(CandidateState.class), any());
     }
 

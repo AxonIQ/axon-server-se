@@ -1,15 +1,17 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.licensing.Feature;
-import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,6 +43,7 @@ public class ContextRestController {
     private final ContextController contextController;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
+    private final Logger logger = LoggerFactory.getLogger(ContextRestController.class);
 
     public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
                                  RaftLeaderProvider raftLeaderProvider,
@@ -69,6 +72,7 @@ public class ContextRestController {
 
     @DeleteMapping(path = "context/{name}")
     public ResponseEntity<RestResponse> deleteContext(@PathVariable("name") String name) {
+        logger.info("Delete request received for context: {}", name);
         try {
             if (name.startsWith("_")) {
                 return new RestResponse(false, String.format(
@@ -88,6 +92,7 @@ public class ContextRestController {
     @PostMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> updateNodeRoles(@PathVariable("context") String name,
                                                         @PathVariable("node") String node) {
+        logger.info("Add node request received for node: {} - and context: {}", node, name);
         try {
             raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
             return ResponseEntity.accepted()
@@ -101,6 +106,7 @@ public class ContextRestController {
     @DeleteMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> deleteNodeFromContext(@PathVariable("context") String name,
                                                               @PathVariable("node") String node) {
+        logger.info("Delete node request received for node: {} - and context: {}", node, name);
         try {
             raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
             return ResponseEntity.accepted()
@@ -113,6 +119,7 @@ public class ContextRestController {
 
     @PostMapping(path = "context")
     public ResponseEntity<RestResponse> addContext(@RequestBody @Valid ContextJSON contextJson) {
+        logger.info("Add context request received for context: {}", contextJson.getContext());
         if (!Feature.MULTI_CONTEXT.enabled(limits)) {
             return new RestResponse(false, "License does not allow creating contexts")
                     .asResponseEntity(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED);
