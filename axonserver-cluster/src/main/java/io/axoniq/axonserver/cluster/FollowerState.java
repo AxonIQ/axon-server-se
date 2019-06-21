@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -43,7 +44,7 @@ public class FollowerState extends AbstractMembershipState {
     private final AtomicLong nextTimeout = new AtomicLong();
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
-    private final AtomicLong lastSnapshotChunk = new AtomicLong(-1);
+    private final AtomicInteger lastSnapshotChunk = new AtomicInteger(-1);
     private final AtomicBoolean processing = new AtomicBoolean();
     private long followerStateStated;
 
@@ -296,6 +297,16 @@ public class FollowerState extends AbstractMembershipState {
 
         // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
         rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
+
+        if( request.getOffset() < 0) {
+            // This is a heartbeat
+            return InstallSnapshotResponse.newBuilder()
+                                          .setResponseHeader(responseHeader(request.getRequestId()))
+                                          .setTerm(currentTerm())
+                                          .setGroupId(groupId())
+                                          .setSuccess(buildInstallSnapshotSuccess(lastSnapshotChunk.get()))
+                                          .build();
+        }
 
         //Install snapshot chunks must arrive in the correct order. If the chunk doesn't have the expected index it will be rejected.
         //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
