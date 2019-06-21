@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.grpc.GrpcBufferingInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -11,11 +12,11 @@ import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLException;
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import javax.net.ssl.SSLException;
 
 /**
  * @author Marc Gathier
@@ -55,6 +56,7 @@ public class ManagedChannelHelper {
             if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
                 builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
             }
+            builder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
             builder.directExecutor();
             channel = builder.build();
         } catch(Exception ex) {
