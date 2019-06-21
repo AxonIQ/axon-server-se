@@ -30,8 +30,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Created by Sara Pellegrini on 01/05/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxRegistry<String> {
 
@@ -49,17 +49,21 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
     }
 
     @Override
-    public Element map(AxonServer hub, Position position) {
+    public Element map(AxonServer axonServer, Position position) {
         List<TextLine> lines = new ArrayList<>();
         lines.add(new TextLine("AxonServer", fonts.type(), StyleClass.TYPE));
-        String name = hub.node().getName();
-        String extraClass = (hub.isActive() ? StyleClass.SERVER_TO_SERVER : StyleClass.SERVER_TO_SERVER + " " + StyleClass.DOWN);
-        if( name.equals(currentNode)) {
+        String name = axonServer.node().getName();
+        String extraClass = (axonServer.isActive() ? StyleClass.SERVER_TO_SERVER :
+                StyleClass.SERVER_TO_SERVER + " " + StyleClass.DOWN);
+        if (name.equals(currentNode)) {
             extraClass += " " + StyleClass.CURRENT;
+        }
+        if (showContexts && axonServer.isAdminLeader()) {
+            extraClass += " " + StyleClass.ADMIN;
         }
         String nodeType = StyleClass.AXONSERVER + " " + extraClass;
         lines.add(new TextLine(name, fonts.messaging(), nodeType));
-        Iterable<String> contextNames = hub.contexts();
+        Iterable<String> contextNames = axonServer.contexts();
         if (showContexts) {
             contextNames.forEach(context -> lines.add(new TextLine(context, fonts.client(), StyleClass.CLIENT)));
         }
@@ -69,18 +73,24 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
         int contentHeight = tmpContent.dimension().height() + 20;
         Position dbPosition = new Position(position.x(), position.y() + contentHeight);
         List<Store> stores = new ArrayList<>();
-        for (Storage axonDB : hub.storage()) {
-            Store newStore = new Store(showContexts ? new TextLine(axonDB.context(), fonts.messaging(), StyleClass.AXONSERVER):null, dbPosition, new StyleClass(StyleClass.STORAGE + (axonDB.master() ? " " + StyleClass.MASTER : "")));
+        for (Storage axonDB : axonServer.storage()) {
+            Store newStore = new Store(showContexts ? new TextLine(axonDB.context(),
+                                                                   fonts.messaging(),
+                                                                   StyleClass.AXONSERVER) : null,
+                                       dbPosition,
+                                       new StyleClass(
+                                               StyleClass.STORAGE + (axonDB.master() ? " " + StyleClass.MASTER : "")));
             stores.add(newStore);
             dbPosition = new Position(dbPosition.x() + newStore.dimension().width() + 10, dbPosition.y());
         }
         int storesWidth = dbPosition.x() - position.x() - 10;
-        if( storesWidth < tmpContent.dimension().width()) {
-            stores = stores.stream().map(s -> s.move((tmpContent.dimension().width() - storesWidth)/2, 0)).collect(
+        if (storesWidth < tmpContent.dimension().width()) {
+            stores = stores.stream().map(s -> s.move((tmpContent.dimension().width() - storesWidth) / 2, 0)).collect(
                     Collectors.toList());
         }
 
-        int x = position.x() + Math.max(tmpContent.dimension().width(), storesWidth)/2 - tmpContent.dimension().width()/2;
+        int x = position.x() + Math.max(tmpContent.dimension().width(), storesWidth) / 2
+                - tmpContent.dimension().width() / 2;
         TextBox content = new TextBox(lines, new Position(x, position.y()), nodeType);
         Element element = new Clickable(content, showDetail);
         boxMap.put(name, content);

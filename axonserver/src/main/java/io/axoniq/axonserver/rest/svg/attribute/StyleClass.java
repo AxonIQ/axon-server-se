@@ -14,8 +14,8 @@ import io.axoniq.axonserver.rest.svg.Printable;
 import java.io.PrintWriter;
 
 /**
- * Created by Sara Pellegrini on 27/04/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class StyleClass implements Printable {
     public static final String POPUP = "popup";
@@ -27,6 +27,7 @@ public class StyleClass implements Printable {
     public static final String STORAGE = "axondb";
     public static final String MASTER = "master";
     public static final String CLIENT = "client";
+    public static final String ADMIN = "admin";
 
     private final String styleClass;
 
