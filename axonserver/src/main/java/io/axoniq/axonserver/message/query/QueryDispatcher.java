@@ -155,9 +155,11 @@ public class QueryDispatcher {
         QueryHandler queryHandler = registrationCache.find( context, query, client);
         if( queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
-                                         .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
+                                         .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
                                          .setMessageIdentifier(query.getMessageIdentifier())
-                                         .setErrorMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
+                                         .setErrorMessage(
+                                                 ErrorMessageFactory.build(String.format("Client %s not found while processing: %s"
+                                                         , client, query.getQuery())))
                                          .build());
             onCompleted.accept(client);
         } else {

@@ -29,5 +29,5 @@ public interface AxonServerAccessController {
 
     boolean isRoleBasedAuthentication();
 
-    Set<String> getAdminRoles(String token);
+    Set<String> getRoles(String token, String context);
 }

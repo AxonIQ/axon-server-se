@@ -30,7 +30,7 @@ globals.pageView = new Vue(
             methods: {
                 initOverview() {
                     $.getJSON("v1/public/overview", function (node) {
-                        $("svg").attr("width", node.width).attr("heigth", node.heigt);
+                        $("svg").attr("width", node.width).attr("height", node.height);
                         $("g").html(node.svgObjects);
                     });
                 },

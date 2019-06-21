@@ -60,11 +60,17 @@ public class CommandDispatcher {
     public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if( proxied) {
             CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
-            dispatchToCommandHandler( request, handler, responseObserver);
+            dispatchToCommandHandler( request, handler, responseObserver,
+                                      ErrorCode.CLIENT_DISCONNECTED,
+                                      String.format("Client %s not found while processing: %s"
+                                              , request.getClient(), request.getCommand()));
         } else {
             commandRate(context).mark();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
-            dispatchToCommandHandler( request, commandHandler, responseObserver);
+            dispatchToCommandHandler( request, commandHandler, responseObserver,
+                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
+                                      "No Handler for command: " + request.getCommand()
+                                      );
         }
     }
 
@@ -91,14 +97,15 @@ public class CommandDispatcher {
     }
 
     private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
-                                          Consumer<SerializedCommandResponse> responseObserver) {
+                                          Consumer<SerializedCommandResponse> responseObserver,
+                                          ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
             logger.warn("No Handler for command: {}", command.getName() );
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                    .setMessageIdentifier(command.getMessageIdentifier())
                                                    .setRequestIdentifier(command.getMessageIdentifier())
-                                                   .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
-                                                   .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + command.getName()))
+                                                   .setErrorCode(noHandlerErrorCode.getCode())
+                                                   .setErrorMessage(ErrorMessageFactory.build(noHandlerMessage))
                                                    .build()));
             return;
         }
