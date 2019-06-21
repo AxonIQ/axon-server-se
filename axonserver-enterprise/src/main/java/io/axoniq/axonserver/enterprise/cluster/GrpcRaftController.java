@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.cluster.NewConfigurationConsumer;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
@@ -14,7 +15,6 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
-import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -60,6 +60,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
     private volatile LocalEventStore localEventStore;
+    private Map<String, Long> deletedContexts = new ConcurrentHashMap<>();
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -238,6 +239,10 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         if( nodeId == null) return null;
 
         synchronized (raftGroupMap) {
+            long deleted = deletedContexts.getOrDefault(groupId, 0L);
+            if( deleted + 5000 > System.currentTimeMillis()) {
+                return null;
+            }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
                 raftGroup = createRaftGroup(groupId, nodeId);
@@ -293,6 +298,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     public void delete(String context) {
+        deletedContexts.put(context, System.currentTimeMillis());
         raftGroupMap.remove(context);
         if( context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
