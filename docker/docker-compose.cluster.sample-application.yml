@@ -1,0 +1,38 @@
+version: '3.7'
+
+services:
+  sample-command-processor-axonserver-client:
+    image: sample-command-processor-axonserver-client
+    environment:
+      - SPRING_PROFILES_ACTIVE=events,commands,queries
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/sample
+      - SPRING_DATASOURCE_USERNAME=demouser
+      - SPRING_DATASOURCE_PASSWORD=thepassword
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_JPA_HIBERNATE_DDL-AUTO=create-drop
+      - AXON_AXONSERVER_SERVERS=axonserver-enterprise-1:8124,axonserver-enterprise-2:8125,axonserver-enterprise-3:8126
+      - AXON_AXONSERVER_CONTEXT=default
+    ports:
+      - 9900:9900
+    deploy:
+      replicas: 2
+    depends_on:
+      - postgres-db
+  curl-loop:
+    image: plavignotte/continuous-curl
+    environment:
+      - LOOP=4
+      - METHOD=GET
+    command: http://sample-command-processor-axonserver-client:9900/cmd/echo?text=ciao
+    depends_on:
+      - sample-command-processor-axonserver-client
+  postgres-db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=sample
+      - POSTGRES_USER=demouser
+      - POSTGRES_PASSWORD=thepassword
+    volumes:
+      - postgres-datadir:/var/lib/postgresql/data
+volumes:
+  postgres-datadir:

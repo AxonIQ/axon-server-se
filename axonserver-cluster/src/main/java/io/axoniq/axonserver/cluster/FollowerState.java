@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,11 +43,10 @@ public class FollowerState extends AbstractMembershipState {
 
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private volatile boolean heardFromLeader;
-    private volatile String leader;
     private final AtomicLong nextTimeout = new AtomicLong();
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
-    private final AtomicLong lastSnapshotChunk = new AtomicLong(-1);
+    private final AtomicInteger lastSnapshotChunk = new AtomicInteger(-1);
     private final AtomicBoolean processing = new AtomicBoolean();
     private long followerStateStated;
 
@@ -150,10 +150,13 @@ public class FollowerState extends AbstractMembershipState {
             }
 
             heardFromLeader = true;
-            if( ! request.getLeaderId().equals(leader)) {
-                leader = request.getLeaderId();
-                logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leader);
-                raftGroup().localNode().receivedNewLeader(leader);
+            if (!request.getLeaderId().equals(leaderId.get()) && currentGroupMembers().stream().anyMatch(m -> m
+                    .getNodeId()
+                    .equals(request.getLeaderId()))) {
+                // only update the leader if it is member of the current configuration
+                leaderId.set(request.getLeaderId());
+                logger.info("{} in term {}: Updated leader to {}", groupId(), currentTerm(), leaderId.get());
+                raftGroup().localNode().receivedNewLeader(leaderId.get());
             }
             rescheduleElection(request.getTerm());
             LogEntryStore logEntryStore = raftGroup().localLogEntryStore();
@@ -302,6 +305,16 @@ public class FollowerState extends AbstractMembershipState {
 
         rescheduleElection(request.getTerm());
 
+        if( request.getOffset() < 0) {
+            // This is a heartbeat
+            return InstallSnapshotResponse.newBuilder()
+                                          .setResponseHeader(responseHeader(request.getRequestId()))
+                                          .setTerm(currentTerm())
+                                          .setGroupId(groupId())
+                                          .setSuccess(buildInstallSnapshotSuccess(lastSnapshotChunk.get()))
+                                          .build();
+        }
+
         //Install snapshot chunks must arrive in the correct order. If the chunk doesn't have the expected index it will be rejected.
         //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
         if (request.getOffset() != 0 && (lastSnapshotChunk.get() + 1) != request.getOffset()) {
@@ -365,7 +378,7 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public String getLeader() {
-        return leader;
+        return leaderId.get();
     }
 
     private void scheduleElectionTimeoutChecker() {

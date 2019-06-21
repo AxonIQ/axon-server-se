@@ -7,6 +7,7 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
+import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.enterprise.config.FlowControl;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -53,6 +54,7 @@ public class ClusterController implements SmartLifecycle {
     private final Logger logger = LoggerFactory.getLogger(ClusterController.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final ClusterConfiguration clusterConfiguration;
+    private final TagsConfiguration tagsConfiguration;
     private final EntityManager entityManager;
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
@@ -69,6 +71,7 @@ public class ClusterController implements SmartLifecycle {
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              ClusterConfiguration clusterConfiguration,
+                             TagsConfiguration tagsConfiguration,
                              EntityManager entityManager,
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
@@ -80,6 +83,7 @@ public class ClusterController implements SmartLifecycle {
     ) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.clusterConfiguration = clusterConfiguration;
+        this.tagsConfiguration = tagsConfiguration;
         this.entityManager = entityManager;
         this.stubFactory = stubFactory;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
@@ -258,6 +262,7 @@ public class ClusterController implements SmartLifecycle {
             }
         }
 
+        applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeConnected(nodeInfo));
         return true;
     }
 
@@ -338,7 +343,9 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode getMe() {
-        return entityManager.find(ClusterNode.class, messagingPlatformConfiguration.getName());
+        ClusterNode clusterNode = entityManager.find(ClusterNode.class, messagingPlatformConfiguration.getName());
+        clusterNode.setTags(tagsConfiguration.getTags());
+        return clusterNode;
     }
 
 
@@ -478,9 +485,14 @@ public class ClusterController implements SmartLifecycle {
      * sets up a connection to a node received through a newconfiguration log entry.
      * Node information does not contain full information of the remote node (only name, internal hostname and internal port)
      * so if it is an unknown host it will set-up a temporary connection that is updated once the remote node connects.
+     *
      * @param node the node to connect to
      */
     public void connect(Node node) {
-        startRemoteConnection(new ClusterNode(node), true);
+        ClusterNode existingClusterNode = entityManager.find(ClusterNode.class, node.getNodeName());
+
+        if (existingClusterNode == null) {
+            startRemoteConnection(new ClusterNode(node), true);
+        }
     }
 }

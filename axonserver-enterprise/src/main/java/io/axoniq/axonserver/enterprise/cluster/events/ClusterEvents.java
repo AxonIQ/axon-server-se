@@ -4,6 +4,7 @@ import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 
 import java.util.function.Supplier;
 
@@ -14,6 +15,18 @@ public class ClusterEvents {
     private ClusterEvents() {
     }
 
+    @KeepNames
+    public static class AxonServerNodeConnected {
+        private final NodeInfo nodeInfo;
+
+        public AxonServerNodeConnected(NodeInfo nodeInfo) {
+            this.nodeInfo = nodeInfo;
+        }
+
+        public NodeInfo getNodeInfo() {
+            return nodeInfo;
+        }
+    }
 
     @KeepNames
     public static class AxonServerInstanceConnected extends TopologyEvents.TopologyBaseEvent {

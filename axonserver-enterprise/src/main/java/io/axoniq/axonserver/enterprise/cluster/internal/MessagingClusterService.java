@@ -475,9 +475,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void closeConnections() {
-            if (messagingServerName != null) {
-                connections.remove(messagingServerName);
-            }
             if (commandQueueListener != null) {
                 commandQueueListener.cancel();
                 dispatchListeners.remove(commandQueueListener);
@@ -488,15 +485,14 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 dispatchListeners.remove(queryQueueListener);
                 queryQueueListener = null;
             }
-            clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
-                    client.getContext(), null, client.getClient(), messagingServerName
-            )));
-            clusterController.closeConnection(messagingServerName);
-            eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
-        }
-
-        public void publish(ConnectorResponse connectorResponse) {
-            responseObserver.onNext(connectorResponse);
+            if (messagingServerName != null) {
+                connections.remove(messagingServerName);
+                clients.forEach(client -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
+                        client.getContext(), null, client.getClient(), messagingServerName
+                )));
+                clusterController.closeConnection(messagingServerName);
+                eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
+            }
         }
     }
 }

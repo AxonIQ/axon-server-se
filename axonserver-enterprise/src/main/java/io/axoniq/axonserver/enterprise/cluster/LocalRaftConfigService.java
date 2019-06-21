@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -51,6 +52,7 @@ import static io.axoniq.axonserver.enterprise.CompetableFutureUtils.getFuture;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteApplicationConsumer.DELETE_APPLICATION;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStrategyConsumer.DELETE_LOAD_BALANCING_STRATEGY;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteUserConsumer.DELETE_USER;
+import static io.axoniq.axonserver.rest.ClusterRestController.CONTEXT_NONE;
 
 /**
  * Service to orchestrate configuration changes. This service is executed on the leader of the _admin context.
@@ -67,6 +69,8 @@ class LocalRaftConfigService implements RaftConfigService {
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
+    private final CopyOnWriteArraySet<String> contextsInProgress = new CopyOnWriteArraySet<>();
+
 
     public LocalRaftConfigService(GrpcRaftController grpcRaftController, ContextController contextController,
                                   RaftGroupServiceFactory raftGroupServiceFactory,
@@ -315,6 +319,9 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void addContext(String context, List<String> nodes) {
+        if (!contextsInProgress.add(context)){
+            throw new UnsupportedOperationException("The creation of the context is already in progress.");
+        }
         Context contextDef = contextController.getContext(context);
         if( contextDef != null ) {
             throw new MessagingPlatformException(ErrorCode.CONTEXT_EXISTS, String.format("Context %s already exists", context));
@@ -343,7 +350,9 @@ class LocalRaftConfigService implements RaftConfigService {
                                                                                                        .build();
                                        return config.appendEntry(ContextConfiguration.class.getName(),
                                                                  contextConfiguration.toByteArray());
-                                   }));
+                                   })
+                                   .whenComplete((success, error) -> contextsInProgress.remove(context)
+                                   ));
     }
 
     @Override
@@ -356,8 +365,16 @@ class LocalRaftConfigService implements RaftConfigService {
         }
         List<String> contexts = nodeInfo.getContextsList().stream().map(ContextRole::getName).collect(Collectors
                                                                                                               .toList());
-        if (contexts.isEmpty()) {
+        if ((contexts.size() == 1) && contexts.get(0).equals(CONTEXT_NONE)) {
+            logger.debug("join(): Joining to no contexts.");
+            contexts.clear();
+        }
+        else if (contexts.isEmpty()) {
+            logger.debug("join(): Joining to all contexts.");
             contexts = contextController.getContexts().map(Context::getName).collect(Collectors.toList());
+        }
+        else {
+            logger.debug("join(): Joining to a specified set of contexts.");
         }
 
         String nodeLabel = generateNodeLabel(nodeInfo.getNodeName());

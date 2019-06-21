@@ -251,6 +251,7 @@ message NodeInfo {
     int64 active_since = 7;
     int32 version = 8;
     repeated ContextRole contexts = 9;
+    map<string,string> tags = 10;
 }
 
 message InternalFlowControl {
@@ -482,4 +483,8 @@ message ContextLoadBalanceStrategy {
 message ContextProcessorLBStrategy {
     string context = 1;
     ProcessorLBStrategy processorLBStrategy = 2;
+}
+
+message MetaData {
+    map<string, MetaDataValue> meta_data = 1;
 }

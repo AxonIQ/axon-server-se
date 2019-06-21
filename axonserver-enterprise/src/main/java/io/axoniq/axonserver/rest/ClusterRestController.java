@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
@@ -13,6 +14,8 @@ import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.rest.json.RestResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +25,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.lang.invoke.MethodHandles;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,20 +43,27 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 @RequestMapping("/v1/cluster")
 public class ClusterRestController {
 
+    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+    public static final String CONTEXT_NONE = "_none";
+
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
     private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
+    private final ClusterTagsCache clusterTagsCache;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  GrpcRaftController grpcRaftController,
-                                 FeatureChecker limits) {
+                                 FeatureChecker limits,
+                                 ClusterTagsCache clusterTagsCache) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.grpcRaftController = grpcRaftController;
         this.limits = limits;
+        this.clusterTagsCache = clusterTagsCache;
     }
 
 
@@ -64,12 +76,22 @@ public class ClusterRestController {
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
         String context = jsonClusterNode.getContext();
+        // Check for both context and noContext
         if (context != null && !context.isEmpty()) {
-            if (!isAdmin(context) && !contextNameValidation.test(context)) {
+            if ((jsonClusterNode.getNoContexts() != null) && jsonClusterNode.getNoContexts()) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
+                        "Cannot combine joining context with noContexts.");
+            } else if (!isAdmin(context) && !contextNameValidation.test(context)) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
                                                      "Invalid context name: " + context);
             }
+            logger.debug("add(): Registering myself and adding me to context \"{}\".", context);
             nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(context).build());
+        } else if ((jsonClusterNode.getNoContexts() != null) && jsonClusterNode.getNoContexts()) {
+            logger.debug("add(): Registering myself and adding me to no contexts.");
+            nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(CONTEXT_NONE).build());
+        } else {
+            logger.debug("add(): Registering myself and adding me to all contexts.");
         }
 
         try {
@@ -97,8 +119,8 @@ public class ClusterRestController {
 
     @GetMapping
     public List<JsonClusterNode> list() {
-        Stream<JsonClusterNode> otherNodes = clusterController.getRemoteConnections().stream().map(e -> JsonClusterNode.from(e.getClusterNode(), e.isConnected()));
-        return Stream.concat(Stream.of(JsonClusterNode.from(clusterController.getMe(), true)), otherNodes).collect(Collectors.toList());
+        Stream<JsonClusterNode> otherNodes = clusterController.getRemoteConnections().stream().map(e -> JsonClusterNode.from(e.getClusterNode(), e.isConnected(), clusterTagsCache));
+        return Stream.concat(Stream.of(JsonClusterNode.from(clusterController.getMe(), true, clusterTagsCache)), otherNodes).collect(Collectors.toList());
     }
 
     @GetMapping(path="{name}")
@@ -106,7 +128,7 @@ public class ClusterRestController {
         ClusterNode node = clusterController.getNode(name);
         if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, "Node " + name + " not found");
 
-        return JsonClusterNode.from(node, true);
+        return JsonClusterNode.from(node, true, clusterTagsCache);
     }
 
     @KeepNames
@@ -118,6 +140,7 @@ public class ClusterRestController {
         private Integer grpcPort;
         private Integer httpPort;
         private boolean connected;
+        private Map<String,String> tags;
 
         public boolean isConnected() {
             return connected;
@@ -175,7 +198,15 @@ public class ClusterRestController {
             this.grpcPort = grpcPort;
         }
 
-        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected) {
+        public Map<String,String> getTags(){
+            return tags;
+        }
+
+        public void setTags(Map<String,String> tags){
+            this.tags = tags;
+        }
+
+        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected, ClusterTagsCache clusterTagsCache) {
             JsonClusterNode clusterNode = new JsonClusterNode();
             clusterNode.name = jpaClusterNode.getName();
             clusterNode.internalHostName = jpaClusterNode.getInternalHostName();
@@ -184,6 +215,7 @@ public class ClusterRestController {
             clusterNode.grpcPort = jpaClusterNode.getGrpcPort();
             clusterNode.httpPort = jpaClusterNode.getHttpPort();
             clusterNode.connected = connected;
+            clusterNode.tags = clusterTagsCache.getClusterTags().get(jpaClusterNode.getName());
             return clusterNode;
         }
     }
@@ -196,6 +228,7 @@ public class ClusterRestController {
         private Integer internalGrpcPort;
 
         private String context;
+        private Boolean noContexts;
 
         public String getInternalHostName() {
             return internalHostName;
@@ -213,12 +246,43 @@ public class ClusterRestController {
             this.internalGrpcPort = internalGrpcPort;
         }
 
+        /**
+         * Return the context this node should join. If {@code null} and {@link #noContexts} equals {@code true},
+         * then the node should join no context. If both are {@code null}, the node should join all contexts.
+         *
+         * @return the context to join.
+         */
         public String getContext() {
             return context;
         }
 
+        /**
+         * Set the context to join.
+         *
+         * @param context the name of the context, or {@code null} for all/none. See {@link #getContext()} and {@link #getNoContexts()}.
+         */
         public void setContext(String context) {
             this.context = context;
+        }
+
+        /**
+         * Return the (optional) field to indicate if this node should be joined to no contexts. A value of {@code null}
+         * indicates that the old behaviour is expected, which means that the node will be added to a single or all
+         * contexts known to the "_admin" leader. If {@code true}, {@link #context} should not be used.
+         *
+         * @return {@code true} if the node should be joined to no contexts.
+         */
+        public Boolean getNoContexts() {
+            return noContexts;
+        }
+
+        /**
+         * Set the (optional) {@link #noContexts} field. Typically, only {@code true} or {@code null} make sense.
+         *
+         * @param noContexts the value for this field.
+         */
+        public void setNoContexts(Boolean noContexts) {
+            this.noContexts = noContexts;
         }
     }
 }

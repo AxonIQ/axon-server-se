@@ -98,6 +98,11 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     }
 
     @Override
+    public void deleteAllEventData(String context) {
+        throw new UnsupportedOperationException("Development mode deletion is not supported in clustered environments");
+    }
+
+    @Override
     public StreamObserver<GetEventsRequest> listEvents(String context,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
