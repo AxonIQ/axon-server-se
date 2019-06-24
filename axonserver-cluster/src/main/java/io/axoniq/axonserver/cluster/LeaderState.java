@@ -31,7 +31,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -293,7 +292,7 @@ public class LeaderState extends AbstractMembershipState {
         return replicators.replicatorPeerMap
                 .entrySet()
                 .stream()
-                .filter(e -> !replicators.nonVotingReplica.contains(e.getKey()))
+                .filter(e -> replicators.isPossibleLeader(e.getKey()))
                 .filter(e -> e.getValue().nextIndex() > lastLogEntry)
                 .map(Map.Entry::getValue)
                 .findFirst();
@@ -570,6 +569,16 @@ public class LeaderState extends AbstractMembershipState {
         public List<Long> lastMessages() {
             long now = scheduler.get().clock().millis();
             return replicatorPeerMap.values().stream().map(peer -> now - peer.lastMessageReceived()).sorted().collect(Collectors.toList());
+        }
+
+        /**
+         * Checks if this peer is a node capable of being a leader.
+         *
+         * @param group the raft group id
+         * @return true if peer is able to become leader
+         */
+        public boolean isPossibleLeader(String group) {
+            return !nonVotingReplicaMap.containsValue(group);
         }
     }
 }
