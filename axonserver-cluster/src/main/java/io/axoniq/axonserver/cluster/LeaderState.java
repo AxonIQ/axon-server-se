@@ -256,6 +256,7 @@ public class LeaderState extends AbstractMembershipState {
      * a follower is up to date, if sends a timeout now message to the follower to force a new election.
      * @return completable future that completes when a condidate leader is updated
      */
+    @Override
     public CompletableFuture<Void> transferLeadership() {
         if (otherNodesCount() == 0) {
             throw new LogException(ErrorCode.VALIDATION_FAILED,
@@ -312,7 +313,7 @@ public class LeaderState extends AbstractMembershipState {
                 appendEntryDone.completeExceptionally(failure);
             } else {
                 try {
-                    if( replicators == null) {
+                    if (replicators == null) {
                         appendEntryDone.completeExceptionally(new LogException(ErrorCode.CLUSTER_ERROR,
                                                                                "Replicators null when processing entry in LeaderState"));
                     } else {
