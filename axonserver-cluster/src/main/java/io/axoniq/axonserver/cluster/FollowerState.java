@@ -298,16 +298,6 @@ public class FollowerState extends AbstractMembershipState {
         // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
         rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
 
-        if( request.getOffset() < 0) {
-            // This is a heartbeat
-            return InstallSnapshotResponse.newBuilder()
-                                          .setResponseHeader(responseHeader(request.getRequestId()))
-                                          .setTerm(currentTerm())
-                                          .setGroupId(groupId())
-                                          .setSuccess(buildInstallSnapshotSuccess(lastSnapshotChunk.get()))
-                                          .build();
-        }
-
         //Install snapshot chunks must arrive in the correct order. If the chunk doesn't have the expected index it will be rejected.
         //The first chunk (index = 0) is always accepted in order to restore from a partial installation caused by a disrupted leader.
         if (request.getOffset() != 0 && (lastSnapshotChunk.get() + 1) != request.getOffset()) {

@@ -65,7 +65,6 @@ public class ReplicatorPeer {
     private class InstallSnapshotState implements ReplicatorPeerState {
 
         private static final int RESERVED_FOR_OTHER_FIELDS = 10000;
-        public static final int HEARTBEAT_OFFSET = -1;
 
         private final int grpcConfiguredMaxMessageSize = raftGroup.raftConfiguration().maxMessageSize();
         private  final int snapshotChunksBufferSize = raftGroup.raftConfiguration().maxSnapshotNoOfChunksPerBatch();
