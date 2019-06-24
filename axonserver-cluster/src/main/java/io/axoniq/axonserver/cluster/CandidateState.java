@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.String.format;
+import static java.util.Optional.ofNullable;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -73,7 +74,8 @@ public class CandidateState extends AbstractMembershipState {
                     groupId(),
                     currentTerm(),
                     request.getTerm());
-        return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a candidate");
+        return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                      "Request rejected because I'm a candidate");
     }
 
     @Override
@@ -88,7 +90,7 @@ public class CandidateState extends AbstractMembershipState {
 
     private void resetElectionTimeout() {
         int timeout = random(minElectionTimeout(), maxElectionTimeout() + 1);
-        scheduler.get().schedule(this::startElection, timeout, MILLISECONDS);
+        ofNullable(scheduler.get()).ifPresent(s -> s.schedule(this::startElection, timeout, MILLISECONDS));
     }
 
     private void startElection() {

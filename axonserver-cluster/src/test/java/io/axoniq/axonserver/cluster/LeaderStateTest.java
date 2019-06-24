@@ -91,57 +91,8 @@ public class LeaderStateTest {
             }
 
             @Override
-            public RaftPeer peer(String nodeId) {
-                return new RaftPeer() {
-                    Consumer<AppendEntriesResponse> listener;
-                    @Override
-                    public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
-                        return null;
-                    }
-
-                    @Override
-                    public void appendEntries(AppendEntriesRequest request) {
-                        AppendEntriesResponse response = AppendEntriesResponse.newBuilder()
-                                                                              .setSuccess(AppendEntrySuccess.newBuilder()
-                                                                                                            .setLastLogIndex(request.getPrevLogIndex() + request.getEntriesCount())
-                                                                                                            .build())
-                                                                              .build();
-                        fakeScheduler.schedule(() -> listener.accept(response), responseDelay.get(), TimeUnit.MILLISECONDS);
-                    }
-
-                    @Override
-                    public void installSnapshot(InstallSnapshotRequest request) {
-
-                    }
-
-                    @Override
-                    public Registration registerAppendEntriesResponseListener(
-                            Consumer<AppendEntriesResponse> listener) {
-                        this.listener = listener;
-                        return () -> this.listener = null;
-                    }
-
-                    @Override
-                    public Registration registerInstallSnapshotResponseListener(
-                            Consumer<InstallSnapshotResponse> listener) {
-                        return null;
-                    }
-
-                    @Override
-                    public String nodeId() {
-                        return nodeId;
-                    }
-
-                    @Override
-                    public void sendTimeoutNow() {
-                        timeoutTarget.set(nodeId);
-                    }
-                };
-            }
-
-            @Override
             public RaftPeer peer(Node node) {
-                return peer(node.getNodeId());
+                return new MyRaftPeer(node.getNodeId());
             }
 
             @Override
@@ -163,6 +114,78 @@ public class LeaderStateTest {
                                                                        termUpdateHandler,
                                                                        new FakeSnapshotManager()))
                                  .build();
+    }
+
+    ;
+
+    private static class MyRaftPeer implements RaftPeer {
+
+        private final String nodeId;
+        private final String nodeName;
+
+        private MyRaftPeer(String nodeId) {
+            this(nodeId, nodeId);
+        }
+
+        private MyRaftPeer(String nodeId, String nodeName) {
+            this.nodeId = nodeId;
+            this.nodeName = nodeName;
+        }
+
+        Consumer<AppendEntriesResponse> listener;
+                    @Override
+                    public CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request) {
+                        return null;
+                    }
+
+        @Override
+        public void appendEntries(AppendEntriesRequest request) {
+                        AppendEntriesResponse response = AppendEntriesResponse.newBuilder()
+                                                                              .setSuccess(AppendEntrySuccess.newBuilder()
+                                                                                                            .setLastLogIndex(request.getPrevLogIndex() + request.getEntriesCount())
+                                                                                                            .build())
+                                                                              .build();
+                        fakeScheduler.schedule(() -> listener.accept(response), responseDelay.get(), TimeUnit.MILLISECONDS);
+        }
+
+        @Override
+        public void installSnapshot(InstallSnapshotRequest request) {
+
+        }
+
+        @Override
+        public Registration registerAppendEntriesResponseListener(
+                Consumer<AppendEntriesResponse> listener) {
+            this.listener = listener;
+                        return () -> this.listener = null;
+                    }
+
+        @Override
+        public Registration registerInstallSnapshotResponseListener(
+                Consumer<InstallSnapshotResponse> listener) {
+            return null;
+        }
+
+                    @Override
+                    public String nodeId() {
+                        return nodeId;
+                    }
+
+        @Override
+        public String nodeName() {
+            return nodeName;
+        }
+                    @Override
+                    public void sendTimeoutNow() {
+                        timeoutTarget.set(nodeId);
+                    }
+                };
+            }
+
+            @Override
+            public RaftPeer peer(Node node) {
+                return peer(node.getNodeId());
+            }
     }
 
     @Test

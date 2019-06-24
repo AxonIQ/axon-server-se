@@ -40,7 +40,7 @@ public class AccessControllerTest {
         PathMapping mapping = new PathMapping("path1", "READ");
         mappings.add(mapping);
         mappings.add(new PathMapping("path2", "WRITE"));
-        mappings.add(new PathMapping("path3/*", "READ"));
+        mappings.add(new PathMapping("path3/**", "READ"));
         when(pathMappingRepository.findAll()).thenReturn(mappings);
 
         when(pathMappingRepository.findById(any())).thenReturn(Optional.empty());

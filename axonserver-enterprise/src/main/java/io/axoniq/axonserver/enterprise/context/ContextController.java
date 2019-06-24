@@ -120,4 +120,10 @@ public class ContextController {
     public Collection<String> getMyContextNames() {
         return clusterController.getMe().getContextNames();
     }
+
+    @Transactional
+    public void deleteAll() {
+        List<Context> allContexts = entityManager.createQuery("select c from Context c").getResultList();
+        allContexts.forEach(context -> entityManager.remove(context));
+    }
 }

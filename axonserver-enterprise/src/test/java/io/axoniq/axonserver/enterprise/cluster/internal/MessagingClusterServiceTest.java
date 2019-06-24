@@ -2,9 +2,11 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
+import io.axoniq.axonserver.grpc.internal.ClientStatus;
 import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
@@ -44,6 +46,15 @@ public class MessagingClusterServiceTest {
         testSubject = new MessagingClusterService(
                 commandDispatcher, queryDispatcher, clusterController, eventPublisher
         );
+
+        eventPublisher.add(event -> {
+            if (event instanceof TopologyEvents.ApplicationConnected) {
+                testSubject.on((TopologyEvents.ApplicationConnected) event);
+            }
+            if (event instanceof TopologyEvents.ApplicationDisconnected) {
+                testSubject.on((TopologyEvents.ApplicationDisconnected) event);
+            }
+        });
     }
 
     @Test
@@ -73,12 +84,58 @@ public class MessagingClusterServiceTest {
                                          .build();
 
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
+        requestStream.onNext(ConnectorCommand.newBuilder().setConnect(ConnectRequest.newBuilder()
+                                                                                    .setNodeInfo(NodeInfo.newBuilder()
+                                                                                                         .setNodeName("node-1")
+                                                                                                         )
+                                                                                    ).build());
+
         requestStream.onNext(ConnectorCommand.newBuilder().setSubscribeQuery(testMessage).build());
-        assertEquals(0, responseStream.count);
+        assertEquals(1, responseStream.count);
 
         requestStream.onCompleted();
-        Object next = eventPublisher.events().iterator().next();
-        assertTrue(next instanceof TopologyEvents.ApplicationConnected);
+        Iterator<Object> eventIterator = eventPublisher.events().iterator();
+        Object next = eventIterator.next();
+        assertEquals(TopologyEvents.ApplicationConnected.class, next.getClass());
+        next = eventIterator.next();
+        assertEquals(SubscriptionEvents.SubscribeQuery.class, next.getClass());
+        next = eventIterator.next();
+        assertEquals(TopologyEvents.ApplicationDisconnected.class, next.getClass());
+    }
+
+    @Test
+    public void connectDisconnect() {
+        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
+        requestStream.onNext(ConnectorCommand.newBuilder().setConnect(ConnectRequest.newBuilder()
+                                                                                    .setNodeInfo(NodeInfo.newBuilder()
+                                                                                                         .setNodeName("node-1")
+                                                                                    )
+        ).build());
+
+        requestStream.onNext(ConnectorCommand.newBuilder()
+                                             .setClientStatus(ClientStatus.newBuilder()
+                                                              .setClientName("client1")
+                                                              .setComponentName("demoComponent")
+                                                              .setContext("demo")
+                                                              .setConnected(true)
+                                             )
+                                             .build());
+        testSubject.on(new TopologyEvents.ApplicationConnected("demo", "demoComponent", "client1"));
+        requestStream.onNext(ConnectorCommand.newBuilder()
+                                             .setClientStatus(ClientStatus.newBuilder()
+                                                                          .setClientName("client1")
+                                                                          .setComponentName("demoComponent")
+                                                                          .setContext("demo")
+                                                                          .setConnected(false)
+                                             )
+                                             .build());
+
+        Iterator<Object> eventIterator = eventPublisher.events().iterator();
+        Object next = eventIterator.next();
+        assertEquals(TopologyEvents.ApplicationConnected.class, next.getClass());
+        assertFalse(eventIterator.hasNext());
+
     }
 
     @Test

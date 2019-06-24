@@ -35,8 +35,6 @@ public interface RaftGroup {
         return -1L;
     }
 
-    RaftPeer peer(String nodeId);
-
     RaftPeer peer(Node node);
 
     RaftNode localNode();

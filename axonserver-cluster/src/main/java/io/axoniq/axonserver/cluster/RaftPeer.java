@@ -24,6 +24,8 @@ public interface RaftPeer {
 
     String nodeId();
 
+    String nodeName();
+
     /**
      * Checks if connection is ready to send appendEntries requests.
      * @return true if connection is ready

@@ -320,12 +320,7 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void deleteNonExistingContext() {
-        try {
-            testSubject.deleteContext("demo");
-            fail("Expect exception");
-        } catch(MessagingPlatformException mpe) {
-            assertEquals(ErrorCode.CONTEXT_NOT_FOUND, mpe.getErrorCode());
-        }
+        testSubject.deleteContext("demo");
     }
 
     @Test

@@ -158,6 +158,11 @@ public class GrpcRaftPeer implements RaftPeer {
     }
 
     @Override
+    public String nodeName() {
+        return node.getNodeName();
+    }
+
+    @Override
     public boolean isReadyForAppendEntries() {
         return appendEntiesStreamRef.get() == null || appendEntiesStreamRef.get().isReady();
     }
@@ -293,9 +298,17 @@ public class GrpcRaftPeer implements RaftPeer {
         }
     }
 
+    /**
+     * Sends next message on a stream. As gRPC stream onNext is not thread-safe needs to be synchronized over the stream
+     * @param stream the stream to send the message
+     * @param request the message to send
+     * @param <T> type of message
+     */
     private <T> void send(StreamObserver<T> stream, T request) {
         try {
-            stream.onNext(request);
+            synchronized (stream) {
+                stream.onNext(request);
+            }
         } catch( Throwable e) {
             logger.warn("Error while sending message: {}", e.getMessage(), e);
             try {

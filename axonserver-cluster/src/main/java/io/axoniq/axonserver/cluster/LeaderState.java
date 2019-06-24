@@ -18,6 +18,8 @@ import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.EmitterProcessor;
+import reactor.core.publisher.FluxSink;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,7 +36,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -107,7 +108,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private NodeReplicator replicator(Node node) {
-        return matchIndexCallback -> replicators.addNonVotingNode(node, matchIndexCallback);
+        return matchIndexUpdates -> replicators.addNonVotingNode(node, matchIndexUpdates);
     }
 
     @Override
@@ -174,7 +175,7 @@ public class LeaderState extends AbstractMembershipState {
                     currentTerm(),
                     request.getLeaderId(),
                     request.getTerm());
-        return appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
+        return responseFactory().appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
     @Override
@@ -361,7 +362,7 @@ public class LeaderState extends AbstractMembershipState {
     public Iterator<ReplicatorPeer> replicatorPeers() {
         return replicators.replicatorPeerMap.values()
                                             .stream()
-                                            .filter(peer -> ! replicators.nonVotingReplica.contains(peer.nodeId()))
+                                            .filter(peer -> !replicators.nonVotingReplicaMap.containsKey(peer.nodeId()))
                                             .iterator();
     }
 
@@ -396,7 +397,7 @@ public class LeaderState extends AbstractMembershipState {
 
     private class Replicators {
 
-        private final Set<String> nonVotingReplica = new CopyOnWriteArraySet<>();
+        private final Map<String, Disposable> nonVotingReplicaMap = new ConcurrentHashMap<>();
         private final List<Registration> registrations = new ArrayList<>();
         private final Map<String, ReplicatorPeer> replicatorPeerMap = new ConcurrentHashMap<>();
         private final AtomicBoolean replicationRunning = new AtomicBoolean(false);
@@ -421,6 +422,7 @@ public class LeaderState extends AbstractMembershipState {
                         currentTerm(),
                         raftGroup().logEntryProcessor().lastAppliedIndex());
 
+            nonVotingReplicaMap.forEach((nodeId, replication) -> replication.dispose());
             notifySenders();
             registrations.forEach(Registration::cancel);
         }
@@ -428,7 +430,7 @@ public class LeaderState extends AbstractMembershipState {
         private void start() {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
-                otherPeersStream().forEach(peer -> registrations.add(registerPeer(peer, this::updateCommitIndex)));
+                otherPeersStream().forEach(this::registerNode);
                 scheduler.get().execute(() -> replicate(false));
                 logger.info("{} in term {}: Start replication thread for {} peers.",
                             groupId(),
@@ -510,55 +512,58 @@ public class LeaderState extends AbstractMembershipState {
             Set<String> toRemove = new HashSet<>(replicatorPeerMap.keySet());
             for (Node node : nodes) {
                 toRemove.remove(node.getNodeId());
-                if (!replicatorPeerMap.containsKey(node.getNodeId()) && !node.getNodeId().equals(me())) {
-                    addNode(node);
+                if (!replicatorPeerMap.containsKey(node.getNodeName())
+                        && !node.getNodeId().equals(me())) {
+                    registerNode(raftGroup().peer(node));
                 }
             }
-            toRemove.removeAll(nonVotingReplica);
+            toRemove.removeAll(nonVotingReplicaMap.keySet());
             toRemove.forEach(this::removeNode);
         }
 
-        public void addNode(Node node) {
-            if (!node.getNodeId().equals(me())) {
-                RaftPeer raftPeer = raftGroup().peer(node);
-                registrations.add(registerPeer(raftPeer, this::updateCommitIndex));
-            }
+        private void registerNode(RaftPeer raftPeer) {
+            EmitterProcessor<Long> processor = EmitterProcessor.create(10);
+            processor.replay().autoConnect().subscribe(this::updateCommitIndex);
+            registrations.add(registerPeer(raftPeer, processor.sink()));
         }
 
-        public void removeNode(String nodeId) {
-            ReplicatorPeer removed = replicatorPeerMap.remove(nodeId);
+        public void removeNode(String nodeName) {
+            ReplicatorPeer removed = replicatorPeerMap.remove(nodeName);
             if (removed != null) {
                 removed.stop();
             }
         }
 
-        Disposable addNonVotingNode(Node node, Consumer<Long> matchIndexCallback) {
-            if (replicatorPeerMap.containsKey(node.getNodeId())) {
-                throw new IllegalArgumentException("Replicators already contain the node " + node.getNodeId());
+        private Disposable addNonVotingNode(Node node, FluxSink<Long> matchIndexUpdates) {
+            String nodeName = node.getNodeName();
+            if (replicatorPeerMap.containsKey(nodeName)) {
+                throw new IllegalArgumentException("Replicators already contain the node " + node.getNodeName());
             }
-            Registration registration = registerPeer(raftGroup().peer(node), matchIndexCallback);
-            nonVotingReplica.add(node.getNodeId());
-            return () -> {
+            Registration registration = registerPeer(raftGroup().peer(node), matchIndexUpdates);
+            Disposable replication = () -> {
                 registration.cancel();
-                nonVotingReplica.remove(node.getNodeId());
+                nonVotingReplicaMap.remove(nodeName);
             };
+            nonVotingReplicaMap.put(nodeName, replication);
+            return replication;
         }
 
-        private Registration registerPeer(RaftPeer raftPeer, Consumer<Long> matchIndexCallback) {
+        private Registration registerPeer(RaftPeer raftPeer, FluxSink<Long> matchIndexUpdates) {
             ReplicatorPeer replicatorPeer = new ReplicatorPeer(raftPeer,
-                                                               matchIndexCallback,
+                                                               matchIndexUpdates,
                                                                scheduler.get().clock(),
                                                                raftGroup(),
                                                                snapshotManager(),
                                                                LeaderState.this::updateCurrentTerm,
                                                                LeaderState.this::lastLogIndex);
             replicatorPeer.start();
-            replicatorPeerMap.put(raftPeer.nodeId(), replicatorPeer);
+            replicatorPeerMap.put(raftPeer.nodeName(), replicatorPeer);
             return () -> {
-                ReplicatorPeer removed = replicatorPeerMap.remove(raftPeer.nodeId());
+                ReplicatorPeer removed = replicatorPeerMap.remove(raftPeer.nodeName());
                 if (removed != null) {
                     removed.stop();
                 }
+                matchIndexUpdates.complete();
             };
         }
 

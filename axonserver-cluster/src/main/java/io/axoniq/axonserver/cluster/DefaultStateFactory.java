@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
+import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.replication.MajorityMatchStrategy;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
@@ -53,7 +54,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
 
     @Override
     public IdleState idleState(String nodeId) {
-        return new IdleState(nodeId);
+        return new IdleState(nodeId, new DefaultResponseFactory(raftGroup));
     }
 
     @Override

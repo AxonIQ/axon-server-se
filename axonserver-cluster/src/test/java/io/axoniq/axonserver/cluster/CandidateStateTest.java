@@ -86,7 +86,7 @@ public class CandidateStateTest {
     private void addClusterNode(String nodeId, FakeRaftPeer peer){
         Node node = Node.newBuilder().setNodeId(nodeId).build();
         raftConfiguration.addNode(node);
-        when(raftGroup.peer(nodeId)).thenReturn(peer);
+        when(raftGroup.peer(node)).thenReturn(peer);
         peer.setTerm(1);
     }
 
@@ -117,18 +117,6 @@ public class CandidateStateTest {
         FakeState fakeState = (FakeState) membershipState;
         assertEquals("follower", fakeState.name());
         assertEquals("requestVote", fakeState.lastMethodCalled());
-    }
-
-    @Test
-    public void requestVoteNonMember() {
-        candidateState.start();
-        RequestVoteRequest request = RequestVoteRequest.newBuilder()
-                                                       .setCandidateId("node3")
-                                                       .setTerm(10)
-                                                       .build();
-        RequestVoteResponse response = candidateState.requestVote(request);
-        assertFalse(response.getVoteGranted());
-        assertFalse(response.getGoAway());
     }
 
     @Test

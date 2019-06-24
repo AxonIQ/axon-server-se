@@ -86,8 +86,8 @@ public class AccessController implements AxonServerAccessController {
         return true;
     }
 
-    public Set<String> getAdminRoles(String token) {
-        return accessControllerDB.getAdminRoles(token);
+    public Set<String> getRoles(String token, String context) {
+        return accessControllerDB.getRoles(token, context);
     }
 
 }

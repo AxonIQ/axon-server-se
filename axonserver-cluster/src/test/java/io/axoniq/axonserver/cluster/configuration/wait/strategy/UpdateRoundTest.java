@@ -19,8 +19,7 @@ public class UpdateRoundTest {
 
     @Test
     public void roundCompletes() throws Throwable{
-        UpdateRound testSubject = new UpdateRound(() -> 100L, consumer ->
-                Flux.range(1,100).map(Long::new).subscribe(consumer)::dispose);
+        UpdateRound testSubject = new UpdateRound(() -> 100L, Flux.range(1, 100).map(Long::new));
         CompletableFuture<Void> future = testSubject.await();
         future.get(10, TimeUnit.SECONDS);
         assertFalse(future.isCompletedExceptionally());

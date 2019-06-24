@@ -42,6 +42,7 @@ public class JpaContextApplicationController {
     private ContextApplication toContextApplication(JpaContextApplication jpaContextApplication) {
         return ContextApplication.newBuilder()
                                  .setName(jpaContextApplication.getName())
+                                 .setContext(jpaContextApplication.getContext())
                                  .setHashedToken(jpaContextApplication.getHashedToken())
                                  .setTokenPrefix(jpaContextApplication.getTokenPrefix())
                                  .addAllRoles(jpaContextApplication.getRoles())
