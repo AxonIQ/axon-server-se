@@ -330,7 +330,7 @@ class LocalRaftConfigService implements RaftConfigService {
                 raftGroupServiceFactory.getRaftGroupService(context.getName()).transferLeadership(context.getName())
                                        .get();
                 leader = raftGroupServiceFactory.getLeader(context.getName());
-                int retries = 10;
+                int retries = 25;
                 while ((leader == null || leader.equals(node)) && retries > 0) {
                     Thread.sleep(250);
                     leader = raftGroupServiceFactory.getLeader(context.getName());
@@ -339,8 +339,11 @@ class LocalRaftConfigService implements RaftConfigService {
                 if ((leader == null || leader.equals(node))) {
                     throw new MessagingPlatformException(ErrorCode.OTHER, "Moving leader to other node failed");
                 }
+
+                logger.info("{}: leader changed to {}", context, leader);
             }
 
+            logger.info("{}: sending delete node to {}", context, leader);
             raftGroupServiceFactory.getRaftGroupService(context.getName()).deleteNode(context.getName(), nodeLabel)
                             .whenComplete((result, exception) -> {
                                 handleRemoveNodeResult(context.getName(),

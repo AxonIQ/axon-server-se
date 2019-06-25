@@ -511,7 +511,7 @@ public class LeaderState extends AbstractMembershipState {
         public void updateNodes(List<Node> nodes) {
             Set<String> toRemove = new HashSet<>(replicatorPeerMap.keySet());
             for (Node node : nodes) {
-                toRemove.remove(node.getNodeId());
+                toRemove.remove(node.getNodeName());
                 if (!replicatorPeerMap.containsKey(node.getNodeName())
                         && !node.getNodeId().equals(me())) {
                     registerNode(raftGroup().peer(node));
