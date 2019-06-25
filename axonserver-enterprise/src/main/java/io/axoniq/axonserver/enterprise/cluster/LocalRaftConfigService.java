@@ -336,7 +336,7 @@ class LocalRaftConfigService implements RaftConfigService {
                     leader = raftGroupServiceFactory.getLeader(context.getName());
                     retries--;
                 }
-                if ((leader == null || leader.equals(node))) {
+                if (leader == null || leader.equals(node)) {
                     throw new MessagingPlatformException(ErrorCode.OTHER, "Moving leader to other node failed");
                 }
 
