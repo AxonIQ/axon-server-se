@@ -16,7 +16,7 @@ public class RaftProperties extends StorageProperties {
     /**
      * Extra time that follower waits initially before moving to candidate state.
      */
-    private int initialElectionTimeout = 2500;
+    private int initialElectionTimeout = 0;
     /**
      * Minimal time (in ms.) that a follower waits before moving to candidate state, if it has not received any messages
      * from a leader.
@@ -30,7 +30,7 @@ public class RaftProperties extends StorageProperties {
     /**
      * Leader sends a heartbeat to followers if it has not sent any other messages to a follower for this time.
      */
-    private int heartbeatTimeout = 100;
+    private int heartbeatTimeout = 300;
     /**
      * Maximum number of append entry messages sent to one peer before moving to the next.
      */
