@@ -101,6 +101,11 @@ public class LeaderStateTest {
                     }
 
                     @Override
+                    public CompletableFuture<RequestVoteResponse> requestPreVote(RequestVoteRequest request) {
+                        return null;
+                    }
+
+                    @Override
                     public void appendEntries(AppendEntriesRequest request) {
                         AppendEntriesResponse response = AppendEntriesResponse.newBuilder()
                                                                               .setSuccess(AppendEntrySuccess.newBuilder()

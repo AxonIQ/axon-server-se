@@ -552,4 +552,11 @@ public class RaftNode {
             }
         });
     }
+
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        notifyMessage(request);
+        RequestVoteResponse response = state.get().requestPreVote(request);
+        notifyMessage(response);
+        return response;
+    }
 }

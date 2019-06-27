@@ -294,6 +294,11 @@ public class RaftClusterTestFixture {
             }
 
             @Override
+            public CompletableFuture<RequestVoteResponse> requestPreVote(RequestVoteRequest request) {
+                return communicateRemote(request, remote.localNode()::requestPreVote, localName, nodeId);
+            }
+
+            @Override
             public void appendEntries(AppendEntriesRequest request) {
                 communicateRemote(request, r->{
                     AppendEntriesResponse response = remote.localNode().appendEntries(r);

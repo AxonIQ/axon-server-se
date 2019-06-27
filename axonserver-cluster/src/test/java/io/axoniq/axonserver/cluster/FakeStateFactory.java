@@ -39,6 +39,12 @@ public class FakeStateFactory implements MembershipStateFactory {
     }
 
     @Override
+    public MembershipState preVoteState() {
+        lastStateCreated = new FakeState("prevote");
+        return lastStateCreated;
+    }
+
+    @Override
     public MembershipState removedState() {
         lastStateCreated = new FakeState("removed");
         return lastStateCreated;
@@ -62,6 +68,12 @@ public class FakeStateFactory implements MembershipStateFactory {
         @Override
         public RequestVoteResponse requestVote(RequestVoteRequest request) {
             lastMethodCalled = "requestVote";
+            return null;
+        }
+
+        @Override
+        public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+            lastMethodCalled = "requestPreVote";
             return null;
         }
 

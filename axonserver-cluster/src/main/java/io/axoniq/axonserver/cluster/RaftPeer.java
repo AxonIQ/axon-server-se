@@ -14,6 +14,8 @@ public interface RaftPeer {
 
     CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request);
 
+    CompletableFuture<RequestVoteResponse> requestPreVote(RequestVoteRequest request);
+
     void appendEntries(AppendEntriesRequest request);
 
     void installSnapshot(InstallSnapshotRequest request);

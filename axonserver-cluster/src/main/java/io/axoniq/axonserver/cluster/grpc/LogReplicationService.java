@@ -49,7 +49,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
 
             @Override
             public void onError(Throwable throwable) {
-                logger.trace("Failure on appendEntries on leader connection- {}", throwable.getMessage());
+                logger.warn("Failure on appendEntries on leader connection- {}", throwable.getMessage());
 
             }
 

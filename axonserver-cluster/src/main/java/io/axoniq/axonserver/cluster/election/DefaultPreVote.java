@@ -19,61 +19,55 @@ import static java.util.stream.StreamSupport.stream;
  * @author Sara Pellegrini
  * @since 4.1
  */
-public class DefaultElection implements Election {
+public class DefaultPreVote implements Election {
 
-    private final Logger logger = LoggerFactory.getLogger(DefaultElection.class);
+    private final Logger logger = LoggerFactory.getLogger(DefaultPreVote.class);
 
     private final RequestVoteRequest requestPrototype;
     private final BiConsumer<Long, String> termUpdateHandler;
     private final ElectionStore electionStore;
     private final Iterable<RaftPeer> otherNodes;
     private final VoteStrategy voteStrategy;
-    private final boolean disruptLeader;
 
-    public DefaultElection(RaftGroup raftGroup, BiConsumer<Long, String> termUpdateHandler,
-                           Iterable<RaftPeer> otherNodes, boolean disruptLeader) {
+    public DefaultPreVote(RaftGroup raftGroup, BiConsumer<Long, String> termUpdateHandler,
+                          Iterable<RaftPeer> otherNodes) {
         this(RequestVoteRequest.newBuilder()
                                .setGroupId(raftGroup.raftConfiguration().groupId())
                                .setCandidateId(raftGroup.localNode().nodeId())
-                               .setTerm(raftGroup.localElectionStore().currentTerm()+1)
+                               .setTerm(raftGroup.localElectionStore().currentTerm() + 1)
                                .setLastLogIndex(raftGroup.localLogEntryStore().lastLog().getIndex())
                                .setLastLogTerm(raftGroup.localLogEntryStore().lastLog().getTerm())
                                .build(),
              termUpdateHandler,
              raftGroup.localElectionStore(),
-             otherNodes, disruptLeader);
+             otherNodes);
     }
 
-    public DefaultElection(RequestVoteRequest requestPrototype,
-                           BiConsumer<Long, String> termUpdateHandler,
-                           ElectionStore electionStore,
-                           Iterable<RaftPeer> otherNodes,
-                           boolean disruptLeader) {
+    public DefaultPreVote(RequestVoteRequest requestPrototype,
+                          BiConsumer<Long, String> termUpdateHandler,
+                          ElectionStore electionStore,
+                          Iterable<RaftPeer> otherNodes) {
         this(requestPrototype,
              termUpdateHandler,
              electionStore,
              otherNodes,
-             new MajorityStrategy(() -> (int) (stream(otherNodes.spliterator(), false).count() + 1)), disruptLeader);
+             new MajorityStrategy(() -> (int) (stream(otherNodes.spliterator(), false).count() + 1)));
     }
 
-    public DefaultElection(RequestVoteRequest requestPrototype,
-                           BiConsumer<Long, String> termUpdateHandler,
-                           ElectionStore electionStore,
-                           Iterable<RaftPeer> otherNodes, VoteStrategy voteStrategy, boolean disruptLeader) {
+    public DefaultPreVote(RequestVoteRequest requestPrototype,
+                          BiConsumer<Long, String> termUpdateHandler,
+                          ElectionStore electionStore,
+                          Iterable<RaftPeer> otherNodes, VoteStrategy voteStrategy) {
         this.requestPrototype = requestPrototype;
         this.termUpdateHandler = termUpdateHandler;
         this.electionStore = electionStore;
         this.otherNodes = otherNodes;
         this.voteStrategy = voteStrategy;
-        this.disruptLeader = disruptLeader;
     }
 
-    public Mono<Result> result(){
+    public Mono<Result> result() {
         return Mono.create(sink -> {
-            String cause = format("%s is starting a new election, so increases its term from %s to %s", me(), currentTerm(), electionTerm());
-            updateCurrentTerm(electionTerm(), cause);
-            electionStore.markVotedFor(me());
-            logger.info("{}: Starting election from {} in term {}", groupId(), me(), currentTerm());
+            logger.info("{}: Starting pre-vote from {} in term {}", groupId(), me(), currentTerm());
             voteStrategy.isWon().thenAccept(isWon -> notifyElectionCompleted(isWon.won(), isWon.goAway(), sink));
             voteStrategy.registerVoteReceived(me(), true, false);
             otherNodes.forEach(node -> requestVote(request(), node, sink));
@@ -81,12 +75,12 @@ public class DefaultElection implements Election {
     }
 
     private void requestVote(RequestVoteRequest request, RaftPeer node, MonoSink<Result> sink) {
-        node.requestVote(request).thenAccept(response -> this.onVoteResponse(response, sink));
+        node.requestPreVote(request).thenAccept(response -> this.onVoteResponse(response, sink));
     }
 
-    private void onVoteResponse(RequestVoteResponse response, MonoSink<Result> sink){
+    private void onVoteResponse(RequestVoteResponse response, MonoSink<Result> sink) {
         String voter = response.getResponseHeader().getNodeId();
-        logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
+        logger.trace("{} - currentTerm {} PreVoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
             String message = format("%s received RequestVoteResponse with greater term (%s > %s) from %s",
                                     me(), response.getTerm(), currentTerm(), voter);
@@ -103,33 +97,31 @@ public class DefaultElection implements Election {
         voteStrategy.registerVoteReceived(voter, response.getVoteGranted(), response.getGoAway());
     }
 
-    private RequestVoteRequest request(){
-        return RequestVoteRequest.newBuilder(requestPrototype)
-                                 .setDisruptAllowed(disruptLeader)
-                                 .setRequestId(UUID.randomUUID().toString()).build();
+    private RequestVoteRequest request() {
+        return RequestVoteRequest.newBuilder(requestPrototype).setRequestId(UUID.randomUUID().toString()).build();
     }
 
-    private String me(){
+    private String me() {
         return requestPrototype.getCandidateId();
     }
 
-    private String groupId(){
+    private String groupId() {
         return requestPrototype.getGroupId();
     }
 
-    private long electionTerm(){
+    private long electionTerm() {
         return requestPrototype.getTerm();
     }
 
-    private long currentTerm(){
+    private long currentTerm() {
         return electionStore.currentTerm();
     }
 
-    private void updateCurrentTerm(long term, String cause){
+    private void updateCurrentTerm(long term, String cause) {
         termUpdateHandler.accept(term, cause);
     }
 
-    private void notifyElectionCompleted(boolean result, boolean goAway, MonoSink<Result> sink){
+    private void notifyElectionCompleted(boolean result, boolean goAway, MonoSink<Result> sink) {
         String electionResult = result ? "won" : "lost";
         String msg = format("%s: Election for term %s is %s by %s (%s)",
                             groupId(), electionTerm(), electionResult, me(), voteStrategy);
@@ -137,7 +129,7 @@ public class DefaultElection implements Election {
     }
 
 
-    private Result result(boolean won, boolean goAway, String cause){
+    private Result result(boolean won, boolean goAway, String cause) {
         return new Result() {
             @Override
             public boolean won() {

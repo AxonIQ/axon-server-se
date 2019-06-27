@@ -112,6 +112,18 @@ public class FakeRaftPeer implements RaftPeer {
     }
 
     @Override
+    public CompletableFuture<RequestVoteResponse> requestPreVote(RequestVoteRequest request) {
+        CompletableFuture<RequestVoteResponse> result = new CompletableFuture<>();
+        RequestVoteResponse response = RequestVoteResponse.newBuilder()
+                                                          .setResponseHeader(responseHeader(request.getRequestId()))
+                                                          .setTerm(term)
+                                                          .setVoteGranted(voteGranted)
+                                                          .build();
+        scheduler.schedule(() -> result.complete(response), 10, TimeUnit.MILLISECONDS);
+        return result;
+    }
+
+    @Override
     public String nodeId() {
         return nodeId;
     }

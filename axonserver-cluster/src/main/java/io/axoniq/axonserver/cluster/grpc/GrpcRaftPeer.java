@@ -19,6 +19,7 @@ import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,28 +72,41 @@ public class GrpcRaftPeer implements RaftPeer {
         logger.debug("{} Send: {}", node.getNodeId(), request);
         CompletableFuture<RequestVoteResponse> response = new CompletableFuture<>();
         LeaderElectionServiceGrpc.LeaderElectionServiceStub stub = clientFactory.createLeaderElectionStub(node);
-        stub.requestVote(request, new StreamObserver<RequestVoteResponse>() {
+        stub.requestVote(request, completableStreamObserver(response));
+        return response;
+    }
+
+    @Override
+    public CompletableFuture<RequestVoteResponse> requestPreVote(RequestVoteRequest request) {
+        CompletableFuture<RequestVoteResponse> response = new CompletableFuture<>();
+        LeaderElectionServiceGrpc.LeaderElectionServiceStub stub = clientFactory.createLeaderElectionStub(node);
+        stub.requestPreVote(request, completableStreamObserver(response));
+        return response;
+    }
+
+    @NotNull
+    private <T> StreamObserver<T> completableStreamObserver(
+            CompletableFuture<T> response) {
+        return new StreamObserver<T>() {
             @Override
-            public void onNext(RequestVoteResponse requestVoteResponse) {
+            public void onNext(T requestVoteResponse) {
                 logger.debug("{} received: {}", node.getNodeId(), requestVoteResponse);
                 response.complete(requestVoteResponse);
             }
 
             @Override
             public void onError(Throwable cause) {
-                logger.warn( "{}: Received error on vote - {}", node.getNodeId(), cause.getMessage());
+                logger.warn("{}: Received error on vote - {}", node.getNodeId(), cause.getMessage());
                 response.completeExceptionally(cause);
-
             }
 
             @Override
             public void onCompleted() {
-                if(! response.isDone()) {
+                if (!response.isDone()) {
                     response.completeExceptionally(new Throwable("Request closed without result"));
                 }
             }
-        });
-        return response;
+        };
     }
 
     @Override

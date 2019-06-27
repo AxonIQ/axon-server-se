@@ -16,6 +16,8 @@ import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
@@ -149,7 +151,7 @@ public class LeaderState extends AbstractMembershipState {
             replicators = null;
         }
         pendingEntries.forEach((index, completableFuture) -> completableFuture
-                .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
+                .completeExceptionally(new LeadershipTransferInProgressException("Transferring leadership")));
         pendingEntries.clear();
         logger.info("{} in term {}: {} steps down from Leader role.", groupId(), currentTerm(), me());
         if (scheduler.get() != null) {
@@ -176,6 +178,26 @@ public class LeaderState extends AbstractMembershipState {
                     request.getTerm());
         return responseFactory().appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
+
+
+    @Override
+    public RequestVoteResponse requestVote(RequestVoteRequest request) {
+        if (!request.getDisruptAllowed() && heardFromFollowers()) {
+            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+        }
+
+        return super.requestVote(request);
+    }
+
+    @Override
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        if (heardFromFollowers()) {
+            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+        }
+
+        return super.requestVote(request);
+    }
+
 
     @Override
     protected boolean shouldGoAwayIfNotMember() {
@@ -208,6 +230,18 @@ public class LeaderState extends AbstractMembershipState {
 
     private void stepDown(String cause) {
         changeStateTo(stateFactory().followerState(), cause);
+    }
+
+    private boolean heardFromFollowers() {
+        long otherNodesCount = otherNodesCount();
+        if (otherNodesCount == 0) {
+            return true;
+        }
+        List<Long> timeSinceLastMessages = replicators.lastMessages();
+        long timeSinceLastMessageFromMajority = calculateLastMessageFromMajority(timeSinceLastMessages,
+                                                                                 otherNodesCount);
+
+        return timeSinceLastMessageFromMajority < maxElectionTimeout();
     }
 
     private void checkStepdown() {

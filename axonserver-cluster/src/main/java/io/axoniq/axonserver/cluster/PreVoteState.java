@@ -6,12 +6,9 @@ import io.axoniq.axonserver.cluster.election.Election.Result;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
-import io.axoniq.axonserver.grpc.cluster.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.String.format;
@@ -24,14 +21,14 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @author Sara Pellegrini
  * @since 4.1
  */
-public class CandidateState extends AbstractMembershipState {
+public class PreVoteState extends AbstractMembershipState {
 
-    private static final Logger logger = LoggerFactory.getLogger(CandidateState.class);
+    private static final Logger logger = LoggerFactory.getLogger(PreVoteState.class);
     private final ClusterConfiguration clusterConfiguration = new CandidateConfiguration();
     private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private volatile boolean disruptAllowed;
 
-    private CandidateState(Builder builder) {
+    private PreVoteState(Builder builder) {
         super(builder);
     }
 
@@ -77,17 +74,7 @@ public class CandidateState extends AbstractMembershipState {
                     currentTerm(),
                     request.getTerm());
         return responseFactory().appendEntriesFailure(request.getRequestId(),
-                                                      "Request rejected because I'm a candidate");
-    }
-
-    @Override
-    public CompletableFuture<ConfigChangeResult> addServer(Node node) {
-        return clusterConfiguration.addServer(node);
-    }
-
-    @Override
-    public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
-        return clusterConfiguration.removeServer(nodeId);
+                                                      "Request rejected because term is smaller than mine");
     }
 
     private void resetElectionTimeout() {
@@ -102,17 +89,17 @@ public class CandidateState extends AbstractMembershipState {
                         currentTerm());
             return;
         }
-        newElection(disruptAllowed).result().subscribe(this::onElectionResult,
-                                         error -> logger.warn("{} in term {}: Failed to run election. {}",
-                                                              groupId(),
-                                                              currentTerm(),
-                                                              error));
+        newPreVote().result().subscribe(this::onElectionResult,
+                                        error -> logger.warn("{} in term {}: Failed to run election. {}",
+                                                             groupId(),
+                                                             currentTerm(),
+                                                             error));
         resetElectionTimeout();
     }
 
     private void onElectionResult(Result result) {
         if (result.won()) {
-            changeStateTo(stateFactory().leaderState(), result.cause());
+            changeStateTo(stateFactory().candidateState(), result.cause());
         } else if (result.goAway()) {
             changeStateTo(stateFactory().removedState(), result.cause());
         } else {
@@ -120,13 +107,8 @@ public class CandidateState extends AbstractMembershipState {
         }
     }
 
-    public MembershipState withDisruptAllowed() {
-        disruptAllowed = true;
-        return this;
-    }
-
     /**
-     * A Builder for {@link CandidateState}.
+     * A Builder for {@link PreVoteState}.
      *
      * @author Sara Pellegrini
      * @since 4.1
@@ -138,8 +120,8 @@ public class CandidateState extends AbstractMembershipState {
          *
          * @return the Candidate State
          */
-        public CandidateState build() {
-            return new CandidateState(this);
+        public PreVoteState build() {
+            return new PreVoteState(this);
         }
     }
 }

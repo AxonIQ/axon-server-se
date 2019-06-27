@@ -85,4 +85,15 @@ public interface MembershipState extends ClusterConfiguration{
     default CompletableFuture<Void> transferLeadership() {
         return CompletableFuture.completedFuture(null);
     }
+
+    /**
+     * Handles a pre-vote request from another node in cluster.
+     * <p>
+     * Returns true if current state is Candidate, Pre-Vote, or Follower State (with time out on message from leader).
+     * Returns false otherwise. Adds flag goAway if current state is leader and node from request is unknown.
+     *
+     * @param request the vote request
+     * @return pre-vote allowed
+     */
+    RequestVoteResponse requestPreVote(RequestVoteRequest request);
 }
