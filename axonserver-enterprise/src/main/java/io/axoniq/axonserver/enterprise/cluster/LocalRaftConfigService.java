@@ -28,6 +28,7 @@ import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.User;
 import io.axoniq.axonserver.util.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -86,7 +87,6 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void addNodeToContext(String context, String node) {
         logger.info("Add node request invoked for node: {} - and context: {}", node, context);
-        RaftNode config = grpcRaftController.getRaftNode(getAdmin());
         Context contextDefinition = contextController.getContext(context);
 
         if (contextDefinition == null) {
@@ -108,8 +108,7 @@ class LocalRaftConfigService implements RaftConfigService {
                 ContextConfiguration.newBuilder(oldConfiguration).setPending(true)
                                     .build();
 
-        getFuture(config.appendEntry(ContextConfiguration.class.getName(),
-                                     contextConfiguration.toByteArray()));
+        appendToAdmin(ContextConfiguration.class.getName(), contextConfiguration.toByteArray());
 
         try {
             raftGroupServiceFactory.getRaftGroupService(context)
@@ -279,11 +278,11 @@ class LocalRaftConfigService implements RaftConfigService {
         return removeDone;
     }
 
-    private String transferLeader(Context context, String node)
+    private void transferLeader(Context context, String node)
             throws InterruptedException, java.util.concurrent.ExecutionException {
         String leader = raftGroupServiceFactory.getLeader(context.getName());
         if (node.equals(leader)) {
-            logger.warn("{}: leader is {}", context, leader);
+            logger.info("{}: leader is {}", context, leader);
             raftGroupServiceFactory.getRaftGroupService(context.getName()).transferLeadership(context.getName())
                                    .get();
             leader = raftGroupServiceFactory.getLeader(context.getName());
@@ -297,9 +296,8 @@ class LocalRaftConfigService implements RaftConfigService {
                 throw new MessagingPlatformException(ErrorCode.OTHER, "Moving leader to other node failed");
             }
 
-            logger.warn("{}: leader changed to {}", context, leader);
+            logger.info("{}: leader changed to {}", context, leader);
         }
-        return leader;
     }
 
     /**
@@ -422,17 +420,7 @@ class LocalRaftConfigService implements RaftConfigService {
                                                  "Send join request to the leader of _admin context: " + adminNode
                                                          .getLeaderName());
         }
-        List<String> contexts = nodeInfo.getContextsList().stream().map(ContextRole::getName).collect(Collectors
-                                                                                                              .toList());
-        if ((contexts.size() == 1) && contexts.get(0).equals(CONTEXT_NONE)) {
-            logger.debug("join(): Joining to no contexts.");
-            contexts.clear();
-        } else if (contexts.isEmpty()) {
-            logger.debug("join(): Joining to all contexts.");
-            contexts = contextController.getContexts().map(Context::getName).collect(Collectors.toList());
-        } else {
-            logger.debug("join(): Joining to a specified set of contexts.");
-        }
+        List<String> contexts = contextsToJoin(nodeInfo);
 
         String nodeLabel = generateNodeLabel(nodeInfo.getNodeName());
         Node node = Node.newBuilder().setNodeId(nodeLabel)
@@ -495,6 +483,22 @@ class LocalRaftConfigService implements RaftConfigService {
                 resetAdminConfiguration(oldConfiguration, "Error while adding node " + node.getNodeName(), ex);
             }
         });
+    }
+
+    @NotNull
+    private List<String> contextsToJoin(NodeInfo nodeInfo) {
+        List<String> contexts = nodeInfo.getContextsList().stream().map(ContextRole::getName).collect(Collectors
+                                                                                                              .toList());
+        if ((contexts.size() == 1) && contexts.get(0).equals(CONTEXT_NONE)) {
+            logger.debug("join(): Joining to no contexts.");
+            contexts.clear();
+        } else if (contexts.isEmpty()) {
+            logger.debug("join(): Joining to all contexts.");
+            contexts = contextController.getContexts().map(Context::getName).collect(Collectors.toList());
+        } else {
+            logger.debug("join(): Joining to a specified set of contexts.");
+        }
+        return contexts;
     }
 
     private ContextConfiguration createContextConfiguration(String context, ContextUpdateConfirmation result) {
