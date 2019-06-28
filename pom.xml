@@ -137,7 +137,7 @@
 
     <scm>
         <connection>scm:git:https://github.com/AxonIQ/axon-server.git</connection>
-        <developerConnection>scm:git:https://github.com:AxonIQ/axon-server.git</developerConnection>
+        <developerConnection>scm:git:https://github.com/AxonIQ/axon-server.git</developerConnection>
         <url>https://github.com/AxonIQ/axon-server</url>
         <tag>axonserver-4.1</tag>
     </scm>
