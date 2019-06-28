@@ -31,6 +31,8 @@ Once Axon Server is running you can view its configuration using the Axon Dashbo
 Changes in Axon Server 4.1.6
 ----------------------------
 
+- Fix for unexpected leader change on adding 3rd node to context
+
 - Fix for replication entry log compaction
 
 Changes in Axon Server 4.1.5
