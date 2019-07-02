@@ -43,7 +43,7 @@ public class GrpcBufferingInterceptor implements ClientInterceptor, ServerInterc
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         ServerCall.Listener<ReqT> listener = next.startCall(call, headers);
         if (additionalBuffer > 0 && !call.getMethodDescriptor().getType().clientSendsOneMessage()) {
-            call.request(additionalBuffer);
+            call.request(1);
         }
         return listener;
     }
