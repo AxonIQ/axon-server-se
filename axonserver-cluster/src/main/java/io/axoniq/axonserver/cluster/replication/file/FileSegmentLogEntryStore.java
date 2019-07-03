@@ -212,6 +212,13 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public TermIndex firstLog() {
+        Entry entry = getEntry(primaryEventStore.getFirstToken());
+
+        return entry == null ? new TermIndex(0, 0) : new TermIndex(entry.getTerm(), entry.getIndex());
+    }
+
+    @Override
     public long lastLogIndex() {
         return primaryEventStore.getLastToken();
     }
