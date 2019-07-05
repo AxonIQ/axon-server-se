@@ -107,16 +107,14 @@ podTemplate(label: label,
             stage('Trigger followup') {
                 when(relevantBranch(gitBranch, dockerBranches)) {
 // Axon Server - Build Docker Images
-//        string(name: 'namespace', defaultValue: 'devops'),
-//        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
-//        string(name: 'artifactId', defaultValue: 'axonserver'),
-//        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+//   string(name: 'serverEdition', defaultValue: 'se'),
+//   string(name: 'projectVersion', defaultValue: '4.2-SNAPSHOT'),
+//   string(name: 'cliVersion', defaultValue: '4.1.5')
                     def dockerBuild = build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
                         parameters: [
-                            string(name: 'namespace', value: params.namespace),
-                            string(name: 'groupId', value: props ['project.groupId']),
-                            string(name: 'artifactId', value: props ['project.artifactId']),
-                            string(name: 'projectVersion', value: props ['project.version'])
+                            string(name: 'serverEdition', value: 'ee'),
+                            string(name: 'projectVersion', value: props ['project.version']),
+                            string(name: 'cliVersion', value: '4.1.5')
                         ]
                     if (dockerBuild.result == "FAILURE") {
                         slackReport = slackReport + "\nBuild of Docker images FAILED!"
@@ -127,20 +125,14 @@ podTemplate(label: label,
                 }
                 when(relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
 // Axon Server - Canary tests
-//        string(name: 'namespace', defaultValue: 'axon-server-canary'),
-//        string(name: 'imageName', defaultValue: 'axonserver'),
-//        string(name: 'serverName', defaultValue: 'axon-server'),
-//        string(name: 'groupId', defaultValue: 'io.axoniq.axonserver'),
-//        string(name: 'artifactId', defaultValue: 'axonserver'),
-//        string(name: 'projectVersion', defaultValue: '4.0-M3-SNAPSHOT')
+//   string(name: 'serverEdition', defaultValue: 'se'),
+//   string(name: 'projectVersion', defaultValue: '4.2-SNAPSHOT'),
+//   string(name: 'cliVersion', defaultValue: '4.1.5')
                     def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
-                            string(name: 'namespace', value: props ['project.artifactId'] + '-canary'),
-                            string(name: 'imageName', value: 'axonserver'),
-                            string(name: 'serverName', value: 'axon-server'),
-                            string(name: 'groupId', value: props ['project.groupId']),
-                            string(name: 'artifactId', value: props ['project.artifactId']),
-                            string(name: 'projectVersion', value: props ['project.version'])
+                            string(name: 'serverEdition', value: 'ee'),
+                            string(name: 'projectVersion', value: props ['project.version']),
+                            string(name: 'cliVersion', value: '4.1.5')
                         ]
                     if (canaryTests.result == "FAILURE") {
                         slackReport = slackReport + "\nCanary Tests FAILED!"
