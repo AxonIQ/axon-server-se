@@ -60,6 +60,8 @@ public class RaftStatusRestController {
             media.with("lastAppliedTerm", raftGroup.logEntryProcessor().lastAppliedTerm());
             media.with("lastLogIndex", raftGroup.localLogEntryStore().lastLogIndex());
             media.with("lastLogTerm", raftGroup.localLogEntryStore().lastLog().getTerm());
+            media.with("firstLogIndex", raftGroup.localLogEntryStore().firstLogIndex());
+            media.with("firstLogTerm", raftGroup.localLogEntryStore().firstLog().getTerm());
             media.with("minElectionTimeout", raftGroup.raftConfiguration().minElectionTimeout());
             media.with("maxElectionTimeout", raftGroup.raftConfiguration().maxElectionTimeout());
             media.with("heartbeatTimeout", raftGroup.raftConfiguration().heartbeatTimeout());
