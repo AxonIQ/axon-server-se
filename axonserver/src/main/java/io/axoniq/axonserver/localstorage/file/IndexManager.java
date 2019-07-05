@@ -96,7 +96,11 @@ public class IndexManager {
         RuntimeException lastError = new RuntimeException();
         for (int retry = 0; retry < 3; retry++) {
             try {
-                return getIndex(segment).getPositions(aggregateId);
+                Index idx = getIndex(segment);
+                if (idx == null) {
+                    throw new RuntimeException("Doesn't exists a valid index for segment: " + segment);
+                }
+                return idx.getPositions(aggregateId);
             } catch (Throwable ex) {
                 lastError = new RuntimeException(
                         "Error happened while trying get positions for " + segment + " segment.", ex);
