@@ -16,4 +16,8 @@ public interface ProcessorStore {
     long commitTerm();
 
     long lastAppliedTerm();
+
+    default String groupId() {
+        return "ProcessorStore";
+    }
 }

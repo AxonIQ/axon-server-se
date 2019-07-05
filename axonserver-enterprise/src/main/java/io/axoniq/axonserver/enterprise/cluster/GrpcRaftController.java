@@ -236,12 +236,11 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     public RaftNode getOrCreateRaftNode(String groupId, String nodeId) {
         RaftGroup raftGroup = raftGroupMap.get(groupId);
         if(raftGroup != null) return raftGroup.localNode();
-        if( nodeId == null) return null;
 
         synchronized (raftGroupMap) {
             long deleted = deletedContexts.getOrDefault(groupId, 0L);
             if( deleted + 5000 > System.currentTimeMillis()) {
-                return null;
+                throw new RuntimeException(nodeId + " was recently removed from " + groupId);
             }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
@@ -251,6 +250,14 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return raftGroup.localNode();
     }
 
+    @Override
+    public RaftNode raftNode(String groupId) {
+        RaftGroup raftGroup = raftGroupMap.get(groupId);
+        if (raftGroup != null) {
+            return raftGroup.localNode();
+        }
+        return null;
+    }
 
     /**
      * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than 100 transactions per second.

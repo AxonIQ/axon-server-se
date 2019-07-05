@@ -42,6 +42,7 @@ logging:
     org.springframework.http.converter.json.Jackson2ObjectMapperBuilder: ERROR
     org.hibernate.orm.deprecation: ERROR
     com.zaxxer.hikari: ERROR
+    io.grpc.netty.NettyServerHandler: ERROR
 
 management:
   security:

@@ -347,16 +347,19 @@ class LocalRaftConfigService implements RaftConfigService {
 
         getFuture(
             raftGroupServiceFactory.getRaftGroupServiceForNode(target.getNodeName()).initContext(context, raftNodes)
-                                   .thenAccept(r -> {
-                                       ContextConfiguration contextConfiguration =
-                                               ContextConfiguration.newBuilder()
-                                                                   .setContext(context)
-                                                                   .addAllNodes(clusterNodes)
-                                                                   .build();
+                                   .thenAccept(contextConfiguration -> {
+                                       ContextConfiguration completed = ContextConfiguration.newBuilder(
+                                               contextConfiguration)
+                                                                                            .setPending(false)
+                                                                                            .build();
                                        appendToAdmin(ContextConfiguration.class.getName(),
-                                                                 contextConfiguration.toByteArray());
-                                   })
-                                   .whenComplete((success, error) -> contextsInProgress.remove(context)));
+                                                     completed.toByteArray());
+                                   }).whenComplete((success, error) -> {
+                contextsInProgress.remove(context);
+                if (error != null) {
+                    deleteContext(context);
+                }
+            }));
     }
 
     @Override

@@ -54,21 +54,22 @@ service RaftConfigService {
  */
 service RaftGroupService {
 
-    rpc InitContext(Context) returns (Confirmation) {}
+    rpc InitContext (Context) returns (ContextConfiguration) {
+    }
 
-    rpc DeleteContext(ContextName) returns (Confirmation) {}
+    rpc DeleteContext (ContextName) returns (Confirmation) {}
 
-    rpc AddServer(Context) returns (ContextUpdateConfirmation) {}
+    rpc AddServer (Context) returns (ContextUpdateConfirmation) {}
 
-    rpc RemoveServer(Context) returns (ContextUpdateConfirmation) {}
+    rpc RemoveServer (Context) returns (ContextUpdateConfirmation) {}
 
-    rpc MergeAppAuthorization(ContextApplication) returns (Confirmation) {}
+    rpc MergeAppAuthorization (ContextApplication) returns (Confirmation) {}
 
-    rpc DeleteAppAuthorization(ContextApplication) returns (Confirmation) {}
+    rpc DeleteAppAuthorization (ContextApplication) returns (Confirmation) {}
 
-    rpc MergeUserAuthorization(ContextUser) returns (Confirmation) {}
+    rpc MergeUserAuthorization (ContextUser) returns (Confirmation) {}
 
-    rpc DeleteUserAuthorization(ContextUser) returns (Confirmation) {}
+    rpc DeleteUserAuthorization (ContextUser) returns (Confirmation) {}
 
     rpc MergeLoadBalanceStrategy(ContextLoadBalanceStrategy) returns (Confirmation) {}
 
