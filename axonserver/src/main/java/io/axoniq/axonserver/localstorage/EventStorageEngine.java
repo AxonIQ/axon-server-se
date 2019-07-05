@@ -88,8 +88,9 @@ public interface EventStorageEngine {
     /**
      * Reserve the sequence numbers of the aggregates in the provided list to avoid collisions during store.
      * @param events list of events to store
+     * @param force force the specified sequence numbers to be correct
      */
-    default void reserveSequenceNumbers(List<SerializedEvent> events) {
+    default void reserveSequenceNumbers(List<SerializedEvent> events, boolean force) {
     }
 
     /**

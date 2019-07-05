@@ -85,7 +85,11 @@ public class Synchronizer {
         try {
             WritePosition toSync = syncAndCloseFile.pollFirst();
             if (toSync != null) {
-                closeFile(toSync);
+                try {
+                    closeFile(toSync);
+                } catch (Exception ex) {
+                    syncAndCloseFile.add(toSync);
+                }
             }
         } catch( RuntimeException t) {
             log.warn("syncAndClose job failed - {}", t.getMessage(), t);
