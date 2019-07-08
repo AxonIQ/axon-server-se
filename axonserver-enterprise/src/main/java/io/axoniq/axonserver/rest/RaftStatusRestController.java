@@ -97,6 +97,7 @@ public class RaftStatusRestController {
                 public Printable next() {
                     Node next = iterator.next();
                     return media -> media.with("id", next.getNodeId())
+                                         .with("name", next.getNodeName())
                                          .with("port", next.getPort())
                                          .with("host", next.getHost());
                 }

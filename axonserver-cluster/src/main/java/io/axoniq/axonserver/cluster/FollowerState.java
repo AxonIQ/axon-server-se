@@ -170,16 +170,6 @@ public class FollowerState extends AbstractMembershipState {
                 // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
                 rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
 
-                if (request.getPrevLogIndex() <= logEntryProcessor.lastAppliedIndex()) {
-                    logger.error("{} in term {}: last applied term {} last applied index {} first log index {}",
-                                 groupId(),
-                                 currentTerm(),
-                                 logEntryProcessor.lastAppliedTerm(),
-                                 logEntryProcessor.lastAppliedIndex(),
-                                 logEntryStore.firstLogIndex());
-                    logEntryProcessor.reset();
-                }
-
                 return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
