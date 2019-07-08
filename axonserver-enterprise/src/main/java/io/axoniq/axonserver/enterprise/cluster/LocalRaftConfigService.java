@@ -31,6 +31,7 @@ import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -703,6 +704,7 @@ class LocalRaftConfigService implements RaftConfigService {
      * @param becomeLeader the event
      */
     @EventListener
+    @Order(5)
     public void on(ClusterEvents.BecomeLeader becomeLeader) {
         checkPendingChanges(becomeLeader.getContext());
     }

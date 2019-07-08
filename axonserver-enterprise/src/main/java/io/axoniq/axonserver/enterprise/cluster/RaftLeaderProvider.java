@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -37,6 +38,7 @@ public class RaftLeaderProvider {
     }
 
     @EventListener
+    @Order(10)
     public void on(ClusterEvents.BecomeLeader becomeLeader) {
         leaderMap.put(becomeLeader.getContext(), node);
     }
