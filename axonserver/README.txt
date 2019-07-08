@@ -3,17 +3,18 @@ This is the Axon Server Standard Edition, version 4.1.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.1.6
+-------------------------------
+
+* Added operation to set cached version numbers for aggregates
+
 Release Notes for version 4.1.5
 -------------------------------
 
 * Fix for authorization path mapping and improvements for rest access control
-
 * Improvements in release procedure for docker images
-
 * Fix for subscription query memory leak
-
 * Improvements in error reporting in case of disconnected applications
-
 * Improvements in detection of insufficient disk space
 
 Release Notes for version 4.1.4
