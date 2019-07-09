@@ -96,7 +96,8 @@ public class IndexManager {
         RuntimeException lastError = new RuntimeException();
         for (int retry = 0; retry < 3; retry++) {
             try {
-                return getIndex(segment).getPositions(aggregateId);
+                Index idx = getIndex(segment);
+                return idx.getPositions(aggregateId);
             } catch (Throwable ex) {
                 lastError = new RuntimeException(
                         "Error happened while trying get positions for " + segment + " segment.", ex);
@@ -105,12 +106,20 @@ public class IndexManager {
         throw lastError;
     }
 
+    /**
+     * Returns the {@link Index} for the specified segment.
+     *
+     * @param segment the segment
+     * @return the {@link Index} for the specified segment
+     *
+     * @throws IndexNotFoundException if the attempt to open tha index file fails
+     */
     public Index getIndex(long segment) {
         synchronized (indexLock) {
             Index index = indexMap.get(segment);
             if (index == null || index.db.isClosed()) {
                 if (!storageProperties.index(context, segment).exists()) {
-                    return null;
+                    throw new IndexNotFoundException("Index not found for segment: " + segment);
                 }
                 index = new Index(segment);
                 indexMap.put(segment, index);
