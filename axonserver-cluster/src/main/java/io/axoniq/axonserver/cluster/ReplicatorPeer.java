@@ -176,7 +176,7 @@ public class ReplicatorPeer {
         /**
          * Sends one InstallSnapshot request to the peer. A single request can contain a number of objects (limited by the transaction
          * size and the configuration parameter max-snapshot-chunks-per-batch).
-         * @return number of InstallSnapshot requests actually sent.
+         * @return 1 to force the replication thread to keep on attempting to send data without waiting
          */
         @Override
         public int sendNextEntries() {
