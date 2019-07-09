@@ -227,7 +227,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void reserveSequenceNumbers(List<SerializedEvent> events) {
+    public void reserveSequenceNumbers(List<SerializedEvent> events, boolean force) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
               .map(SerializedEvent::asEvent)
@@ -236,15 +236,30 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         Map<String, Long> oldSequenceNumberPerAggregate = new HashMap<>();
         for( Map.Entry<String,MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
-            AtomicLong current = sequenceNumbersPerAggregate.computeIfAbsent(entry.getKey(),
-                                                                             id -> lastSequenceForAggregate(id, entry.getValue().getMin() > 0));
+            if (force) {
+                sequenceNumbersPerAggregate.put(entry.getKey(), new AtomicLong(entry.getValue().getMax()));
+                logger.warn("Forcefully setting sequence number for {} to {}",
+                            entry.getKey(),
+                            entry.getValue().getMax());
+            } else {
+                AtomicLong current = sequenceNumbersPerAggregate.computeIfAbsent(entry.getKey(),
+                                                                                 id -> lastSequenceForAggregate(id,
+                                                                                                                entry.getValue()
+                                                                                                                     .getMin()
+                                                                                                                        > 0));
 
-            if( ! current.compareAndSet(entry.getValue().getMin() - 1, entry.getValue().getMax())) {
-                oldSequenceNumberPerAggregate.forEach((aggregateId, sequenceNumber) -> sequenceNumbersPerAggregate.put(aggregateId, new AtomicLong(sequenceNumber)));
-                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE, String.format("Invalid sequence number %d for aggregate %s, expected %d",
-                                                                                               entry.getValue().getMin(), entry.getKey(), current.get()+1));
+                if (!current.compareAndSet(entry.getValue().getMin() - 1, entry.getValue().getMax())) {
+                    oldSequenceNumberPerAggregate.forEach((aggregateId, sequenceNumber) -> sequenceNumbersPerAggregate
+                            .put(aggregateId, new AtomicLong(sequenceNumber)));
+                    throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                                                         String.format(
+                                                                 "Invalid sequence number %d for aggregate %s, expected %d",
+                                                                 entry.getValue().getMin(),
+                                                                 entry.getKey(),
+                                                                 current.get() + 1));
+                }
+                oldSequenceNumberPerAggregate.putIfAbsent(entry.getKey(), entry.getValue().getMin() - 1);
             }
-            oldSequenceNumberPerAggregate.putIfAbsent(entry.getKey(), entry.getValue().getMin() - 1);
         }
     }
 
@@ -346,17 +361,15 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private void completeSegment(WritePosition writePosition) {
-        try {
-            indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment), false);
-        } catch( RuntimeException re) {
-            logger.warn("Failed to create index", re);
-        }
-        if( next != null) {
+        indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment));
+        if (next != null) {
             next.handover(writePosition.segment, () -> {
                 positionsPerSegmentMap.remove(writePosition.segment);
                 sequenceNumbersPerAggregate.clear();
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
-                logger.debug("Handed over {}, remaining segments: {}", writePosition.segment, positionsPerSegmentMap.keySet());
+                logger.debug("Handed over {}, remaining segments: {}",
+                             writePosition.segment,
+                             positionsPerSegmentMap.keySet());
                 source.clean(storageProperties.getPrimaryCleanupDelay());
             });
         }
