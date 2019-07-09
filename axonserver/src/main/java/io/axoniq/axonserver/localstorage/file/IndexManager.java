@@ -105,12 +105,20 @@ public class IndexManager {
         throw lastError;
     }
 
+    /**
+     * Returns the {@link Index} for the specified segment.
+     *
+     * @param segment the segment
+     * @return the {@link Index} for the specified segment
+     *
+     * @throws IndexNotFoundException if the attempt to open tha index file fails
+     */
     public Index getIndex(long segment) {
         synchronized (indexLock) {
             Index index = indexMap.get(segment);
             if (index == null || index.db.isClosed()) {
                 if (!storageProperties.index(context, segment).exists()) {
-                    throw new RuntimeException("Index not found for segment: " + segment);
+                    throw new IndexNotFoundException("Index not found for segment: " + segment);
                 }
                 index = new Index(segment);
                 indexMap.put(segment, index);
