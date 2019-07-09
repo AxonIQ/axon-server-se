@@ -170,6 +170,7 @@ public class ReplicatorPeer {
             registration.cancel();
             if (subscription != null) {
                 subscription.cancel();
+                subscription = null;
             }
         }
 

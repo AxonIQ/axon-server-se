@@ -112,8 +112,7 @@ public class LogEntryProcessor {
 
     /**
      * Reset pointers of the log entry processor when applied entry is higher than last log entry. In this case we want
-     * to
-     * start from a snapshot again.
+     * to start from a snapshot again.
      */
     public void reset() {
         processorStore.updateCommit(0, 0);
