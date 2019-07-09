@@ -361,18 +361,15 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private void completeSegment(WritePosition writePosition) {
-        try {
-            indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment), false);
-        } catch( RuntimeException re) {
-            logger.error("Failed to create index", re);
-            throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR, re.getMessage(), re);
-        }
-        if( next != null) {
+        indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment));
+        if (next != null) {
             next.handover(writePosition.segment, () -> {
                 positionsPerSegmentMap.remove(writePosition.segment);
                 sequenceNumbersPerAggregate.clear();
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
-                logger.debug("Handed over {}, remaining segments: {}", writePosition.segment, positionsPerSegmentMap.keySet());
+                logger.debug("Handed over {}, remaining segments: {}",
+                             writePosition.segment,
+                             positionsPerSegmentMap.keySet());
                 source.clean(storageProperties.getPrimaryCleanupDelay());
             });
         }

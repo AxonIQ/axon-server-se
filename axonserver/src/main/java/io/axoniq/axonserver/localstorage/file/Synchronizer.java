@@ -82,28 +82,17 @@ public class Synchronizer {
     }
 
     private void syncAndCloseFile() {
-        try {
-            WritePosition toSync = syncAndCloseFile.pollFirst();
-            if (toSync != null) {
-                try {
-                    closeFile(toSync);
-                } catch (Exception ex) {
-                    syncAndCloseFile.add(toSync);
-                }
+        WritePosition toSync = syncAndCloseFile.pollFirst();
+        if (toSync != null) {
+            try {
+                log.debug("Syncing segment and index at {}", toSync);
+                completeSegmentCallback.accept(toSync);
+                log.info("Synced segment and index at {}", toSync);
+            } catch (Exception ex) {
+                log.warn("Failed to close file {} - {}", toSync.segment, ex.getMessage());
+                syncAndCloseFile.add(toSync);
             }
-        } catch( RuntimeException t) {
-            log.warn("syncAndClose job failed - {}", t.getMessage(), t);
         }
-    }
-
-    private void closeFile(WritePosition toSync) {
-        log.debug("Syncing segment and index at {}", toSync);
-        try {
-            completeSegmentCallback.accept(toSync);
-        } catch (Exception e) {
-            log.debug("Failed to close file {}", toSync.segment, e);
-        }
-        log.info("Synced segment and index at {}", toSync);
     }
 
     public void register(WritePosition writePosition, StorageCallback callback) {

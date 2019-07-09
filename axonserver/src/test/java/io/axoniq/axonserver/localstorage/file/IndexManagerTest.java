@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.SortedSet;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -52,7 +51,7 @@ public class IndexManagerTest {
         positions.add(positionInfo);
         Map<String, SortedSet<PositionInfo>> positionsPerAggregate = Collections.singletonMap(aggregateId,
                                                                                               positions);
-        indexManager.createIndex(segment, positionsPerAggregate, true);
+        indexManager.createIndex(segment, positionsPerAggregate);
 
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         int concurrentRequests = 100;
