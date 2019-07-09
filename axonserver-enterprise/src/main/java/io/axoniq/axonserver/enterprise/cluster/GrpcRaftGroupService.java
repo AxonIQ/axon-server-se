@@ -34,21 +34,23 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
+    public void initContext(Context request, StreamObserver<ContextConfiguration> responseObserver) {
         logger.debug("Init context: {}", request);
         try {
-            localRaftGroupService.initContext(request.getName(),
-                                              request.getMembersList()
-                                                     .stream()
-                                                     .map(contextMember -> Node.newBuilder()
+            ContextConfiguration contextConfiguration = localRaftGroupService.initContext(request.getName(),
+                                                                                          request.getMembersList()
+                                                                                                 .stream()
+                                                                                                 .map(contextMember -> Node.newBuilder()
                                                                                .setNodeId(contextMember.getNodeId())
                                                                                .setHost(contextMember.getHost())
                                                                                .setPort(contextMember.getPort())
                                                                                .setNodeName(contextMember.getNodeName())
                                                                                .build())
-                                                     .collect(Collectors.toList()));
+                                                                                                 .collect(Collectors
+                                                                                                                  .toList()))
+                                                                             .get();
 
-            responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+            responseObserver.onNext(contextConfiguration);
             responseObserver.onCompleted();
         } catch (Throwable t) {
             logger.warn("Init context failed: {}", request, t);

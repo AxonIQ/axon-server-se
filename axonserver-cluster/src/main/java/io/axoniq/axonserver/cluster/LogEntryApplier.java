@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.exception.LogEntryApplyException;
 import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -136,7 +137,7 @@ class LogEntryApplier {
                         ex);
             reschedule(newSchedule);
             // TODO: 6/12/2019 rollback transaction?
-            throw new RuntimeException("Failed to apply entry", ex);
+            throw new LogEntryApplyException("Failed to apply entry", ex);
         }
         
         reschedule(1);

@@ -31,6 +31,7 @@ import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -347,16 +348,19 @@ class LocalRaftConfigService implements RaftConfigService {
 
         getFuture(
             raftGroupServiceFactory.getRaftGroupServiceForNode(target.getNodeName()).initContext(context, raftNodes)
-                                   .thenAccept(r -> {
-                                       ContextConfiguration contextConfiguration =
-                                               ContextConfiguration.newBuilder()
-                                                                   .setContext(context)
-                                                                   .addAllNodes(clusterNodes)
-                                                                   .build();
+                                   .thenAccept(contextConfiguration -> {
+                                       ContextConfiguration completed = ContextConfiguration.newBuilder(
+                                               contextConfiguration)
+                                                                                            .setPending(false)
+                                                                                            .build();
                                        appendToAdmin(ContextConfiguration.class.getName(),
-                                                                 contextConfiguration.toByteArray());
-                                   })
-                                   .whenComplete((success, error) -> contextsInProgress.remove(context)));
+                                                     completed.toByteArray());
+                                   }).whenComplete((success, error) -> {
+                contextsInProgress.remove(context);
+                if (error != null) {
+                    deleteContext(context);
+                }
+            }));
     }
 
     @Override
@@ -700,6 +704,7 @@ class LocalRaftConfigService implements RaftConfigService {
      * @param becomeLeader the event
      */
     @EventListener
+    @Order(5)
     public void on(ClusterEvents.BecomeLeader becomeLeader) {
         checkPendingChanges(becomeLeader.getContext());
     }

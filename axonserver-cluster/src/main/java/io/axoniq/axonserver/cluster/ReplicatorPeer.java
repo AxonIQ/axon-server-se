@@ -46,13 +46,13 @@ public class ReplicatorPeer {
         default void stop() {
         }
 
-        int sendNextEntries(boolean fromNotify);
+        int sendNextEntries();
     }
 
     private class IdleReplicatorPeerState implements ReplicatorPeerState {
 
         @Override
-        public int sendNextEntries(boolean fromNotify) {
+        public int sendNextEntries() {
             return 0;
         }
 
@@ -131,8 +131,7 @@ public class ReplicatorPeer {
                                @Override
                                public void onError(Throwable t) {
                                    logger.error("{} in term {}: Install snapshot failed.", groupId(), currentTerm(), t);
-                                   subscription.cancel();
-                                   changeStateTo(new IdleReplicatorPeerState());
+                                   changeStateTo(new AppendEntryState());
                                }
 
                                @Override
@@ -169,27 +168,23 @@ public class ReplicatorPeer {
         @Override
         public void stop() {
             registration.cancel();
+            if (subscription != null) {
+                subscription.cancel();
+                subscription = null;
+            }
         }
 
         /**
          * Sends one InstallSnapshot request to the peer. A single request can contain a number of objects (limited by the transaction
          * size and the configuration parameter max-snapshot-chunks-per-batch).
-         * @param fromNotify
-         * @return number of InstallSnapshot requests actually sent.
+         * @return 1 to force the replication thread to keep on attempting to send data without waiting
          */
         @Override
-        public int sendNextEntries(boolean fromNotify) {
-            if( fromNotify) {
-                logger.debug("{}: SendNextEntries called from notify", groupId());
-                return 0;
-            }
-            int sent = 0;
-
+        public int sendNextEntries() {
             if (canSend()) {
                 subscription.request(1);
-                sent++;
             }
-            return sent;
+            return 1;
         }
 
         private void send(InstallSnapshotRequest request) {
@@ -278,11 +273,10 @@ public class ReplicatorPeer {
          * and total time allowed to send messages is limited to the heartbeat timeout.
          * Method also stops sending messages when the StreamObserver (in raftPeer) is not ready (too many waiting bytes).
          *
-         * @param fromNotify
-         * @return
+         * @return number of entries sent
          */
         @Override
-        public int sendNextEntries(boolean fromNotify) {
+        public int sendNextEntries() {
             int sent = 0;
             try {
                 long maxTime = System.currentTimeMillis() + raftGroup.raftConfiguration().heartbeatTimeout();
@@ -545,8 +539,8 @@ public class ReplicatorPeer {
         return matchIndex.get();
     }
 
-    public int sendNextMessage(boolean fromNotify) {
-        return currentState.sendNextEntries(fromNotify);
+    public int sendNextMessage() {
+        return currentState.sendNextEntries();
     }
 
     private String groupId() {

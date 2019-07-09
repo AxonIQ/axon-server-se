@@ -55,6 +55,7 @@ public class LeaderState extends AbstractMembershipState {
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private final MatchStrategy matchStrategy;
     private final AtomicLong lastConfirmed = new AtomicLong();
+    private volatile CompletableFuture<ConfigChangeResult> pendingConfigurationChange;
     private volatile Replicators replicators;
 
     private LeaderState(Builder builder) {
@@ -109,13 +110,16 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public CompletableFuture<ConfigChangeResult> addServer(Node node) {
-        return clusterConfiguration.addServer(node);
+        pendingConfigurationChange = clusterConfiguration.addServer(node);
+        return pendingConfigurationChange;
     }
 
     @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
-        return clusterConfiguration.removeServer(nodeId).thenApply(configChangeResult -> checkCurrentNodeDeleted(
+        pendingConfigurationChange = clusterConfiguration.removeServer(nodeId)
+                                                         .thenApply(configChangeResult -> checkCurrentNodeDeleted(
                 configChangeResult, nodeId));
+        return pendingConfigurationChange;
     }
 
     private ConfigChangeResult checkCurrentNodeDeleted(ConfigChangeResult configChangeResult, String nodeId) {
@@ -143,6 +147,11 @@ public class LeaderState extends AbstractMembershipState {
         if (replicators != null) {
             replicators.stop();
             replicators = null;
+        }
+        if (pendingConfigurationChange != null && !pendingConfigurationChange.isDone()) {
+            pendingConfigurationChange.completeExceptionally(new IllegalStateException(
+                    "Leader stepped down during processing of transaction"));
+            pendingConfigurationChange = null;
         }
         pendingEntries.forEach((index, completableFuture) -> completableFuture
                 .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
@@ -375,7 +384,7 @@ public class LeaderState extends AbstractMembershipState {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
                 otherPeersStream().forEach(this::registerNode);
-                scheduler.get().execute(() -> replicate(false));
+                scheduler.get().execute(this::replicate);
                 logger.info("{} in term {}: Start replication thread for {} peers.",
                             groupId(),
                             currentTerm(),
@@ -385,7 +394,7 @@ public class LeaderState extends AbstractMembershipState {
             }
         }
 
-        private void replicate(boolean fromNotify) {
+        private void replicate() {
             if (!replicationRunning.compareAndSet(false, true)) {
                 // it's fine, replication is already in progress
                 return;
@@ -397,7 +406,7 @@ public class LeaderState extends AbstractMembershipState {
                             while (runsWithoutChanges < 3) {
                                 int sent = 0;
                                 for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
-                                    sent += time(() -> raftPeer.sendNextMessage(fromNotify), raftPeer.nodeId());
+                                    sent += time(raftPeer::sendNextMessage, raftPeer.nodeId());
                                 }
                                 if (sent == 0) {
                                     runsWithoutChanges++;
@@ -406,7 +415,7 @@ public class LeaderState extends AbstractMembershipState {
                                 }
                             }
                         } finally {
-                            schedulerInstance.schedule(() -> replicate(false),
+                            schedulerInstance.schedule(this::replicate,
                                                        raftGroup().raftConfiguration().heartbeatTimeout()/2,
                                                        MILLISECONDS);
                             replicationRunning.set(false);
@@ -448,7 +457,7 @@ public class LeaderState extends AbstractMembershipState {
 
         void notifySenders() {
             if( ! replicationRunning.get()) {
-                scheduler.get().execute(() -> replicate(true));
+                scheduler.get().execute(this::replicate);
             }
         }
 

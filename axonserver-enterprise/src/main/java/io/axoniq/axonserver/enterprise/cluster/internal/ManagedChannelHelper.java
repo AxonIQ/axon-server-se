@@ -55,7 +55,6 @@ public class ManagedChannelHelper {
             if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
                 builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
             }
-            builder.directExecutor();
             channel = builder.build();
         } catch(Exception ex) {
             logger.warn("Error while building channel - {}", ex.getMessage());
