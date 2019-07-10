@@ -99,7 +99,7 @@ public class CleanUtils {
         try {
             cleanMethod.invoke(cleanerMethod.invoke(buf));
             logger.debug("Memory mapped buffer cleared for {}", file);
-        } catch (IllegalArgumentException | InvocationTargetException | SecurityException | IllegalAccessException exception) {
+        } catch (Throwable exception) {
             logger.warn("Clean failed", exception);
         }
     }

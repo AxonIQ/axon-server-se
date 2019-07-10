@@ -313,11 +313,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private void completeSegment(WritePosition writePosition) {
-        try {
-            indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment), false);
-        } catch (RuntimeException re) {
-            logger.warn("Failed to create index", re);
-        }
+        indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment));
         if (next != null) {
             next.handover(writePosition.segment, () -> {
                 positionsPerSegmentMap.remove(writePosition.segment);

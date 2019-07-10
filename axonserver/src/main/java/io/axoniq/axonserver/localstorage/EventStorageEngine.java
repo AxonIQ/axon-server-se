@@ -95,6 +95,14 @@ public interface EventStorageEngine {
     Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber);
 
     /**
+     * Reserve the sequence numbers of the aggregates in the provided list to avoid collisions during store.
+     * @param events list of events to store
+     * @param force force the specified sequence numbers to be correct
+     */
+    default void reserveSequenceNumbers(List<SerializedEvent> events, boolean force) {
+    }
+
+    /**
      * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
      * @param aggregateId the aggregate identifier
      * @param minSequenceNumber the first sequence number to retrieve
