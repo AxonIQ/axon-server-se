@@ -47,11 +47,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final String name;
 
-    private final PrimaryLogEntryStore primaryEventStore;
+    private final PrimaryLogEntryStore primaryLogEntryStore;
 
-    public FileSegmentLogEntryStore(String name, PrimaryLogEntryStore primaryEventStore) {
+    public FileSegmentLogEntryStore(String name, PrimaryLogEntryStore primaryLogEntryStore) {
         this.name = name;
-        this.primaryEventStore = primaryEventStore;
+        this.primaryLogEntryStore = primaryLogEntryStore;
     }
 
     @Override
@@ -62,9 +62,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                                                                 .setData(ByteString.copyFrom(entryData))
                                                                 .setType(entryType)
                                                                 .build();
-            CompletableFuture<Long> writeCompleted = primaryEventStore.write(currentTerm,
-                                                                             Entry.DataCase.SERIALIZEDOBJECT.getNumber(),
-                                                                             serializedObject.toByteArray());
+            CompletableFuture<Long> writeCompleted = primaryLogEntryStore.write(currentTerm,
+                                                                                Entry.DataCase.SERIALIZEDOBJECT.getNumber(),
+                                                                                serializedObject.toByteArray());
 
             writeCompleted.whenComplete((index, throwable ) -> {
                 if( throwable != null) {
@@ -90,9 +90,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     public CompletableFuture<Entry> createEntry(long currentTerm, Config config) {
         CompletableFuture<Entry> completableFuture = new CompletableFuture<>();
         try {
-            CompletableFuture<Long> writeCompleted = primaryEventStore.write(currentTerm,
-                                                                             Entry.DataCase.NEWCONFIGURATION.getNumber(),
-                                                                             config.toByteArray());
+            CompletableFuture<Long> writeCompleted = primaryLogEntryStore.write(currentTerm,
+                                                                                Entry.DataCase.NEWCONFIGURATION.getNumber(),
+                                                                                config.toByteArray());
 
             writeCompleted.whenComplete((index, throwable ) -> {
                 if( throwable != null) {
@@ -119,9 +119,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     public CompletableFuture<Entry> createEntry(long currentTerm, LeaderElected leader) {
         CompletableFuture<Entry> completableFuture = new CompletableFuture<>();
         try {
-            CompletableFuture<Long> writeCompleted = primaryEventStore.write(currentTerm,
-                                                                             Entry.DataCase.LEADERELECTED.getNumber(),
-                                                                             leader.toByteArray());
+            CompletableFuture<Long> writeCompleted = primaryLogEntryStore.write(currentTerm,
+                                                                                Entry.DataCase.LEADERELECTED.getNumber(),
+                                                                                leader.toByteArray());
 
             writeCompleted.whenComplete((index, throwable ) -> {
                 if( throwable != null) {
@@ -159,13 +159,13 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                 CompletableFuture<Long> writeCompleted = null;
                 switch (e.getDataCase()) {
                     case SERIALIZEDOBJECT:
-                        writeCompleted = primaryEventStore.write(e.getTerm(), Entry.DataCase.SERIALIZEDOBJECT.getNumber(), e.getSerializedObject().toByteArray());
+                        writeCompleted = primaryLogEntryStore.write(e.getTerm(), Entry.DataCase.SERIALIZEDOBJECT.getNumber(), e.getSerializedObject().toByteArray());
                         break;
                     case NEWCONFIGURATION:
-                        writeCompleted = primaryEventStore.write(e.getTerm(), Entry.DataCase.NEWCONFIGURATION.getNumber(), e.getNewConfiguration().toByteArray());
+                        writeCompleted = primaryLogEntryStore.write(e.getTerm(), Entry.DataCase.NEWCONFIGURATION.getNumber(), e.getNewConfiguration().toByteArray());
                         break;
                     case LEADERELECTED:
-                        writeCompleted = primaryEventStore.write(e.getTerm(), Entry.DataCase.LEADERELECTED.getNumber(), e.getLeaderElected().toByteArray());
+                        writeCompleted = primaryLogEntryStore.write(e.getTerm(), Entry.DataCase.LEADERELECTED.getNumber(), e.getLeaderElected().toByteArray());
                         break;
                     case DATA_NOT_SET:
                         break;
@@ -187,8 +187,8 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     private void deleteFrom(long index) {
-        primaryEventStore.getEntryIterator(index).forEachRemaining(e -> rollbackListeners.forEach(l -> l.accept(e)));
-        primaryEventStore.rollback(index-1);
+        primaryLogEntryStore.getEntryIterator(index).forEachRemaining(e -> rollbackListeners.forEach(l -> l.accept(e)));
+        primaryLogEntryStore.rollback(index-1);
     }
 
     @Override
@@ -200,25 +200,32 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     @Override
     public Entry getEntry(long index) {
         if( index == 0) return null;
-        return primaryEventStore.getEntry(index);
+        return primaryLogEntryStore.getEntry(index);
     }
 
 
     @Override
     public TermIndex lastLog() {
-        Entry entry = getEntry(primaryEventStore.getLastToken());
+        Entry entry = getEntry(primaryLogEntryStore.getLastToken());
+
+        return entry == null ? new TermIndex(0, 0) : new TermIndex(entry.getTerm(), entry.getIndex());
+    }
+
+    @Override
+    public TermIndex firstLog() {
+        Entry entry = getEntry(primaryLogEntryStore.getFirstToken());
 
         return entry == null ? new TermIndex(0, 0) : new TermIndex(entry.getTerm(), entry.getIndex());
     }
 
     @Override
     public long lastLogIndex() {
-        return primaryEventStore.getLastToken();
+        return primaryLogEntryStore.getLastToken();
     }
 
     @Override
     public long firstLogIndex() {
-        return primaryEventStore.getFirstToken();
+        return primaryLogEntryStore.getFirstToken();
     }
 
     @Override
@@ -235,7 +242,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
 
     @Override
     public EntryIterator createIterator(long index) {
-        long lowerBound = primaryEventStore.getFirstToken();
+        long lowerBound = primaryLogEntryStore.getFirstToken();
         if (index < lowerBound) {
             throw new IllegalArgumentException("Read before start");
         }
@@ -244,21 +251,21 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
 
     @Override
     public void clear(long lastIndex) {
-        primaryEventStore.clear(lastIndex);
-        primaryEventStore.init(false);
+        primaryLogEntryStore.clear(lastIndex);
+        primaryLogEntryStore.init(false);
     }
 
     @Override
     public void delete() {
-        primaryEventStore.delete();
+        primaryLogEntryStore.delete();
     }
 
     @Override
     public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
-        primaryEventStore.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
+        primaryLogEntryStore.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
     }
 
     public Stream<String> getBackupFilenames(){
-        return primaryEventStore.getBackupFilenames(0L);
+        return primaryLogEntryStore.getBackupFilenames(0L);
     }
 }

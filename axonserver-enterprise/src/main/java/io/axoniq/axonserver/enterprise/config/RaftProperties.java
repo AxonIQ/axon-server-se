@@ -43,7 +43,7 @@ public class RaftProperties extends StorageProperties {
     /**
      * Number of unconfirmed install snapshot messages that may be sent to peer.
      */
-    private int snapshotFlowBuffer = 500;
+    private int snapshotFlowBuffer = 50;
     /**
      * Maximum number of objects that can be sent in a single install snapshot message.
      */

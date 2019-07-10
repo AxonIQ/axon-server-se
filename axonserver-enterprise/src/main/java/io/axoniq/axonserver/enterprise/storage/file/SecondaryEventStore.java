@@ -71,7 +71,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
                                                         event.getEvent().getAggregateSequenceNumber()));
             }
         }
-        indexManager.createIndex(segment, aggregatePositions, true);
+        indexManager.createIndex(segment, aggregatePositions);
 
     }
 

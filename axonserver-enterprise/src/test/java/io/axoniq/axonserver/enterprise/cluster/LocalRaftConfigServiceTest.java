@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
@@ -154,11 +155,24 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public CompletableFuture<Void> initContext(String context, List<Node> nodes) {
+        public CompletableFuture<ContextConfiguration> initContext(String context, List<Node> nodes) {
             GroupDB groupDB = new GroupDB();
             nodes.forEach(n -> groupDB.nodes.put(n.getNodeId(), n.getNodeName()));
             groupDBs.put(context, groupDB);
-            return CompletableFuture.completedFuture(null);
+            ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
+                                                                            .setContext(context)
+                                                                            .addAllNodes(nodes.stream()
+                                                                                              .map(n -> NodeInfoWithLabel
+                                                                                                      .newBuilder()
+                                                                                                      .setLabel(n.getNodeName())
+                                                                                                      .setNode(NodeInfo.newBuilder()
+                                                                                                                       .setNodeName(
+                                                                                                                               n.getNodeName()))
+                                                                                                      .build())
+                                                                                              .collect(Collectors
+                                                                                                               .toList()))
+                                                                            .build();
+            return CompletableFuture.completedFuture(contextConfiguration);
         }
 
         @Override

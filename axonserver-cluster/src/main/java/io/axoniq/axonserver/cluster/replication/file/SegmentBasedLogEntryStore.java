@@ -117,16 +117,12 @@ public abstract class SegmentBasedLogEntryStore {
                             .orElse(next == null ? -1 : next.getSegmentFor(token));
     }
 
-    public boolean replicated() {
-        return true;
-    }
-
     protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {
         SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
-        File events  = new File(storageProperties.getStorage(context));
-        FileUtils.checkCreateDirectory(events);
-        String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getLogSuffix());
-        Arrays.stream(eventFiles)
+        File logEntryFolder = new File(storageProperties.getStorage(context));
+        FileUtils.checkCreateDirectory(logEntryFolder);
+        String[] entriesFiles = FileUtils.getFilesWithSuffix(logEntryFolder, storageProperties.getLogSuffix());
+        Arrays.stream(entriesFiles)
               .map(name -> Long.valueOf(name.substring(0, name.indexOf('.'))))
               .filter(segment -> segment < lastInitialized)
               .forEach(segments::add);

@@ -57,7 +57,6 @@ public class ManagedChannelHelper {
                 builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
             }
             builder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
-            builder.directExecutor();
             channel = builder.build();
         } catch(Exception ex) {
             logger.warn("Error while building channel - {}", ex.getMessage());

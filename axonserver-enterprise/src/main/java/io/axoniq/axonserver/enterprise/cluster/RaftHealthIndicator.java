@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
@@ -12,17 +11,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class RaftHealthIndicator extends AbstractHealthIndicator {
     private final GrpcRaftController raftController;
+    private final RaftLeaderProvider raftLeaderProvider;
 
-    public RaftHealthIndicator(GrpcRaftController raftController) {
+    public RaftHealthIndicator(GrpcRaftController raftController,
+                               RaftLeaderProvider raftLeaderProvider) {
         this.raftController = raftController;
+        this.raftLeaderProvider = raftLeaderProvider;
     }
 
     @Override
     protected void doHealthCheck(Health.Builder builder)  {
         builder.up();
         raftController.getContexts().forEach(c -> {
-            RaftGroup raftGroup = raftController.getRaftGroup(c);
-            builder.withDetail(c + ".leader", StringUtils.getOrDefault(raftGroup.localNode().getLeaderName(), "None"));
+            builder.withDetail(c + ".leader", StringUtils.getOrDefault(raftLeaderProvider.getLeader(c), "None"));
         });
 
     }

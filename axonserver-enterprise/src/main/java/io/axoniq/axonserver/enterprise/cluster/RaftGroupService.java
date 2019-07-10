@@ -29,7 +29,7 @@ public interface RaftGroupService {
 
     CompletableFuture<Void> getStatus(Consumer<Context> contextConsumer);
 
-    CompletableFuture<Void> initContext(String context, List<Node> nodes);
+    CompletableFuture<ContextConfiguration> initContext(String context, List<Node> nodes);
 
     /**
      * Deletes a node from a raft group. Returns configuration of the group as defined in the group after completion.
