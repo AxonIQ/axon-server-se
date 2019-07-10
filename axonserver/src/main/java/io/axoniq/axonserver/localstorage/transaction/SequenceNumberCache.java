@@ -17,7 +17,6 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.time.Clock;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +49,7 @@ public class SequenceNumberCache {
     private final Clock clock;
     private final Map<String, SequenceNumber> sequenceNumbersPerAggregate = new ConcurrentHashMap<>();
     private final ScheduledFuture<?> cleanupTask;
+    private final Set<String> lockedAggregates = ConcurrentHashMap.newKeySet();
 
 
     /**
@@ -87,6 +87,20 @@ public class SequenceNumberCache {
      * @param events list of events to store
      */
     public void reserveSequenceNumbers(List<SerializedEvent> events) {
+        reserveSequenceNumbers(events, false);
+    }
+
+    /**
+     * Reserve the sequence numbers of the aggregates in the provided list to avoid collisions during store.
+     * <p>
+     * Option {@code force} is used by enterprise edition to set sequence numbers for aggregates of transactions that
+     * were
+     * previously validated.
+     *
+     * @param events list of events to store
+     * @param force  accept the sequence numbers from the events list as valid
+     */
+    public void reserveSequenceNumbers(List<SerializedEvent> events, boolean force) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
               .filter(SerializedEvent::isDomainEvent)
@@ -96,23 +110,50 @@ public class SequenceNumberCache {
                                                                                    e.getAggregateSequenceNumber()))
                                               .setMax(e.getAggregateSequenceNumber()));
 
-        Set<String> aggregatesUpdated = new HashSet<>();
-        for (Map.Entry<String, MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
-            SequenceNumber updated = sequenceNumbersPerAggregate.compute(entry.getKey(),
-                                                                         (aggId, old) -> checkAndUpdateSequenceNumber(
-                                                                                 aggId,
-                                                                                 old,
-                                                                                 entry.getValue()));
-            if (!updated.isValid()) {
-                aggregatesUpdated.forEach(sequenceNumbersPerAggregate::remove);
-                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
-                                                     String.format(
-                                                             "Invalid sequence number %d for aggregate %s, expected %d",
-                                                             entry.getValue().getMin(),
-                                                             entry.getKey(),
-                                                             updated.get() + 1));
+        lock(minMaxPerAggregate.keySet());
+        try {
+            Map<String, SequenceNumber> oldSequenceNumbers = new HashMap<>();
+            for (Map.Entry<String, MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
+                if (force) {
+                    sequenceNumbersPerAggregate.put(entry.getKey(), new SequenceNumber(entry.getValue().getMax()));
+                } else {
+                    SequenceNumber updated = sequenceNumbersPerAggregate.compute(entry.getKey(),
+                                                                                 (aggId, old) -> checkAndUpdateSequenceNumber(
+                                                                                         aggId,
+                                                                                         old,
+                                                                                         entry.getValue()));
+                    if (!updated.isValid()) {
+                        synchronized (sequenceNumbersPerAggregate) {
+                            sequenceNumbersPerAggregate.putAll(oldSequenceNumbers);
+                        }
+                        throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                                                             String.format(
+                                                                     "Invalid sequence number %d for aggregate %s, expected %d",
+                                                                     entry.getValue().getMin(),
+                                                                     entry.getKey(),
+                                                                     updated.get() + 1));
+                    }
+                    oldSequenceNumbers.putIfAbsent(entry.getKey(), new SequenceNumber(entry.getValue().getMin() - 1));
+                }
             }
-            aggregatesUpdated.add(entry.getKey());
+        } finally {
+            unlock(minMaxPerAggregate.keySet());
+        }
+    }
+
+    private void unlock(Set<String> aggregates) {
+        lockedAggregates.removeAll(aggregates);
+    }
+
+    private void lock(Set<String> aggregates) {
+        synchronized (lockedAggregates) {
+            for (String aggregate : aggregates) {
+                if (lockedAggregates.contains(aggregate)) {
+                    throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                                                         String.format("Concurrent update on aggregate %s", aggregate));
+                }
+            }
+            lockedAggregates.addAll(aggregates);
         }
     }
 
@@ -182,7 +223,6 @@ public class SequenceNumberCache {
             cleanupTask.cancel(true);
         }
     }
-
 
     private class MinMaxPair {
 

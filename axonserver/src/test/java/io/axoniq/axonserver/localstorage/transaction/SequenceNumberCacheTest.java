@@ -18,6 +18,7 @@ import io.axoniq.axonserver.util.ChangeableClock;
 import org.junit.*;
 
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -38,6 +39,40 @@ public class SequenceNumberCacheTest {
             default:
                 return Optional.ofNullable(10L);
         }
+    }
+
+    private static Optional<Long> slowSequenceNumberProvider(String aggregateId,
+                                                             EventStorageEngine.SearchHint... searchHints) {
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+    @Test
+    public void testParallelTransactions() {
+        testSubject = new SequenceNumberCache(SequenceNumberCacheTest::slowSequenceNumberProvider,
+                                              clock, 1);
+
+        boolean[] success = new boolean[2];
+        IntStream.range(0, 2).parallel().forEach(i -> {
+            try {
+                testSubject.reserveSequenceNumbers(asList(
+                        serializedEvent("NEW", "SampleAgg", 0)));
+                success[i] = true;
+            } catch (MessagingPlatformException ex) {
+                Assert.assertEquals(ErrorCode.INVALID_SEQUENCE, ex.getErrorCode());
+                success[i] = false;
+            }
+        });
+
+        assertTrue("Expect one success", success[0] || success[1]);
+        assertFalse("Expect one failure", success[0] && success[1]);
+
+        testSubject.reserveSequenceNumbers(asList(
+                serializedEvent("NEW", "SampleAgg", 1)));
     }
 
     @Test
