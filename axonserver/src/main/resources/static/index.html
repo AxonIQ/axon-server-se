@@ -103,7 +103,16 @@
         Vue.prototype.isEnterprise = globals.isEnterprise;
 
         $(document).ready(function () {
-
+            new Vue({
+                        el: '#footer',
+                        data: {
+                            version: "Version"
+                        }, mounted() {
+                    axios.get("actuator/info").then(response => {
+                        this.version = response.data.app.name + " " + response.data.app.version;
+                    });
+                }
+                    });
             new Vue({
                         el: '#nav',
                         data: {
@@ -205,8 +214,8 @@
             </span>
 </article>
 
-<footer>
-    <p>AxonDashboard @project.version@ by <span>AxonIQ</span></p>
+<footer id="footer">
+    <p>{{version}} by <span>AxonIQ</span></p>
 </footer>
 </body>
 </html>
