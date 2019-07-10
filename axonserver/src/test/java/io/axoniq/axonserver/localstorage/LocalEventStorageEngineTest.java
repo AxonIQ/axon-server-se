@@ -62,8 +62,9 @@ public class LocalEventStorageEngineTest {
                     }
 
                     @Override
-                    public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
-
+                    public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
+                        return () -> {
+                        };
                     }
 
                     @Override
