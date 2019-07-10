@@ -10,12 +10,17 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.component.ComponentItems;
+import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * REST controller to retrieve instances of a specific client application (component)
@@ -35,6 +40,11 @@ public class ClientApplicationRestController {
     @GetMapping("{component}/instances")
     public Iterable getComponentInstances(@PathVariable("component") String component, @RequestParam("context") String context ){
         return new ComponentItems<>(component,context,clients);
+    }
+
+    @GetMapping("clients")
+    public List<Client> listClients() {
+        return StreamSupport.stream(clients.spliterator(),false).collect(Collectors.toList());
     }
 
 }

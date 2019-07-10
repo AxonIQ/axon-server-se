@@ -15,6 +15,7 @@ import io.axoniq.axonserver.component.instance.FakeClient;
 import org.junit.*;
 
 import java.util.Iterator;
+import java.util.List;
 
 import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
 import static java.util.Arrays.asList;
@@ -37,5 +38,16 @@ public class ClientApplicationRestControllerTest {
         assertTrue(iterator.hasNext());
         iterator.next();
         assertFalse(iterator.hasNext());
+    }
+
+    @Test
+    public void listClients() {
+        Clients clients = () -> asList( (Client) new FakeClient("clientA",DEFAULT_CONTEXT, true),
+                                        new FakeClient("clientB",DEFAULT_CONTEXT, false),
+                                        new FakeClient("clientC",DEFAULT_CONTEXT, false)).iterator();
+
+        ClientApplicationRestController controller = new ClientApplicationRestController(clients);
+        List<Client> clientList = controller.listClients();
+        assertEquals(3, clientList.size());
     }
 }
