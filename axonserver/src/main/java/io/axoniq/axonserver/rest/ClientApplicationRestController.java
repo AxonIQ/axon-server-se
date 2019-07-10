@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -43,8 +44,8 @@ public class ClientApplicationRestController {
     }
 
     @GetMapping("clients")
-    public List<Client> listClients() {
-        return StreamSupport.stream(clients.spliterator(),false).collect(Collectors.toList());
+    public Stream<Client> listClients() {
+        return StreamSupport.stream(clients.spliterator(),false);
     }
 
 }

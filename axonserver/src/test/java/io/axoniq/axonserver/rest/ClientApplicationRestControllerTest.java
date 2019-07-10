@@ -16,6 +16,7 @@ import org.junit.*;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
 import static java.util.Arrays.asList;
@@ -47,7 +48,7 @@ public class ClientApplicationRestControllerTest {
                                         new FakeClient("clientC",DEFAULT_CONTEXT, false)).iterator();
 
         ClientApplicationRestController controller = new ClientApplicationRestController(clients);
-        List<Client> clientList = controller.listClients();
+        List<Client> clientList = controller.listClients().collect(Collectors.toList());
         assertEquals(3, clientList.size());
     }
 }
