@@ -28,6 +28,11 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.1.8
+----------------------------
+
+- Fix for unexpected aggregate sequence exception.
+
 Changes in Axon Server 4.1.7
 ----------------------------
 
