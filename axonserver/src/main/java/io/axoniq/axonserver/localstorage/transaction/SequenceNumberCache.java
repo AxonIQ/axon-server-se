@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -49,8 +48,6 @@ public class SequenceNumberCache {
     private final Clock clock;
     private final Map<String, SequenceNumber> sequenceNumbersPerAggregate = new ConcurrentHashMap<>();
     private final ScheduledFuture<?> cleanupTask;
-    private final Set<String> lockedAggregates = ConcurrentHashMap.newKeySet();
-
 
     /**
      * Creates a sequence number cache with specified aggregateSequenceNumber provider and default clock and cache size.
@@ -110,8 +107,6 @@ public class SequenceNumberCache {
                                                                                    e.getAggregateSequenceNumber()))
                                               .setMax(e.getAggregateSequenceNumber()));
 
-        lock(minMaxPerAggregate.keySet());
-        try {
             Map<String, SequenceNumber> oldSequenceNumbers = new HashMap<>();
             for (Map.Entry<String, MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
                 if (force) {
@@ -136,25 +131,6 @@ public class SequenceNumberCache {
                     oldSequenceNumbers.putIfAbsent(entry.getKey(), new SequenceNumber(entry.getValue().getMin() - 1));
                 }
             }
-        } finally {
-            unlock(minMaxPerAggregate.keySet());
-        }
-    }
-
-    private void unlock(Set<String> aggregates) {
-        lockedAggregates.removeAll(aggregates);
-    }
-
-    private void lock(Set<String> aggregates) {
-        synchronized (lockedAggregates) {
-            for (String aggregate : aggregates) {
-                if (lockedAggregates.contains(aggregate)) {
-                    throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
-                                                         String.format("Concurrent update on aggregate %s", aggregate));
-                }
-            }
-            lockedAggregates.addAll(aggregates);
-        }
     }
 
     /**
