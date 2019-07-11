@@ -37,7 +37,7 @@ public class ClientApplicationRestController {
     }
 
     /**
-     * controller to retrieve instances of a specific client application (component)
+     * retrieve instances of a specific client application (component)
      * @param component the name of the component to retrieve
      * @param context the required context
      * @return
