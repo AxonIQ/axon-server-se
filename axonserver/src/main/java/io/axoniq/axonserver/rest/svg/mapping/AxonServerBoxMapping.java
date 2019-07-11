@@ -59,7 +59,7 @@ public class AxonServerBoxMapping implements PositionMapping<AxonServer>, BoxReg
             extraClass += " " + StyleClass.CURRENT;
         }
         if (showContexts && axonServer.isAdminLeader()) {
-            extraClass += " " + StyleClass.ADMIN;
+            extraClass += " " + StyleClass.ADMIN_LEADER;
         }
         String nodeType = StyleClass.AXONSERVER + " " + extraClass;
         lines.add(new TextLine(name, fonts.messaging(), nodeType));
