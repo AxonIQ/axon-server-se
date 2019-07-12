@@ -35,24 +35,20 @@ import static org.junit.Assert.*;
  */
 public class SubscriptionQueryDispatcherTest {
 
-    private SubscriptionQueryDispatcher testSubject = new SubscriptionQueryDispatcher(() -> getDirectSubscriptions(),
-                                                                                      new QueryRegistrationCache(
-                                                                                              (queryDefinition, componentName, queryHandlers) -> null));
+    private SubscriptionQueryDispatcher testSubject = new SubscriptionQueryDispatcher(
+            this::getDirectSubscriptions,
+            new QueryRegistrationCache((queryDefinition, componentName, queryHandlers) -> null));
 
     private Iterator<DirectSubscriptionQueries.ContextSubscriptionQuery> getDirectSubscriptions() {
         List<DirectSubscriptionQueries.ContextSubscriptionQuery> subscriptionQueries = new ArrayList<>();
-        subscriptionQueries.add(new DirectSubscriptionQueries.ContextSubscriptionQuery("Demo",
-                                                                                       SubscriptionQuery.newBuilder()
-                                                                                                        .setSubscriptionIdentifier(
-                                                                                                                "111")
-                                                                                                        .setQueryRequest(
-                                                                                                                QueryRequest
-                                                                                                                        .newBuilder()
-                                                                                                                        .setQuery(
-                                                                                                                                "test")
-                                                                                                                        .build()
-                                                                                                        )
-                                                                                                        .build()));
+        subscriptionQueries.add(new DirectSubscriptionQueries.ContextSubscriptionQuery(
+                "Demo",
+                SubscriptionQuery.newBuilder()
+                                 .setSubscriptionIdentifier("111")
+                                 .setQueryRequest(QueryRequest.newBuilder()
+                                                              .setQuery("test")
+                                                              .build())
+                                 .build()));
         return subscriptionQueries.iterator();
     }
 
