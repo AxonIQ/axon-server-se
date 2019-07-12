@@ -110,6 +110,6 @@ public class SubscriptionQueryDispatcher {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event){
-        subscriptionsSent.remove(event.getClient());
+        subscriptionsSent.remove(new ClientIdentification(event.getContext(), event.getClient()));
     }
 }
