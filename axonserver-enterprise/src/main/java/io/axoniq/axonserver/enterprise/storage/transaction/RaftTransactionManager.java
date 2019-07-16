@@ -59,6 +59,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
         lock.lock();
         try (EntryIterator iterator = becomeMaster.getUnappliedEntries().get()) {
+            eventStorageEngine.clearReservedSequenceNumbers();
             waitingTransactions.set(0);
             nextTransactionToken.set(eventStorageEngine.getLastToken() + 1);
             while (iterator.hasNext()) {
@@ -180,8 +181,8 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
 
     @Override
-    public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
-        sequenceNumberCache.reserveSequenceNumbers(eventList, false);
+    public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
+        return sequenceNumberCache.reserveSequenceNumbers(eventList, false);
     }
 
     @Override
