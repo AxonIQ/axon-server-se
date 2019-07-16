@@ -32,6 +32,7 @@ Changes in Axon Server 4.1.8
 ----------------------------
 
 - Fix for unexpected aggregate sequence exception.
+- Fix for wrong version number in dashboard.
 
 Changes in Axon Server 4.1.7
 ----------------------------
@@ -39,7 +40,6 @@ Changes in Axon Server 4.1.7
 - Fix for timing issue when new events arrived at new leader before leader was fully initialized
 - Fix for configuration not always applied on all nodes
 - Fix for OutOfDirectMemory issue when installing snapshot
-
 
 Changes in Axon Server 4.1.6
 ----------------------------
@@ -175,10 +175,7 @@ full list, see the Reference Guide. https://docs.axoniq.io/reference-guide/axon-
   Aggregates' state! Conversely, if you want a quick way to start from scratch,
   here's where to clean.
 * axoniq.axonserver.snapshot.storage
-  This setting determines where snapshot messages are stored, so make sure there
-  is enough diskspace here. Losing this data means losing your Events-sourced
-  Aggregates' state! Conversely, if you want a quick way to start from scratch,
-  here's where to clean.
+  This setting determines where aggregate snapshots are stored.
 * axoniq.axonserver.controldb-path
   This setting determines where Axon Server stores its configuration information.
   Losing this data will affect Axon Server's ability to determine which
