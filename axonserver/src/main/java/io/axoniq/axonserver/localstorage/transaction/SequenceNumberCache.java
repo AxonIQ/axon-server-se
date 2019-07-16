@@ -97,7 +97,7 @@ public class SequenceNumberCache {
      * @param events list of events to store
      * @param force  accept the sequence numbers from the events list as valid
      */
-    public void reserveSequenceNumbers(List<SerializedEvent> events, boolean force) {
+    public Runnable reserveSequenceNumbers(List<SerializedEvent> events, boolean force) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
               .filter(SerializedEvent::isDomainEvent)
@@ -107,7 +107,9 @@ public class SequenceNumberCache {
                                                                                    e.getAggregateSequenceNumber()))
                                               .setMax(e.getAggregateSequenceNumber()));
 
-            Map<String, SequenceNumber> oldSequenceNumbers = new HashMap<>();
+        Map<String, SequenceNumber> oldSequenceNumberPerAggregate = new HashMap<>();
+        Runnable unreserve = () -> oldSequenceNumberPerAggregate
+                .forEach(sequenceNumbersPerAggregate::put);
             for (Map.Entry<String, MinMaxPair> entry : minMaxPerAggregate.entrySet()) {
                 if (force) {
                     sequenceNumbersPerAggregate.put(entry.getKey(), new SequenceNumber(entry.getValue().getMax()));
@@ -118,9 +120,7 @@ public class SequenceNumberCache {
                                                                                          old,
                                                                                          entry.getValue()));
                     if (!updated.isValid()) {
-                        synchronized (sequenceNumbersPerAggregate) {
-                            sequenceNumbersPerAggregate.putAll(oldSequenceNumbers);
-                        }
+                        unreserve.run();
                         throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
                                                              String.format(
                                                                      "Invalid sequence number %d for aggregate %s, expected %d",
@@ -128,9 +128,11 @@ public class SequenceNumberCache {
                                                                      entry.getKey(),
                                                                      updated.get() + 1));
                     }
-                    oldSequenceNumbers.putIfAbsent(entry.getKey(), new SequenceNumber(entry.getValue().getMin() - 1));
+                    oldSequenceNumberPerAggregate.putIfAbsent(entry.getKey(),
+                                                              new SequenceNumber(entry.getValue().getMin() - 1));
                 }
             }
+        return unreserve;
     }
 
     /**

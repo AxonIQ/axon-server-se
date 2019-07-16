@@ -36,7 +36,7 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
 
     @Override
     public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
-        return eventStorageEngine.reserveSequenceNumbers(eventList, false);
+        return sequenceNumberCache.reserveSequenceNumbers(eventList, false);
     }
 
     @Override
