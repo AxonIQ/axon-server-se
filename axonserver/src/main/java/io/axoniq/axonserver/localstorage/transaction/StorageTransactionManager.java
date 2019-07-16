@@ -23,7 +23,7 @@ public interface StorageTransactionManager {
 
     CompletableFuture<Long> store(List<SerializedEvent> eventList);
 
-    void reserveSequenceNumbers(List<SerializedEvent> eventList);
+    Runnable reserveSequenceNumbers(List<SerializedEvent> eventList);
 
     default long waitingTransactions() {
         return 0;

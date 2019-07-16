@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 /**
@@ -39,9 +40,10 @@ public class EventWriteStorage {
     public CompletableFuture<Void> store(List<SerializedEvent> eventList) {
         if( eventList.isEmpty()) return CompletableFuture.completedFuture(null);
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        AtomicReference<Runnable> unreserve = new AtomicReference<>(() -> {
+        });
         try {
-            validate(eventList);
-
+            unreserve.set(reserveSequences(eventList));
             storageTransactionManager.store(eventList).whenComplete((firstToken, cause) -> {
                 if( cause == null) {
                     completableFuture.complete(null);
@@ -52,9 +54,11 @@ public class EventWriteStorage {
                     }
                 } else {
                     completableFuture.completeExceptionally(cause);
+                    unreserve.get().run();
                 }
             });
         } catch (RuntimeException cause) {
+            unreserve.get().run();
             completableFuture.completeExceptionally(cause);
         }
         return completableFuture;
@@ -71,8 +75,8 @@ public class EventWriteStorage {
 
     }
 
-    private void validate(List<SerializedEvent> eventList) {
-        storageTransactionManager.reserveSequenceNumbers(eventList);
+    private Runnable reserveSequences(List<SerializedEvent> eventList) {
+        return storageTransactionManager.reserveSequenceNumbers(eventList);
     }
 
     public Registration registerEventListener(BiConsumer<Long, List<SerializedEvent>> listener) {
