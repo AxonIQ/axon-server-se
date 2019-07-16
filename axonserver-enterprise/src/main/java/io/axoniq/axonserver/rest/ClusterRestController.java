@@ -16,6 +16,7 @@ import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -92,6 +93,13 @@ public class ClusterRestController {
             nodeInfoBuilder.addContexts(ContextRole.newBuilder().setName(CONTEXT_NONE).build());
         } else {
             logger.debug("add(): Registering myself and adding me to all contexts.");
+        }
+
+        // Check if node is already registered in a cluster
+        if (clusterController.nodes().count() > 1) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                                 .body(new RestResponse(false,
+                                                        "Node already registered in a cluster"));
         }
 
         try {
