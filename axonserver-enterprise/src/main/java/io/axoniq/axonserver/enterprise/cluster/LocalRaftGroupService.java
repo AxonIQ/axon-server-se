@@ -265,13 +265,13 @@ public class LocalRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteContext(String context, boolean deleteData) {
+    public CompletableFuture<Void> deleteContext(String context) {
         RaftNode raftNode = null;
         try {
             raftNode = grpcRaftController.getRaftNode(context);
         } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
-        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context, deleteData));
+        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context));
     }
 }

@@ -5,8 +5,8 @@ import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
+import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextNames;
-import io.axoniq.axonserver.grpc.internal.DeleteContextRequest;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -128,8 +128,8 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     }
 
     @Override
-    public void deleteContext(DeleteContextRequest request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, () -> localRaftConfigService.deleteContext(request.getContext(), request.getDeleteData()));
+    public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
+        wrap(responseObserver, () -> localRaftConfigService.deleteContext(request.getContext()));
     }
 
     @Override

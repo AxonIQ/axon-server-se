@@ -172,7 +172,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         }
 
         if( stateChanged.getTo().equals(RemovedState.class.getSimpleName()) ) {
-            delete(stateChanged.getGroupId(), false);
+            delete(stateChanged.getGroupId());
 //            eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(), null, false));
         }
 
@@ -304,13 +304,13 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return messagingPlatformConfiguration.getName();
     }
 
-    public void delete(String context, boolean deleteData) {
+    public void delete(String context) {
         deletedContexts.put(context, System.currentTimeMillis());
         raftGroupMap.remove(context);
         if( context.equals(getAdmin())) {
-            eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context, deleteData));
+            eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
         } else {
-            eventPublisher.publishEvent(new ContextEvents.ContextDeleted(context, deleteData));
+            eventPublisher.publishEvent(new ContextEvents.ContextDeleted(context));
         }
     }
 

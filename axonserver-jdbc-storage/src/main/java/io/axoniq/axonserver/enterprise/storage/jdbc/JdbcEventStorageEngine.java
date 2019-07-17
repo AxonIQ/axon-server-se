@@ -282,7 +282,7 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
     }
 
     @Override
-    public void close() {
+    public void close(boolean deleteData) {
         closeListeners.forEach(Runnable::run);
     }
 

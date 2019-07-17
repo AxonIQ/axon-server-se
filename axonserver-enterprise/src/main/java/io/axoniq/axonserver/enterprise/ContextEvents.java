@@ -42,7 +42,7 @@ public class ContextEvents {
     public static class AdminContextDeleted extends TopologyEvents.TopologyBaseEvent {
         private final String context;
 
-        public AdminContextDeleted(String context, boolean deleteData) {
+        public AdminContextDeleted(String context) {
             super(false);
             this.context = context;
         }
@@ -55,20 +55,14 @@ public class ContextEvents {
     @KeepNames
     public static class ContextDeleted extends TopologyEvents.TopologyBaseEvent {
         private final String context;
-        private final boolean deleteData;
 
-        public ContextDeleted(String context, boolean deleteData) {
+        public ContextDeleted(String context) {
             super(false);
             this.context = context;
-            this.deleteData = deleteData;
         }
 
         public String getContext() {
             return context;
-        }
-
-        public boolean deleteData() {
-            return deleteData;
         }
 
     }
