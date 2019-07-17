@@ -130,19 +130,18 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
             if( eventSource != null) {
                 eventSource.clean(0);
             }
-            if( deleteData) removeSegment(s);
         });
+        lruMap.clear();
+        if (deleteData) {
+            segments.removeIf(this::removeSegment);
+        }
+
         indexManager.cleanup();
     }
 
     @Override
     public void rollback( long token) {
-        for( long segment: getSegments()) {
-            if( segment > token) {
-                removeSegment(segment);
-            }
-        }
-
+        segments.removeIf(s -> (s > token) && removeSegment(s));
         if( segments.isEmpty() && next != null) {
             next.rollback(token);
         }
@@ -153,8 +152,7 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         throw new UnsupportedOperationException("Development mode deletion is not supported in clustered environments");
     }
 
-    private void removeSegment(long segment) {
-        if( segments.remove(segment)) {
+    private boolean removeSegment(long segment) {
             WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);
             if (segmentRef != null) {
                 ByteBufferEventSource eventSource = segmentRef.get();
@@ -164,12 +162,10 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
             }
 
             indexManager.remove(segment);
-            if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                ! FileUtils.delete(storageProperties.index(context, segment)) ||
-                ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
-                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
-            }
-        }
+        FileUtils.delete(storageProperties.dataFile(context, segment));
+        FileUtils.delete(storageProperties.index(context, segment));
+        FileUtils.delete(storageProperties.bloomFilter(context, segment));
+        return true;
     }
 
 

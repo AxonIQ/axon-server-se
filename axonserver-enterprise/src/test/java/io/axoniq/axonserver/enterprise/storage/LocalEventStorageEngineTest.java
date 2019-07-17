@@ -45,7 +45,7 @@ public class LocalEventStorageEngineTest {
 
     @After
     public void close() {
-        testSubject.cleanupContext("default", true);
+        testSubject.deleteContext("default");
     }
 
 

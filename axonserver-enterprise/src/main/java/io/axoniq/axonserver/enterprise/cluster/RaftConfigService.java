@@ -27,7 +27,7 @@ public interface RaftConfigService {
      * Deletes a context from all nodes where it is present.
      * @param name the name of the context
      */
-    void deleteContext(String name, boolean deleteAllData);
+    void deleteContext(String name);
 
     /**
      * Removes a node from a context. The log directory for the context on the deleted node will be removed, event store is

@@ -166,7 +166,7 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void deleteContext(String context, boolean deleteAllData) {
+    public void deleteContext(String context) {
         logger.info("Delete context invoked for context: {}", context);
         if (isAdmin(context)) {
             throw new MessagingPlatformException(ErrorCode.CANNOT_DELETE_INTERNAL_CONTEXT,
@@ -196,7 +196,7 @@ class LocalRaftConfigService implements RaftConfigService {
         int nodeIdx = 0;
         Iterable<String> nodes = new HashSet<>(nodeNames);
         for (String name : nodes) {
-            workers[nodeIdx] = raftGroupServiceFactory.getRaftGroupServiceForNode(name).deleteContext(context, deleteAllData);
+            workers[nodeIdx] = raftGroupServiceFactory.getRaftGroupServiceForNode(name).deleteContext(context);
             workers[nodeIdx].thenAccept(r -> nodeNames.remove(name));
             nodeIdx++;
         }
