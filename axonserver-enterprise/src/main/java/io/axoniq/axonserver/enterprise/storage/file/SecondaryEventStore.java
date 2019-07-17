@@ -133,7 +133,8 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         });
         lruMap.clear();
         if (deleteData) {
-            segments.removeIf(this::removeSegment);
+            segments.forEach(this::removeSegment);
+            segments.clear();
         }
 
         indexManager.cleanup();
@@ -141,7 +142,12 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void rollback( long token) {
-        segments.removeIf(s -> (s > token) && removeSegment(s));
+        segments.forEach(s -> {
+            if (s > token) {
+                removeSegment(s);
+            }
+        });
+        segments.removeIf(s -> s > token);
         if( segments.isEmpty() && next != null) {
             next.rollback(token);
         }
@@ -152,20 +158,19 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         throw new UnsupportedOperationException("Development mode deletion is not supported in clustered environments");
     }
 
-    private boolean removeSegment(long segment) {
-            WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);
-            if (segmentRef != null) {
-                ByteBufferEventSource eventSource = segmentRef.get();
-                if (eventSource != null) {
-                    eventSource.clean(0);
-                }
+    private void removeSegment(long segment) {
+        WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);
+        if (segmentRef != null) {
+            ByteBufferEventSource eventSource = segmentRef.get();
+            if (eventSource != null) {
+                eventSource.clean(0);
             }
+        }
 
-            indexManager.remove(segment);
+        indexManager.remove(segment);
         FileUtils.delete(storageProperties.dataFile(context, segment));
         FileUtils.delete(storageProperties.index(context, segment));
         FileUtils.delete(storageProperties.bloomFilter(context, segment));
-        return true;
     }
 
 

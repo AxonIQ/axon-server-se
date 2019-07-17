@@ -131,7 +131,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         protected void validate() {
             if (schedulerFactory == null) {
-                schedulerFactory = () -> new DefaultScheduler("raftState");
+                schedulerFactory = () -> new DefaultScheduler("raftState-" + raftGroup.localNode().groupId());
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
