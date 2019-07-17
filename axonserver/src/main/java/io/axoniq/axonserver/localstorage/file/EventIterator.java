@@ -26,11 +26,7 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
     }
     @Override
     public boolean hasNext() {
-        boolean next = !eventsInTransaction.isEmpty() || readTransaction();
-        if( !next) {
-            close();
-        }
-        return next;
+        return !eventsInTransaction.isEmpty() || readTransaction();
     }
 
     protected abstract boolean readTransaction();
