@@ -194,6 +194,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         if( next != null) next.close(deleteData);
 
+        if (deleteData) {
+            File storageDir = new File(storageProperties.getStorage(context));
+            storageDir.delete();
+        }
         closeListeners.forEach(Runnable::run);
     }
 
@@ -326,7 +330,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList) {
-        ByteBuffer writeBuffer = writePosition.buffer.duplicate().getBuffer();
+        ByteBufferEventSource source = writePosition.buffer.duplicate();
+        ByteBuffer writeBuffer = source.getBuffer();
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(0);
         writeBuffer.put(TRANSACTION_VERSION);
@@ -347,6 +352,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         writeBuffer.putInt(checksum.update(writeBuffer, eventsPosition, writeBuffer.position() - eventsPosition).get());
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(eventSize);
+        source.close();
     }
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
@@ -400,7 +406,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             buffer.putInt(storageProperties.getFlags());
             WritableEventSource writableEventSource = new WritableEventSource(file.getAbsolutePath(),
                                                                               buffer,
-                                                                              eventTransformer);
+                                                                              eventTransformer,
+                                                                              storageProperties.isCleanRequired());
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {

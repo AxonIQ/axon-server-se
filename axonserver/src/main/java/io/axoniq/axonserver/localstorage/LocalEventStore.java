@@ -94,10 +94,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workersMap.get(context).init(validating);
     }
 
-    public void cleanupContext(String context, boolean deleteData) {
+    public void deleteContext(String context) {
         Workers workers = workersMap.remove(context);
         if( workers == null) return;
-        workers.close(deleteData);
+        workers.close(true);
     }
 
     @Override

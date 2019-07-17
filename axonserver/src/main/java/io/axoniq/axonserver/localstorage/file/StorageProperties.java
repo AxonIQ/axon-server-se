@@ -63,7 +63,7 @@ public class StorageProperties {
     /**
      * Delay to clear ByfeBuffers from off-heap memory for writable segments
      */
-    private int primaryCleanupDelay = 60;
+    private int primaryCleanupDelay = 15;
     /**
      * Delay to clear ByfeBuffers from off-heap memory for read-only segments
      */
@@ -259,5 +259,10 @@ public class StorageProperties {
     public boolean isUseMmapIndex() {
         return ! (systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
     }
+
+    public boolean isCleanRequired() {
+        return systemInfoProvider.javaOnWindows();
+    }
+
 
 }

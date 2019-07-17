@@ -22,8 +22,9 @@ import java.util.Arrays;
  */
 public class WritableEventSource extends ByteBufferEventSource {
     private static final Logger logger = LoggerFactory.getLogger(WritableEventSource.class);
-    public WritableEventSource(String file, ByteBuffer buffer, EventTransformer eventTransformer) {
-        super(file, buffer, eventTransformer);
+
+    public WritableEventSource(String file, ByteBuffer buffer, EventTransformer eventTransformer, boolean cleanerHack) {
+        super(file, buffer, eventTransformer, cleanerHack);
     }
 
     private MappedByteBuffer mappedByteBuffer() {
