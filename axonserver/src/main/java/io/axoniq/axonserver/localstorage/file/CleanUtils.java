@@ -90,12 +90,10 @@ public class CleanUtils {
             if( retries > 0) {
                 logger.debug("Memory mapped buffer not cleared for {}, retry after {} seconds", file, delay);
                 cleanupExecutor.schedule(() -> doCleanup(allowed, buf, delay, file, retries-1), delay, TimeUnit.SECONDS);
-                return;
             } else {
                 logger.debug("Memory mapped buffer not cleared for {}, giving up", file);
             }
-
-
+            return;
         }
         try {
             cleanMethod.invoke(cleanerMethod.invoke(buf));
