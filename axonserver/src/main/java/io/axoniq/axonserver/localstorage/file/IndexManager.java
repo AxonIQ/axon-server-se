@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,6 +44,7 @@ public class IndexManager {
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
     private final String context;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+    private ScheduledFuture<?> cleanupTask;
 
     public IndexManager(String context, StorageProperties storageProperties) {
         this.storageProperties = storageProperties;
@@ -134,7 +136,7 @@ public class IndexManager {
         while (indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
             Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
             logger.debug("Closing index {}", entry.getKey());
-            scheduledExecutorService.schedule(() -> entry.getValue().close(), 2, TimeUnit.SECONDS);
+            cleanupTask = scheduledExecutorService.schedule(() -> entry.getValue().close(), 2, TimeUnit.SECONDS);
         }
 
         while (bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
@@ -171,6 +173,10 @@ public class IndexManager {
     public void cleanup() {
         bloomFilterPerSegment.clear();
         indexMap.forEach((segment, index) -> index.close());
+        if (cleanupTask != null && !cleanupTask.isDone()) {
+            cleanupTask.cancel(true);
+        }
+        scheduledExecutorService.shutdown();
     }
 
     public void remove(Long s) {

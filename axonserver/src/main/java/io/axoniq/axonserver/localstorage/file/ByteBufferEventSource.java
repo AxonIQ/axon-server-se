@@ -29,6 +29,7 @@ public class ByteBufferEventSource implements EventSource {
     private final boolean main;
     private final AtomicInteger duplicatesCount = new AtomicInteger();
     private final String path;
+    // indicates if the low-level clean method should be called (needed to free file lock on windows)
     private final boolean cleanerHack;
 
     public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {

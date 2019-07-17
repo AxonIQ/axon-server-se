@@ -94,12 +94,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workersMap.get(context).init(validating);
     }
 
+    /**
+     * Deletes the specified context including all data.
+     *
+     * @param context the name of the context
+     */
     public void deleteContext(String context) {
         Workers workers = workersMap.remove(context);
         if( workers == null) return;
         workers.close(true);
     }
 
+    /**
+     * Deletes all event data from the context. Context remains alive.
+     * @param context the context to be cleared
+     */
     @Override
     public void deleteAllEventData(String context) {
         Workers workers = workersMap.get(context);
