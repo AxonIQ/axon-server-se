@@ -1,17 +1,12 @@
 package io.axoniq.axonserver.cluster.election;
 
-import io.axoniq.axonserver.cluster.FakeRaftPeer;
-import io.axoniq.axonserver.cluster.FakeScheduler;
-import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import org.junit.*;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
-import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
@@ -35,7 +30,7 @@ public class DefaultElectionTestSingleNodeCluster {
                                                          .setGroupId("MyGroupId")
                                                          .build();
         BiConsumer<Long, String> updateTerm = (newTerm, cause) -> electionStore.updateCurrentTerm(newTerm);
-        election = new DefaultElection(prototype, updateTerm, electionStore, Collections.emptyList());
+        election = new DefaultElection(prototype, updateTerm, electionStore, Collections.emptyList(), false);
     }
 
     @Test

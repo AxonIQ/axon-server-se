@@ -14,6 +14,8 @@ public interface RaftPeer {
 
     CompletableFuture<RequestVoteResponse> requestVote(RequestVoteRequest request);
 
+    CompletableFuture<RequestVoteResponse> requestPreVote(RequestVoteRequest request);
+
     void appendEntries(AppendEntriesRequest request);
 
     void installSnapshot(InstallSnapshotRequest request);
@@ -41,4 +43,9 @@ public interface RaftPeer {
     default boolean isReadyForSnapshot() {
         return true;
     }
+
+    /**
+     * Sends a message to the peer to timeout immediately, causing it to start a new election.
+     */
+    void sendTimeoutNow();
 }

@@ -14,5 +14,7 @@ public interface MembershipStateFactory {
 
     MembershipState candidateState();
 
+    MembershipState preVoteState();
+
     MembershipState removedState();
 }

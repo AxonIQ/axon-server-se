@@ -236,7 +236,8 @@ public class FollowerState extends AbstractMembershipState {
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         // If a server receives a RequestVote within the minimum election timeout of hearing from a current leader, it
         // does not update its term or grant its vote
-        if (heardFromLeader && scheduler.get().clock().millis() - lastMessage.get() < minElectionTimeout()) {
+        if (!request.getDisruptAllowed() && heardFromLeader
+                && scheduler.get().clock().millis() - lastMessage.get() < minElectionTimeout()) {
             logger.info(
                     "{} in term {}: Request for vote received from {}. Voted rejected since we have heard from the leader.",
                     groupId(),
@@ -251,11 +252,26 @@ public class FollowerState extends AbstractMembershipState {
                               request.getTerm(),
                               request.getCandidateId());
         updateCurrentTerm(request.getTerm(), cause);
-        boolean voteGranted = voteGrantedFor(request);
+        boolean voteGranted = voteGrantedFor(request, false);
         if (voteGranted) {
             rescheduleElection(request.getTerm());
         }
         return responseFactory().voteResponse(request.getRequestId(), voteGranted);
+    }
+
+    @Override
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        // If a server receives a pre-vote within the minimum election timeout of hearing from a current leader, it
+        // does not update its term or grant its vote
+        if (heardFromLeader && scheduler.get().clock().millis() - lastMessage.get() < minElectionTimeout()) {
+            logger.info(
+                    "{} in term {}: Request for vote received from {}. Voted rejected since we have heard from the leader.",
+                    groupId(),
+                    currentTerm(),
+                    request.getCandidateId());
+            return responseFactory().voteRejected(request.getRequestId());
+        }
+        return responseFactory().voteResponse(request.getRequestId(), voteGrantedFor(request, true));
     }
 
     /**
@@ -384,7 +400,7 @@ public class FollowerState extends AbstractMembershipState {
                                     currentTerm(),
                                     now - lastMessage.get());
             logger.info(message);
-            changeStateTo(stateFactory().candidateState(), message);
+            changeStateTo(stateFactory().preVoteState(), message);
         } else {
             scheduleElectionTimeoutChecker();
         }
@@ -394,7 +410,7 @@ public class FollowerState extends AbstractMembershipState {
     public void forceStepDown() {
         String cause = format("%s in term %s: Forced transition from Follower to Candidate.", groupId(), currentTerm());
         logger.warn(cause);
-        changeStateTo(stateFactory().candidateState(), cause);
+        changeStateTo(((CandidateState) stateFactory().candidateState()).withDisruptAllowed(), cause);
     }
 
     private void rescheduleElection(long term) {
@@ -408,7 +424,7 @@ public class FollowerState extends AbstractMembershipState {
         }
     }
 
-    private boolean voteGrantedFor(RequestVoteRequest request) {
+    private boolean voteGrantedFor(RequestVoteRequest request, boolean preVote) {
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
             logger.info("{} in term {}: Vote not granted. Current term is greater than requested {}.",
@@ -421,7 +437,7 @@ public class FollowerState extends AbstractMembershipState {
         //2. If votedFor is null or candidateId, and candidate's log is at least as up-to-date as receiver's log, grant
         // vote
         String votedFor = votedFor();
-        if (votedFor != null && !votedFor.equals(request.getCandidateId())) {
+        if (!preVote && votedFor != null && !votedFor.equals(request.getCandidateId())) {
             logger.info("{} in term {}: Vote not granted. Already voted for: {}.", groupId(), currentTerm(), votedFor);
             return false;
         }

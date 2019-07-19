@@ -13,16 +13,19 @@ import java.util.function.Function;
 public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
 
 
-     private final Logger logger;
+    private final String action;
+    private final Logger logger;
     private final CompletableFuture<R> completableFuture;
     private final Function<T, R> converter;
 
-    public CompletableStreamObserver(CompletableFuture<R> completableFuture, Logger logger) {
-        this(completableFuture, logger, result -> (R)result);
+    public CompletableStreamObserver(CompletableFuture<R> completableFuture, String action, Logger logger) {
+        this(completableFuture, action, logger, result -> (R) result);
     }
 
-    public CompletableStreamObserver(CompletableFuture<R> completableFuture, Logger logger, Function<T,R> converter) {
+    public CompletableStreamObserver(CompletableFuture<R> completableFuture, String action, Logger logger,
+                                     Function<T, R> converter) {
         this.completableFuture = completableFuture;
+        this.action = action;
         this.logger = logger;
         this.converter = converter;
     }
@@ -34,7 +37,7 @@ public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
 
     @Override
     public void onError(Throwable throwable) {
-        logger.warn("Remote action failed", throwable);
+        logger.warn("{}: Remote action failed", action, throwable);
         completableFuture.completeExceptionally(GrpcExceptionBuilder.parse(throwable));
     }
 

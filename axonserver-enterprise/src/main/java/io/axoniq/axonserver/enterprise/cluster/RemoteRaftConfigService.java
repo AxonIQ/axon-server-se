@@ -41,21 +41,27 @@ public class RemoteRaftConfigService implements RaftConfigService {
     public void addNodeToContext(String context, String node) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder().setNodeName(node).setContext(context).build(),
-                                               new CompletableStreamObserver<>(completableFuture, logger));
+                                               new CompletableStreamObserver<>(completableFuture,
+                                                                               "addNodeToContext",
+                                                                               logger));
         getFuture(completableFuture);
     }
 
     @Override
     public void deleteNode(String name) {
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.deleteNode(NodeName.newBuilder().setNode(name).build(), new CompletableStreamObserver<>(completableFuture, logger));
+        raftConfigServiceStub.deleteNode(NodeName.newBuilder().setNode(name).build(),
+                                         new CompletableStreamObserver<>(completableFuture, "deleteNode", logger));
         getFuture(completableFuture);
     }
 
     @Override
     public void deleteContext(String context) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.deleteContext(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver<>(completableFuture, logger));
+        raftConfigServiceStub.deleteContext(ContextName.newBuilder().setContext(context).build(),
+                                            new CompletableStreamObserver<>(completableFuture,
+                                                                            "deleteContext",
+                                                                            logger));
         getFuture(completableFuture);
     }
 
@@ -63,7 +69,9 @@ public class RemoteRaftConfigService implements RaftConfigService {
     public void deleteNodeFromContext(String context, String node) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.deleteNodeFromContext(NodeContext.newBuilder().setNodeName(node).setContext(context).build(),
-                                               new CompletableStreamObserver<>(completableFuture, logger));
+                                                    new CompletableStreamObserver<>(completableFuture,
+                                                                                    "deleteNodeFromContext",
+                                                                                    logger));
         getFuture(completableFuture);
     }
 
@@ -75,21 +83,23 @@ public class RemoteRaftConfigService implements RaftConfigService {
                                                     .setName(context)
                                                     .addAllMembers(nodes.stream().map(n -> ContextMember.newBuilder().setNodeId(n).build()).collect(
                                                             Collectors.toList()))
-                                                    .build(), new CompletableStreamObserver<>(completableFuture, logger));
+                                                    .build(),
+                                            new CompletableStreamObserver<>(completableFuture, "addContext", logger));
         getFuture(completableFuture);
     }
 
     @Override
     public void join(NodeInfo nodeInfo) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.joinCluster(nodeInfo, new CompletableStreamObserver<>(completableFuture, logger));
+        raftConfigServiceStub.joinCluster(nodeInfo, new CompletableStreamObserver<>(completableFuture, "join", logger));
         getFuture(completableFuture);
     }
 
     @Override
     public void init(List<String> contexts) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.initCluster(ContextNames.newBuilder().addAllContexts(contexts).build(), new CompletableStreamObserver<>(completableFuture, logger));
+        raftConfigServiceStub.initCluster(ContextNames.newBuilder().addAllContexts(contexts).build(),
+                                          new CompletableStreamObserver<>(completableFuture, "init", logger));
         getFuture(completableFuture);
 
     }
@@ -97,14 +107,20 @@ public class RemoteRaftConfigService implements RaftConfigService {
     @Override
     public Application updateApplication(Application application) {
         CompletableFuture<Application> returnedApplication = new CompletableFuture<>();
-        raftConfigServiceStub.updateApplication(application, new CompletableStreamObserver<>(returnedApplication, logger));
+        raftConfigServiceStub.updateApplication(application,
+                                                new CompletableStreamObserver<>(returnedApplication,
+                                                                                "updateApplication",
+                                                                                logger));
         return getFuture(returnedApplication);
     }
 
     @Override
     public Application refreshToken(Application application) {
         CompletableFuture<Application> returnedApplication = new CompletableFuture<>();
-        raftConfigServiceStub.refreshToken(application, new CompletableStreamObserver<>(returnedApplication, logger));
+        raftConfigServiceStub.refreshToken(application,
+                                           new CompletableStreamObserver<>(returnedApplication,
+                                                                           "refreshToken",
+                                                                           logger));
         return getFuture(returnedApplication);
     }
 
@@ -112,42 +128,60 @@ public class RemoteRaftConfigService implements RaftConfigService {
     @Override
     public void updateUser(User request) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.updateUser(request, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.updateUser(request,
+                                         new CompletableStreamObserver<>(confirmation, "updateUser", logger, TO_VOID));
         getFuture(confirmation);
     }
 
     @Override
     public void updateLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.updateLoadBalanceStrategy(loadBalancingStrategy, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.updateLoadBalanceStrategy(loadBalancingStrategy,
+                                                        new CompletableStreamObserver<>(confirmation,
+                                                                                        "updateLoadBalancingStrategy",
+                                                                                        logger,
+                                                                                        TO_VOID));
         getFuture(confirmation);
     }
 
     @Override
     public void deleteLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.deleteLoadBalanceStrategy(loadBalancingStrategy, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.deleteLoadBalanceStrategy(loadBalancingStrategy,
+                                                        new CompletableStreamObserver<>(confirmation,
+                                                                                        "deleteLoadBalancingStrategy",
+                                                                                        logger,
+                                                                                        TO_VOID));
         getFuture(confirmation);
     }
 
     @Override
     public void updateProcessorLoadBalancing(ProcessorLBStrategy processorLBStrategy) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.updateProcessorLBStrategy(processorLBStrategy, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.updateProcessorLBStrategy(processorLBStrategy,
+                                                        new CompletableStreamObserver<>(confirmation,
+                                                                                        "updateProcessorLoadBalancing",
+                                                                                        logger,
+                                                                                        TO_VOID));
         getFuture(confirmation);
     }
 
     @Override
     public void deleteUser(User user) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.deleteUser(user, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.deleteUser(user,
+                                         new CompletableStreamObserver<>(confirmation, "deleteUser", logger, TO_VOID));
         getFuture(confirmation);
     }
 
     @Override
     public void deleteApplication(Application application) {
         CompletableFuture<Void> confirmation = new CompletableFuture<>();
-        raftConfigServiceStub.deleteApplication(application, new CompletableStreamObserver<>(confirmation, logger, TO_VOID));
+        raftConfigServiceStub.deleteApplication(application,
+                                                new CompletableStreamObserver<>(confirmation,
+                                                                                "deleteApplication",
+                                                                                logger,
+                                                                                TO_VOID));
         getFuture(confirmation);
     }
 }

@@ -110,9 +110,9 @@ public class FollowerStateTest {
     }
 
     @Test
-    public void testTransitionToCandidateState() {
+    public void testTransitionToPreVoteState() {
         fakeScheduler.timeElapses(electionTimeout + 1);
-        verify(transitionHandler).updateState(any(), any(CandidateState.class), any());
+        verify(transitionHandler).updateState(any(), any(PreVoteState.class), any());
     }
 
     @Test
@@ -385,7 +385,7 @@ public class FollowerStateTest {
         verify(snapshotManager).applySnapshotData(request.getDataList());
 
         fakeScheduler.timeElapses(MAX_ELECTION_TIMEOUT + electionTimeout + 1);
-        verify(transitionHandler).updateState(any(), any(CandidateState.class), any());
+        verify(transitionHandler).updateState(any(), any(PreVoteState.class), any());
     }
 
     @Test
