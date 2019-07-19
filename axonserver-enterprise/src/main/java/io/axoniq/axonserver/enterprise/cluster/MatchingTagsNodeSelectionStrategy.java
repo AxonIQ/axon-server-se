@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nonnull;
-import javax.validation.constraints.NotNull;
 
 /**
  * Implementation of {@link NodeSelectionStrategy} that chooses the node with the highest number of tags matching.
@@ -29,7 +28,7 @@ import javax.validation.constraints.NotNull;
 @Component
 public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy {
 
-    @NotNull private final SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy;
+    @Nonnull private final SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy;
 
     @Nonnull private final ConnectionProvider connectionProvider;
 
@@ -74,14 +73,16 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      *                                                    check
      */
     public MatchingTagsNodeSelectionStrategy(@Nonnull ConnectionProvider connectionProvider, @Nonnull String thisNode,
-                                             @NotNull SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy) {
+                                             @Nonnull SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy) {
         this.connectionProvider = connectionProvider;
         this.thisNodeName = thisNode;
         this.subscriptionCountBasedNodeSelectionStrategy = subscriptionCountBasedNodeSelectionStrategy;
     }
 
     /**
-     * Returns the identifier of the node with the highest number of tags matching with the specified client.
+     * Returns the identifier of the node with the highest number of tags matching with the specified client. If
+     * multiple nodes have the same number of matching tags then the choice of node is delegated to
+     * {@link SubscriptionCountBasedNodeSelectionStrategy}.
      *
      * @param client the client identifier
      * @param component the client's component name
