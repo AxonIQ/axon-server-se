@@ -1,7 +1,9 @@
 package io.axoniq.axonserver.enterprise.component.processor.balancing.stategy;
 
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -66,4 +68,16 @@ public class ProcessorLoadBalancingService {
     public List<ProcessorLoadBalancing> findByContext(String context) {
         return repository.findByContext(context);
     }
+
+    /**
+     * Listen for {@link io.axoniq.axonserver.enterprise.ContextEvents.AdminContextDeleted}. If this event occurs clear
+     * all {@link ProcessorLoadBalancing} entries as I am no longer an admin node.
+     *
+     * @param adminContextDeleted event raised
+     */
+    @EventListener
+    public void on(ContextEvents.AdminContextDeleted adminContextDeleted) {
+        repository.deleteAll();
+    }
+
 }
