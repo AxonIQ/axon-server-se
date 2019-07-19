@@ -40,7 +40,11 @@
 
                     },
                     deleteNodeFromContext(node, context) {
-                        if (confirm("Delete node " + node + " from context " + context.context)) {
+                        if(context.nodes.length == 1) {
+                            alert("Cannot delete the last node from " + context.context);
+                            return;
+                        }
+                        else if (confirm("Delete node " + node + " from context " + context.context)) {
                             axios.delete("v1/context/" + context.context + "/" + node).then(
                                     response => this.loadContexts()
                             )
@@ -148,7 +152,8 @@
                 <td>
                     <ul>
                         <li v-for="node in context.nodes"><span class="nodeName">{{node}}</span>
-                            <span v-if="admin" @click="deleteNodeFromContext(node,context)" title="Delete"><i
+                            <span v-if="admin && context.nodes.length > 1" @click="deleteNodeFromContext(node,context)"
+                                  title="Delete"><i
                                     class="far fa-trash-alt"></i></span></li>
                     </ul>
                     <span v-if="admin">
