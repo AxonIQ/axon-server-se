@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: AxonServerEnterprise
+    name: AxonServer Enterprise
 
   jpa:
     open-in-view: false
@@ -43,6 +43,7 @@ logging:
     org.springframework.http.converter.json.Jackson2ObjectMapperBuilder: ERROR
     org.hibernate.orm.deprecation: ERROR
     com.zaxxer.hikari: ERROR
+    io.grpc.netty.NettyServerHandler: ERROR
 
 management:
   security:

@@ -57,41 +57,54 @@ public class RaftTransactionManager implements StorageTransactionManager {
     }
 
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
-        waitingTransactions.set(0);
-        nextTransactionToken.set(eventStorageEngine.getLastToken()+1);
-            try (EntryIterator iterator = becomeMaster.getUnappliedEntries().get()) {
-                while (iterator.hasNext()) {
-                    Entry entry = iterator.next();
-                    if (forMe(entry)) {
-                        try {
-                            TransactionWithToken transactionWithToken = TransactionWithToken
-                                    .parseFrom(entry.getSerializedObject().getData());
-                            if( transactionWithToken.getToken() >= nextTransactionToken.get()) {
-
-                                List<SerializedEvent> serializedEvents = transactionWithToken.getEventsList()
-                                                                                             .stream()
-                                                                                             .map(bytes -> new SerializedEvent(
-                                                                                                     bytes.toByteArray()))
-                                                                                             .collect(Collectors
-                                                                                                              .toList());
-                                if (logger.isInfoEnabled()) {
-                                    serializedEvents.forEach(e -> logger
-                                            .info("{}/{} reserve sequence numbers for {} : {}",
-                                                  entry.getTerm(),
-                                                  entry.getIndex(),
-                                                  e.getAggregateIdentifier(),
-                                                  e.getAggregateSequenceNumber()));
-                                }
-                                if( eventTransactionManager) {
-                                    sequenceNumberCache.reserveSequenceNumbers(serializedEvents);
-                                }
-                                nextTransactionToken.addAndGet(transactionWithToken.getEventsCount());
-                            }
-                        } catch (Exception e) {
-                            logger.error("failed: {}", e.getMessage());
+        lock.lock();
+        try (EntryIterator iterator = becomeMaster.getUnappliedEntries().get()) {
+            sequenceNumberCache.clear();
+            waitingTransactions.set(0);
+            nextTransactionToken.set(eventStorageEngine.getLastToken() + 1);
+            while (iterator.hasNext()) {
+                Entry entry = iterator.next();
+                if (forMe(entry)) {
+                    try {
+                        TransactionWithToken transactionWithToken = TransactionWithToken
+                                .parseFrom(entry.getSerializedObject().getData());
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("{}: found {} transaction {}, expected {}", eventStorageEngine.getType(),
+                                         entry.getSerializedObject().getType(),
+                                         transactionWithToken.getToken(),
+                                         nextTransactionToken.get());
                         }
+                        if (transactionWithToken.getToken() >= nextTransactionToken.get()) {
+
+                            List<SerializedEvent> serializedEvents = transactionWithToken.getEventsList()
+                                                                                         .stream()
+                                                                                         .map(bytes -> new SerializedEvent(
+                                                                                                 bytes.toByteArray()))
+                                                                                         .collect(Collectors
+                                                                                                          .toList());
+                            if (logger.isInfoEnabled()) {
+                                serializedEvents.forEach(e -> logger
+                                        .info("{}/{} reserve sequence numbers for {} : {}",
+                                              entry.getTerm(),
+                                              entry.getIndex(),
+                                              e.getAggregateIdentifier(),
+                                              e.getAggregateSequenceNumber()));
+                            }
+                            if (eventTransactionManager) {
+                                sequenceNumberCache.reserveSequenceNumbers(serializedEvents, true);
+                            }
+                            nextTransactionToken.addAndGet(transactionWithToken.getEventsCount());
+                        }
+                    } catch (Exception e) {
+                        throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                             "Error while preparing transaction manager for "
+                                                                     + eventStorageEngine.getType(),
+                                                             e);
                     }
                 }
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -168,8 +181,8 @@ public class RaftTransactionManager implements StorageTransactionManager {
 
 
     @Override
-    public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
-        sequenceNumberCache.reserveSequenceNumbers(eventList);
+    public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
+        return sequenceNumberCache.reserveSequenceNumbers(eventList, false);
     }
 
     @Override

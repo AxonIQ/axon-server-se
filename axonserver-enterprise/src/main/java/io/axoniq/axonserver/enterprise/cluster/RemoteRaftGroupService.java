@@ -109,14 +109,14 @@ public class RemoteRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> initContext(String context, List<Node> raftNodes) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
+    public CompletableFuture<ContextConfiguration> initContext(String context, List<Node> raftNodes) {
+        CompletableFuture<ContextConfiguration> result = new CompletableFuture<>();
         Context request = Context.newBuilder()
                                  .setName(context)
                                  .addAllMembers(raftNodes.stream().map(this::asContextMember).collect(Collectors.toList()))
                                  .build();
         stub.initContext(
-                request, new CompletableStreamObserver<>(result, "initContext", logger, TO_VOID));
+                request, new CompletableStreamObserver<>(result, "initContext", logger));
 
         return result;
     }

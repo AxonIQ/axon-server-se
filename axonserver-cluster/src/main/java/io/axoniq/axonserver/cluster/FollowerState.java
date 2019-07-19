@@ -170,6 +170,7 @@ public class FollowerState extends AbstractMembershipState {
                 logger.info(failureCause);
                 // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
                 rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
+
                 return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
             }
 
@@ -192,7 +193,12 @@ public class FollowerState extends AbstractMembershipState {
             if (request.getCommitIndex() > logEntryProcessor.commitIndex()) {
                 long commit = min(request.getCommitIndex(), logEntryStore.lastLogIndex());
                 Entry entry = logEntryStore.getEntry(commit);
-                logEntryProcessor.markCommitted(entry.getIndex(), entry.getTerm());
+                if (entry == null) {
+                    logger.warn("{} in term {}: cannot check commit index {}, missing log entry, first log entry {}",
+                                groupId(), currentTerm(), request.getCommitIndex(), logEntryStore.firstLogIndex());
+                } else {
+                    logEntryProcessor.markCommitted(entry.getIndex(), entry.getTerm());
+                }
             }
 
             long last = lastLogIndex();
@@ -358,8 +364,8 @@ public class FollowerState extends AbstractMembershipState {
         if (request.getDone()) {
             long index = request.getLastIncludedIndex();
             long term = request.getLastIncludedTerm();
-            raftGroup().logEntryProcessor().markCommitted(index, term);
             raftGroup().logEntryProcessor().updateLastApplied(index, term);
+            raftGroup().logEntryProcessor().markCommitted(index, term);
             lastSnapshotChunk.set(-1);
             logger.info("{} in term {}: Install snapshot finished. Last applied entry: {}, Last log entry {}, Commit Index: {}",
                         groupId(), currentTerm(),

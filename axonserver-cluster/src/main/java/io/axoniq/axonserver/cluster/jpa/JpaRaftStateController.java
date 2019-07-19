@@ -86,4 +86,9 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     public void sync() {
         repository.save(raftState);
     }
+
+    @Override
+    public String groupId() {
+        return groupId;
+    }
 }

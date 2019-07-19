@@ -17,6 +17,7 @@ import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.State;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -96,6 +97,18 @@ public class LocalRaftGroupService implements RaftGroupService {
 
     @Override
     public CompletableFuture<ContextConfiguration> configuration(String context) {
+        CompletableFuture<ContextConfiguration> completableFuture = new CompletableFuture<>();
+        ContextConfiguration configuration = buildConfiguration(context);
+        if (configuration == null) {
+            completableFuture.completeExceptionally(new RuntimeException("Context not found: " + context));
+        } else {
+            completableFuture.complete(configuration);
+        }
+        return completableFuture;
+    }
+
+    @Nullable
+    private ContextConfiguration buildConfiguration(String context) {
         RaftGroup raftGroup = grpcRaftController.getRaftGroup(context);
         if (raftGroup == null) {
             return null;
@@ -117,7 +130,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                       .build())
                                      .build());
         }
-        return CompletableFuture.completedFuture(builder.build());
+        return builder.build();
     }
 
     @Override
@@ -180,17 +193,17 @@ public class LocalRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> initContext(String context, List<Node> raftNodes) {
+    public CompletableFuture<ContextConfiguration> initContext(String context, List<Node> raftNodes) {
         try {
             RaftGroup raftGroup = grpcRaftController.initRaftGroup(context, grpcRaftController.getMyLabel(raftNodes),
                                                                    grpcRaftController.getMyName());
             RaftNode leader = grpcRaftController.waitForLeader(raftGroup);
             raftNodes.forEach(n -> getFuture(leader.addNode(n)));
 
-            return CompletableFuture.completedFuture(null);
+            return CompletableFuture.completedFuture(buildConfiguration(context));
         } catch (Exception ex) {
             logger.error("{}: create context failed", context, ex);
-            CompletableFuture<Void> result = new CompletableFuture<>();
+            CompletableFuture<ContextConfiguration> result = new CompletableFuture<>();
             result.completeExceptionally(ex);
             return result;
         }

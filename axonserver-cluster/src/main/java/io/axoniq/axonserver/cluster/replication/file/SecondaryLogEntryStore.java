@@ -11,6 +11,7 @@ import java.io.RandomAccessFile;
 import java.lang.ref.WeakReference;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
  * @since 4.1
  */
 public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
+
     private final ScheduledExecutorService scheduledExecutorService;
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final ConcurrentSkipListMap<Long, WeakReference<ByteBufferEntrySource>> lruMap = new ConcurrentSkipListMap<>();
@@ -40,15 +42,18 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
                                   LogEntryTransformerFactory logEntryTransformerFactory,
                                   StorageProperties storageProperties) {
         super(context, indexManager, storageProperties);
-        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new AxonThreadFactory(context + "-file-cleanup-"));
+        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new AxonThreadFactory(
+                context + "-file-cleanup-"));
         this.logEntryTransformerFactory = logEntryTransformerFactory;
     }
 
 
     @Override
-    public void initSegments(long lastInitialized)  {
+    public void initSegments(long lastInitialized) {
         segments.addAll(prepareSegmentStore(lastInitialized));
-        if( next != null) next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
+        if (next != null) {
+            next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
+        }
     }
 
     protected void recreateIndex(long segment) {
@@ -61,7 +66,6 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
             }
             indexManager.createIndex(segment, aggregatePositions, true);
         }
-
     }
 
     @Override
@@ -77,18 +81,18 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     @Override
     public void handover(Long segment, Runnable callback) {
         segments.add(segment);
-        if( next != null && segments.size() > storageProperties.getNumberOfSegments()) {
+        if (next != null && segments.size() > storageProperties.getNumberOfSegments()) {
             segments.stream().skip(storageProperties.getNumberOfSegments()).forEach(s -> next.handover(s, () -> {
                 segments.remove(s);
                 indexManager.remove(s);
                 WeakReference<ByteBufferEntrySource> fileRef = lruMap.remove(s);
-                if( fileRef != null) {
+                if (fileRef != null) {
                     ByteBufferEntrySource file = fileRef.get();
-                    if( file != null) {
+                    if (file != null) {
                         file.clean(storageProperties.getSecondaryCleanupDelay());
                     }
                 }
-                scheduledExecutorService.schedule(()-> deleteFiles(s), 20, TimeUnit.SECONDS);
+                scheduledExecutorService.schedule(() -> deleteFiles(s), 20, TimeUnit.SECONDS);
             }));
         }
         callback.run();
@@ -100,9 +104,9 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         File datafile = storageProperties.logFile(context, s);
         boolean success = FileUtils.delete(index) && FileUtils.delete(datafile);
 
-        if( ! success) {
+        if (!success) {
             logger.warn("{}: Deleting files for segment {} not complete, rescheduling", context, s);
-            scheduledExecutorService.schedule(()-> deleteFiles(s), 1, TimeUnit.MINUTES);
+            scheduledExecutorService.schedule(() -> deleteFiles(s), 1, TimeUnit.MINUTES);
         }
     }
 
@@ -110,7 +114,7 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     public void cleanup(int delay) {
         lruMap.forEach((s, source) -> {
             ByteBufferEntrySource eventSource = source.get();
-            if( eventSource != null) {
+            if (eventSource != null) {
                 eventSource.clean(delay);
             }
         });
@@ -118,14 +122,14 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     @Override
-    public void rollback( long token) {
-        for( long segment: getSegments()) {
-            if( segment > token) {
+    public void rollback(long token) {
+        for (long segment : getSegments()) {
+            if (segment > token) {
                 removeSegment(segment);
             }
         }
 
-        if( segments.isEmpty() && next != null) {
+        if (segments.isEmpty() && next != null) {
             next.rollback(token);
         }
     }
@@ -133,10 +137,10 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     @Override
     protected Entry getEntry(long index) {
         long segment = getSegmentFor(index);
-        if( segments.contains(segment)) {
+        if (segments.contains(segment)) {
             Integer position = indexManager.getIndex(segment).getPosition(index);
             EntrySource eventSource = getEventSource(segment).orElse(null);
-            if( eventSource != null && position != null) {
+            if (eventSource != null && position != null) {
                 return eventSource.readLogEntry(position, index);
             }
         }
@@ -149,7 +153,7 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     protected void removeSegment(long segment) {
-        if( segments.remove(segment)) {
+        if (segments.remove(segment)) {
             WeakReference<ByteBufferEntrySource> segmentRef = lruMap.remove(segment);
             if (segmentRef != null) {
                 ByteBufferEntrySource eventSource = segmentRef.get();
@@ -166,8 +170,12 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     @Override
     protected void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
         long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
+        long lastAppliedIndexSegment = segmentContainingLastAppliedIndex(segments,
+                                                                         lastAppliedIndexSupplier.getAsLong());
         List<Long> segmentsToBeDeleted = segments.stream()
-                                                 .filter(segment -> olderThan(segment, filter)) //f.lastModified() <= filter) // filter out files older than <time>
+                                                 .filter(segment -> applied(segment, lastAppliedIndexSegment))
+                                                 .filter(segment -> olderThan(segment,
+                                                                              filter)) //f.lastModified() <= filter) // filter out files older than <time>
                                                  .collect(Collectors.toList());
         String formattedSegmentsToBeDeleted = segmentsToBeDeleted.stream()
                                                                  .map(Object::toString)
@@ -182,13 +190,27 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         return segmentFile.lastModified() <= filter;
     }
 
+    private long segmentContainingLastAppliedIndex(Collection<Long> segments, long lastAppliedIndex) {
+        return segments.stream()
+                       .filter(segment -> segment.compareTo(lastAppliedIndex) <= 0)
+                       .sorted()
+                       .max(Long::compareTo)
+                       .orElse(1L);
+    }
 
-    private ByteBufferEntrySource get(long segment, boolean force)  {
-        if( ! segments.contains(segment) && !force) return null;
+    private boolean applied(long segment, long segmentContainingLastAppliedIndex) {
+        return segment < segmentContainingLastAppliedIndex;
+    }
+
+
+    private ByteBufferEntrySource get(long segment, boolean force) {
+        if (!segments.contains(segment) && !force) {
+            return null;
+        }
         WeakReference<ByteBufferEntrySource> bufferRef = lruMap.get(segment);
-        if( bufferRef != null ) {
-            ByteBufferEntrySource b =  bufferRef.get();
-            if( b != null) {
+        if (bufferRef != null) {
+            ByteBufferEntrySource b = bufferRef.get();
+            if (b != null) {
                 return b.duplicate();
             }
         }
@@ -196,15 +218,17 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         File file = storageProperties.logFile(context, segment);
         long size = file.length();
 
-        try(FileChannel fileChannel = new RandomAccessFile(file, "r").getChannel()) {
+        try (FileChannel fileChannel = new RandomAccessFile(file, "r").getChannel()) {
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, size);
             ByteBufferEntrySource eventSource = new ByteBufferEntrySource(buffer,
-                                                                          logEntryTransformerFactory, storageProperties);
+                                                                          logEntryTransformerFactory,
+                                                                          storageProperties);
             lruMap.put(segment, new WeakReference<>(eventSource));
             return eventSource;
         } catch (IOException ioException) {
-            throw new LogException(ErrorCode.DATAFILE_READ_ERROR, "Error while opening segment: " + segment, ioException);
+            throw new LogException(ErrorCode.DATAFILE_READ_ERROR,
+                                   "Error while opening segment: " + segment,
+                                   ioException);
         }
     }
-
 }

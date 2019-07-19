@@ -30,6 +30,8 @@ public interface LogEntryStore {
 
     TermIndex lastLog();
 
+    TermIndex firstLog();
+
     EntryIterator createIterator(long index);
 
     default EntryIterator createIterator(){
