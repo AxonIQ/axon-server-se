@@ -6,6 +6,7 @@ import org.junit.*;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -33,32 +34,32 @@ public class RuleBasedConnectionProviderTest {
 
     @Test
     public void testBestMatch() {
-        String bestMatch = testSubject.bestMatch(new ClientIdentification("context", "client"), values.keySet());
-        assertEquals("ServerC", bestMatch);
+        List<String>  bestMatch = testSubject.bestMatches(new ClientIdentification("context", "client"), values.keySet());
+        assertEquals("ServerC", bestMatch.get(0));
     }
 
     @Test
     public void testBestMatchOneNodeNotActive() {
         Collection<String> nodes = new LinkedList<>(values.keySet());
         nodes.remove("ServerC");
-        String bestMatch = testSubject.bestMatch(new ClientIdentification("context", "client"), nodes);
-        assertEquals("ServerA", bestMatch);
+        List<String>  bestMatch = testSubject.bestMatches(new ClientIdentification("context", "client"), nodes);
+        assertEquals("ServerA", bestMatch.get(0));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testNullClient() {
-        String bestMatch = testSubject.bestMatch(null, values.keySet());
+        testSubject.bestMatches(null, values.keySet());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testNullServer() {
-        String bestMatch = testSubject.bestMatch(new ClientIdentification("context", "client"), null);
+        testSubject.bestMatches(new ClientIdentification("context", "client"), null);
     }
 
     @Test
     public void testNoActiveServers() {
         Collection<String> nodes = new LinkedList<>();
-        String bestMatch = testSubject.bestMatch(new ClientIdentification("context", "client"), nodes);
-        assertNull(bestMatch);
+        List<String> bestMatch = testSubject.bestMatches(new ClientIdentification("context", "client"), nodes);
+        assertEquals(0, bestMatch.size());
     }
 }

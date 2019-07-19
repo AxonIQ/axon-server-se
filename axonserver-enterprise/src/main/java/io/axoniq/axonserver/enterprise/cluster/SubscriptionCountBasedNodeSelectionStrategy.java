@@ -8,7 +8,7 @@ import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -20,7 +20,8 @@ import java.util.Map;
 /**
  * @author Marc Gathier
  */
-@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "subscriptionCount")
+@ConditionalOnExpression("'${axoniq.axonserver.clients-connection-strategy}'.equals('subscriptionCount') ||"
+        + "'${axoniq.axonserver.clients-connection-strategy}'.equals('matchingTags')")
 @Component("SubscriptionCountBasedNodeSelectionStrategy")
 public class SubscriptionCountBasedNodeSelectionStrategy implements NodeSelectionStrategy {
     private final Logger logger = LoggerFactory.getLogger(SubscriptionCountBasedNodeSelectionStrategy.class);
