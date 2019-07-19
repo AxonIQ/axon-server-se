@@ -12,17 +12,19 @@ package io.axoniq.axonserver.component.processor.balancing;
 import java.io.Serializable;
 import java.util.Objects;
 import javax.annotation.Nonnull;
+import javax.persistence.Embeddable;
 
 /**
  * Represents the tracking event processor semantic key.
  * @author Sara Pellegrini
  * @since 4.0
  */
+@Embeddable
 public final class TrackingEventProcessor implements Serializable {
 
-    private String name;
+    public String name;
 
-    private String context;
+    public String context;
 
     @SuppressWarnings("unused")
     public TrackingEventProcessor() {

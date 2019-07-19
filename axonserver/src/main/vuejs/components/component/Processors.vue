@@ -259,7 +259,7 @@
                     this.loadBalancingStrategies = response.data;
                 });
                 if( this.hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING') ) {
-                    axios.get("v1/components/" + encodeURI(this.component) + "/processors/loadbalance/strategies?context="
+                    axios.get("v1/processors/autoloadbalance/strategies?context="
                                       + this.context).then(response => {
                         this.processorsLBStrategies = response.data;
                     });
@@ -311,7 +311,7 @@
                 this.$modal.hide('load-balance');
             },
             loadBalance(){
-                axios.patch("v1/components/" + encodeURI(this.component) + "/processors/" + encodeURI(this.loadBalanceProcessor.name) +
+                axios.patch("v1/processors/" + encodeURI(this.loadBalanceProcessor.name) +
                                     "/loadbalance?context=" + this.context + "&strategy=" + this.loadBalanceStrategy).then(
                         response => {
                             this.enableStatusLoader(this.loadBalanceProcessor);
@@ -339,8 +339,9 @@
             },
             changeLoadBalancingStrategy(processor, strategy){
                 console.log("strategy changed 5: "+ strategy);
-                axios.put("v1/components/" + encodeURI(this.component) + "/processors/" + processor +
-                                  "/loadbalance?context=" + this.context + "&strategy="+ strategy).then(response => {
+                axios.put("v1/processors/" + processor +
+                                  "/autoloadbalance?context=" + this.context + "&strategy=" + strategy).then(
+                        response => {
                     this.loadLBStrategies();
                 });
             }
