@@ -196,7 +196,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     @Override
     public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
-        if (request.getTerm() >= currentTerm()) {
+        if (request.getTerm() > currentTerm()) {
             String message = format("%s received pre-vote with term (%s >= %s) from %s",
                                     me(), request.getTerm(), currentTerm(), request.getCandidateId());
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestPreVote(request), message);

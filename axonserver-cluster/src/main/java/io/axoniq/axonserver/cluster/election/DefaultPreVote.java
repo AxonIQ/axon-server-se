@@ -16,8 +16,8 @@ import static java.lang.String.format;
 import static java.util.stream.StreamSupport.stream;
 
 /**
- * @author Sara Pellegrini
- * @since 4.1
+ * @author Marc Gathier
+ * @since 4.2
  */
 public class DefaultPreVote implements Election {
 
