@@ -19,38 +19,28 @@ globals.pageView = new Vue({
                 contexts: [],
                 context: null
             }, mounted() {
-        this.reloadStatus();
         axios.get("v1/public/license").then(response => { this.license = response.data });
         axios.get("v1/public/me").then(response => { this.node = response.data });
         axios.get("v1/public").then(response => { this.nodes = response.data });
         this.timer = setInterval(this.reloadStatus, 5000);
-        if( globals.isEnterprise()) {
-            if( globals.adminNode) {
-                let me = this;
-                axios.get("v1/public/context").then(response => {
-                    for( let i = 0; i < response.data.length; i++) {
-                        me.contexts.push(response.data[i].context);
-                        if( ! me.context && ! response.data[i].context.startsWith("_")) me.context = response.data[i].context;
+        if (globals.isEnterprise()) {
+            let me = this;
+            axios.get("v1/public/visiblecontexts?includeAdmin=true").then(response => {
+                for (let i = 0; i < response.data.length; i++) {
+                    me.contexts.push(response.data[i]);
+                    if (!me.context && !response.data[i].startsWith("_")) {
+                        me.context = response.data[i];
                     }
-                    me.reloadStatus()
+                }
+                me.reloadStatus()
                 });
-            } else {
-                axios.get("v1/public/mycontexts").then(response => {
-                    this.contexts = response.data;
-                    if( this.contexts.length > 0) {
-                        this.context = this.contexts[0];
-                    }
-                    this.reloadStatus()
-                });
-            }
-
         } else {
             this.context = "default";
             this.reloadStatus();
         }
     }, methods: {
         reloadStatus: function () {
-            if( this.context) {
+            if (this.context) {
                 axios.get("v1/public/status?context=" + this.context).then(response => {
                     this.status = response.data
                 });
@@ -60,9 +50,8 @@ globals.pageView = new Vue({
             if(confirm("Are you sure you want to delete all event and snapshot data?")){
                 axios.delete("v1/devmode/purge-events").then(response => {this.reloadStatus()});
             }
-
         }
     }, beforeDestroy: function() {
         clearInterval(this.timer);
     }
-        });
+                           });

@@ -154,11 +154,14 @@
                         working: false,
                         contexts: [],
                         activeContext: "default",
-                        license: "developer",
                         help: false
                     }, mounted() {
-                        axios.get("v1/public/mycontexts").then(response => this.contexts = response.data);
-                        axios.get("v1/public/license").then(response => { this.license = response.data });
+                if (globals.isEnterprise()) {
+                    axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
+                        this.contexts = response.data;
+                        this.activeContext = this.contexts.length === 0 ? "" : this.contexts[0];
+                    });
+                }
                     },
                     methods: {
                         toggleHelp() {
@@ -166,7 +169,7 @@
                         },
                         executeQuery() {
                             if ( typeof EventSource === "undefined") {
-                                alert( "No Server Emitter support in browser")
+                                alert("No Server Emitter support in browser");
                                 return;
 
                             }
@@ -177,7 +180,7 @@
                             if (source) {
                                 source.close();
                             }
-                            source = new EventSource("v1/search?query=" + encodeURIComponent($("#query").val())
+                            source = new EventSource("v1/search?query=" + encodeURIComponent(this.query)
                                     + "&context=" + encodeURIComponent(this.activeContext)
                                     + "&clientToken="
                                     + encodeURIComponent(clientToken));
@@ -229,7 +232,7 @@
                             source.addEventListener('error', function (e) {
                                 target.working = false;
                                 console.log(e);
-                                if (e.readyState == EventSource.CLOSED) {
+                                if (e.readyState === EventSource.CLOSED) {
                                     // Connection was closed.
                                 } else {
                                     if (e.data) {
@@ -263,7 +266,7 @@
     }
 </script>
 <div id="queryWrapper">
-    <div class="contextSelector" v-if="contexts.length > 1">
+    <div class="contextSelector" v-if="isEnterprise()">
         Active context:
         <select v-model="activeContext" >
             <option v-for="n in contexts">{{n}}</option>
@@ -359,7 +362,7 @@
             <caption></caption>
             <thead>
             <tr>
-                <th v-for="column in columns" v-bind:class="column">
+                <th v-for="column in columns" :class="column">
                     <div>{{column}}</div>
                 </th>
             </tr>
