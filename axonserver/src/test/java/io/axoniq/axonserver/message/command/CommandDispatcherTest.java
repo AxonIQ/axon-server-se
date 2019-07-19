@@ -133,7 +133,6 @@ public class CommandDispatcherTest {
     public void dispatchProxied() throws Exception {
         CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
         Command request = Command.newBuilder()
-                .addProcessingInstructions(ProcessingInstructionHelper.targetClient("client"))
                 .setName("Command")
                 .setMessageIdentifier("12")
                 .build();
