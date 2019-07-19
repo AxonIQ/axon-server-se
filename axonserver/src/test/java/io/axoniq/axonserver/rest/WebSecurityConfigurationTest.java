@@ -25,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
@@ -77,12 +78,14 @@ public class WebSecurityConfigurationTest {
                 return super.getHeader(name);
             }
         };
-        FilterChain filterChain = new MockFilterChain();
+        AtomicReference<Authentication> authentication = new AtomicReference<>();
+        FilterChain filterChain = (servletRequest, servletResponse) ->
+                authentication.set(SecurityContextHolder.getContext()
+                                                        .getAuthentication());
         testSubject.doFilter(request, response, filterChain);
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
-        Authentication authentication = SecurityContextHolder.getContext()
-                                                             .getAuthentication();
-        assertEquals(1, authentication.getAuthorities().size());
+        assertNotNull(authentication.get());
+
+        assertEquals(3, authentication.get().getAuthorities().size());
     }
 
     @Test
@@ -96,12 +99,13 @@ public class WebSecurityConfigurationTest {
                 return super.getParameter(name);
             }
         };
-        FilterChain filterChain = new MockFilterChain();
+
+        AtomicReference<Authentication> authentication = new AtomicReference<>();
+        FilterChain filterChain = (servletRequest, servletResponse) -> authentication.set(SecurityContextHolder.getContext()
+                                                                                               .getAuthentication());
         testSubject.doFilter(request, response, filterChain);
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
-        Authentication authentication = SecurityContextHolder.getContext()
-                                                             .getAuthentication();
-        assertEquals(1, authentication.getAuthorities().size());
+        assertNotNull(authentication.get());
+        assertEquals(3, authentication.get().getAuthorities().size());
     }
 
     @Test
@@ -115,9 +119,13 @@ public class WebSecurityConfigurationTest {
                 return super.getHeader(name);
             }
         };
-        FilterChain filterChain = new MockFilterChain();
+        AtomicReference<Authentication> authentication = new AtomicReference<>();
+        FilterChain filterChain = (servletRequest, servletResponse) ->
+                authentication.set(SecurityContextHolder.getContext()
+                                                        .getAuthentication());
+
         testSubject.doFilter(request, response, filterChain);
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNull(authentication.get());
         assertEquals(403, statusCodeHolder.get());
     }
 
@@ -164,13 +172,15 @@ public class WebSecurityConfigurationTest {
                 return "/v1/context";
             }
         };
-        FilterChain filterChain = new MockFilterChain();
+        AtomicReference<Authentication> authentication = new AtomicReference<>();
+        FilterChain filterChain = (servletRequest, servletResponse) ->
+                authentication.set(SecurityContextHolder.getContext()
+                                                        .getAuthentication());
+
         testSubject.doFilter(request, response, filterChain);
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNotNull(authentication.get());
         assertEquals(0, statusCodeHolder.get());
-        Authentication authentication = SecurityContextHolder.getContext()
-                                                             .getAuthentication();
-        assertEquals(1, authentication.getAuthorities().size());
+        assertEquals(3, authentication.get().getAuthorities().size());
     }
 
 }

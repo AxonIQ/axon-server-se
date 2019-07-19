@@ -17,12 +17,13 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Defines the interface for a transaction manager.
  * @author Marc Gathier
+ * @since 4.0
  */
 public interface StorageTransactionManager {
 
     CompletableFuture<Long> store(List<SerializedEvent> eventList);
 
-    void reserveSequenceNumbers(List<SerializedEvent> eventList);
+    Runnable reserveSequenceNumbers(List<SerializedEvent> eventList);
 
     default long waitingTransactions() {
         return 0;
@@ -31,4 +32,9 @@ public interface StorageTransactionManager {
     default void cancelPendingTransactions() {
 
     }
+
+    /**
+     * Deletes all events/snapshots related to the event storage engine managed by this transaction manager.
+     */
+    void deleteAllEventData();
 }

@@ -19,15 +19,17 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.runners.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -50,20 +52,17 @@ public class CommandDispatcherTest {
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(new SimpleMeterRegistry(),
-                                                     new DefaultMetricCollector());
+        metricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry);
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
         Set<CommandRegistrationCache.RegistrationEntry> commands =
                 Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "Command"));
         dummyRegistrations.put(new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),"component"),
                 commands);
-        when( registrations.getAll()).thenReturn(dummyRegistrations);
     }
 
     @Test
     public void unregisterCommandHandler()  {
-        when(registrations.getCommandsFor(anyObject())).thenReturn(Collections.singleton("One"));
         commandDispatcher.on(new TopologyEvents.ApplicationDisconnected(null, null, "client"));
     }
 
@@ -134,7 +133,6 @@ public class CommandDispatcherTest {
     public void dispatchProxied() throws Exception {
         CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
         Command request = Command.newBuilder()
-                .addProcessingInstructions(ProcessingInstructionHelper.targetClient("client"))
                 .setName("Command")
                 .setMessageIdentifier("12")
                 .build();
@@ -158,8 +156,6 @@ public class CommandDispatcherTest {
                 .setName("Command")
                 .setMessageIdentifier("12")
                 .build();
-        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,"1234");
-        when(registrations.findByClientAndCommand(eq(clientIdentification), anyObject())).thenReturn(null);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), responseObserver::onNext, true);
         assertEquals(1, responseObserver.count);

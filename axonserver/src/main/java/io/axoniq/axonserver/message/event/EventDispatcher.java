@@ -30,14 +30,11 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.metric.CompositeMetric;
-import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -48,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -61,8 +59,8 @@ import static io.grpc.stub.ServerCalls.*;
 @Component("EventDispatcher")
 public class EventDispatcher implements AxonServerClientService {
 
-    private static final String EVENTS_METRIC_NAME = "axon.events.count";
-    private static final String SNAPSHOTS_METRIC_NAME = "axon.snapshots.count";
+    private static final String EVENTS_METRIC_NAME = "axon.events";
+    private static final String SNAPSHOTS_METRIC_NAME = "axon.snapshots";
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
 
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
@@ -89,21 +87,18 @@ public class EventDispatcher implements AxonServerClientService {
                           .build();
 
     private final EventStoreLocator eventStoreLocator;
+    private final MeterFactory meterFactory;
     private final ContextProvider contextProvider;
-    private final MetricCollector clusterMetrics;
     private final Map<ClientIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
-    private final Counter eventsCounter;
-    private final Counter snapshotCounter;
+    private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
+    private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
-                           MeterRegistry meterRegistry,
-                           MetricCollector clusterMetrics) {
+                           MeterFactory meterFactory) {
         this.contextProvider = contextProvider;
-        this.clusterMetrics = clusterMetrics;
         this.eventStoreLocator = eventStoreLocator;
-        eventsCounter = meterRegistry.counter(EVENTS_METRIC_NAME);
-        snapshotCounter = meterRegistry.counter(SNAPSHOTS_METRIC_NAME);
+        this.meterFactory = meterFactory;
     }
 
 
@@ -125,7 +120,7 @@ public class EventDispatcher implements AxonServerClientService {
             @Override
             public void onNext(InputStream event) {
                 appendEventConnection.onNext(event);
-                eventsCounter.increment();
+                eventsCounter(context, eventsCounter, EVENTS_METRIC_NAME).mark();
             }
 
             @Override
@@ -141,6 +136,11 @@ public class EventDispatcher implements AxonServerClientService {
         };
     }
 
+    private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
+                                                 String eventsMetricName) {
+        return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(eventsMetricName, context));
+    }
+
 
     public void appendSnapshot(Event event, StreamObserver<Confirmation> confirmationStreamObserver) {
         appendSnapshot(contextProvider.getContext(), event, new ForwardingStreamObserver<>(logger, "appendSnapshot", confirmationStreamObserver));
@@ -148,7 +148,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void appendSnapshot(String context, Event request, StreamObserver<Confirmation> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            snapshotCounter.increment();
+            eventsCounter(context, snapshotCounter, SNAPSHOTS_METRIC_NAME).mark();
             eventStore.appendSnapshot(context, request).whenComplete((c, t) -> {
                 if (t != null) {
                     logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
@@ -208,19 +208,46 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
 
-    public long getNrOfEvents() {
-        return (long)eventsCounter.count() + new CompositeMetric(new io.axoniq.axonserver.metric.Metrics(EVENTS_METRIC_NAME, clusterMetrics)).size();
+    public long getNrOfEvents(String context) {
+        CompletableFuture<Long> lastTokenFuture = new CompletableFuture<>();
+        try {
+            eventStoreLocator.getEventStore(context).getLastToken(context,
+                                                              GetLastTokenRequest.newBuilder().build(),
+                                                              new StreamObserver<TrackingToken>() {
+                                                                  @Override
+                                                                  public void onNext(TrackingToken trackingToken) {
+                                                                      lastTokenFuture.complete(trackingToken.getToken());
+                                                                  }
+
+                                                                  @Override
+                                                                  public void onError(Throwable throwable) {
+                                                                      lastTokenFuture.completeExceptionally(throwable);
+
+                                                                  }
+
+                                                                  @Override
+                                                                  public void onCompleted() {
+                                                                      // no action needed
+                                                                  }
+                                                              });
+
+
+            return lastTokenFuture.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return -1;
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
-    public long getNrOfSnapshots() {
-        return (long)snapshotCounter.count() + new CompositeMetric(new io.axoniq.axonserver.metric.Metrics(SNAPSHOTS_METRIC_NAME, clusterMetrics)).size();
-    }
-
-    public Map<String, Iterable<Long>> eventTrackerStatus() {
+    public Map<String, Iterable<Long>> eventTrackerStatus(String context) {
         Map<String, Iterable<Long>> trackers = new HashMap<>();
         trackingEventProcessors.forEach((client, infos) -> {
-            List<Long> status = infos.stream().map(EventTrackerInfo::getLastToken).collect(Collectors.toList());
-            trackers.put(client.toString(), status);
+            if(client.getContext().equals(context)) {
+                List<Long> status = infos.stream().map(EventTrackerInfo::getLastToken).collect(Collectors.toList());
+                trackers.put(client.toString(), status);
+            }
         });
         return trackers;
     }
@@ -325,6 +352,13 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
 
+    public MeterFactory.RateMeter eventRate(String context) {
+        return eventsCounter(context, eventsCounter, EVENTS_METRIC_NAME);
+    }
+
+    public MeterFactory.RateMeter snapshotRate(String context) {
+        return eventsCounter(context, snapshotCounter, SNAPSHOTS_METRIC_NAME);
+    }
 
     private static class EventTrackerInfo {
         private final StreamObserver<InputStream> responseObserver;

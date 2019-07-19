@@ -1,7 +1,35 @@
-This is the Axon Server Standard Edition, version 4.1.
+This is the Axon Server Standard Edition, version 4.1.7
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.1.7
+-------------------------------
+
+* Use info endpoint to retrieve version number and product name
+* Reset reserved sequence numbers for aggregate when storing the event failed
+
+Release Notes for version 4.1.6
+-------------------------------
+
+* Added operation to set cached version numbers for aggregates
+
+Release Notes for version 4.1.5
+-------------------------------
+
+* Fix for authorization path mapping and improvements for rest access control
+* Improvements in release procedure for docker images
+* Fix for subscription query memory leak
+* Improvements in error reporting in case of disconnected applications
+* Improvements in detection of insufficient disk space
+
+Release Notes for version 4.1.4
+-------------------------------
+* Fix for appendEvent with no events in stream
+
+Release Notes for version 4.1.3
+-------------------------------
+* CLI commands now can be performed locally without token.
 
 Release Notes for version 4.1.2
 -------------------------------
@@ -155,6 +183,8 @@ full list, see the Reference Guide. https://docs.axoniq.io/reference-guide/axon-
   is enough diskspace here. Losing this data means losing your Events-sourced
   Aggregates' state! Conversely, if you want a quick way to start from scratch,
   here's where to clean.
+* axoniq.axonserver.snapshot.storage
+  This setting determines where aggregate snapshots are stored.
 * axoniq.axonserver.controldb-path
   This setting determines where the message hub stores its information.
   Losing this data will affect Axon Server's ability to determine which

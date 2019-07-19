@@ -69,14 +69,23 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     private final int maxEventCount;
 
+    /**
+     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all events
+     * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
+     */
+    private final int blacklistedSendAfter;
+
     public LocalEventStore(EventStoreFactory eventStoreFactory) {
-        this(eventStoreFactory, Short.MAX_VALUE);
+        this(eventStoreFactory, Short.MAX_VALUE, 1000);
     }
 
     @Autowired
-    public LocalEventStore(EventStoreFactory eventStoreFactory, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount) {
+    public LocalEventStore(EventStoreFactory eventStoreFactory,
+                           @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
+                           @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter) {
         this.eventStoreFactory = eventStoreFactory;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
+        this.blacklistedSendAfter = blacklistedSendAfter;
     }
 
     public void initContext(String context, boolean validating) {
@@ -97,8 +106,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if (workers == null) {
             return;
         }
-        workers.eventStorageEngine.deleteAllEventData();
-        workers.snapshotStorageEngine.deleteAllEventData();
+        workers.deleteAllEventData();
     }
 
     public void cancel(String context) {
@@ -222,7 +230,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if( controller == null) {
                     controller = workers(context).createEventTracker(getEventsRequest,responseStreamObserver);
                 } else {
-                    controller.addPermits((int)getEventsRequest.getNumberOfPermits());
+                    controller.addPermits((int) getEventsRequest.getNumberOfPermits());
+                    if (getEventsRequest.getBlacklistCount() > 0) {
+                        controller.addBlacklist(getEventsRequest.getBlacklistList());
+                    }
                 }
             }
 
@@ -408,7 +419,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
             this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
             this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
-            this.trackingEventManager = new TrackingEventProcessorManager(eventStorageEngine);
+            this.trackingEventManager = new TrackingEventProcessorManager(eventStorageEngine, blacklistedSendAfter);
 
             this.eventStreamReader = new EventStreamReader(eventStorageEngine);
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
@@ -425,6 +436,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
         }
 
+        /**
+         * Close all activity on a context and release all resources.
+         */
         public void close() {
             trackingEventManager.close();
             eventStorageEngine.close();
@@ -440,9 +454,22 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             trackingEventManager.stopAll();
         }
 
+        /**
+         * Checks if there are any tracking event processors that are waiting for new permits for a long time.
+         * This may indicate that the connection to the client application has gone. If a tracking event processor
+         * is waiting too long, the connection will be cancelled and the client needs to restart a tracker.
+         */
         private void validateActiveConnections() {
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
             trackingEventManager.validateActiveConnections(minLastPermits);
+        }
+
+        /**
+         * Deletes all event and snapshot data for this context.
+         */
+        public void deleteAllEventData() {
+            eventWriteStorage.deleteAllEventData();
+            snapshotWriteStorage.deleteAllEventData();
         }
     }
 }

@@ -62,17 +62,23 @@ public class LocalEventStorageEngineTest {
                     }
 
                     @Override
-                    public void reserveSequenceNumbers(List<SerializedEvent> eventList) {
-
+                    public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
+                        return () -> {
+                        };
                     }
 
                     @Override
                     public void cancelPendingTransactions() {
                         pendingTransactions.forEach(p -> p.completeExceptionally(new RuntimeException("Transaction cancelled")));
                     }
+
+                    @Override
+                    public void deleteAllEventData() {
+
+                    }
                 };
             }
-        }, 5);
+        }, 5, 1000);
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
 

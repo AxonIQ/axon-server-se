@@ -17,6 +17,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.axoniq.axonserver.util.FailingStreamObserver;
@@ -51,7 +52,7 @@ public class QueryDispatcherTest {
 
     @Before
     public void setup() {
-        QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(Metrics.globalRegistry, new DefaultMetricCollector());
+        QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(Metrics.globalRegistry, new DefaultMetricCollector()));
         queryDispatcher = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry);
     }
 
@@ -161,8 +162,6 @@ public class QueryDispatcherTest {
                 .build();
 
         AtomicInteger callbackCount = new AtomicInteger(0);
-
-        when(registrationCache.find(anyObject(), anyObject())).thenReturn(null);
 
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
         queryDispatcher.dispatchProxied(forwardedQuery, r -> callbackCount.incrementAndGet(), s->{});

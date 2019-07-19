@@ -51,6 +51,7 @@ public class Applications implements Iterable<Application> {
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
+        clientsPerComponent.forEach((component,clients) -> clients.removeIf(c -> c.client.equals(event.getClient())));
         clientsPerComponent.computeIfAbsent(new ComponentContext(event.getComponentName(), event.getContext()), k -> new CopyOnWriteArraySet<>())
                            .add(new ConnectedClient(event.getClient(), event.isProxied() ? event.getProxy() : getCurrentNode()));
     }

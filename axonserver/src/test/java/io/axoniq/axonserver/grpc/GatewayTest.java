@@ -122,7 +122,7 @@ public class GatewayTest {
         accessController = new AxonServerAccessController() {
             @Override
             public boolean allowed(String fullMethodName, String context, String token) {
-                return "1234".equals(token);
+                return "1234".equals(token) && Topology.DEFAULT_CONTEXT.equals(context);
             }
 
             @Override
@@ -136,7 +136,7 @@ public class GatewayTest {
             }
 
             @Override
-            public Set<String> getAdminRoles(String token) {
+            public Set<String> getRoles(String token, String context) {
                 return Collections.emptySet();
             }
         };
@@ -162,6 +162,7 @@ public class GatewayTest {
         try {
             PlatformServiceGrpc.newBlockingStub(channel)
                                .withInterceptors(getClientInterceptor(GrpcMetadataKeys.TOKEN_KEY, "2345"))
+                               .withInterceptors(getClientInterceptor(GrpcMetadataKeys.CONTEXT_MD_KEY, Topology.DEFAULT_CONTEXT))
                                .getPlatformServer(ClientIdentification.newBuilder().build());
             fail("Expected exception");
         } catch (StatusRuntimeException sre) {
@@ -172,6 +173,8 @@ public class GatewayTest {
         PlatformInfo result = PlatformServiceGrpc.newBlockingStub(channel)
                                                  .withInterceptors(getClientInterceptor(GrpcMetadataKeys.TOKEN_KEY,
                                                                                         "1234"))
+                                                 .withInterceptors(getClientInterceptor(GrpcMetadataKeys.CONTEXT_MD_KEY,
+                                                                                        Topology.DEFAULT_CONTEXT))
                                                  .getPlatformServer(ClientIdentification.newBuilder().build());
         assertEquals(Topology.DEFAULT_CONTEXT, result.getPrimary().getNodeName());
     }

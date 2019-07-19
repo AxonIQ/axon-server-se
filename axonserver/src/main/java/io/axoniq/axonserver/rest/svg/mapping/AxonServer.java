@@ -13,8 +13,8 @@ package io.axoniq.axonserver.rest.svg.mapping;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
 /**
- * Created by Sara Pellegrini on 02/05/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public interface AxonServer {
 
@@ -25,4 +25,8 @@ public interface AxonServer {
     Iterable<String> contexts();
 
     Iterable<Storage> storage();
+
+    default boolean isAdminLeader() {
+        return false;
+    }
 }

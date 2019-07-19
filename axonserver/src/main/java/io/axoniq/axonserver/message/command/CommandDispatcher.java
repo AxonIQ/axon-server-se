@@ -17,7 +17,7 @@ import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.micrometer.core.instrument.Counter;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -40,20 +40,19 @@ import java.util.stream.Collectors;
 @Component("CommandDispatcher")
 public class CommandDispatcher {
 
-    private static final String COMMAND_COUNTER_NAME = "axon.commands.count";
+    private static final String COMMANDRATE_NAME = "axon.commands";
     private static final String ACTIVE_COMMANDS_GAUGE = "axon.commands.active";
     private final CommandRegistrationCache registrations;
     private final CommandCache commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed());
-    private final Counter commandCounter;
+    private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
 
     public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache, CommandMetricsRegistry metricRegistry) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
-        this.commandCounter = metricRegistry.counter(COMMAND_COUNTER_NAME);
         metricRegistry.gauge(ACTIVE_COMMANDS_GAUGE, commandCache, ConcurrentHashMap::size);
     }
 
@@ -61,12 +60,22 @@ public class CommandDispatcher {
     public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if( proxied) {
             CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
-            dispatchToCommandHandler( request, handler, responseObserver);
+            dispatchToCommandHandler( request, handler, responseObserver,
+                                      ErrorCode.CLIENT_DISCONNECTED,
+                                      String.format("Client %s not found while processing: %s"
+                                              , request.getClient(), request.getCommand()));
         } else {
-            commandCounter.increment();
+            commandRate(context).mark();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
-            dispatchToCommandHandler( request, commandHandler, responseObserver);
+            dispatchToCommandHandler( request, commandHandler, responseObserver,
+                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
+                                      "No Handler for command: " + request.getCommand()
+                                      );
         }
+    }
+
+    public MeterFactory.RateMeter commandRate(String context) {
+        return commandRatePerContext.computeIfAbsent(context, c->  metricRegistry.rateMeter(COMMANDRATE_NAME, c));
     }
 
     @EventListener
@@ -88,14 +97,15 @@ public class CommandDispatcher {
     }
 
     private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
-                                          Consumer<SerializedCommandResponse> responseObserver) {
+                                          Consumer<SerializedCommandResponse> responseObserver,
+                                          ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
             logger.warn("No Handler for command: {}", command.getName() );
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                    .setMessageIdentifier(command.getMessageIdentifier())
                                                    .setRequestIdentifier(command.getMessageIdentifier())
-                                                   .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
-                                                   .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + command.getName()))
+                                                   .setErrorCode(noHandlerErrorCode.getCode())
+                                                   .setErrorMessage(ErrorMessageFactory.build(noHandlerMessage))
                                                    .build()));
             return;
         }
@@ -167,11 +177,7 @@ public class CommandDispatcher {
         });
     }
 
-    public long getNrOfCommands() {
-        return (long)commandCounter.count();
-    }
-
-    public int commandCount() {
+    public int activeCommandCount() {
         return commandCache.size();
     }
 

@@ -67,4 +67,8 @@ public class SerializedEventWithToken {
     public Event asEvent() {
         return serializedEvent.asEvent();
     }
+
+    public SerializedEvent getSerializedEvent() {
+        return serializedEvent;
+    }
 }

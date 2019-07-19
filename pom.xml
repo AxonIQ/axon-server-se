@@ -29,6 +29,7 @@
         <module>axonserver-grpc</module>
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
+        <module>docker/axonserver-docker-hub</module>
     </modules>
 
     <properties>
@@ -37,7 +38,7 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
-
+        <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
 
         <!--
@@ -50,7 +51,7 @@
 
         <netty.version>4.1.32.Final</netty.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
-        <axonserver.api.version>4.1</axonserver.api.version>
+        <axonserver.api.version>4.2-SNAPSHOT</axonserver.api.version>
     </properties>
 
     <dependencyManagement>
@@ -114,7 +115,6 @@
                     <mavenExecutorId>forked-path</mavenExecutorId>
                     <localCheckout>true</localCheckout>
                     <goals>deploy</goals>
-                    <pushChanges>false</pushChanges>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <arguments>-Dmaven.javadoc.skip=true -Dsource.skip=true</arguments>
                 </configuration>
@@ -146,6 +146,19 @@
         <name>AxonIQ BV</name>
         <url>http://axoniq.io</url>
     </organization>
+
+    <repositories>
+        <repository>
+            <id>sonatype</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </repository>
+    </repositories>
 
     <developers>
         <developer>

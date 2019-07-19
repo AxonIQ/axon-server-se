@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.micrometer.core.instrument.Counter;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -26,7 +26,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -35,7 +37,7 @@ import java.util.stream.Collectors;
  */
 @Component("QueryDispatcher")
 public class QueryDispatcher {
-    private static final String QUERY_COUNTER_NAME = "axon.queries.count";
+    private static final String QUERY_RATE_NAME = "axon.queries";
     private static final String ACTIVE_QUERY_GAUGE = "axon.queries.active";
 
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
@@ -43,14 +45,13 @@ public class QueryDispatcher {
     private final QueryCache queryCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed());
-    private final Counter queryCounter;
+    private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache, QueryMetricsRegistry queryMetricsRegistry) {
         this.registrationCache = registrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
         queryMetricsRegistry.gauge(ACTIVE_QUERY_GAUGE, queryCache, QueryCache::size);
-        this.queryCounter = queryMetricsRegistry.counter(QUERY_COUNTER_NAME);
     }
 
 
@@ -113,12 +114,9 @@ public class QueryDispatcher {
         return queryQueue;
     }
 
-    public long getNrOfQueries() {
-        return (long)queryCounter.count();
-    }
 
     public void query(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
-        queryCounter.increment();
+        queryRate(serializedQuery.context()).mark();
         QueryRequest query = serializedQuery.query();
         long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         Set<? extends QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
@@ -145,6 +143,10 @@ public class QueryDispatcher {
         }
     }
 
+    public MeterFactory.RateMeter queryRate(String context) {
+        return queryRatePerContext.computeIfAbsent(context, c -> queryMetricsRegistry.rateMeter(QUERY_RATE_NAME, c));
+    }
+
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         QueryRequest query = serializedQuery.query();
         long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
@@ -153,9 +155,11 @@ public class QueryDispatcher {
         QueryHandler queryHandler = registrationCache.find( context, query, client);
         if( queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
-                                         .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
+                                         .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
                                          .setMessageIdentifier(query.getMessageIdentifier())
-                                         .setErrorMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
+                                         .setErrorMessage(
+                                                 ErrorMessageFactory.build(String.format("Client %s not found while processing: %s"
+                                                         , client, query.getQuery())))
                                          .build());
             onCompleted.accept(client);
         } else {

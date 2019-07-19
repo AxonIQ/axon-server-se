@@ -13,6 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.PayloadDescription;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,17 +49,30 @@ public class TrackingEventProcessorManager {
     private final Logger logger = LoggerFactory.getLogger(TrackingEventProcessorManager.class);
     private final String context;
     private final Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder;
+    private final int blacklistedSendAfter;
 
-    public TrackingEventProcessorManager(EventStorageEngine eventStorageEngine) {
-        this(eventStorageEngine.getType().getContext(), eventStorageEngine::getGlobalIterator);
+    /**
+     * Constructor for {@link TrackingEventProcessorManager}.
+     * @param eventStorageEngine the event storage engine
+     * @param blacklistedSendAfter max number of ignored events before sending next event
+     */
+    public TrackingEventProcessorManager(EventStorageEngine eventStorageEngine, int blacklistedSendAfter) {
+        this(eventStorageEngine.getType().getContext(), eventStorageEngine::getGlobalIterator, blacklistedSendAfter);
     }
 
-    TrackingEventProcessorManager(String context, Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder) {
+    /**
+     * Constructor for {@link TrackingEventProcessorManager} for easier testing.
+     * @param context the context for the storage engine
+     * @param iteratorBuilder function that creates an event iterator
+     * @param blacklistedSendAfter max number of ignored events before sending next event
+     */
+    TrackingEventProcessorManager(String context, Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder, int blacklistedSendAfter) {
         this.context = context;
         this.iteratorBuilder = iteratorBuilder;
         // Use 2 threads (one to send events and one to avoid queuing of reschedules.
         this.scheduledExecutorService = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory(
                 "trackers-" + context));
+        this.blacklistedSendAfter = blacklistedSendAfter;
     }
 
     /**
@@ -177,11 +191,16 @@ public class TrackingEventProcessorManager {
         private final StreamObserver<InputStream> eventStream;
         private volatile CloseableIterator<SerializedEventWithToken> eventIterator;
         private volatile boolean running = true;
+        private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
+        private volatile int force = blacklistedSendAfter;
 
         private EventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
             permits = new AtomicInteger((int) request.getNumberOfPermits());
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(request.getTrackingToken());
+            if (request.getBlacklistCount() > 0) {
+                addBlacklist(request.getBlacklistList());
+            }
             this.eventStream = eventStream;
         }
 
@@ -200,9 +219,15 @@ public class TrackingEventProcessorManager {
                         && count < MAX_EVENTS_PER_RUN
                         && eventIterator.hasNext()
                 ) {
-                    eventStream.onNext(eventIterator.next().asInputStream());
-                    if (permits.decrementAndGet() == 0) {
-                        lastPermitTimestamp.set(System.currentTimeMillis());
+                    SerializedEventWithToken next = eventIterator.next();
+                    if( !blacklisted(next)) {
+                        eventStream.onNext(next.asInputStream());
+                        if (permits.decrementAndGet() == 0) {
+                            lastPermitTimestamp.set(System.currentTimeMillis());
+                        }
+                        force = blacklistedSendAfter;
+                    } else {
+                        force--;
                     }
                     count++;
                 }
@@ -212,6 +237,16 @@ public class TrackingEventProcessorManager {
             }
 
             return count;
+        }
+
+        private boolean blacklisted(SerializedEventWithToken next) {
+            return force > 1 && !blacklistedTypes.isEmpty() && blacklistedTypes.contains(payloadType(next));
+        }
+
+        private PayloadDescription payloadType(SerializedEventWithToken next) {
+            return PayloadDescription.newBuilder().
+                    setRevision(next.asEvent().getPayload().getRevision()).setType(next.asEvent().getPayload().getType()).
+                    build();
         }
 
         private void sendError(Exception ex) {
@@ -249,6 +284,11 @@ public class TrackingEventProcessorManager {
                 close();
                 sendError(new MessagingPlatformException(ErrorCode.OTHER, "Timeout waiting for permits from client"));
             }
+        }
+
+        public void addBlacklist(List<PayloadDescription> blacklistList) {
+            logger.debug("Blacklisted: {}", blacklistList.get(0));
+            blacklistedTypes.addAll(blacklistList);
         }
     }
 }
