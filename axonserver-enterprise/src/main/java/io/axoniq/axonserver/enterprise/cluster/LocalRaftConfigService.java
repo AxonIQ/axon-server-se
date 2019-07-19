@@ -237,18 +237,15 @@ class LocalRaftConfigService implements RaftConfigService {
                                                  String.format("Node %s not found in context %s", node, context));
         }
 
-        if (isAdmin(context) && contextDef.getNodeNames().size() == 1) {
-            throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                 String.format("Cannot delete last node %s from admin context %s",
+        if (contextDef.getNodeNames().size() == 1) {
+            throw new MessagingPlatformException(ErrorCode.CANNOT_REMOVE_LAST_NODE,
+                                                 String.format(
+                                                         "Node %s is last node in context %s, to delete the context use unregister context",
                                                                node,
                                                                context));
         }
 
-        if (contextDef.getNodeNames().size() == 1) {
-            deleteContext(context);
-        } else {
-            removeNodeFromContext(contextDef, node, nodeLabel);
-        }
+        removeNodeFromContext(contextDef, node, nodeLabel);
     }
 
     private CompletableFuture<Void> removeNodeFromContext(Context context,
