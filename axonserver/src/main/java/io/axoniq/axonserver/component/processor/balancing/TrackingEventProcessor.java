@@ -22,9 +22,9 @@ import javax.persistence.Embeddable;
 @Embeddable
 public final class TrackingEventProcessor implements Serializable {
 
-    public String name;
+    private String name;
 
-    public String context;
+    private String context;
 
     @SuppressWarnings("unused")
     public TrackingEventProcessor() {
