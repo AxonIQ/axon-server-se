@@ -15,19 +15,18 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
- * @author Sara Pellegrini
- * @since 4.1
+ * @author Marc Gathier
  */
-public class DefaultElectionTest {
+public class DefaultPreVoteTest {
 
-    private DefaultElection election;
+    private DefaultPreVote testSubject;
     private FakeScheduler fakeScheduler;
     private ElectionStore electionStore;
     private FakeRaftPeer node1;
     private FakeRaftPeer node2;
 
     @Before
-    public void setUp() throws Exception {
+    public void setup() {
         electionStore = new InMemoryElectionStore();
         electionStore.updateCurrentTerm(100);
         RequestVoteRequest prototype = RequestVoteRequest.newBuilder()
@@ -42,53 +41,53 @@ public class DefaultElectionTest {
         node1 = new FakeRaftPeer(fakeScheduler, "Node1");
         node2 = new FakeRaftPeer(fakeScheduler, "Node2");
         List<RaftPeer> otherPeers = asList(node1, node2);
-        election = new DefaultElection(prototype, updateTerm, electionStore, otherPeers, false);
+        testSubject = new DefaultPreVote(prototype, updateTerm, electionStore, otherPeers);
     }
 
     @Test
     public void testElectionWon() {
-        node1.setTerm(101);
-        node2.setTerm(101);
+        node1.setTerm(100);
+        node2.setTerm(100);
         node1.setVoteGranted(true);
         node2.setVoteGranted(true);
         AtomicBoolean won = new AtomicBoolean(false);
-        election.result().subscribe(result -> won.set(result.won()));
+        testSubject.result().subscribe(result -> won.set(result.won()));
         fakeScheduler.timeElapses(100);
         assertTrue(won.get());
     }
 
     @Test
     public void testElectionWonWithOneVoteNotGranted() {
-        node1.setTerm(101);
-        node2.setTerm(101);
+        node1.setTerm(100);
+        node2.setTerm(100);
         node1.setVoteGranted(true);
         node2.setVoteGranted(false);
         AtomicBoolean won = new AtomicBoolean(false);
-        election.result().subscribe(result -> won.set(result.won()));
+        testSubject.result().subscribe(result -> won.set(result.won()));
         fakeScheduler.timeElapses(100);
         assertTrue(won.get());
     }
 
     @Test
     public void testElectionWonWithOneVotePrevTerm() {
-        node1.setTerm(101);
+        node1.setTerm(99);
         node2.setTerm(100);
         node1.setVoteGranted(true);
         node2.setVoteGranted(true);
         AtomicBoolean won = new AtomicBoolean(false);
-        election.result().subscribe(result -> won.set(result.won()));
+        testSubject.result().subscribe(result -> won.set(result.won()));
         fakeScheduler.timeElapses(100);
         assertTrue(won.get());
     }
 
     @Test
     public void testElectionLost() {
-        node1.setTerm(101);
-        node2.setTerm(101);
+        node1.setTerm(100);
+        node2.setTerm(100);
         node1.setVoteGranted(false);
         node2.setVoteGranted(false);
-        AtomicBoolean won = new AtomicBoolean(true);
-        election.result().subscribe(result -> won.set(result.won()));
+        AtomicBoolean won = new AtomicBoolean(false);
+        testSubject.result().subscribe(result -> won.set(result.won()));
         fakeScheduler.timeElapses(100);
         assertFalse(won.get());
     }
@@ -96,22 +95,21 @@ public class DefaultElectionTest {
     @Test
     public void testElectionTimeout() throws InterruptedException {
         AtomicBoolean won = new AtomicBoolean(true);
-        election.result().timeout(Duration.ofMillis(100)).subscribe(result -> won.set(result.won()),
-                                                                    error -> won.set(false));
-        Thread.sleep(105);
+        testSubject.result().timeout(Duration.ofMillis(100)).subscribe(result -> won.set(result.won()),
+                                                                       error -> won.set(false));
+        Thread.sleep(120);
         assertFalse(won.get());
     }
 
     @Test
     public void testElectionAbortedForGreaterTerm() {
-        node1.setTerm(101);
-        node2.setTerm(105);
+        node1.setTerm(100);
+        node2.setTerm(101);
         node1.setVoteGranted(false);
         node2.setVoteGranted(false);
         AtomicBoolean won = new AtomicBoolean(true);
-        election.result().subscribe(result -> won.set(result.won()));
+        testSubject.result().subscribe(result -> won.set(result.won()));
         fakeScheduler.timeElapses(100);
         assertFalse(won.get());
     }
-
 }

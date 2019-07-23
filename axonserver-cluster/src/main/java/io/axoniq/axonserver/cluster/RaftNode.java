@@ -431,6 +431,14 @@ public class RaftNode {
     }
 
     /**
+     * Stop accepting entries, complete replication to at least one peer and let peer start new election
+     */
+    public CompletableFuture<Void> transferLeadership() {
+        logger.info("{} in term {}: Transfer leadership started.", groupId(), currentTerm());
+        return state.get().transferLeadership();
+    }
+
+    /**
      * Gets the iterator of entries that have not been applied.
      *
      * @return the iterator of entries that have not been applied
@@ -543,5 +551,12 @@ public class RaftNode {
                 logger.warn("{} in term {}: Failed to handle event", groupId(), currentTerm(), ex);
             }
         });
+    }
+
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        notifyMessage(request);
+        RequestVoteResponse response = state.get().requestPreVote(request);
+        notifyMessage(response);
+        return response;
     }
 }

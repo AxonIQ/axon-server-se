@@ -48,17 +48,22 @@ public class RemovedState implements MembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        throw new IllegalStateException(nodeId + " : in idle state");
+        throw new IllegalStateException(nodeId + " : in removed state");
     }
 
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        throw new IllegalStateException(nodeId + " : in idle state");
+        throw new IllegalStateException(nodeId + " : in removed state");
+    }
+
+    @Override
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        throw new IllegalStateException(nodeId + " : in removed state");
     }
 
     @Override
     public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
-        throw new IllegalStateException(nodeId + " : in idle state");
+        throw new IllegalStateException(nodeId + " : in removed state");
     }
 
     @Override

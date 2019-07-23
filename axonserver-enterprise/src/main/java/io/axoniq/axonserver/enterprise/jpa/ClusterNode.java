@@ -205,11 +205,17 @@ public class ClusterNode implements Serializable, AxonServerNode {
     }
 
     public void removeContext(String context) {
-        Optional<ContextClusterNode> contextClusterNode = contexts.stream().filter(ccn -> context.equals(ccn.getContext().getName())).findFirst();
+        Optional<ContextClusterNode> contextClusterNode = getContext(context);
         contextClusterNode.ifPresent(ContextClusterNode::preDelete);
     }
 
     public boolean isAdmin() {
         return getContextNames().contains(getAdmin());
+    }
+
+    public Optional<ContextClusterNode> getContext(String contextName) {
+        return getContexts().stream()
+                            .filter(c -> c.getContext().getName().equals(contextName))
+                            .findFirst();
     }
 }

@@ -65,6 +65,35 @@ public interface MembershipState extends ClusterConfiguration{
     }
 
     default CurrentConfiguration currentConfiguration() {
-        throw new UnsupportedOperationException("CurrentConfiguration is not available in this state.");
+        return new CurrentConfiguration() {
+            @Override
+            public List<Node> groupMembers() {
+                return currentGroupMembers();
+            }
+
+            @Override
+            public boolean isUncommitted() {
+                return false;
+            }
+        };
     }
+
+    /**
+     * Starts process to transfer leadership from this node to another. No-op when the current node is not a leader.
+     * @return completable future that completes when other node is up to date.
+     */
+    default CompletableFuture<Void> transferLeadership() {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    /**
+     * Handles a pre-vote request from another node in cluster.
+     * <p>
+     * Returns true if current state is Candidate, Pre-Vote, or Follower State (with time out on message from leader).
+     * Returns false otherwise. Adds flag goAway if current state is leader and node from request is unknown.
+     *
+     * @param request the vote request
+     * @return pre-vote allowed
+     */
+    RequestVoteResponse requestPreVote(RequestVoteRequest request);
 }
