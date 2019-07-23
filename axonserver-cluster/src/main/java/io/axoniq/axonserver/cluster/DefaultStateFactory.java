@@ -43,11 +43,11 @@ public class DefaultStateFactory implements MembershipStateFactory {
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
-        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(), () -> raftGroup.localNode().replicatorPeers());
-
+        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
+                                                       () -> raftGroup.localNode().replicatorPeers());
     }
 
-    private MembershipStateFactory stateFactory(){
+    private MembershipStateFactory stateFactory() {
         MembershipStateFactory stateFactory = raftGroup.localNode().stateFactory();
         return stateFactory != null ? stateFactory : this;
     }
@@ -105,5 +105,19 @@ public class DefaultStateFactory implements MembershipStateFactory {
                              .registerConfigurationListenerFn(registerConfigurationListener)
                              .stateFactory(stateFactory())
                              .build();
+    }
+
+    @Override
+    public MembershipState preVoteState() {
+        return PreVoteState.builder()
+                           .raftGroup(raftGroup)
+                           .schedulerFactory(schedulerFactory)
+                           .transitionHandler(transitionHandler)
+                           .termUpdateHandler(termUpdateHandler)
+                           .snapshotManager(snapshotManager)
+                           .currentConfiguration(currentConfiguration)
+                           .registerConfigurationListenerFn(registerConfigurationListener)
+                           .stateFactory(stateFactory())
+                           .build();
     }
 }

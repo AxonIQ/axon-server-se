@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.LeaderConfiguration;
 import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
+import io.axoniq.axonserver.cluster.exception.LeadershipTransferInProgressException;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
@@ -15,6 +16,8 @@ import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.LeaderElected;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
@@ -30,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -55,6 +59,7 @@ public class LeaderState extends AbstractMembershipState {
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private final MatchStrategy matchStrategy;
     private final AtomicLong lastConfirmed = new AtomicLong();
+    private final AtomicBoolean leadershipTransferInProgress = new AtomicBoolean();
     private volatile CompletableFuture<ConfigChangeResult> pendingConfigurationChange;
     private volatile Replicators replicators;
 
@@ -132,6 +137,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        leadershipTransferInProgress.set(false);
         replicators = new Replicators();
         scheduler.set(schedulerFactory().get());
         lastConfirmed.set(0);
@@ -154,7 +160,7 @@ public class LeaderState extends AbstractMembershipState {
             pendingConfigurationChange = null;
         }
         pendingEntries.forEach((index, completableFuture) -> completableFuture
-                .completeExceptionally(new IllegalStateException("Leader stepped down during processing of transaction")));
+                .completeExceptionally(new LeadershipTransferInProgressException("Transferring leadership")));
         pendingEntries.clear();
         logger.info("{} in term {}: {} steps down from Leader role.", groupId(), currentTerm(), me());
         if (scheduler.get() != null) {
@@ -182,6 +188,26 @@ public class LeaderState extends AbstractMembershipState {
         return responseFactory().appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
     }
 
+
+    @Override
+    public RequestVoteResponse requestVote(RequestVoteRequest request) {
+        if (!request.getDisruptAllowed() && heardFromFollowers()) {
+            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+        }
+
+        return super.requestVote(request);
+    }
+
+    @Override
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        if (heardFromFollowers()) {
+            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+        }
+
+        return super.requestVote(request);
+    }
+
+
     @Override
     protected boolean shouldGoAwayIfNotMember() {
         return true;
@@ -194,6 +220,9 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
+        if( leadershipTransferInProgress.get()) {
+            throw new LeadershipTransferInProgressException("Transferring leadership");
+        }
         return createEntry(currentTerm(), entryType, entryData);
     }
 
@@ -210,6 +239,18 @@ public class LeaderState extends AbstractMembershipState {
 
     private void stepDown(String cause) {
         changeStateTo(stateFactory().followerState(), cause);
+    }
+
+    private boolean heardFromFollowers() {
+        long otherNodesCount = otherNodesCount();
+        if (otherNodesCount == 0) {
+            return true;
+        }
+        List<Long> timeSinceLastMessages = replicators.lastMessages();
+        long timeSinceLastMessageFromMajority = calculateLastMessageFromMajority(timeSinceLastMessages,
+                                                                                 otherNodesCount);
+
+        return timeSinceLastMessageFromMajority < maxElectionTimeout();
     }
 
     private void checkStepdown() {
@@ -252,6 +293,55 @@ public class LeaderState extends AbstractMembershipState {
                                     .orElse(0L);
     }
 
+
+    /**
+     * Stops accepting new requests from client and waits until one of the followers is up to date. When
+     * a follower is up to date, if sends a timeout now message to the follower to force a new election.
+     * @return completable future that completes when a condidate leader is updated
+     */
+    @Override
+    public CompletableFuture<Void> transferLeadership() {
+        if (otherNodesCount() == 0) {
+            throw new LogException(ErrorCode.VALIDATION_FAILED,
+                                   "Cannot transfer leadership if no other nodes avaiable");
+        }
+
+        if (leadershipTransferInProgress.compareAndSet(false, true)) {
+            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+            waitForFollowerUpdated(completableFuture);
+            return completableFuture;
+        }
+        throw new LeadershipTransferInProgressException("Transfer leadership already in progress");
+    }
+
+    private void waitForFollowerUpdated(CompletableFuture<Void> completableFuture) {
+        Optional<ReplicatorPeer> updatedFollower =
+                findUpToDatePeer();
+
+        if (updatedFollower.isPresent()) {
+            updatedFollower.get().sendTimeoutNow();
+            completableFuture.complete(null);
+        } else {
+            scheduler.get().schedule(() -> waitForFollowerUpdated(completableFuture), 10, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    /**
+     * Finds a (voting) peer that has confirmed to have received all log entries from the leader.
+     *
+     * @return optional replicator peer
+     */
+    private Optional<ReplicatorPeer> findUpToDatePeer() {
+        long lastLogEntry = raftGroup().localLogEntryStore().lastLogIndex();
+        return replicators.replicatorPeerMap
+                .entrySet()
+                .stream()
+                .filter(e -> replicators.isPossibleLeader(e.getKey()))
+                .filter(e -> e.getValue().nextIndex() > lastLogEntry)
+                .map(Map.Entry::getValue)
+                .findFirst();
+    }
+
     private CompletableFuture<Void> createEntry(long currentTerm, String entryType, byte[] entryData) {
         CompletableFuture<Entry> entryFuture = raftGroup().localLogEntryStore()
                                                           .createEntry(currentTerm, entryType, entryData);
@@ -266,7 +356,7 @@ public class LeaderState extends AbstractMembershipState {
                 appendEntryDone.completeExceptionally(failure);
             } else {
                 try {
-                    if( replicators == null) {
+                    if (replicators == null) {
                         appendEntryDone.completeExceptionally(new LogException(ErrorCode.CLUSTER_ERROR,
                                                                                "Replicators null when processing entry in LeaderState"));
                     } else {
@@ -523,6 +613,16 @@ public class LeaderState extends AbstractMembershipState {
         public List<Long> lastMessages() {
             long now = scheduler.get().clock().millis();
             return replicatorPeerMap.values().stream().map(peer -> now - peer.lastMessageReceived()).sorted().collect(Collectors.toList());
+        }
+
+        /**
+         * Checks if this peer is a node capable of being a leader.
+         *
+         * @param group the raft group id
+         * @return true if peer is able to become leader
+         */
+        public boolean isPossibleLeader(String group) {
+            return !nonVotingReplicaMap.containsValue(group);
         }
     }
 }

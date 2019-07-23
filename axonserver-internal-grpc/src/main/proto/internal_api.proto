@@ -115,6 +115,8 @@ service RaftGroupService {
 
     rpc Configuration (ContextName) returns (ContextConfiguration) {
     }
+
+    rpc TransferLeadership (ContextName) returns (Confirmation) {}
 }
 
 

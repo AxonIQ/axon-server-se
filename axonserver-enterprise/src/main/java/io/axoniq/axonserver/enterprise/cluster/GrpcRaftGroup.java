@@ -194,7 +194,7 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public RaftPeer peer(Node node) {
-        return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
+        return new GrpcRaftPeer(context, node, clientFactory, raftConfiguration.maxElectionTimeout());
     }
 
     @Override

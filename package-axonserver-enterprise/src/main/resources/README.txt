@@ -28,6 +28,11 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.2
+--------------------------
+
+- Delete leader from group is now possible
+
 Changes in Axon Server 4.1.8
 ----------------------------
 
@@ -46,6 +51,7 @@ Changes in Axon Server 4.1.6
 
 - Fix for unexpected leader change on adding 3rd node to context
 - Fix for replication entry log compaction
+
 
 Changes in Axon Server 4.1.5
 ----------------------------
