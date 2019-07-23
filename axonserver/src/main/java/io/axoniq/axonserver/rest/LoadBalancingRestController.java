@@ -55,8 +55,16 @@ public class LoadBalancingRestController {
     }
 
     @PatchMapping("components/{component}/processors/{processor}/loadbalance")
+    @Deprecated
     public void loadBalance(@PathVariable("component") String component,
                             @PathVariable("processor") String processor,
+                            @RequestParam("context") String context,
+                            @RequestParam("strategy") String strategyName) {
+        loadBalance(processor, component, strategyName);
+    }
+
+    @PatchMapping("processors/{processor}/loadbalance")
+    public void loadBalance(@PathVariable("processor") String processor,
                             @RequestParam("context") String context,
                             @RequestParam("strategy") String strategyName) {
         TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context);
