@@ -535,6 +535,10 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void init(List<String> contexts) {
+        if (!canInit()) {
+            throw new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
+                                                 "Node is already member of cluster or initialized before");
+        }
         for (String context : contexts) {
             if (!contextNameValidation.test(context)) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
@@ -544,6 +548,11 @@ class LocalRaftConfigService implements RaftConfigService {
         logger.info("Initialization of this node with following contexts: {}", contexts);
         init(getAdmin());
         contexts.forEach(this::init);
+    }
+
+    private boolean canInit() {
+        return !(contextController.getContexts().count() > 0 ||
+                contextController.getRemoteNodes().iterator().hasNext());
     }
 
     private void init(String contextName) {
