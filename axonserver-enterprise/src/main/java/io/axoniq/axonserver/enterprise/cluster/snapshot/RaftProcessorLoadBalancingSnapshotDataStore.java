@@ -1,29 +1,28 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.RaftProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import reactor.core.publisher.Flux;
 
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
-import static io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter.createJpaProcessorLoadBalancing;
+import static io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter.createJpaRaftProcessorLoadBalancing;
 
 
 /**
- * Snapshot data store for {@link ProcessorLoadBalancing} data. This information is only replicated between admin nodes.
+ * Snapshot data store for {@link RaftProcessorLoadBalancing} data.
  *
- * @author Milan Savic
- * @since 4.1
+ * @author Marc Gathier
+ * @since 4.2
  */
-public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStore {
+public class RaftProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStore {
 
-    private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
-    private final boolean adminContext;
+    private final String context;
+    private final RaftProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
     /**
      * Creates Processor Load Balancing Snapshot Data Store for streaming/applying processor load balancing data.
@@ -31,10 +30,10 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
      * @param context                          application context
      * @param processorLoadBalancingRepository the repository for retrieving/saving processor load balancing data
      */
-    public ProcessorLoadBalancingSnapshotDataStore(
-            String context, ProcessorLoadBalancingRepository processorLoadBalancingRepository) {
+    public RaftProcessorLoadBalancingSnapshotDataStore(
+            String context, RaftProcessorLoadBalancingRepository processorLoadBalancingRepository) {
+        this.context = context;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
-        this.adminContext = isAdmin(context);
     }
 
     @Override
@@ -44,21 +43,22 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
 
     @Override
     public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
-        return Flux.fromIterable(processorLoadBalancingRepository.findAll())
+        return Flux.fromIterable(processorLoadBalancingRepository.findByContext(context))
                    .map(ProcessorLBStrategyConverter::createProcessorLBStrategy)
                    .map(this::toSerializedObject);
     }
 
     @Override
     public boolean canApplySnapshotData(String type) {
-        return adminContext && ProcessorLoadBalancing.class.getName().equals(type);
+        return RaftProcessorLoadBalancing.class.getName().equals(type);
     }
 
     @Override
     public void applySnapshotData(SerializedObject serializedObject) {
         try {
             ProcessorLBStrategy processorLBStrategy = ProcessorLBStrategy.parseFrom(serializedObject.getData());
-            ProcessorLoadBalancing processorLoadBalancingEntity = createJpaProcessorLoadBalancing(processorLBStrategy);
+            RaftProcessorLoadBalancing processorLoadBalancingEntity = createJpaRaftProcessorLoadBalancing(
+                    processorLBStrategy);
             processorLoadBalancingRepository.save(processorLoadBalancingEntity);
         } catch (InvalidProtocolBufferException e) {
             throw new SnapshotDeserializationException("Unable to deserialize processor load balancing data.", e);
@@ -67,14 +67,12 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
 
     @Override
     public void clear() {
-        if (adminContext) {
-            processorLoadBalancingRepository.deleteAll();
-        }
+        processorLoadBalancingRepository.deleteAllByProcessorContext(context);
     }
 
     private SerializedObject toSerializedObject(ProcessorLBStrategy processorLBStrategy) {
         return SerializedObject.newBuilder()
-                               .setType(ProcessorLoadBalancing.class.getName())
+                               .setType(RaftProcessorLoadBalancing.class.getName())
                                .setData(processorLBStrategy.toByteString())
                                .build();
     }

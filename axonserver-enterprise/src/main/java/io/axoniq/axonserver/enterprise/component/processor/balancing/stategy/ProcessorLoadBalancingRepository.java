@@ -31,11 +31,4 @@ public interface ProcessorLoadBalancingRepository
      */
     @Query("select p from ProcessorLoadBalancing p where p.processor.context = ?1")
     List<ProcessorLoadBalancing> findByContext(String context);
-
-    /**
-     * Deletes all {@link ProcessorLoadBalancing} with the specified context.
-     *
-     * @param context the context
-     */
-    void deleteAllByProcessorContext(String context);
 }
