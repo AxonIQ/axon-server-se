@@ -28,6 +28,13 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.1.9
+----------------------------
+
+- Fix for situation where election takes too long to complete causes 2 leaders
+- Wait for leader when event store requests arrive at Axon Server during leader election. New configuration property
+  axoniq.axonserver.replication.wait-for-leader-timeout to change this wait time. Default is 2*max election timeout.
+
 Changes in Axon Server 4.1.8
 ----------------------------
 

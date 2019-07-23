@@ -57,6 +57,11 @@ public class RaftProperties extends StorageProperties {
      * Option to force new members to first receive a snapshot when they join a cluster
      */
     private boolean forceSnapshotOnJoin = true;
+    /**
+     * Timeout to wait for leader when requesting access to event store while leader change in progress, if not set
+     * defaults to 2*maxElectionTimeout
+     */
+    private int waitForLeaderTimeout = -1;
 
     public RaftProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -174,5 +179,16 @@ public class RaftProperties extends StorageProperties {
 
     public void setForceSnapshotOnJoin(boolean forceSnapshotOnJoin) {
         this.forceSnapshotOnJoin = forceSnapshotOnJoin;
+    }
+
+    public int getWaitForLeaderTimeout() {
+        if (waitForLeaderTimeout == -1) {
+            waitForLeaderTimeout = 2 * maxElectionTimeout;
+        }
+        return waitForLeaderTimeout;
+    }
+
+    public void setWaitForLeaderTimeout(int waitForLeaderTimeout) {
+        this.waitForLeaderTimeout = waitForLeaderTimeout;
     }
 }

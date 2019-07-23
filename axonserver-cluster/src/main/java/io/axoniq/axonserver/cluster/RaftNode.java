@@ -202,7 +202,7 @@ public class RaftNode {
         ElectionStore electionStore = raftGroup.localElectionStore();
         if (newTerm > electionStore.currentTerm()) {
             electionStore.updateCurrentTerm(newTerm);
-            logger.info("{} in term {}: Term updated.", groupId(), currentTerm());
+            logger.info("{} in term {}: Term updated ({}).", groupId(), currentTerm(), cause);
             electionStore.markVotedFor(null);
             termChangeListeners.forEach(consumer -> consumer.accept(newTerm, cause));
         }
