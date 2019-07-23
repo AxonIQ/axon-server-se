@@ -9,28 +9,11 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.*;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
-import io.axoniq.axonserver.grpc.control.ClientIdentification;
-import io.axoniq.axonserver.grpc.control.MergeEventProcessorSegment;
-import io.axoniq.axonserver.grpc.control.NodeInfo;
-import io.axoniq.axonserver.grpc.control.PauseEventProcessor;
-import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
+import io.axoniq.axonserver.grpc.control.*;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
-import io.axoniq.axonserver.grpc.control.PlatformInfo;
-import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
-import io.axoniq.axonserver.grpc.control.ReleaseEventProcessorSegment;
-import io.axoniq.axonserver.grpc.control.RequestEventProcessorInfo;
-import io.axoniq.axonserver.grpc.control.RequestReconnect;
-import io.axoniq.axonserver.grpc.control.SplitEventProcessorSegment;
-import io.axoniq.axonserver.grpc.control.StartEventProcessor;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
@@ -40,12 +23,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -66,23 +44,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
-
-    /**
-     * Functional interface describing a consumer of {@link PlatformOutboundInstruction}s to be called as a form of
-     * handler functions when new instructions are received.
-     */
-    @FunctionalInterface
-    public interface InstructionConsumer {
-
-        /**
-         * Consume the given {@code client}, {@code context} and {@link PlatformInboundInstruction}.
-         *
-         * @param client      a {@link String} specifying the name of the client
-         * @param context     a {@link String} specifying the context of the client
-         * @param instruction a {@link PlatformOutboundInstruction} describing the inbound instruction to be consumed
-         */
-        void accept(String client, String context, PlatformInboundInstruction instruction);
-    }
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
@@ -198,8 +159,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public void onPauseEventProcessorRequest(PauseEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
                 .newBuilder()
-                .setPauseEventProcessor(PauseEventProcessor.newBuilder()
-                                                           .setProcessorName(evt.processorName()))
+                .setPauseEventProcessor(EventProcessorReference.newBuilder()
+                                                               .setProcessorName(evt.processorName()))
                 .build();
         this.sendToClient(evt.clientName(), instruction);
     }
@@ -208,18 +169,18 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public void onStartEventProcessorRequest(StartEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
                 .newBuilder()
-                .setStartEventProcessor(StartEventProcessor.newBuilder().setProcessorName(evt.processorName()))
+                .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
                 .build();
         this.sendToClient(evt.clientName(), instruction);
     }
 
     @EventListener
     public void on(ReleaseSegmentRequest event) {
-        ReleaseEventProcessorSegment releaseSegmentRequest =
-                ReleaseEventProcessorSegment.newBuilder()
-                                            .setProcessorName(event.getProcessorName())
-                                            .setSegmentIdentifier(event.getSegmentId())
-                                            .build();
+        EventProcessorSegmentReference releaseSegmentRequest =
+                EventProcessorSegmentReference.newBuilder()
+                                              .setProcessorName(event.getProcessorName())
+                                              .setSegmentIdentifier(event.getSegmentId())
+                                              .build();
 
         PlatformOutboundInstruction outboundInstruction =
                 PlatformOutboundInstruction.newBuilder()
@@ -251,11 +212,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     @EventListener
     public void on(SplitSegmentRequest event) {
-        SplitEventProcessorSegment splitSegmentRequest =
-                SplitEventProcessorSegment.newBuilder()
-                                          .setProcessorName(event.getProcessorName())
-                                          .setSegmentIdentifier(event.getSegmentId())
-                                          .build();
+        EventProcessorSegmentReference splitSegmentRequest =
+                EventProcessorSegmentReference.newBuilder()
+                                              .setProcessorName(event.getProcessorName())
+                                              .setSegmentIdentifier(event.getSegmentId())
+                                              .build();
 
         PlatformOutboundInstruction outboundInstruction =
                 PlatformOutboundInstruction.newBuilder()
@@ -266,11 +227,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     @EventListener
     public void on(MergeSegmentRequest event) {
-        MergeEventProcessorSegment mergeSegmentRequest =
-                MergeEventProcessorSegment.newBuilder()
-                                          .setProcessorName(event.getProcessorName())
-                                          .setSegmentIdentifier(event.getSegmentId())
-                                          .build();
+        EventProcessorSegmentReference mergeSegmentRequest =
+                EventProcessorSegmentReference.newBuilder()
+                                              .setProcessorName(event.getProcessorName())
+                                              .setSegmentIdentifier(event.getSegmentId())
+                                              .build();
 
         PlatformOutboundInstruction outboundInstruction =
                 PlatformOutboundInstruction.newBuilder()
@@ -281,10 +242,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     @EventListener
     public void on(ProcessorStatusRequest event) {
-        RequestEventProcessorInfo eventProcessorInfoRequest =
-                RequestEventProcessorInfo.newBuilder()
-                                         .setProcessorName(event.processorName())
-                                         .build();
+        EventProcessorReference eventProcessorInfoRequest =
+                EventProcessorReference.newBuilder()
+                                       .setProcessorName(event.processorName())
+                                       .build();
 
         PlatformOutboundInstruction outboundInstruction =
                 PlatformOutboundInstruction.newBuilder()
@@ -321,6 +282,23 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      */
     public Set<ClientComponent> getConnectedClients() {
         return connectionMap.keySet();
+    }
+
+    /**
+     * Functional interface describing a consumer of {@link PlatformOutboundInstruction}s to be called as a form of
+     * handler functions when new instructions are received.
+     */
+    @FunctionalInterface
+    public interface InstructionConsumer {
+
+        /**
+         * Consume the given {@code client}, {@code context} and {@link PlatformInboundInstruction}.
+         *
+         * @param client      a {@link String} specifying the name of the client
+         * @param context     a {@link String} specifying the context of the client
+         * @param instruction a {@link PlatformOutboundInstruction} describing the inbound instruction to be consumed
+         */
+        void accept(String client, String context, PlatformInboundInstruction instruction);
     }
 
     /**

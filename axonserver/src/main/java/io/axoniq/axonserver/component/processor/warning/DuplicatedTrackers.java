@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.component.processor.warning;
 
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -20,9 +20,9 @@ import java.util.Set;
  */
 public class DuplicatedTrackers implements Warning {
 
-    private final Iterable<EventTrackerInfo> trackerInfos;
+    private final Iterable<SegmentStatus> trackerInfos;
 
-    public DuplicatedTrackers(Iterable<EventTrackerInfo> trackerInfos) {
+    public DuplicatedTrackers(Iterable<SegmentStatus> trackerInfos) {
         this.trackerInfos = trackerInfos;
     }
 
@@ -31,7 +31,7 @@ public class DuplicatedTrackers implements Warning {
         int count = 0;
         Set<Integer> ids = new HashSet<>();
 
-        for (EventTrackerInfo info : trackerInfos) {
+        for (SegmentStatus info : trackerInfos) {
             ids.add(info.getSegmentId());
             count++;
         }

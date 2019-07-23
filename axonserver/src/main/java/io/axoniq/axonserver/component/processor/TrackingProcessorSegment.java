@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.component.processor;
 
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 
@@ -21,9 +21,9 @@ public class TrackingProcessorSegment implements Printable {
 
     private final String clientId;
 
-    private final EventProcessorInfo.EventTrackerInfo eventTrackerInfo;
+    private final SegmentStatus eventTrackerInfo;
 
-    public TrackingProcessorSegment(String clientId, EventProcessorInfo.EventTrackerInfo eventTrackerInfo) {
+    public TrackingProcessorSegment(String clientId, SegmentStatus eventTrackerInfo) {
         this.clientId = clientId;
 
         this.eventTrackerInfo = eventTrackerInfo;

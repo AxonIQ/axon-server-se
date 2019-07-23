@@ -13,7 +13,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.*;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.grpc.PlatformService;
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.context.ApplicationEventPublisher;
@@ -105,12 +105,12 @@ public class ProcessorEventPublisher {
      *                      should be split in two
      */
     public void splitSegment(List<String> clientNames, String processorName) {
-        Map<ClientSegmentPair, EventTrackerInfo> clientToTracker =
+        Map<ClientSegmentPair, SegmentStatus> clientToTracker =
                 buildClientToTrackerMap(clientNames, processorName, REGULAR_ORDER);
 
         Integer biggestSegment = clientToTracker.values().stream()
-                                                .min(Comparator.comparingInt(EventTrackerInfo::getOnePartOf))
-                                                .map(EventTrackerInfo::getSegmentId)
+                                                .min(Comparator.comparingInt(SegmentStatus::getOnePartOf))
+                                                .map(SegmentStatus::getSegmentId)
                                                 .orElseThrow(() -> new IllegalArgumentException(
                                                         "No segments found for processor name [" + processorName + "]"
                                                 ));
@@ -136,12 +136,12 @@ public class ProcessorEventPublisher {
      *                      should be merged with the segment that it's paired with
      */
     public void mergeSegment(List<String> clientNames, String processorName) {
-        Map<ClientSegmentPair, EventTrackerInfo> clientToTracker =
+        Map<ClientSegmentPair, SegmentStatus> clientToTracker =
                 buildClientToTrackerMap(clientNames, processorName, REVERSE_ORDER);
 
-        EventTrackerInfo smallestSegment =
+        SegmentStatus smallestSegment =
                 clientToTracker.values().stream()
-                               .max(Comparator.comparingInt(EventTrackerInfo::getOnePartOf))
+                               .max(Comparator.comparingInt(SegmentStatus::getOnePartOf))
                                .orElseThrow(() -> new IllegalArgumentException(
                                        "No segments found for processor name [" + processorName + "]"
                                ));
@@ -176,7 +176,7 @@ public class ProcessorEventPublisher {
 
     /**
      * Build a convenience {@link TreeMap}, where the key is a {@link ClientSegmentPair} and the value is an
-     * {@link EventTrackerInfo}, to be used to support the {@link #splitSegment(List, String)} and
+     * {@link SegmentStatus}, to be used to support the {@link #splitSegment(List, String)} and
      * {@link #mergeSegment(List, String)} operations.
      *
      * @param clientNames   a {@link List} of {@link String}s specifying the clients to take into account when building
@@ -185,14 +185,14 @@ public class ProcessorEventPublisher {
      *                      operation should be executed
      * @param reverseOrder  a {@code boolean} specifying whether the returned {@link Map} should following the regular
      *                      ordering or if it should be reversed
-     * @return a {@link Map} of {@link ClientSegmentPair} to {@link EventTrackerInfo} to support the
+     * @return a {@link Map} of {@link ClientSegmentPair} to {@link SegmentStatus} to support the
      * {@link #splitSegment(List, String)} and {@link #mergeSegment(List, String)} operations
      */
     @NotNull
-    private Map<ClientSegmentPair, EventTrackerInfo> buildClientToTrackerMap(List<String> clientNames,
-                                                                             String processorName,
-                                                                             boolean reverseOrder) {
-        Map<ClientSegmentPair, EventTrackerInfo> clientToTracker =
+    private Map<ClientSegmentPair, SegmentStatus> buildClientToTrackerMap(List<String> clientNames,
+                                                                          String processorName,
+                                                                          boolean reverseOrder) {
+        Map<ClientSegmentPair, SegmentStatus> clientToTracker =
                 reverseOrder ? new TreeMap<>(Collections.reverseOrder()) : new TreeMap<>();
 
         List<ClientProcessor> clientsWithProcessor =
@@ -203,7 +203,7 @@ public class ProcessorEventPublisher {
                              .collect(Collectors.toList());
 
         for (ClientProcessor clientProcessor : clientsWithProcessor) {
-            List<EventTrackerInfo> eventTrackers = clientProcessor.eventProcessorInfo().getEventTrackersInfoList();
+            List<SegmentStatus> eventTrackers = clientProcessor.eventProcessorInfo().getSegmentStatusList();
             eventTrackers.forEach(eventTracker -> clientToTracker.put(
                     new ClientSegmentPair(clientProcessor.clientId(), eventTracker.getSegmentId()), eventTracker)
             );
@@ -212,7 +212,7 @@ public class ProcessorEventPublisher {
         return clientToTracker;
     }
 
-    private Optional<String> getClientForSegment(Map<ClientSegmentPair, EventTrackerInfo> clientToTracker, Integer segmentId) {
+    private Optional<String> getClientForSegment(Map<ClientSegmentPair, SegmentStatus> clientToTracker, Integer segmentId) {
         return clientToTracker.keySet().stream()
                               .filter(clientAndSegment -> clientAndSegment.getSegmentId() == segmentId)
                               .findFirst()
@@ -221,13 +221,13 @@ public class ProcessorEventPublisher {
 
     /**
      * Deduce the segment id with which the given {@code segment} should be merged. Do so, by deducing the "parent mask"
-     * by bit shifting the segment's size (the {@link EventTrackerInfo#getOnePartOf()} field) by one, and doing an XOR
-     * on the given segment's {@link EventTrackerInfo#getSegmentId()} with the deduced "parent mask".
+     * by bit shifting the segment's size (the {@link SegmentStatus#getOnePartOf()} field) by one, and doing an XOR
+     * on the given segment's {@link SegmentStatus#getSegmentId()} with the deduced "parent mask".
      *
-     * @param segment a {@link EventTrackerInfo} for which to deduce the segment to merge with
+     * @param segment a {@link SegmentStatus} for which to deduce the segment to merge with
      * @return an {@code int} specifying the segment identifier to merge with the given {@code segment}
      */
-    private int deduceSegmentToMerge(EventTrackerInfo segment) {
+    private int deduceSegmentToMerge(SegmentStatus segment) {
         int segmentSize = segment.getOnePartOf();
         int parentMask = segmentSize >>> 1;
         return segment.getSegmentId() ^ parentMask;

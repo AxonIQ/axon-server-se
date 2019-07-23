@@ -83,9 +83,9 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
         boolean isRunning = processors().stream().anyMatch(ClientProcessor::running);
 
         int largestSegmentFactor = processorInstances().stream()
-                                                       .map(EventProcessorInfo::getEventTrackersInfoList)
+                                                       .map(EventProcessorInfo::getSegmentStatusList)
                                                        .flatMap(List::stream)
-                                                       .mapToInt(EventProcessorInfo.EventTrackerInfo::getOnePartOf)
+                                                       .mapToInt(EventProcessorInfo.SegmentStatus::getOnePartOf)
                                                        .min()
                                                        .orElse(1);
         boolean canMerge = isRunning && largestSegmentFactor != 1;
@@ -102,7 +102,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     private List<Printable> trackers() {
         return processors()
                 .stream()
-                .flatMap(client -> client.eventProcessorInfo().getEventTrackersInfoList().stream()
+                .flatMap(client -> client.eventProcessorInfo().getSegmentStatusList().stream()
                                          .map(tracker -> new TrackingProcessorSegment(client.clientId(), tracker)))
                 .sorted(Comparator.comparingInt(TrackingProcessorSegment::segmentId).thenComparing(TrackingProcessorSegment::clientId))
                 .collect(toList());
