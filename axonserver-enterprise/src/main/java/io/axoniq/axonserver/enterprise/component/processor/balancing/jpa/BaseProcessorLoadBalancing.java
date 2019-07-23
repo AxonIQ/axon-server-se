@@ -28,7 +28,8 @@ public abstract class BaseProcessorLoadBalancing {
         this.strategy = strategy;
     }
 
-    @Embedded @Id
+    @Embedded
+    @Id
     private TrackingEventProcessor processor;
 
     private String strategy;

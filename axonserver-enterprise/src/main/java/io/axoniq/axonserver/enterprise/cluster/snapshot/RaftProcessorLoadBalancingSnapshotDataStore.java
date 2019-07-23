@@ -16,8 +16,8 @@ import static io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter.createJpaRa
 /**
  * Snapshot data store for {@link RaftProcessorLoadBalancing} data.
  *
- * @author Milan Savic
- * @since 4.1
+ * @author Marc Gathier
+ * @since 4.2
  */
 public class RaftProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStore {
 
