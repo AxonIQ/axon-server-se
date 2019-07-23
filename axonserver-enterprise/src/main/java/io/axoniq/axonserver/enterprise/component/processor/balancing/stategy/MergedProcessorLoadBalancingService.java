@@ -40,6 +40,12 @@ public class MergedProcessorLoadBalancingService {
         this.clusterController = clusterController;
     }
 
+    /**
+     * Gets the load balancing definitions per processor for the processors configured in this context.
+     *
+     * @param context the name of the context
+     * @return list of processors and their auto-loadbalance strategy
+     */
     public List<? extends BaseProcessorLoadBalancing> findByContext(String context) {
         if (clusterController.isAdminNode()) {
             return processorLoadBalancingService.findByContext(context);

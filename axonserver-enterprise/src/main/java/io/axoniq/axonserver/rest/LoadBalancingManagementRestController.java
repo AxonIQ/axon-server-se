@@ -24,6 +24,9 @@ import static java.util.stream.Collectors.toMap;
 
 /**
  * Rest APIs to manage Processor Load Balancing Strategies.
+ *
+ * @author Marc Gathier
+ * @since 4.1
  */
 @RestController
 @Transactional
@@ -78,7 +81,7 @@ public class LoadBalancingManagementRestController {
     }
 
     /**
-     * Updates the autoloadbalance stategy for a specific progressing group
+     * Updates the autoloadbalance stategy for a specific progressing group.
      *
      * @param processor the processing group
      * @param context   the context for the processing group
@@ -104,7 +107,7 @@ public class LoadBalancingManagementRestController {
     }
 
     /**
-     * Retrieves a list of auto-load-balance strategies defined fot processing groups in this context
+     * Retrieves a list of auto-load-balance strategies defined for processing groups in this context.
      *
      * @param context the context
      * @return map of processing group/load balance strategy combinations

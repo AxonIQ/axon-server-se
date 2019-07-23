@@ -13,6 +13,7 @@ import java.util.List;
  * JpaRepository for {@link RaftProcessorLoadBalancing}
  *
  * @author Marc Gathier
+ * @since 4.2
  */
 @Transactional
 public interface RaftProcessorLoadBalancingRepository
