@@ -89,7 +89,8 @@ public class RemoteConnection {
                                                                               ConnectorCommand.newBuilder()
                                                                                               .setCommandResponse(
                                                                                                       ForwardedCommandResponse
-                                                                                                              .newBuilder().setRequestIdentifier(commandResponse.getRequestIdentifier())
+                                                                                                              .newBuilder()
+                                                                                                              .setRequestIdentifier(commandResponse.getRequestIdentifier())
                                                                                                               .setResponse(commandResponse.toByteString()).build())
                                                                                               .build()),
                                                                       true);
@@ -108,6 +109,7 @@ public class RemoteConnection {
                                            UpdateHandler handler = new ProxyUpdateHandler(requestStreamObserver::onNext);
                                            clusterController.publishEvent(
                                                    new SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest(request.getSubscriptionQueryRequest(),
+                                                                                                               request.getContext(),
                                                                                                                handler,
                                                                                                                request.getClient()));
                                            break;
