@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
@@ -62,7 +63,10 @@ public class FakeStateFactory implements MembershipStateFactory {
         @Override
         public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
             lastMethodCalled = "appendEntries";
-            return null;
+            return AppendEntriesResponse.newBuilder().setSuccess(
+                    AppendEntrySuccess.newBuilder()
+                                      .build()
+            ).build();
         }
 
         @Override

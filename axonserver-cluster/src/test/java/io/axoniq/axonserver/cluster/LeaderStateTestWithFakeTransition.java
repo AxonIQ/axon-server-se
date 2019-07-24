@@ -116,7 +116,9 @@ public class LeaderStateTestWithFakeTransition {
         leaderState.start();
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder().setTerm(1).build();
         AppendEntriesResponse response = leaderState.appendEntries(request);
-        assertTrue(response.hasFailure());
+        assertFalse(response.hasFailure());
+        FakeStateFactory.FakeState fakeState = (FakeStateFactory.FakeState) transitionHandler.lastTransition();
+        assertEquals("follower", fakeState.name());
     }
 
     @Test
