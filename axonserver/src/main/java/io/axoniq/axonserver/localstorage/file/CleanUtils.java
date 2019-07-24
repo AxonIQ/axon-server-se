@@ -93,7 +93,6 @@ public class CleanUtils {
             } else {
                 logger.debug("Memory mapped buffer not cleared for {}, giving up", file);
             }
-
             return;
         }
         try {

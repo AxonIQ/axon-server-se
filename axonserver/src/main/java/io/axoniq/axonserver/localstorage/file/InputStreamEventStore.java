@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
@@ -43,6 +45,28 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     public void initSegments(long lastInitialized) {
         segments.addAll(prepareSegmentStore(lastInitialized));
         if( next != null) next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
+
+    }
+
+    @Override
+    public void close(boolean deleteData) {
+        if( deleteData) {
+            segments.forEach(this::removeSegment);
+        }
+    }
+
+
+        private void removeSegment(long segment) {
+            if( segments.remove(segment)) {
+
+
+                indexManager.remove(segment);
+                if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+                        ! FileUtils.delete(storageProperties.index(context, segment)) ||
+                        ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
+                    throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
+                }
+            }
 
     }
 

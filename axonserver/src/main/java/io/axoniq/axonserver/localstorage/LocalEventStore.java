@@ -94,12 +94,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workersMap.get(context).init(validating);
     }
 
-    public void cleanupContext(String context) {
+    /**
+     * Deletes the specified context including all data.
+     *
+     * @param context the name of the context
+     */
+    public void deleteContext(String context) {
         Workers workers = workersMap.remove(context);
         if( workers == null) return;
-        workers.close();
+        workers.close(true);
     }
 
+    /**
+     * Deletes all event data from the context. Context remains alive.
+     * @param context the context to be cleared
+     */
     @Override
     public void deleteAllEventData(String context) {
         Workers workers = workersMap.get(context);
@@ -295,7 +304,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void stop(@NonNull Runnable runnable) {
         running = false;
-        workersMap.forEach((k, workers) -> workers.close());
+        workersMap.forEach((k, workers) -> workers.close(false));
         runnable.run();
     }
 
@@ -439,10 +448,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         /**
          * Close all activity on a context and release all resources.
          */
-        public void close() {
+        public void close(boolean deleteData) {
             trackingEventManager.close();
-            eventStorageEngine.close();
-            snapshotStorageEngine.close();
+            eventStorageEngine.close(deleteData);
+            snapshotStorageEngine.close(deleteData);
         }
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {

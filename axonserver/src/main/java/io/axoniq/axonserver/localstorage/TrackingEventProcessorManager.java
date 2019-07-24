@@ -71,7 +71,7 @@ public class TrackingEventProcessorManager {
         this.iteratorBuilder = iteratorBuilder;
         // Use 2 threads (one to send events and one to avoid queuing of reschedules.
         this.scheduledExecutorService = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory(
-                "trackers-" + context));
+                "trackers-" + context + "-"));
         this.blacklistedSendAfter = blacklistedSendAfter;
     }
 

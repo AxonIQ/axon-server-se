@@ -17,17 +17,20 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * Segment of the event store accessed by a memory mapped file.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 public class ByteBufferEventSource implements EventSource {
-
-
     private final EventTransformer eventTransformer;
     private final Runnable onClose;
     private final ByteBuffer buffer;
     private final boolean main;
     private final AtomicInteger duplicatesCount = new AtomicInteger();
     private final String path;
+    // indicates if the low-level clean method should be called (needed to free file lock on windows)
+    private final boolean cleanerHack;
 
     public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
         this.path = path;
@@ -37,22 +40,27 @@ public class ByteBufferEventSource implements EventSource {
         this.buffer = buffer;
         this.main = true;
         this.onClose = null;
+        this.cleanerHack = storageProperties.isCleanRequired();
     }
 
-    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer, Runnable onClose) {
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer,
+                                    boolean cleanerHack, Runnable onClose) {
         this.path = path;
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.onClose = onClose;
         this.main = false;
+        this.cleanerHack = cleanerHack;
     }
 
-    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer) {
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer,
+                                    boolean cleanerHack) {
         this.path = path;
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.onClose = null;
         this.main = true;
+        this.cleanerHack = cleanerHack;
     }
 
     public SerializedEvent readEvent() {
@@ -64,12 +72,16 @@ public class ByteBufferEventSource implements EventSource {
 
     public ByteBufferEventSource duplicate() {
         duplicatesCount.incrementAndGet();
-        return new ByteBufferEventSource(path, buffer.duplicate(), eventTransformer, duplicatesCount::decrementAndGet);
+        return new ByteBufferEventSource(path,
+                                         buffer.duplicate(),
+                                         eventTransformer,
+                                         cleanerHack,
+                                         duplicatesCount::decrementAndGet);
     }
 
     @Override
     protected void finalize() {
-        if( main) {
+        if (cleanerHack && main) {
             CleanUtils.cleanDirectBuffer(buffer, () -> duplicatesCount.get() == 0, 60, path);
         }
     }
@@ -98,7 +110,7 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     public void clean(long delay) {
-        if( main ) {
+        if (cleanerHack && main) {
             CleanUtils.cleanDirectBuffer(getBuffer(), () -> duplicatesCount.get() == 0, delay, path);
         }
     }
