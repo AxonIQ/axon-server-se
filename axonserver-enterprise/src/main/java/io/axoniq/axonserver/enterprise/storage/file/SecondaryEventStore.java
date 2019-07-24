@@ -124,24 +124,30 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void close() {
+    public void close(boolean deleteData) {
         lruMap.forEach((s, source) -> {
             ByteBufferEventSource eventSource = source.get();
             if( eventSource != null) {
                 eventSource.clean(0);
             }
         });
+        lruMap.clear();
+        if (deleteData) {
+            segments.forEach(this::removeSegment);
+            segments.clear();
+        }
+
         indexManager.cleanup();
     }
 
     @Override
     public void rollback( long token) {
-        for( long segment: getSegments()) {
-            if( segment > token) {
-                removeSegment(segment);
+        segments.forEach(s -> {
+            if (s > token) {
+                removeSegment(s);
             }
-        }
-
+        });
+        segments.removeIf(s -> s > token);
         if( segments.isEmpty() && next != null) {
             next.rollback(token);
         }
@@ -153,22 +159,18 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     private void removeSegment(long segment) {
-        if( segments.remove(segment)) {
-            WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);
-            if (segmentRef != null) {
-                ByteBufferEventSource eventSource = segmentRef.get();
-                if (eventSource != null) {
-                    eventSource.clean(0);
-                }
-            }
-
-            indexManager.remove(segment);
-            if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                ! FileUtils.delete(storageProperties.index(context, segment)) ||
-                ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
-                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
+        WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);
+        if (segmentRef != null) {
+            ByteBufferEventSource eventSource = segmentRef.get();
+            if (eventSource != null) {
+                eventSource.clean(0);
             }
         }
+
+        indexManager.remove(segment);
+        FileUtils.delete(storageProperties.dataFile(context, segment));
+        FileUtils.delete(storageProperties.index(context, segment));
+        FileUtils.delete(storageProperties.bloomFilter(context, segment));
     }
 
 

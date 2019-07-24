@@ -16,37 +16,38 @@ service MessagingClusterService {
  * Services on config leader
  */
 service RaftConfigService {
-    rpc InitCluster(ContextNames) returns (Confirmation) {}
+    rpc InitCluster (ContextNames) returns (Confirmation) {}
 
-    rpc JoinCluster(NodeInfo) returns (Confirmation) {}
+    rpc JoinCluster (NodeInfo) returns (Confirmation) {}
 
-    rpc DeleteNode(NodeName) returns (Confirmation) {}
+    rpc DeleteNode (NodeName) returns (Confirmation) {}
 
-    rpc CreateContext(Context) returns (Confirmation) {}
+    rpc CreateContext (Context) returns (Confirmation) {}
 
-    rpc AddNodeToContext(NodeContext) returns (Confirmation) {}
+    rpc AddNodeToContext (NodeContext) returns (Confirmation) {}
 
-    rpc DeleteNodeFromContext(NodeContext) returns (Confirmation) {}
+    rpc DeleteNodeFromContext (NodeContext) returns (Confirmation) {}
 
-    rpc DeleteContext(ContextName) returns (Confirmation) {}
+    rpc DeleteContext (ContextName) returns (Confirmation) {
+    }
 
-    rpc UpdateApplication(Application) returns (Application) {}
+    rpc UpdateApplication (Application) returns (Application) {}
 
-    rpc DeleteApplication(Application) returns (Confirmation) {}
+    rpc DeleteApplication (Application) returns (Confirmation) {}
 
-    rpc RefreshToken(Application) returns (Application) {}
+    rpc RefreshToken (Application) returns (Application) {}
 
-    rpc UpdateUser(User) returns (Confirmation) {}
+    rpc UpdateUser (User) returns (Confirmation) {}
 
-    rpc DeleteUser(User) returns (Confirmation) {}
+    rpc DeleteUser (User) returns (Confirmation) {}
 
-    rpc UpdateLoadBalanceStrategy(LoadBalanceStrategy) returns (Confirmation) {}
+    rpc UpdateLoadBalanceStrategy (LoadBalanceStrategy) returns (Confirmation) {}
 
-    rpc DeleteLoadBalanceStrategy(LoadBalanceStrategy) returns (Confirmation) {}
+    rpc DeleteLoadBalanceStrategy (LoadBalanceStrategy) returns (Confirmation) {}
 
-    rpc UpdateProcessorLBStrategy(ProcessorLBStrategy) returns (Confirmation) {}
+    rpc UpdateProcessorLBStrategy (ProcessorLBStrategy) returns (Confirmation) {}
 
-    rpc DeleteProcessorLBStrategy(ProcessorLBStrategy) returns (Confirmation) {}
+    rpc DeleteProcessorLBStrategy (ProcessorLBStrategy) returns (Confirmation) {}
 }
 
 /**
@@ -57,7 +58,8 @@ service RaftGroupService {
     rpc InitContext (Context) returns (ContextConfiguration) {
     }
 
-    rpc DeleteContext (ContextName) returns (Confirmation) {}
+    rpc DeleteContext (ContextName) returns (Confirmation) {
+    }
 
     rpc AddServer (Context) returns (ContextUpdateConfirmation) {}
 
@@ -71,7 +73,7 @@ service RaftGroupService {
 
     rpc DeleteUserAuthorization (ContextUser) returns (Confirmation) {}
 
-    rpc MergeLoadBalanceStrategy(ContextLoadBalanceStrategy) returns (Confirmation) {}
+    rpc MergeLoadBalanceStrategy (ContextLoadBalanceStrategy) returns (Confirmation) {}
 
     rpc DeleteLoadBalanceStrategy(ContextLoadBalanceStrategy) returns (Confirmation) {}
 
@@ -88,8 +90,6 @@ service RaftGroupService {
     rpc TransferLeadership(ContextName) returns (Confirmation) {}
 
 }
-
-
 
 message NodeContext {
     string node_name = 1;

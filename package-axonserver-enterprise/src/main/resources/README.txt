@@ -31,7 +31,9 @@ Once Axon Server is running you can view its configuration using the Axon Dashbo
 Changes in Axon Server 4.2
 --------------------------
 
-- Delete leader from group is now possible
+- Delete leader from group is now possible.
+- Removing a context from a node, deletes all data (including event data).
+- Deleting a context removes all data (including event data).
 
 Changes in Axon Server 4.1.9
 ----------------------------

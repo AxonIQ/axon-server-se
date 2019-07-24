@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,11 @@ public class RaftLeaderProvider {
         } else {
             leaderMap.put(masterConfirmation.getContext(), masterConfirmation.getNode());
         }
+    }
+
+    @EventListener
+    public void on(ContextEvents.ContextDeleted contextDeleted) {
+        leaderMap.remove(contextDeleted.getContext());
     }
 
     @EventListener

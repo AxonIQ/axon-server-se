@@ -457,6 +457,7 @@ public class RaftNode {
         logger.info("{} in term {}: Remove a group.", groupId(), currentTerm());
         stop();
         raftGroup.delete();
+        scheduler.shutdownNow();
         logger.info("{} in term {}: Group removed.", groupId(), currentTerm());
         return CompletableFuture.completedFuture(null);
     }

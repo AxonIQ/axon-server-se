@@ -177,7 +177,9 @@ public class RemoteRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> deleteContext(String context) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteContext(ContextName.newBuilder().setContext(context).build(), new StreamObserver<Confirmation>() {
+        stub.deleteContext(ContextName.newBuilder()
+                                      .setContext(context)
+                                      .build(), new StreamObserver<Confirmation>() {
             @Override
             public void onNext(Confirmation value) {
                 result.complete(null);
