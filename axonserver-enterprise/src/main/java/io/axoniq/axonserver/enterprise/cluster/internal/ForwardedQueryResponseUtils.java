@@ -10,6 +10,9 @@ import java.util.Map;
 
 /**
  * Utility class to convert between QueryResponse and ForwardedQueryResponse messages.
+ *
+ * @author Allard Buijze
+ * @since 4.2
  */
 public class ForwardedQueryResponseUtils {
 
