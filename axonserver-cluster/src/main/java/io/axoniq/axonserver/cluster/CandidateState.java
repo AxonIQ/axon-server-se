@@ -42,7 +42,9 @@ public class CandidateState extends VotingState {
                         currentTerm());
             return;
         }
-        newElection(disruptAllowed).result().subscribe(this::onElectionResult,
+
+        long timeout = now() + maxElectionTimeout();
+        newElection(disruptAllowed).result().subscribe(result -> onElectionResult(result, timeout),
                                          error -> logger.warn("{} in term {}: Failed to run election. {}",
                                                               groupId(),
                                                               currentTerm(),
@@ -50,7 +52,18 @@ public class CandidateState extends VotingState {
         resetElectionTimeout();
     }
 
-    private void onElectionResult(Result result) {
+    private long now() {
+        if (scheduler.get() == null) {
+            return System.currentTimeMillis();
+        }
+        return scheduler.get().clock().millis();
+    }
+
+    private void onElectionResult(Result result, long timeout) {
+        if (timeout < now()) {
+            logger.warn("{} in term {}: Failed to run election. Election took too long", groupId(), currentTerm());
+            return;
+        }
         if (result.won()) {
             changeStateTo(stateFactory().leaderState(), result.cause());
         } else if (result.goAway()) {

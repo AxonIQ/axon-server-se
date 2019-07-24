@@ -58,7 +58,9 @@ public class RemoteRaftConfigService implements RaftConfigService {
     @Override
     public void deleteContext(String context) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.deleteContext(ContextName.newBuilder().setContext(context).build(),
+        raftConfigServiceStub.deleteContext(ContextName.newBuilder()
+                                                       .setContext(context)
+                                                       .build(),
                                             new CompletableStreamObserver<>(completableFuture,
                                                                             "deleteContext",
                                                                             logger));

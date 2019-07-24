@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
@@ -250,7 +251,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> updateProcessorLoadBalancing(String context,
                                                                 ProcessorLBStrategy processorLBStrategy) {
-        return appendEntry(context, ProcessorLBStrategy.class.getName(), processorLBStrategy.toByteArray());
+        return appendEntry(context, RaftProcessorLoadBalancing.class.getName(), processorLBStrategy.toByteArray());
     }
 
     @Override

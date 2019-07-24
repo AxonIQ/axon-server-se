@@ -36,6 +36,7 @@ public class CandidateStateTest {
     private FakeRaftPeer node0;
     private FakeRaftPeer node1;
     private FakeRaftPeer node2;
+    private CurrentConfiguration currentConfiguration;
 
     @Before
     public void setUp() throws Exception {
@@ -64,7 +65,7 @@ public class CandidateStateTest {
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
 
-        CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
+        currentConfiguration = mock(CurrentConfiguration.class);
         when(currentConfiguration.groupMembers()).thenReturn(asList(node("node0"),
                                                                     node("node1"),
                                                                     node("node2")));
@@ -213,6 +214,29 @@ public class CandidateStateTest {
         FakeState fakeState = (FakeState) membershipState;
         assertEquals("leader", fakeState.name());
     }
+
+    @Test
+    public void electionTimedOut() {
+        candidateState = CandidateState.builder()
+                                       .raftGroup(raftGroup)
+                                       .transitionHandler(transitionHandler)
+                                       .termUpdateHandler((term, cause) -> {
+                                       })
+                                       .snapshotManager(new FakeSnapshotManager())
+                                       .schedulerFactory(() -> fakeScheduler)
+                                       .randomValueSupplier((min, max) -> Integer.MAX_VALUE)
+                                       .currentConfiguration(currentConfiguration)
+                                       .registerConfigurationListenerFn(l -> () -> {
+                                       })
+                                       .stateFactory(new FakeStateFactory()).build();
+        candidateState.start();
+        fakeScheduler.timeElapses(raftGroup.raftConfiguration().maxElectionTimeout() + 1);
+        node2.setTerm(1);
+        node1.setTerm(1);
+        node1.setVoteGranted(true);
+        assertNull(transitionHandler.lastTransition());
+    }
+
 
     private Node node(String id) {
         return Node.newBuilder()

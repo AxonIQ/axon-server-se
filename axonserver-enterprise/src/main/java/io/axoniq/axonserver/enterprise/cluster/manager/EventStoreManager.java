@@ -66,7 +66,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              LocalEventStore localEventStore) {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
              () -> contextController.getMyContextNames().iterator(),
-             leaderProvider::getLeader,
+             leaderProvider::getLeaderOrWait,
              lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
 
@@ -95,7 +95,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     @EventListener
     public void on(ContextEvents.ContextDeleted contextDeleted) {
         logger.info("{}: close context", contextDeleted.getContext());
-        localEventStore.cleanupContext(contextDeleted.getContext());
+        localEventStore.deleteContext(contextDeleted.getContext());
     }
 
     @Override

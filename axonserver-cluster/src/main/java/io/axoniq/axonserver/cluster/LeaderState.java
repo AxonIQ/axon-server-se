@@ -170,7 +170,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
-        if (request.getTerm() > currentTerm()) {
+        if (request.getTerm() >= currentTerm()) {
             logger.info("{} in term {}: Append Entries from leader {}: Received term {} which is greater or equals than mine. Moving to Follower...",
                         groupId(),
                         currentTerm(),

@@ -25,7 +25,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public abstract class VotingState extends AbstractMembershipState {
 
     private final Logger logger;
-    private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
+    protected final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private final ClusterConfiguration clusterConfiguration = new CandidateConfiguration();
 
     VotingState(Builder builder, Logger logger) {

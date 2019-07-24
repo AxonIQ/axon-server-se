@@ -14,9 +14,9 @@ import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.LoadBalanceStrategyRepository;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.RaftProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -29,7 +29,6 @@ import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
@@ -80,7 +79,7 @@ public class SnapshotManagerIntegrationTest {
     @Autowired
     private LoadBalanceStrategyRepository loadBalanceStrategyRepository;
     @Autowired
-    private ProcessorLoadBalancingRepository processorLoadBalancingRepository;
+    private RaftProcessorLoadBalancingRepository processorLoadBalancingRepository;
 
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
@@ -133,8 +132,8 @@ public class SnapshotManagerIntegrationTest {
 
         TrackingEventProcessor tep1 = new TrackingEventProcessor("tep1", CONTEXT);
         TrackingEventProcessor tep2 = new TrackingEventProcessor("tep2", "default");
-        ProcessorLoadBalancing processorLoadBalancing1 = new ProcessorLoadBalancing(tep1, "strategy1");
-        ProcessorLoadBalancing processorLoadBalancing2 = new ProcessorLoadBalancing(tep2, "strategy2");
+        RaftProcessorLoadBalancing processorLoadBalancing1 = new RaftProcessorLoadBalancing(tep1, "strategy1");
+        RaftProcessorLoadBalancing processorLoadBalancing2 = new RaftProcessorLoadBalancing(tep2, "strategy2");
         processorLoadBalancingRepository.save(processorLoadBalancing1);
         processorLoadBalancingRepository.save(processorLoadBalancing2);
         SnapshotContext context = new SnapshotContext() { };
@@ -152,7 +151,7 @@ public class SnapshotManagerIntegrationTest {
         assertEquals(JpaApplication.class.getName(), snapshotChunks.get(1).getType());
         assertEquals(User.class.getName(), snapshotChunks.get(2).getType());
         assertEquals(LoadBalancingStrategy.class.getName(), snapshotChunks.get(3).getType());
-        assertEquals(ProcessorLoadBalancing.class.getName(), snapshotChunks.get(4).getType());
+        assertEquals(RaftProcessorLoadBalancing.class.getName(), snapshotChunks.get(4).getType());
 //        for (int i = 4; i < 14; i++) {
 //            assertEquals("eventsTransaction", snapshotChunks.get(i).getType());
 //        }
@@ -182,7 +181,7 @@ public class SnapshotManagerIntegrationTest {
         assertEquals(1, loadBalancingStrategies.size());
         assertLoadBalancingStrategies(loadBalancingStrategy, loadBalancingStrategies.get(0));
 
-        List<ProcessorLoadBalancing> processorLoadBalancingList = processorLoadBalancingRepository
+        List<RaftProcessorLoadBalancing> processorLoadBalancingList = processorLoadBalancingRepository
                 .findByContext(CONTEXT);
         assertEquals(1, processorLoadBalancingList.size());
         assertProcessorLoadBalancing(processorLoadBalancing1, processorLoadBalancingList.get(0));
@@ -229,8 +228,8 @@ public class SnapshotManagerIntegrationTest {
         UserSnapshotDataStore userSnapshotDataProvider = new UserSnapshotDataStore(CONTEXT, userRepository);
         LoadBalanceStrategySnapshotDataStore loadBalanceStrategySnapshotDataProvider =
                 new LoadBalanceStrategySnapshotDataStore(loadBalanceStrategyRepository);
-        ProcessorLoadBalancingSnapshotDataStore processorLoadBalancingSnapshotDataProvider =
-                new ProcessorLoadBalancingSnapshotDataStore(CONTEXT, processorLoadBalancingRepository);
+        RaftProcessorLoadBalancingSnapshotDataStore processorLoadBalancingSnapshotDataProvider =
+                new RaftProcessorLoadBalancingSnapshotDataStore(CONTEXT, processorLoadBalancingRepository);
 
         List<SnapshotDataStore> dataProviders = new ArrayList<>();
         dataProviders.add(eventTransactionsSnapshotDataProvider);
@@ -345,7 +344,7 @@ public class SnapshotManagerIntegrationTest {
         assertEquals(lbs1.label(), lbs2.label());
     }
 
-    private void assertProcessorLoadBalancing(ProcessorLoadBalancing plb1, ProcessorLoadBalancing plb2) {
+    private void assertProcessorLoadBalancing(RaftProcessorLoadBalancing plb1, RaftProcessorLoadBalancing plb2) {
         assertEquals(plb1.strategy(), plb2.strategy());
         assertProcessors(plb1.processor(), plb2.processor());
     }
