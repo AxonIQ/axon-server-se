@@ -28,14 +28,14 @@ public class SubscriptionQueryEvents {
     public static class ProxiedSubscriptionQueryRequest {
 
         private final SubscriptionQueryRequest request;
-
+        private final String context;
         private final UpdateHandler handler;
-
         private final String targetClient;
 
-        public ProxiedSubscriptionQueryRequest(SubscriptionQueryRequest request,
+        public ProxiedSubscriptionQueryRequest(SubscriptionQueryRequest request, String context,
                                                UpdateHandler handler, String targetClient) {
             this.request = request;
+            this.context = context;
             this.handler = handler;
             this.targetClient = targetClient;
         }
@@ -53,7 +53,7 @@ public class SubscriptionQueryEvents {
         }
 
         public String context() {
-            return request.getContext();
+            return context;
         }
 
         public SubscriptionQuery subscriptionQuery(){
@@ -126,7 +126,6 @@ public class SubscriptionQueryEvents {
         public SubscriptionQueryRequest subscriptionQueryRequest() {
             return SubscriptionQueryRequest.newBuilder()
                                            .setSubscribe(subscription())
-                                           .setContext(context())
                                            .build();
         }
     }
@@ -143,7 +142,6 @@ public class SubscriptionQueryEvents {
         public SubscriptionQueryRequest subscriptionQueryRequest() {
             return SubscriptionQueryRequest.newBuilder()
                                            .setGetInitialResult(subscription())
-                                           .setContext(context())
                                            .build();
         }
     }

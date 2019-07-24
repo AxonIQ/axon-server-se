@@ -46,21 +46,21 @@ public class TrackingProcessorTest {
                         + "{\"clientId\":\"clientIdTwo\",\"segmentId\":1,\"caughtUp\":true,\"replaying\":false,\"tokenPosition\":0,\"errorState\":\"\",\"onePartOf\":2}"
                         + "]}";
 
-        EventProcessorInfo.EventTrackerInfo trackerInfo0 = EventProcessorInfo.EventTrackerInfo.newBuilder()
-                                                                                              .setCaughtUp(true)
-                                                                                              .setReplaying(false)
-                                                                                              .setOnePartOf(2)
-                                                                                              .setSegmentId(0)
-                                                                                              .build();
+        EventProcessorInfo.SegmentStatus trackerInfo0 = EventProcessorInfo.SegmentStatus.newBuilder()
+                                                                                        .setCaughtUp(true)
+                                                                                        .setReplaying(false)
+                                                                                        .setOnePartOf(2)
+                                                                                        .setSegmentId(0)
+                                                                                        .build();
         EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
                                                               .setMode("Tracking")
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(3)
                                                               .setRunning(true)
-                                                              .addEventTrackersInfo(trackerInfo0)
+                                                              .addSegmentStatus(trackerInfo0)
                                                               .build();
 
-        EventProcessorInfo.EventTrackerInfo trackerInfo1 = EventProcessorInfo.EventTrackerInfo.newBuilder()
+        EventProcessorInfo.SegmentStatus trackerInfo1 = EventProcessorInfo.SegmentStatus.newBuilder()
                                                                                               .setCaughtUp(true)
                                                                                               .setReplaying(false)
                                                                                               .setOnePartOf(2)
@@ -71,7 +71,7 @@ public class TrackingProcessorTest {
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(0)
                                                               .setRunning(true)
-                                                              .addEventTrackersInfo(trackerInfo1)
+                                                              .addSegmentStatus(trackerInfo1)
                                                               .build();
         List<ClientProcessor> testClientProcessors = asList(
                 new FakeClientProcessor("clientIdOne", true, processorInfo0),
@@ -102,7 +102,7 @@ public class TrackingProcessorTest {
                         + "{\"clientId\":\"clientIdOne\",\"segmentId\":0,\"caughtUp\":true,\"replaying\":false,\"tokenPosition\":0,\"errorState\":\"\",\"onePartOf\":1}"
                         + "]}";
 
-        EventProcessorInfo.EventTrackerInfo trackerInfo0 = EventProcessorInfo.EventTrackerInfo.newBuilder()
+        EventProcessorInfo.SegmentStatus trackerInfo0 = EventProcessorInfo.SegmentStatus.newBuilder()
                                                                                               .setCaughtUp(true)
                                                                                               .setReplaying(false)
                                                                                               .setOnePartOf(1)
@@ -113,7 +113,7 @@ public class TrackingProcessorTest {
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(1)
                                                               .setRunning(true)
-                                                              .addEventTrackersInfo(trackerInfo0)
+                                                              .addSegmentStatus(trackerInfo0)
                                                               .build();
         List<ClientProcessor> testClientProcessors =
                 Collections.singletonList(new FakeClientProcessor("clientIdOne", true, processorInfo0));
@@ -129,7 +129,7 @@ public class TrackingProcessorTest {
     @Test
     public void testPrintOnEnableCanMergeWhenOnlyOneSegmentOfMultipleIsClaimed() throws IOException {
 
-        EventProcessorInfo.EventTrackerInfo trackerInfo0 = EventProcessorInfo.EventTrackerInfo.newBuilder()
+        EventProcessorInfo.SegmentStatus trackerInfo0 = EventProcessorInfo.SegmentStatus.newBuilder()
                                                                                               .setCaughtUp(true)
                                                                                               .setReplaying(false)
                                                                                               .setOnePartOf(2)
@@ -140,7 +140,7 @@ public class TrackingProcessorTest {
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(1)
                                                               .setRunning(true)
-                                                              .addEventTrackersInfo(trackerInfo0)
+                                                              .addSegmentStatus(trackerInfo0)
                                                               .build();
         List<ClientProcessor> testClientProcessors =
                 Collections.singletonList(new FakeClientProcessor("clientIdOne", true, processorInfo0));

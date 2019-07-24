@@ -54,41 +54,8 @@ public abstract class ProcessingInstructionHelper {
         return (int) getProcessingInstructionNumber(processingInstructions, ProcessingKey.NR_OF_RESULTS);
     }
 
-    public static String targetClient(List<ProcessingInstruction> processingInstructions) {
-        return getProcessingInstructionString(processingInstructions, ProcessingKey.TARGET_CLIENT);
-    }
-
-    public static String context(List<ProcessingInstruction> processingInstructions) {
-        return getProcessingInstructionString(processingInstructions, ProcessingKey.CONTEXT);
-    }
-
     public static String routingKey(List<ProcessingInstruction> processingInstructions) {
         return getProcessingInstructionString(processingInstructions, ProcessingKey.ROUTING_KEY);
-    }
-
-    public static String originalMessageId(List<ProcessingInstruction> processingInstructions) {
-        return getProcessingInstructionString(processingInstructions, ProcessingKey.ORIGINAL_MESSAGE_ID);
-    }
-
-    public static ProcessingInstruction originalMessageId(String messageIdentifier) {
-        return ProcessingInstruction.newBuilder()
-                                    .setKey(ProcessingKey.ORIGINAL_MESSAGE_ID)
-                                    .setValue(MetaDataValue.newBuilder().setTextValue(messageIdentifier))
-                                    .build();
-    }
-
-    public static ProcessingInstruction targetClient(String targetClient) {
-        return ProcessingInstruction.newBuilder()
-                                    .setKey(ProcessingKey.TARGET_CLIENT)
-                                    .setValue(MetaDataValue.newBuilder().setTextValue(targetClient))
-                                    .build();
-    }
-
-    public static ProcessingInstruction context(String context) {
-        return ProcessingInstruction.newBuilder()
-                                    .setKey(ProcessingKey.CONTEXT)
-                                    .setValue(MetaDataValue.newBuilder().setTextValue(context))
-                                    .build();
     }
 
     public static ProcessingInstruction timeout(long timeout) {

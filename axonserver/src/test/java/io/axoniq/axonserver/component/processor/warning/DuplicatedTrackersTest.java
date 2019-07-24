@@ -14,7 +14,7 @@ import org.junit.*;
 
 import java.util.List;
 
-import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo.newBuilder;
+import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus.newBuilder;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -26,8 +26,8 @@ public class DuplicatedTrackersTest {
 
     @Test
     public void testActive() {
-        List<EventProcessorInfo.EventTrackerInfo> eventTrackerInfoList = asList(newBuilder().setSegmentId(1).build(),
-                                                                                newBuilder().setSegmentId(1).build());
+        List<EventProcessorInfo.SegmentStatus> eventTrackerInfoList = asList(newBuilder().setSegmentId(1).build(),
+                                                                             newBuilder().setSegmentId(1).build());
         Warning warning = new DuplicatedTrackers(eventTrackerInfoList);
         assertTrue(warning.active());
     }
@@ -35,8 +35,8 @@ public class DuplicatedTrackersTest {
 
     @Test
     public void testNotActive() {
-        List<EventProcessorInfo.EventTrackerInfo> eventTrackerInfoList = asList(newBuilder().setSegmentId(2).build(),
-                                                                                newBuilder().setSegmentId(3).build());
+        List<EventProcessorInfo.SegmentStatus> eventTrackerInfoList = asList(newBuilder().setSegmentId(2).build(),
+                                                                             newBuilder().setSegmentId(3).build());
         Warning warning = new DuplicatedTrackers(eventTrackerInfoList);
         assertFalse(warning.active());
     }

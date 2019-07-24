@@ -81,7 +81,6 @@ public class SubscriptionQueryDispatcher {
         logger.debug("Dispatch subscription query cancel with subscriptionId = {}", evt.subscriptionId());
         SubscriptionQueryRequest queryRequest = SubscriptionQueryRequest.newBuilder()
                                                                         .setUnsubscribe(evt.unsubscribe())
-                                                                        .setContext(evt.context())
                                                                         .build();
         Collection<QueryHandler> handlers = registrationCache.findAll(evt.context(), evt.unsubscribe().getQueryRequest());
         handlers.forEach(handler -> handler.dispatch(queryRequest));
@@ -100,7 +99,6 @@ public class SubscriptionQueryDispatcher {
                 SubscriptionQuery subscriptionQuery = subscription.subscriptionQuery();
                 event.getQueryHandler().dispatch(SubscriptionQueryRequest.newBuilder()
                                                                          .setSubscribe(subscriptionQuery)
-                                                                         .setContext(subscription.context())
                                                                          .build());
                 ids.add(subscriptionId);
             }
