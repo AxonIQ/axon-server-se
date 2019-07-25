@@ -28,7 +28,7 @@ import javax.annotation.Nonnull;
 @Component
 public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy {
 
-    @Nonnull private final SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy;
+    @Nonnull private final NodeSelectionStrategy nodeSelectionStrategy;
 
     @Nonnull private final ConnectionProvider connectionProvider;
 
@@ -40,14 +40,15 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      * @param clusterTags   the provider of cluster tags
      * @param clientsTags   the provider of clients tags
      * @param configuration the messaging platform configuration
-     * @param subscriptionCountBasedNodeSelectionStrategy the subscriptionCount strategy to use after the MatchingTags
+     * @param nodeSelectionStrategy the fallback strategy to use after the MatchingTags
      *                                                    check
      */
     @Autowired
     public MatchingTagsNodeSelectionStrategy(ClusterTagsCache clusterTags, ClientTagsCache clientsTags,
                                              MessagingPlatformConfiguration configuration,
-                                             SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy) {
-        this(new MatchingTags(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName(), subscriptionCountBasedNodeSelectionStrategy);
+                                             NodeSelectionStrategy nodeSelectionStrategy) {
+        this(new MatchingTags(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName(),
+             nodeSelectionStrategy);
     }
 
     /**
@@ -56,12 +57,12 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      *
      * @param tagsMatchRule a {@link Rule} that returns a value of each node equals to the number of tags matching
      * @param thisNodeName the local node identifier
-     * @param subscriptionCountBasedNodeSelectionStrategy the subscriptionCount strategy to use after the MatchingTags
+     * @param nodeSelectionStrategy the fallback strategy to use after the MatchingTags
      *                                                    check
      */
     public MatchingTagsNodeSelectionStrategy(Rule tagsMatchRule, String thisNodeName,
-                                             SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy) {
-        this(new RuleBasedConnectionProvider(tagsMatchRule), thisNodeName, subscriptionCountBasedNodeSelectionStrategy);
+                                             NodeSelectionStrategy nodeSelectionStrategy) {
+        this(new RuleBasedConnectionProvider(tagsMatchRule), thisNodeName, nodeSelectionStrategy);
     }
 
     /**
@@ -69,14 +70,14 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      *
      * @param connectionProvider the {@link ConnectionProvider} that return the node with the highest number of tags matching
      * @param thisNode the local node identifier
-     * @param subscriptionCountBasedNodeSelectionStrategy the subscriptionCount strategy to use after the MatchingTags
+     * @param nodeSelectionStrategy the fallback strategy to use after the MatchingTags
      *                                                    check
      */
     public MatchingTagsNodeSelectionStrategy(@Nonnull ConnectionProvider connectionProvider, @Nonnull String thisNode,
-                                             @Nonnull SubscriptionCountBasedNodeSelectionStrategy subscriptionCountBasedNodeSelectionStrategy) {
+                                             @Nonnull NodeSelectionStrategy nodeSelectionStrategy) {
         this.connectionProvider = connectionProvider;
         this.thisNodeName = thisNode;
-        this.subscriptionCountBasedNodeSelectionStrategy = subscriptionCountBasedNodeSelectionStrategy;
+        this.nodeSelectionStrategy = nodeSelectionStrategy;
     }
 
     /**
@@ -93,7 +94,7 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
     public String selectNode(ClientIdentification client, String component, Collection<String> nodes) {
         List<String> matchingNodes = connectionProvider.bestMatches(client, nodes);
 
-        return subscriptionCountBasedNodeSelectionStrategy.selectNode(client,component,matchingNodes);
+        return nodeSelectionStrategy.selectNode(client, component, matchingNodes);
     }
 
     /**
