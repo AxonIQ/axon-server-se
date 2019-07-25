@@ -9,13 +9,12 @@ import io.axoniq.axonserver.enterprise.component.connection.rule.Rule;
 import io.axoniq.axonserver.enterprise.component.connection.rule.RuleBasedConnectionProvider;
 import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.List;
-import javax.annotation.Nonnull;
 
 /**
  * Implementation of {@link NodeSelectionStrategy} that chooses the node with the highest number of tags matching.
@@ -24,7 +23,6 @@ import javax.annotation.Nonnull;
  * @since 4.2
  */
 @Primary
-@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "matchingTags")
 @Component
 public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy {
 
