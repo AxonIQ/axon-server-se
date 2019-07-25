@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
 import io.axoniq.axonserver.cluster.election.DefaultElection;
+import io.axoniq.axonserver.cluster.election.DefaultPreVote;
 import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
@@ -42,7 +43,8 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final BiConsumer<Long, String> termUpdateHandler;
     private final MembershipStateFactory stateFactory;
     private final Supplier<Scheduler> schedulerFactory;
-    private final Supplier<Election> electionFactory;
+    private final Function<Boolean, Election> electionFactory;
+    private final Supplier<Election> preElectionFactory;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
     private final SnapshotManager snapshotManager;
     private final CurrentConfiguration currentConfiguration;
@@ -57,6 +59,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.stateFactory = builder.stateFactory;
         this.schedulerFactory = builder.schedulerFactory;
         this.electionFactory = builder.electionFactory;
+        this.preElectionFactory = builder.preVoteFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
         this.snapshotManager = builder.snapshotManager;
         this.currentConfiguration = builder.currentConfiguration;
@@ -66,12 +69,13 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     public static abstract class Builder<B extends Builder<B>> {
 
+        public Supplier<Election> preVoteFactory;
         private RaftGroup raftGroup;
         private StateTransitionHandler transitionHandler;
         private BiConsumer<Long, String> termUpdateHandler;
         private MembershipStateFactory stateFactory;
         private Supplier<Scheduler> schedulerFactory;
-        private Supplier<Election> electionFactory;
+        private Function<Boolean, Election> electionFactory;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
         private SnapshotManager snapshotManager;
@@ -103,8 +107,13 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B electionFactory(Supplier<Election> electionFactory) {
+        public B electionFactory(Function<Boolean, Election> electionFactory) {
             this.electionFactory = electionFactory;
+            return self();
+        }
+
+        public B preVoteFactory(Supplier<Election> preElectionFactory) {
+            this.preVoteFactory = preElectionFactory;
             return self();
         }
 
@@ -131,7 +140,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         protected void validate() {
             if (schedulerFactory == null) {
-                schedulerFactory = () -> new DefaultScheduler("raftState");
+                schedulerFactory = () -> new DefaultScheduler("raftState-" + raftGroup.localNode().groupId());
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
@@ -155,9 +164,15 @@ public abstract class AbstractMembershipState implements MembershipState {
             }
 
             if (electionFactory == null) {
-                electionFactory = () -> {
+                electionFactory = (disruptLeader) -> {
                     Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
-                    return new DefaultElection(raftGroup, termUpdateHandler, otherPeers);
+                    return new DefaultElection(raftGroup, termUpdateHandler, otherPeers, disruptLeader);
+                };
+            }
+            if (preVoteFactory == null) {
+                preVoteFactory = () -> {
+                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
+                    return new DefaultPreVote(raftGroup, termUpdateHandler, otherPeers);
                 };
             }
 
@@ -176,6 +191,32 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
 
         abstract MembershipState build();
+    }
+
+
+    @Override
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        if (request.getTerm() > currentTerm()) {
+            String message = format("%s received pre-vote with term (%s >= %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getCandidateId());
+            RequestVoteResponse vote = handleAsFollower(follower -> follower.requestPreVote(request), message);
+            logger.info(
+                    "{} in term {}: Request for vote received from {} for term {}. {} voted {} (handled as follower).",
+                    groupId(),
+                    currentTerm(),
+                    request.getCandidateId(),
+                    request.getTerm(),
+                    me(),
+                    vote != null && vote.getVoteGranted());
+            return vote;
+        }
+        logger.info("{} in term {}: Request for vote received from {} in term {}. {} voted rejected.",
+                    groupId(),
+                    currentTerm(),
+                    request.getCandidateId(),
+                    request.getTerm(),
+                    me());
+        return responseFactory().voteRejected(request.getRequestId(), false);
     }
 
     @Override
@@ -299,8 +340,12 @@ public abstract class AbstractMembershipState implements MembershipState {
         return stream(new OtherPeers(raftGroup, currentConfiguration).spliterator(), false);
     }
 
-    protected Election newElection() {
-        return electionFactory.get();
+    protected Election newElection(boolean disruptAllowed) {
+        return electionFactory.apply(disruptAllowed);
+    }
+
+    protected Election newPreVote() {
+        return preElectionFactory.get();
     }
 
     protected long otherNodesCount() {

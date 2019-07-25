@@ -202,7 +202,7 @@ public class RaftNode {
         ElectionStore electionStore = raftGroup.localElectionStore();
         if (newTerm > electionStore.currentTerm()) {
             electionStore.updateCurrentTerm(newTerm);
-            logger.info("{} in term {}: Term updated.", groupId(), currentTerm());
+            logger.info("{} in term {}: Term updated ({}).", groupId(), currentTerm(), cause);
             electionStore.markVotedFor(null);
             termChangeListeners.forEach(consumer -> consumer.accept(newTerm, cause));
         }
@@ -431,6 +431,14 @@ public class RaftNode {
     }
 
     /**
+     * Stop accepting entries, complete replication to at least one peer and let peer start new election
+     */
+    public CompletableFuture<Void> transferLeadership() {
+        logger.info("{} in term {}: Transfer leadership started.", groupId(), currentTerm());
+        return state.get().transferLeadership();
+    }
+
+    /**
      * Gets the iterator of entries that have not been applied.
      *
      * @return the iterator of entries that have not been applied
@@ -449,6 +457,7 @@ public class RaftNode {
         logger.info("{} in term {}: Remove a group.", groupId(), currentTerm());
         stop();
         raftGroup.delete();
+        scheduler.shutdownNow();
         logger.info("{} in term {}: Group removed.", groupId(), currentTerm());
         return CompletableFuture.completedFuture(null);
     }
@@ -543,5 +552,12 @@ public class RaftNode {
                 logger.warn("{} in term {}: Failed to handle event", groupId(), currentTerm(), ex);
             }
         });
+    }
+
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        notifyMessage(request);
+        RequestVoteResponse response = state.get().requestPreVote(request);
+        notifyMessage(response);
+        return response;
     }
 }

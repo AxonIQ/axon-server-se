@@ -222,6 +222,11 @@ public class LocalRaftConfigServiceTest {
             }
             return CompletableFuture.completedFuture(null);
         }
+
+        @Override
+        public CompletableFuture<Void> transferLeadership(String context) {
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     @Before
@@ -340,7 +345,7 @@ public class LocalRaftConfigServiceTest {
             testSubject.deleteNodeFromContext("_admin", "node1");
             fail("Expect exception");
         } catch(MessagingPlatformException mpe) {
-            assertEquals(ErrorCode.OTHER, mpe.getErrorCode());
+            assertEquals(ErrorCode.CANNOT_REMOVE_LAST_NODE, mpe.getErrorCode());
         }
     }
 

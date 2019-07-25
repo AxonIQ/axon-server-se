@@ -386,6 +386,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         clear(0);
         File storageDir  = new File(storageProperties.getStorage(context));
         storageDir.delete();
+        synchronizer.shutdown(true);
     }
 
     public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {

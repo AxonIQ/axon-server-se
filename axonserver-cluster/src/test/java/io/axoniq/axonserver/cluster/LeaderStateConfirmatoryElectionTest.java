@@ -72,7 +72,7 @@ public class LeaderStateConfirmatoryElectionTest {
                                              .raftGroup(raftGroup)
                                              .transitionHandler(transitionHandler)
                                              .termUpdateHandler((term, cause) -> electionStore.updateCurrentTerm(term))
-                                             .electionFactory(() -> () -> Mono.just(lost()))
+                                             .electionFactory((disruptLeader) -> () -> Mono.just(lost()))
                                              .schedulerFactory(() -> scheduler)
                                              .snapshotManager(new FakeSnapshotManager())
                                              .stateFactory(new FakeStateFactory())

@@ -8,10 +8,12 @@ import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextApplicationSnapsh
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.EventTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ProcessorLoadBalancingSnapshotDataStore;
+import io.axoniq.axonserver.enterprise.cluster.snapshot.RaftProcessorLoadBalancingSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.UserSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.RaftProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.springframework.context.ApplicationContext;
@@ -35,6 +37,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
     private final UserRepository userRepository;
 
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
+    private final RaftProcessorLoadBalancingRepository raftProcessorLoadBalancingRepository;
 
     private final JpaContextApplicationController contextApplicationController;
     private final ContextController contextController;
@@ -44,12 +47,14 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
             ApplicationController applicationController,
             UserRepository userRepository,
             ProcessorLoadBalancingRepository processorLoadBalancingRepository,
+            RaftProcessorLoadBalancingRepository raftProcessorLoadBalancingRepository,
             JpaContextApplicationController contextApplicationController,
             ContextController contextController,
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
+        this.raftProcessorLoadBalancingRepository = raftProcessorLoadBalancingRepository;
         this.contextApplicationController = contextApplicationController;
         this.contextController = contextController;
         this.applicationContext = applicationContext;
@@ -65,11 +70,12 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
         return asList(
                 new ContextSnapshotDataStore(context, contextController),
                 new ApplicationSnapshotDataStore(context, applicationController),
-                      new ContextApplicationSnapshotDataStore(context, contextApplicationController),
-                      new EventTransactionsSnapshotDataStore(context, localEventStore),
-                      new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
-                      new SnapshotTransactionsSnapshotDataStore(context, localEventStore),
-                      new UserSnapshotDataStore(context, userRepository));
+                new ContextApplicationSnapshotDataStore(context, contextApplicationController),
+                new EventTransactionsSnapshotDataStore(context, localEventStore),
+                new SnapshotTransactionsSnapshotDataStore(context, localEventStore),
+                new RaftProcessorLoadBalancingSnapshotDataStore(context, raftProcessorLoadBalancingRepository),
+                new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
+                new UserSnapshotDataStore(context, userRepository));
     }
 
 }

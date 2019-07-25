@@ -16,7 +16,7 @@ public class RaftProperties extends StorageProperties {
     /**
      * Extra time that follower waits initially before moving to candidate state.
      */
-    private int initialElectionTimeout = 2500;
+    private int initialElectionTimeout = 0;
     /**
      * Minimal time (in ms.) that a follower waits before moving to candidate state, if it has not received any messages
      * from a leader.
@@ -30,7 +30,7 @@ public class RaftProperties extends StorageProperties {
     /**
      * Leader sends a heartbeat to followers if it has not sent any other messages to a follower for this time.
      */
-    private int heartbeatTimeout = 100;
+    private int heartbeatTimeout = 300;
     /**
      * Maximum number of append entry messages sent to one peer before moving to the next.
      */
@@ -57,6 +57,11 @@ public class RaftProperties extends StorageProperties {
      * Option to force new members to first receive a snapshot when they join a cluster
      */
     private boolean forceSnapshotOnJoin = true;
+    /**
+     * Timeout to wait for leader when requesting access to event store while leader change in progress, if not set
+     * defaults to 2*maxElectionTimeout
+     */
+    private int waitForLeaderTimeout = -1;
 
     public RaftProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -174,5 +179,16 @@ public class RaftProperties extends StorageProperties {
 
     public void setForceSnapshotOnJoin(boolean forceSnapshotOnJoin) {
         this.forceSnapshotOnJoin = forceSnapshotOnJoin;
+    }
+
+    public int getWaitForLeaderTimeout() {
+        if (waitForLeaderTimeout == -1) {
+            waitForLeaderTimeout = 2 * maxElectionTimeout;
+        }
+        return waitForLeaderTimeout;
+    }
+
+    public void setWaitForLeaderTimeout(int waitForLeaderTimeout) {
+        this.waitForLeaderTimeout = waitForLeaderTimeout;
     }
 }

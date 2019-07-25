@@ -15,6 +15,7 @@ public class CachedStateFactory implements MembershipStateFactory {
     private final AtomicReference<MembershipState> leader = new AtomicReference<>();
     private final AtomicReference<MembershipState> follower = new AtomicReference<>();
     private final AtomicReference<MembershipState> candidate = new AtomicReference<>();
+    private final AtomicReference<MembershipState> prevote = new AtomicReference<>();
     private final AtomicReference<MembershipState> removed = new AtomicReference<>();
 
     public CachedStateFactory(MembershipStateFactory delegate) {
@@ -57,6 +58,16 @@ public class CachedStateFactory implements MembershipStateFactory {
         if (state == null){
             state = delegate.candidateState();
             candidate.set(state);
+        }
+        return state;
+    }
+
+    @Override
+    public MembershipState preVoteState() {
+        MembershipState state = prevote.get();
+        if (state == null) {
+            state = delegate.preVoteState();
+            prevote.set(state);
         }
         return state;
     }

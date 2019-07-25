@@ -15,19 +15,7 @@ import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
-import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
-import io.axoniq.axonserver.grpc.internal.ClientStatus;
-import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
-import io.axoniq.axonserver.grpc.internal.ConnectRequest;
-import io.axoniq.axonserver.grpc.internal.ConnectResponse;
-import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
-import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
-import io.axoniq.axonserver.grpc.internal.Group;
-import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
-import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
+import io.axoniq.axonserver.grpc.internal.*;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -43,13 +31,14 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import javax.annotation.PreDestroy;
 
-import static io.axoniq.axonserver.ProcessingInstructionHelper.targetClient;
+import static io.axoniq.axonserver.enterprise.cluster.internal.ForwardedQueryResponseUtils.getDispatchingClient;
+import static io.axoniq.axonserver.enterprise.cluster.internal.ForwardedQueryResponseUtils.unwrap;
 import static io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter.fromProto;
 
 /**
@@ -283,17 +272,17 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     ));
                     break;
                 case QUERY_RESPONSE:
-                    String targetClient =
-                            targetClient(connectorCommand.getQueryResponse().getProcessingInstructionsList());
+                    ForwardedQueryResponse queryResponse = connectorCommand.getQueryResponse();
+                    String respondingClientId = getDispatchingClient(queryResponse);
                     if (logger.isDebugEnabled()) {
                         logger.debug(
                                 "QUERY_RESPONSE {} from {}",
-                                connectorCommand.getQueryResponse().getRequestIdentifier(),
-                                targetClient
+                                queryResponse.getRequestIdentifier(),
+                                respondingClientId
                         );
                     }
 
-                    queryDispatcher.handleResponse(connectorCommand.getQueryResponse(), targetClient, PROXIED);
+                    queryDispatcher.handleResponse(unwrap(queryResponse), respondingClientId, PROXIED);
                     break;
                 case QUERY_COMPLETE:
                     logger.debug(

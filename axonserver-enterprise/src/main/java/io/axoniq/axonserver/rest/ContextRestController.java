@@ -5,6 +5,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
+import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.rest.json.RestResponse;
@@ -30,6 +31,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
  * @author Marc Gathier
  */
@@ -41,6 +44,7 @@ public class ContextRestController {
     private final RaftConfigServiceFactory raftServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
+    private final ClusterTopology clusterTopology;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final Logger logger = LoggerFactory.getLogger(ContextRestController.class);
@@ -48,10 +52,12 @@ public class ContextRestController {
     public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
                                  RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
+                                 ClusterTopology clusterTopology,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
         this.contextController = contextController;
+        this.clusterTopology = clusterTopology;
         this.limits = limits;
     }
 
@@ -68,6 +74,28 @@ public class ContextRestController {
                                  .collect(Collectors.toList()));
             return json;
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());
+    }
+
+    /**
+     * Get the names of the context that should be displayed in the Axon Dashboard. Names depend on whether the
+     * connected node is an
+     * admin node (all known contexts) or not (context defined on this node).
+     *
+     * @param includeAdmin include admin context in result (default false)
+     * @return names of contexts
+     */
+    @GetMapping(path = "public/visiblecontexts")
+    public Iterable<String> visibleContexts(
+            @RequestParam(name = "includeAdmin", required = false, defaultValue = "false") boolean includeAdmin) {
+        if (clusterTopology.isAdminNode()) {
+            return contextController.getContexts()
+                                    .map(context -> context.getName())
+                                    .filter(name -> includeAdmin || !isAdmin(name))
+                                    .sorted()
+                                    .collect(Collectors.toList());
+        } else {
+            return clusterTopology.getMyStorageContextNames();
+        }
     }
 
     @DeleteMapping(path = "context/{name}")

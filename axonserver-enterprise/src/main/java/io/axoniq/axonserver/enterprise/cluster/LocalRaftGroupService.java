@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
@@ -137,17 +138,26 @@ public class LocalRaftGroupService implements RaftGroupService {
     public CompletableFuture<ContextUpdateConfirmation> deleteNode(String context, String node) {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
-        raftNode.removeNode(node).whenComplete(((configChangeResult, throwable) -> {
-            if (throwable != null) {
-                logger.error("{}: Exception while deleting node {}", context, node, throwable);
-            }
-            ContextUpdateConfirmation contextUpdateConfirmation = createContextUpdateConfirmation(raftNode,
-                                                                                                  configChangeResult,
-                                                                                                  throwable);
+        try {
+            raftNode.removeNode(node).whenComplete(((configChangeResult, throwable) -> {
+                if (throwable != null) {
+                    logger.error("{}: Exception while deleting node {}", context, node, throwable);
+                }
+                try {
+                    ContextUpdateConfirmation contextUpdateConfirmation = createContextUpdateConfirmation(raftNode,
+                                                                                                          configChangeResult,
+                                                                                                          throwable);
 
-            result.complete(contextUpdateConfirmation);
-        }));
-
+                    result.complete(contextUpdateConfirmation);
+                } catch (Exception ex) {
+                    logger.error("{}: Exception while deleting node {}", context, node, ex);
+                    result.completeExceptionally(ex);
+                }
+            }));
+        } catch (Exception ex) {
+            logger.error("{}: Exception while deleting node {}", context, node, ex);
+            result.completeExceptionally(ex);
+        }
         return result;
     }
 
@@ -162,7 +172,6 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                                     .setNodeName(n.getNodeName())
                                                                                     .setPort(n.getPort())
                                                                                     .setHost(n.getHost())));
-
 
         builder.setPending(raftNode.isCurrentConfigurationPending());
 
@@ -242,7 +251,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<Void> updateProcessorLoadBalancing(String context,
                                                                 ProcessorLBStrategy processorLBStrategy) {
-        return appendEntry(context, ProcessorLBStrategy.class.getName(), processorLBStrategy.toByteArray());
+        return appendEntry(context, RaftProcessorLoadBalancing.class.getName(), processorLBStrategy.toByteArray());
     }
 
     @Override
@@ -273,5 +282,15 @@ public class LocalRaftGroupService implements RaftGroupService {
             return CompletableFuture.completedFuture(null);
         }
         return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context));
+    }
+
+    @Override
+    public CompletableFuture<Void> transferLeadership(String context) {
+        try {
+            RaftNode raftNode = grpcRaftController.getRaftNode(context);
+            return raftNode.transferLeadership();
+        } catch (MessagingPlatformException ex) {
+            return CompletableFuture.completedFuture(null);
+        }
     }
 }

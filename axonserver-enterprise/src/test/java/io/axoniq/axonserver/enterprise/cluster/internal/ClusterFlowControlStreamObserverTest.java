@@ -3,16 +3,13 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
-import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
-import io.axoniq.axonserver.grpc.internal.DeleteNode;
-import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
-import io.axoniq.axonserver.grpc.internal.Group;
-import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.grpc.internal.*;
 import io.axoniq.axonserver.util.CountingStreamObserver;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.*;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author Marc Gathier
@@ -53,11 +50,11 @@ public class ClusterFlowControlStreamObserverTest {
     @Test
     public void onNextQuery() {
         testSubject.initQueryFlowControl(messagingPlatformConfiguration.getName(), clusterConfiguration.getQueryFlowControl());
-        testSubject.onNext(ConnectorCommand.newBuilder().setQueryResponse(QueryResponse.newBuilder().build()).build());
+        testSubject.onNext(ConnectorCommand.newBuilder().setQueryResponse(ForwardedQueryResponse.getDefaultInstance()).build());
         assertEquals(3, delegate.count);
         assertEquals( QUERY_RESPONSE, delegate.responseList.get(1).getRequestCase());
         assertEquals( FLOW_CONTROL, delegate.responseList.get(2).getRequestCase());
-        testSubject.onNext(ConnectorCommand.newBuilder().setQueryResponse(QueryResponse.newBuilder().build()).build());
+        testSubject.onNext(ConnectorCommand.newBuilder().setQueryResponse(ForwardedQueryResponse.getDefaultInstance()).build());
         assertEquals(5, delegate.count);
         assertEquals( QUERY_RESPONSE, delegate.responseList.get(3).getRequestCase());
     }

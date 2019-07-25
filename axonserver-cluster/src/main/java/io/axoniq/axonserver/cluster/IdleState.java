@@ -38,6 +38,11 @@ public class IdleState implements MembershipState {
     }
 
     @Override
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        return raftResponseFactory.voteResponse(request.getRequestId(), true);
+    }
+
+    @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
         logger.info("Ignored AppendEntriesRequest with requestId {}: I ({}) am in idle state.",
                     request.getRequestId(),

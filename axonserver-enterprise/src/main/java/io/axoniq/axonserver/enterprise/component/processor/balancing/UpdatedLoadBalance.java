@@ -5,8 +5,8 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStat
 import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.strategy.ProcessorLoadBalanceStrategy;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingService;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.RaftProcessorLoadBalancingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,7 +40,7 @@ public class UpdatedLoadBalance {
 
     private final ProcessorLoadBalanceStrategy delegate;
 
-    private final ProcessorLoadBalancingService processorLoadBalancingService;
+    private final RaftProcessorLoadBalancingService raftProcessorLoadBalancingService;
 
     private final ApplicationEventPublisher eventPublisher;
 
@@ -50,11 +50,11 @@ public class UpdatedLoadBalance {
 
     public UpdatedLoadBalance(Clients clients,
                               ProcessorLoadBalanceStrategy delegate,
-                              ProcessorLoadBalancingService processorLoadBalancingService,
+                              RaftProcessorLoadBalancingService raftProcessorLoadBalancingService,
                               ApplicationEventPublisher eventPublisher) {
         this.clients = clients;
         this.delegate = delegate;
-        this.processorLoadBalancingService = processorLoadBalancingService;
+        this.raftProcessorLoadBalancingService = raftProcessorLoadBalancingService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -64,9 +64,12 @@ public class UpdatedLoadBalance {
     }
 
     public void balance(TrackingEventProcessor processor) {
-        ExecutorService service = executors.computeIfAbsent(processor, p -> {
-            return new ThreadPoolExecutor(0,1,1,SECONDS,new LinkedBlockingQueue<>());
-        });
+        ExecutorService service = executors.computeIfAbsent(processor,
+                                                            p -> new ThreadPoolExecutor(0,
+                                                                                        1,
+                                                                                        1,
+                                                                                        SECONDS,
+                                                                                        new LinkedBlockingQueue<>()));
         service.execute(() -> {
             try {
                 Thread.sleep(15000);
@@ -85,9 +88,9 @@ public class UpdatedLoadBalance {
                 boolean updated = count.await(10, SECONDS);
                 updateListeners.remove(consumer);
                 if (updated){
-                    String strategyName = processorLoadBalancingService.findById(processor)
-                                                                       .map(ProcessorLoadBalancing::strategy)
-                                                                       .orElse("default");
+                    String strategyName = raftProcessorLoadBalancingService.findById(processor)
+                                                                           .map(RaftProcessorLoadBalancing::strategy)
+                                                                           .orElse("default");
 
                     delegate.balance(processor, strategyName).perform();
                 }
