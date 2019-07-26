@@ -53,7 +53,7 @@ public class IndexManager {
 
     public void createIndex(Long segment, Map<String, SortedSet<PositionInfo>> positionsPerAggregate) {
         File tempFile = storageProperties.indexTemp(context, segment);
-        if (tempFile.exists() || !FileUtils.delete(tempFile)) {
+        if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
         }
