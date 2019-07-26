@@ -2,10 +2,17 @@ package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
+import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
+import io.axoniq.axonserver.access.roles.PathToFunction;
+import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -15,59 +22,75 @@ import java.util.stream.Collectors;
 @Controller
 public class AccessControllerDB {
 
+    private final Logger logger = LoggerFactory.getLogger(AccessControllerDB.class);
     private final JpaContextApplicationRepository contextApplicationRepository;
     private final JpaApplicationRepository applicationRepository;
     private final PathMappingRepository pathMappingRepository;
+    private final PathToFunctionRepository pathToFunctionRepository;
+    private final FunctionRoleRepository functionRoleRepository;
     private final Hasher hasher;
 
     public AccessControllerDB(JpaContextApplicationRepository contextApplicationRepository,
                               JpaApplicationRepository applicationRepository,
                               PathMappingRepository pathMappingRepository,
+                              PathToFunctionRepository pathToFunctionRepository,
+                              FunctionRoleRepository functionRoleRepository,
                               Hasher hasher) {
         this.contextApplicationRepository = contextApplicationRepository;
         this.applicationRepository = applicationRepository;
         this.pathMappingRepository = pathMappingRepository;
+        this.pathToFunctionRepository = pathToFunctionRepository;
+        this.functionRoleRepository = functionRoleRepository;
         this.hasher = hasher;
     }
 
-    public Set<String> getRoles(String token, String group) {
-        Set<String> roles = contextApplicationRepository.findAllByContext(group)
-                                                        .stream()
-                                                        .filter(app -> hasher.checkpw(token, app.getHashedToken()))
-                                                        .findFirst()
-                                                        .map(JpaContextApplication::getRoles)
-                                                        .orElse(null);
-        if( roles == null) {
-            JpaApplication application = applicationRepository.findAllByTokenPrefix(ApplicationController.tokenPrefix(token))
-                                                           .stream()
-                                                           .filter(app -> hasher.checkpw(token, app.getHashedToken()))
-                                                           .findFirst().orElse(null);
-            if( application != null) {
-                roles = application.getContexts().stream().filter(c -> c.getContext().equals(group)).flatMap(g -> g.getRoles().stream())
-                                   .map(ApplicationContextRole::getRole).collect(Collectors.toSet());
-            }
-        }
-        return roles;
+    public Set<String> getRoles(String token) {
+        return contextApplicationRepository.findAllByTokenPrefix(ApplicationController.tokenPrefix(token))
+                                           .stream()
+                                           .filter(app -> hasher.checkpw(token, app.getHashedToken()))
+                                           .findFirst()
+                                           .map(JpaContextApplication::getQualifiedRoles)
+                                           .orElse(null);
     }
 
-    public boolean authorize(String token, String context, String path, boolean fineGrainedAccessControl) {
-        Set<String> roles = getRoles(token, context);
+    public boolean authorize(String token, String context, String path) {
+        Set<String> requiredRoles = getPathMappings(path);
+        if (requiredRoles == null || requiredRoles.isEmpty()) {
+            return true;
+        }
+
+        Set<String> roles = getRoles(token);
+        logger.debug("Authorizing {}: required roles: {}, app roles: {}, context: {}", path,
+                     requiredRoles,
+                     roles,
+                     context);
         if (roles == null)
             return false;
 
-        if( !fineGrainedAccessControl) return true;
-
-        PathMapping mapping = pathMappingRepository.findById(path).orElseGet(() -> findByPrefix(path));
-        return mapping != null && roles.contains(mapping.getRole());
+        return requiredRoles.stream().anyMatch(role -> roles.contains(role + '@' + context) || roles
+                .contains(role + "@*"));
     }
 
-    private PathMapping findByPrefix(String path) {
-        return pathMappingRepository.findAll().stream().filter(m -> m.getPath().endsWith("**"))
-                                    .filter(m -> path.startsWith(m.getPath().substring(0, m.getPath().length() - 2)))
+    private PathToFunction findByPattern(String path) {
+        return pathToFunctionRepository.findAll().stream()
+                                       .filter(m -> Pattern.compile(m.getPath()).matcher(path).matches())
                                     .findFirst().orElse(null);
     }
 
     public Collection<PathMapping> getPathMappings() {
         return pathMappingRepository.findAll();
     }
+
+    public Set<String> getPathMappings(String permission) {
+        PathToFunction mapping = pathToFunctionRepository.findById(permission)
+                                                         .orElseGet(() -> findByPattern(permission));
+        if (mapping == null) {
+            return Collections.emptySet();
+        }
+        return functionRoleRepository.findByFunction(mapping.getFunction())
+                                     .stream()
+                                     .map(functionRole -> functionRole.getRole().getRole())
+                                     .collect(Collectors.toSet());
+    }
+
 }

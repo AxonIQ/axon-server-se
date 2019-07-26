@@ -3,15 +3,15 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.access.application.ApplicationContextRole;
 import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
-import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.role.RoleController;
+import io.axoniq.axonserver.access.roles.Role;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.licensing.Feature;
-import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.internal.Application;
+import io.axoniq.axonserver.licensing.Feature;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,9 +68,9 @@ public class ApplicationRestController {
     }
 
     private void checkRoles(ApplicationJSON application) {
-        Set<String> validRoles = roleController.listApplicationRoles()
+        Set<String> validRoles = roleController.listRoles()
                                                .stream()
-                                               .map(Role::name)
+                                               .map(Role::getRole)
                                                .collect(Collectors.toSet());
         List<String> roles = application.getRoles()
                                         .stream()

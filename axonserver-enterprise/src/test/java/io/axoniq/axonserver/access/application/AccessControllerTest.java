@@ -2,6 +2,8 @@ package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
+import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
+import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -61,38 +63,45 @@ public class AccessControllerTest {
 
         when(centralApplicationRepository.findAllByTokenPrefix(any())).thenReturn(centralApplications);
 
-        testSubject = new AccessControllerDB(applicationRepository, centralApplicationRepository, pathMappingRepository, hasher);
+        PathToFunctionRepository pathToFunctionRepository = mock(PathToFunctionRepository.class);
+        FunctionRoleRepository funtionRoleRepository = mock(FunctionRoleRepository.class);
+        testSubject = new AccessControllerDB(applicationRepository,
+                                             centralApplicationRepository,
+                                             pathMappingRepository,
+                                             pathToFunctionRepository,
+                                             funtionRoleRepository,
+                                             hasher);
     }
 
     @Test
     public void authorizeNonExistingToken() throws Exception {
-        assertFalse(testSubject.authorize("12349999", "default", "path1", true));
+        assertFalse(testSubject.authorize("12349999", "default", "path1"));
     }
 
     @Test
     public void authorizeMissingPath() throws Exception {
-        assertFalse(testSubject.authorize("1234567890", "default","path4", true));
+        assertFalse(testSubject.authorize("1234567890", "default", "path4"));
     }
 
     @Test
     public void authorizeMissingRole() throws Exception {
-        assertFalse(testSubject.authorize("1234567890", "default","path2", true));
+        assertFalse(testSubject.authorize("1234567890", "default", "path2"));
     }
 
     @Test
     public void authorizeWithRole() throws Exception {
-        assertTrue(testSubject.authorize("1234567890", "default","path1", true));
-        assertTrue(testSubject.authorize("1234567890", "default","path1", true));
+        assertTrue(testSubject.authorize("1234567890", "default", "path1"));
+        assertTrue(testSubject.authorize("1234567890", "default", "path1"));
     }
 
     @Test
     public void authorizeWithWildcard() throws Exception {
-        assertTrue(testSubject.authorize("1234567890", "default","path3/test", true));
+        assertTrue(testSubject.authorize("1234567890", "default", "path3/test"));
     }
 
     @Test
     public void authorizeCentral() throws Exception {
-        assertTrue(testSubject.authorize("11111111111111111111111", "demoContext","path3/test", true));
+        assertTrue(testSubject.authorize("11111111111111111111111", "demoContext", "path3/test"));
     }
 
 }

@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
@@ -218,6 +219,30 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.transferLeadership(ContextName.newBuilder().setContext(context).build(),
                                 new CompletableStreamObserver<>(result, "transferLeadership", logger, TO_VOID));
+        return result;
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteApplication(ContextApplication application) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        stub.deleteAppAuthorization(application,
+                                    new CompletableStreamObserver<>(result, "deleteAppAuthorization", logger, TO_VOID));
+        return result;
+    }
+
+    @Override
+    public CompletableFuture<Void> updateUser(ContextUser user) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        stub.mergeUserAuthorization(user,
+                                    new CompletableStreamObserver<>(result, "updateUser", logger, TO_VOID));
+        return result;
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteUser(ContextUser user) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        stub.deleteUserAuthorization(user,
+                                     new CompletableStreamObserver<>(result, "deleteUser", logger, TO_VOID));
         return result;
     }
 }

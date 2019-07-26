@@ -76,20 +76,13 @@ public class ApplicationController {
         applicationRepository.deleteAll();
     }
 
-    public List<JpaApplication> getApplicationsForContext(String context) {
-        return applicationRepository.findAllByContextsContext(context);
-    }
-
-    @Transactional
-    public void deleteByContext(String context) {
-        synchronized (applicationRepository) {
-            applicationRepository.deleteAllByContextsContext(context);
-            applicationRepository.flush();
-        }
-    }
-
     public static String tokenPrefix(String token) {
         if( token == null) return null;
         return token.substring(0, Math.min(token.length(), ApplicationController.PREFIX_LENGTH));
+    }
+
+    @Transactional
+    public void removeRolesForContext(String context) {
+        applicationRepository.findAllByContextsContext(context).forEach(app -> app.removeContext(context));
     }
 }

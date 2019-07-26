@@ -3,6 +3,8 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextApplicationConsumer;
+import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextUserConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
@@ -12,6 +14,7 @@ import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
@@ -239,6 +242,24 @@ public class LocalRaftGroupService implements RaftGroupService {
     public CompletableFuture<Void> updateApplication(ContextApplication application) {
         RaftNode raftNode = grpcRaftController.getRaftNode(application.getContext());
         return raftNode.appendEntry(ContextApplication.class.getName(), application.toByteArray());
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteApplication(ContextApplication application) {
+        RaftNode raftNode = grpcRaftController.getRaftNode(application.getContext());
+        return raftNode.appendEntry(DeleteContextApplicationConsumer.ENTRY_TYPE, application.toByteArray());
+    }
+
+    @Override
+    public CompletableFuture<Void> updateUser(ContextUser user) {
+        RaftNode raftNode = grpcRaftController.getRaftNode(user.getContext());
+        return raftNode.appendEntry(ContextUser.class.getName(), user.toByteArray());
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteUser(ContextUser user) {
+        RaftNode raftNode = grpcRaftController.getRaftNode(user.getContext());
+        return raftNode.appendEntry(DeleteContextUserConsumer.ENTRY_TYPE, user.toByteArray());
     }
 
     @Override

@@ -71,7 +71,7 @@ public class AxonServerFixture {
             }
 
             @Override
-            public Set<String> getRoles(String token, String context) {
+            public Set<String> getRoles(String token) {
                 return Collections.singleton("ADMIN");
             }
         };

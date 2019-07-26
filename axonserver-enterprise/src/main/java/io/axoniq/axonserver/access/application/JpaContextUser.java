@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.access.application;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -10,10 +12,13 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
 /**
+ * User information per context.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
 @Entity
-public class JpaContextApplication {
+public class JpaContextUser {
 
     @GeneratedValue
     @Id
@@ -21,21 +26,21 @@ public class JpaContextApplication {
 
     private String context;
 
-    private String name;
+    private String username;
 
-    private String tokenPrefix;
-
-    private String hashedToken;
+    @JsonIgnore
+    private String password;
 
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<String> roles = new HashSet<>();
 
-    JpaContextApplication() {
+    JpaContextUser() {
 
     }
-    public JpaContextApplication(String context, String name) {
+
+    public JpaContextUser(String context, String username) {
         this.context = context;
-        this.name = name;
+        this.username = username;
     }
 
     public Long getId() {
@@ -54,28 +59,20 @@ public class JpaContextApplication {
         this.context = context;
     }
 
-    public String getName() {
-        return name;
+    public String getUsername() {
+        return username;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
-    public String getTokenPrefix() {
-        return tokenPrefix;
+    public String getPassword() {
+        return password;
     }
 
-    public void setTokenPrefix(String tokenPrefix) {
-        this.tokenPrefix = tokenPrefix;
-    }
-
-    public String getHashedToken() {
-        return hashedToken;
-    }
-
-    public void setHashedToken(String hashedToken) {
-        this.hashedToken = hashedToken;
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public Set<String> getRoles() {
@@ -89,5 +86,4 @@ public class JpaContextApplication {
     public void setRoles(Set<String> roles) {
         this.roles = roles;
     }
-
 }
