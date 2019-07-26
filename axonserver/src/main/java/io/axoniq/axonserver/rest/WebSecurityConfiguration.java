@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.rest;
 
-import com.google.common.collect.Sets;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
@@ -19,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.access.vote.AffirmativeBased;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,6 +33,7 @@ import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.FilterChain;
@@ -71,20 +72,25 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
             final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
             http.addFilterBefore(tokenFilter, BasicAuthenticationFilter.class);
             ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
-                    .authorizeRequests()
-                    .antMatchers("/", "/**/*.html", "/v1/public/*", "/v1/public", "/v1/search").authenticated();
+                    .authorizeRequests();
 
-            accessController.getPathMappings().stream().filter(p -> p.getPath().contains(":"))
-                            .forEach(p -> {
-                                String[] parts = p.getPath().split(":");
-                                if (accessController.isRoleBasedAuthentication()) {
-                                    auth.antMatchers(HttpMethod.valueOf(parts[0]), parts[1]).hasAuthority(p.getRole());
-                                } else {
+            if (accessController.isRoleBasedAuthentication()) {
+                auth.antMatchers("/", "/**/*.html", "/v1/**")
+                    .authenticated()
+                    .accessDecisionManager(new AffirmativeBased(
+                            Collections.singletonList(
+                                    new RestRequestAccessDecisionVoter(accessController))));
+            } else {
+                auth.antMatchers("/", "/**/*.html", "/v1/**")
+                    .authenticated();
+                accessController.getPathMappings().stream().filter(p -> p.getPath().contains(":"))
+                                .forEach(p -> {
+                                    String[] parts = p.getPath().split(":");
                                     auth.antMatchers(HttpMethod.valueOf(parts[0]), parts[1]).authenticated();
-                                }
-                            });
+                                });
+                auth.anyRequest().permitAll();
+            }
             auth
-                    .anyRequest().permitAll()
                     .and()
                     .formLogin()
                     .loginPage("/login")
@@ -102,8 +108,8 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         if (accessControlConfiguration.isEnabled()) {
             auth.jdbcAuthentication()
                 .dataSource(dataSource)
-                .usersByUsernameQuery("select username,password, enabled from users where username=?")
-                .authoritiesByUsernameQuery("select username, role from user_roles where username=?")
+                .usersByUsernameQuery(accessController.usersByUsernameQuery())
+                .authoritiesByUsernameQuery(accessController.authoritiesByUsernameQuery())
                 .passwordEncoder(passwordEncoder);
         }
     }
@@ -112,19 +118,19 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
         private final boolean authenticated;
         private final String name;
-        private final Set<String> roles;
+        private final Set<GrantedAuthority> roles;
 
         AuthenticationToken(boolean authenticated, String name, Set<String> roles) {
             this.authenticated = authenticated;
             this.name = name;
-            this.roles = roles;
+            this.roles = roles.stream()
+                              .map(s -> (GrantedAuthority) () -> s)
+                              .collect(Collectors.toSet());
         }
 
         @Override
         public Collection<? extends GrantedAuthority> getAuthorities() {
-            return roles.stream()
-                        .map(s -> (GrantedAuthority) () -> s)
-                        .collect(Collectors.toSet());
+            return roles;
         }
 
         @Override
@@ -176,20 +182,16 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     token = request.getParameter(AxonServerAccessController.TOKEN_PARAM);
                 }
 
-                if (actuatorRequest(request)) {
-                    // No further action
-                } else if (isLocalRequest(request)) {
+                String authorization = request.getHeader("Authorization");
+
+                if (token == null && authorization == null && isLocalRequest(request)) {
                     SecurityContextHolder.getContext().setAuthentication(
                             new AuthenticationToken(true,
                                                     "LocalAdmin",
-                                                    Sets.newHashSet("ADMIN", "READ", "WRITE")));
+                                                    accessController.rolesForLocalhost()));
                 } else {
                     if (token != null) {
-                        String context = request.getHeader(AxonServerAccessController.CONTEXT_PARAM);
-                        if (context == null) {
-                            context = "_admin";
-                        }
-                        Set<String> roles = accessController.getRoles(token, context);
+                        Set<String> roles = accessController.getRoles(token);
                         if (roles != null && !roles.isEmpty()) {
                             SecurityContextHolder.getContext().setAuthentication(
                                     new AuthenticationToken(true,
@@ -203,7 +205,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                             }
                             return;
                         }
-                    } else if (stopRedirect(request.getHeader(HttpHeaders.USER_AGENT))) {
+                    } else if (isNonBrowserClient(request) && authorization == null) {
                         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
                         httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_TOKEN_MISSING.getHttpCode().value());
                         try (ServletOutputStream outputStream = httpServletResponse.getOutputStream()) {
@@ -222,8 +224,8 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
             }
         }
 
-        private boolean actuatorRequest(HttpServletRequest httpServletRequest) {
-            return httpServletRequest.getRequestURI().startsWith("/actuator/");
+        private boolean isNonBrowserClient(HttpServletRequest request) {
+            return stopRedirect(request.getHeader(HttpHeaders.USER_AGENT));
         }
 
         private boolean stopRedirect(String header) {
@@ -244,15 +246,8 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
          * false otherwise
          */
         private boolean isLocalRequest(HttpServletRequest httpServletRequest) {
-            return (
-                    (httpServletRequest.getRequestURI().startsWith("/v1/public")
-                            && httpServletRequest.getMethod().equals("GET"))
-                            || httpServletRequest.getRequestURI().startsWith("/v1/cluster")
-                            || httpServletRequest.getRequestURI().startsWith("/v1/context")
-                            || httpServletRequest.getRequestURI().startsWith("/v1/users")
-                            || httpServletRequest.getRequestURI().startsWith("/v1/applications")
-            )
-                    && httpServletRequest.getLocalAddr().equals(httpServletRequest.getRemoteAddr());
+            return isNonBrowserClient(httpServletRequest) &&
+                    httpServletRequest.getLocalAddr().equals(httpServletRequest.getRemoteAddr());
         }
     }
 }

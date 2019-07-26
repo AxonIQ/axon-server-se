@@ -50,9 +50,36 @@
                     <li>
                         <span>Roles</span>
                         <span>
-                            <div v-for="role in roles">
-                                <input type="checkbox" v-bind:value="role" v-model="user.roles"/> {{role}}
-                            </div>
+                            <table class="roles">
+                                <thead>
+                                <tr class="row">
+                                        <th class="context">Context</th>
+                                        <th class="role">Role</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="row" v-for="(user, idx) in user.workingRoles">
+                                        <td class="context">{{user.context}}</td>
+                                        <td class="role">{{user.role}}</td>
+                                        <td class="buttons"><span @click="deleteContextRole(idx)" title="Delete">
+                                            <i class="far fa-trash-alt"/></span></td>
+                                    </tr>
+                                    <tr class="row">
+                                        <td class="context">
+                                            <select class="contextName" v-model="newRole.context">
+                                                <option v-for="r in contexts">{{r.context}}</option>
+                                            </select>
+                                        </td>
+                                        <td class="role">
+                                            <select class="roleName" v-model="newRole.role">
+                                                <option v-for="r in roles">{{r}}</option>
+                                            </select>
+                                        </td>
+                                        <td class="buttons"><span @click="addContextRole()" title="Add">
+                                            <i class="fas fa-plus"/></span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </span>
                     </li>
                     <li>

@@ -10,8 +10,11 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -38,6 +41,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Creates instances of Spring beans required by Axon Server.
@@ -106,10 +110,25 @@ public class AxonServerStandardConfiguration {
     public UserControllerFacade userControllerFacade(UserController userController, ApplicationEventPublisher eventPublisher) {
         return new UserControllerFacade() {
             @Override
-            public void updateUser(String userName, String password, String[] roles) {
+            public void updateUser(String userName, String password, Set<UserRole> roles) {
+                validateContexts(roles);
                 User updatedUser = userController.updateUser(userName, password, roles);
                 eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false));
 
+            }
+
+            private void validateContexts(Set<UserRole> roles) {
+                if (roles == null) {
+                    return;
+                }
+                if (roles.stream().anyMatch(userRole -> invalidContext(userRole.getContext()))) {
+                    throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
+                                                         "Only specify context default for standard edition");
+                }
+            }
+
+            private boolean invalidContext(String context) {
+                return context == null || context.equals(Topology.DEFAULT_CONTEXT) || context.equals("*");
             }
 
             @Override

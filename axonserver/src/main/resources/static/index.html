@@ -143,7 +143,7 @@
                                         globals.admin = false;
                                         axios.get("v1/public/user").then(
                                                 response => {
-                                                    globals.admin = globals.adminNode && response.data.roles && response.data.roles.includes('ADMIN');
+                                                    globals.admin = globals.adminNode && response.data.adminUser;
                                                     this.admin = globals.admin;
                                                     loadFragment();
                                                 });

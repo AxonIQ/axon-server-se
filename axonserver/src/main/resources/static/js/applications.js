@@ -24,7 +24,10 @@ globals.pageView = new Vue(
             }, computed: {}, mounted() {
                 axios.get("v1/public/license").then(response => this.license = response.data.edition.toLowerCase());
                 axios.get("v1/roles/application").then(response => this.appRoles = response.data);
-                axios.get("v1/public/context").then(response => this.contexts = response.data);
+                axios.get("v1/public/context").then(response => {
+                    this.contexts = response.data;
+                    this.contexts.push({context: "*"});
+                });
                 this.loadApplications();
                 this.connect();
             }, beforeDestroy() {
@@ -95,8 +98,6 @@ globals.pageView = new Vue(
                     },
 
                     selectApp(app) {
-
-
                         this.application = {name: app.name, description: app.description, workingRoles: app.workingRoles.slice()};
                         this.feedback = "";
                     },

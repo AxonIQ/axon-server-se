@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -84,19 +83,6 @@ public class WebConfiguration implements WebMvcConfigurer {
             }
         };
     }
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        if(accessControlEnabled ) {
-            registry.addInterceptor(new RestAuthenticationInterceptor(accessController)).addPathPatterns(
-                    "/v1/commands/run",
-                    "/v1/queries/run",
-                    "/v1/events",
-                    "/v1/snapshots"
-            );
-        }
-    }
-
 
     @ControllerAdvice
     public static class GlobalExceptionHandler {

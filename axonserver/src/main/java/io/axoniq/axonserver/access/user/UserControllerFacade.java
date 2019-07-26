@@ -11,8 +11,10 @@ package io.axoniq.axonserver.access.user;
 
 
 import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.jpa.UserRole;
 
 import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -29,7 +31,7 @@ public interface UserControllerFacade {
      * @param password the password
      * @param roles an array of roles for the user
      */
-    void updateUser(String username, String password, String[] roles);
+    void updateUser(String username, String password, Set<UserRole> roles);
 
     /**
      * Retrieves all users defines in AxonServer.

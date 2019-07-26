@@ -25,7 +25,6 @@ import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
-import static org.mockito.Mockito.*;
 
 /**
  * Created by Sara Pellegrini on 09/03/2018.
@@ -43,9 +42,9 @@ public class RoleRestControllerTest {
     public void setup(){
         testSubject = new RoleRestController(roleController);
         List<Role> userRoles = asList(new Role("ADMIN", USER, APPLICATION), new Role("USER", USER));
-        when(roleController.listUserRoles()).thenReturn(userRoles);
+//        when(roleController.listUserRoles()).thenReturn(userRoles);
         List<Role> applicationRoles = asList(new Role("ADMIN", USER, APPLICATION), new Role("READ", APPLICATION));
-        when(roleController.listApplicationRoles()).thenReturn(applicationRoles);
+//        when(roleController.listApplicationRoles()).thenReturn(applicationRoles);
     }
 
     @Test

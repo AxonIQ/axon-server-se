@@ -9,10 +9,12 @@
 
 package io.axoniq.axonserver.access.jpa;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -39,16 +41,16 @@ public class User {
     private Set<UserRole> roles = new HashSet<>();
 
     public User(String userName, String password) {
-        this(userName, password, new String[]{"READ"});
+        this(userName, password, Collections.emptySet());
     }
 
-    public User(String userName, String password, String[] roles) {
+    public User(String userName, String password, Set<UserRole> userRoles) {
         this.userName = userName;
         this.password = password;
         this.enabled = true;
-        if( roles == null ) this.roles.add(new UserRole(this, "READ"));
-        else {
-            Arrays.stream(roles).forEach(r -> this.roles.add(new UserRole(this, r)));
+        if (userRoles != null) {
+            userRoles.forEach(r -> roles.add(new UserRole(this, r.getRole(), r.getContext())));
+
         }
     }
 
@@ -87,11 +89,6 @@ public class User {
         this.roles = roles;
     }
 
-    public void addRole(String string) {
-        UserRole userRole = new UserRole(this, string);
-        roles.add(userRole);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -108,4 +105,25 @@ public class User {
     public int hashCode() {
         return Objects.hash(userName);
     }
+
+    public static User newContextPermissions(User user) {
+        User newUser = new User(user.userName, user.password);
+        newUser.setRoles(user.getRoles()
+                             .stream()
+                             .filter(userRole -> "*".equals(userRole.getContext()))
+                             .collect(Collectors.toSet()));
+
+        return newUser;
+    }
+
+    public void removeContext(String context) {
+        for (Iterator<UserRole> contextIterator = roles.iterator(); contextIterator.hasNext(); ) {
+            UserRole userRole = contextIterator.next();
+            if (userRole.getContext().equals(context)) {
+                contextIterator.remove();
+                userRole.setUser(null);
+            }
+        }
+    }
+
 }

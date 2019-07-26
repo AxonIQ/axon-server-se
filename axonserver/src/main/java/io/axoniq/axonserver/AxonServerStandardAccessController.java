@@ -49,8 +49,8 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public Set<String> getRoles(String token, String context) {
-        return isTokenFromConfigFile(token) ? Sets.newHashSet("ADMIN", "READ", "WRITE"): Collections.emptySet();
+    public Set<String> getRoles(String token) {
+        return isTokenFromConfigFile(token) ? Sets.newHashSet("ADMIN@_admin") : Collections.emptySet();
     }
 
     private boolean isTokenFromConfigFile(String token) {

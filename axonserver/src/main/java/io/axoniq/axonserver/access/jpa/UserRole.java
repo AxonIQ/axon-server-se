@@ -32,17 +32,25 @@ public class UserRole {
 
     private String role;
 
+    private String context;
+
     @ManyToOne
     @JoinColumn(name = "username")
     private User user;
 
 
-    public UserRole(User user, String role) {
+    public UserRole(User user, String role, String context) {
         this.user = user;
         this.role = role;
+        this.context = context;
     }
 
     public UserRole() {
+    }
+
+    public UserRole(String context, String role) {
+        this.role = role;
+        this.context = context;
     }
 
     public Long getId() {
@@ -67,5 +75,30 @@ public class UserRole {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public String getContext() {
+        return context;
+    }
+
+    public void setContext(String context) {
+        this.context = context;
+    }
+
+    @Override
+    public String toString() {
+        return role + "@" + context;
+    }
+
+    public static UserRole parse(String s) {
+        String[] parts = s.split("@", 2);
+        UserRole userRole = new UserRole();
+        userRole.setRole(parts[0]);
+        if (parts.length > 1) {
+            userRole.setContext(parts[1]);
+        } else {
+            userRole.setContext("*");
+        }
+        return userRole;
     }
 }

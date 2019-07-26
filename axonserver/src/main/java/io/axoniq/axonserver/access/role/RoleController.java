@@ -14,30 +14,24 @@ package io.axoniq.axonserver.access.role;
  *
  * @author Sara Pellegrini
  */
-import io.axoniq.axonserver.access.jpa.Role;
+
+import io.axoniq.axonserver.access.roles.Role;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
-import static io.axoniq.axonserver.access.jpa.Role.Type.APPLICATION;
-import static io.axoniq.axonserver.access.jpa.Role.Type.USER;
-
 @Controller
 public class RoleController {
 
-    private final RoleRepository roleRepository;
+    private final io.axoniq.axonserver.access.roles.RoleRepository roleRepository;
 
-    public RoleController(RoleRepository roleRepository) {
+    public RoleController(io.axoniq.axonserver.access.roles.RoleRepository roleRepository) {
         this.roleRepository = roleRepository;
     }
 
 
-    public List<Role> listUserRoles(){
-        return roleRepository.findByTypesContains(USER);
-    }
-
-    public List<Role> listApplicationRoles(){
-        return roleRepository.findByTypesContains(APPLICATION);
+    public List<Role> listRoles() {
+        return roleRepository.findAll();
     }
 
 

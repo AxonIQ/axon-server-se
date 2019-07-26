@@ -44,7 +44,7 @@ public class Application {
                     String[] roleAndContext = r.split("@", 2);
                     rolesPerContext.computeIfAbsent(roleAndContext[1], c -> new ArrayList<>()).add(roleAndContext[0]);
                 } else {
-                    rolesPerContext.computeIfAbsent("default", c -> new ArrayList<>()).add(r);
+                    rolesPerContext.computeIfAbsent("*", c -> new ArrayList<>()).add(r);
                 }
             });
 

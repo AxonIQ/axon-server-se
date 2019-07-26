@@ -7,15 +7,16 @@
  *
  */
 
-package io.axoniq.axonserver.access.user;
+package io.axoniq.axonserver.access.roles;
 
-import io.axoniq.axonserver.access.jpa.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Spring Data JpaRepostory to access {@link User} entities.
+ * Repository of {@link PathToFunction} definitions.
  *
  * @author Marc Gathier
+ * @since 4.2
  */
-public interface UserRepository extends JpaRepository<User, String> {
+public interface PathToFunctionRepository extends JpaRepository<PathToFunction, String> {
+
 }
