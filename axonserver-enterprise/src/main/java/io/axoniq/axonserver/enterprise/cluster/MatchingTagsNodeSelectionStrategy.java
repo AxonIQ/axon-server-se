@@ -9,12 +9,12 @@ import io.axoniq.axonserver.enterprise.component.connection.rule.Rule;
 import io.axoniq.axonserver.enterprise.component.connection.rule.RuleBasedConnectionProvider;
 import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.List;
-import javax.annotation.Nonnull;
 
 /**
  * Implementation of {@link NodeSelectionStrategy} that chooses the node with the highest number of tags matching.
@@ -22,9 +22,11 @@ import javax.annotation.Nonnull;
  * @author Sara Pellegrini
  * @since 4.2
  */
-@ConditionalOnProperty(value = "axoniq.axonserver.clients-connection-strategy", havingValue = "matchingTags")
+@Primary
 @Component
 public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy {
+
+    @Nonnull private final NodeSelectionStrategy secondaryNodeSelectionStrategy;
 
     @Nonnull private final ConnectionProvider connectionProvider;
 
@@ -36,11 +38,15 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      * @param clusterTags   the provider of cluster tags
      * @param clientsTags   the provider of clients tags
      * @param configuration the messaging platform configuration
+     * @param secondaryNodeSelectionStrategy the secondary strategy to use after the MatchingTags
+     *                                                    check
      */
     @Autowired
     public MatchingTagsNodeSelectionStrategy(ClusterTagsCache clusterTags, ClientTagsCache clientsTags,
-                                             MessagingPlatformConfiguration configuration) {
-        this(new MatchingTags(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName());
+                                             MessagingPlatformConfiguration configuration,
+                                             NodeSelectionStrategy secondaryNodeSelectionStrategy) {
+        this(new MatchingTags(node -> clusterTags.getClusterTags().get(node), clientsTags), configuration.getName(),
+             secondaryNodeSelectionStrategy);
     }
 
     /**
@@ -49,9 +55,12 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      *
      * @param tagsMatchRule a {@link Rule} that returns a value of each node equals to the number of tags matching
      * @param thisNodeName the local node identifier
+     * @param secondaryNodeSelectionStrategy the secondary strategy to use after the MatchingTags
+     *                                                    check
      */
-    public MatchingTagsNodeSelectionStrategy(Rule tagsMatchRule, String thisNodeName) {
-        this(new RuleBasedConnectionProvider(tagsMatchRule), thisNodeName);
+    public MatchingTagsNodeSelectionStrategy(Rule tagsMatchRule, String thisNodeName,
+                                             NodeSelectionStrategy secondaryNodeSelectionStrategy) {
+        this(new RuleBasedConnectionProvider(tagsMatchRule), thisNodeName, secondaryNodeSelectionStrategy);
     }
 
     /**
@@ -59,14 +68,20 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      *
      * @param connectionProvider the {@link ConnectionProvider} that return the node with the highest number of tags matching
      * @param thisNode the local node identifier
+     * @param secondaryNodeSelectionStrategy the secondary strategy to use after the MatchingTags
+     *                                                    check
      */
-    public MatchingTagsNodeSelectionStrategy(@Nonnull ConnectionProvider connectionProvider, @Nonnull String thisNode) {
+    public MatchingTagsNodeSelectionStrategy(@Nonnull ConnectionProvider connectionProvider, @Nonnull String thisNode,
+                                             @Nonnull NodeSelectionStrategy secondaryNodeSelectionStrategy) {
         this.connectionProvider = connectionProvider;
         this.thisNodeName = thisNode;
+        this.secondaryNodeSelectionStrategy = secondaryNodeSelectionStrategy;
     }
 
     /**
-     * Returns the identifier of the node with the highest number of tags matching with the specified client.
+     * Returns the identifier of the node with the highest number of tags matching with the specified client. If
+     * multiple nodes have the same number of matching tags then the choice of node is delegated to a secondary
+     * {@link NodeSelectionStrategy}.
      *
      * @param client the client identifier
      * @param component the client's component name
@@ -75,7 +90,9 @@ public class MatchingTagsNodeSelectionStrategy implements NodeSelectionStrategy 
      */
     @Override
     public String selectNode(ClientIdentification client, String component, Collection<String> nodes) {
-        return connectionProvider.bestMatch(client, nodes);
+        List<String> matchingNodes = connectionProvider.bestMatches(client, nodes);
+
+        return secondaryNodeSelectionStrategy.selectNode(client, component, matchingNodes);
     }
 
     /**
