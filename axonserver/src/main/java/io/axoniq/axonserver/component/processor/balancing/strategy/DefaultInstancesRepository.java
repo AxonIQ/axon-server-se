@@ -13,7 +13,7 @@ import io.axoniq.axonserver.component.processor.balancing.SameProcessor;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 
 import java.util.List;
 import java.util.Set;
@@ -39,9 +39,9 @@ public class DefaultInstancesRepository implements ThreadNumberBalancing.Instanc
                 .filter(new SameProcessor(processor))
                 .map(p -> {
                     EventProcessorInfo i = p.eventProcessorInfo();
-                    int threadPoolSize = i.getAvailableThreads() + i.getEventTrackersInfoCount();
-                    List<EventTrackerInfo> trackers = i.getEventTrackersInfoList();
-                    Set<Integer> segments = trackers.stream().map(EventTrackerInfo::getSegmentId).collect(toSet());
+                    int threadPoolSize = i.getAvailableThreads() + i.getSegmentStatusCount();
+                    List<SegmentStatus> trackers = i.getSegmentStatusList();
+                    Set<Integer> segments = trackers.stream().map(SegmentStatus::getSegmentId).collect(toSet());
                     return new ThreadNumberBalancing.Application(p.clientId(), threadPoolSize, segments);
                 }).iterator();
     }

@@ -1,19 +1,21 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import org.junit.*;
-import org.junit.rules.*;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
 
@@ -28,14 +30,16 @@ public class IndexManagerTest {
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     private IndexManager indexManager;
+    private StorageProperties storageProperties;
+    private String context;
 
     @Before
     public void setUp() throws IOException {
-        String context = "default";
+        context = "default";
 
         temporaryFolder.newFolder(context);
 
-        StorageProperties storageProperties = new StorageProperties(new SystemInfoProvider() { });
+        storageProperties = new StorageProperties(new SystemInfoProvider() { });
         storageProperties.setMaxIndexesInMemory(3);
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
@@ -72,5 +76,44 @@ public class IndexManagerTest {
                 fail("Futures should complete successfully.");
             }
         });
+    }
+
+    @Test
+    public void testTemporaryFileIsDeletedWhenCreatingIndex() throws IOException {
+        long segment = 0L;
+
+        File tempFile = storageProperties.indexTemp(context, segment);
+        try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+            outputStream.write("mockDataToCreateIllegalFile".getBytes(StandardCharsets.UTF_8));
+        }
+
+        String aggregateId = "aggregateId";
+        ConcurrentSkipListSet<PositionInfo> positions = new ConcurrentSkipListSet<>();
+        PositionInfo positionInfo = new PositionInfo(0, 0);
+        positions.add(positionInfo);
+        Map<String, SortedSet<PositionInfo>> positionsPerAggregate = Collections.singletonMap(aggregateId,
+                                                                                              positions);
+        indexManager.createIndex(segment, positionsPerAggregate);
+
+        assertFalse(storageProperties.indexTemp(context, segment).exists());
+    }
+
+    @Test(expected = MessagingPlatformException.class)
+    public void testIndexCreationFailsIfTemporaryFileIsKeptOpen() throws IOException {
+        long segment = 0L;
+
+        File tempFile = storageProperties.indexTemp(context, segment);
+
+        String aggregateId = "aggregateId";
+        ConcurrentSkipListSet<PositionInfo> positions = new ConcurrentSkipListSet<>();
+        PositionInfo positionInfo = new PositionInfo(0, 0);
+        positions.add(positionInfo);
+        Map<String, SortedSet<PositionInfo>> positionsPerAggregate = Collections.singletonMap(aggregateId,
+                                                                                              positions);
+
+        try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+            outputStream.write("mockDataToCreateIllegalFile".getBytes(StandardCharsets.UTF_8));
+            indexManager.createIndex(segment, positionsPerAggregate);
+        }
     }
 }

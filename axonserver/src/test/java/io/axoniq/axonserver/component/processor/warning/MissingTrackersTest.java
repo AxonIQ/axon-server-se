@@ -14,7 +14,7 @@ import org.junit.*;
 
 import java.util.List;
 
-import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo.newBuilder;
+import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus.newBuilder;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -26,10 +26,10 @@ public class MissingTrackersTest {
 
     @Test
     public void testActive() {
-        List<EventProcessorInfo.EventTrackerInfo> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
-                                                                                            .setOnePartOf(2).build(),
-                                                                                newBuilder().setSegmentId(2)
-                                                                                            .setOnePartOf(4).build());
+        List<EventProcessorInfo.SegmentStatus> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
+                                                                                         .setOnePartOf(2).build(),
+                                                                             newBuilder().setSegmentId(2)
+                                                                                         .setOnePartOf(4).build());
 
         MissingTrackers warning = new MissingTrackers(eventTrackerInfoList);
         assertTrue(warning.active());
@@ -37,10 +37,10 @@ public class MissingTrackersTest {
 
     @Test
     public void testNotActive() {
-        List<EventProcessorInfo.EventTrackerInfo> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
-                                                                                            .setOnePartOf(2).build(),
-                                                                                newBuilder().setSegmentId(2)
-                                                                                            .setOnePartOf(2).build());
+        List<EventProcessorInfo.SegmentStatus> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
+                                                                                         .setOnePartOf(2).build(),
+                                                                             newBuilder().setSegmentId(2)
+                                                                                         .setOnePartOf(2).build());
 
         MissingTrackers warning = new MissingTrackers(eventTrackerInfoList);
         assertFalse(warning.active());
@@ -48,10 +48,10 @@ public class MissingTrackersTest {
 
     @Test
     public void testActiveWithDuplicatesSegments() {
-        List<EventProcessorInfo.EventTrackerInfo> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
-                                                                                            .setOnePartOf(2).build(),
-                                                                                newBuilder().setSegmentId(1)
-                                                                                            .setOnePartOf(4).build());
+        List<EventProcessorInfo.SegmentStatus> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
+                                                                                         .setOnePartOf(2).build(),
+                                                                             newBuilder().setSegmentId(1)
+                                                                                         .setOnePartOf(4).build());
 
         MissingTrackers warning = new MissingTrackers(eventTrackerInfoList);
         assertTrue(warning.active());
@@ -59,14 +59,14 @@ public class MissingTrackersTest {
 
     @Test
     public void testNotActiveWithDuplicatesSegments() {
-        List<EventProcessorInfo.EventTrackerInfo> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
-                                                                                            .setOnePartOf(2).build(),
-                                                                                newBuilder().setSegmentId(2)
-                                                                                            .setOnePartOf(2).build(),
-                                                                                newBuilder().setSegmentId(1)
-                                                                                            .setOnePartOf(2).build(),
-                                                                                newBuilder().setSegmentId(2)
-                                                                                            .setOnePartOf(2).build()
+        List<EventProcessorInfo.SegmentStatus> eventTrackerInfoList = asList(newBuilder().setSegmentId(1)
+                                                                                         .setOnePartOf(2).build(),
+                                                                             newBuilder().setSegmentId(2)
+                                                                                         .setOnePartOf(2).build(),
+                                                                             newBuilder().setSegmentId(1)
+                                                                                         .setOnePartOf(2).build(),
+                                                                             newBuilder().setSegmentId(2)
+                                                                                         .setOnePartOf(2).build()
         );
 
         Warning warning = new MissingTrackers(eventTrackerInfoList);

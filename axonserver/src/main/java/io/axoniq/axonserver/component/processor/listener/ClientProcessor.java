@@ -11,7 +11,7 @@ package io.axoniq.axonserver.component.processor.listener;
 
 import io.axoniq.axonserver.component.ComponentItem;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 
 import java.util.Iterator;
 
@@ -19,7 +19,7 @@ import java.util.Iterator;
  * Created by Sara Pellegrini on 21/03/2018.
  * sara.pellegrini@gmail.com
  */
-public interface ClientProcessor extends ComponentItem, Iterable<EventTrackerInfo> {
+public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> {
 
     String clientId();
 
@@ -30,7 +30,7 @@ public interface ClientProcessor extends ComponentItem, Iterable<EventTrackerInf
     }
 
     @Override
-    default Iterator<EventTrackerInfo> iterator() {
-        return eventProcessorInfo().getEventTrackersInfoList().iterator();
+    default Iterator<SegmentStatus> iterator() {
+        return eventProcessorInfo().getSegmentStatusList().iterator();
     }
 }

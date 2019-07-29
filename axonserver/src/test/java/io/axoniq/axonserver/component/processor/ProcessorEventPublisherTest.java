@@ -16,7 +16,7 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.EventTrackerInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import org.assertj.core.util.Lists;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +59,7 @@ public class ProcessorEventPublisherTest {
 
     @Before
     public void setUp() {
-        List<EventTrackerInfo> segmentInfo = new ArrayList<>();
+        List<SegmentStatus> segmentInfo = new ArrayList<>();
         int biggestSegment = 4; // Biggest, as it's only one/fourth of the event stream
         int smallestSegment = 8; // Smallest, as it's one/sixteenth of the event stream
         segmentInfo.add(createSegmentInfo(SEGMENT_ID_TO_MERGE, smallestSegment));
@@ -74,7 +74,7 @@ public class ProcessorEventPublisherTest {
         when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
-                                                                     .addAllEventTrackersInfo(segmentInfo)
+                                                                     .addAllSegmentStatus(segmentInfo)
                                                                      .build();
         when(splitClientProcessor.eventProcessorInfo()).thenReturn(eventProcessorToSplit);
         eventProcessors.add(splitClientProcessor);
@@ -83,7 +83,7 @@ public class ProcessorEventPublisherTest {
         when(mergeClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_MERGE);
         EventProcessorInfo eventProcessorToMerge = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_MERGE)
-                                                                     .addAllEventTrackersInfo(segmentInfo)
+                                                                     .addAllSegmentStatus(segmentInfo)
                                                                      .build();
         when(mergeClientProcessor.eventProcessorInfo()).thenReturn(eventProcessorToMerge);
         eventProcessors.add(mergeClientProcessor);
@@ -95,11 +95,11 @@ public class ProcessorEventPublisherTest {
         );
     }
 
-    private EventTrackerInfo createSegmentInfo(int segmentId, int onePartOf) {
-        return EventTrackerInfo.newBuilder()
-                               .setSegmentId(segmentId)
-                               .setOnePartOf(onePartOf)
-                               .build();
+    private SegmentStatus createSegmentInfo(int segmentId, int onePartOf) {
+        return SegmentStatus.newBuilder()
+                            .setSegmentId(segmentId)
+                            .setOnePartOf(onePartOf)
+                            .build();
     }
 
     /**
@@ -165,7 +165,7 @@ public class ProcessorEventPublisherTest {
         when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
-                                                                     .addAllEventTrackersInfo(
+                                                                     .addAllSegmentStatus(
                                                                              Arrays.asList(
                                                                                      createSegmentInfo(0, 4),
                                                                                      createSegmentInfo(1, 2)
