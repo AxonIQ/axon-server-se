@@ -18,6 +18,7 @@ import java.util.SortedSet;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.*;
 
 /**
  * Tests for {@link IndexManager}.
@@ -32,14 +33,16 @@ public class IndexManagerTest {
     private IndexManager indexManager;
     private StorageProperties storageProperties;
     private String context;
+    private SystemInfoProvider systemInfoProvider;
 
     @Before
     public void setUp() throws IOException {
         context = "default";
 
         temporaryFolder.newFolder(context);
-
-        storageProperties = new StorageProperties(new SystemInfoProvider() { });
+        systemInfoProvider = new SystemInfoProvider() {
+        };
+        storageProperties = new StorageProperties(systemInfoProvider);
         storageProperties.setMaxIndexesInMemory(3);
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
@@ -100,6 +103,7 @@ public class IndexManagerTest {
 
     @Test(expected = MessagingPlatformException.class)
     public void testIndexCreationFailsIfTemporaryFileIsKeptOpen() throws IOException {
+        assumeTrue(systemInfoProvider.javaOnWindows());
         long segment = 0L;
 
         File tempFile = storageProperties.indexTemp(context, segment);
