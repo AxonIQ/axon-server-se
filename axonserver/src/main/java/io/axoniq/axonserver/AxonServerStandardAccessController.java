@@ -9,13 +9,9 @@
 
 package io.axoniq.axonserver;
 
-import com.google.common.collect.Sets;
-import io.axoniq.axonserver.access.jpa.PathMapping;
-import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
@@ -25,11 +21,9 @@ import java.util.Set;
 @Component
 public class AxonServerStandardAccessController implements AxonServerAccessController {
 
-    private PathMappingRepository pathMappingRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
 
-    public AxonServerStandardAccessController(PathMappingRepository pathMappingRepository, MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        this.pathMappingRepository = pathMappingRepository;
+    public AxonServerStandardAccessController(MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
@@ -39,18 +33,13 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public Collection<PathMapping> getPathMappings() {
-        return pathMappingRepository.findAll();
-    }
-
-    @Override
     public boolean isRoleBasedAuthentication() {
         return false;
     }
 
     @Override
     public Set<String> getRoles(String token) {
-        return isTokenFromConfigFile(token) ? Sets.newHashSet("ADMIN@_admin") : Collections.emptySet();
+        return Collections.emptySet();
     }
 
     private boolean isTokenFromConfigFile(String token) {

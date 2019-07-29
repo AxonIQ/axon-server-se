@@ -16,14 +16,18 @@
                 <thead>
                 <tr>
                     <th>Username</th>
-                    <th>Roles</th>
+                    <th v-if="isEnterprise()">Roles</th>
+                    <th v-if="!isEnterprise()">Administrator</th>
                 </tr>
                 </thead>
                 <tbody>
                     <tr v-for="user in users">
                         <td>{{user.userName}}</td>
-                        <td>
+                        <td v-if="isEnterprise()">
                             <span v-for="role in user.roles">{{role}}<br></span>
+                        </td>
+                        <td v-if="!isEnterprise()">
+                            {{administrator(user)}}
                         </td>
                         <td v-if="admin">
                             <span @click="deleteUser(user)" title="Delete"><i class="far fa-trash-alt"/></span>
@@ -47,7 +51,11 @@
                         <span>Password</span>
                         <input v-model="user.password"/></span>
                     </li>
-                    <li>
+                    <li v-if="!isEnterprise()">
+                        <span>Administrator</span>
+                        <input type="checkbox" v-model="adminRole"/></span>
+                    </li>
+                    <li v-if="isEnterprise()">
                         <span>Roles</span>
                         <span>
                             <table class="roles">

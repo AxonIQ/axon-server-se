@@ -23,7 +23,7 @@ public class UserInfo {
     public UserInfo(String user, Set<String> roles) {
         this.user = user;
         this.roles = roles;
-        this.adminUser = roles.contains("ADMIN@_admin") || roles.contains("ADMIN@*");
+        this.adminUser = roles.contains("ADMIN@_admin") || roles.contains("ADMIN");
     }
 
     public String getUser() {

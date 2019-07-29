@@ -11,7 +11,6 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
-import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import org.junit.*;
@@ -32,7 +31,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -61,8 +59,8 @@ public class WebSecurityConfigurationTest {
             }
         });
         messagingPlatformConfiguration.getAccesscontrol().setToken("123456");
-        PathMappingRepository pathMappingRepository = mock(PathMappingRepository.class);
-        AxonServerAccessController accessController =  new AxonServerStandardAccessController(pathMappingRepository, messagingPlatformConfiguration);
+        AxonServerAccessController accessController = new AxonServerStandardAccessController(
+                messagingPlatformConfiguration);
         testSubject = new WebSecurityConfiguration.TokenAuthenticationFilter(accessController);
         SecurityContextHolder.getContext().setAuthentication(null);
     }

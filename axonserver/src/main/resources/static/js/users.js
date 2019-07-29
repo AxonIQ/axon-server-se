@@ -18,15 +18,18 @@ globals.pageView = new Vue(
                 newRole: {},
                 contexts: [],
                 feedback: "",
+                adminRole: false,
                 webSocketInfo: globals.webSocketInfo,
                 admin: globals.admin
             }, mounted() {
                 this.loadRoles();
                 this.loadUsers();
-                axios.get("v1/public/context").then(response => {
-                    this.contexts = response.data;
-                    this.contexts.push({context: "*"});
-                });
+                if (this.isEnterprise()) {
+                    axios.get("v1/public/context").then(response => {
+                        this.contexts = response.data;
+                        this.contexts.push({context: "*"});
+                    });
+                }
                 this.connect();
             }, beforeDestroy() {
                 if( this.subscription) this.subscription.unsubscribe();
@@ -53,13 +56,22 @@ globals.pageView = new Vue(
                             });
                 },
 
+                administrator(user) {
+                    for (let c = 0; c < user.roles.length; c++) {
+                        let ctx = user.roles[c].split("@", 2);
+                        if (ctx[0] === "ADMIN") {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
                 save(user) {
                     this.feedback = "";
                     if( ! this.user.userName ) {
                         alert("Please enter name for user");
                         return;
                     }
-                    if (this.user.workingRoles.length === 0) {
+                    if (this.isEnterprise() && this.user.workingRoles.length === 0) {
                         alert("Please select roles for user");
                         return;
                     }
@@ -68,13 +80,21 @@ globals.pageView = new Vue(
                         return;
                     }
 
-                    if (this.newRole.context && this.newRole.role) {
-                        this.addNewRole(this.newRole);
-                    }
                     this.user.roles = [];
-                    for (let r = 0; r < this.user.workingRoles.length; r++) {
-                        let role = this.user.workingRoles[r];
-                        this.user.roles.push(role.role + "@" + role.context);
+                    if (this.isEnterprise()) {
+                        if (this.newRole.context && this.newRole.role) {
+                            this.addNewRole(this.newRole);
+                        }
+                        for (let r = 0; r < this.user.workingRoles.length; r++) {
+                            let role = this.user.workingRoles[r];
+                            this.user.roles.push(role.role + "@" + role.context);
+                        }
+                    } else {
+                        if (this.adminRole) {
+                            this.user.roles.push("ADMIN");
+                        } else {
+                            this.user.roles.push("READ");
+                        }
                     }
 
                     this.user.workingRoles = null
@@ -84,6 +104,7 @@ globals.pageView = new Vue(
                                 this.feedback = "User saved ";
                                 this.user = {roles: [], workingRoles: []};
                                 this.newRole = {};
+                                this.adminRole = false;
                                 this.loadUsers();
                             });
 
@@ -112,6 +133,7 @@ globals.pageView = new Vue(
                 selectUser(u) {
                     this.user = {userName: u.userName, workingRoles: u.workingRoles.slice()};
                     this.feedback = "";
+                    this.adminRole = this.administrator(u);
                 },
 
                 connect() {

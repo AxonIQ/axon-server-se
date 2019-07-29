@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.access.role;
 
 import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.access.roles.RoleController;
 import org.junit.*;
 import org.junit.runner.*;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;

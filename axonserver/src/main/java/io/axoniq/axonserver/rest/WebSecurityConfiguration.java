@@ -17,7 +17,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.access.vote.AffirmativeBased;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -83,11 +82,6 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
             } else {
                 auth.antMatchers("/", "/**/*.html", "/v1/**")
                     .authenticated();
-                accessController.getPathMappings().stream().filter(p -> p.getPath().contains(":"))
-                                .forEach(p -> {
-                                    String[] parts = p.getPath().split(":");
-                                    auth.antMatchers(HttpMethod.valueOf(parts[0]), parts[1]).authenticated();
-                                });
                 auth.anyRequest().permitAll();
             }
             auth

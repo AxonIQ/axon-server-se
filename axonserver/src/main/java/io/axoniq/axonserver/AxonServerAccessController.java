@@ -11,10 +11,8 @@ package io.axoniq.axonserver;
 
 
 import com.google.common.collect.Sets;
-import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.topology.Topology;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
@@ -27,8 +25,6 @@ public interface AxonServerAccessController {
     String CONTEXT_PARAM = "AxonIQ-Context";
 
     boolean allowed(String fullMethodName, String context, String token);
-
-    Collection<PathMapping> getPathMappings();
 
     boolean isRoleBasedAuthentication();
 

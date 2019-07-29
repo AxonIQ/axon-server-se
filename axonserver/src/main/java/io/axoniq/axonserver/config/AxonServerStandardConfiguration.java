@@ -121,13 +121,13 @@ public class AxonServerStandardConfiguration {
                 if (roles == null) {
                     return;
                 }
-                if (roles.stream().anyMatch(userRole -> invalidContext(userRole.getContext()))) {
+                if (roles.stream().anyMatch(userRole -> !validContext(userRole.getContext()))) {
                     throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
                                                          "Only specify context default for standard edition");
                 }
             }
 
-            private boolean invalidContext(String context) {
+            private boolean validContext(String context) {
                 return context == null || context.equals(Topology.DEFAULT_CONTEXT) || context.equals("*");
             }
 

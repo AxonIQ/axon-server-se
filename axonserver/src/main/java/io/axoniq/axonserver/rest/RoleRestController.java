@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.access.role.RoleController;
+import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.access.roles.Role;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
