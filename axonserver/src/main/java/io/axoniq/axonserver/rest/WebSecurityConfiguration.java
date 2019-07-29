@@ -186,7 +186,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                 } else {
                     if (token != null) {
                         Set<String> roles = accessController.getRoles(token);
-                        if (roles != null && !roles.isEmpty()) {
+                        if (roles != null) {
                             SecurityContextHolder.getContext().setAuthentication(
                                     new AuthenticationToken(true,
                                                             "AuthenticatedApp",

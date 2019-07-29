@@ -83,7 +83,7 @@ public class WebSecurityConfigurationTest {
         testSubject.doFilter(request, response, filterChain);
         assertNotNull(authentication.get());
 
-        assertEquals(3, authentication.get().getAuthorities().size());
+        assertEquals(0, authentication.get().getAuthorities().size());
     }
 
     @Test
@@ -103,7 +103,7 @@ public class WebSecurityConfigurationTest {
                                                                                                .getAuthentication());
         testSubject.doFilter(request, response, filterChain);
         assertNotNull(authentication.get());
-        assertEquals(3, authentication.get().getAuthorities().size());
+        assertEquals(0, authentication.get().getAuthorities().size());
     }
 
     @Test
@@ -136,6 +136,11 @@ public class WebSecurityConfigurationTest {
                     return "wget";
                 }
                 return super.getHeader(name);
+            }
+
+            @Override
+            public String getRemoteAddr() {
+                return "Remote";
             }
         };
         FilterChain filterChain = new MockFilterChain();
@@ -176,9 +181,8 @@ public class WebSecurityConfigurationTest {
                                                         .getAuthentication());
 
         testSubject.doFilter(request, response, filterChain);
-        assertNotNull(authentication.get());
-        assertEquals(0, statusCodeHolder.get());
-        assertEquals(3, authentication.get().getAuthorities().size());
+        assertNull(authentication.get());
+        assertEquals(403, statusCodeHolder.get());
     }
 
 }
