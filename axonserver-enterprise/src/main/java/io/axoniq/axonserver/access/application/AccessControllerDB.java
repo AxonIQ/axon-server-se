@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.access.application;
 
-import io.axoniq.axonserver.access.jpa.PathMapping;
-import io.axoniq.axonserver.access.pathmapping.PathMappingRepository;
 import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
 import io.axoniq.axonserver.access.roles.PathToFunction;
 import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
@@ -9,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -24,21 +21,15 @@ public class AccessControllerDB {
 
     private final Logger logger = LoggerFactory.getLogger(AccessControllerDB.class);
     private final JpaContextApplicationRepository contextApplicationRepository;
-    private final JpaApplicationRepository applicationRepository;
-    private final PathMappingRepository pathMappingRepository;
     private final PathToFunctionRepository pathToFunctionRepository;
     private final FunctionRoleRepository functionRoleRepository;
     private final Hasher hasher;
 
     public AccessControllerDB(JpaContextApplicationRepository contextApplicationRepository,
-                              JpaApplicationRepository applicationRepository,
-                              PathMappingRepository pathMappingRepository,
                               PathToFunctionRepository pathToFunctionRepository,
                               FunctionRoleRepository functionRoleRepository,
                               Hasher hasher) {
         this.contextApplicationRepository = contextApplicationRepository;
-        this.applicationRepository = applicationRepository;
-        this.pathMappingRepository = pathMappingRepository;
         this.pathToFunctionRepository = pathToFunctionRepository;
         this.functionRoleRepository = functionRoleRepository;
         this.hasher = hasher;
@@ -75,10 +66,6 @@ public class AccessControllerDB {
         return pathToFunctionRepository.findAll().stream()
                                        .filter(m -> Pattern.compile(m.getPath()).matcher(path).matches())
                                     .findFirst().orElse(null);
-    }
-
-    public Collection<PathMapping> getPathMappings() {
-        return pathMappingRepository.findAll();
     }
 
     public Set<String> getPathMappings(String permission) {

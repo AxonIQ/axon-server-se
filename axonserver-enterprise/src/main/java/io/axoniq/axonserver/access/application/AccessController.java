@@ -1,12 +1,10 @@
 package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.access.jpa.PathMapping;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Controller;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
@@ -77,11 +75,6 @@ public class AccessController implements AxonServerAccessController {
             cache.put(requestWithToken, Boolean.TRUE);
         }
         return authorized;
-    }
-
-    @Override
-    public Collection<PathMapping> getPathMappings() {
-        return accessControllerDB.getPathMappings();
     }
 
     @Override

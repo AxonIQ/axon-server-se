@@ -3,7 +3,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.access.application.ApplicationContextRole;
 import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
-import io.axoniq.axonserver.access.role.RoleController;
+import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.access.roles.Role;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
