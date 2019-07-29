@@ -4,6 +4,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.function.Function;
 
 /**
@@ -47,9 +48,16 @@ public class MatchingTags implements Rule {
             if (clientTags == null || nodeTags == null) {
                 return 0;
             }
+
+            TreeMap<String, String> clientTagsTree = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+            TreeMap<String, String> nodeTagsTree = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+            clientTagsTree.putAll(clientTagsProvider.apply(client));
+            nodeTagsTree.putAll(clusterTagsProvider.apply(server));
+
             for (String tag : clientTags.keySet()) {
-                String clientTag = clientTags.get(tag);
-                String nodeTag = nodeTags.get(tag);
+                String clientTag = clientTagsTree.get(tag);
+                String nodeTag = nodeTagsTree.get(tag);
                 double tagValue = Objects.equals(clientTag, nodeTag) ? 1 : 0;
                 connectionValue += tagValue;
             }

@@ -45,6 +45,11 @@ public class TagsMatchTest {
         client3.put("city", "Amsterdam");
         client3.put("region", "Europe");
 
+        Map<String, String> client4 = clientsTags.computeIfAbsent(new ClientIdentification("default", "client4"),
+                                                                  n -> new HashMap<>());
+        client4.put("City", "Amsterdam");
+        client4.put("region", "Europe");
+
         testSubject = new MatchingTags(node -> clusterTags.get(node), client -> clientsTags.get(client));
     }
 
@@ -68,7 +73,7 @@ public class TagsMatchTest {
 
     @Test
     public void testMissingClient() {
-        ConnectionValue value = testSubject.apply(new ClientIdentification("default", "client4"), "nodeC");
+        ConnectionValue value = testSubject.apply(new ClientIdentification("default", "client5"), "nodeC");
         assertEquals(0, value.weight(), 0);
     }
 
@@ -77,4 +82,12 @@ public class TagsMatchTest {
         ConnectionValue value = testSubject.apply(new ClientIdentification("default", "client3"), "nodeD");
         assertEquals(0, value.weight(), 0);
     }
+
+    @Test
+    public void testTagNameIsCaseInsensitive() {
+        ConnectionValue valueClient3LowerCase = testSubject.apply(new ClientIdentification("default", "client3"), "nodeC");
+        ConnectionValue valueClient4CapitolCase = testSubject.apply(new ClientIdentification("default", "client4"), "nodeC");
+        assertEquals(valueClient3LowerCase.weight(), valueClient4CapitolCase.weight(), 0);
+    }
+
 }
