@@ -71,6 +71,7 @@ public class ApplicationController {
         return hasher.hash(clearText);
     }
 
+    @Transactional
     public void clearApplications() {
         applicationRepository.deleteAll();
     }
@@ -79,6 +80,7 @@ public class ApplicationController {
         return applicationRepository.findAllByContextsContext(context);
     }
 
+    @Transactional
     public void deleteByContext(String context) {
         synchronized (applicationRepository) {
             applicationRepository.deleteAllByContextsContext(context);

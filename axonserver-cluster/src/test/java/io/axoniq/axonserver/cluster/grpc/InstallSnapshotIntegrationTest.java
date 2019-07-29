@@ -165,7 +165,7 @@ public class InstallSnapshotIntegrationTest {
         private void initializePeers(List<Node> nodes) {
             raftPeerMap.clear();
             FakeGrpcRaftClientFactory clientFactory = new FakeGrpcRaftClientFactory();
-            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(node, clientFactory, 5000)));
+            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(groupId(), node)));
         }
 
         @Override
@@ -189,13 +189,8 @@ public class InstallSnapshotIntegrationTest {
         }
 
         @Override
-        public RaftPeer peer(String nodeId) {
-            return raftPeerMap.get(nodeId);
-        }
-
-        @Override
         public RaftPeer peer(Node node) {
-            return new GrpcRaftPeer(node, new FakeGrpcRaftClientFactory(), 5000);
+            return new GrpcRaftPeer(groupId(), node);
         }
 
         @Override

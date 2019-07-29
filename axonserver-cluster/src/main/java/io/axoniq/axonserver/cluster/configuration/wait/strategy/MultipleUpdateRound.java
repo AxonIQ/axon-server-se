@@ -1,17 +1,12 @@
 package io.axoniq.axonserver.cluster.configuration.wait.strategy;
 
 import io.axoniq.axonserver.cluster.RaftGroup;
-import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.configuration.WaitStrategy;
 import io.axoniq.axonserver.cluster.exception.ServerTooSlowException;
+import reactor.core.publisher.Flux;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
-
-import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Implementation of {@link WaitStrategy} that waits for the server node to be updated in specific number of rounds.
@@ -32,15 +27,15 @@ public class MultipleUpdateRound implements WaitStrategy {
      *
      * @param raftGroup the raftGroup
      * @param currentTime supplier for current milliseconds
-     * @param registerMatchIndexListener registration function to monitor matchIndex updates for the node
+     * @param matchIndexUpdates flux of the updates of the match index for the new node
      */
     public MultipleUpdateRound(RaftGroup raftGroup,
                                Supplier<Long> currentTime,
-                               Function<Consumer<Long>, Registration> registerMatchIndexListener) {
+                               Flux<Long> matchIndexUpdates) {
         this(() ->raftGroup.raftConfiguration().maxReplicationRound(),
              new FastUpdateRound(raftGroup,
                                  currentTime,
-                                 registerMatchIndexListener));
+                                 matchIndexUpdates));
     }
 
 
@@ -64,36 +59,30 @@ public class MultipleUpdateRound implements WaitStrategy {
      */
     @Override
     public CompletableFuture<Void> await() {
-        return startRound(0);
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        startRound(0, future);
+        return future;
     }
 
-    private CompletableFuture<Void> startRound(int iteration) {
+    private void startRound(int iteration, CompletableFuture<Void> future) {
         if (iteration >= maxRounds.get()) {
             String message = String.format("The node is not updated in %d rounds", maxRounds.get());
-            return failedFuture(new ServerTooSlowException(message));
+            future.completeExceptionally(new ServerTooSlowException(message));
         }
 
         CompletableFuture<Void> roundCompleted = round.await();
-
-        try {
-            roundCompleted.get();
-            return completedFuture(null);
-        } catch (ExecutionException e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof  ServerTooSlowException){
-                return startRound(iteration+1);
+        roundCompleted.whenComplete((success, error) -> {
+            if (error != null) {
+                Throwable cause = error.getCause();
+                if (cause instanceof ServerTooSlowException || error instanceof ServerTooSlowException) {
+                    startRound(iteration + 1, future);
+                } else {
+                    future.completeExceptionally(error);
+                }
+            } else {
+                future.complete(null);
             }
-            return failedFuture(cause);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return failedFuture(e);
-        }
-    }
-
-    private CompletableFuture<Void> failedFuture(Throwable error){
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        future.completeExceptionally(error);
-        return future;
+        });
     }
 
 }

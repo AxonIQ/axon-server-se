@@ -1,7 +1,16 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
-import io.axoniq.axonserver.grpc.cluster.*;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
+import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
+import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
+import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -15,6 +24,7 @@ public class FakeRaftPeer implements RaftPeer {
 
     private final Scheduler scheduler;
     private final String nodeId;
+    private final String nodeName;
     private long term;
     private boolean voteGranted;
     private Consumer<AppendEntriesResponse> appendEntriesResponseConsumer = response -> {
@@ -23,8 +33,13 @@ public class FakeRaftPeer implements RaftPeer {
     };
 
     public FakeRaftPeer(Scheduler scheduler, String nodeId) {
+        this(scheduler, nodeId, nodeId);
+    }
+
+    public FakeRaftPeer(Scheduler scheduler, String nodeId, String nodeName) {
         this.scheduler = scheduler;
         this.nodeId = nodeId;
+        this.nodeName = nodeName;
     }
 
     @Override
@@ -97,8 +112,30 @@ public class FakeRaftPeer implements RaftPeer {
     }
 
     @Override
+    public CompletableFuture<RequestVoteResponse> requestPreVote(RequestVoteRequest request) {
+        CompletableFuture<RequestVoteResponse> result = new CompletableFuture<>();
+        RequestVoteResponse response = RequestVoteResponse.newBuilder()
+                                                          .setResponseHeader(responseHeader(request.getRequestId()))
+                                                          .setTerm(term)
+                                                          .setVoteGranted(voteGranted)
+                                                          .build();
+        scheduler.schedule(() -> result.complete(response), 10, TimeUnit.MILLISECONDS);
+        return result;
+    }
+
+    @Override
     public String nodeId() {
         return nodeId;
+    }
+
+    @Override
+    public void sendTimeoutNow() {
+
+    }
+
+    @Override
+    public String nodeName() {
+        return nodeName;
     }
 
     public long term() {

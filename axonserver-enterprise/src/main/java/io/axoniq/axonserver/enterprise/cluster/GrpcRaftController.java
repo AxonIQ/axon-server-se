@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
+import io.axoniq.axonserver.cluster.NewConfigurationConsumer;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.RemovedState;
@@ -13,7 +15,6 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.ReplicationServerStarted;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
-import io.axoniq.axonserver.enterprise.logconsumer.LogEntryConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -59,6 +60,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
     private volatile LocalEventStore localEventStore;
+    private Map<String, Long> deletedContexts = new ConcurrentHashMap<>();
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -88,7 +90,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             try {
                 createRaftGroup(context.getGroupId(), context.getNodeId());
             } catch (Exception ex) {
-                logger.warn("{}: Failed to initialize context", context, ex);
+                logger.warn("{}: Failed to initialize context", context.getGroupId(), ex);
             }
         });
         running = true;
@@ -126,6 +128,9 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
             if( existingRaftGroup != null) return existingRaftGroup;
 
+            NewConfigurationConsumer newConfigurationConsumer = applicationContext
+                    .getBean(NewConfigurationConsumer.class);
+
             RaftGroup raftGroup = new GrpcRaftGroup(localNodeId,
                                                     groupId,
                                                     raftStateRepository,
@@ -134,14 +139,15 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                                                     snapshotDataProviders,
                                                     localEventStore,
                                                     grpcRaftClientFactory,
-                                                    messagingPlatformConfiguration);
+                                                    messagingPlatformConfiguration,
+                                                    newConfigurationConsumer);
 
             if (!isAdmin(groupId)) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
             }
             applicationContext.getBeansOfType(LogEntryConsumer.class)
                               .forEach((name, bean) -> raftGroup.localNode()
-                                                                .registerEntryConsumer(e -> bean.consumeLogEntry(groupId,e)));
+                                                                .registerEntryConsumer(bean));
             raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(),
                                                                                            stateChanged));
 
@@ -208,8 +214,14 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return 100;
     }
 
+    /**
+     * Wait for the newly created raftgroup to be fully initialized and having a leader. Needs to wait until it has at least
+     * applied the first entry (the fact that the current node is leader).
+     * @param group the raft group
+     * @return the raft node when it is leader
+     */
     RaftNode waitForLeader(RaftGroup group) {
-        while (! group.localNode().isLeader()) {
+        while (! group.localNode().isLeader() || group.logEntryProcessor().lastAppliedIndex() == 0) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -224,9 +236,12 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     public RaftNode getOrCreateRaftNode(String groupId, String nodeId) {
         RaftGroup raftGroup = raftGroupMap.get(groupId);
         if(raftGroup != null) return raftGroup.localNode();
-        if( nodeId == null) return null;
 
         synchronized (raftGroupMap) {
+            long deleted = deletedContexts.getOrDefault(groupId, 0L);
+            if( deleted + 5000 > System.currentTimeMillis()) {
+                throw new RuntimeException(nodeId + " was recently removed from " + groupId);
+            }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
                 raftGroup = createRaftGroup(groupId, nodeId);
@@ -235,6 +250,14 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return raftGroup.localNode();
     }
 
+    @Override
+    public RaftNode raftNode(String groupId) {
+        RaftGroup raftGroup = raftGroupMap.get(groupId);
+        if (raftGroup != null) {
+            return raftGroup.localNode();
+        }
+        return null;
+    }
 
     /**
      * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than 100 transactions per second.
@@ -282,6 +305,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     public void delete(String context) {
+        deletedContexts.put(context, System.currentTimeMillis());
         raftGroupMap.remove(context);
         if( context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));

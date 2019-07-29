@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.enterprise.logconsumer;
 
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.axoniq.axonserver.cluster.LogEntryConsumer;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import org.slf4j.Logger;
@@ -9,9 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
-
 /**
+ * Deletes node from a cluster. Runs in Admin context only.
+ *
  * @author Marc Gathier
  */
 @Component
@@ -21,21 +22,19 @@ public class AdminDeleteNodeConsumer implements LogEntryConsumer {
 
     private final ApplicationEventPublisher eventPublisher;
 
-    public AdminDeleteNodeConsumer(ClusterController clusterController,
-                                   ApplicationEventPublisher eventPublisher) {
+    public AdminDeleteNodeConsumer(ApplicationEventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
     }
 
     @Override
-    public void consumeLogEntry(String groupId, Entry e) {
-        if( isAdmin(groupId) && entryType(e, DeleteNode.class)) {
-                try {
-                    DeleteNode deleteNode = DeleteNode.parseFrom(e.getSerializedObject().getData());
-                    logger.warn("{}: received data: {}", groupId, deleteNode);
-                    eventPublisher.publishEvent(deleteNode);
-                } catch (Exception e1) {
-                    logger.warn("{}: Failed to process log entry: {}", groupId, e, e1);
-                }
-        }
+    public String entryType() {
+        return DeleteNode.class.getName();
+    }
+
+    @Override
+    public void consumeLogEntry(String groupId, Entry e) throws InvalidProtocolBufferException {
+        DeleteNode deleteNode = DeleteNode.parseFrom(e.getSerializedObject().getData());
+        logger.warn("{}: received data: {}", groupId, deleteNode);
+        eventPublisher.publishEvent(deleteNode);
     }
 }

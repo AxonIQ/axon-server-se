@@ -102,6 +102,15 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
+    public TermIndex firstLog() {
+        if (entryMap.isEmpty()) {
+            return new TermIndex(0, 0);
+        }
+        Map.Entry<Long, Entry> entry = entryMap.firstEntry();
+        return new TermIndex(entry.getValue().getTerm(), entry.getKey());
+    }
+
+    @Override
     public long lastLogIndex() {
         return entryMap.isEmpty() ? 0 : entryMap.lastKey();
     }

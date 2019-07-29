@@ -108,7 +108,7 @@ public class LeaderConfiguration implements ClusterConfiguration {
     private ConfigChangeResult failure(Throwable error) {
         return ConfigChangeResult
                 .newBuilder()
-                .setFailure(ConfigChangeFailure.newBuilder().setError(errorMapping.apply(error.getCause())))
+                .setFailure(ConfigChangeFailure.newBuilder().setError(errorMapping.apply(error)))
                 .build();
     }
 }

@@ -7,7 +7,9 @@ import io.axoniq.axonserver.topology.AxonServerNode;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -20,6 +22,7 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.PreRemove;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
@@ -45,6 +48,9 @@ public class ClusterNode implements Serializable, AxonServerNode {
     private Integer grpcPort;
     private Integer grpcInternalPort;
     private Integer httpPort;
+
+    @Transient
+    private Map<String,String> tags = new HashMap<>();
 
     @OneToMany(mappedBy = "key.clusterNode", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ContextClusterNode> contexts = new HashSet<>();
@@ -104,6 +110,20 @@ public class ClusterNode implements Serializable, AxonServerNode {
         return name;
     }
 
+    /**
+     * @param tags the tags that are configured for this node
+     */
+    public void setTags(Map<String,String> tags){
+        this.tags=tags;
+    }
+
+    /**
+     * @return the tags configured for this node
+     */
+    public Map<String,String> getTags(){
+        return tags;
+    }
+
     public Collection<String> getContextNames() {
         return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
@@ -161,6 +181,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
                 .setHostName(hostName)
                 .setInternalHostName(internalHostName)
                 .setHttpPort(httpPort)
+                .putAllTags(tags)
                 .setVersion(1)
                 .build();
     }
@@ -184,11 +205,17 @@ public class ClusterNode implements Serializable, AxonServerNode {
     }
 
     public void removeContext(String context) {
-        Optional<ContextClusterNode> contextClusterNode = contexts.stream().filter(ccn -> context.equals(ccn.getContext().getName())).findFirst();
+        Optional<ContextClusterNode> contextClusterNode = getContext(context);
         contextClusterNode.ifPresent(ContextClusterNode::preDelete);
     }
 
     public boolean isAdmin() {
         return getContextNames().contains(getAdmin());
+    }
+
+    public Optional<ContextClusterNode> getContext(String contextName) {
+        return getContexts().stream()
+                            .filter(c -> c.getContext().getName().equals(contextName))
+                            .findFirst();
     }
 }

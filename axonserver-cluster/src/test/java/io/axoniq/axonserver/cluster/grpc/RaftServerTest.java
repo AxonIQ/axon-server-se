@@ -79,7 +79,7 @@ public class RaftServerTest {
 
         try {
 
-            assertWithin(5, TimeUnit.SECONDS, () -> {
+            assertWithin(15, TimeUnit.SECONDS, () -> {
                 RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
                 assertNotNull(leader);
             });
@@ -126,9 +126,7 @@ public class RaftServerTest {
 
         private void initializePeers(List<Node> nodes) {
             raftPeerMap.clear();
-            nodes.forEach(node -> raftPeerMap
-                    .put(node.getNodeId(), new GrpcRaftPeer(node, new FakeGrpcRaftClientFactory(), 5000)));
-
+            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(groupId(), node)));
         }
 
         @Override
@@ -152,13 +150,8 @@ public class RaftServerTest {
         }
 
         @Override
-        public RaftPeer peer(String nodeId) {
-            return raftPeerMap.get(nodeId);
-        }
-
-        @Override
         public RaftPeer peer(Node node) {
-            return new GrpcRaftPeer(node, new FakeGrpcRaftClientFactory(), 5000);
+            return new GrpcRaftPeer(groupId(), node);
         }
 
         @Override

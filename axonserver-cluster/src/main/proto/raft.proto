@@ -5,12 +5,25 @@ option java_multiple_files = true;
 
 service LeaderElectionService {
     rpc RequestVote( RequestVoteRequest ) returns (RequestVoteResponse) {}
+
+    rpc RequestPreVote (RequestVoteRequest) returns (RequestVoteResponse) {
+    }
 }
 
 service LogReplicationService {
     rpc AppendEntries (stream AppendEntriesRequest) returns (stream AppendEntriesResponse) {}
 
     rpc InstallSnapshot( stream InstallSnapshotRequest) returns (stream InstallSnapshotResponse) {}
+
+    rpc TimeoutNow( TimeoutNowRequest) returns (TimeoutNowResponse) {}
+}
+
+message TimeoutNowRequest {
+    string groupId = 1;
+}
+
+message TimeoutNowResponse {
+
 }
 
 message ResponseHeader {
@@ -26,6 +39,7 @@ message RequestVoteRequest {
     string candidateId = 4;
     uint64 lastLogTerm = 5;
     uint64 lastLogIndex = 6;
+    bool disruptAllowed = 7; // Request may disrupt current leader, even if it is in healthy state
 }
 
 message RequestVoteResponse {

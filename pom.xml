@@ -11,23 +11,17 @@
 
     <modules>
         <module>axonserver-connector-api</module>
-        <!--<module>axonserver</module>-->
         <module>sample-applications/sample-command-processor-axonhub-client</module>
         <module>sample-applications/sample-command-processor-axonserver-client</module>
         <module>axonserver-internal-grpc</module>
-        <!--<module>axonserver-grpc</module>-->
         <module>axonserver-enterprise</module>
         <module>axonserver-migration</module>
-        <!--<module>axonserver-cli</module>-->
         <module>axonserver-compatibility-tests</module>
         <module>package-axonserver-enterprise</module>
         <module>axondb-migration</module>
-        <!--<module>plugins/axonserver-metrics-graphite</module>-->
-        <!--<module>plugins/axonserver-metrics-prometheus</module>-->
-        <!--<module>plugins/axonserver-rabbitmq-connector</module>-->
-        <!--<module>plugins/axonserver-kafka-connector</module>-->
         <module>axonserver-cluster</module>
-        <!--<module>query-parser</module>-->
+        <module>axonserver-jdbc-storage</module>
+        <module>axonserver-spanner-storage</module>
     </modules>
 
     <properties>
@@ -36,10 +30,10 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
-
+        <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
 
-        <kotlin.version>1.1.61</kotlin.version>
+        <kotlin.version>1.3.31</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <!--
             Please note that there are dependencies between the gRPC and Netty TcNative versions.
@@ -50,9 +44,9 @@
         <netty.tcnative.version>2.0.20.Final</netty.tcnative.version>
 
         <netty.version>4.1.32.Final</netty.version>
-        <axonserver.api.version>4.1</axonserver.api.version>
+        <axonserver.api.version>4.2-SNAPSHOT</axonserver.api.version>
         <axonserver.se.version>4.2-SNAPSHOT</axonserver.se.version>
-        <axon.version>4.1.1</axon.version>
+        <axon.version>4.2-SNAPSHOT</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
 
@@ -128,7 +122,6 @@
                     <mavenExecutorId>forked-path</mavenExecutorId>
                     <localCheckout>true</localCheckout>
                     <goals>deploy</goals>
-                    <pushChanges>false</pushChanges>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <arguments>-Dmaven.javadoc.skip=true -Dsource.skip=true</arguments>
                 </configuration>
@@ -146,8 +139,8 @@
     </build>
 
     <scm>
-        <connection>scm:git:git://github.com/AxonIQ/axon-server.git</connection>
-        <developerConnection>scm:git:git@github.com:AxonIQ/axon-server.git</developerConnection>
+        <connection>scm:git:https://github.com/AxonIQ/axon-server.git</connection>
+        <developerConnection>scm:git:https://github.com/AxonIQ/axon-server.git</developerConnection>
         <url>https://github.com/AxonIQ/axon-server</url>
         <tag>master</tag>
     </scm>
@@ -173,8 +166,14 @@
         <repository>
             <id>sonatype-snapshots</id>
             <url>https://dev-nexus.axoniq.io/repository/sonatype-snapshots/</url>
-            <releases><enabled>false</enabled></releases>
-            <snapshots><enabled>true</enabled></snapshots>
+            <snapshots>
+                <enabled>true</enabled>
+                <checksumPolicy>fail</checksumPolicy>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
         </repository>
     </repositories>
 

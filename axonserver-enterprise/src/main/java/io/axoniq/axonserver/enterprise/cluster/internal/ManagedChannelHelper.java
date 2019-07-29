@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.grpc.GrpcBufferingInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NettyChannelBuilder;
@@ -38,7 +40,7 @@ public class ManagedChannelHelper {
             if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
                 builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
             }
-            builder.directExecutor();
+            builder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
             channel = builder.build();
         } catch(Exception ex) {
             logger.warn("Error while building channel - {}", ex.getMessage());

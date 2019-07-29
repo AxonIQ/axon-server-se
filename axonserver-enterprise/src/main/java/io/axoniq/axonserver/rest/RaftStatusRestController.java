@@ -57,9 +57,11 @@ public class RaftStatusRestController {
             media.with("commitIndex", raftGroup.logEntryProcessor().commitIndex());
             media.with("commitTerm", raftGroup.logEntryProcessor().commitTerm());
             media.with("lastAppliedIndex", raftGroup.logEntryProcessor().lastAppliedIndex());
-            media.with("lastApplierTerm", raftGroup.logEntryProcessor().lastAppliedTerm());
-            media.with("lastLongIndex", raftGroup.localLogEntryStore().lastLogIndex());
-            media.with("lastLongTerm", raftGroup.localLogEntryStore().lastLog().getTerm());
+            media.with("lastAppliedTerm", raftGroup.logEntryProcessor().lastAppliedTerm());
+            media.with("lastLogIndex", raftGroup.localLogEntryStore().lastLogIndex());
+            media.with("lastLogTerm", raftGroup.localLogEntryStore().lastLog().getTerm());
+            media.with("firstLogIndex", raftGroup.localLogEntryStore().firstLogIndex());
+            media.with("firstLogTerm", raftGroup.localLogEntryStore().firstLog().getTerm());
             media.with("minElectionTimeout", raftGroup.raftConfiguration().minElectionTimeout());
             media.with("maxElectionTimeout", raftGroup.raftConfiguration().maxElectionTimeout());
             media.with("heartbeatTimeout", raftGroup.raftConfiguration().heartbeatTimeout());
@@ -97,6 +99,7 @@ public class RaftStatusRestController {
                 public Printable next() {
                     Node next = iterator.next();
                     return media -> media.with("id", next.getNodeId())
+                                         .with("name", next.getNodeName())
                                          .with("port", next.getPort())
                                          .with("host", next.getHost());
                 }

@@ -16,6 +16,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.FluxSink;
 
 import java.time.Clock;
 import java.util.List;
@@ -25,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static java.lang.String.format;
@@ -46,13 +46,13 @@ public class ReplicatorPeer {
         default void stop() {
         }
 
-        int sendNextEntries(boolean fromNotify);
+        int sendNextEntries();
     }
 
     private class IdleReplicatorPeerState implements ReplicatorPeerState {
 
         @Override
-        public int sendNextEntries(boolean fromNotify) {
+        public int sendNextEntries() {
             return 0;
         }
 
@@ -106,6 +106,7 @@ public class ReplicatorPeer {
 
                                @Override
                                public void onNext(List<SerializedObject> serializedObjects) {
+                                   int chunk = offset.getAndIncrement();
                                    InstallSnapshotRequest.Builder requestBuilder =
                                            InstallSnapshotRequest.newBuilder()
                                                                  .setRequestId(UUID.randomUUID().toString())
@@ -114,14 +115,14 @@ public class ReplicatorPeer {
                                                                  .setLeaderId(me())
                                                                  .setLastIncludedTerm(lastIncludedTerm)
                                                                  .setLastIncludedIndex(lastAppliedIndex)
-                                                                 .setOffset(offset.getAndIncrement())
+                                                                 .setOffset(chunk)
                                                                  .setDone(done)
                                                                  .addAllData(serializedObjects);
                                    logger.trace("{} in term {}: Sending install snapshot chunk with offset: {}",
                                                 groupId(),
                                                 currentTerm(),
-                                                offset);
-                                   if (firstChunk()) {
+                                                chunk);
+                                   if (firstChunk(chunk)) {
                                        requestBuilder.setLastConfig(raftGroup.raftConfiguration().config());
                                    }
                                    send(requestBuilder.build());
@@ -130,23 +131,28 @@ public class ReplicatorPeer {
                                @Override
                                public void onError(Throwable t) {
                                    logger.error("{} in term {}: Install snapshot failed.", groupId(), currentTerm(), t);
-                                   subscription.cancel();
-                                   changeStateTo(new IdleReplicatorPeerState());
+                                   changeStateTo(new AppendEntryState());
                                }
 
                                @Override
                                public void onComplete() {
                                    done = true;
-                                   send(InstallSnapshotRequest.newBuilder()
-                                                              .setRequestId(UUID.randomUUID().toString())
-                                                              .setGroupId(groupId())
-                                                              .setTerm(currentTerm())
-                                                              .setLeaderId(me())
-                                                              .setLastIncludedTerm(lastIncludedTerm)
-                                                              .setLastIncludedIndex(lastAppliedIndex)
-                                                              .setOffset(offset.get())
-                                                              .setDone(done)
-                                                              .build());
+                                   int chunk = offset.getAndIncrement();
+                                   InstallSnapshotRequest.Builder requestBuilder =
+                                           InstallSnapshotRequest.newBuilder()
+                                                                 .setRequestId(UUID.randomUUID().toString())
+                                                                 .setGroupId(groupId())
+                                                                 .setTerm(currentTerm())
+                                                                 .setLeaderId(me())
+                                                                 .setLastIncludedTerm(lastIncludedTerm)
+                                                                 .setLastIncludedIndex(lastAppliedIndex)
+                                                                 .setOffset(chunk)
+                                                                 .setDone(done);
+                                   if (firstChunk(chunk)) {
+                                       requestBuilder.setLastConfig(raftGroup.raftConfiguration().config());
+                                   }
+                                   send(requestBuilder.build());
+
                                    logger.info("{} in term {}: Sending the last chunk for install snapshot to {}.",
                                                groupId(),
                                                currentTerm(),
@@ -155,58 +161,30 @@ public class ReplicatorPeer {
                            });
         }
 
-        private boolean firstChunk() {
-            return offset.get() == 0;
+        private boolean firstChunk(int chunk) {
+            return chunk == 0;
         }
 
         @Override
         public void stop() {
             registration.cancel();
+            if (subscription != null) {
+                subscription.cancel();
+                subscription = null;
+            }
         }
 
         /**
          * Sends one InstallSnapshot request to the peer. A single request can contain a number of objects (limited by the transaction
          * size and the configuration parameter max-snapshot-chunks-per-batch).
-         * @param fromNotify
-         * @return number of InstallSnapshot requests actually sent.
+         * @return 1 to force the replication thread to keep on attempting to send data without waiting
          */
         @Override
-        public int sendNextEntries(boolean fromNotify) {
-            if( fromNotify) {
-                logger.debug("{}: SendNextEntries called from notify", groupId());
-                return 0;
-            }
-            int sent = 0;
-
+        public int sendNextEntries() {
             if (canSend()) {
                 subscription.request(1);
-                sent++;
-            } else {
-                logger.trace("{} in term {}: Can't send Install Snapshot chunk. offset {}, lastReceivedOffset {}.",
-                             groupId(),
-                             currentTerm(),
-                             offset,
-                             lastReceivedOffset);
-
-                if( lastMessageSent.get() + raftGroup.raftConfiguration().heartbeatTimeout() < System.currentTimeMillis()) {
-                        logger.trace("{} in term {}: Send heartbeat in install snapshot to {}.",
-                                     groupId(),
-                                     currentTerm(),
-                                    nodeId());
-                        InstallSnapshotRequest.Builder requestBuilder =
-                                InstallSnapshotRequest.newBuilder()
-                                                      .setRequestId(UUID.randomUUID().toString())
-                                                      .setGroupId(groupId())
-                                                      .setTerm(currentTerm())
-                                                      .setLeaderId(me())
-                                                      .setLastIncludedTerm(lastAppliedTerm())
-                                                      .setLastIncludedIndex(lastAppliedIndex)
-                                                      .setOffset(offset.getAndIncrement())
-                                                      .setDone(done);
-                        send(requestBuilder.build());
-                }
             }
-            return sent;
+            return 1;
         }
 
         private void send(InstallSnapshotRequest request) {
@@ -230,11 +208,11 @@ public class ReplicatorPeer {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
                 lastReceivedOffset = response.getSuccess().getLastReceivedOffset();
                 if (done) {
-                    logger.info("{} in term {}: Install snapshot confirmation received: {}",
+                    setMatchIndex(lastAppliedIndex);
+                    logger.info("{} in term {}: Install snapshot confirmation received: {}, matchIndex {}, nextIndex {}",
                                 groupId(),
                                 currentTerm(),
-                                response);
-                    setMatchIndex(lastAppliedIndex);
+                                response, matchIndex.get(), nextIndex.get());
                     changeStateTo(new AppendEntryState());
                 }
             } else {
@@ -295,11 +273,10 @@ public class ReplicatorPeer {
          * and total time allowed to send messages is limited to the heartbeat timeout.
          * Method also stops sending messages when the StreamObserver (in raftPeer) is not ready (too many waiting bytes).
          *
-         * @param fromNotify
-         * @return
+         * @return number of entries sent
          */
         @Override
-        public int sendNextEntries(boolean fromNotify) {
+        public int sendNextEntries() {
             int sent = 0;
             try {
                 long maxTime = System.currentTimeMillis() + raftGroup.raftConfiguration().heartbeatTimeout();
@@ -407,7 +384,7 @@ public class ReplicatorPeer {
                     return;
                 }
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
-                nextIndex.set(matchIndex.get() + 1);
+                nextIndex.set(response.getFailure().getLastAppliedIndex() + 1);
                 snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
                 updateEntryIterator();
             } else {
@@ -447,7 +424,7 @@ public class ReplicatorPeer {
 
         private boolean forceSnapshot() {
             if( ! raftGroup.raftConfiguration().forceSnapshotOnJoin()) return false;
-            return matchIndex() == 0 && nextIndex() <= 1;
+            return nextIndex() <= 1;
         }
 
         private EntryIterator updateEntryIterator() {
@@ -488,7 +465,7 @@ public class ReplicatorPeer {
     private static final Logger logger = LoggerFactory.getLogger(ReplicatorPeer.class);
 
     private final RaftPeer raftPeer;
-    private final Consumer<Long> matchIndexCallback;
+    private final FluxSink<Long> matchIndexUpdates;
     private final AtomicReference<SnapshotContext> snapshotContext = new AtomicReference<>(new SnapshotContext() {
     });
     private final AtomicLong nextIndex = new AtomicLong(1);
@@ -503,14 +480,14 @@ public class ReplicatorPeer {
     private final BiConsumer<Long, String> updateCurrentTerm;
 
     public ReplicatorPeer(RaftPeer raftPeer,
-                          Consumer<Long> matchIndexCallback,
+                          FluxSink<Long> matchIndexUpdates,
                           Clock clock,
                           RaftGroup raftGroup,
                           SnapshotManager snapshotManager,
                           BiConsumer<Long, String> updateCurrentTerm,
                           Supplier<Long> lastLogIndex) {
         this.raftPeer = raftPeer;
-        this.matchIndexCallback = matchIndexCallback;
+        this.matchIndexUpdates = matchIndexUpdates;
         this.clock = clock;
         this.updateCurrentTerm = updateCurrentTerm;
         lastMessageReceived.set(clock.millis());
@@ -536,7 +513,7 @@ public class ReplicatorPeer {
     public void start() {
         logger.info("{} in term {}: Starting the replicator peer for {}.", groupId(), currentTerm(), nodeId());
         running = true;
-        matchIndexCallback.accept(matchIndex.get());
+        matchIndexUpdates.next(matchIndex.get());
         changeStateTo(new AppendEntryState());
     }
 
@@ -544,6 +521,10 @@ public class ReplicatorPeer {
         logger.info("{} in term {}: Stopping the replicator peer for {}.", groupId(), currentTerm(), nodeId());
         running = false;
         changeStateTo(new IdleReplicatorPeerState());
+    }
+
+    public void sendTimeoutNow() {
+        raftPeer.sendTimeoutNow();
     }
 
     public long lastMessageReceived() {
@@ -562,8 +543,8 @@ public class ReplicatorPeer {
         return matchIndex.get();
     }
 
-    public int sendNextMessage(boolean fromNotify) {
-        return currentState.sendNextEntries(fromNotify);
+    public int sendNextMessage() {
+        return currentState.sendNextEntries();
     }
 
     private String groupId() {
@@ -588,7 +569,7 @@ public class ReplicatorPeer {
 
     private void setMatchIndex(long newMatchIndex) {
         long matchIndexValue = matchIndex.updateAndGet(old -> (old < newMatchIndex) ? newMatchIndex : old);
-        matchIndexCallback.accept(matchIndexValue);
+        matchIndexUpdates.next(matchIndexValue);
         nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, matchIndexValue + 1));
     }
 }

@@ -130,8 +130,7 @@ public class RaftServerFileBasedTest {
 
         private void initializePeers(List<Node> nodes) {
             raftPeerMap.clear();
-            FakeGrpcRaftClientFactory raftClientFactory = new FakeGrpcRaftClientFactory();
-            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(node, raftClientFactory, 5000)));
+            nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(groupId(), node)));
         }
 
         @Override
@@ -155,13 +154,8 @@ public class RaftServerFileBasedTest {
         }
 
         @Override
-        public RaftPeer peer(String nodeId) {
-            return raftPeerMap.get(nodeId);
-        }
-
-        @Override
         public RaftPeer peer(Node node) {
-            return new GrpcRaftPeer(node, new FakeGrpcRaftClientFactory(), 5000);
+            return new GrpcRaftPeer(groupId(), node);
         }
 
         @Override

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
@@ -15,6 +16,8 @@ import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +47,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
         ContextMember contextMember = asContextMember(node);
         stub.addServer(Context.newBuilder().setName(context).addMembers(contextMember).build(),
-                       new CompletableStreamObserver<>(result, logger));
+                       new CompletableStreamObserver<>(result, "addNodeToContext", logger));
         return result;
     }
 
@@ -53,7 +56,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
         stub.removeServer(Context.newBuilder().setName(context)
                                           .addMembers(ContextMember.newBuilder().setNodeId(node).build()).build(),
-                          new CompletableStreamObserver<>(result, logger));
+                          new CompletableStreamObserver<>(result, "deleteNode", logger));
         return result;
     }
 
@@ -61,7 +64,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
     public CompletableFuture<Void> updateApplication(ContextApplication application) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.mergeAppAuthorization(application,
-                                   new CompletableStreamObserver<>(result, logger));
+                                   new CompletableStreamObserver<>(result, "updateApplication", logger));
         return result;
     }
 
@@ -75,7 +78,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                            .setEntry(ByteString.copyFrom(bytes))
                                            .build();
         stub.appendEntry(request,
-                         new CompletableStreamObserver<>(result, logger));
+                         new CompletableStreamObserver<>(result, "appendEntry", logger));
         return result;
     }
 
@@ -106,14 +109,14 @@ public class RemoteRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> initContext(String context, List<Node> raftNodes) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
+    public CompletableFuture<ContextConfiguration> initContext(String context, List<Node> raftNodes) {
+        CompletableFuture<ContextConfiguration> result = new CompletableFuture<>();
         Context request = Context.newBuilder()
                                  .setName(context)
                                  .addAllMembers(raftNodes.stream().map(this::asContextMember).collect(Collectors.toList()))
                                  .build();
         stub.initContext(
-                request, new CompletableStreamObserver<>(result, logger, TO_VOID));
+                request, new CompletableStreamObserver<>(result, "initContext", logger));
 
         return result;
     }
@@ -134,7 +137,10 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                 .setContext(name)
                                                                 .setLoadBalanceStrategy(loadBalancingStrategy)
                                                                 .build(),
-                                      new CompletableStreamObserver<>(result, logger, TO_VOID));
+                                      new CompletableStreamObserver<>(result,
+                                                                      "updateLoadBalancingStrategy",
+                                                                      logger,
+                                                                      TO_VOID));
         return result;
     }
 
@@ -146,7 +152,10 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                                                 .setContext(context)
                                                                 .setProcessorLBStrategy(processorLBStrategy)
                                                                 .build(),
-                                      new CompletableStreamObserver<>(result, logger, TO_VOID));
+                                      new CompletableStreamObserver<>(result,
+                                                                      "updateProcessorLoadBalancing",
+                                                                      logger,
+                                                                      TO_VOID));
         return result;
     }
 
@@ -157,21 +166,58 @@ public class RemoteRaftGroupService implements RaftGroupService {
         stub.deleteLoadBalanceStrategy(ContextLoadBalanceStrategy.newBuilder()
                                                                  .setLoadBalanceStrategy(loadBalancingStrategy)
                                                                  .setContext(context)
-                                                                 .build(), new CompletableStreamObserver<>(result, logger ,TO_VOID));
+                                                                 .build(),
+                                       new CompletableStreamObserver<>(result,
+                                                                       "deleteLoadBalancingStrategy",
+                                                                       logger,
+                                                                       TO_VOID));
         return result;
     }
 
     @Override
     public CompletableFuture<Void> deleteContext(String context) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteContext(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver<>(result, logger,TO_VOID));
+        stub.deleteContext(ContextName.newBuilder()
+                                      .setContext(context)
+                                      .build(), new StreamObserver<Confirmation>() {
+            @Override
+            public void onNext(Confirmation value) {
+                result.complete(null);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                // If the remote server is unavailable, handle as if the deleteContext was completed successfully.
+                if(throwable instanceof StatusRuntimeException && ((StatusRuntimeException) throwable).getStatus().getCode().equals(Status.Code.UNAVAILABLE)) {
+                        result.complete(null);
+                        return;
+                }
+
+                logger.warn("Remote action failed", throwable);
+                result.completeExceptionally(GrpcExceptionBuilder.parse(throwable));
+            }
+
+            @Override
+            public void onCompleted() {
+
+            }
+        });
         return result;
     }
 
     @Override
     public CompletableFuture<ContextConfiguration> configuration(String context) {
         CompletableFuture<ContextConfiguration> result = new CompletableFuture<>();
-        stub.configuration(ContextName.newBuilder().setContext(context).build(), new CompletableStreamObserver<>(result, logger));
+        stub.configuration(ContextName.newBuilder().setContext(context).build(),
+                           new CompletableStreamObserver<>(result, "configuration", logger));
+        return result;
+    }
+
+    @Override
+    public CompletableFuture<Void> transferLeadership(String context) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        stub.transferLeadership(ContextName.newBuilder().setContext(context).build(),
+                                new CompletableStreamObserver<>(result, "transferLeadership", logger, TO_VOID));
         return result;
     }
 }

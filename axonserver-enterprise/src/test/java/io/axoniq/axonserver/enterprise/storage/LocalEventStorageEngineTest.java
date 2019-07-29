@@ -45,7 +45,7 @@ public class LocalEventStorageEngineTest {
 
     @After
     public void close() {
-        testSubject.cleanupContext("default");
+        testSubject.deleteContext("default");
     }
 
 
@@ -93,7 +93,7 @@ public class LocalEventStorageEngineTest {
                                                                                                }
                                                                                            });
 
-        Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateSequenceNumber(0).build();
+        Event event = Event.newBuilder().setAggregateIdentifier("1").setAggregateType("Type").setAggregateSequenceNumber(0).build();
 
         inputStream1.onNext(new ByteArrayInputStream(event.toByteArray()));
         inputStream2.onNext(new ByteArrayInputStream(event.toByteArray()));

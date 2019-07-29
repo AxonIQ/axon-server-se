@@ -34,21 +34,23 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void initContext(Context request, StreamObserver<Confirmation> responseObserver) {
+    public void initContext(Context request, StreamObserver<ContextConfiguration> responseObserver) {
         logger.debug("Init context: {}", request);
         try {
-            localRaftGroupService.initContext(request.getName(),
-                                              request.getMembersList()
-                                                     .stream()
-                                                     .map(contextMember -> Node.newBuilder()
+            ContextConfiguration contextConfiguration = localRaftGroupService.initContext(request.getName(),
+                                                                                          request.getMembersList()
+                                                                                                 .stream()
+                                                                                                 .map(contextMember -> Node.newBuilder()
                                                                                .setNodeId(contextMember.getNodeId())
                                                                                .setHost(contextMember.getHost())
                                                                                .setPort(contextMember.getPort())
                                                                                .setNodeName(contextMember.getNodeName())
                                                                                .build())
-                                                     .collect(Collectors.toList()));
+                                                                                                 .collect(Collectors
+                                                                                                                  .toList()))
+                                                                             .get();
 
-            responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+            responseObserver.onNext(contextConfiguration);
             responseObserver.onCompleted();
         } catch (Throwable t) {
             logger.warn("Init context failed: {}", request, t);
@@ -151,6 +153,24 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
                              .thenAccept(c -> {
                                  responseObserver.onNext(c);
                                  responseObserver.onCompleted();
+                             });
+    }
+
+    @Override
+    public void transferLeadership(ContextName request, StreamObserver<Confirmation> responseObserver) {
+        io.grpc.Context.current().fork().wrap(() -> doTransferLeadership(request, responseObserver)).run();
+
+    }
+
+    private void doTransferLeadership(ContextName request,
+                                      StreamObserver<Confirmation> responseObserver) {
+        localRaftGroupService.transferLeadership(request.getContext())
+                             .thenAccept(c -> {
+                                 responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+                                 responseObserver.onCompleted();
+                             }).exceptionally(cause -> {
+                                responseObserver.onError(cause);
+                                return null;
                              });
     }
 }

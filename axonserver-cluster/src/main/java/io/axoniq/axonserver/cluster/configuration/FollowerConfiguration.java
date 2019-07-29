@@ -30,8 +30,10 @@ public class FollowerConfiguration implements ClusterConfiguration {
     }
 
     private CompletableFuture<ConfigChangeResult> leaderId() {
+        String leader = leaderId.get();
         ConfigChangeResult result = ConfigChangeResult.newBuilder()
-                                                      .setNotLeader(NotLeader.newBuilder().setLeaderId(leaderId.get()))
+                                                      .setNotLeader(NotLeader.newBuilder()
+                                                                             .setLeaderId(leader == null ? "" : leader))
                                                       .build();
         return CompletableFuture.completedFuture(result);
     }

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
+import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.replication.MajorityMatchStrategy;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
@@ -38,22 +39,22 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.transitionHandler = transitionHandler;
         this.termUpdateHandler = termUpdateHandler;
         this.snapshotManager = snapshotManager;
-        this.schedulerFactory = () -> new DefaultScheduler("raftState");
+        this.schedulerFactory = () -> new DefaultScheduler("raftState-" + raftGroup.localNode().groupId());
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
-        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(), () -> raftGroup.localNode().replicatorPeers());
-
+        this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
+                                                       () -> raftGroup.localNode().replicatorPeers());
     }
 
-    private MembershipStateFactory stateFactory(){
+    private MembershipStateFactory stateFactory() {
         MembershipStateFactory stateFactory = raftGroup.localNode().stateFactory();
         return stateFactory != null ? stateFactory : this;
     }
 
     @Override
     public IdleState idleState(String nodeId) {
-        return new IdleState(nodeId);
+        return new IdleState(nodeId, new DefaultResponseFactory(raftGroup));
     }
 
     @Override
@@ -104,5 +105,19 @@ public class DefaultStateFactory implements MembershipStateFactory {
                              .registerConfigurationListenerFn(registerConfigurationListener)
                              .stateFactory(stateFactory())
                              .build();
+    }
+
+    @Override
+    public MembershipState preVoteState() {
+        return PreVoteState.builder()
+                           .raftGroup(raftGroup)
+                           .schedulerFactory(schedulerFactory)
+                           .transitionHandler(transitionHandler)
+                           .termUpdateHandler(termUpdateHandler)
+                           .snapshotManager(snapshotManager)
+                           .currentConfiguration(currentConfiguration)
+                           .registerConfigurationListenerFn(registerConfigurationListener)
+                           .stateFactory(stateFactory())
+                           .build();
     }
 }

@@ -42,7 +42,7 @@ public class DefaultElectionTest {
         node1 = new FakeRaftPeer(fakeScheduler, "Node1");
         node2 = new FakeRaftPeer(fakeScheduler, "Node2");
         List<RaftPeer> otherPeers = asList(node1, node2);
-        election = new DefaultElection(prototype, updateTerm, electionStore, otherPeers);
+        election = new DefaultElection(prototype, updateTerm, electionStore, otherPeers, false);
     }
 
     @Test
