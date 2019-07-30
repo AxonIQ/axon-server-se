@@ -13,7 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 public interface ChannelCloser {
 
     /**
-     * Shutdowns the {@link io.grpc.Channel} with the specified AxonServer instance if it is no more usable.
+     * Shutdowns the {@link io.grpc.Channel} with the specified AxonServer instance if it is no longer usable.
      *
      * @param hostname  the hostname of the other AxonServer instance
      * @param port      the gRPC port used by the channel to connect to AxonServer instance
