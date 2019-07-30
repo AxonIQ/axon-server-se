@@ -40,29 +40,29 @@
     </section>
 
     <section id="userDetails" v-if="admin">
-        <div class="column configuration">
+        <div class="column wide">
             <form>
                 <ul>
                     <li>
-                        <span>Username</span>
+                        <span class="narrow">Username</span>
                         <input v-model="user.userName"/></span>
                     </li>
                     <li>
-                        <span>Password</span>
+                        <span class="narrow">Password</span>
                         <input v-model="user.password"/></span>
                     </li>
                     <li v-if="!isEnterprise()">
-                        <span>Administrator</span>
+                        <span class="narrow">Administrator</span>
                         <input type="checkbox" v-model="adminRole"/></span>
                     </li>
                     <li v-if="isEnterprise()">
-                        <span>Roles</span>
-                        <span>
+                        <span class="narrow">Roles</span>
+                        <span style="padding: 0;">
                             <table class="roles">
                                 <thead>
                                 <tr class="row">
-                                        <th class="context">Context</th>
-                                        <th class="role">Role</th>
+                                        <th class="contextColumn">Context</th>
+                                        <th class="roleColumn">Role</th>
                                 </tr>
                                 </thead>
                                 <tbody>

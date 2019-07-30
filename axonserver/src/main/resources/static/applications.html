@@ -48,46 +48,46 @@
     </section>
 
     <section id="applicationDetails" v-if="admin">
-        <div class="column configuration">
+        <div class="column">
             <form>
                 <ul>
                     <li>
-                        <span>Application Name</span>
+                        <span class="narrow">Application Name</span>
                         <span><input v-model="application.name"/></span>
                     </li>
                     <li>
-                        <span>Application Description</span>
-                        <span><input v-model="application.description"/></span>
+                        <span class="narrow">Application Description</span>
+                        <span><input style="width: 100%;" v-model="application.description"/></span>
                     </li>
                     <li>
-                        <span>Roles</span>
-                        <span>
+                        <span class="narrow">Roles</span>
+                        <span style="padding: 0;">
                             <table class="roles">
                                 <thead>
                                 <tr class="row">
-                                        <th class="context">Context</th>
-                                        <th class="role">Role</th>
+                                        <th class="contextColumn">Context</th>
+                                        <th class="roleColumn">Role</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                     <tr class="row" v-for="(role, idx) in application.workingRoles">
-                                        <td class="context">{{role.context}}</td>
-                                        <td class="role">{{role.role}}</td>
+                                        <td>{{role.context}}</td>
+                                        <td>{{role.role}}</td>
                                         <td class="buttons"><span @click="deleteContextRole(idx)" title="Delete">
                                             <i class="far fa-trash-alt"/></span></td>
                                     </tr>
                                     <tr class="row">
-                                        <td class="context">
+                                        <td>
                                             <select class="contextName" v-model="newRole.context">
                                                 <option v-for="r in contexts">{{r.context}}</option>
                                             </select>
                                         </td>
-                                        <td class="role">
+                                        <td>
                                             <select class="roleName" v-model="newRole.role">
                                                 <option v-for="r in appRoles">{{r}}</option>
                                             </select>
                                         </td>
-                                        <td class="buttons"><span @click="addContextRole()" title="Add">
+                                        <td><span @click="addContextRole()" title="Add">
                                             <i class="fas fa-plus"/></span></td>
                                     </tr>
                                 </tbody>

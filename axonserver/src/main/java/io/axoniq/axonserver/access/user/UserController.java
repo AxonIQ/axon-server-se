@@ -60,6 +60,16 @@ public class UserController {
         }
     }
 
+    /**
+     * Updates/creates a user with specified password and roles. If password is set, it will be hashed. If no password
+     * is set and
+     * user already exists the stored password is not changed.
+     *
+     * @param username the username
+     * @param password the plaintext password
+     * @param roles    the roles granted to the user
+     * @return the stored information, including the hashed password
+     */
     @Transactional
     public User updateUser(String username, String password, Set<UserRole> roles) {
         return syncUser(username, password == null ? null: passwordEncoder.encode(password), roles);
@@ -83,10 +93,12 @@ public class UserController {
         return userRepository.getOne(name);
     }
 
+    /**
+     * Removes all roles for specified context from all users.
+     * @param context the context to remove
+     */
     @Transactional
     public void removeRolesForContext(String context) {
-        userRepository.findAll().forEach(user -> {
-            user.removeContext(context);
-        });
+        userRepository.findAll().forEach(user -> user.removeContext(context));
     }
 }

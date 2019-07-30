@@ -137,8 +137,8 @@
         <table>
             <thead>
             <tr>
-                <th>Context Name</th>
-                <th>Nodes</th>
+                <th class="contextColumn">Context Name</th>
+                <th class="nodesColumn">Nodes</th>
             </tr>
             </thead>
             <tbody>
@@ -179,11 +179,11 @@
     <form id="contextForm">
                 <ul>
                     <li>
-                        <span>Context Name</span>
+                        <span class="narrow">Context Name</span>
                         <span><input v-model="newContext.context"/></span>
                     </li>
                     <li>
-                        <span>Nodes</span>
+                        <span class="narrow">Nodes</span>
                         <span>
                             <div v-for="node in newContext.nodes">
                                 <span class="nodeName">{{node.name}}</span>

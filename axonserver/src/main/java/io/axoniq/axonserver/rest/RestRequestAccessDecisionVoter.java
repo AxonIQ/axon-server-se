@@ -62,8 +62,8 @@ public class RestRequestAccessDecisionVoter implements AccessDecisionVoter<Filte
         }
         String context = context(invocation.getHttpRequest());
         Set<String> rolesWithAccess = axonServerAccessController.rolesForOperation(operation);
-        LOGGER.warn("Vote for: {}, context = {}, authorities: {}, authoritiesWithAccess: {} ", operation,
-                    context, authentication.getAuthorities(), rolesWithAccess);
+        LOGGER.debug("Vote for: {}, context = {}, authorities: {}, authoritiesWithAccess: {} ", operation,
+                     context, authentication.getAuthorities(), rolesWithAccess);
         if (!rolesWithAccess.isEmpty() && !authorizedForContext(authentication, context, rolesWithAccess)) {
             return AccessDecisionVoter.ACCESS_DENIED;
         }

@@ -35,15 +35,24 @@ public class RoleRestController {
         this.roleController = roleController;
     }
 
+    /**
+     * Returns roles that can be granted to users.
+     *
+     * @return roles
+     */
     @GetMapping("user")
-    Collection<String> listUserRoles(){
+    public Collection<String> listUserRoles(){
         return roleController
                 .listRoles()
                 .stream().map(Role::getRole).sorted().collect(toList());
     }
 
+    /**
+     * Returns roles that can be granted to applications.
+     * @return roles
+     */
     @GetMapping("application")
-    Collection<String> listApplicationRoles(){
+    public Collection<String> listApplicationRoles(){
         return roleController
                 .listRoles()
                 .stream().map(Role::getRole).sorted().collect(toList());
