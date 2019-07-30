@@ -18,7 +18,6 @@
         <module>axonserver-migration</module>
         <module>axonserver-compatibility-tests</module>
         <module>package-axonserver-enterprise</module>
-        <module>axondb-migration</module>
         <module>axonserver-cluster</module>
         <module>axonserver-jdbc-storage</module>
         <module>axonserver-spanner-storage</module>
@@ -45,7 +44,7 @@
 
         <netty.version>4.1.32.Final</netty.version>
         <axonserver.api.version>4.2-SNAPSHOT</axonserver.api.version>
-        <axonserver.se.version>4.2-SNAPSHOT</axonserver.se.version>
+        <axonserver.se.version>4.2-RC1</axonserver.se.version>
         <axon.version>4.2-SNAPSHOT</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
     </properties>
