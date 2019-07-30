@@ -126,6 +126,11 @@ public class JpaApplication {
         }
     }
 
+    /**
+     * Creates a copy (non-persisted) of the application with only the roles granted to the wildcard context ('*').
+     *
+     * @return copy of application with only wildcard roles
+     */
     public JpaApplication newContextPermissions() {
         List<ApplicationContext> newContextPermissions = contexts.stream().filter(c -> c.getContext().equals("*"))
                                                                  .collect(Collectors.toList());

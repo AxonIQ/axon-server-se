@@ -10,7 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.stream.Collectors;
 
 /**
+ * Controls the user per context stored in the database. This information is replicated through raft to all nodes in a
+ * the context.
+ *
  * @author Marc Gathier
+ * @since 4.2
  */
 @Controller
 public class JpaContextUserController {

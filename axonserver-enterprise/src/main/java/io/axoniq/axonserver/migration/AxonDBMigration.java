@@ -144,9 +144,6 @@ public class AxonDBMigration implements SmartLifecycle {
                     currentUser = new User(userName, rs.getString(2));
                     currentUser.setEnabled(rs.getBoolean(3));
                 }
-//                if( ! role.equals("USER")) {
-//                    currentUser.addRole(rs.getString(4));
-//                }
             }
             if( currentUser != null) {
                 entityManager.persist(currentUser);

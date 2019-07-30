@@ -81,6 +81,11 @@ public class ApplicationController {
         return token.substring(0, Math.min(token.length(), ApplicationController.PREFIX_LENGTH));
     }
 
+    /**
+     * Removes all roles for {@code context} from all applications.
+     *
+     * @param context the context to remove
+     */
     @Transactional
     public void removeRolesForContext(String context) {
         applicationRepository.findAllByContextsContext(context).forEach(app -> app.removeContext(context));
