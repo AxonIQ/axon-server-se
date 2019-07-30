@@ -72,7 +72,7 @@ public class QueryServiceTest {
                                                         new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        verify(queryDispatcher).removeFromCache(any());
+        verify(queryDispatcher).removeFromCache(any(), any());
     }
 
     @Test

@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.access.jpa.Role;
-import io.axoniq.axonserver.access.role.RoleController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,18 +35,27 @@ public class RoleRestController {
         this.roleController = roleController;
     }
 
+    /**
+     * Returns roles that can be granted to users.
+     *
+     * @return roles
+     */
     @GetMapping("user")
-    Collection<String> listUserRoles(){
+    public Collection<String> listUserRoles(){
         return roleController
-                .listUserRoles()
-                .stream().map(Role::name).sorted().collect(toList());
+                .listRoles()
+                .stream().map(Role::getRole).sorted().collect(toList());
     }
 
+    /**
+     * Returns roles that can be granted to applications.
+     * @return roles
+     */
     @GetMapping("application")
-    Collection<String> listApplicationRoles(){
+    public Collection<String> listApplicationRoles(){
         return roleController
-                .listApplicationRoles()
-                .stream().map(Role::name).sorted().collect(toList());
+                .listRoles()
+                .stream().map(Role::getRole).sorted().collect(toList());
     }
 
 

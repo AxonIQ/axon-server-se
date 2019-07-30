@@ -14,6 +14,7 @@ import org.junit.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static junit.framework.TestCase.assertEquals;
@@ -78,17 +79,19 @@ public class UserControllerTest {
 
     @Test
     public void updateUserWithPassword() {
-        assertEquals("Encoded:newpassword", testSubject.updateUser("Demo", "newpassword", new String[0]).getPassword());
+        assertEquals("Encoded:newpassword",
+                     testSubject.updateUser("Demo", "newpassword", Collections.emptySet()).getPassword());
     }
 
     @Test
     public void updateUserWithoutPassword() {
-        assertEquals("Encoded:Demo", testSubject.updateUser("Demo", null, new String[0]).getPassword());
+        assertEquals("Encoded:Demo", testSubject.updateUser("Demo", null, Collections.emptySet()).getPassword());
     }
 
     @Test
     public void newUser() {
-        assertEquals("Encoded:newpassword", testSubject.updateUser("Demo2", "newpassword", new String[0]).getPassword());
+        assertEquals("Encoded:newpassword",
+                     testSubject.updateUser("Demo2", "newpassword", Collections.emptySet()).getPassword());
     }
 
     @Test

@@ -9,44 +9,51 @@
 
 package io.axoniq.axonserver.access.jpa;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
-import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
 
 /**
- * Holds defined roles. Roles may be defined on an application or user level.
+ * Entity for defined roles in Axon Server.
  *
- * @author Sara Pellegrini
+ * @author Marc Gathier
+ * @since 4.2
  */
 @Entity
+@Table(name = "ROLES")
 public class Role {
 
     @Id
-    private String name;
+    private String role;
 
-    @ElementCollection
-    @Enumerated(EnumType.STRING)
-    private Set<Type> types = new HashSet<>();
+    private String description;
 
+    @OneToMany(mappedBy = "role")
+    private Set<FunctionRole> functions;
 
-    public enum Type {
-        USER,APPLICATION
+    public String getRole() {
+        return role;
     }
 
-    public Role() {
+    public void setRole(String role) {
+        this.role = role;
     }
 
-    public Role(String name, Type ... types) {
-        this.name = name;
-        this.types.addAll(Arrays.asList(types));
+    public String getDescription() {
+        return description;
     }
 
-    public String name() {
-        return name;
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Set<FunctionRole> getFunctions() {
+        return functions;
+    }
+
+    public void setFunctions(Set<FunctionRole> functions) {
+        this.functions = functions;
     }
 }

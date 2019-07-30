@@ -13,8 +13,6 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 /**
@@ -32,17 +30,14 @@ public class UserRole {
 
     private String role;
 
-    @ManyToOne
-    @JoinColumn(name = "username")
-    private User user;
-
-
-    public UserRole(User user, String role) {
-        this.user = user;
-        this.role = role;
-    }
+    private String context;
 
     public UserRole() {
+    }
+
+    public UserRole(String context, String role) {
+        this.role = role;
+        this.context = context;
     }
 
     public Long getId() {
@@ -61,11 +56,28 @@ public class UserRole {
         this.role = role;
     }
 
-    public User getUser() {
-        return user;
+    public String getContext() {
+        return context;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setContext(String context) {
+        this.context = context;
+    }
+
+    @Override
+    public String toString() {
+        return role + "@" + context;
+    }
+
+    public static UserRole parse(String s) {
+        String[] parts = s.split("@", 2);
+        UserRole userRole = new UserRole();
+        userRole.setRole(parts[0]);
+        if (parts.length > 1) {
+            userRole.setContext(parts[1]);
+        } else {
+            userRole.setContext("*");
+        }
+        return userRole;
     }
 }

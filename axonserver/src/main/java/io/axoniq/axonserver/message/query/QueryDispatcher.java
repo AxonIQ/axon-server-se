@@ -106,8 +106,11 @@ public class QueryDispatcher {
         registrationCache.remove(event.clientIdentification());
     }
 
-    public void removeFromCache( String messageId) {
-        queryCache.remove(messageId);
+    public void removeFromCache(String client, String messageId) {
+        QueryInformation query = queryCache.remove(messageId);
+        if (query != null) {
+            query.completeWithError(client, ErrorCode.COMMAND_TIMEOUT, "Query cancelled due to timeout");
+        }
     }
 
     public FlowControlQueues<WrappedQuery> getQueryQueue() {

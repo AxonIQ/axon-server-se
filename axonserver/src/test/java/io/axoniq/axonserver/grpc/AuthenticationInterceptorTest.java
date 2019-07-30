@@ -77,6 +77,7 @@ public class AuthenticationInterceptorTest {
 
     @Test
     public void noToken() throws Exception {
+        when(call.getMethodDescriptor()).thenReturn(path1);
         testSubject.interceptCall(call, metadata, handler);
         verify(call).close(status.capture(), trailers.capture());
         assertEquals(PERMISSION_DENIED, status.getValue().getCode());

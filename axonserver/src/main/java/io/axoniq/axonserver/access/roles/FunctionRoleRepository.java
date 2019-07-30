@@ -7,15 +7,20 @@
  *
  */
 
-package io.axoniq.axonserver.access.pathmapping;
+package io.axoniq.axonserver.access.roles;
 
-import io.axoniq.axonserver.access.jpa.PathMapping;
+import io.axoniq.axonserver.access.jpa.FunctionRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
+
 /**
- * Spring Data JpaRepostory to access {@link PathMapping} entities.
+ * Repository for FunctionRole mappings.
  *
  * @author Marc Gathier
+ * @since 4.2
  */
-public interface PathMappingRepository extends JpaRepository<PathMapping, String> {
+public interface FunctionRoleRepository extends JpaRepository<FunctionRole, Long> {
+
+    Collection<FunctionRole> findByFunction(String function);
 }

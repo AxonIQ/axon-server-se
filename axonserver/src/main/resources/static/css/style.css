@@ -352,6 +352,26 @@ input[type="search"]{
 					padding-right: 0;
 				}
 
+.narrow {
+	width: 200px !important;
+}
+
+.contextColumn {
+	width: 160px !important;
+}
+
+.nodesColumn {
+	width: 60%;
+}
+
+.roleColumn {
+	width: 50%;
+}
+
+.roles td, .roles th {
+	padding-left: 0;
+}
+
 .status li span{
 	width: 60% !important;
 }
@@ -608,23 +628,25 @@ select {
 }
 
 #applicationDetails, #userDetails {
-	width: 800px;
+	width: 100%;
+	padding-top: 50px;
+	padding-left: 6px;
 }
 
 .nodeName {
 	display: inline-block !important;
 	float: none !important;
-	width: 200px;
+	width: 400px;
 }
 .contextName {
 	display: inline-block !important;
 	float: none !important;
-	width: 150px;
+	width: 100%;
 }
 .roleName {
 	display: inline-block !important;
 	float: none !important;
-	width: 150px;
+	width: 100%;
 }
 .messaging {
 	display: inline-block;

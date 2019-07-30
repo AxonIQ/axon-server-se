@@ -38,9 +38,12 @@ public class AuthenticationInterceptor implements ServerInterceptor{
             context = metadata.get(GrpcMetadataKeys.AXONDB_CONTEXT_MD_KEY);
         }
 
-        if( token == null) {
-            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING, "Token missing");
-        } else if( ! axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(), context, token)) {
+        if (token == null) {
+            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING,
+                                             "No token for " + serverCall.getMethodDescriptor().getFullMethodName());
+        } else if (!axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(),
+                                                       context,
+                                                       token)) {
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token for " + serverCall.getMethodDescriptor().getFullMethodName());
         }
 

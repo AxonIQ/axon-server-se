@@ -7,20 +7,18 @@
  *
  */
 
-package io.axoniq.axonserver.access.role;
+package io.axoniq.axonserver.access.roles;
 
 /**
  * Access to user and application roles.
  *
  * @author Sara Pellegrini
  */
+
 import io.axoniq.axonserver.access.jpa.Role;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
-
-import static io.axoniq.axonserver.access.jpa.Role.Type.APPLICATION;
-import static io.axoniq.axonserver.access.jpa.Role.Type.USER;
 
 @Controller
 public class RoleController {
@@ -32,12 +30,8 @@ public class RoleController {
     }
 
 
-    public List<Role> listUserRoles(){
-        return roleRepository.findByTypesContains(USER);
-    }
-
-    public List<Role> listApplicationRoles(){
-        return roleRepository.findByTypesContains(APPLICATION);
+    public List<Role> listRoles() {
+        return roleRepository.findAll();
     }
 
 

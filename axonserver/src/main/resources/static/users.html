@@ -16,14 +16,18 @@
                 <thead>
                 <tr>
                     <th>Username</th>
-                    <th>Roles</th>
+                    <th v-if="isEnterprise()">Roles</th>
+                    <th v-if="!isEnterprise()">Administrator</th>
                 </tr>
                 </thead>
                 <tbody>
                     <tr v-for="user in users">
                         <td>{{user.userName}}</td>
-                        <td>
+                        <td v-if="isEnterprise()">
                             <span v-for="role in user.roles">{{role}}<br></span>
+                        </td>
+                        <td v-if="!isEnterprise()">
+                            {{administrator(user)}}
                         </td>
                         <td v-if="admin">
                             <span @click="deleteUser(user)" title="Delete"><i class="far fa-trash-alt"/></span>
@@ -36,23 +40,54 @@
     </section>
 
     <section id="userDetails" v-if="admin">
-        <div class="column configuration">
+        <div class="column wide">
             <form>
                 <ul>
                     <li>
-                        <span>Username</span>
+                        <span class="narrow">Username</span>
                         <input v-model="user.userName"/></span>
                     </li>
                     <li>
-                        <span>Password</span>
+                        <span class="narrow">Password</span>
                         <input v-model="user.password"/></span>
                     </li>
-                    <li>
-                        <span>Roles</span>
-                        <span>
-                            <div v-for="role in roles">
-                                <input type="checkbox" v-bind:value="role" v-model="user.roles"/> {{role}}
-                            </div>
+                    <li v-if="!isEnterprise()">
+                        <span class="narrow">Administrator</span>
+                        <input type="checkbox" v-model="adminRole"/></span>
+                    </li>
+                    <li v-if="isEnterprise()">
+                        <span class="narrow">Roles</span>
+                        <span style="padding: 0;">
+                            <table class="roles">
+                                <thead>
+                                <tr class="row">
+                                        <th class="contextColumn">Context</th>
+                                        <th class="roleColumn">Role</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="row" v-for="(user, idx) in user.workingRoles">
+                                        <td class="context">{{user.context}}</td>
+                                        <td class="role">{{user.role}}</td>
+                                        <td class="buttons"><span @click="deleteContextRole(idx)" title="Delete">
+                                            <i class="far fa-trash-alt"/></span></td>
+                                    </tr>
+                                    <tr class="row">
+                                        <td class="context">
+                                            <select class="contextName" v-model="newRole.context">
+                                                <option v-for="r in contexts">{{r.context}}</option>
+                                            </select>
+                                        </td>
+                                        <td class="role">
+                                            <select class="roleName" v-model="newRole.role">
+                                                <option v-for="r in roles">{{r}}</option>
+                                            </select>
+                                        </td>
+                                        <td class="buttons"><span @click="addContextRole()" title="Add">
+                                            <i class="fas fa-plus"/></span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </span>
                     </li>
                     <li>

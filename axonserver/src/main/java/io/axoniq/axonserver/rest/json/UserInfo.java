@@ -17,11 +17,13 @@ import java.util.Set;
 public class UserInfo {
     private final String user;
     private final Set<String> roles;
+    private final boolean adminUser;
 
 
     public UserInfo(String user, Set<String> roles) {
         this.user = user;
         this.roles = roles;
+        this.adminUser = roles.contains("ADMIN@_admin") || roles.contains("ADMIN");
     }
 
     public String getUser() {
@@ -30,5 +32,9 @@ public class UserInfo {
 
     public Set<String> getRoles() {
         return roles;
+    }
+
+    public boolean isAdminUser() {
+        return adminUser;
     }
 }

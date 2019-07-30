@@ -17,6 +17,8 @@ import org.junit.*;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Collections;
+
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.*;
@@ -52,7 +54,7 @@ public class AxonServerStandardConfigurationTest {
                  )).when(userController).updateUser(any(), any(), any());
         UserControllerFacade facade = testSubject.userControllerFacade(userController,
                                                                        applicationEventPublisher);
-        facade.updateUser("User", "Password", new String[0]);
+        facade.updateUser("User", "Password", Collections.emptySet());
         verify(applicationEventPublisher).publishEvent(argThat(new ArgumentMatcher<Object>() {
             @Override
             public boolean matches(Object o) {

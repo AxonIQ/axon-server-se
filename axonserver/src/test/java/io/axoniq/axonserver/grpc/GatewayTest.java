@@ -11,7 +11,6 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
-import io.axoniq.axonserver.access.jpa.PathMapping;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
@@ -34,7 +33,6 @@ import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -126,17 +124,12 @@ public class GatewayTest {
             }
 
             @Override
-            public Collection<PathMapping> getPathMappings() {
-                return null;
-            }
-
-            @Override
             public boolean isRoleBasedAuthentication() {
                 return false;
             }
 
             @Override
-            public Set<String> getRoles(String token, String context) {
+            public Set<String> getRoles(String token) {
                 return Collections.emptySet();
             }
         };

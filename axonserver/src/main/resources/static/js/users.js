@@ -13,14 +13,23 @@ globals.pageView = new Vue(
             el: '#users',
             data: {
                 roles: [],
-                user: {roles: []},
+                user: {workingRoles: []},
                 users: [],
+                newRole: {},
+                contexts: [],
                 feedback: "",
+                adminRole: false,
                 webSocketInfo: globals.webSocketInfo,
                 admin: globals.admin
             }, mounted() {
                 this.loadRoles();
                 this.loadUsers();
+                if (this.isEnterprise()) {
+                    axios.get("v1/public/context").then(response => {
+                        this.contexts = response.data;
+                        this.contexts.push({context: "*"});
+                    });
+                }
                 this.connect();
             }, beforeDestroy() {
                 if( this.subscription) this.subscription.unsubscribe();
@@ -36,16 +45,33 @@ globals.pageView = new Vue(
                     axios.get("v1/public/users")
                             .then(response => {
                                 this.users = response.data;
+                                for (let a = 0; a < this.users.length; a++) {
+                                    let app = this.users[a];
+                                    app.workingRoles = [];
+                                    for (let c = 0; c < app.roles.length; c++) {
+                                        let ctx = app.roles[c].split("@", 2);
+                                        app.workingRoles.push({"context": ctx[1], "role": ctx[0]});
+                                    }
+                                }
                             });
                 },
 
+                administrator(user) {
+                    for (let c = 0; c < user.roles.length; c++) {
+                        let ctx = user.roles[c].split("@", 2);
+                        if (ctx[0] === "ADMIN") {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
                 save(user) {
                     this.feedback = "";
                     if( ! this.user.userName ) {
                         alert("Please enter name for user");
                         return;
                     }
-                    if( this.user.roles.length === 0) {
+                    if (this.isEnterprise() && this.user.workingRoles.length === 0) {
                         alert("Please select roles for user");
                         return;
                     }
@@ -54,10 +80,31 @@ globals.pageView = new Vue(
                         return;
                     }
 
+                    this.user.roles = [];
+                    if (this.isEnterprise()) {
+                        if (this.newRole.context && this.newRole.role) {
+                            this.addNewRole(this.newRole);
+                        }
+                        for (let r = 0; r < this.user.workingRoles.length; r++) {
+                            let role = this.user.workingRoles[r];
+                            this.user.roles.push(role.role + "@" + role.context);
+                        }
+                    } else {
+                        if (this.adminRole) {
+                            this.user.roles.push("ADMIN");
+                        } else {
+                            this.user.roles.push("READ");
+                        }
+                    }
+
+                    this.user.workingRoles = null
+
                     axios.post('v1/users', user)
                             .then(() => {
                                 this.feedback = "User saved ";
-                                this.user = {roles: []};
+                                this.user = {roles: [], workingRoles: []};
+                                this.newRole = {};
+                                this.adminRole = false;
                                 this.loadUsers();
                             });
 
@@ -84,8 +131,9 @@ globals.pageView = new Vue(
                 },
 
                 selectUser(u) {
-                    this.user = {userName: u.userName, roles: u.roles};
+                    this.user = {userName: u.userName, workingRoles: u.workingRoles.slice()};
                     this.feedback = "";
+                    this.adminRole = this.administrator(u);
                 },
 
                 connect() {
@@ -95,6 +143,43 @@ globals.pageView = new Vue(
                     }, function(sub) {
                         me.subscription = sub;
                     });
+                },
+
+                deleteContextRole(idx) {
+                    let newArr = [];
+                    for (let a = 0; a < this.user.workingRoles.length; a++) {
+                        if (a != idx) {
+                            newArr.push(this.user.workingRoles[a]);
+                        }
+                    }
+                    this.user.workingRoles = newArr;
+                },
+                addNewRole() {
+                    if (!this.existsNewRole()) {
+                        this.user.workingRoles.push(this.newRole);
+                        this.newRole = {}
+                    }
+                },
+                addContextRole() {
+                    if (this.newRole.context && this.newRole.role) {
+                        if (!this.existsNewRole()) {
+                            this.user.workingRoles.push(this.newRole);
+                            this.newRole = {};
+                        } else {
+                            alert("Role already assigned for context");
+                        }
+                    } else {
+                        alert("Select role and context to add");
+                    }
+                },
+                existsNewRole() {
+                    for (var a = 0; a < this.user.workingRoles.length; a++) {
+                        if (this.user.workingRoles[a].context == this.newRole.context &&
+                                this.user.workingRoles[a].role == this.newRole.role) {
+                            return true;
+                        }
+                    }
+                    return false;
                 }
             }
         });

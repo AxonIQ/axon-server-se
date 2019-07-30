@@ -10,11 +10,14 @@
 package io.axoniq.axonserver.access.user;
 
 import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.jpa.UserRole;
+import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Access to stored users. Defined users have access to the web services/pages.
@@ -46,10 +49,10 @@ public class UserController {
         return userRepository.findAll();
     }
 
-    private User syncUser(String username, String password, String[] roles) {
+    private User syncUser(String username, String password, Set<UserRole> roles) {
         synchronized (userRepository) {
-            if (password == null) {
-                password = userRepository.findById(username).map(User::getPassword).orElse(null);
+            if (StringUtils.isEmpty(password)) {
+                password = getPassword(username);
             }
             User user = userRepository.save(new User(username, password, roles));
             userRepository.flush();
@@ -57,15 +60,45 @@ public class UserController {
         }
     }
 
+    /**
+     * Updates/creates a user with specified password and roles. If password is set, it will be hashed. If no password
+     * is set and
+     * user already exists the stored password is not changed.
+     *
+     * @param username the username
+     * @param password the plaintext password
+     * @param roles    the roles granted to the user
+     * @return the stored information, including the hashed password
+     */
     @Transactional
-    public User updateUser(String username, String password, String[] roles) {
+    public User updateUser(String username, String password, Set<UserRole> roles) {
         return syncUser(username, password == null ? null: passwordEncoder.encode(password), roles);
     }
 
     @Transactional
     public void syncUser(User jpaUser) {
         synchronized (userRepository) {
+            if (StringUtils.isEmpty(jpaUser.getPassword())) {
+                jpaUser.setPassword(getPassword(jpaUser.getUserName()));
+            }
             userRepository.save(jpaUser);
         }
+    }
+
+    public String getPassword(String userName) {
+        return userRepository.findById(userName).map(User::getPassword).orElse(null);
+    }
+
+    public User findUser(String name) {
+        return userRepository.getOne(name);
+    }
+
+    /**
+     * Removes all roles for specified context from all users.
+     * @param context the context to remove
+     */
+    @Transactional
+    public void removeRolesForContext(String context) {
+        userRepository.findAll().forEach(user -> user.removeContext(context));
     }
 }

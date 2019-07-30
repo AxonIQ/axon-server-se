@@ -20,7 +20,8 @@ import javax.annotation.PreDestroy;
 /**
  * Main class for AxonServer.
  *
- * @@author Marc Gathier
+ * @author Marc Gathier
+ * @since 4.0
  */
 @SpringBootApplication
 @EnableAsync
@@ -34,7 +35,6 @@ public class AxonServer {
     @PreDestroy
     public void clean() {
         GrpcFlowControlledDispatcherListener.shutdown();
-
     }
 
 }

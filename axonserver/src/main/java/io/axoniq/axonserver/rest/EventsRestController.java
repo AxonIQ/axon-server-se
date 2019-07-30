@@ -231,7 +231,35 @@ public class EventsRestController {
         return result;
     }
 
+    /**
+     * Store a new aggregate snapshot.
+     *
+     * @param context   the context where to add the snapshot
+     * @param jsonEvent the snapshot data
+     * @return completable future that completes when snapshot is stored.
+     *
+     * @deprecated Use /v1/snapshots instead.
+     */
     @PostMapping("snapshot")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
+                    required = false, dataType = "string", paramType = "header")
+    })
+    @Deprecated
+    public Future<Void> appendSnapshotOld(
+            @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
+            @RequestBody @Valid JsonEvent jsonEvent) {
+        return appendSnapshot(context, jsonEvent);
+    }
+
+    /**
+     * Store a new aggregate snapshot.
+     *
+     * @param context   the context where to add the snapshot
+     * @param jsonEvent the snapshot data
+     * @return completable future that completes when snapshot is stored.
+     */
+    @PostMapping("snapshots")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataType = "string", paramType = "header")
