@@ -11,7 +11,6 @@ package io.axoniq.axonserver.access.jpa;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -20,6 +19,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
@@ -37,7 +37,8 @@ public class User {
     private String password;
     private boolean enabled;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, mappedBy = "user")
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "username")
     private Set<UserRole> roles = new HashSet<>();
 
     public User(String userName, String password) {
@@ -49,7 +50,7 @@ public class User {
         this.password = password;
         this.enabled = true;
         if (userRoles != null) {
-            userRoles.forEach(r -> roles.add(new UserRole(this, r.getRole(), r.getContext())));
+            userRoles.forEach(r -> roles.add(new UserRole(r.getContext(), r.getRole())));
 
         }
     }
@@ -106,6 +107,12 @@ public class User {
         return Objects.hash(userName);
     }
 
+    /**
+     * Creates a copy of the user (non-persisted) that contains all roles assigned to the wildcard context.
+     *
+     * @param user
+     * @return
+     */
     public static User newContextPermissions(User user) {
         User newUser = new User(user.userName, user.password);
         newUser.setRoles(user.getRoles()
@@ -116,14 +123,12 @@ public class User {
         return newUser;
     }
 
+    /**
+     * Remobes all roles from the user for specified {@code context}
+     * @param context the context to remove
+     */
     public void removeContext(String context) {
-        for (Iterator<UserRole> contextIterator = roles.iterator(); contextIterator.hasNext(); ) {
-            UserRole userRole = contextIterator.next();
-            if (userRole.getContext().equals(context)) {
-                contextIterator.remove();
-                userRole.setUser(null);
-            }
-        }
+        roles.removeIf(r -> r.getContext().equals(context));
     }
 
 }

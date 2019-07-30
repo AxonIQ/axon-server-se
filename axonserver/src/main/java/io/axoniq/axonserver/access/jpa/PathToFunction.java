@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.access.roles;
+package io.axoniq.axonserver.access.jpa;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;

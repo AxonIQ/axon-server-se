@@ -15,6 +15,7 @@ package io.axoniq.axonserver.access.roles;
  * @author Sara Pellegrini
  */
 
+import io.axoniq.axonserver.access.jpa.Role;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;

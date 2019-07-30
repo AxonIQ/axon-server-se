@@ -13,8 +13,6 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 /**
@@ -33,17 +31,6 @@ public class UserRole {
     private String role;
 
     private String context;
-
-    @ManyToOne
-    @JoinColumn(name = "username")
-    private User user;
-
-
-    public UserRole(User user, String role, String context) {
-        this.user = user;
-        this.role = role;
-        this.context = context;
-    }
 
     public UserRole() {
     }
@@ -67,14 +54,6 @@ public class UserRole {
 
     public void setRole(String role) {
         this.role = role;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
     }
 
     public String getContext() {

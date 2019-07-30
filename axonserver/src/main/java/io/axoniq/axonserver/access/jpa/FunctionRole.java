@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.access.roles;
+package io.axoniq.axonserver.access.jpa;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -17,7 +17,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 /**
- * Mapping between a function name and a access role. Mapping is many-to-many.
+ * Mapping between a function name and a access role. Single function can be assigned to many roles, role
+ * may contain multiple functions.
  *
  * @author Marc Gathier
  * @since 4.2

@@ -13,7 +13,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.roles.RoleController;
-import io.axoniq.axonserver.access.roles.Role;
+import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;

@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.access.roles;
 
+import io.axoniq.axonserver.access.jpa.PathToFunction;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**

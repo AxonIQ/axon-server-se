@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.access.roles;
+package io.axoniq.axonserver.access.jpa;
 
 import java.util.Set;
 import javax.persistence.Entity;
@@ -28,8 +28,6 @@ public class Role {
     @Id
     private String role;
 
-    private String admin;
-
     private String description;
 
     @OneToMany(mappedBy = "role")
@@ -41,14 +39,6 @@ public class Role {
 
     public void setRole(String role) {
         this.role = role;
-    }
-
-    public String getAdmin() {
-        return admin;
-    }
-
-    public void setAdmin(String admin) {
-        this.admin = admin;
     }
 
     public String getDescription() {

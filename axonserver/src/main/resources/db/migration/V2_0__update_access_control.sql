@@ -7,7 +7,6 @@ create table PATHS_TO_FUNCTIONS
 create table ROLES
 (
     role        varchar(255) not null primary key,
-    admin       char(1)      not null,
     description varchar(244)
 );
 
@@ -22,6 +21,11 @@ alter table USER_ROLES
     add (
         CONTEXT varchar(255)
         );
+
+alter table USER_ROLES
+    alter column
+        username varchar(45) null
+;
 
 insert into PATHS_TO_FUNCTIONS
 values ('io.axoniq.axonserver.grpc.event.EventStore/ListEvents', 'LIST_EVENTS');
@@ -214,28 +218,28 @@ insert into PATHS_TO_FUNCTIONS
 values ('DELETE:/v1/users/.*', 'DELETE_USER');
 
 insert into ROLES
-values ('READ_EVENTS', 'N', 'Read events/snapshot from Event Store');
+values ('READ_EVENTS', 'Read events/snapshot from Event Store');
 insert into ROLES
-values ('PUBLISH_EVENTS', 'N', 'Store events/snapshots in Event Store');
+values ('PUBLISH_EVENTS', 'Store events/snapshots in Event Store');
 insert into ROLES
-values ('DISPATCH_COMMANDS', 'N', 'Send commands');
+values ('DISPATCH_COMMANDS', 'Send commands');
 insert into ROLES
-values ('SUBSCRIBE_COMMAND_HANDLER', 'N', 'Handle commands');
+values ('SUBSCRIBE_COMMAND_HANDLER', 'Handle commands');
 insert into ROLES
-values ('DISPATCH_QUERY', 'N', 'Send queries and subscription queries');
+values ('DISPATCH_QUERY', 'Send queries and subscription queries');
 insert into ROLES
-values ('SUBSCRIBE_QUERY_HANDLER', 'N', 'Handle queries and emit updates');
+values ('SUBSCRIBE_QUERY_HANDLER', 'Handle queries and emit updates');
 insert into ROLES
-values ('ADMIN', 'Y', 'Global administrator');
+values ('ADMIN', 'Global administrator');
 insert into ROLES
-values ('CONTEXT_ADMIN', 'N', 'Context administrator');
+values ('CONTEXT_ADMIN', 'Context administrator');
 insert into ROLES
-values ('MONITOR', 'N', 'Monitor status');
+values ('MONITOR', 'Monitor status');
 -- Legacy roles
 insert into ROLES
-values ('READ', 'N', 'Deprecated - read events and perform/handle queries');
+values ('READ', 'Deprecated - read events and perform/handle queries');
 insert into ROLES
-values ('WRITE', 'N', 'Deprecated - store events and perform/handle commands');
+values ('WRITE', 'Deprecated - store events and perform/handle commands');
 
 insert into FUNCTION_ROLES(function, role)
 values ('ADD_NODE_TO_CONTEXT', 'ADMIN');
@@ -300,11 +304,11 @@ values ('GET_TOKEN_AT', 'READ');
 insert into FUNCTION_ROLES(function, role)
 values ('HANDLE_COMMANDS', 'SUBSCRIBE_COMMAND_HANDLER');
 insert into FUNCTION_ROLES(function, role)
-values ('WRITE', 'SUBSCRIBE_COMMAND_HANDLER');
+values ('HANDLE_COMMANDS', 'WRITE');
 insert into FUNCTION_ROLES(function, role)
 values ('HANDLE_QUERIES', 'SUBSCRIBE_QUERY_HANDLER');
 insert into FUNCTION_ROLES(function, role)
-values ('READ', 'SUBSCRIBE_QUERY_HANDLER');
+values ('HANDLE_QUERIES', 'READ');
 insert into FUNCTION_ROLES(function, role)
 values ('LIST_APPS', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
@@ -316,11 +320,15 @@ values ('LIST_CONTEXTS', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('LIST_EVENTS', 'READ_EVENTS');
 insert into FUNCTION_ROLES(function, role)
+values ('LIST_EVENTS', 'READ');
+insert into FUNCTION_ROLES(function, role)
 values ('LIST_NODES', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('LIST_QUERIES', 'CONTEXT_ADMIN');
 insert into FUNCTION_ROLES(function, role)
-values ('LIST_SNAPSHOTS', 'CONTEXT_ADMIN');
+values ('LIST_SNAPSHOTS', 'READ_EVENTS');
+insert into FUNCTION_ROLES(function, role)
+values ('LIST_SNAPSHOTS', 'READ');
 insert into FUNCTION_ROLES(function, role)
 values ('LIST_USERS', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
