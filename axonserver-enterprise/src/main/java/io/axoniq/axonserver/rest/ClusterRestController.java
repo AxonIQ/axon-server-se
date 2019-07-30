@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
@@ -15,6 +16,7 @@ import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.invoke.MethodHandles;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,15 +53,18 @@ public class ClusterRestController {
     private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
+    private final ClusterTagsCache clusterTagsCache;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  GrpcRaftController grpcRaftController,
-                                 FeatureChecker limits) {
+                                 FeatureChecker limits,
+                                 ClusterTagsCache clusterTagsCache) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.grpcRaftController = grpcRaftController;
         this.limits = limits;
+        this.clusterTagsCache = clusterTagsCache;
     }
 
 
@@ -89,6 +95,13 @@ public class ClusterRestController {
             logger.debug("add(): Registering myself and adding me to all contexts.");
         }
 
+        // Check if node is already registered in a cluster
+        if (clusterController.nodes().count() > 1) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                                 .body(new RestResponse(false,
+                                                        "Node already registered in a cluster"));
+        }
+
         try {
             raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName,
                                                         jsonClusterNode.internalGrpcPort)
@@ -114,8 +127,8 @@ public class ClusterRestController {
 
     @GetMapping
     public List<JsonClusterNode> list() {
-        Stream<JsonClusterNode> otherNodes = clusterController.getRemoteConnections().stream().map(e -> JsonClusterNode.from(e.getClusterNode(), e.isConnected()));
-        return Stream.concat(Stream.of(JsonClusterNode.from(clusterController.getMe(), true)), otherNodes).collect(Collectors.toList());
+        Stream<JsonClusterNode> otherNodes = clusterController.getRemoteConnections().stream().map(e -> JsonClusterNode.from(e.getClusterNode(), e.isConnected(), clusterTagsCache));
+        return Stream.concat(Stream.of(JsonClusterNode.from(clusterController.getMe(), true, clusterTagsCache)), otherNodes).collect(Collectors.toList());
     }
 
     @GetMapping(path="{name}")
@@ -123,7 +136,7 @@ public class ClusterRestController {
         ClusterNode node = clusterController.getNode(name);
         if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, "Node " + name + " not found");
 
-        return JsonClusterNode.from(node, true);
+        return JsonClusterNode.from(node, true, clusterTagsCache);
     }
 
     @KeepNames
@@ -135,6 +148,7 @@ public class ClusterRestController {
         private Integer grpcPort;
         private Integer httpPort;
         private boolean connected;
+        private Map<String,String> tags;
 
         public boolean isConnected() {
             return connected;
@@ -192,7 +206,15 @@ public class ClusterRestController {
             this.grpcPort = grpcPort;
         }
 
-        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected) {
+        public Map<String,String> getTags(){
+            return tags;
+        }
+
+        public void setTags(Map<String,String> tags){
+            this.tags = tags;
+        }
+
+        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected, ClusterTagsCache clusterTagsCache) {
             JsonClusterNode clusterNode = new JsonClusterNode();
             clusterNode.name = jpaClusterNode.getName();
             clusterNode.internalHostName = jpaClusterNode.getInternalHostName();
@@ -201,6 +223,7 @@ public class ClusterRestController {
             clusterNode.grpcPort = jpaClusterNode.getGrpcPort();
             clusterNode.httpPort = jpaClusterNode.getHttpPort();
             clusterNode.connected = connected;
+            clusterNode.tags = clusterTagsCache.getClusterTags().get(jpaClusterNode.getName());
             return clusterNode;
         }
     }

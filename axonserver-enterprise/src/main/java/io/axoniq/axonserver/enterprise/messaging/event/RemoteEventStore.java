@@ -3,11 +3,11 @@ package io.axoniq.axonserver.enterprise.messaging.event;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ContextAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
-import io.axoniq.axonserver.enterprise.cluster.internal.ManagedChannelHelper;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.messaging.RemoteAxonServerStreamObserver;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -41,15 +41,18 @@ import java.util.concurrent.CompletableFuture;
 public class RemoteEventStore implements io.axoniq.axonserver.message.event.EventStore {
     private final ClusterNode clusterNode;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
+    private final ChannelProvider channelProvider;
 
     public RemoteEventStore(ClusterNode clusterNode,
-                            MessagingPlatformConfiguration messagingPlatformConfiguration) {
+                            MessagingPlatformConfiguration messagingPlatformConfiguration,
+                            ChannelProvider channelProvider) {
         this.clusterNode = clusterNode;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+        this.channelProvider = channelProvider;
     }
 
     private EventStoreGrpc.EventStoreStub getEventStoreStub(String context) {
-        Channel channel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, clusterNode);
+        Channel channel = channelProvider.get(clusterNode);
         if (channel == null) throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                   "No connection to event store available");
         return EventStoreGrpc.newStub(channel).withInterceptors(
@@ -58,7 +61,7 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     }
 
     private EventDispatcherStub getNonMarshallingStub(String context) {
-        Channel channel = ManagedChannelHelper.createManagedChannel(messagingPlatformConfiguration, clusterNode);
+        Channel channel = channelProvider.get(clusterNode);
         if (channel == null) throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                   "No connection to event store available");
         return new EventDispatcherStub(channel).withInterceptors(

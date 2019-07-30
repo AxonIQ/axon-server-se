@@ -12,11 +12,13 @@ public class DefaultGrpcRaftClientFactory implements GrpcRaftClientFactory {
 
     @Override
     public LogReplicationServiceGrpc.LogReplicationServiceStub createLogReplicationServiceStub(Node node) {
-        return LogReplicationServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort()).usePlaintext().build());
+        return LogReplicationServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort())
+                                                                    .usePlaintext().build());
     }
 
     @Override
     public LeaderElectionServiceGrpc.LeaderElectionServiceStub createLeaderElectionStub(Node node) {
-        return LeaderElectionServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort()).usePlaintext().build());
+        return LeaderElectionServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort())
+                                                                    .usePlaintext().build());
     }
 }

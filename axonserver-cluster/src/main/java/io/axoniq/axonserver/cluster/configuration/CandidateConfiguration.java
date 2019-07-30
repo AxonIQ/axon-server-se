@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * @author Sara Pellegrini
- * @since 4.0
+ * @since 4.1
  */
 public class CandidateConfiguration implements ClusterConfiguration {
 

@@ -21,6 +21,7 @@ import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerS
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
+import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -51,9 +52,11 @@ public class AxonServerEnterpriseConfiguration {
     public EventStoreManager eventStoreManager(
             MessagingPlatformConfiguration messagingPlatformConfiguration,
             ClusterController clusterController, RaftLeaderProvider raftLeaderProvider, RaftGroupRepositoryManager raftGroupRepositoryManager,
-            LifecycleController lifecycleController, LocalEventStore localEventStore) {
+            LifecycleController lifecycleController, LocalEventStore localEventStore,
+            ChannelProvider channelProvider) {
         return new EventStoreManager(messagingPlatformConfiguration, clusterController, lifecycleController, raftLeaderProvider, raftGroupRepositoryManager,
-                                     localEventStore);
+                                     localEventStore,
+                                     channelProvider);
     }
 
     @Bean

@@ -47,9 +47,9 @@ public class LeaderStateConfirmatoryElectionTest {
         scheduler = new FakeScheduler();
 
 
-        FakeRaftPeer node0 = new FakeRaftPeer(scheduler, "node0");
-        FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1");
-        FakeRaftPeer node2 = new FakeRaftPeer(scheduler, "node2");
+        FakeRaftPeer node0 = new FakeRaftPeer(scheduler, "node0", "Node-Name-0");
+        FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1", "Node-Name-1");
+        FakeRaftPeer node2 = new FakeRaftPeer(scheduler, "node2", "Node-Name-2");
 
         addClusterNode("node0", node0);
         addClusterNode("node1", node1);
@@ -61,7 +61,6 @@ public class LeaderStateConfirmatoryElectionTest {
     private void addClusterNode(String nodeId, FakeRaftPeer peer){
         Node node = Node.newBuilder().setNodeId(nodeId).build();
         raftConfiguration.addNode(node);
-        when(raftGroup.peer(nodeId)).thenReturn(peer);
         when(raftGroup.peer(node)).thenReturn(peer);
         peer.setTerm(2);
     }
@@ -73,7 +72,7 @@ public class LeaderStateConfirmatoryElectionTest {
                                              .raftGroup(raftGroup)
                                              .transitionHandler(transitionHandler)
                                              .termUpdateHandler((term, cause) -> electionStore.updateCurrentTerm(term))
-                                             .electionFactory(() -> () -> Mono.just(lost()))
+                                             .electionFactory((disruptLeader) -> () -> Mono.just(lost()))
                                              .schedulerFactory(() -> scheduler)
                                              .snapshotManager(new FakeSnapshotManager())
                                              .stateFactory(new FakeStateFactory())

@@ -2,24 +2,21 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.current.CachedCurrentConfiguration;
 import io.axoniq.axonserver.cluster.election.DefaultElection;
+import io.axoniq.axonserver.cluster.election.DefaultPreVote;
 import io.axoniq.axonserver.cluster.election.Election;
+import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
-import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
-import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
-import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
-import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -29,6 +26,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * Abstract state defining common behavior for all Raft states.
@@ -45,11 +43,13 @@ public abstract class AbstractMembershipState implements MembershipState {
     private final BiConsumer<Long, String> termUpdateHandler;
     private final MembershipStateFactory stateFactory;
     private final Supplier<Scheduler> schedulerFactory;
-    private final Supplier<Election> electionFactory;
+    private final Function<Boolean, Election> electionFactory;
+    private final Supplier<Election> preElectionFactory;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
     private final SnapshotManager snapshotManager;
     private final CurrentConfiguration currentConfiguration;
     private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
+    private final RaftResponseFactory raftResponseFactory;
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
@@ -59,20 +59,23 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.stateFactory = builder.stateFactory;
         this.schedulerFactory = builder.schedulerFactory;
         this.electionFactory = builder.electionFactory;
+        this.preElectionFactory = builder.preVoteFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
         this.snapshotManager = builder.snapshotManager;
         this.currentConfiguration = builder.currentConfiguration;
         this.registerConfigurationListener = builder.registerConfigurationListener;
+        this.raftResponseFactory = new DefaultResponseFactory(raftGroup);
     }
 
     public static abstract class Builder<B extends Builder<B>> {
 
+        public Supplier<Election> preVoteFactory;
         private RaftGroup raftGroup;
         private StateTransitionHandler transitionHandler;
         private BiConsumer<Long, String> termUpdateHandler;
         private MembershipStateFactory stateFactory;
         private Supplier<Scheduler> schedulerFactory;
-        private Supplier<Election> electionFactory;
+        private Function<Boolean, Election> electionFactory;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
         private SnapshotManager snapshotManager;
@@ -104,8 +107,13 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B electionFactory(Supplier<Election> electionFactory) {
+        public B electionFactory(Function<Boolean, Election> electionFactory) {
             this.electionFactory = electionFactory;
+            return self();
+        }
+
+        public B preVoteFactory(Supplier<Election> preElectionFactory) {
+            this.preVoteFactory = preElectionFactory;
             return self();
         }
 
@@ -132,7 +140,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         protected void validate() {
             if (schedulerFactory == null) {
-                schedulerFactory = () -> new DefaultScheduler("raftState");
+                schedulerFactory = () -> new DefaultScheduler("raftState-" + raftGroup.localNode().groupId());
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
@@ -156,9 +164,15 @@ public abstract class AbstractMembershipState implements MembershipState {
             }
 
             if (electionFactory == null) {
-                electionFactory = () -> {
+                electionFactory = (disruptLeader) -> {
                     Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
-                    return new DefaultElection(raftGroup, termUpdateHandler, otherPeers);
+                    return new DefaultElection(raftGroup, termUpdateHandler, otherPeers, disruptLeader);
+                };
+            }
+            if (preVoteFactory == null) {
+                preVoteFactory = () -> {
+                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
+                    return new DefaultPreVote(raftGroup, termUpdateHandler, otherPeers);
                 };
             }
 
@@ -179,11 +193,35 @@ public abstract class AbstractMembershipState implements MembershipState {
         abstract MembershipState build();
     }
 
+
+    @Override
+    public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
+        if (request.getTerm() > currentTerm()) {
+            String message = format("%s received pre-vote with term (%s >= %s) from %s",
+                                    me(), request.getTerm(), currentTerm(), request.getCandidateId());
+            RequestVoteResponse vote = handleAsFollower(follower -> follower.requestPreVote(request), message);
+            logger.info(
+                    "{} in term {}: Request for vote received from {} for term {}. {} voted {} (handled as follower).",
+                    groupId(),
+                    currentTerm(),
+                    request.getCandidateId(),
+                    request.getTerm(),
+                    me(),
+                    vote != null && vote.getVoteGranted());
+            return vote;
+        }
+        logger.info("{} in term {}: Request for vote received from {} in term {}. {} voted rejected.",
+                    groupId(),
+                    currentTerm(),
+                    request.getCandidateId(),
+                    request.getTerm(),
+                    me());
+        return responseFactory().voteRejected(request.getRequestId(), false);
+    }
+
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
-        boolean isMember = member(request.getCandidateId());
-
-        if (isMember && request.getTerm() > currentTerm()) {
+        if (request.getTerm() > currentTerm()) {
             String message = format("%s received RequestVoteRequest with greater term (%s > %s) from %s",
                                     me(), request.getTerm(), currentTerm(), request.getCandidateId());
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestVote(request), message);
@@ -203,9 +241,8 @@ public abstract class AbstractMembershipState implements MembershipState {
                     request.getCandidateId(),
                     request.getTerm(),
                     me());
-        return requestVoteResponse(request.getRequestId(),
-                                   false,
-                                   !isMember && shouldGoAwayIfNotMember());
+        boolean isMember = member(request.getCandidateId());
+        return responseFactory().voteRejected(request.getRequestId(), !isMember && shouldGoAwayIfNotMember());
     }
 
     @Override
@@ -223,7 +260,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         String cause = format("%s in term %s: Received term (%s) is smaller or equal than mine. Rejecting the request.",
                               groupId(), currentTerm(), request.getTerm());
         logger.trace(cause);
-        return installSnapshotFailure(request.getRequestId(), cause);
+        return responseFactory().installSnapshotFailure(request.getRequestId(), cause);
     }
 
     protected boolean member(String candidateId) {
@@ -240,10 +277,6 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     protected void markVotedFor(String candidateId) {
         raftGroup.localElectionStore().markVotedFor(candidateId);
-    }
-
-    protected long lastAppliedIndex() {
-        return raftGroup.logEntryProcessor().lastAppliedIndex();
     }
 
     protected TermIndex lastLog() {
@@ -278,14 +311,6 @@ public abstract class AbstractMembershipState implements MembershipState {
         return snapshotManager;
     }
 
-    protected long lastAppliedEventSequence() {
-        return raftGroup.lastAppliedEventSequence();
-    }
-
-    protected long lastAppliedSnapshotSequence() {
-        return raftGroup.lastAppliedSnapshotSequence();
-    }
-
     protected void changeStateTo(MembershipState newState, String cause) {
         transitionHandler.updateState(this, newState, cause);
     }
@@ -310,76 +335,31 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup().raftConfiguration().groupId();
     }
 
-    protected Stream<Node> nodesStream() {
-        return currentConfiguration.groupMembers().stream();
-    }
-
-    protected Stream<String> otherNodesId() {
-        return nodesStream().map(Node::getNodeId).filter(id -> !id.equals(me()));
-    }
 
     protected Stream<RaftPeer> otherPeersStream() {
-        return otherNodesId().map(raftGroup::peer);
+        return stream(new OtherPeers(raftGroup, currentConfiguration).spliterator(), false);
     }
 
-    protected Election newElection() {
-        return electionFactory.get();
+    protected Election newElection(boolean disruptAllowed) {
+        return electionFactory.apply(disruptAllowed);
+    }
+
+    protected Election newPreVote() {
+        return preElectionFactory.get();
     }
 
     protected long otherNodesCount() {
-        return otherNodesId().count();
+        return currentConfiguration.groupMembers().stream()
+                                   .filter(node -> !node.getNodeId().equals(me()))
+                                   .count();
     }
 
     protected int random(int min, int max) {
         return randomValueSupplier.apply(min, max);
     }
 
-    protected AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause) {
-        AppendEntryFailure failure = AppendEntryFailure.newBuilder()
-                                                       .setCause(failureCause)
-                                                       .setLastAppliedIndex(lastAppliedIndex())
-                                                       .setLastAppliedEventSequence(lastAppliedEventSequence())
-                                                       .setLastAppliedSnapshotSequence(lastAppliedSnapshotSequence())
-                                                       .build();
-        return AppendEntriesResponse.newBuilder()
-                                    .setResponseHeader(responseHeader(requestId))
-                                    .setGroupId(groupId())
-                                    .setTerm(currentTerm())
-                                    .setFailure(failure)
-                                    .build();
-    }
-
-    protected InstallSnapshotResponse installSnapshotFailure(String requestId, String cause) {
-        return InstallSnapshotResponse.newBuilder()
-                                      .setResponseHeader(responseHeader(requestId))
-                                      .setGroupId(groupId())
-                                      .setTerm(currentTerm())
-                                      .setFailure(InstallSnapshotFailure.newBuilder()
-                                                                        .setCause(cause)
-                                                                        .build())
-                                      .build();
-    }
-
-    protected RequestVoteResponse requestVoteResponse(String requestId, boolean voteGranted) {
-        return requestVoteResponse(requestId, voteGranted, false);
-    }
-
-    protected RequestVoteResponse requestVoteResponse(String requestId, boolean voteGranted, boolean goAway) {
-        return RequestVoteResponse.newBuilder()
-                                  .setResponseHeader(responseHeader(requestId))
-                                  .setGroupId(groupId())
-                                  .setVoteGranted(voteGranted)
-                                  .setTerm(currentTerm())
-                                  .setGoAway(goAway)
-                                  .build();
-    }
-
-
-    protected ResponseHeader responseHeader(String requestId) {
-        return ResponseHeader.newBuilder()
-                             .setRequestId(requestId)
-                             .setResponseId(UUID.randomUUID().toString())
-                             .setNodeId(me()).build();
+    protected RaftResponseFactory responseFactory() {
+        return raftResponseFactory;
     }
 
     public CurrentConfiguration currentConfiguration() {
@@ -400,6 +380,4 @@ public abstract class AbstractMembershipState implements MembershipState {
     public List<Node> currentGroupMembers() {
         return currentConfiguration.groupMembers();
     }
-
-
 }

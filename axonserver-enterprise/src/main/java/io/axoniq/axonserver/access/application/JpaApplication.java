@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -121,8 +122,18 @@ public class JpaApplication {
             applicationContext = new ApplicationContext(context, Collections.singletonList(new ApplicationContextRole(role)));
             addContext(applicationContext);
         } else {
-            applicationContext.addRole( new ApplicationContextRole(role));
+            applicationContext.addRole(new ApplicationContextRole(role));
         }
+    }
 
+    /**
+     * Creates a copy (non-persisted) of the application with only the roles granted to the wildcard context ('*').
+     *
+     * @return copy of application with only wildcard roles
+     */
+    public JpaApplication newContextPermissions() {
+        List<ApplicationContext> newContextPermissions = contexts.stream().filter(c -> c.getContext().equals("*"))
+                                                                 .collect(Collectors.toList());
+        return new JpaApplication(name, description, tokenPrefix, hashedToken, newContextPermissions);
     }
 }

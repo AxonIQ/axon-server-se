@@ -71,23 +71,23 @@ public class ApplicationController {
         return hasher.hash(clearText);
     }
 
+    @Transactional
     public void clearApplications() {
         applicationRepository.deleteAll();
-    }
-
-    public List<JpaApplication> getApplicationsForContext(String context) {
-        return applicationRepository.findAllByContextsContext(context);
-    }
-
-    public void deleteByContext(String context) {
-        synchronized (applicationRepository) {
-            applicationRepository.deleteAllByContextsContext(context);
-            applicationRepository.flush();
-        }
     }
 
     public static String tokenPrefix(String token) {
         if( token == null) return null;
         return token.substring(0, Math.min(token.length(), ApplicationController.PREFIX_LENGTH));
+    }
+
+    /**
+     * Removes all roles for {@code context} from all applications.
+     *
+     * @param context the context to remove
+     */
+    @Transactional
+    public void removeRolesForContext(String context) {
+        applicationRepository.findAllByContextsContext(context).forEach(app -> app.removeContext(context));
     }
 }

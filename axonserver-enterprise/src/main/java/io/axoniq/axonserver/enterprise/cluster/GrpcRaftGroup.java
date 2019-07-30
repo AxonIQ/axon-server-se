@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.LogEntryProcessor;
+import io.axoniq.axonserver.cluster.NewConfigurationConsumer;
 import io.axoniq.axonserver.cluster.RaftConfiguration;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
@@ -20,6 +21,7 @@ import io.axoniq.axonserver.cluster.replication.file.IndexManager;
 import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
+import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManager;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
@@ -52,7 +54,8 @@ public class GrpcRaftGroup implements RaftGroup {
                          Function<String, List<SnapshotDataStore>> snapshotDataProvidersFactory,
                          LocalEventStore localEventStore,
                          GrpcRaftClientFactory clientFactory,
-                         MessagingPlatformConfiguration messagingPlatformConfiguration) {
+                         MessagingPlatformConfiguration messagingPlatformConfiguration,
+                         NewConfigurationConsumer newConfigurationConsumer) {
         this.clientFactory = clientFactory;
         context = groupId;
         this.localEventStore = localEventStore;
@@ -161,7 +164,11 @@ public class GrpcRaftGroup implements RaftGroup {
         };
 
         List<SnapshotDataStore> dataProviders = snapshotDataProvidersFactory.apply(groupId);
-        localNode = new RaftNode(localNodeId, this, new AxonServerSnapshotManager(dataProviders));
+        localNode = new RaftNode(localNodeId,
+                                 this,
+                                 new DefaultScheduler("raftNode-" + groupId),
+                                 new AxonServerSnapshotManager(dataProviders),
+                                 newConfigurationConsumer);
 
     }
 
@@ -186,19 +193,8 @@ public class GrpcRaftGroup implements RaftGroup {
     }
 
     @Override
-    public RaftPeer peer(String nodeId) {
-        List<Node> nodes = raftConfiguration.groupMembers();
-        for (Node node : nodes) {
-            if (node.getNodeId().equals(nodeId)){
-                return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
-            }
-        }
-        throw new IllegalArgumentException(nodeId + " is not member of this group");
-    }
-
-    @Override
     public RaftPeer peer(Node node) {
-        return new GrpcRaftPeer(node, clientFactory, raftConfiguration.maxElectionTimeout());
+        return new GrpcRaftPeer(context, node, clientFactory, raftConfiguration.maxElectionTimeout());
     }
 
     @Override

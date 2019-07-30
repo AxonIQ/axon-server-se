@@ -5,6 +5,7 @@ import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 
@@ -29,7 +30,7 @@ public interface RaftGroupService {
 
     CompletableFuture<Void> getStatus(Consumer<Context> contextConsumer);
 
-    CompletableFuture<Void> initContext(String context, List<Node> nodes);
+    CompletableFuture<ContextConfiguration> initContext(String context, List<Node> nodes);
 
     /**
      * Deletes a node from a raft group. Returns configuration of the group as defined in the group after completion.
@@ -44,6 +45,12 @@ public interface RaftGroupService {
     }
 
     CompletableFuture<Void> updateApplication(ContextApplication application);
+
+    CompletableFuture<Void> deleteApplication(ContextApplication application);
+
+    CompletableFuture<Void> updateUser(ContextUser user);
+
+    CompletableFuture<Void> deleteUser(ContextUser user);
 
     CompletableFuture<Void> updateLoadBalancingStrategy(String context, LoadBalanceStrategy loadBalancingStrategy);
 
@@ -68,4 +75,11 @@ public interface RaftGroupService {
      * @return the completable future containing the current context configuration
      */
     CompletableFuture<ContextConfiguration> configuration(String context);
+
+    /**
+     * Initiates leadership transfer for the specified {@code context}.
+     * @param context the name of the context
+     * @return completable future that completes when follower is up-to-date and signalled to start election
+     */
+    CompletableFuture<Void> transferLeadership(String context);
 }

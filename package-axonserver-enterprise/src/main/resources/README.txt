@@ -1,4 +1,4 @@
-This is the Axon Server Enterprise Edition, version 4.1.1
+This is the Axon Server Enterprise Edition, version ${project.version}
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
@@ -28,31 +28,83 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.2
+--------------------------
+
+- Delete leader from group is now possible.
+- Removing a context from a node, deletes all data (including event data).
+- Deleting a context removes all data (including event data).
+
+Changes in Axon Server 4.1.9
+----------------------------
+
+- Fix for situation where election takes too long to complete causes 2 leaders
+- Wait for leader when event store requests arrive at Axon Server during leader election. New configuration property
+  axoniq.axonserver.replication.wait-for-leader-timeout to change this wait time. Default is 2*max election timeout.
+
+Changes in Axon Server 4.1.8
+----------------------------
+
+- Fix for unexpected aggregate sequence exception.
+- Fix for wrong version number in dashboard.
+
+Changes in Axon Server 4.1.7
+----------------------------
+
+- Fix for timing issue when new events arrived at new leader before leader was fully initialized
+- Fix for configuration not always applied on all nodes
+- Fix for OutOfDirectMemory issue when installing snapshot
+
+Changes in Axon Server 4.1.6
+----------------------------
+
+- Fix for unexpected leader change on adding 3rd node to context
+- Fix for replication entry log compaction
+
+Changes in Axon Server 4.1.5
+----------------------------
+
+- Fix for mismatch in connected applications after rebalance
+- Fixes in access control check on REST endpoints for events/snapshot endpoints and renew application token
+- Improved error handling in replication
+- Fixed occasional timing issue in create context
+- Improved recovery options after full data loss on node
+- Fix for authorization path mapping
+- Fix for subscription query memory leak
+- Improvements in error reporting in case of disconnected applications
+- Improvements in detection of insufficient disk space
+
+Changes in Axon Server 4.1.4
+----------------------------
+
+- Fix on RAFT Leader detection
+- Avoided multiple concurrent creation of the same context
+- Fix for appendEvent with no events in stream
+- Stop log cleaning task when context is deleted or node is removed from context
+- Fix for NullPointerException on lost connection
+
+
+Changes in Axon Server 4.1.3
+----------------------------
+
+- Improved recovery of cluster after disk failure
+- Fix for updating configuration during install snapshot
+- CLI commands now can be performed locally without token.
+
 Changes in Axon Server 4.1.2
 -------------------------------
 
 - Improvements in replication to nodes that have been down for a long time
-
 - Tracking event processor auto-loadbalancing fixes
-
 - Status displayed for tracking event processors fixed when segments are running in different applications
-
 - Tracking event processors are updated in separate thread
-
 - Logging does not show application data anymore
-
 - Fixed Axon Dashboard list of cluster nodes missing hostname and ports
-
 - Changed some gRPC error codes returned to avoid clients to disconnect
-
 - CLI commands init-cluster/register-node/add-node-to-context are now idempotent
-
 - Register node returns faster (no longer waits for synchronization to new node)
-
 - Reduced risk of re-election if a node restarts
-
 - Fixed occasional NullPointerException when client connects to a newly registered Axon Server node
-
 - Fixed incorrect leader returned in context API and multiple leaders warning in log
 
 
@@ -60,19 +112,12 @@ Changes in Axon Server 4.1.1
 ----------------------------
 
 - Default controldb connection settings changed
-
 - gRPC version update
-
 - Register node no longer needs to be sent to leader of _admin context
-
 - Merge tracking event processor not always available when it should
-
 - Logging changes
-
 - Fix for queries timeout
-
 - Fix for replication with large messages
-
 - Added axonserver-cli.jar to release package (axoniq-cli.jar is deprecated)
 
 
@@ -80,17 +125,12 @@ Changes in Axon Server 4.1
 --------------------------
 
 - Support for Split/Merge of tracking event processors through user interface
-
 - Introduction of _admin context for all cluster management operations
-
 - Updated process for getting started (see above)
-
 - Replication of data and configuration between nodes in the cluster is now based on transaction log replication.
   You will see new files created on AxonServer nodes in the log directory (axoniq.axonserver.replication.log-storage-folder).
   Do not delete those files manually!
-
 - Default setting for health endpoint (/actuator/heath) has changed to show more details.
-
 - Change in TLS configuration for communication between AxonServer nodes (new property axoniq.axonserver.ssl.internal-trust-manager-file)
 
 
@@ -149,10 +189,7 @@ full list, see the Reference Guide. https://docs.axoniq.io/reference-guide/axon-
   Aggregates' state! Conversely, if you want a quick way to start from scratch,
   here's where to clean.
 * axoniq.axonserver.snapshot.storage
-  This setting determines where snapshot messages are stored, so make sure there
-  is enough diskspace here. Losing this data means losing your Events-sourced
-  Aggregates' state! Conversely, if you want a quick way to start from scratch,
-  here's where to clean.
+  This setting determines where aggregate snapshots are stored.
 * axoniq.axonserver.controldb-path
   This setting determines where Axon Server stores its configuration information.
   Losing this data will affect Axon Server's ability to determine which

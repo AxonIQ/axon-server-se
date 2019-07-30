@@ -1,14 +1,11 @@
 package io.axoniq.axonserver.cluster.configuration.wait.strategy;
 
-import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.configuration.WaitStrategy;
-import io.axoniq.axonserver.cluster.exception.ReplicationTimeoutException;
+import io.axoniq.axonserver.cluster.exception.ReplicationInterruptedException;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -22,24 +19,23 @@ public class UpdateRound implements WaitStrategy {
 
     private final Supplier<Long> lastIndex;
 
-    private final Function<Consumer<Long>, Registration> registerMatchIndexListener;
+    private final Flux<Long> matchIndexUpdates;
 
     /**
      * Creates an instance with the specified last log index supplier and function to monitor matchIndex updates.
      *
-     * @param lastIndex the supplier of the current last log index
-     * @param registerMatchIndexListener  registration function to monitor matchIndex updates for the node
+     * @param lastIndex         the supplier of the current last log index
+     * @param matchIndexUpdates flux of the updates of the match index for the new node
      */
-    public UpdateRound(Supplier<Long> lastIndex,
-                       Function<Consumer<Long>, Registration> registerMatchIndexListener) {
+    public UpdateRound(Supplier<Long> lastIndex, Flux<Long> matchIndexUpdates) {
         this.lastIndex = lastIndex;
-        this.registerMatchIndexListener = registerMatchIndexListener;
+        this.matchIndexUpdates = matchIndexUpdates;
     }
 
     /**
      * Returns a completable future that completes successfully when the server reached at least the last log index
      * provided at the beginning of the wait. If no progress is detected for a time exceeding 5 seconds,
-     * the completable future completes exceptionally, with a {@link ReplicationTimeoutException}
+     * the completable future completes exceptionally, with a {@link ReplicationInterruptedException}
      *
      * @return the completable future
      */
@@ -47,20 +43,26 @@ public class UpdateRound implements WaitStrategy {
     public CompletableFuture<Void> await() {
         long stopRoundAt = lastIndex.get();
         CompletableFuture<Void> roundCompleted = new CompletableFuture<>();
-        Flux<Long> flux = Flux.create(emitter -> {
-            Registration registration = registerMatchIndexListener.apply(emitter::next);
-            emitter.onDispose(registration::cancel);
-        });
-        Disposable disposable = flux
-                .subscribe(matchIndex -> {
-                    if (matchIndex >= stopRoundAt) {
-                        roundCompleted.complete(null);
-                    }
-                }, error -> roundCompleted.completeExceptionally(
-                        new ReplicationTimeoutException(
-                                "The first replication is no longer active. It's likely caused by a leader change.",
-                                error)));
+
+        Disposable disposable = matchIndexUpdates
+                .subscribe(matchIndex -> this.onUpdate(matchIndex, stopRoundAt, roundCompleted),
+                           error -> this.onError(roundCompleted),
+                           () -> this.onError(roundCompleted));
+
+
         roundCompleted.thenRun(disposable::dispose);
         return roundCompleted;
+    }
+
+    private void onUpdate(long matchIndex, long stopRoundAt, CompletableFuture<Void> roundCompleted) {
+        if (matchIndex >= stopRoundAt) {
+            roundCompleted.complete(null);
+        }
+    }
+
+    private void onError(CompletableFuture<Void> roundCompleted) {
+        roundCompleted.completeExceptionally(
+                new ReplicationInterruptedException(
+                        "The first replication is no longer active. It's likely caused by a leader change."));
     }
 }

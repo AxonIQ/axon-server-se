@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
+import io.axoniq.axonserver.grpc.GrpcBufferingInterceptor;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.ContextInterceptor;
@@ -123,6 +124,7 @@ public class MessagingClusterServer implements SmartLifecycle{
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);
             serverBuilder.keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
         }
+        serverBuilder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
 
         serverBuilder.executor(Executors.newCachedThreadPool());
 

@@ -8,6 +8,7 @@ import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +39,7 @@ public class ClusterTransactionManagerFactory implements StorageTransactionManag
     }
 
     @EventListener
+    @Order(1)
     public void on(ClusterEvents.BecomeLeader becomeMaster) {
         if( transactionManagersPerContext.containsKey(becomeMaster.getContext())) {
             transactionManagersPerContext.get(becomeMaster.getContext()).forEach(tm -> tm.on(becomeMaster));

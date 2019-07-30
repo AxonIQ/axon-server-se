@@ -28,9 +28,10 @@ public class DefaultElection implements Election {
     private final ElectionStore electionStore;
     private final Iterable<RaftPeer> otherNodes;
     private final VoteStrategy voteStrategy;
+    private final boolean disruptLeader;
 
     public DefaultElection(RaftGroup raftGroup, BiConsumer<Long, String> termUpdateHandler,
-                           Iterable<RaftPeer> otherNodes) {
+                           Iterable<RaftPeer> otherNodes, boolean disruptLeader) {
         this(RequestVoteRequest.newBuilder()
                                .setGroupId(raftGroup.raftConfiguration().groupId())
                                .setCandidateId(raftGroup.localNode().nodeId())
@@ -40,29 +41,31 @@ public class DefaultElection implements Election {
                                .build(),
              termUpdateHandler,
              raftGroup.localElectionStore(),
-             otherNodes);
+             otherNodes, disruptLeader);
     }
 
     public DefaultElection(RequestVoteRequest requestPrototype,
                            BiConsumer<Long, String> termUpdateHandler,
                            ElectionStore electionStore,
-                           Iterable<RaftPeer> otherNodes) {
+                           Iterable<RaftPeer> otherNodes,
+                           boolean disruptLeader) {
         this(requestPrototype,
              termUpdateHandler,
              electionStore,
              otherNodes,
-             new MajorityStrategy(() -> (int)(stream(otherNodes.spliterator(),false).count() + 1)));
+             new MajorityStrategy(() -> (int) (stream(otherNodes.spliterator(), false).count() + 1)), disruptLeader);
     }
 
     public DefaultElection(RequestVoteRequest requestPrototype,
                            BiConsumer<Long, String> termUpdateHandler,
                            ElectionStore electionStore,
-                           Iterable<RaftPeer> otherNodes, VoteStrategy voteStrategy) {
+                           Iterable<RaftPeer> otherNodes, VoteStrategy voteStrategy, boolean disruptLeader) {
         this.requestPrototype = requestPrototype;
         this.termUpdateHandler = termUpdateHandler;
         this.electionStore = electionStore;
         this.otherNodes = otherNodes;
         this.voteStrategy = voteStrategy;
+        this.disruptLeader = disruptLeader;
     }
 
     public Mono<Result> result(){
@@ -81,7 +84,7 @@ public class DefaultElection implements Election {
         node.requestVote(request).thenAccept(response -> this.onVoteResponse(response, sink));
     }
 
-    private synchronized void onVoteResponse(RequestVoteResponse response, MonoSink<Result> sink){
+    private void onVoteResponse(RequestVoteResponse response, MonoSink<Result> sink){
         String voter = response.getResponseHeader().getNodeId();
         logger.trace("{} - currentTerm {} VoteResponse {}", voter, currentTerm(), response);
         if (response.getTerm() > currentTerm()) {
@@ -101,7 +104,9 @@ public class DefaultElection implements Election {
     }
 
     private RequestVoteRequest request(){
-        return RequestVoteRequest.newBuilder(requestPrototype).setRequestId(UUID.randomUUID().toString()).build();
+        return RequestVoteRequest.newBuilder(requestPrototype)
+                                 .setDisruptAllowed(disruptLeader)
+                                 .setRequestId(UUID.randomUUID().toString()).build();
     }
 
     private String me(){

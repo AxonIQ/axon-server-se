@@ -9,10 +9,12 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.enterprise.config.FlowControl;
+import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ChannelCloser;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -53,6 +55,7 @@ public class ClusterController implements SmartLifecycle {
     private final Logger logger = LoggerFactory.getLogger(ClusterController.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final ClusterConfiguration clusterConfiguration;
+    private final TagsConfiguration tagsConfiguration;
     private final EntityManager entityManager;
     private final StubFactory stubFactory;
     private final NodeSelectionStrategy nodeSelectionStrategy;
@@ -65,10 +68,12 @@ public class ClusterController implements SmartLifecycle {
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String,ClusterNode> nodeMap = new ConcurrentHashMap<>();
+    private final ChannelCloser channelCloser;
     private volatile boolean running;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              ClusterConfiguration clusterConfiguration,
+                             TagsConfiguration tagsConfiguration,
                              EntityManager entityManager,
                              StubFactory stubFactory,
                              NodeSelectionStrategy nodeSelectionStrategy,
@@ -76,10 +81,11 @@ public class ClusterController implements SmartLifecycle {
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
                              ApplicationEventPublisher applicationEventPublisher,
-                             FeatureChecker limits
-    ) {
+                             FeatureChecker limits,
+                             ChannelCloser channelCloser) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.clusterConfiguration = clusterConfiguration;
+        this.tagsConfiguration = tagsConfiguration;
         this.entityManager = entityManager;
         this.stubFactory = stubFactory;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
@@ -88,6 +94,7 @@ public class ClusterController implements SmartLifecycle {
         this.commandDispatcher = commandDispatcher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.limits = limits;
+        this.channelCloser = channelCloser;
     }
 
 
@@ -219,7 +226,8 @@ public class ClusterController implements SmartLifecycle {
                 RemoteConnection remoteConnection = new RemoteConnection(this, clusterNode,
                                                                          stubFactory,
                                                                          queryDispatcher,
-                                                                         commandDispatcher);
+                                                                         commandDispatcher,
+                                                                         channelCloser);
                 remoteConnections.put(clusterNode.getName(), remoteConnection);
 
                 if (connect) {
@@ -233,8 +241,17 @@ public class ClusterController implements SmartLifecycle {
         return remoteConnections.values();
     }
 
+    /**
+     * Received connection from another Axon Server node. Update configuration if this node is not known.
+     * Needs to be synchronized as it can be called in parallel with same node information, which would
+     * cause a unique key violation.
+     * Only accepts connections if the other node is member of a context of this node or it is an admin node.
+     * @param nodeInfo the node information of the node connecting to this node
+     * @param admin flag indicating if the remote node is admin node
+     * @return true if connection is accepted
+     */
     @Transactional
-    public boolean connect(NodeInfo nodeInfo, boolean admin) {
+    public synchronized boolean connect(NodeInfo nodeInfo, boolean admin) {
         String nodeName = nodeInfo.getNodeName();
         ClusterNode node = getNode(nodeName);
         if (node == null) {
@@ -258,6 +275,7 @@ public class ClusterController implements SmartLifecycle {
             }
         }
 
+        applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeConnected(nodeInfo));
         return true;
     }
 
@@ -338,7 +356,9 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode getMe() {
-        return entityManager.find(ClusterNode.class, messagingPlatformConfiguration.getName());
+        ClusterNode clusterNode = entityManager.find(ClusterNode.class, messagingPlatformConfiguration.getName());
+        clusterNode.setTags(tagsConfiguration.getTags());
+        return clusterNode;
     }
 
 

@@ -1,15 +1,18 @@
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
+import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.licensing.Feature;
-import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,6 +31,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
  * @author Marc Gathier
  */
@@ -39,16 +44,20 @@ public class ContextRestController {
     private final RaftConfigServiceFactory raftServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
+    private final ClusterTopology clusterTopology;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
+    private final Logger logger = LoggerFactory.getLogger(ContextRestController.class);
 
     public ContextRestController(RaftConfigServiceFactory raftServiceFactory,
                                  RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
+                                 ClusterTopology clusterTopology,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
         this.contextController = contextController;
+        this.clusterTopology = clusterTopology;
         this.limits = limits;
     }
 
@@ -67,8 +76,31 @@ public class ContextRestController {
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());
     }
 
+    /**
+     * Get the names of the context that should be displayed in the Axon Dashboard. Names depend on whether the
+     * connected node is an
+     * admin node (all known contexts) or not (context defined on this node).
+     *
+     * @param includeAdmin include admin context in result (default false)
+     * @return names of contexts
+     */
+    @GetMapping(path = "public/visiblecontexts")
+    public Iterable<String> visibleContexts(
+            @RequestParam(name = "includeAdmin", required = false, defaultValue = "false") boolean includeAdmin) {
+        if (clusterTopology.isAdminNode()) {
+            return contextController.getContexts()
+                                    .map(context -> context.getName())
+                                    .filter(name -> includeAdmin || !isAdmin(name))
+                                    .sorted()
+                                    .collect(Collectors.toList());
+        } else {
+            return clusterTopology.getMyStorageContextNames();
+        }
+    }
+
     @DeleteMapping(path = "context/{name}")
     public ResponseEntity<RestResponse> deleteContext(@PathVariable("name") String name) {
+        logger.info("Delete request received for context: {}", name);
         try {
             if (name.startsWith("_")) {
                 return new RestResponse(false, String.format(
@@ -88,6 +120,7 @@ public class ContextRestController {
     @PostMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> updateNodeRoles(@PathVariable("context") String name,
                                                         @PathVariable("node") String node) {
+        logger.info("Add node request received for node: {} - and context: {}", node, name);
         try {
             raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
             return ResponseEntity.accepted()
@@ -101,6 +134,7 @@ public class ContextRestController {
     @DeleteMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> deleteNodeFromContext(@PathVariable("context") String name,
                                                               @PathVariable("node") String node) {
+        logger.info("Delete node request received for node: {} - and context: {}", node, name);
         try {
             raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
             return ResponseEntity.accepted()
@@ -113,6 +147,7 @@ public class ContextRestController {
 
     @PostMapping(path = "context")
     public ResponseEntity<RestResponse> addContext(@RequestBody @Valid ContextJSON contextJson) {
+        logger.info("Add context request received for context: {}", contextJson.getContext());
         if (!Feature.MULTI_CONTEXT.enabled(limits)) {
             return new RestResponse(false, "License does not allow creating contexts")
                     .asResponseEntity(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED);

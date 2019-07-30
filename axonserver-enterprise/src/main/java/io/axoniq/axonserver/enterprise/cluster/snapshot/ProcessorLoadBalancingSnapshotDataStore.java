@@ -10,19 +10,20 @@ import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import reactor.core.publisher.Flux;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 import static io.axoniq.axonserver.grpc.ProcessorLBStrategyConverter.createJpaProcessorLoadBalancing;
 
 
 /**
- * Snapshot data store for {@link ProcessorLoadBalancing} data.
+ * Snapshot data store for {@link ProcessorLoadBalancing} data. This information is only replicated between admin nodes.
  *
  * @author Milan Savic
  * @since 4.1
  */
 public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStore {
 
-    private final String context;
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
+    private final boolean adminContext;
 
     /**
      * Creates Processor Load Balancing Snapshot Data Store for streaming/applying processor load balancing data.
@@ -32,8 +33,8 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
      */
     public ProcessorLoadBalancingSnapshotDataStore(
             String context, ProcessorLoadBalancingRepository processorLoadBalancingRepository) {
-        this.context = context;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
+        this.adminContext = isAdmin(context);
     }
 
     @Override
@@ -43,14 +44,14 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
 
     @Override
     public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
-        return Flux.fromIterable(processorLoadBalancingRepository.findByContext(context))
+        return Flux.fromIterable(processorLoadBalancingRepository.findAll())
                    .map(ProcessorLBStrategyConverter::createProcessorLBStrategy)
                    .map(this::toSerializedObject);
     }
 
     @Override
     public boolean canApplySnapshotData(String type) {
-        return ProcessorLoadBalancing.class.getName().equals(type);
+        return adminContext && ProcessorLoadBalancing.class.getName().equals(type);
     }
 
     @Override
@@ -66,7 +67,9 @@ public class ProcessorLoadBalancingSnapshotDataStore implements SnapshotDataStor
 
     @Override
     public void clear() {
-        processorLoadBalancingRepository.deleteAllByProcessorContext(context);
+        if (adminContext) {
+            processorLoadBalancingRepository.deleteAll();
+        }
     }
 
     private SerializedObject toSerializedObject(ProcessorLBStrategy processorLBStrategy) {

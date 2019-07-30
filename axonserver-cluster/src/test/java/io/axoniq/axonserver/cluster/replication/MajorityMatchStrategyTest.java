@@ -72,7 +72,7 @@ public class MajorityMatchStrategyTest {
         private long matchIndex;
 
         public FakeReplicationPeer(RaftGroup raftGroup) {
-            super(null, i -> {}, clock, raftGroup , null,
+            super(null, null, clock, raftGroup, null,
                   (term,reason) -> {}, () -> 1L);
         }
 

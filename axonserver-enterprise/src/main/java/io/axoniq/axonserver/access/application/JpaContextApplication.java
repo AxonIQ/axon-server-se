@@ -2,6 +2,7 @@ package io.axoniq.axonserver.access.application;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -79,6 +80,10 @@ public class JpaContextApplication {
 
     public Set<String> getRoles() {
         return roles;
+    }
+
+    public Set<String> getQualifiedRoles() {
+        return roles.stream().map(role -> role + '@' + context).collect(Collectors.toSet());
     }
 
     public void setRoles(Set<String> roles) {

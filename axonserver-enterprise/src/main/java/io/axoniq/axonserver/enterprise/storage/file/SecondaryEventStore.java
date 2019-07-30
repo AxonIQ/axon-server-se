@@ -2,9 +2,8 @@ package io.axoniq.axonserver.enterprise.storage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.EventInformation;
+import io.axoniq.axonserver.localstorage.file.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.ByteBufferEventSource;
 import io.axoniq.axonserver.localstorage.file.EventByteBufferIterator;
 import io.axoniq.axonserver.localstorage.file.EventSource;
@@ -13,7 +12,6 @@ import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.PositionInfo;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
 import io.axoniq.axonserver.localstorage.file.StorageProperties;
-import io.axoniq.axonserver.localstorage.transaction.PreparedTransaction;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
@@ -25,7 +23,6 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
@@ -67,14 +64,14 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
         Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
         while( iterator.hasNext()) {
             EventInformation event = iterator.next();
-            if( isDomainEvent(event.getEvent())) {
+            if( event.isDomainEvent()) {
                 aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
                                                    k -> new ConcurrentSkipListSet<>())
                                   .add(new PositionInfo(event.getPosition(),
                                                         event.getEvent().getAggregateSequenceNumber()));
             }
         }
-        indexManager.createIndex(segment, aggregatePositions, true);
+        indexManager.createIndex(segment, aggregatePositions);
 
     }
 
@@ -127,30 +124,30 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void close() {
+    public void close(boolean deleteData) {
         lruMap.forEach((s, source) -> {
             ByteBufferEventSource eventSource = source.get();
             if( eventSource != null) {
                 eventSource.clean(0);
             }
         });
+        lruMap.clear();
+        if (deleteData) {
+            segments.forEach(this::removeSegment);
+            segments.clear();
+        }
+
         indexManager.cleanup();
     }
 
     @Override
-    public PreparedTransaction prepareTransaction( List<SerializedEvent> eventList) {
-        throw new UnsupportedOperationException();
-    }
-
-
-    @Override
     public void rollback( long token) {
-        for( long segment: getSegments()) {
-            if( segment > token) {
-                removeSegment(segment);
+        segments.forEach(s -> {
+            if (s > token) {
+                removeSegment(s);
             }
-        }
-
+        });
+        segments.removeIf(s -> s > token);
         if( segments.isEmpty() && next != null) {
             next.rollback(token);
         }
@@ -162,22 +159,18 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
     }
 
     private void removeSegment(long segment) {
-        if( segments.remove(segment)) {
-            WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);
-            if (segmentRef != null) {
-                ByteBufferEventSource eventSource = segmentRef.get();
-                if (eventSource != null) {
-                    eventSource.clean(0);
-                }
-            }
-
-            indexManager.remove(segment);
-            if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                ! FileUtils.delete(storageProperties.index(context, segment)) ||
-                ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
-                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
+        WeakReference<ByteBufferEventSource> segmentRef = lruMap.remove(segment);
+        if (segmentRef != null) {
+            ByteBufferEventSource eventSource = segmentRef.get();
+            if (eventSource != null) {
+                eventSource.clean(0);
             }
         }
+
+        indexManager.remove(segment);
+        FileUtils.delete(storageProperties.dataFile(context, segment));
+        FileUtils.delete(storageProperties.index(context, segment));
+        FileUtils.delete(storageProperties.bloomFilter(context, segment));
     }
 
 

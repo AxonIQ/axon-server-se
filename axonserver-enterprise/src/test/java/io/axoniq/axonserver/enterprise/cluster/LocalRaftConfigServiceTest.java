@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -17,6 +18,7 @@ import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
@@ -31,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
@@ -154,11 +157,24 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public CompletableFuture<Void> initContext(String context, List<Node> nodes) {
+        public CompletableFuture<ContextConfiguration> initContext(String context, List<Node> nodes) {
             GroupDB groupDB = new GroupDB();
             nodes.forEach(n -> groupDB.nodes.put(n.getNodeId(), n.getNodeName()));
             groupDBs.put(context, groupDB);
-            return CompletableFuture.completedFuture(null);
+            ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
+                                                                            .setContext(context)
+                                                                            .addAllNodes(nodes.stream()
+                                                                                              .map(n -> NodeInfoWithLabel
+                                                                                                      .newBuilder()
+                                                                                                      .setLabel(n.getNodeName())
+                                                                                                      .setNode(NodeInfo.newBuilder()
+                                                                                                                       .setNodeName(
+                                                                                                                               n.getNodeName()))
+                                                                                                      .build())
+                                                                                              .collect(Collectors
+                                                                                                               .toList()))
+                                                                            .build();
+            return CompletableFuture.completedFuture(contextConfiguration);
         }
 
         @Override
@@ -174,6 +190,21 @@ public class LocalRaftConfigServiceTest {
 
         @Override
         public CompletableFuture<Void> updateApplication(ContextApplication application) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> deleteApplication(ContextApplication application) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> updateUser(ContextUser user) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> deleteUser(ContextUser user) {
             return null;
         }
 
@@ -206,6 +237,11 @@ public class LocalRaftConfigServiceTest {
             if( context.equals("_admin")) {
                 adminDB.applyEntry(name, toByteArray);
             }
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> transferLeadership(String context) {
             return CompletableFuture.completedFuture(null);
         }
     }
@@ -262,7 +298,13 @@ public class LocalRaftConfigServiceTest {
         });
         when(grpcRaftController.waitForLeader(any())).thenReturn(adminNode);
         when(adminNode.addNode(any())).thenReturn(CompletableFuture.completedFuture(null));
-        testSubject = new LocalRaftConfigService(grpcRaftController, contextcontroller, raftGroupServiceFactory, applicationController, messagingPlatformConfiguration);
+        UserController userController = mock(UserController.class);
+        testSubject = new LocalRaftConfigService(grpcRaftController,
+                                                 contextcontroller,
+                                                 raftGroupServiceFactory,
+                                                 applicationController,
+                                                 userController,
+                                                 messagingPlatformConfiguration);
     }
 
     @Test
@@ -315,12 +357,7 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void deleteNonExistingContext() {
-        try {
-            testSubject.deleteContext("demo");
-            fail("Expect exception");
-        } catch(MessagingPlatformException mpe) {
-            assertEquals(ErrorCode.CONTEXT_NOT_FOUND, mpe.getErrorCode());
-        }
+        testSubject.deleteContext("demo");
     }
 
     @Test
@@ -331,7 +368,7 @@ public class LocalRaftConfigServiceTest {
             testSubject.deleteNodeFromContext("_admin", "node1");
             fail("Expect exception");
         } catch(MessagingPlatformException mpe) {
-            assertEquals(ErrorCode.OTHER, mpe.getErrorCode());
+            assertEquals(ErrorCode.CANNOT_REMOVE_LAST_NODE, mpe.getErrorCode());
         }
     }
 
@@ -344,6 +381,12 @@ public class LocalRaftConfigServiceTest {
     @Test
     public void addContext() {
         testSubject.addContext("second", Arrays.asList("node1", "node2"));
+    }
+
+    @Test(expected = Throwable.class)
+    public void addContextTwice() {
+        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
+        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
     }
 
     @Test
