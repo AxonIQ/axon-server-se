@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.exception.StreamAlreadyClosedException;
 import io.axoniq.axonserver.cluster.replication.DefaultSnapshotContext;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
@@ -345,6 +346,9 @@ public class ReplicatorPeer {
                                 raftPeer.nodeId(),
                                 after-maxTime);
                 }
+            } catch (StreamAlreadyClosedException ex) {
+                // Remote peer has sent failure and connection is closed, wait before sending more
+                updateEntryIterator();
             } catch (RuntimeException ex) {
                 logger.warn("{} in term {}: Sending nextEntries to {} failed.",
                             groupId(),

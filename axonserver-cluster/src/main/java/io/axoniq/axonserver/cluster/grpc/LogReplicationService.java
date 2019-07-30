@@ -24,7 +24,6 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
         this.raftGroupManager = raftGroupManager;
     }
 
-
     @Override
     public StreamObserver<AppendEntriesRequest> appendEntries(StreamObserver<AppendEntriesResponse> responseObserver) {
         return new StreamObserver<AppendEntriesRequest>() {
@@ -42,24 +41,27 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
                         responseObserver.onNext(response);
                         if (response.hasFailure()) {
-                            responseObserver.onCompleted();
                             running = false;
                         }
                     }
-                } catch (RuntimeException ex) {
-                    logger.warn("Failed to process request {}", appendEntriesRequest.getPrevLogIndex() + 1, ex);
+                } catch( IllegalStateException ex) {
+                    logger.warn("{}: Failed to process AppendEntriesRequest {} - {}", appendEntriesRequest.getGroupId(), appendEntriesRequest.getPrevLogIndex() + 1, ex.getMessage());
+                    responseObserver.onError(ex);
+               } catch (RuntimeException ex) {
+                    logger.warn("{}: Failed to process AppendEntriesRequest {}", appendEntriesRequest.getGroupId(), appendEntriesRequest.getPrevLogIndex() + 1, ex);
                     responseObserver.onError(ex);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Failure on appendEntries on leader connection- {}", throwable.getMessage());
+                logger.warn("Failure on appendEntries on leader connection", throwable);
             }
 
             @Override
             public void onCompleted() {
                 logger.debug("Connection completed by peer");
+                responseObserver.onCompleted();
             }
         };
     }
@@ -87,24 +89,27 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         InstallSnapshotResponse response = target.installSnapshot(installSnapshotRequest);
                         responseObserver.onNext(response);
                         if (response.hasFailure()) {
-                            responseObserver.onCompleted();
                             running = false;
                         }
                     }
+                } catch( IllegalStateException ex) {
+                    logger.warn("{}: Failed to process InstallSnapshotRequest {} - {}", installSnapshotRequest.getGroupId(), installSnapshotRequest.getOffset(), ex.getMessage());
+                    responseObserver.onError(ex);
                 } catch (RuntimeException ex) {
-                    logger.warn("Failed to process InstallSnapshotRequest {}", installSnapshotRequest.getOffset(), ex);
+                    logger.warn("{}: Failed to process InstallSnapshotRequest {}", installSnapshotRequest.getGroupId(), installSnapshotRequest.getOffset(), ex);
                     responseObserver.onError(ex);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                logger.trace("Failure on appendEntries on leader connection- {}", throwable.getMessage());
+                logger.trace("Failure on appendEntries on leader connection", throwable);
             }
 
             @Override
             public void onCompleted() {
                 logger.debug("Connection completed by peer");
+                responseObserver.onCompleted();
             }
         };
     }

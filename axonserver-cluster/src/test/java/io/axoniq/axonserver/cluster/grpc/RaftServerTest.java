@@ -176,7 +176,7 @@ public class RaftServerTest {
 
         @Override
         public int maxElectionTimeout() {
-            return 3000;
+            return 1000;
         }
 
         @Override
