@@ -24,7 +24,6 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
         this.raftGroupManager = raftGroupManager;
     }
 
-
     @Override
     public StreamObserver<AppendEntriesRequest> appendEntries(StreamObserver<AppendEntriesResponse> responseObserver) {
         return new StreamObserver<AppendEntriesRequest>() {
@@ -42,7 +41,6 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         AppendEntriesResponse response = target.appendEntries(appendEntriesRequest);
                         responseObserver.onNext(response);
                         if (response.hasFailure()) {
-//                            responseObserver.onCompleted();
                             running = false;
                         }
                     }
@@ -57,7 +55,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Failure on appendEntries on leader connection - {}", throwable.getMessage());
+                logger.warn("Failure on appendEntries on leader connection", throwable);
             }
 
             @Override
@@ -91,7 +89,6 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
                         InstallSnapshotResponse response = target.installSnapshot(installSnapshotRequest);
                         responseObserver.onNext(response);
                         if (response.hasFailure()) {
-//                            responseObserver.onCompleted();
                             running = false;
                         }
                     }
@@ -106,7 +103,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
 
             @Override
             public void onError(Throwable throwable) {
-                logger.trace("Failure on appendEntries on leader connection- {}", throwable.getMessage());
+                logger.trace("Failure on appendEntries on leader connection", throwable);
             }
 
             @Override

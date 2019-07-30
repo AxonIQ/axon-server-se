@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.RaftPeer;
 import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
+import io.axoniq.axonserver.cluster.exception.StreamAlreadyClosedException;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -299,7 +300,6 @@ public class GrpcRaftPeer implements RaftPeer {
 
                 @Override
                 public void onCompleted() {
-                    //clientCallStreamObserver.onCompleted();
                     if( requestStreamRef.get() != null) {
                         requestStreamRef.set(null);
                     }
@@ -324,7 +324,7 @@ public class GrpcRaftPeer implements RaftPeer {
                 stream.onNext(request);
             }
         } catch( IllegalStateException e) {
-            throw e;
+            throw new StreamAlreadyClosedException(e);
         } catch( Throwable e) {
             logger.warn("Error while sending message: {}", e.getMessage(), e);
             try {
