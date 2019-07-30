@@ -482,7 +482,12 @@ message Applications {
 message User {
     string name = 1;
     string password = 2;
-    repeated string roles = 3;
+    repeated UserContextRole roles = 3;
+}
+
+message UserContextRole {
+    string context = 1;
+    string role = 2;
 }
 
 message Users {

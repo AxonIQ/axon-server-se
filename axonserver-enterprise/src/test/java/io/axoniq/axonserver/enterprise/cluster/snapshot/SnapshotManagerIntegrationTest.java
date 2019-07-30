@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.snapshot;
 
+import com.google.common.collect.Sets;
 import io.axoniq.axonserver.AxonServer;
 import io.axoniq.axonserver.access.application.ApplicationContext;
 import io.axoniq.axonserver.access.application.ApplicationContextRole;
@@ -122,7 +123,8 @@ public class SnapshotManagerIntegrationTest {
         applicationRepository.save(app1);
         applicationRepository.save(app2);
 
-        User user = new User("username", "password", new String[]{"role1", "role2"});
+        User user = new User("username", "password",
+                             Sets.newHashSet(UserRole.parse("role1"), UserRole.parse("role2")));
         userRepository.save(user);
 
         LoadBalancingStrategy loadBalancingStrategy = new LoadBalancingStrategy("loadBalancingStrategy",

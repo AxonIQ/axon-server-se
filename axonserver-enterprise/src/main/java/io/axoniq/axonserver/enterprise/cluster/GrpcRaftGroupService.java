@@ -11,6 +11,7 @@ import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -110,6 +111,23 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
         confirm(responseObserver, completable);
     }
 
+    @Override
+    public void deleteAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
+        confirm(responseObserver, completable);
+    }
+
+    @Override
+    public void mergeUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.updateUser(request);
+        confirm(responseObserver, completable);
+    }
+
+    @Override
+    public void deleteUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteUser(request);
+        confirm(responseObserver, completable);
+    }
 
     @Override
     public void mergeLoadBalanceStrategy(ContextLoadBalanceStrategy request,

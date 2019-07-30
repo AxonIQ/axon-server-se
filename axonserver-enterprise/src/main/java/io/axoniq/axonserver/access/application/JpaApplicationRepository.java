@@ -13,7 +13,5 @@ public interface JpaApplicationRepository extends JpaRepository<JpaApplication, 
 
     List<JpaApplication> findAllByTokenPrefix(String prefix);
 
-    List<JpaApplication> findAllByContextsContext(String prefix);
-
-    void deleteAllByContextsContext(String context);
+    List<JpaApplication> findAllByContextsContext(String context);
 }

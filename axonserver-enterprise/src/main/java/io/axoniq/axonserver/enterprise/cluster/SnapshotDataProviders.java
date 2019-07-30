@@ -2,10 +2,12 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.application.JpaContextApplicationController;
+import io.axoniq.axonserver.access.application.JpaContextUserController;
 import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextSnapshotDataStore;
+import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextUserSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.EventTransactionsSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ProcessorLoadBalancingSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.RaftProcessorLoadBalancingSnapshotDataStore;
@@ -36,6 +38,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
 
     private final UserRepository userRepository;
 
+    private final JpaContextUserController contextUserRepository;
     private final ProcessorLoadBalancingRepository processorLoadBalancingRepository;
     private final RaftProcessorLoadBalancingRepository raftProcessorLoadBalancingRepository;
 
@@ -46,6 +49,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
     public SnapshotDataProviders(
             ApplicationController applicationController,
             UserRepository userRepository,
+            JpaContextUserController contextUserRepository,
             ProcessorLoadBalancingRepository processorLoadBalancingRepository,
             RaftProcessorLoadBalancingRepository raftProcessorLoadBalancingRepository,
             JpaContextApplicationController contextApplicationController,
@@ -53,6 +57,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
+        this.contextUserRepository = contextUserRepository;
         this.processorLoadBalancingRepository = processorLoadBalancingRepository;
         this.raftProcessorLoadBalancingRepository = raftProcessorLoadBalancingRepository;
         this.contextApplicationController = contextApplicationController;
@@ -75,7 +80,8 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
                 new SnapshotTransactionsSnapshotDataStore(context, localEventStore),
                 new RaftProcessorLoadBalancingSnapshotDataStore(context, raftProcessorLoadBalancingRepository),
                 new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
-                new UserSnapshotDataStore(context, userRepository));
+                new UserSnapshotDataStore(context, userRepository),
+                new ContextUserSnapshotDataStore(context, contextUserRepository));
     }
 
 }

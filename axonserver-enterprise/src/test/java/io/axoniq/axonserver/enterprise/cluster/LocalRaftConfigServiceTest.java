@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.access.application.ApplicationController;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -17,6 +18,7 @@ import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
@@ -188,6 +190,21 @@ public class LocalRaftConfigServiceTest {
 
         @Override
         public CompletableFuture<Void> updateApplication(ContextApplication application) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> deleteApplication(ContextApplication application) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> updateUser(ContextUser user) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> deleteUser(ContextUser user) {
             return null;
         }
 
@@ -281,7 +298,13 @@ public class LocalRaftConfigServiceTest {
         });
         when(grpcRaftController.waitForLeader(any())).thenReturn(adminNode);
         when(adminNode.addNode(any())).thenReturn(CompletableFuture.completedFuture(null));
-        testSubject = new LocalRaftConfigService(grpcRaftController, contextcontroller, raftGroupServiceFactory, applicationController, messagingPlatformConfiguration);
+        UserController userController = mock(UserController.class);
+        testSubject = new LocalRaftConfigService(grpcRaftController,
+                                                 contextcontroller,
+                                                 raftGroupServiceFactory,
+                                                 applicationController,
+                                                 userController,
+                                                 messagingPlatformConfiguration);
     }
 
     @Test

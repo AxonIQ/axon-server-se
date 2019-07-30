@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
 import io.axoniq.axonserver.access.application.JpaApplication;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
@@ -14,6 +15,7 @@ import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
+import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
@@ -21,12 +23,14 @@ import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.User;
+import io.axoniq.axonserver.grpc.internal.UserContextRole;
 import io.axoniq.axonserver.util.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -34,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,6 +60,7 @@ import static io.axoniq.axonserver.enterprise.logconsumer.DeleteApplicationConsu
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStrategyConsumer.DELETE_LOAD_BALANCING_STRATEGY;
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteUserConsumer.DELETE_USER;
 import static io.axoniq.axonserver.rest.ClusterRestController.CONTEXT_NONE;
+import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
 
 /**
  * Service to orchestrate configuration changes. This service is executed on the leader of the _admin context.
@@ -68,6 +74,7 @@ class LocalRaftConfigService implements RaftConfigService {
     private final ContextController contextController;
     private final RaftGroupServiceFactory raftGroupServiceFactory;
     private final ApplicationController applicationController;
+    private final UserController userController;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final CopyOnWriteArraySet<String> contextsInProgress = new CopyOnWriteArraySet<>();
@@ -77,11 +84,13 @@ class LocalRaftConfigService implements RaftConfigService {
     public LocalRaftConfigService(GrpcRaftController grpcRaftController, ContextController contextController,
                                   RaftGroupServiceFactory raftGroupServiceFactory,
                                   ApplicationController applicationController,
+                                  UserController userController,
                                   MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.grpcRaftController = grpcRaftController;
         this.contextController = contextController;
         this.raftGroupServiceFactory = raftGroupServiceFactory;
         this.applicationController = applicationController;
+        this.userController = userController;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
@@ -217,6 +226,9 @@ class LocalRaftConfigService implements RaftConfigService {
             try {
                 appendToAdmin(ContextConfiguration.class.getName(),
                               updatedContextConfigurationBuilder.build().toByteArray());
+
+                applicationController.removeRolesForContext(context);
+                userController.removeRolesForContext(context);
             } catch (Exception second) {
                 logger.debug("{}: Error while updating configuration {}", context, second.getMessage());
             }
@@ -400,8 +412,46 @@ class LocalRaftConfigService implements RaftConfigService {
                 contextsInProgress.remove(context);
                 if (error != null) {
                     deleteContext(context);
+                } else {
+                    addWildcardApps(context);
+                    addWildcardUsers(context);
                 }
             }));
+    }
+
+    private void addWildcardUsers(String context) {
+        userController.getUsers().stream()
+                      .map(io.axoniq.axonserver.access.jpa.User::newContextPermissions)
+                      .filter(user -> !user.getRoles().isEmpty())
+                      .forEach(user -> {
+                          ContextUser contextUser = UserProtoConverter.createContextUser(context, user);
+                          getFuture(raftGroupServiceFactory.getRaftGroupService(context)
+                                                           .updateUser(contextUser));
+                      });
+    }
+
+    private void addWildcardApps(String context) {
+        applicationController.getApplications().stream()
+                             .map(JpaApplication::newContextPermissions)
+                             .filter(app -> !app.getContexts().isEmpty())
+                             .forEach(app -> {
+                                 ContextApplication contextApplication =
+                                         ContextApplication.newBuilder()
+                                                           .setContext(context)
+                                                           .setName(app.getName())
+                                                           .setHashedToken(app.getHashedToken())
+                                                           .setTokenPrefix(app.getTokenPrefix())
+                                                           .addAllRoles(app.getContexts().stream().findFirst()
+                                                                           .map(ac ->
+                                                                                        ac.getRoles().stream()
+                                                                                          .map(r -> r.getRole())
+                                                                                          .collect(
+                                                                                                  Collectors.toList())
+                                                                           ).orElse(Collections.emptyList())).build();
+
+                                 getFuture(raftGroupServiceFactory.getRaftGroupService(context)
+                                                                  .updateApplication(contextApplication));
+                             });
     }
 
     @Override
@@ -600,6 +650,7 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public Application updateApplication(Application application) {
+        validateContextNames(application);
         JpaApplication storedApplication = null;
         try {
             storedApplication = applicationController.get(application.getName());
@@ -659,14 +710,74 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
+    @Transactional
     public void updateUser(User request) {
+        validateContextNames(request);
+
         appendToAdmin(User.class.getName(), request.toByteArray());
+
+        String password = userController.getPassword(request.getName());
+        contextController.getContexts().forEach(c -> updateUserInGroup(request, password, c.getName()));
+    }
+
+    private void validateContextNames(User request) {
+        Set<String> validContexts = contextController.getContexts().map(Context::getName).collect(Collectors.toSet());
+        Set<String> invalidContexts = request.getRolesList()
+                                             .stream()
+                                             .map(UserContextRole::getContext)
+                                             .filter(role -> !role.equals("*"))
+                                             .filter(role -> !validContexts.contains(role))
+                                             .collect(Collectors.toSet());
+
+        if (!invalidContexts.isEmpty()) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
+                                                 String.format("Context unknown {}", invalidContexts));
+        }
+    }
+
+    private void validateContextNames(Application application) {
+        Set<String> validContexts = contextController.getContexts().map(Context::getName).collect(Collectors.toSet());
+        Set<String> invalidContexts = application.getRolesPerContextList()
+                                                 .stream()
+                                                 .map(ApplicationContextRole::getContext)
+                                                 .filter(role -> !role.equals("*"))
+                                                 .filter(role -> !validContexts.contains(role))
+                                                 .collect(Collectors.toSet());
+
+        if (!invalidContexts.isEmpty()) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
+                                                 String.format("Context unknown {}", invalidContexts));
+        }
+    }
+
+    private void updateUserInGroup(User request, String password, String context) {
+        Set<UserContextRole> roles = getUserRolesPerContext(request.getRolesList(), context);
+        ContextUser contextUser =
+                ContextUser.newBuilder()
+                           .setContext(context)
+                           .setUser(User.newBuilder(request)
+                                        .setPassword(getOrDefault(password, ""))
+                                        .clearRoles()
+                                        .addAllRoles(roles).build())
+                           .build();
+        getFuture(raftGroupServiceFactory.getRaftGroupService(context)
+                                         .updateUser(contextUser));
+    }
+
+    private Set<UserContextRole> getUserRolesPerContext(List<UserContextRole> rolesList, String context) {
+        return rolesList.stream()
+                        .filter(r -> r.getContext().equals(context) || r.getContext().equals("*"))
+                        .collect(Collectors.toSet());
     }
 
     private ApplicationContextRole getRolesPerContext(Application application, String name) {
         for (ApplicationContextRole applicationContextRole : application.getRolesPerContextList()) {
             if (name.equals(applicationContextRole.getContext())) {
                 return applicationContextRole;
+            }
+
+            if (applicationContextRole.getContext().equals("*")) {
+                return ApplicationContextRole.newBuilder(applicationContextRole).setContext(name).build();
             }
         }
         return null;
@@ -707,6 +818,7 @@ class LocalRaftConfigService implements RaftConfigService {
     @Override
     public void deleteUser(User user) {
         appendToAdmin(DELETE_USER, user.toByteArray());
+        contextController.getContexts().forEach(c -> updateUserInGroup(user, null, c.getName()));
     }
 
     @Override

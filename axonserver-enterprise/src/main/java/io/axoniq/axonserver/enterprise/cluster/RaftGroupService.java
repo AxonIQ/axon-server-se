@@ -5,6 +5,7 @@ import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 
@@ -44,6 +45,12 @@ public interface RaftGroupService {
     }
 
     CompletableFuture<Void> updateApplication(ContextApplication application);
+
+    CompletableFuture<Void> deleteApplication(ContextApplication application);
+
+    CompletableFuture<Void> updateUser(ContextUser user);
+
+    CompletableFuture<Void> deleteUser(ContextUser user);
 
     CompletableFuture<Void> updateLoadBalancingStrategy(String context, LoadBalanceStrategy loadBalancingStrategy);
 

@@ -1,15 +1,16 @@
 package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.access.jpa.PathMapping;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Controller;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.PostConstruct;
+
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * @author Marc Gathier
@@ -69,7 +70,7 @@ public class AccessController implements AxonServerAccessController {
             return true;
         }
 
-        boolean authorized = accessControllerDB.authorize(token, context, fullMethodName, isRoleBasedAuthentication());
+        boolean authorized = accessControllerDB.authorize(token, context, fullMethodName);
         if( authorized) {
             cache.put(requestWithToken, Boolean.TRUE);
         }
@@ -77,17 +78,40 @@ public class AccessController implements AxonServerAccessController {
     }
 
     @Override
-    public Collection<PathMapping> getPathMappings() {
-        return accessControllerDB.getPathMappings();
-    }
-
-    @Override
     public boolean isRoleBasedAuthentication() {
         return true;
     }
 
-    public Set<String> getRoles(String token, String context) {
-        return accessControllerDB.getRoles(token, context);
+    public Set<String> getRoles(String token) {
+        return accessControllerDB.getRoles(token);
+    }
+
+    @Override
+    public Set<String> rolesForOperation(String permission) {
+        return accessControllerDB.getPathMappings(permission);
+    }
+
+    @Override
+    public String defaultContextForRest() {
+        return getAdmin();
+    }
+
+    @Override
+    public String usersByUsernameQuery() {
+        return "select distinct username,password, 1 from jpa_context_user where username=? and password is not null";
+    }
+
+    @Override
+    public String authoritiesByUsernameQuery() {
+        return "select jpa_context_user.username, concat(jpa_context_user_roles.roles, '@', jpa_context_user.context) "
+                + "from jpa_context_user_roles,jpa_context_user "
+                + "where jpa_context_user.username=? "
+                + "and jpa_context_user_roles.jpa_context_user_id = jpa_context_user.id";
+    }
+
+    @Override
+    public Set<String> rolesForLocalhost() {
+        return Collections.singleton("ADMIN@_admin");
     }
 
 }
