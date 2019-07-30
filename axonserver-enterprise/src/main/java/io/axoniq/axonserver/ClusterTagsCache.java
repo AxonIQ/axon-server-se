@@ -29,6 +29,8 @@ public class ClusterTagsCache {
      * @param tagsConfiguration
      */
     public ClusterTagsCache(MessagingPlatformConfiguration platformConfiguration, TagsConfiguration tagsConfiguration){
+        logger.debug("This node is configured with tag names: {}", tagsConfiguration.getTags().keySet());
+
         clusterTags.put(platformConfiguration.getName(), tagsConfiguration.getTags());
     }
 
@@ -38,7 +40,7 @@ public class ClusterTagsCache {
      */
     @EventListener
     public void on(ClusterEvents.AxonServerNodeConnected event){
-        logger.debug("Adding tags: {} for node: {}", event.getNodeInfo().getTagsMap(),event.getNodeInfo().getNodeName());
+        logger.debug("Adding tags with names: {} for node: {}", event.getNodeInfo().getTagsMap().keySet(), event.getNodeInfo().getNodeName());
 
         clusterTags.put(event.getNodeInfo().getNodeName(),event.getNodeInfo().getTagsMap());
     }
