@@ -13,6 +13,8 @@ import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.grpc.Channel;
+import io.grpc.netty.NettyChannelBuilder;
 import org.junit.*;
 
 import java.util.HashMap;
@@ -22,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
@@ -145,6 +148,8 @@ public class InstallSnapshotIntegrationTest {
         final RaftNode localNode;
         final Map<String, RaftPeer> raftPeerMap = new HashMap<>();
         final List<Node> nodes;
+        private final BiFunction<String, Integer, Channel> channelProvider =
+                (host, port) -> NettyChannelBuilder.forAddress(host, port).usePlaintext().build();
 
         private GrpcRaftGroup(List<Node> nodes, String localNode, int minElectionTimeout, int maxElectionTimeout) {
             this.nodes = nodes;
@@ -159,6 +164,7 @@ public class InstallSnapshotIntegrationTest {
 
         private void initializePeers(List<Node> nodes) {
             raftPeerMap.clear();
+            FakeGrpcRaftClientFactory clientFactory = new FakeGrpcRaftClientFactory();
             nodes.forEach(node -> raftPeerMap.put(node.getNodeId(), new GrpcRaftPeer(groupId(), node)));
         }
 

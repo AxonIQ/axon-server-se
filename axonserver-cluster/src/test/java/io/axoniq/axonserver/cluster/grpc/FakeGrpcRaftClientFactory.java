@@ -8,17 +8,15 @@ import io.grpc.netty.NettyChannelBuilder;
 /**
  * @author Marc Gathier
  */
-public class DefaultGrpcRaftClientFactory implements GrpcRaftClientFactory {
+public class FakeGrpcRaftClientFactory implements GrpcRaftClientFactory {
 
     @Override
     public LogReplicationServiceGrpc.LogReplicationServiceStub createLogReplicationServiceStub(Node node) {
-        return LogReplicationServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort())
-                                                                    .usePlaintext().build());
+        return LogReplicationServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort()).usePlaintext().build());
     }
 
     @Override
     public LeaderElectionServiceGrpc.LeaderElectionServiceStub createLeaderElectionStub(Node node) {
-        return LeaderElectionServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort())
-                                                                    .usePlaintext().build());
+        return LeaderElectionServiceGrpc.newStub(NettyChannelBuilder.forAddress(node.getHost(), node.getPort()).usePlaintext().build());
     }
 }

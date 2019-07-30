@@ -10,6 +10,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.messaging.event.RemoteEventStore;
+import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -32,6 +33,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final LifecycleController lifecycleController;
     private final LocalEventStore localEventStore;
+    private final ChannelProvider channelProvider;
     private volatile boolean running;
 
     private final Iterable<String> dynamicContexts;
@@ -43,6 +45,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     public EventStoreManager(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              LifecycleController lifecycleController,
                              LocalEventStore localEventStore,
+                             ChannelProvider channelProvider,
                              Iterable<String> dynamicContexts,
                              Function<String, String> masterProvider,
                              boolean needsValidation, String nodeName,
@@ -50,6 +53,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.lifecycleController = lifecycleController;
         this.localEventStore = localEventStore;
+        this.channelProvider = channelProvider;
         this.dynamicContexts = dynamicContexts;
         this.masterProvider = masterProvider;
         this.needsValidation = needsValidation;
@@ -63,9 +67,10 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              LifecycleController lifecycleController,
                              RaftLeaderProvider leaderProvider,
                              RaftGroupRepositoryManager contextController,
-                             LocalEventStore localEventStore) {
+                             LocalEventStore localEventStore,
+                             ChannelProvider channelProvider) {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
-             () -> contextController.getMyContextNames().iterator(),
+             channelProvider, () -> contextController.getMyContextNames().iterator(),
              leaderProvider::getLeaderOrWait,
              lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
@@ -144,7 +149,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         }
         String master = masterProvider.apply(context);
         if( master == null) return null;
-        return new RemoteEventStore(clusterNodeSupplier.apply(master), messagingPlatformConfiguration);
+        return new RemoteEventStore(clusterNodeSupplier.apply(master), messagingPlatformConfiguration, channelProvider);
     }
 
     private boolean isMaster(String context) {
