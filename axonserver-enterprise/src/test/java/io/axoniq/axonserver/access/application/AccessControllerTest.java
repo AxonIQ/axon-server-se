@@ -1,10 +1,10 @@
 package io.axoniq.axonserver.access.application;
 
-import io.axoniq.axonserver.access.roles.FunctionRole;
+import io.axoniq.axonserver.access.jpa.FunctionRole;
 import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
-import io.axoniq.axonserver.access.roles.PathToFunction;
+import io.axoniq.axonserver.access.jpa.PathToFunction;
 import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
-import io.axoniq.axonserver.access.roles.Role;
+import io.axoniq.axonserver.access.jpa.Role;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;

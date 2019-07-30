@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
-import io.axoniq.axonserver.access.roles.PathToFunction;
+import io.axoniq.axonserver.access.jpa.PathToFunction;
 import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
