@@ -71,7 +71,8 @@ globals.pageView = new Vue(
                         alert("Please enter name for user");
                         return;
                     }
-                    if (this.isEnterprise() && this.user.workingRoles.length === 0) {
+                    if (this.isEnterprise() && this.user.workingRoles.length === 0 && !(this.newRole.context
+                            && this.newRole.role)) {
                         alert("Please select roles for user");
                         return;
                     }
