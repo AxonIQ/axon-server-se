@@ -226,9 +226,6 @@ class LocalRaftConfigService implements RaftConfigService {
             try {
                 appendToAdmin(ContextConfiguration.class.getName(),
                               updatedContextConfigurationBuilder.build().toByteArray());
-
-                applicationController.removeRolesForContext(context);
-                userController.removeRolesForContext(context);
             } catch (Exception second) {
                 logger.debug("{}: Error while updating configuration {}", context, second.getMessage());
             }
