@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Controller;
 
-import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.PostConstruct;
@@ -107,11 +106,6 @@ public class AccessController implements AxonServerAccessController {
                 + "from jpa_context_user_roles,jpa_context_user "
                 + "where jpa_context_user.username=? "
                 + "and jpa_context_user_roles.jpa_context_user_id = jpa_context_user.id";
-    }
-
-    @Override
-    public Set<String> rolesForLocalhost() {
-        return Collections.singleton("ADMIN@_admin");
     }
 
 }
