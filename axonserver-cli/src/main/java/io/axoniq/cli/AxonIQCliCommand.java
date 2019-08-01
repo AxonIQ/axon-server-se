@@ -22,6 +22,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -153,6 +154,21 @@ public class AxonIQCliCommand {
         CloseableHttpResponse response = httpclient.execute(httpDelete);
         if (response.getStatusLine().getStatusCode() != expectedStatusCode) {
             throw new CommandExecutionException(response.getStatusLine().getStatusCode(), url,  response.getStatusLine().toString() + " - " + responseBody(response));
+        }
+    }
+
+    protected static void patch(CloseableHttpClient httpclient, String url, int expectedStatusCode, String token)
+            throws IOException {
+        HttpPatch httpDelete = new HttpPatch(url);
+        if (token != null) {
+            httpDelete.addHeader("AxonIQ-Access-Token", token);
+        }
+
+        CloseableHttpResponse response = httpclient.execute(httpDelete);
+        if (response.getStatusLine().getStatusCode() != expectedStatusCode) {
+            throw new CommandExecutionException(response.getStatusLine().getStatusCode(),
+                                                url,
+                                                response.getStatusLine().toString() + " - " + responseBody(response));
         }
     }
 

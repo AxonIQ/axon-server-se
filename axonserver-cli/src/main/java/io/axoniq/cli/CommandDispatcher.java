@@ -40,12 +40,13 @@ public class CommandDispatcher {
         executorMap.put("metrics", Metrics::run);
         executorMap.put("init-cluster", InitNode::run);
         executorMap.put("purge-events", DeleteEvents::run);
+        executorMap.put("migrate-users", MigrateUsers::run);
     }
 
     public static void main(String[] args)  {
         if( args.length == 0) {
             System.err.println("No command specified. Valid commands: ");
-            executorMap.keySet().forEach(System.err::println);
+            executorMap.keySet().stream().sorted().forEach(System.err::println);
 
             System.exit(1);
         }

@@ -112,6 +112,8 @@ values ('DELETE:/v1/applications/.*', 'DELETE_APP');
 insert into PATHS_TO_FUNCTIONS
 values ('PATCH:/v1/applications/.*', 'RENEW_APP_TOKEN');
 insert into PATHS_TO_FUNCTIONS
+values ('PATCH:/v1/migration/users', 'MIGRATE_USERS');
+insert into PATHS_TO_FUNCTIONS
 values ('POST:/v1/backup/createControlDbBackup', 'CREATE_CONTROLDB_BACKUP');
 insert into PATHS_TO_FUNCTIONS
 values ('GET:/v1/backup/log/filenames', 'LIST_BACKUP_LOGFILES');
@@ -339,6 +341,8 @@ insert into FUNCTION_ROLES(function, role)
 values ('MERGE_EVENT_PROCESSOR_SEGMENTS', 'CONTEXT_ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('MERGE_USER', 'ADMIN');
+insert into FUNCTION_ROLES(function, role)
+values ('MIGRATE_USERS', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('MOVE_EVENT_PROCESSOR_SEGMENT', 'CONTEXT_ADMIN');
 insert into FUNCTION_ROLES(function, role)
