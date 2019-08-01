@@ -70,6 +70,15 @@ public class ProcessorLoadBalancingService {
     }
 
     /**
+     * Deletes all {@link ProcessorLoadBalancing} for the specified context.
+     *
+     * @param context the context
+     */
+    public void deleteByContext(String context) {
+        repository.deleteAll(repository.findByContext(context));
+    }
+
+    /**
      * Listen for {@link io.axoniq.axonserver.enterprise.ContextEvents.AdminContextDeleted}. If this event occurs clear
      * all {@link ProcessorLoadBalancing} entries as I am no longer an admin node.
      *
