@@ -37,7 +37,7 @@ public class RegisterUser extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            postJSON(httpclient, url, user, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            postJSON(httpclient, url, user, 200, getToken(commandLine));
         }
     }
 }

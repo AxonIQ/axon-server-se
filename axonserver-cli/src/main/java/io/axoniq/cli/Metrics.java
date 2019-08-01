@@ -32,12 +32,14 @@ public class Metrics extends AxonIQCliCommand {
 
         try (CloseableHttpClient httpclient  = createClient(commandLine)) {
             Map<String, Long> metricValues = new ConcurrentSkipListMap<>();
-            Map<String, String[]> metrics = getMap(httpclient, url, new TypeReference<Map<String, String[]>>(){}, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            Map<String, String[]> metrics = getMap(httpclient, url, new TypeReference<Map<String, String[]>>() {
+            }, 200, getToken(commandLine));
             String[] names = metrics.get("names");
             Arrays.stream(names).parallel().filter(n -> n.startsWith("axon")).forEach(n -> {
                    String metricUrl = url + "/" + n;
                 try {
-                    Map<String,?> metricsDetails = getMap(httpclient, metricUrl, new TypeReference<Map<String,?>>(){}, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+                    Map<String, ?> metricsDetails = getMap(httpclient, metricUrl, new TypeReference<Map<String, ?>>() {
+                    }, 200, getToken(commandLine));
                     List<Map<String, ?>> measurements = (List<Map<String, ?>>) metricsDetails.get("measurements");
                     measurements.forEach(m -> {
                         if( m.get("statistic").equals("COUNT")) {

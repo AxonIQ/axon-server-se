@@ -25,7 +25,7 @@ public class UnregisterNode extends AxonIQCliCommand {
 
         String url = createUrl(commandLine, "/v1/cluster", CommandOptions.NODENAME);
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            delete(httpclient, url,  200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            delete(httpclient, url, 200, getToken(commandLine));
         }
     }
 }

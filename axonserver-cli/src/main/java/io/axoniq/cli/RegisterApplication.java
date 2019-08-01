@@ -42,7 +42,7 @@ public class RegisterApplication extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            String response = postJSON(httpclient, url, application, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            String response = postJSON(httpclient, url, application, 200, getToken(commandLine));
             System.out.println("AccessToken is: "+  response);
             System.out.println("Please note this token as this will only be provided once!");
         }

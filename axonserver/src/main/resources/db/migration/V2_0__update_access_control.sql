@@ -119,7 +119,8 @@ insert into PATHS_TO_FUNCTIONS
 values ('GET:/v1/backup/filenames', 'LIST_BACKUP_FILENAMES');
 insert into PATHS_TO_FUNCTIONS
 values ('GET:/v1/cluster', 'LIST_NODES');
--- insert into PATHS_TO_FUNCTIONS values ('POST:/v1/cluster','ADD_NODE_TO_CLUSTER');
+insert into PATHS_TO_FUNCTIONS
+values ('POST:/v1/cluster', 'ADD_NODE_TO_CLUSTER');
 -- insert into PATHS_TO_FUNCTIONS values ('GET:/v1/cluster/.*','GET_NODE');
 insert into PATHS_TO_FUNCTIONS
 values ('DELETE:/v1/cluster/.*', 'REMOVE_NODE_FROM_CLUSTER');
@@ -154,7 +155,8 @@ values ('PATCH:/v1/components/[^/]*/processors/[^/]*/start', 'START_EVENT_PROCES
 -- insert into PATHS_TO_FUNCTIONS values ('GET:/v1/components/[^/]*/queries','GET_CLIENT_APP_QUERIES');
 insert into PATHS_TO_FUNCTIONS
 values ('POST:/v1/context', 'CREATE_CONTEXT');
--- insert into PATHS_TO_FUNCTIONS values ('POST:/v1/context/init','INIT_CLUSTER');
+insert into PATHS_TO_FUNCTIONS
+values ('POST:/v1/context/init', 'INIT_CLUSTER');
 insert into PATHS_TO_FUNCTIONS
 values ('POST:/v1/context/[^/]*/.*', 'ADD_NODE_TO_CONTEXT');
 insert into PATHS_TO_FUNCTIONS
@@ -377,3 +379,8 @@ insert into FUNCTION_ROLES(function, role)
 values ('SPLIT_EVENT_PROCESSOR_SEGMENTS', 'CONTEXT_ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('START_EVENT_PROCESSOR', 'CONTEXT_ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('INIT_CLUSTER', 'ADMIN');
+insert into FUNCTION_ROLES(function, role)
+values ('ADD_NODE_TO_CLUSTER', 'ADMIN');

@@ -10,7 +10,6 @@
 package io.axoniq.axonserver;
 
 
-import com.google.common.collect.Sets;
 import io.axoniq.axonserver.topology.Topology;
 
 import java.util.Collections;
@@ -83,13 +82,5 @@ public interface AxonServerAccessController {
      */
     default String authoritiesByUsernameQuery() {
         return "select username, role from user_roles where username=?";
-    }
-
-    /**
-     * Returns the roles are allowed for REST requests sent from localhost.
-     * @return roles
-     */
-    default Set<String> rolesForLocalhost() {
-        return Sets.newHashSet("ADMIN", "READ");
     }
 }

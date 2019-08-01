@@ -31,13 +31,13 @@ public class ListUsers extends AxonIQCliCommand {
                                            url,
                                            String.class,
                                            200,
-                                           option(commandLine, CommandOptions.TOKEN)));
+                                           getToken(commandLine)));
             } else {
                 User[] users = getJSON(httpclient,
                                        url,
                                        User[].class,
                                        200,
-                                       option(commandLine, CommandOptions.TOKEN));
+                                       getToken(commandLine));
                 System.out.printf("%-60s\n", "Name");
 
                 for (User user : users) {

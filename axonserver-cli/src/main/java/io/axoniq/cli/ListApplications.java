@@ -28,13 +28,13 @@ public class ListApplications extends AxonIQCliCommand {
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             if( jsonOutput(commandLine) ) {
-                System.out.println(getJSON(httpclient, url, String.class, 200, option(commandLine, CommandOptions.TOKEN)));
+                System.out.println(getJSON(httpclient, url, String.class, 200, getToken(commandLine)));
             } else {
                 Application[] applications = getJSON(httpclient,
                                                      url,
                                                      Application[].class,
                                                      200,
-                                                     option(commandLine, CommandOptions.TOKEN));
+                                                     getToken(commandLine));
                 System.out.printf("%-20s %-60s %-20s\n", "Name", "Description", "Roles");
 
                 for (Application app : applications) {

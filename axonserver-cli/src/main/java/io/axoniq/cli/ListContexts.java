@@ -32,13 +32,13 @@ public class ListContexts extends AxonIQCliCommand {
                                            url,
                                            String.class,
                                            200,
-                                           commandLine.getOptionValue(CommandOptions.TOKEN.getOpt())));
+                                           getToken(commandLine)));
             } else {
                 ContextNode[] contexts = getJSON(httpclient,
                                                  url,
                                                  ContextNode[].class,
                                                  200,
-                                                 commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+                                                 getToken(commandLine));
                 System.out.printf("%-20s %-20s %-60s\n", "Name", "Leader", "Members");
 
                 for (ContextNode context : contexts) {

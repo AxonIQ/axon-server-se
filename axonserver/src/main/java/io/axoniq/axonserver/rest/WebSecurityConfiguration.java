@@ -10,13 +10,11 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.vote.AffirmativeBased;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -27,7 +25,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
@@ -70,6 +70,9 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         if (accessControlConfiguration.isEnabled()) {
             final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
             http.addFilterBefore(tokenFilter, BasicAuthenticationFilter.class);
+            http.exceptionHandling() // only redirect to login page for html pages
+                .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"),
+                                                    new AntPathRequestMatcher("/**/*.html"));
             ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
                     .authorizeRequests();
 
@@ -82,16 +85,18 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
             } else {
                 auth.antMatchers("/", "/**/*.html", "/v1/**")
                     .authenticated();
-                auth.anyRequest().permitAll();
             }
             auth
+                    .anyRequest().permitAll()
                     .and()
                     .formLogin()
                     .loginPage("/login")
                     .permitAll()
                     .and()
                     .logout()
-                    .permitAll();
+                    .permitAll()
+                    .and()
+                    .httpBasic(); // Allow accessing rest calls using basic authentication header
         } else {
             http.authorizeRequests().anyRequest().permitAll();
         }
@@ -176,34 +181,18 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     token = request.getParameter(AxonServerAccessController.TOKEN_PARAM);
                 }
 
-                String authorization = request.getHeader("Authorization");
-
-                if (token == null && authorization == null && isLocalRequest(request)) {
-                    SecurityContextHolder.getContext().setAuthentication(
-                            new AuthenticationToken(true,
-                                                    "LocalAdmin",
-                                                    accessController.rolesForLocalhost()));
-                } else {
-                    if (token != null) {
-                        Set<String> roles = accessController.getRoles(token);
-                        if (roles != null) {
-                            SecurityContextHolder.getContext().setAuthentication(
-                                    new AuthenticationToken(true,
-                                                            "AuthenticatedApp",
-                                                            roles));
-                        } else {
-                            HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
-                            httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_INVALID_TOKEN.getHttpCode().value());
-                            try (ServletOutputStream outputStream = httpServletResponse.getOutputStream()) {
-                                outputStream.println("Invalid token");
-                            }
-                            return;
-                        }
-                    } else if (isNonBrowserClient(request) && authorization == null) {
+                if (token != null) {
+                    Set<String> roles = accessController.getRoles(token);
+                    if (roles != null) {
+                        SecurityContextHolder.getContext().setAuthentication(
+                                new AuthenticationToken(true,
+                                                        "AuthenticatedApp",
+                                                        roles));
+                    } else {
                         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
-                        httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_TOKEN_MISSING.getHttpCode().value());
+                        httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_INVALID_TOKEN.getHttpCode().value());
                         try (ServletOutputStream outputStream = httpServletResponse.getOutputStream()) {
-                            outputStream.println("Missing header: " + AxonServerStandardAccessController.TOKEN_PARAM);
+                            outputStream.println("Invalid token");
                         }
                         return;
                     }
@@ -216,32 +205,6 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     SecurityContextHolder.getContext().setAuthentication(null);
                 }
             }
-        }
-
-        private boolean isNonBrowserClient(HttpServletRequest request) {
-            return stopRedirect(request.getHeader(HttpHeaders.USER_AGENT));
-        }
-
-        private boolean stopRedirect(String header) {
-            if (header == null) {
-                return false;
-            }
-            String lowercaseHeader = header.toLowerCase();
-            return lowercaseHeader.startsWith("apache-httpclient") || lowercaseHeader.startsWith("curl")
-                    || lowercaseHeader.startsWith("wget");
-        }
-
-        /**
-         * Returns true if the request comes from localhost and is allowed to be call without authentication.
-         * This is required mainly to enable CLI requests that comes from the same host of Axon Server.
-         *
-         * @param httpServletRequest the request
-         * @return true if the request comes from localhost and is allowed to be call without authentication,
-         * false otherwise
-         */
-        private boolean isLocalRequest(HttpServletRequest httpServletRequest) {
-            return isNonBrowserClient(httpServletRequest) &&
-                    httpServletRequest.getLocalAddr().equals(httpServletRequest.getRemoteAddr());
         }
     }
 }
