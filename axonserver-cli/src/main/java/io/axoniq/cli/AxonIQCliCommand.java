@@ -211,7 +211,6 @@ public class AxonIQCliCommand {
                 }
             }
         }
-        System.out.println("Using token: " + token);
         return token;
     }
 
