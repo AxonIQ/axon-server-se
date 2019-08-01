@@ -29,8 +29,8 @@ public class AddNodeToContext extends AxonIQCliCommand {
         String url = createUrl(commandLine, "/v1/context", CONTEXT, NODENAME);
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            RestResponse response = postJSON(httpclient, url, null, 202, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()),
-                     RestResponse.class);
+            RestResponse response = postJSON(httpclient, url, null, 202, getToken(commandLine),
+                                             RestResponse.class);
             System.out.println(response.getMessage());
         }
     }

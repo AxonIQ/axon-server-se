@@ -41,7 +41,7 @@ public class RegisterContext extends AxonIQCliCommand {
         ContextNode clusterNode = new ContextNode(commandLine.getOptionValue(CONTEXT.getOpt()), nodeRolesMap);
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            postJSON(httpclient, url, clusterNode, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()),
+            postJSON(httpclient, url, clusterNode, 200, getToken(commandLine),
                      RestResponse.class);
         }
     }

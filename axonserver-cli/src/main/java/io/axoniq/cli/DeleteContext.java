@@ -25,7 +25,7 @@ public class DeleteContext extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            delete(httpclient, url, 202, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            delete(httpclient, url, 202, getToken(commandLine));
         }
     }
 }

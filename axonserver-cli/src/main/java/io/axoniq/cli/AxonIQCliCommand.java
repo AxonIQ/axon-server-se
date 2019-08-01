@@ -30,6 +30,8 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.SSLContextBuilder;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -197,5 +199,19 @@ public class AxonIQCliCommand {
         return "json".equals(option(commandLine, CommandOptions.OUTPUT));
     }
 
+    protected static String getToken(CommandLine commandLine) {
+        String token = commandLine.getOptionValue(CommandOptions.TOKEN.getOpt());
+        if (token == null) {
+            File tokenFile = new File("security/.token");
+            if (tokenFile.exists() && tokenFile.canRead()) {
+                try (BufferedReader reader = new BufferedReader(new FileReader(tokenFile))) {
+                    token = reader.readLine();
+                } catch (IOException e) {
+                    System.err.println("Cannot read token file: " + e.getMessage());
+                }
+            }
+        }
+        return token;
+    }
 
 }

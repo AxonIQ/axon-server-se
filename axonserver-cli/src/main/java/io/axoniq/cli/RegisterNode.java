@@ -57,7 +57,7 @@ public class RegisterNode extends AxonIQCliCommand {
 
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            postJSON(httpclient, url, clusterNode, 202, commandLine.getOptionValue(TOKEN.getOpt()),
+            postJSON(httpclient, url, clusterNode, 202, getToken(commandLine),
                      RestResponse.class);
         }
     }

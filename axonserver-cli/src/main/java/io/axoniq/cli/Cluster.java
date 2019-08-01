@@ -33,13 +33,13 @@ public class Cluster extends AxonIQCliCommand {
                                            url,
                                            String.class,
                                            200,
-                                           option(commandLine, CommandOptions.TOKEN)));
+                                           getToken(commandLine)));
             } else {
                 ClusterNode[] nodes = getJSON(httpclient,
                                               url,
                                               ClusterNode[].class,
                                               200,
-                                              option(commandLine, CommandOptions.TOKEN));
+                                              getToken(commandLine));
                 System.out.printf("%-40s %-40s %10s %10s %s\n",
                                   "Name",
                                   "Hostname",

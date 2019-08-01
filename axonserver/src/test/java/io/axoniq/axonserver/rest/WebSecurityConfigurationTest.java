@@ -14,8 +14,6 @@ import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import org.junit.*;
-import org.springframework.http.HttpHeaders;
-import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
@@ -124,28 +122,6 @@ public class WebSecurityConfigurationTest {
 
         testSubject.doFilter(request, response, filterChain);
         assertNull(authentication.get());
-        assertEquals(403, statusCodeHolder.get());
-    }
-
-    @Test
-    public void filterNoToken() throws IOException, ServletException {
-        ServletRequest request = new MockHttpServletRequest() {
-            @Override
-            public String getHeader(String name) {
-                if( name.equals(HttpHeaders.USER_AGENT)) {
-                    return "wget";
-                }
-                return super.getHeader(name);
-            }
-
-            @Override
-            public String getRemoteAddr() {
-                return "Remote";
-            }
-        };
-        FilterChain filterChain = new MockFilterChain();
-        testSubject.doFilter(request, response, filterChain);
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
         assertEquals(403, statusCodeHolder.get());
     }
 

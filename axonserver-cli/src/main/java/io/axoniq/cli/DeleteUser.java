@@ -25,7 +25,7 @@ public class DeleteUser extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            delete(httpclient, url, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            delete(httpclient, url, 200, getToken(commandLine));
         }
     }
 }

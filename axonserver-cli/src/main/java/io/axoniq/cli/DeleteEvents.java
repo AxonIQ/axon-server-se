@@ -17,7 +17,7 @@ public class DeleteEvents{
         CommandLine commandLine = processCommandLine(args[0], args, CommandOptions.TOKEN);
         String url = createUrl(commandLine, "/v1/devmode/purge-events");
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
-            delete(httpclient, url, 200, commandLine.getOptionValue(CommandOptions.TOKEN.getOpt()));
+            delete(httpclient, url, 200, getToken(commandLine));
         }
     }
 }

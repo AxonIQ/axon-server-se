@@ -1,3 +1,13 @@
 update USER_ROLES
-set role = '*'
-where role is null;
+set context = '_admin'
+where context is null;
+
+insert into JPA_CONTEXT_USER(CONTEXT, USERNAME, PASSWORD)
+select '_admin', USERNAME, PASSWORD
+from users;
+
+insert into JPA_CONTEXT_USER_ROLES(JPA_CONTEXT_USER_ID, ROLES)
+select JPA_CONTEXT_USER.ID, USER_ROLES.ROLE
+from JPA_CONTEXT_USER,
+     USER_ROLES
+where JPA_CONTEXT_USER.USERNAME = USER_ROLES.USERNAME;
