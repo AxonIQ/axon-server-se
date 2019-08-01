@@ -136,12 +136,14 @@ values ('POST:/v1/commands/run', 'DISPATCH_COMMAND');
 -- insert into PATHS_TO_FUNCTIONS values ('GET:/v1/components/[^/]*/commands','GET_CLIENT_APP_COMMANDS');
 -- insert into PATHS_TO_FUNCTIONS values ('GET:/v1/components/[^/]*/instances','GET_CLIENT_APP_INSTANCES');
 -- insert into PATHS_TO_FUNCTIONS values ('GET:/v1/components/[^/]*/processors','GET_EVENT_PROCESSORS');
+-- insert into PATHS_TO_FUNCTIONS
+-- values ('GET:/v1/components/[^/]*/processors/loadbalance/strategies', 'GET_EVENT_PROCESSORS_STRATEGIES');
+-- insert into PATHS_TO_FUNCTIONS
+-- values ('GET:/v1/components/[^/]*/processors/[^/]*/loadbalance', 'GET_EVENT_PROCESSOR_STRATEGY');
 insert into PATHS_TO_FUNCTIONS
-values ('GET:/v1/components/[^/]*/processors/loadbalance/strategies', 'GET_EVENT_PROCESSORS_STRATEGIES');
+values ('PATCH:/v1/components/[^/]*/processors/[^/]*/loadbalance', 'REBALANCE_PROCESSOR');
 insert into PATHS_TO_FUNCTIONS
-values ('GET:/v1/components/[^/]*/processors/[^/]*/loadbalance', 'GET_EVENT_PROCESSOR_STRATEGY');
-insert into PATHS_TO_FUNCTIONS
-values ('PATCH:/v1/components/[^/]*/processors/[^/]*/loadbalance', 'SET_EVENT_PROCESSOR_STRATEGY');
+values ('PUT:/v1/components/[^/]*/processors/[^/]*/loadbalance', 'SET_EVENT_PROCESSOR_STRATEGY');
 insert into PATHS_TO_FUNCTIONS
 values ('PATCH:/v1/components/[^/]*/processors/[^/]*/pause', 'PAUSE_EVENT_PROCESSOR');
 insert into PATHS_TO_FUNCTIONS
@@ -184,6 +186,10 @@ insert into PATHS_TO_FUNCTIONS
 values ('PATCH:/v1/processors/loadbalance/strategies/[^/]*/factoryBean/.*', '-');
 insert into PATHS_TO_FUNCTIONS
 values ('PATCH:/v1/processors/loadbalance/strategies/[^/]*/label/.*', '-');
+insert into PATHS_TO_FUNCTIONS
+values ('PATCH:/v1/processors/[^/]/loadbalance', 'REBALANCE_PROCESSOR');
+insert into PATHS_TO_FUNCTIONS
+values ('PUT:/v1/processors/[^/]/autoloadbalance', 'SET_EVENT_PROCESSOR_STRATEGY');
 -- insert into PATHS_TO_FUNCTIONS values ('GET:/v1/public','LIST_NODES');
 insert into PATHS_TO_FUNCTIONS
 values ('GET:/v1/public/applications', 'LIST_APPS');
@@ -282,15 +288,15 @@ values ('DISPATCH_SUBSCRIPTION_QUERY', 'READ');
 insert into FUNCTION_ROLES(function, role)
 values ('GET_APP_DETAILS', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
-values ('GET_COMMANDS_COUNT', 'CONTEXT_ADMIN');
+values ('GET_COMMANDS_COUNT', 'MONITOR');
 insert into FUNCTION_ROLES(function, role)
-values ('GET_COMMANDS_QUEUE', 'CONTEXT_ADMIN');
-insert into FUNCTION_ROLES(function, role)
-values ('GET_EVENT_PROCESSORS', 'CONTEXT_ADMIN');
-insert into FUNCTION_ROLES(function, role)
-values ('GET_EVENT_PROCESSORS_STRATEGIES', 'CONTEXT_ADMIN');
-insert into FUNCTION_ROLES(function, role)
-values ('GET_EVENT_PROCESSOR_STRATEGY', 'CONTEXT_ADMIN');
+values ('GET_COMMANDS_QUEUE', 'MONITOR');
+-- insert into FUNCTION_ROLES(function, role)
+-- values ('GET_EVENT_PROCESSORS', 'CONTEXT_ADMIN');
+-- insert into FUNCTION_ROLES(function, role)
+-- values ('GET_EVENT_PROCESSORS_STRATEGIES', 'CONTEXT_ADMIN');
+-- insert into FUNCTION_ROLES(function, role)
+-- values ('GET_EVENT_PROCESSOR_STRATEGY', 'CONTEXT_ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('GET_FIRST_TOKEN', 'READ_EVENTS');
 insert into FUNCTION_ROLES(function, role)
@@ -316,7 +322,11 @@ values ('LIST_APPS', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('LIST_BACKUP_FILENAMES', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
+values ('LIST_BACKUP_FILENAMES', 'CONTEXT_ADMIN');
+insert into FUNCTION_ROLES(function, role)
 values ('LIST_BACKUP_LOGFILES', 'ADMIN');
+insert into FUNCTION_ROLES(function, role)
+values ('LIST_BACKUP_LOGFILES', 'CONTEXT_ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('LIST_CONTEXTS', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
@@ -384,3 +394,8 @@ insert into FUNCTION_ROLES(function, role)
 values ('INIT_CLUSTER', 'ADMIN');
 insert into FUNCTION_ROLES(function, role)
 values ('ADD_NODE_TO_CLUSTER', 'ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('REBALANCE_PROCESSOR', 'CONTEXT_ADMIN');
+insert into FUNCTION_ROLES(function, role)
+values ('AUTO_REBALANCE_PROCESSOR', 'CONTEXT_ADMIN');
