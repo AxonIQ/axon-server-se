@@ -9,14 +9,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Returns the generated access token. Available only when server is started with profile "internal". Created to support
- * test automation.
+ * test automation. Do not enable in production systems.
  *
  * @author Marc Gathier
  * @since 4.2
  */
 @RestController
 @CrossOrigin
-@Profile("internal")
+@Profile("testing-only")
 @RequestMapping("internal/systemtoken")
 public class SystemTokenRestController {
 
@@ -26,6 +26,11 @@ public class SystemTokenRestController {
         this.accessControllerDB = accessControllerDB;
     }
 
+    /**
+     * Returns the system generated token.
+     *
+     * @return the generated system token
+     */
     @GetMapping
     public String systemToken() {
         return accessControllerDB.systemToken();
