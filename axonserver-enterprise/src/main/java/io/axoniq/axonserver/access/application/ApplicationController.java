@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.access.application;
 
+import io.axoniq.axonserver.enterprise.ContextEvents;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,5 +91,16 @@ public class ApplicationController {
     @Transactional
     public void removeRolesForContext(String context) {
         applicationRepository.findAllByContextsContext(context).forEach(app -> app.removeContext(context));
+    }
+
+    /**
+     * Listen for {@link io.axoniq.axonserver.enterprise.ContextEvents.AdminContextDeleted}. If this event occurs clear
+     * all {@link JpaApplication} entries as I am no longer an admin node.
+     *
+     * @param adminContextDeleted event raised
+     */
+    @EventListener
+    public void on(ContextEvents.AdminContextDeleted adminContextDeleted) {
+        applicationRepository.deleteAll();
     }
 }
