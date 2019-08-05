@@ -15,7 +15,7 @@
         SSL disabled
     </div>
 
-    <div v-if="node.developmentMode" id="developmentModeEnabled" class="msg warning">
+    <div v-if="node.developmentMode && !node.clustered" id="developmentModeEnabled" class="msg warning">
         Development Mode is enabled
     </div>
 
