@@ -21,6 +21,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 
 import java.nio.charset.Charset;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
@@ -37,7 +38,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private volatile boolean running;
 
     private final Iterable<String> dynamicContexts;
-    private final Function<String, String> masterProvider;
+    private final BiFunction<String, Boolean, String> masterProvider;
     private final boolean needsValidation;
     private final String nodeName;
     private final Function<String, ClusterNode> clusterNodeSupplier;
@@ -47,7 +48,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              LocalEventStore localEventStore,
                              ChannelProvider channelProvider,
                              Iterable<String> dynamicContexts,
-                             Function<String, String> masterProvider,
+                             BiFunction<String, Boolean, String> masterProvider,
                              boolean needsValidation, String nodeName,
                              Function<String, ClusterNode> clusterNodeSupplier) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
@@ -147,17 +148,18 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         if( isMaster( context)) {
             return localEventStore;
         }
-        String master = masterProvider.apply(context);
+        String master = masterProvider.apply(context, true);
         if( master == null) return null;
         return new RemoteEventStore(clusterNodeSupplier.apply(master), messagingPlatformConfiguration, channelProvider);
     }
 
     private boolean isMaster(String context) {
-        return isLeader(nodeName, context);
+        return isLeader(nodeName, context, true);
     }
 
-    public boolean isLeader(String nodeName, String context) {
-        String master = masterProvider.apply(context);
+    @Override
+    public boolean isLeader(String nodeName, String context, boolean wait) {
+        String master = masterProvider.apply(context, wait);
         return master != null && master.equals(nodeName);
     }
 

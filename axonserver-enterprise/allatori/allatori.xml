@@ -44,6 +44,9 @@
         <class template="class * extends io.axoniq.axonserver.cluster.AbstractMembershipState">
             <method access="protected+"/>
         </class>
+        <class template="class * extends io.axoniq.axonserver.cluster.VotingState">
+            <method access="protected+"/>
+        </class>
         <class template="@org.springframework.boot.context.properties.ConfigurationProperties class *">
             <field template="*"/>
             <method access="protected+"/>

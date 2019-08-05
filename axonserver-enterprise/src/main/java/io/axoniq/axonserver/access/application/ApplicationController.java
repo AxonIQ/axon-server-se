@@ -64,7 +64,7 @@ public class ApplicationController {
     public void delete( String name) {
         JpaApplication application = applicationRepository.findFirstByName(name);
         if (application == null) {
-            throw new ApplicationNotFoundException(name);
+            return;
         }
         applicationRepository.delete(application);
     }

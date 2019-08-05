@@ -73,10 +73,15 @@ public class RaftLeaderProvider {
      * to check if there is a leader. Returns null if no leader could be found within the timeout period.
      *
      * @param context the context to find the leader for
+     * @param waitForLeader wait for leader if no leader found
      * @return the node name of the leader or null
      */
-    public String getLeaderOrWait(String context) {
+    public String getLeaderOrWait(String context, boolean waitForLeader) {
         String leader = getLeader(context);
+        if (leader != null || !waitForLeader) {
+            return leader;
+        }
+
         long timeout = System.currentTimeMillis() + waitForLeaderTimeout;
         while (leader == null && System.currentTimeMillis() < timeout) {
             try {

@@ -54,7 +54,8 @@ public class ApplicationControllerTest {
         testSubject.delete("Delete");
         assertEquals(count-1, testSubject.getApplications().size());
     }
-    @Test(expected = ApplicationNotFoundException.class)
+
+    @Test
     public void deleteNonExisting() {
         testSubject.delete("DeleteAnother");
     }

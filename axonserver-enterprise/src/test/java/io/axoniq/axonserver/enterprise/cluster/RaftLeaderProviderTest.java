@@ -35,6 +35,6 @@ public class RaftLeaderProviderTest {
         scheduledExecutorService.schedule(() -> testSubject
                                                   .on(new ClusterEvents.LeaderConfirmation("context", "other", false)),
                                           220, TimeUnit.MILLISECONDS);
-        assertEquals("other", testSubject.getLeaderOrWait("context"));
+        assertEquals("other", testSubject.getLeaderOrWait("context", true));
     }
 }
