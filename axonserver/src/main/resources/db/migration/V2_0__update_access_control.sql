@@ -187,9 +187,9 @@ values ('PATCH:/v1/processors/loadbalance/strategies/[^/]*/factoryBean/.*', '-')
 insert into PATHS_TO_FUNCTIONS
 values ('PATCH:/v1/processors/loadbalance/strategies/[^/]*/label/.*', '-');
 insert into PATHS_TO_FUNCTIONS
-values ('PATCH:/v1/processors/[^/]/loadbalance', 'REBALANCE_PROCESSOR');
+values ('PATCH:/v1/processors/[^/]*/loadbalance', 'REBALANCE_PROCESSOR');
 insert into PATHS_TO_FUNCTIONS
-values ('PUT:/v1/processors/[^/]/autoloadbalance', 'SET_EVENT_PROCESSOR_STRATEGY');
+values ('PUT:/v1/processors/[^/]*/autoloadbalance', 'SET_EVENT_PROCESSOR_STRATEGY');
 -- insert into PATHS_TO_FUNCTIONS values ('GET:/v1/public','LIST_NODES');
 insert into PATHS_TO_FUNCTIONS
 values ('GET:/v1/public/applications', 'LIST_APPS');

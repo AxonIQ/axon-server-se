@@ -34,14 +34,10 @@ public class ClusterUpdatesListener {
 
     @Autowired
     public ClusterUpdatesListener(SimpMessagingTemplate websocket) {
-        this(topologyBaseEvents -> {
-                 System.out.printf("%d topology events%n", topologyBaseEvents.size());
-                 websocket.convertAndSend("/topic/cluster", topologyBaseEvents.get(0).getClass().getName());
-             },
-             subscriptionEvents -> {
-                 System.out.printf("%d topology events%n", subscriptionEvents.size());
-                 websocket.convertAndSend("/topic/subscriptions", subscriptionEvents.get(0).getClass().getName());
-             },
+        this(topologyBaseEvents -> websocket
+                     .convertAndSend("/topic/cluster", topologyBaseEvents.get(0).getClass().getName()),
+             subscriptionEvents -> websocket
+                     .convertAndSend("/topic/subscriptions", subscriptionEvents.get(0).getClass().getName()),
              1000
         );
     }

@@ -1,7 +1,14 @@
-This is the Axon Server Standard Edition, version 4.1.7
+This is the Axon Server Standard Edition, version 4.2
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.2
+-------------------------------
+
+* Development mode with delete all events operation added
+* Blacklisting event types for applications that cannot handle these events
+* Expose tracking event processor position and status
 
 Release Notes for version 4.1.7
 -------------------------------
