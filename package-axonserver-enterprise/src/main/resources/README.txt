@@ -32,8 +32,13 @@ Changes in Axon Server 4.2
 --------------------------
 
 - Delete leader from group is now possible.
-- Removing a context from a node, deletes all data (including event data).
+- Removing a context from a node, deletes all data (including event data) on that node.
 - Deleting a context removes all data (including event data).
+- Blacklisting event types for applications that cannot handle these events
+- Expose tracking event processor position and status
+- Clients can provide preferences on which node to connect to
+- New access control roles
+- Reduced leader changes by new pre-vote phase
 
 Changes in Axon Server 4.1.9
 ----------------------------
