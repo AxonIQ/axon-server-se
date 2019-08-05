@@ -11,9 +11,15 @@ package io.axoniq.axonserver.websocket;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.EmitterProcessor;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Spring event listener that publishes events to connected dashboards via the websocket.
@@ -22,19 +28,43 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ClusterUpdatesListener {
-    private final SimpMessagingTemplate websocket;
 
+    private final EmitterProcessor<TopologyEvents.TopologyBaseEvent> topologyBaseEventEmitterProcessor;
+    private final EmitterProcessor<SubscriptionEvents.SubscriptionBaseEvent> subscriptionBaseEventEmitterProcessor;
+
+    @Autowired
     public ClusterUpdatesListener(SimpMessagingTemplate websocket) {
-        this.websocket = websocket;
+        this(topologyBaseEvents -> {
+                 System.out.printf("%d topology events%n", topologyBaseEvents.size());
+                 websocket.convertAndSend("/topic/cluster", topologyBaseEvents.get(0).getClass().getName());
+             },
+             subscriptionEvents -> {
+                 System.out.printf("%d topology events%n", subscriptionEvents.size());
+                 websocket.convertAndSend("/topic/subscriptions", subscriptionEvents.get(0).getClass().getName());
+             },
+             1000
+        );
+    }
+
+    public ClusterUpdatesListener(
+            Consumer<List<TopologyEvents.TopologyBaseEvent>> topologyUpdatesConsumer,
+            Consumer<List<SubscriptionEvents.SubscriptionBaseEvent>> subscriptionUpdatesConsumer,
+            long milliseconds) {
+        topologyBaseEventEmitterProcessor = EmitterProcessor.create(100);
+        topologyBaseEventEmitterProcessor.buffer(Duration.ofMillis(milliseconds)).subscribe(topologyUpdatesConsumer);
+
+        subscriptionBaseEventEmitterProcessor = EmitterProcessor.create(100);
+        subscriptionBaseEventEmitterProcessor.buffer(Duration.ofMillis(milliseconds)).subscribe(
+                subscriptionUpdatesConsumer);
     }
 
     @EventListener
     public void on(TopologyEvents.TopologyBaseEvent clusterEvent) {
-        websocket.convertAndSend("/topic/cluster", clusterEvent.getClass().getName());
+        topologyBaseEventEmitterProcessor.onNext(clusterEvent);
     }
 
     @EventListener
     public void on(SubscriptionEvents.SubscriptionBaseEvent subscriptionEvent) {
-        websocket.convertAndSend("/topic/subscriptions", subscriptionEvent.getClass().getName());
+        subscriptionBaseEventEmitterProcessor.onNext(subscriptionEvent);
     }
 }

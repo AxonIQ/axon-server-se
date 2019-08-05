@@ -32,7 +32,7 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
     }
 
     @Override
-    public boolean isLeader(String nodeName, String contextName) {
+    public boolean isLeader(String nodeName, String contextName, boolean waitForLeader) {
         return true;
     }
 

@@ -24,9 +24,10 @@ public interface EventStoreLocator {
      * Checks if a specific node is leader for the specified context.
      * @param nodeName the node to consider as leader
      * @param contextName the context name
+     * @param waitForLeader option to wait until leader elected (within time limit)
      * @return true if node is leader
      */
-    boolean isLeader(String nodeName, String contextName);
+    boolean isLeader(String nodeName, String contextName, boolean waitForLeader);
 
     /**
      * Retrieve an EventStore instance which can be used to store and retrieve events. Returns null when there is no leader for

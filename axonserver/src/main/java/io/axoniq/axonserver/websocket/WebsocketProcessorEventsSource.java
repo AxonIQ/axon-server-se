@@ -10,9 +10,15 @@
 package io.axoniq.axonserver.websocket;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.EmitterProcessor;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Sends {@link EventProcessorStatusUpdate} events to websockets
@@ -22,14 +28,21 @@ import org.springframework.stereotype.Service;
 @Service
 public class WebsocketProcessorEventsSource {
 
-    private final SimpMessagingTemplate websocket;
+    private final EmitterProcessor<EventProcessorStatusUpdate> updateFlux;
 
+    @Autowired
     public WebsocketProcessorEventsSource(SimpMessagingTemplate websocket) {
-        this.websocket = websocket;
+        this(updates -> websocket.convertAndSend("/topic/processor", EventProcessorStatusUpdate.class.getName()), 500);
+    }
+
+    public WebsocketProcessorEventsSource(Consumer<List<EventProcessorStatusUpdate>> updatesConsumer,
+                                          long milliseconds) {
+        this.updateFlux = EmitterProcessor.create(100);
+        updateFlux.buffer(Duration.ofMillis(milliseconds)).subscribe(updatesConsumer);
     }
 
     @EventListener
     public void on(EventProcessorStatusUpdate event) {
-        websocket.convertAndSend("/topic/processor", event.getClass().getName());
+        updateFlux.onNext(event);
     }
 }

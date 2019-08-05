@@ -70,14 +70,16 @@ public class AxonServers implements Iterable<AxonServer> {
 
                                              @Override
                                              public boolean master() {
-                                                 return eventStoreLocator.isLeader(node.getName(), contextName);
+                                                 return eventStoreLocator.isLeader(node.getName(), contextName, false);
                                              }
                                          } ).sorted(Comparator.comparing(Storage::context)).collect(Collectors.toList());
                                      }
 
                                      @Override
                                      public boolean isAdminLeader() {
-                                         return eventStoreLocator.isLeader(((AxonServerNode) node).getName(), ADMIN);
+                                         return eventStoreLocator.isLeader(((AxonServerNode) node).getName(),
+                                                                           ADMIN,
+                                                                           false);
                                      }
                                  }).iterator();
     }
