@@ -2,8 +2,10 @@ package io.axoniq.axonserver.rest;
 
 
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
+import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,12 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 4.2
  */
 @RestController("DevelopmentRestController")
+@ConditionalOnMissingBean(name = {"axonServerEnterprise"})
 @ConditionalOnProperty("axoniq.axonserver.devmode.enabled")
 @RequestMapping("/v1/devmode")
 public class DevelopmentRestController {
 
     @Autowired
-    private DefaultEventStoreLocator eventStoreLocator;
+    private EventStoreLocator eventStoreLocator;
 
     /**
      * REST endpoint handling requests to reset the events and snapshots in Axon Server
