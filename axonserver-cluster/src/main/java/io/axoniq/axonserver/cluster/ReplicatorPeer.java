@@ -261,7 +261,15 @@ public class ReplicatorPeer {
         public void start() {
             registration = raftPeer.registerAppendEntriesResponseListener(this::handleResponse);
             logCannotSend = true;
-            sendHeartbeat();
+            try {
+                sendHeartbeat();
+            } catch (Exception ex) {
+                logger.warn("{} in term {}: Sending heartbeat on start AppendEntryState to {} failed.",
+                            groupId(),
+                            currentTerm(),
+                            raftPeer.nodeId(),
+                            ex);
+            }
         }
 
         @Override
