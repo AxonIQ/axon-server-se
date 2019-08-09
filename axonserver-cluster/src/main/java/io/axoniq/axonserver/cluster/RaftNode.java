@@ -243,7 +243,9 @@ public class RaftNode {
                     currentTerm(),
                     raftGroup.logEntryProcessor().lastAppliedIndex(),
                     raftGroup.localLogEntryStore().lastLogIndex());
-            //raftGroup.logEntryProcessor().reset();
+            if (raftGroup.localLogEntryStore().lastLogIndex() == 0) {
+                raftGroup.logEntryProcessor().reset();
+            }
         }
         updateState(state.get(), stateFactory.followerState(), "Node started");
         logEntryApplier.start();
