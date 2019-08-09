@@ -11,9 +11,9 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.PayloadDescription;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,11 +250,7 @@ public class TrackingEventProcessorManager {
         }
 
         private void sendError(Exception ex) {
-            try {
-                eventStream.onError(GrpcExceptionBuilder.build(ex));
-            } catch (Exception ignoredException) {
-                // ignore
-            }
+            StreamObserverUtils.error(eventStream, ex);
         }
 
         public void addPermits(int newPermits) {
@@ -272,7 +268,7 @@ public class TrackingEventProcessorManager {
 
         public void stop() {
             close();
-            sendError(new MessagingPlatformException(ErrorCode.OTHER, "Tracking event processor stopped by server"));
+            StreamObserverUtils.complete(eventStream);
         }
 
         public void validateActiveConnection(long minLastPermits) {

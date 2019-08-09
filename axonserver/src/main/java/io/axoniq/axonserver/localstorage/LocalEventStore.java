@@ -26,6 +26,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -249,11 +250,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             @Override
             public void onError(Throwable throwable) {
                 if( controller != null) controller.close();
+                StreamObserverUtils.complete(responseStreamObserver);
             }
 
             @Override
             public void onCompleted() {
                 if( controller != null) controller.close();
+                StreamObserverUtils.complete(responseStreamObserver);
             }
         };
     }
