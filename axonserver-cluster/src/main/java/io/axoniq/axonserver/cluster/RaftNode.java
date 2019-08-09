@@ -18,6 +18,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -210,6 +211,10 @@ public class RaftNode {
                         newStateName,
                         nodeId,
                         currentStateName);
+            throw new ConcurrentModificationException(String.format(
+                    "invalid current state (currentState: %s, expectedCurrentState %s)",
+                    currentStateName,
+                    toString(state.get())));
         }
     }
 
