@@ -121,7 +121,7 @@ public class TrackingEventProcessorManagerTest {
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(15, messagesReceived.get()));
 
         tracker.stop();
-        assertTrue(failed.get());
+        assertTrue(completed.get());
         assertWithin(10, TimeUnit.MILLISECONDS, () -> assertTrue(iteratorClosed.get()));
     }
 
