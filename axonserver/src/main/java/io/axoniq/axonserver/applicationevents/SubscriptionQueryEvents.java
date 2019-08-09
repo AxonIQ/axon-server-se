@@ -174,13 +174,25 @@ public class SubscriptionQueryEvents {
     public static class SubscriptionQueryResponseReceived {
 
         private final SubscriptionQueryResponse response;
+        private final Runnable unknownSubscriptionHandler;
 
+        @Deprecated
         public SubscriptionQueryResponseReceived(SubscriptionQueryResponse response) {
+            this(response, () -> {});
+        }
+
+        public SubscriptionQueryResponseReceived(SubscriptionQueryResponse response, Runnable unknownSubscriptionHandler) {
+
             this.response = response;
+            this.unknownSubscriptionHandler = unknownSubscriptionHandler;
         }
 
         public SubscriptionQueryResponse response() {
             return response;
+        }
+
+        public Runnable unknownSubscriptionHandler() {
+            return unknownSubscriptionHandler;
         }
 
         public String subscriptionId(){
