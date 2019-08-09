@@ -480,7 +480,8 @@ public class LeaderState extends AbstractMembershipState {
                             currentTerm(),
                             replicatorPeerMap.size());
             } catch (RuntimeException re) {
-                logger.warn("{} in term {}: Replication thread completed exceptionally.", groupId(), currentTerm(), re);
+                logger.warn("{} in term {}: Start of LeaderState failed.", groupId(), currentTerm(), re);
+                throw re;
             }
         }
 

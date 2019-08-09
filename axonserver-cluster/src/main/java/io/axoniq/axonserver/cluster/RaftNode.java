@@ -172,22 +172,37 @@ public class RaftNode {
                         currentStateName,
                         newStateName,
                         cause);
-            stateChangeListeners.forEach(stateChangeListeners -> {
-                try {
-                    StateChanged change = new StateChanged(groupId(),
-                                                           nodeId,
-                                                           currentStateName,
-                                                           newStateName,
-                                                           cause,
-                                                           currentTerm());
-                    stateChangeListeners.accept(change);
-                } catch (Exception ex) {
-                    logger.warn("{} in term {}: Failed to handle event", groupId(), currentTerm(), ex);
-                    throw new RuntimeException("Transition to " + newStateName + " failed", ex);
-                }
-            });
-            newState.start();
-            logger.info("{} in term {}: Updated state to {}", groupId(), currentTerm(), newStateName);
+            try {
+                stateChangeListeners.forEach(stateChangeListeners -> {
+                    try {
+                        StateChanged change = new StateChanged(groupId(),
+                                                               nodeId,
+                                                               currentStateName,
+                                                               newStateName,
+                                                               cause,
+                                                               currentTerm());
+                        stateChangeListeners.accept(change);
+                    } catch (Exception ex) {
+                        logger.warn("{} in term {}: Failed to handle event", groupId(), currentTerm(), ex);
+                        throw new RuntimeException("Transition to " + newStateName + " failed", ex);
+                    }
+                });
+                newState.start();
+                logger.info("{} in term {}: Updated state to {}", groupId(), currentTerm(), newStateName);
+            } catch (RuntimeException ex) {
+                logger.warn(
+                        "{} in term {}: transition to {} failed, moving to currentState (node: {}, currentState: {})",
+                        groupId(),
+                        currentTerm(),
+                        newStateName,
+                        nodeId,
+                        currentStateName);
+                newState.stop();
+                MembershipState followerState = stateFactory.followerState();
+                followerState.start();
+                state.set(followerState);
+                throw ex;
+            }
         } else {
             logger.warn("{} in term {}: transition to {} failed, invalid current state (node: {}, currentState: {})",
                         groupId(),
@@ -228,7 +243,9 @@ public class RaftNode {
                     currentTerm(),
                     raftGroup.logEntryProcessor().lastAppliedIndex(),
                     raftGroup.localLogEntryStore().lastLogIndex());
-            raftGroup.logEntryProcessor().reset();
+            if (raftGroup.localLogEntryStore().lastLogIndex() == 0) {
+                raftGroup.logEntryProcessor().reset();
+            }
         }
         updateState(state.get(), stateFactory.followerState(), "Node started");
         logEntryApplier.start();
