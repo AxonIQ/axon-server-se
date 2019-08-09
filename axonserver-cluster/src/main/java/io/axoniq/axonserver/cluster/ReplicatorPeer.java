@@ -505,6 +505,15 @@ public class ReplicatorPeer {
         return raftPeer.nodeId();
     }
 
+    /**
+     * Returns the human friendly name of the (remote) node
+     *
+     * @return the human friendly name of the node
+     */
+    public String nodeName() {
+        return raftPeer.nodeName();
+    }
+
     private void changeStateTo(ReplicatorPeerState newState) {
         if (currentState != null) {
             currentState.stop();
