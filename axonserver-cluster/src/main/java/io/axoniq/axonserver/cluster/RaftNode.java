@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.ElectionStore;
+import io.axoniq.axonserver.cluster.exception.ConcurrentMembershipStateModificationException;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
@@ -18,7 +19,6 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.LongSupplier;
 
 import static java.lang.String.format;
@@ -211,7 +212,7 @@ public class RaftNode {
                         newStateName,
                         nodeId,
                         currentStateName);
-            throw new ConcurrentModificationException(String.format(
+            throw new ConcurrentMembershipStateModificationException(String.format(
                     "invalid current state (currentState: %s, expectedCurrentState %s)",
                     currentStateName,
                     toString(state.get())));
@@ -293,7 +294,7 @@ public class RaftNode {
                      state.get(),
                      request);
         notifyMessage(request);
-        AppendEntriesResponse response = state.get().appendEntries(request);
+        AppendEntriesResponse response = runOnCurrentState(s -> s.appendEntries(request));
         notifyMessage(response);
         return response;
     }
@@ -311,7 +312,7 @@ public class RaftNode {
                      state.get(),
                      request);
         notifyMessage(request);
-        RequestVoteResponse response = state.get().requestVote(request);
+        RequestVoteResponse response = runOnCurrentState(s -> s.requestVote(request));
         notifyMessage(response);
         return response;
     }
@@ -329,7 +330,7 @@ public class RaftNode {
                      state.get(),
                      request);
         notifyMessage(request);
-        InstallSnapshotResponse response = state.get().installSnapshot(request);
+        InstallSnapshotResponse response = runOnCurrentState(s -> s.installSnapshot(request));
         notifyMessage(response);
         return response;
     }
@@ -391,7 +392,7 @@ public class RaftNode {
      */
     public CompletableFuture<Void> appendEntry(String entryType, byte[] entryData) {
         logger.trace("{} in term {}: append entry {}", groupId(), currentTerm(), entryType);
-        return state.get().appendEntry(entryType, entryData);
+        return runOnCurrentState(s -> s.appendEntry(entryType, entryData));
     }
 
     /**
@@ -402,7 +403,7 @@ public class RaftNode {
      */
     public CompletableFuture<ConfigChangeResult> addNode(Node node) {
         logger.info("{} in term {}: Add a node {}.", groupId(), currentTerm(), node);
-        return state.get().addServer(node);
+        return runOnCurrentState(s -> s.addServer(node));
     }
 
     /**
@@ -413,7 +414,7 @@ public class RaftNode {
      */
     public CompletableFuture<ConfigChangeResult> removeNode(String nodeId) {
         logger.info("{} in term {}: Remove a node: {}.", groupId(), currentTerm(), nodeId);
-        return state.get().removeServer(nodeId);
+        return runOnCurrentState(s -> s.removeServer(nodeId));
     }
 
     /**
@@ -448,7 +449,10 @@ public class RaftNode {
      */
     public void stepdown() {
         logger.info("{} in term {}: Stepping down started.", groupId(), currentTerm());
-        state.get().forceStepDown();
+        runOnCurrentState(s -> {
+            s.forceStepDown();
+            return null;
+        });
         logger.info("{} in term {}: Node stepped down.", groupId(), currentTerm());
     }
 
@@ -457,7 +461,7 @@ public class RaftNode {
      */
     public CompletableFuture<Void> transferLeadership() {
         logger.info("{} in term {}: Transfer leadership started.", groupId(), currentTerm());
-        return state.get().transferLeadership();
+        return runOnCurrentState(s -> s.transferLeadership());
     }
 
     /**
@@ -578,8 +582,19 @@ public class RaftNode {
 
     public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
         notifyMessage(request);
-        RequestVoteResponse response = state.get().requestPreVote(request);
+        RequestVoteResponse response = runOnCurrentState(s -> s.requestPreVote(request));
         notifyMessage(response);
         return response;
     }
+
+    private <R> R runOnCurrentState(Function<MembershipState, R> action) {
+        while (true) {
+            try {
+                return action.apply(state.get());
+            } catch (ConcurrentMembershipStateModificationException cme) {
+
+            }
+        }
+    }
+
 }
