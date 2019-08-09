@@ -16,13 +16,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class RaftHealthIndicator extends AbstractHealthIndicator {
     private final GrpcRaftController raftController;
-    private final RaftLeaderProvider raftLeaderProvider;
 
-    public RaftHealthIndicator(GrpcRaftController raftController,
-                               RaftLeaderProvider raftLeaderProvider,
-                               ClusterController clusterController) {
+    public RaftHealthIndicator(GrpcRaftController raftController) {
         this.raftController = raftController;
-        this.raftLeaderProvider = raftLeaderProvider;
     }
 
     @Override
