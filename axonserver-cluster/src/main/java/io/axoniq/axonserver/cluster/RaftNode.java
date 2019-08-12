@@ -104,12 +104,12 @@ public class RaftNode {
     private ScheduledRegistration scheduleLogCleaning() {
         return scheduler.scheduleWithFixedDelay(
                 () -> {
-                    logger.info("{} in term {}: Clearing the log...", groupId(), currentTerm());
+                    logger.debug("{} in term {}: Clearing the log...", groupId(), currentTerm());
                     raftGroup.localLogEntryStore().clearOlderThan(raftGroup.raftConfiguration().logRetentionHours(),
                                                                   TimeUnit.HOURS,
                                                                   () -> raftGroup.logEntryProcessor()
                                                                                  .lastAppliedIndex());
-                    logger.info("{} in term {}: Log cleaned.", groupId(), currentTerm());
+                    logger.debug("{} in term {}: Log cleaned.", groupId(), currentTerm());
                 },
                 1,
                 1,
@@ -124,10 +124,10 @@ public class RaftNode {
      * task was found.
      */
     public boolean restartLogCleaning() {
-        logger.info("{} in term {}: Restart log cleaning.", groupId(), currentTerm());
+        logger.debug("{} in term {}: Restart log cleaning.", groupId(), currentTerm());
         if (stopLogCleaning()) {
             scheduledLogCleaning = scheduleLogCleaning();
-            logger.info("{} in term {}: Log cleaning restarted.", groupId(), currentTerm());
+            logger.debug("{} in term {}: Log cleaning restarted.", groupId(), currentTerm());
             return true;
         }
         logger.info("{} in term {}: Log cleaning couldn't be restarted because it has been stopped.",

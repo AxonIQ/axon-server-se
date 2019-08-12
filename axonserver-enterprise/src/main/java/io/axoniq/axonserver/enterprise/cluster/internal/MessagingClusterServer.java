@@ -109,6 +109,9 @@ public class MessagingClusterServer implements SmartLifecycle{
         serverBuilder.addService(grpcRaftGroupService);
         serverBuilder.addService(grpcRaftConfigService);
 
+        serverBuilder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
+
+
         if( messagingPlatformConfiguration.getAccesscontrol() != null && messagingPlatformConfiguration.getAccesscontrol().isEnabled()) {
             serverBuilder.addService(ServerInterceptors.intercept(messagingClusterService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
             serverBuilder.addService(ServerInterceptors.intercept(leaderElectionService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));

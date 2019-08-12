@@ -180,9 +180,14 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         String formattedSegmentsToBeDeleted = segmentsToBeDeleted.stream()
                                                                  .map(Object::toString)
                                                                  .collect(Collectors.joining(","));
-        logger.info("Deleting segments {}.", formattedSegmentsToBeDeleted);
+        if (!segmentsToBeDeleted.isEmpty()) {
+            logger.info("Deleting segments {}.", formattedSegmentsToBeDeleted);
+        } else {
+            logger.debug("Deleting segments {}.", formattedSegmentsToBeDeleted);
+        }
+
         segmentsToBeDeleted.forEach(this::removeSegment);
-        logger.info("Segments deleted {}.", formattedSegmentsToBeDeleted);
+        logger.debug("Segments deleted {}.", formattedSegmentsToBeDeleted);
     }
 
     private boolean olderThan(Long segment, long filter) {
