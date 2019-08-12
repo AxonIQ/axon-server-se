@@ -480,7 +480,9 @@ public class EventDispatcher implements AxonServerClientService {
         @Override
         public void onError(Throwable reason) {
             logger.warn("Error on connection from client: {}", reason.getMessage());
-            if( eventStoreRequestObserver != null ) eventStoreRequestObserver.onCompleted();
+            if (eventStoreRequestObserver != null) {
+                StreamObserverUtils.complete(eventStoreRequestObserver);
+            }
             removeTrackerInfo();
         }
 
@@ -498,9 +500,11 @@ public class EventDispatcher implements AxonServerClientService {
 
         @Override
         public void onCompleted() {
-            if( eventStoreRequestObserver != null ) eventStoreRequestObserver.onCompleted();
+            if (eventStoreRequestObserver != null) {
+                StreamObserverUtils.complete(eventStoreRequestObserver);
+            }
             removeTrackerInfo();
-            responseObserver.onCompleted();
+            StreamObserverUtils.complete(responseObserver);
         }
     }
 }
