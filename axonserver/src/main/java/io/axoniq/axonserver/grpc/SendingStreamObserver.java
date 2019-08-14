@@ -11,11 +11,10 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Wrapper around a GRPC StreamObserver that ensures thread safety for sending messages, as GRPC does not provide this by default.
@@ -24,7 +23,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SendingStreamObserver<T> implements StreamObserver<T> {
     private final StreamObserver<T> delegate;
     private static final Logger logger = LoggerFactory.getLogger(SendingStreamObserver.class);
-    private final ReentrantLock guard = new ReentrantLock();
 
     public SendingStreamObserver(StreamObserver<T> delegate) {
         this.delegate = delegate;
@@ -32,20 +30,14 @@ public class SendingStreamObserver<T> implements StreamObserver<T> {
 
     @Override
     public void onNext(T t) {
-        guard.lock();
         try {
-            delegate.onNext(t);
+            synchronized (delegate) {
+                delegate.onNext(t);
+            }
         } catch( RuntimeException | OutOfMemoryError e) {
             logger.warn("Error while sending message: {}", e.getMessage(), e);
-            try {
-                // Cancel RPC
-                delegate.onError(e);
-            } catch (Throwable ex) {
-                // Ignore further exception on cancelling the RPC
-            }
+            StreamObserverUtils.error(delegate, e);
             throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage());
-        } finally {
-            guard.unlock();
         }
     }
 

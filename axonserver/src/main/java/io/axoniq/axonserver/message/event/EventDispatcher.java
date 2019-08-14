@@ -32,6 +32,7 @@ import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
@@ -177,7 +178,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        return listEvents(contextProvider.getContext(), new ForwardingStreamObserver<>(logger, "listEvents", responseObserver));
+        return listEvents(contextProvider.getContext(), responseObserver);
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
@@ -450,22 +451,15 @@ public class EventDispatcher implements AxonServerClientService {
                                 public void onError(Throwable throwable) {
                                     logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
                                                 throwable.getMessage());
-                                    try {
-                                        responseObserver.onError(GrpcExceptionBuilder.build(throwable));
-                                    } catch( RuntimeException ex) {
-                                        logger.info("Failed to send error: {}", ex.getMessage());
-                                    }
+                                    StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
                                     removeTrackerInfo();
                                 }
 
                                 @Override
                                 public void onCompleted() {
+                                    logger.warn("{}: Tracking event processor closed by leader", trackerInfo.context);
                                     removeTrackerInfo();
-                                    try {
-                                        responseObserver.onCompleted();
-                                    } catch (RuntimeException ignored) {
-                                        // ignore error on confirming half close
-                                    }
+                                    StreamObserverUtils.complete(responseObserver);
                                 }
                             });
                 } catch (RuntimeException cause) {
@@ -486,7 +480,9 @@ public class EventDispatcher implements AxonServerClientService {
         @Override
         public void onError(Throwable reason) {
             logger.warn("Error on connection from client: {}", reason.getMessage());
-            if( eventStoreRequestObserver != null ) eventStoreRequestObserver.onCompleted();
+            if (eventStoreRequestObserver != null) {
+                StreamObserverUtils.complete(eventStoreRequestObserver);
+            }
             removeTrackerInfo();
         }
 
@@ -504,9 +500,11 @@ public class EventDispatcher implements AxonServerClientService {
 
         @Override
         public void onCompleted() {
-            if( eventStoreRequestObserver != null ) eventStoreRequestObserver.onCompleted();
+            if (eventStoreRequestObserver != null) {
+                StreamObserverUtils.complete(eventStoreRequestObserver);
+            }
             removeTrackerInfo();
-            responseObserver.onCompleted();
+            StreamObserverUtils.complete(responseObserver);
         }
     }
 }

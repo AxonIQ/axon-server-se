@@ -399,7 +399,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             size = file.length();
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
-            logger.warn("Opening file {}", file);
+            logger.info("Opening file {}", file);
             positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             buffer.put(VERSION);

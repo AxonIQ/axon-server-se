@@ -126,7 +126,7 @@ public class GrpcBufferingInterceptorTest {
 
         InOrder inOrder = inOrder(mockServerCallHandler, mockServerCall);
         inOrder.verify(mockServerCallHandler).startCall(mockServerCall, mockMetaData);
-        inOrder.verify(mockServerCall).request(1);
+        inOrder.verify(mockServerCall).request(1000);
     }
 
     @Test
@@ -139,7 +139,7 @@ public class GrpcBufferingInterceptorTest {
 
         InOrder inOrder = inOrder(mockServerCallHandler, mockServerCall);
         inOrder.verify(mockServerCallHandler).startCall(mockServerCall, mockMetaData);
-        inOrder.verify(mockServerCall).request(1);
+        inOrder.verify(mockServerCall).request(1000);
     }
 
     @Test

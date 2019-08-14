@@ -13,14 +13,14 @@ import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.transformation.NoOpEventTransformer;
-import io.grpc.internal.IoUtils;
-import org.junit.Test;
+import org.junit.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.UUID;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.*;
 
 public class SerializedEventWithTokenTest {
 
@@ -45,7 +45,17 @@ public class SerializedEventWithTokenTest {
         SerializedEventWithToken testSubject = new SerializedEventWithToken(eventWithToken.getToken(), new SerializedEvent(event.toByteArray()));
 
 
-        byte[] actual = IoUtils.toByteArray(testSubject.asInputStream());
+        byte[] actual = toByteArray(testSubject.asInputStream());
         assertArrayEquals(eventWithToken.toByteArray(), actual);
+    }
+
+    private byte[] toByteArray(InputStream asInputStream) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] bytes = new byte[512];
+        int r;
+        while ((r = asInputStream.read(bytes)) > 0) {
+            bos.write(bytes, 0, r);
+        }
+        return bos.toByteArray();
     }
 }
