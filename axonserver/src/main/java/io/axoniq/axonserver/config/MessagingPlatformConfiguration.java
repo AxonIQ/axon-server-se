@@ -115,6 +115,11 @@ public class MessagingPlatformConfiguration {
      */
     private int grpcBufferedMessages = 500;
 
+    /**
+     * Number of threads for executing incoming gRPC requests
+     */
+    private int executorThreadCount = 16;
+
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
@@ -303,5 +308,13 @@ public class MessagingPlatformConfiguration {
 
     public void setGrpcBufferedMessages(int grpcBufferedMessages) {
         this.grpcBufferedMessages = grpcBufferedMessages;
+    }
+
+    public int getExecutorThreadCount() {
+        return executorThreadCount;
+    }
+
+    public void setExecutorThreadCount(int executorThreadCount) {
+        this.executorThreadCount = executorThreadCount;
     }
 }

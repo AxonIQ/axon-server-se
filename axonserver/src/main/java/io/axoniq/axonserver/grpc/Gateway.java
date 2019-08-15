@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -102,7 +103,7 @@ public class Gateway implements SmartLifecycle {
             serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
                          .keepAliveTimeout(routingConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
         }
-        serverBuilder.directExecutor();
+        serverBuilder.executor(Executors.newFixedThreadPool(routingConfiguration.getExecutorThreadCount()));
 
         server = serverBuilder.build();
 
