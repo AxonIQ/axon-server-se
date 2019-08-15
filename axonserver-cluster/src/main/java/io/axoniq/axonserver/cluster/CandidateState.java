@@ -60,7 +60,7 @@ public class CandidateState extends VotingState {
     }
 
     private void onElectionResult(Result result, long timeout) {
-        if (timeout < now()) {
+        if (!running || timeout < now()) {
             logger.warn("{} in term {}: Failed to run election. Election took too long", groupId(), currentTerm());
             return;
         }

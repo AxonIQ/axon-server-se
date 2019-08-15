@@ -343,6 +343,7 @@ public class FollowerState extends AbstractMembershipState {
             logger.info("{} in term {}: Install snapshot started.", groupId(), currentTerm());
             // first segment
             raftGroup().localLogEntryStore().clear(request.getLastIncludedIndex());
+            raftGroup().logEntryProcessor().reset();
             snapshotManager().clear();
         }
 
@@ -425,11 +426,13 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private boolean voteGrantedFor(RequestVoteRequest request, boolean preVote) {
+        String type = preVote ? "Pre-vote" : "Vote";
         //1. Reply false if term < currentTerm
         if (request.getTerm() < currentTerm()) {
-            logger.info("{} in term {}: Vote not granted. Current term is greater than requested {}.",
+            logger.info("{} in term {}: {} not granted. Current term is greater than requested {}.",
                         groupId(),
                         currentTerm(),
+                        type,
                         request.getTerm());
             return false;
         }
@@ -444,25 +447,29 @@ public class FollowerState extends AbstractMembershipState {
 
         TermIndex lastLog = lastLog();
         if (request.getLastLogTerm() < lastLog.getTerm()) {
-            logger.info("{} in term {}: Vote not granted. Requested last log term {}, my last log term {}.",
+            logger.info("{} in term {}: {} not granted. Requested last log term {}, my last log term {}.",
                         groupId(),
                         currentTerm(),
+                        type,
                         request.getLastLogTerm(),
                         lastLog.getTerm());
             return false;
         }
 
         if (request.getLastLogIndex() < lastLog.getIndex()) {
-            logger.info("{} in term {}: Vote not granted. Requested last log index {}, my last log index {}.",
+            logger.info("{} in term {}: {}not granted. Requested last log index {}, my last log index {}.",
                         groupId(),
                         currentTerm(),
+                        type,
                         request.getLastLogIndex(),
                         lastLog.getIndex());
             return false;
         }
 
-        logger.info("{} in term {}: Vote granted for {}.", groupId(), currentTerm(), request.getCandidateId());
-        markVotedFor(request.getCandidateId());
+        logger.info("{} in term {}: {} granted for {}.", groupId(), currentTerm(), type, request.getCandidateId());
+        if (!preVote) {
+            markVotedFor(request.getCandidateId());
+        }
         return true;
     }
 
