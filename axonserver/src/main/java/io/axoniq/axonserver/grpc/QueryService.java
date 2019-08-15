@@ -12,36 +12,31 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
-import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
-import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
-import io.axoniq.axonserver.grpc.query.QueryRequest;
-import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.grpc.query.QueryServiceGrpc;
-import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
-import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.grpc.query.*;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;
 import io.grpc.stub.StreamObserver;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.PreDestroy;
 
 /**
  * GRPC service to handle query bus requests from Axon Application
  * Client can sent two requests:
  * query: sends a singe query to AxonServer
  * openStream: used by application providing query handlers, maintains an open bi directional connection between the application and AxonServer
+ *
  * @author Marc Gathier
  */
 @Service("QueryService")
@@ -120,7 +115,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
                         SubscriptionQueryResponse response = queryProviderOutbound.getSubscriptionQueryResponse();
-                        eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response));
+                        eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response, () ->
+                                wrappedQueryProviderInboundObserver.onNext(unsubscribeMessage(response.getSubscriptionIdentifier()))));
                         break;
                     case REQUEST_NOT_SET:
                         break;
@@ -179,6 +175,17 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                 }
             }
         };
+    }
+
+    @NotNull
+    private QueryProviderInbound unsubscribeMessage(String subscriptionIdentifier) {
+        return QueryProviderInbound.newBuilder()
+                                   .setSubscriptionQueryRequest(
+                                           SubscriptionQueryRequest.newBuilder()
+                                                                   .setUnsubscribe(SubscriptionQuery.newBuilder()
+                                                                                                    .setSubscriptionIdentifier(
+                                                                                                            subscriptionIdentifier)))
+                                   .build();
     }
 
     @Override
