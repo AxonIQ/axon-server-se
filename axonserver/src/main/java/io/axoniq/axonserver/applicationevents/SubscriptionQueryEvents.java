@@ -176,7 +176,6 @@ public class SubscriptionQueryEvents {
         private final SubscriptionQueryResponse response;
         private final Runnable unknownSubscriptionHandler;
 
-        @Deprecated
         public SubscriptionQueryResponseReceived(SubscriptionQueryResponse response) {
             this(response, () -> {});
         }
