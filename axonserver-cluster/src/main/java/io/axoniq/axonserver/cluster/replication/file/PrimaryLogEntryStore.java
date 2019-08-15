@@ -114,6 +114,10 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
                 indexPositions.put(event.getIndex(), iterator.startPosition());
                 sequence++;
             }
+
+            if (sequence == nextToken && iterator.hasNext()) {
+                iterator.next();
+            }
             lastToken.set(sequence - 1);
             buffer.position(iterator.startPosition());
         }

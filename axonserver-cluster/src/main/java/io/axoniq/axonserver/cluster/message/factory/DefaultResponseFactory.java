@@ -38,13 +38,14 @@ public class DefaultResponseFactory implements RaftResponseFactory {
     }
 
     @Override
-    public AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause) {
+    public AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause, boolean fatal) {
         AppendEntryFailure failure = AppendEntryFailure
                 .newBuilder()
                 .setCause(failureCause)
                 .setLastAppliedIndex(raftGroup.logEntryProcessor().lastAppliedIndex())
                 .setLastAppliedEventSequence(raftGroup.lastAppliedEventSequence())
                 .setLastAppliedSnapshotSequence(raftGroup.lastAppliedSnapshotSequence())
+                .setFatal(fatal)
                 .build();
         return AppendEntriesResponse
                 .newBuilder()

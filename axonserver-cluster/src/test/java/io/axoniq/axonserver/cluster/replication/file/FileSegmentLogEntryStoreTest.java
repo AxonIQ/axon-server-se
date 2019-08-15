@@ -51,12 +51,17 @@ public class FileSegmentLogEntryStoreTest {
         testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
         testSubject.appendEntry(Collections.singletonList(newEntry(2, 2)));
         assertNotNull( testSubject.getEntry(1));
+        assertEquals(1, testSubject.getEntry(1).getTerm());
         assertEquals( 2, testSubject.getEntry(2).getTerm());
         assertNull( testSubject.getEntry(3));
+        testSubject.appendEntry(Collections.singletonList(newEntry(3, 2)));
+        assertEquals(1, testSubject.getEntry(1).getTerm());
+        assertEquals(3, testSubject.getEntry(2).getTerm());
     }
 
     private static Entry newEntry(long term, long index) {
-        SerializedObject serializedObject = SerializedObject.newBuilder().setData(ByteString.copyFromUtf8("Test: + index"))
+        SerializedObject serializedObject = SerializedObject.newBuilder().setData(ByteString.copyFromUtf8(
+                "Test: " + index))
                                                             .setType("Test")
                                                             .build();
         return Entry.newBuilder()

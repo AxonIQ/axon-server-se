@@ -597,4 +597,12 @@ public class RaftNode {
         }
     }
 
+    /**
+     * Returns the number of unapplied but committed entries.
+     *
+     * @return the number of unapplied entries
+     */
+    public long unappliedEntriesCount() {
+        return raftGroup.logEntryProcessor().commitIndex() - raftGroup.logEntryProcessor().lastAppliedIndex();
+    }
 }
