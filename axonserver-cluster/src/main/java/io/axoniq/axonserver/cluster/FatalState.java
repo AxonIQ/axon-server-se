@@ -13,6 +13,13 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Final state for a raft node when it has failed with an unrecoverable error. Responds to append entries requests with
+ * fatal indication, so that leader can stop sending updates to this node for some time.
+ *
+ * @author Marc Gathier
+ * @since 4.2
+ */
 public class FatalState implements MembershipState {
 
     private final ClusterConfiguration clusterConfiguration = new IdleConfiguration();
