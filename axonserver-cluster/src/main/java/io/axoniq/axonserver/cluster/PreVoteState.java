@@ -43,6 +43,9 @@ public class PreVoteState extends VotingState {
     }
 
     private void onElectionResult(Result result) {
+        if (!running) {
+            return;
+        }
         if (result.won()) {
             changeStateTo(stateFactory().candidateState(), result.cause());
         } else if (result.goAway()) {

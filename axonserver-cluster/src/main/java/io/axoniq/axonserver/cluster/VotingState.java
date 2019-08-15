@@ -27,6 +27,7 @@ public abstract class VotingState extends AbstractMembershipState {
     private final Logger logger;
     protected final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private final ClusterConfiguration clusterConfiguration = new CandidateConfiguration();
+    protected volatile boolean running;
 
     VotingState(Builder builder, Logger logger) {
         super(builder);
@@ -36,12 +37,14 @@ public abstract class VotingState extends AbstractMembershipState {
     @Override
     public void start() {
         scheduler.set(schedulerFactory().get());
+        running = true;
         startElection();
     }
 
 
     @Override
     public void stop() {
+        running = false;
         if (scheduler.get() != null) {
             scheduler.getAndSet(null).shutdownNow();
         }
