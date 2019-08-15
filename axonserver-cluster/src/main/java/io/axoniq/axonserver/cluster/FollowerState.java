@@ -213,7 +213,7 @@ public class FollowerState extends AbstractMembershipState {
     }
 
     private void fatalShutdown(String failureCause) {
-        changeStateTo(stateFactory().idleState(raftGroup().localNode().nodeId()), failureCause);
+        changeStateTo(stateFactory().fatalState(), failureCause);
     }
 
     /**

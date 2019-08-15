@@ -20,9 +20,11 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.FluxSink;
 
 import java.time.Clock;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -256,9 +258,11 @@ public class ReplicatorPeer {
         private volatile EntryIterator entryIterator;
         private Registration registration;
         private volatile boolean logCannotSend = true;
+        private final AtomicLong blockUntil = new AtomicLong();
 
         @Override
         public void start() {
+            blockUntil.set(0);
             registration = raftPeer.registerAppendEntriesResponseListener(this::handleResponse);
             logCannotSend = true;
             try {
@@ -286,6 +290,10 @@ public class ReplicatorPeer {
          */
         @Override
         public int sendNextEntries() {
+            if (clock.millis() < blockUntil.get()) {
+                return 0;
+            }
+
             int sent = 0;
             try {
                 long maxTime = System.currentTimeMillis() + raftGroup.raftConfiguration().heartbeatTimeout();
@@ -395,6 +403,10 @@ public class ReplicatorPeer {
                     updateCurrentTerm.accept(response.getTerm(), cause);
                     return;
                 }
+
+                if (response.getFailure().getFatal()) {
+                    blacklist();
+                }
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(response.getFailure().getLastAppliedIndex() + 1);
                 snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
@@ -441,11 +453,11 @@ public class ReplicatorPeer {
 
         private EntryIterator updateEntryIterator() {
             LogEntryStore logEntryStore = raftGroup.localLogEntryStore();
-            logger.info("{} in term {}: updateEntryIterator nextIndex = {}, matchIndex = {}",
-                        groupId(),
-                        currentTerm(),
-                        nextIndex(),
-                        matchIndex());
+            logger.debug("{} in term {}: updateEntryIterator nextIndex = {}, matchIndex = {}",
+                         groupId(),
+                         currentTerm(),
+                         nextIndex(),
+                         matchIndex());
 
             if ( ! forceSnapshot() && (logEntryStore.firstLogIndex() <= 1 ||
                                         nextIndex() - 1 >= logEntryStore.firstLogIndex())) {
@@ -471,6 +483,19 @@ public class ReplicatorPeer {
         @Override
         public String toString() {
             return "Append Entries Replicator Peer State";
+        }
+
+        /**
+         * Fatal error occurred on remote peer (peer is active but responded with fatal error). Stop sending to that
+         * peer for one minute.
+         */
+        private void blacklist() {
+            blockUntil.set(clock.millis() + TimeUnit.MINUTES.toMillis(1));
+            logger.warn("{} in term {}: Received fatal error from {}. Blacklisting until {}",
+                        groupId(),
+                        currentTerm(),
+                        raftPeer.nodeId(),
+                        new Date(blockUntil.get()));
         }
     }
 

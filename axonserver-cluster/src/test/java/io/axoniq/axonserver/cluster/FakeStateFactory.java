@@ -51,6 +51,12 @@ public class FakeStateFactory implements MembershipStateFactory {
         return lastStateCreated;
     }
 
+    @Override
+    public MembershipState fatalState() {
+        lastStateCreated = new FakeState("fatal");
+        return lastStateCreated;
+    }
+
     public class FakeState implements MembershipState {
 
         private final String name;

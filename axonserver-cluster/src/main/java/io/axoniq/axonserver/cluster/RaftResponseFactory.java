@@ -30,8 +30,11 @@ public interface RaftResponseFactory {
      * @param failureCause the cause of the failure
      * @return the failure {@link AppendEntriesResponse}
      */
-    AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause);
+    default AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause) {
+        return appendEntriesFailure(requestId, failureCause, false);
+    }
 
+    AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause, boolean fatal);
     /**
      * Builds an {@link InstallSnapshotResponse} to confirm that
      * the {@link io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest} has been successfully processed.
