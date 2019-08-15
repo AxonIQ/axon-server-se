@@ -5,10 +5,11 @@ import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.Status;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static io.axoniq.axonserver.enterprise.HealthStatus.WARN_STATUS;
 
 /**
  * @author Marc Gathier
@@ -37,10 +38,10 @@ public class RaftHealthIndicator extends AbstractHealthIndicator {
                             long raftMsgBuffer = lastLogIndex - (rp.nextIndex() - 1);
                             if (lastMessageAge > raftGroup.raftConfiguration().maxElectionTimeout()) {
                                 builder.withDetail(c + ".follower." + rp.nodeName() + ".status", "NO_ACK_RECEIVED");
-                                builder.status(new Status("WARN"));
+                                builder.status(WARN_STATUS);
                             } else if(raftMsgBuffer > 100) {
                                 builder.withDetail(c + ".follower." + rp.nodeName() + ".status", "BEHIND");
-                                builder.status(new Status("WARN"));
+                                builder.status(WARN_STATUS);
                             } else {
                                 builder.withDetail(c + ".follower." + rp.nodeName() + ".status", "UP");
                             }
@@ -49,13 +50,18 @@ public class RaftHealthIndicator extends AbstractHealthIndicator {
             }
             String leader = thisNode.getLeaderName();
             if (leader == null) {
-                builder.status(new Status("WARN"));
+                builder.status(WARN_STATUS);
             } else {
                 hasAnyLeader.set(true);
             }
             builder.withDetail(c + ".leader", StringUtils.getOrDefault(leader, "None"));
+
+            if (thisNode.unappliedEntriesCount() > 100) {
+                builder.withDetail(c + ".status", "BEHIND");
+                builder.status(WARN_STATUS);
+            }
         });
-        if (!hasAnyLeader.get() && raftController.getContexts().size() > 0) {
+        if (!hasAnyLeader.get() && !raftController.getContexts().isEmpty()) {
             builder.down();
         }
     }
