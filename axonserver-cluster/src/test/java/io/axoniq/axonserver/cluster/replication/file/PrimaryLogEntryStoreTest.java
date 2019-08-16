@@ -167,9 +167,9 @@ public class PrimaryLogEntryStoreTest {
         assertEquals(2, next.getTerm());
         assertEquals(2, next.getIndex());
         while(iterator.hasNext()) {
-            iterator.next();
-            System.out.println(iterator.startPosition());
+            next = iterator.next();
         }
+        assertEquals(futures.length, next.getIndex());
     }
 
     private String randomString(int maxLength) {

@@ -75,7 +75,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     public EntryIterator getEntryIterator(long nextIndex) {
-        return new MultiSegmentIterator(this, nextIndex);
+        return new MultiSegmentIterator(this::getIterator, nextIndex);
     }
 
     public Entry getEntry(long index) {
@@ -110,16 +110,14 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
             while (sequence < nextToken && iterator.hasNext()) {
+                int position = iterator.position();
                 Entry event = iterator.next();
-                indexPositions.put(event.getIndex(), iterator.startPosition());
+                indexPositions.put(event.getIndex(), position);
                 sequence++;
             }
 
-            if (sequence == nextToken && iterator.hasNext()) {
-                iterator.next();
-            }
             lastToken.set(sequence - 1);
-            buffer.position(iterator.startPosition());
+            buffer.position(iterator.position());
         }
 
         buffer.putInt(buffer.position(), 0);

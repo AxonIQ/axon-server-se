@@ -61,8 +61,9 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(segment, segment, 5, false)) {
             Map<Long, Integer> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {
+                int position = iterator.position();
                 Entry event = iterator.next();
-                aggregatePositions.put(event.getIndex(), iterator.startPosition());
+                aggregatePositions.put(event.getIndex(), position);
             }
             indexManager.createIndex(segment, aggregatePositions, true);
         }

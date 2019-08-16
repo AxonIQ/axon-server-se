@@ -1,9 +1,8 @@
 package io.axoniq.axonserver.cluster.replication.file;
 
-import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.cluster.replication.EntryFactory;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.grpc.cluster.Entry;
-import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.junit.*;
 import org.junit.rules.*;
 
@@ -40,7 +39,8 @@ public class FileSegmentLogEntryStoreTest {
 
     @Test
     public void appendEntry() throws IOException {
-        testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
+        testSubject.appendEntry(asList(EntryFactory.newEntry(1, 1), EntryFactory.newEntry(1, 2), EntryFactory
+                .newEntry(1, 3)));
         assertNotNull( testSubject.getEntry(1));
         assertNotNull( testSubject.getEntry(2));
         assertNotNull( testSubject.getEntry(3));
@@ -48,27 +48,16 @@ public class FileSegmentLogEntryStoreTest {
 
     @Test
     public void replaceEntries() throws IOException {
-        testSubject.appendEntry(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
-        testSubject.appendEntry(Collections.singletonList(newEntry(2, 2)));
+        testSubject.appendEntry(asList(EntryFactory.newEntry(1, 1), EntryFactory.newEntry(1, 2), EntryFactory
+                .newEntry(1, 3)));
+        testSubject.appendEntry(Collections.singletonList(EntryFactory.newEntry(2, 2)));
         assertNotNull( testSubject.getEntry(1));
         assertEquals(1, testSubject.getEntry(1).getTerm());
         assertEquals( 2, testSubject.getEntry(2).getTerm());
         assertNull( testSubject.getEntry(3));
-        testSubject.appendEntry(Collections.singletonList(newEntry(3, 2)));
+        testSubject.appendEntry(Collections.singletonList(EntryFactory.newEntry(3, 2)));
         assertEquals(1, testSubject.getEntry(1).getTerm());
         assertEquals(3, testSubject.getEntry(2).getTerm());
-    }
-
-    private static Entry newEntry(long term, long index) {
-        SerializedObject serializedObject = SerializedObject.newBuilder().setData(ByteString.copyFromUtf8(
-                "Test: " + index))
-                                                            .setType("Test")
-                                                            .build();
-        return Entry.newBuilder()
-                    .setTerm(term)
-                    .setIndex(index)
-                    .setSerializedObject(serializedObject)
-                    .build();
     }
 
     @Test
