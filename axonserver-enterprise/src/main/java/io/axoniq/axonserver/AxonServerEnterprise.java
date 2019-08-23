@@ -7,16 +7,27 @@ import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.licensing.LicenseConfiguration;
 import io.axoniq.axonserver.licensing.LicenseException;
 import io.axoniq.axonserver.rest.PluginImportSelector;
+import io.opencensus.contrib.grpc.metrics.RpcViews;
+import io.opencensus.contrib.zpages.ZPageHandlers;
+import io.opencensus.exporter.stats.prometheus.PrometheusStatsCollector;
+import io.opencensus.exporter.trace.jaeger.JaegerExporterConfiguration;
+import io.opencensus.exporter.trace.jaeger.JaegerTraceExporter;
+import io.opencensus.trace.Tracing;
+import io.opencensus.trace.config.TraceConfig;
+import io.opencensus.trace.samplers.Samplers;
+import io.prometheus.client.exporter.HTTPServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.io.IOException;
+import java.util.Optional;
 import javax.annotation.PreDestroy;
 
 /**
@@ -29,7 +40,9 @@ import javax.annotation.PreDestroy;
 public class AxonServerEnterprise {
     private static final Logger log = LoggerFactory.getLogger(AxonServerEnterprise.class);
 
-    public static void main(String[] args) {
+    private HTTPServer prometheusServer;
+
+    public static void main(String[] args) throws IOException {
         try {
             LicenseConfiguration.getInstance();
         } catch(LicenseException ex) {
@@ -38,6 +51,38 @@ public class AxonServerEnterprise {
         }
         System.setProperty("spring.config.name", "axonserver");
         SpringApplication.run(AxonServerEnterprise.class, args);
+    }
+
+    @Autowired
+    public void configureGrpcMetrics(GrpcMetricsConfig metricsConfig) throws IOException {
+        if (metricsConfig.isEnabled()) {
+            TraceConfig traceConfig = Tracing.getTraceConfig();
+            traceConfig.updateActiveTraceParams(
+                    traceConfig.getActiveTraceParams()
+                               .toBuilder()
+                               .setSampler(Samplers.alwaysSample())
+                               .build());
+            // we are using a deprecated method here since exporters are not updated yet to work with RpcViews.registerAllGrpcViews();
+            RpcViews.registerAllViews();
+
+            if (metricsConfig.isEnabledZPages()) {
+                ZPageHandlers.startHttpServerAndRegisterAll(metricsConfig.getzPagesPort());
+            }
+
+            if (metricsConfig.isEnabledPrometheus()) {
+                PrometheusStatsCollector.createAndRegister();
+                prometheusServer = new HTTPServer(metricsConfig.getPrometheusPort(), true);
+            }
+
+            if (metricsConfig.isEnabledJaeger()) {
+                JaegerExporterConfiguration jaegerConf =
+                        JaegerExporterConfiguration.builder()
+                                                   .setServiceName(metricsConfig.getJaegerServiceName())
+                                                   .setThriftEndpoint(metricsConfig.getJaegerEndpoint())
+                                                   .build();
+                JaegerTraceExporter.createAndRegister(jaegerConf);
+            }
+        }
     }
 
     @Bean
@@ -53,6 +98,8 @@ public class AxonServerEnterprise {
     @PreDestroy
     public void clean() {
         GrpcFlowControlledDispatcherListener.shutdown();
-
+        JaegerTraceExporter.unregister();
+        Optional.ofNullable(prometheusServer)
+                .ifPresent(HTTPServer::stop);
     }
 }
