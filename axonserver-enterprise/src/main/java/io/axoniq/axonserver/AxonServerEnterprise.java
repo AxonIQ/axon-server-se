@@ -42,7 +42,7 @@ public class AxonServerEnterprise {
 
     private HTTPServer prometheusServer;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         try {
             LicenseConfiguration.getInstance();
         } catch(LicenseException ex) {
