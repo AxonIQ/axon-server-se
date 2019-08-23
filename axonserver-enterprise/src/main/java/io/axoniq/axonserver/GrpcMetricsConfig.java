@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
  * Configuration properties for gRPC metrics.
  *
  * @author Milan Savic
- * @since 4.3
+ * @since 4.2.1
  */
 @ConfigurationProperties(prefix = "axoniq.axonserver.metrics.grpc")
 @Configuration
