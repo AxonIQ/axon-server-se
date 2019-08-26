@@ -81,7 +81,7 @@ globals.pageView = new Vue(
                             axios.delete('v1/applications/' + encodeURIComponent(application.name))
                                     .then(response => {
                                         this.feedback = application.name + " deleted";
-                                        this.application = {roles: []};
+                                        this.application = {roles: [], workingRoles: []};
                                         this.newRole = {};
                                         this.loadApplications();
                                     });
