@@ -2,9 +2,10 @@ package io.axoniq.axonserver.enterprise.component.processor.balancing;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdated;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
-import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.strategy.ProcessorLoadBalanceStrategy;
+import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
+import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.RaftProcessorLoadBalancingService;
 import org.slf4j.Logger;
@@ -14,7 +15,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +24,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -36,63 +38,71 @@ public class UpdatedLoadBalance {
 
     private final Logger logger = LoggerFactory.getLogger(UpdatedLoadBalance.class);
 
-    private final Clients clients;
+    private static final int BALANCING_TRIGGER_MILLIS = 15000;
+    private static final String DEFAULT_STRATEGY_NAME = "default";
 
-    private final ProcessorLoadBalanceStrategy delegate;
-
-    private final RaftProcessorLoadBalancingService raftProcessorLoadBalancingService;
-
+    private final ClientProcessors allClientProcessors;
     private final ApplicationEventPublisher eventPublisher;
+    private final ProcessorLoadBalanceStrategy loadBalancingStrategy;
+    private final RaftProcessorLoadBalancingService loadBalancingService;
 
     private final Map<TrackingEventProcessor, ExecutorService> executors = new HashMap<>();
-
     private final List<Consumer<EventProcessorStatusUpdated>> updateListeners = new CopyOnWriteArrayList<>();
 
-    public UpdatedLoadBalance(Clients clients,
-                              ProcessorLoadBalanceStrategy delegate,
-                              RaftProcessorLoadBalancingService raftProcessorLoadBalancingService,
-                              ApplicationEventPublisher eventPublisher) {
-        this.clients = clients;
-        this.delegate = delegate;
-        this.raftProcessorLoadBalancingService = raftProcessorLoadBalancingService;
+    public UpdatedLoadBalance(ClientProcessors allClientProcessors,
+                              ApplicationEventPublisher eventPublisher,
+                              ProcessorLoadBalanceStrategy loadBalancingStrategy,
+                              RaftProcessorLoadBalancingService loadBalancingService) {
+        this.allClientProcessors = allClientProcessors;
         this.eventPublisher = eventPublisher;
+        this.loadBalancingStrategy = loadBalancingStrategy;
+        this.loadBalancingService = loadBalancingService;
     }
 
     @EventListener
-    public void on(EventProcessorStatusUpdated update) {
-        updateListeners.forEach(c -> c.accept(update));
+    public void on(EventProcessorStatusUpdated event) {
+        updateListeners.forEach(listener -> listener.accept(event));
     }
 
-    public void balance(TrackingEventProcessor processor) {
-        ExecutorService service = executors.computeIfAbsent(processor,
-                                                            p -> new ThreadPoolExecutor(0,
-                                                                                        1,
-                                                                                        1,
-                                                                                        SECONDS,
-                                                                                        new LinkedBlockingQueue<>()));
+    public void balance(TrackingEventProcessor trackingProcessor) {
+        ExecutorService service = executors.computeIfAbsent(
+                trackingProcessor, tep -> new ThreadPoolExecutor(0, 1, 1, SECONDS, new LinkedBlockingQueue<>())
+        );
+
         service.execute(() -> {
             try {
-                Thread.sleep(15000);
-                Set<String> attendedInfo = new HashSet<>();
-                clients.forEach(client -> attendedInfo.add(client.name()));
-                CountDownLatch count = new CountDownLatch(attendedInfo.size());
-                Consumer<EventProcessorStatusUpdated> consumer = status -> {
-                    String client = status.eventProcessorStatus().getClientName();
-                    boolean removed = attendedInfo.remove(client);
+                Thread.sleep(BALANCING_TRIGGER_MILLIS);
+
+                String processorName = trackingProcessor.name();
+                ClientProcessorsForContextAndName matchingClients = new ClientProcessorsForContextAndName(
+                        allClientProcessors, trackingProcessor.context(), processorName
+                );
+
+                Set<String> clientNames = StreamSupport.stream(matchingClients.spliterator(), false)
+                                                       .map(ClientProcessor::clientId)
+                                                       .collect(Collectors.toSet());
+                CountDownLatch clientProcessorStatusUpdateLatch = new CountDownLatch(clientNames.size());
+                Consumer<EventProcessorStatusUpdated> statusUpdateListener = statusEvent -> {
+                    boolean removed = clientNames.remove(statusEvent.eventProcessorStatus().getClientName());
                     if (removed) {
-                        count.countDown();
+                        clientProcessorStatusUpdateLatch.countDown();
                     }
                 };
-                updateListeners.add(consumer);
-                clients.forEach(client -> eventPublisher.publishEvent(new ProcessorStatusRequest(client.name(), processor.name(), false)));
-                boolean updated = count.await(10, SECONDS);
-                updateListeners.remove(consumer);
-                if (updated){
-                    String strategyName = raftProcessorLoadBalancingService.findById(processor)
-                                                                           .map(RaftProcessorLoadBalancing::strategy)
-                                                                           .orElse("default");
 
-                    delegate.balance(processor, strategyName).perform();
+                updateListeners.add(statusUpdateListener);
+                matchingClients.forEach(client -> eventPublisher.publishEvent(
+                        new ProcessorStatusRequest(client.clientId(), processorName, false)
+                ));
+                boolean updated = clientProcessorStatusUpdateLatch.await(10, SECONDS);
+                updateListeners.remove(statusUpdateListener);
+
+                if (updated) {
+                    String strategyName = loadBalancingService.findById(trackingProcessor)
+                                                              .map(RaftProcessorLoadBalancing::strategy)
+                                                              .orElse(DEFAULT_STRATEGY_NAME);
+
+                    loadBalancingStrategy.balance(trackingProcessor, strategyName)
+                                         .perform();
                 }
             } catch (InterruptedException e) {
                 logger.warn("Thread interrupted during Load Balancing Operation", e);
@@ -100,5 +110,4 @@ public class UpdatedLoadBalance {
             }
         });
     }
-
 }
