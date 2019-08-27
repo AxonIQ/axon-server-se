@@ -30,40 +30,73 @@ import java.util.stream.StreamSupport;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * Created by Sara Pellegrini on 29/08/2018.
- * sara.pellegrini@gmail.com
+ * Implementation which delegates the balancing of a single {@link TrackingEventProcessor}. To that end, it will prior
+ * to balancing request the most recent status of the given TrackingEventProcessor on all the clients which are part of
+ * the processor's context and which contain the given processor. Once all the statuses have been updated, it delegates
+ * the balancing operation towards the {@link ProcessorLoadBalanceStrategy} using the strategy as defined in the
+ * {@link RaftProcessorLoadBalancingService}.
+ *
+ * @author Sara Pellegrini
+ * @since 4.1
  */
 @Component
-public class UpdatedLoadBalance {
+public class LoadBalancerDelegate {
 
-    private final Logger logger = LoggerFactory.getLogger(UpdatedLoadBalance.class);
+    private static final Logger logger = LoggerFactory.getLogger(LoadBalancerDelegate.class);
 
     private static final int BALANCING_TRIGGER_MILLIS = 15000;
     private static final String DEFAULT_STRATEGY_NAME = "default";
 
     private final ClientProcessors allClientProcessors;
     private final ApplicationEventPublisher eventPublisher;
-    private final ProcessorLoadBalanceStrategy loadBalancingStrategy;
     private final RaftProcessorLoadBalancingService loadBalancingService;
+    private final ProcessorLoadBalanceStrategy loadBalancingStrategy;
 
     private final Map<TrackingEventProcessor, ExecutorService> executors = new HashMap<>();
     private final List<Consumer<EventProcessorStatusUpdated>> updateListeners = new CopyOnWriteArrayList<>();
 
-    public UpdatedLoadBalance(ClientProcessors allClientProcessors,
-                              ApplicationEventPublisher eventPublisher,
-                              ProcessorLoadBalanceStrategy loadBalancingStrategy,
-                              RaftProcessorLoadBalancingService loadBalancingService) {
+    /**
+     * Build a delegate Load Balancer, which ensure the most recent status of {@link TrackingEventProcessor} to balance
+     * is known prior to issuing the act of load balancing.
+     *
+     * @param allClientProcessors   a {@link ClientProcessors} containing all known {@link ClientProcessor}s in the
+     *                              cluster
+     * @param eventPublisher        {@link ApplicationEventPublisher} implementation capable of publishing Spring
+     *                              application events
+     * @param loadBalancingService  the {@link RaftProcessorLoadBalancingService} used to deduce the load balancing
+     *                              strategy to use
+     * @param loadBalancingStrategy the {@link ProcessorLoadBalanceStrategy} which actually performs the act of
+     *                              balancing the load for the given {@link TrackingEventProcessor}
+     */
+    public LoadBalancerDelegate(ClientProcessors allClientProcessors,
+                                ApplicationEventPublisher eventPublisher,
+                                RaftProcessorLoadBalancingService loadBalancingService,
+                                ProcessorLoadBalanceStrategy loadBalancingStrategy) {
         this.allClientProcessors = allClientProcessors;
         this.eventPublisher = eventPublisher;
         this.loadBalancingStrategy = loadBalancingStrategy;
         this.loadBalancingService = loadBalancingService;
     }
 
+    /**
+     * Event handler towards the {@link EventProcessorStatusUpdated}, used to verify if all the status updates have been
+     * received.
+     *
+     * @param event the {@link EventProcessorStatusUpdated} signaling the update of Event Processor Status
+     */
     @EventListener
     public void on(EventProcessorStatusUpdated event) {
         updateListeners.forEach(listener -> listener.accept(event));
     }
 
+    /**
+     * Delegate balance operation, which ensure the most recent status of the given {@code trackingProcessor} is known
+     * prior to performing the actual load balancing operation. Sending and waiting for the status updates to come in
+     * is performed in a separate thread created through a dedicated {@link ExecutorService} per incoming
+     * {@code trackingProcessor}.
+     *
+     * @param trackingProcessor the {@link TrackingEventProcessor} to balance the load for
+     */
     public void balance(TrackingEventProcessor trackingProcessor) {
         ExecutorService service = executors.computeIfAbsent(
                 trackingProcessor, tep -> new ThreadPoolExecutor(0, 1, 1, SECONDS, new LinkedBlockingQueue<>())
