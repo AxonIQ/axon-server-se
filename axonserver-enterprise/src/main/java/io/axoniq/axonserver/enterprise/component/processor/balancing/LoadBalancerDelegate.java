@@ -37,7 +37,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * {@link RaftProcessorLoadBalancingService}.
  *
  * @author Sara Pellegrini
- * @since 4.1
+ * @since 4.0
  */
 @Component
 public class LoadBalancerDelegate {
