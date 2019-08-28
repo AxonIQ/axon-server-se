@@ -16,4 +16,13 @@ public interface JpaContextApplicationRepository extends JpaRepository<JpaContex
     List<JpaContextApplication> findAllByTokenPrefix(String tokenPrefix);
 
     List<JpaContextApplication> findAllByContext(String context);
+
+    /**
+     * Retries apps based on context and first characters in token.
+     *
+     * @param tokenPrefix the first characters of the token
+     * @param context     the context to retrieve applications for
+     * @return a list of applications
+     */
+    List<JpaContextApplication> findAllByTokenPrefixAndContext(String tokenPrefix, String context);
 }
