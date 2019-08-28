@@ -125,28 +125,28 @@ public class AccessControllerTest {
     }
 
     @Test
-    public void authorizeNonExistingToken() throws Exception {
+    public void authorizeNonExistingToken() {
         assertFalse(testSubject.authorize("12349999", "default", "path1"));
     }
 
     @Test
-    public void authorizeMissingPath() throws Exception {
+    public void authorizeMissingPath() {
         assertTrue(testSubject.authorize("1234567890", "default", "path4"));
     }
 
     @Test
-    public void authorizeMissingRole() throws Exception {
+    public void authorizeMissingRole() {
         assertFalse(testSubject.authorize("1234567890", "default", "path2"));
     }
 
     @Test
-    public void authorizeWithRole() throws Exception {
+    public void authorizeWithRole() {
         assertTrue(testSubject.authorize("1234567890", "default", "path1"));
         assertTrue(testSubject.authorize("1234567890", "context2", "path2"));
     }
 
     @Test
-    public void authorizeWithWildcard() throws Exception {
+    public void authorizeWithWildcard() {
         assertTrue(testSubject.authorize("1234567890", "default", "path3/test/demo"));
     }
 
