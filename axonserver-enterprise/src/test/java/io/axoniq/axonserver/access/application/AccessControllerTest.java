@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.access.application;
 
+import com.google.common.collect.Sets;
 import io.axoniq.axonserver.access.jpa.FunctionRole;
 import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
 import io.axoniq.axonserver.access.jpa.PathToFunction;
@@ -45,6 +46,11 @@ public class AccessControllerTest {
         app.setTokenPrefix("12345678");
         app.setRoles(Collections.singleton("READ"));
         applications.add(app);
+        app = new JpaContextApplication("context2", "Test");
+        app.setHashedToken(hasher.hash("1234567890"));
+        app.setTokenPrefix("12345678");
+        app.setRoles(Collections.singleton("WRITE"));
+        applications.add(app);
 
         when(applicationRepository.findAllByTokenPrefixAndContext(any(), any()))
                 .thenAnswer((Answer<List<JpaContextApplication>>) invocationOnMock -> {
@@ -53,6 +59,13 @@ public class AccessControllerTest {
                     return applications.stream()
                                        .filter(app1 -> app1.getTokenPrefix().equals(prefix))
                                        .filter(app1 -> app1.getContext().equals(context))
+                                       .collect(Collectors.toList());
+                });
+        when(applicationRepository.findAllByTokenPrefix(any()))
+                .thenAnswer((Answer<List<JpaContextApplication>>) invocationOnMock -> {
+                    String prefix = invocationOnMock.getArgument(0);
+                    return applications.stream()
+                                       .filter(app1 -> app1.getTokenPrefix().equals(prefix))
                                        .collect(Collectors.toList());
                 });
 
@@ -129,6 +142,7 @@ public class AccessControllerTest {
     @Test
     public void authorizeWithRole() throws Exception {
         assertTrue(testSubject.authorize("1234567890", "default", "path1"));
+        assertTrue(testSubject.authorize("1234567890", "context2", "path2"));
     }
 
     @Test
@@ -136,4 +150,8 @@ public class AccessControllerTest {
         assertTrue(testSubject.authorize("1234567890", "default", "path3/test/demo"));
     }
 
+    @Test
+    public void getRoles() {
+        assertEquals(Sets.newHashSet("READ@default", "WRITE@context2"), testSubject.getRoles("1234567890"));
+    }
 }
