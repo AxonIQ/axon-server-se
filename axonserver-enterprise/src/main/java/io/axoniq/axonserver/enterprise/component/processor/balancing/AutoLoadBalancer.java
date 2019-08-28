@@ -34,7 +34,7 @@ public class AutoLoadBalancer {
     private final Map<TrackingEventProcessor, Set<String>> cache = new ConcurrentHashMap<>();
 
     @Autowired
-    public AutoLoadBalancer(UpdatedLoadBalance balancer, RaftLeaderProvider raftLeaderProvider) {
+    public AutoLoadBalancer(LoadBalancerDelegate balancer, RaftLeaderProvider raftLeaderProvider) {
         this(balancer::balance, raftLeaderProvider::isLeader);
     }
 
