@@ -46,6 +46,12 @@ public class AccessControllerDB {
         this.hasher = hasher;
     }
 
+    /**
+     * Retrieves all roles for the token on all contexts available on this node.
+     *
+     * @param token the application token
+     * @return set of ROLE@Context values
+     */
     public Set<String> getRoles(String token) {
         if (token != null && token.equals(systemToken[0])) {
             return Collections.singleton("ADMIN@_admin");
@@ -53,18 +59,38 @@ public class AccessControllerDB {
         return contextApplicationRepository.findAllByTokenPrefix(ApplicationController.tokenPrefix(token))
                                            .stream()
                                            .filter(app -> hasher.checkpw(token, app.getHashedToken()))
+                                           .map(JpaContextApplication::getQualifiedRoles)
+                                           .flatMap(Set::stream)
+                                           .collect(Collectors.toSet());
+    }
+
+    private Set<String> getRolesForContext(String context, String token) {
+        if (token != null && token.equals(systemToken[0])) {
+            return Collections.singleton("ADMIN@_admin");
+        }
+        return contextApplicationRepository.findAllByTokenPrefixAndContext(ApplicationController.tokenPrefix(token),
+                                                                           context)
+                                           .stream()
+                                           .filter(app -> hasher.checkpw(token, app.getHashedToken()))
                                            .findFirst()
                                            .map(JpaContextApplication::getQualifiedRoles)
                                            .orElse(null);
     }
 
+    /**
+     * Checks if the app identified by the token is allowed to perform the requested operation in the specified context.
+     * @param token the app token
+     * @param context the current context of the connection
+     * @param path the operation to authorize
+     * @return true if the app identified by the token is allowed to perform the requested operation in the specified context
+     */
     public boolean authorize(String token, String context, String path) {
         Set<String> requiredRoles = getPathMappings(path);
         if (requiredRoles == null || requiredRoles.isEmpty()) {
             return true;
         }
 
-        Set<String> roles = getRoles(token);
+        Set<String> roles = getRolesForContext(context, token);
         logger.debug("Authorizing {}: required roles: {}, app roles: {}, context: {}", path,
                      requiredRoles,
                      roles,
