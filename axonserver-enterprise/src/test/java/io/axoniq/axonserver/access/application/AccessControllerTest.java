@@ -46,11 +46,14 @@ public class AccessControllerTest {
         app.setRoles(Collections.singleton("READ"));
         applications.add(app);
 
-        when(applicationRepository.findAllByTokenPrefix(any()))
+        when(applicationRepository.findAllByTokenPrefixAndContext(any(), any()))
                 .thenAnswer((Answer<List<JpaContextApplication>>) invocationOnMock -> {
                     String prefix = invocationOnMock.getArgument(0);
-                    return applications.stream().filter(app1 -> app1.getTokenPrefix().equals(prefix)).collect(
-                            Collectors.toList());
+                    String context = invocationOnMock.getArgument(1);
+                    return applications.stream()
+                                       .filter(app1 -> app1.getTokenPrefix().equals(prefix))
+                                       .filter(app1 -> app1.getContext().equals(context))
+                                       .collect(Collectors.toList());
                 });
 
         PathToFunctionRepository pathToFunctionRepository = mock(PathToFunctionRepository.class);
