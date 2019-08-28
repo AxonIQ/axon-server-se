@@ -28,6 +28,13 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.2.1
+----------------------------
+
+- Fix for issue in access control: applications with access to multiple contexts are not always correctly validated
+- Fix for UI issue: after deleting an application the buttons no longer work
+- On auto-load-balance of a event processor group only request the current status from applications with this processor group
+
 Changes in Axon Server 4.2
 --------------------------
 
