@@ -91,10 +91,10 @@ public class AccessControllerDB {
         }
 
         Set<String> roles = getRolesForContext(context, token);
-        logger.warn("Authorizing {}: required roles: {}, app roles: {}, context: {}", path,
-                    requiredRoles,
-                    roles,
-                    context);
+        logger.debug("Authorizing {}: required roles: {}, app roles: {}, context: {}", path,
+                     requiredRoles,
+                     roles,
+                     context);
         if (roles == null)
             return false;
 
