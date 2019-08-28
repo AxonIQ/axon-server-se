@@ -21,8 +21,9 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -44,6 +45,7 @@ public class LoadBalancerDelegate {
 
     private static final Logger logger = LoggerFactory.getLogger(LoadBalancerDelegate.class);
 
+    private static final int CORE_POOL_SIZE = 1;
     private static final int BALANCING_TRIGGER_MILLIS = 15000;
     private static final String DEFAULT_STRATEGY_NAME = "default";
 
@@ -52,7 +54,7 @@ public class LoadBalancerDelegate {
     private final RaftProcessorLoadBalancingService loadBalancingService;
     private final ProcessorLoadBalanceStrategy loadBalancingStrategy;
 
-    private final Map<TrackingEventProcessor, ExecutorService> executors = new HashMap<>();
+    private final Map<TrackingEventProcessor, ScheduledExecutorService> executors = new HashMap<>();
     private final List<Consumer<EventProcessorStatusUpdated>> updateListeners = new CopyOnWriteArrayList<>();
 
     /**
@@ -98,14 +100,11 @@ public class LoadBalancerDelegate {
      * @param trackingProcessor the {@link TrackingEventProcessor} to balance the load for
      */
     public void balance(TrackingEventProcessor trackingProcessor) {
-        ExecutorService service = executors.computeIfAbsent(
-                trackingProcessor, tep -> new ThreadPoolExecutor(0, 1, 1, SECONDS, new LinkedBlockingQueue<>())
-        );
+        ScheduledExecutorService scheduledExecutor =
+                executors.computeIfAbsent(trackingProcessor, tep -> new ScheduledThreadPoolExecutor(CORE_POOL_SIZE));
 
-        service.execute(() -> {
+        scheduledExecutor.schedule(() -> {
             try {
-                Thread.sleep(BALANCING_TRIGGER_MILLIS);
-
                 String processorName = trackingProcessor.name();
                 ClientProcessorsForContextAndName matchingClients = new ClientProcessorsForContextAndName(
                         allClientProcessors, trackingProcessor.context(), processorName
@@ -141,6 +140,6 @@ public class LoadBalancerDelegate {
                 logger.warn("Thread interrupted during Load Balancing Operation", e);
                 Thread.currentThread().interrupt();
             }
-        });
+        }, BALANCING_TRIGGER_MILLIS, TimeUnit.MILLISECONDS);
     }
 }
