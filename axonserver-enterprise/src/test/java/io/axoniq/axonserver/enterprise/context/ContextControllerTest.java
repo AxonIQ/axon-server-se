@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
+import io.axoniq.axonserver.GrpcMetricsConfig;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
@@ -52,6 +53,8 @@ public class ContextControllerTest {
     private LogReplicationService logReplicationService;
     @MockBean
     private GrpcRaftController raftController;
+    @MockBean
+    private GrpcMetricsConfig grpcMetricsConfig;
 
     private List<NodeInfoWithLabel> initialNodes = new ArrayList<>();
 
