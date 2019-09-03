@@ -10,9 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -31,7 +29,7 @@ public class AutoLoadBalancer {
 
     private final Function<String,Boolean> coordinatorForContext;
 
-    private final Map<TrackingEventProcessor, Set<String>> cache = new ConcurrentHashMap<>();
+    private final Map<TrackingEventProcessor, Map<String, Integer>> cache = new ConcurrentHashMap<>();
 
     @Autowired
     public AutoLoadBalancer(LoadBalancerDelegate balancer, RaftLeaderProvider raftLeaderProvider) {
@@ -45,21 +43,28 @@ public class AutoLoadBalancer {
     }
 
     /**
-     * Listens to any update of the event processors status and balances the load if this node is the current leader.
+     * Listens to any update of the event processors status and balances the load if this node is the current leader and
+     * there is a change in the number of active threads on the client (or processor/client was unknown).
      *
      * @param event the internal event describing the new status of the event processor
      */
     @EventListener
     public void onEventProcessorStatusChange(EventProcessorEvents.EventProcessorStatusUpdated event) {
-        ClientEventProcessorStatus status = ClientEventProcessorStatusProtoConverter.toProto(event.eventProcessorStatus());
+        ClientEventProcessorStatus status = ClientEventProcessorStatusProtoConverter
+                .toProto(event.eventProcessorStatus());
         String context = status.getContext();
         String client = status.getClient();
         String processor = status.getEventProcessorInfo().getProcessorName();
+        Integer newActiveThreads = status.getEventProcessorInfo().getActiveThreads();
         TrackingEventProcessor current = new TrackingEventProcessor(processor, context);
-        cache.computeIfAbsent(current, s -> new HashSet<>()).add(client);
-        balance(current);
-    }
+        Map<String, Integer> currentClientMap = cache.computeIfAbsent(current, s -> new ConcurrentHashMap<>());
+        Integer currentActiveThreads = currentClientMap.get(client);
+        currentClientMap.put(client, newActiveThreads);
 
+        if (!newActiveThreads.equals(currentActiveThreads)) {
+            balance(current);
+        }
+    }
     /**
      *  Listens to any client disconnected and balances the load of its event processors if this node is the current leader.
      * @param event the internal event describing the client application disconnected from the Axon Server cluster
@@ -67,8 +72,8 @@ public class AutoLoadBalancer {
     @EventListener
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
         cache.forEach((processor, clients) -> {
-            boolean removed = clients.remove(event.getClient());
-            if (removed){
+            Integer removed = clients.remove(event.getClient());
+            if (removed != null) {
                 balance(processor);
             }
         });
