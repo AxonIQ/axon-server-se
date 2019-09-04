@@ -687,8 +687,8 @@ class LocalRaftConfigService implements RaftConfigService {
 
     private void updateApplicationInGroup(Application updatedApplication, Context c) {
         try {
-            ApplicationContextRole roles = getRolesPerContext(updatedApplication,
-                                                              c.getName());
+            Collection<String> roles = getRolesPerContext(updatedApplication,
+                                                          c.getName());
             ContextApplication contextApplication =
                     ContextApplication.newBuilder()
                                       .setContext(c.getName())
@@ -696,8 +696,7 @@ class LocalRaftConfigService implements RaftConfigService {
                                       .setHashedToken(updatedApplication.getToken())
                                       .setTokenPrefix(updatedApplication
                                                               .getTokenPrefix())
-                                      .addAllRoles(roles == null || roles.getRolesCount() == 0 ?
-                                                           Collections.emptyList() : roles.getRolesList()).build();
+                                      .addAllRoles(roles).build();
 
             raftGroupServiceFactory.getRaftGroupService(c.getName())
                                    .updateApplication(contextApplication).get();
@@ -767,17 +766,18 @@ class LocalRaftConfigService implements RaftConfigService {
                         .collect(Collectors.toSet());
     }
 
-    private ApplicationContextRole getRolesPerContext(Application application, String name) {
+    private Collection<String> getRolesPerContext(Application application, String name) {
+        Set<String> roles = new HashSet<>();
         for (ApplicationContextRole applicationContextRole : application.getRolesPerContextList()) {
             if (name.equals(applicationContextRole.getContext())) {
-                return applicationContextRole;
+                roles.addAll(applicationContextRole.getRolesList());
             }
 
             if (applicationContextRole.getContext().equals("*")) {
-                return ApplicationContextRole.newBuilder(applicationContextRole).setContext(name).build();
+                roles.addAll(applicationContextRole.getRolesList());
             }
         }
-        return null;
+        return roles;
     }
 
     @Override
