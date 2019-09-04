@@ -56,13 +56,12 @@ public class AutoLoadBalancer {
         String client = status.getClient();
         String processor = status.getEventProcessorInfo().getProcessorName();
         Integer newActiveThreads = status.getEventProcessorInfo().getActiveThreads();
-        TrackingEventProcessor current = new TrackingEventProcessor(processor, context);
-        Map<String, Integer> currentClientMap = cache.computeIfAbsent(current, s -> new ConcurrentHashMap<>());
-        Integer currentActiveThreads = currentClientMap.get(client);
-        currentClientMap.put(client, newActiveThreads);
+        TrackingEventProcessor trackingEventProcessor = new TrackingEventProcessor(processor, context);
+        Integer previousActiveThreads = cache.computeIfAbsent(trackingEventProcessor, s -> new ConcurrentHashMap<>())
+                                             .put(client, newActiveThreads);
 
-        if (!newActiveThreads.equals(currentActiveThreads)) {
-            balance(current);
+        if (!newActiveThreads.equals(previousActiveThreads)) {
+            balance(trackingEventProcessor);
         }
     }
     /**
