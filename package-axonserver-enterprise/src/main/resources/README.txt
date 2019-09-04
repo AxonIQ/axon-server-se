@@ -28,6 +28,12 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.2.2
+----------------------------
+
+- Fix for continuously checking tracking event processor status
+- Fix for issue in access control: combining roles for all contexts and single context
+
 Changes in Axon Server 4.2.1
 ----------------------------
 
