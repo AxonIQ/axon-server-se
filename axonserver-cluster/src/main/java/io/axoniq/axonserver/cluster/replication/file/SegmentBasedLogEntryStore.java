@@ -186,4 +186,6 @@ public abstract class SegmentBasedLogEntryStore {
     protected abstract void removeSegment(long segment);
 
     protected abstract void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier);
+
+    public abstract void close(boolean deleteData);
 }

@@ -136,4 +136,9 @@ public class Synchronizer {
         if( shutdown) fsync.shutdown();
     }
 
+    public boolean isShutdown() {
+        return ((syncJob == null || (syncJob.isDone() || syncJob.isCancelled()))
+                && (fsync == null || (fsync.isShutdown() || fsync.isTerminated())));
+    }
+
 }

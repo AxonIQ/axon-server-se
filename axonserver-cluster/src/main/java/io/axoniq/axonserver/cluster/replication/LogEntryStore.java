@@ -72,4 +72,6 @@ public interface LogEntryStore {
     }
 
     void delete();
+
+    void close(boolean delete);
 }

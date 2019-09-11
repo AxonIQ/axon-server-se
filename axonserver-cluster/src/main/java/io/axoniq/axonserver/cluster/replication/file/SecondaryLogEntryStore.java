@@ -237,4 +237,24 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
                                    ioException);
         }
     }
+
+    @Override
+    public void close(boolean deleteData) {
+        scheduledExecutorService.shutdown();
+        lruMap.forEach((s, source) -> {
+            if( source.get() != null) {
+                source.get().clean(0);
+            }
+        });
+
+        if( next != null) next.close(deleteData);
+
+        lruMap.clear();
+        if (deleteData) {
+            segments.forEach(this::removeSegment);
+            segments.clear();
+        }
+
+        indexManager.cleanup();
+    }
 }

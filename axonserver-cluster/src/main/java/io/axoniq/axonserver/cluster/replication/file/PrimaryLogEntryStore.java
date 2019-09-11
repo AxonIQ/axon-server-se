@@ -382,7 +382,6 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
 
-
     public void delete() {
         logger.info("Deleting '{}' context.", context);
         clear(0);
@@ -400,5 +399,27 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     @NotNull
     private Long getSegment(String segmentName) {
         return Long.valueOf(segmentName.substring(0, segmentName.indexOf('.')));
+    }
+
+    public boolean isShutdown() {
+        return synchronizer.isShutdown();
+    }
+
+    @Override
+    public void close(boolean deleteData) {
+        synchronizer.shutdown(true);
+        readBuffers.forEach((s, source) -> {
+            source.clean(0);
+            if(deleteData) removeSegment(s);
+        });
+
+        if( next != null) next.close(deleteData);
+
+        if (deleteData) {
+            delete();
+        }
+
+        indexManager.cleanup();
+
     }
 }
