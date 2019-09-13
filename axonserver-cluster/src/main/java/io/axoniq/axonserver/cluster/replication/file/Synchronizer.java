@@ -125,6 +125,10 @@ public class Synchronizer {
         }
     }
 
+    /**
+     * Cancel all jobs that are active
+     * @param shutdown Gracefully shutdown thread executor
+     */
     public void shutdown(boolean shutdown) {
         if( syncJob != null) syncJob.cancel(false);
         if( forceJob != null) forceJob.cancel(false);
@@ -134,6 +138,15 @@ public class Synchronizer {
             syncAndCloseFile();
         }
         if( shutdown) fsync.shutdown();
+    }
+
+    /**
+     * Confirms that all thread executor is gracefully shutdown and jobs are done
+     */
+    public boolean isShutdown() {
+        return ((syncJob == null || (syncJob.isDone() || syncJob.isCancelled()))
+                && (forceJob == null || (forceJob.isDone() || forceJob.isCancelled()))
+                && (fsync == null || (fsync.isShutdown() || fsync.isTerminated())));
     }
 
 }

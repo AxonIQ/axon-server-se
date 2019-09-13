@@ -172,15 +172,15 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     protected void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
         long filter = System.currentTimeMillis() - timeUnit.toMillis(time);
         long lastAppliedIndexSegment = segmentContainingLastAppliedIndex(segments,
-                                                                         lastAppliedIndexSupplier.getAsLong());
+                lastAppliedIndexSupplier.getAsLong());
         List<Long> segmentsToBeDeleted = segments.stream()
-                                                 .filter(segment -> applied(segment, lastAppliedIndexSegment))
-                                                 .filter(segment -> olderThan(segment,
-                                                                              filter)) //f.lastModified() <= filter) // filter out files older than <time>
-                                                 .collect(Collectors.toList());
+                .filter(segment -> applied(segment, lastAppliedIndexSegment))
+                .filter(segment -> olderThan(segment,
+                        filter)) //f.lastModified() <= filter) // filter out files older than <time>
+                .collect(Collectors.toList());
         String formattedSegmentsToBeDeleted = segmentsToBeDeleted.stream()
-                                                                 .map(Object::toString)
-                                                                 .collect(Collectors.joining(","));
+                .map(Object::toString)
+                .collect(Collectors.joining(","));
         if (!segmentsToBeDeleted.isEmpty()) {
             logger.info("Deleting segments {}.", formattedSegmentsToBeDeleted);
         } else {
@@ -198,10 +198,10 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     private long segmentContainingLastAppliedIndex(Collection<Long> segments, long lastAppliedIndex) {
         return segments.stream()
-                       .filter(segment -> segment.compareTo(lastAppliedIndex) <= 0)
-                       .sorted()
-                       .max(Long::compareTo)
-                       .orElse(1L);
+                .filter(segment -> segment.compareTo(lastAppliedIndex) <= 0)
+                .sorted()
+                .max(Long::compareTo)
+                .orElse(1L);
     }
 
     private boolean applied(long segment, long segmentContainingLastAppliedIndex) {
@@ -227,14 +227,39 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
         try (FileChannel fileChannel = new RandomAccessFile(file, "r").getChannel()) {
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, size);
             ByteBufferEntrySource eventSource = new ByteBufferEntrySource(buffer,
-                                                                          logEntryTransformerFactory,
-                                                                          storageProperties);
+                    logEntryTransformerFactory,
+                    storageProperties);
             lruMap.put(segment, new WeakReference<>(eventSource));
             return eventSource;
         } catch (IOException ioException) {
             throw new LogException(ErrorCode.DATAFILE_READ_ERROR,
-                                   "Error while opening segment: " + segment,
-                                   ioException);
+                    "Error while opening segment: " + segment,
+                    ioException);
         }
+    }
+
+    @Override
+    public boolean isClosed() {
+        return scheduledExecutorService.isShutdown() || scheduledExecutorService.isTerminated();
+    }
+
+    @Override
+    public void close(boolean deleteData) {
+        scheduledExecutorService.shutdown();
+        lruMap.forEach((s, source) -> {
+            if (source.get() != null) {
+                source.get().clean(0);
+            }
+        });
+
+        if (next != null) next.close(deleteData);
+
+        lruMap.clear();
+        if (deleteData) {
+            segments.forEach(this::removeSegment);
+            segments.clear();
+        }
+
+        indexManager.cleanup();
     }
 }

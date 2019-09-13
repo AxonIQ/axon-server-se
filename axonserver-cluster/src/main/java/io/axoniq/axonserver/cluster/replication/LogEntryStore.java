@@ -72,4 +72,10 @@ public interface LogEntryStore {
     }
 
     void delete();
+
+    /**
+     * Gracefully closes all thread executors that are active
+     * @param deleteData cleans up and removes store data
+     */
+    void close(boolean deleteData);
 }

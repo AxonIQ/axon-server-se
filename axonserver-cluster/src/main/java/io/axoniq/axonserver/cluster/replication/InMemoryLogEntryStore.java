@@ -48,7 +48,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
         }
 
         long firstIndex = entries.get(0).getIndex();
-        if( entryMap.containsKey(firstIndex)) {
+        if (entryMap.containsKey(firstIndex)) {
             logger.warn("{}: Clear from {}", name, firstIndex);
             SortedMap<Long, Entry> tail = entryMap.tailMap(firstIndex);
             tail.values().forEach(entry -> rollbackListeners.forEach(listener -> listener.accept(entry)));
@@ -96,7 +96,7 @@ public class InMemoryLogEntryStore implements LogEntryStore {
 
     @Override
     public TermIndex lastLog() {
-        if( entryMap.isEmpty()) return new TermIndex(0,0);
+        if (entryMap.isEmpty()) return new TermIndex(0, 0);
         Map.Entry<Long, Entry> entry = entryMap.lastEntry();
         return new TermIndex(entry.getValue().getTerm(), entry.getKey());
     }
@@ -148,12 +148,12 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     public CompletableFuture<Entry> createEntry(long currentTerm, String entryType, byte[] entryData) {
         long index = lastIndex.incrementAndGet();
         Entry entry = Entry.newBuilder()
-                           .setIndex(index)
-                           .setTerm(currentTerm)
-                           .setSerializedObject(SerializedObject.newBuilder()
-                                                                .setData(ByteString.copyFrom(entryData))
-                                                                .setType(entryType))
-                           .build();
+                .setIndex(index)
+                .setTerm(currentTerm)
+                .setSerializedObject(SerializedObject.newBuilder()
+                        .setData(ByteString.copyFrom(entryData))
+                        .setType(entryType))
+                .build();
         addEntry(entry);
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
@@ -163,10 +163,10 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     public CompletableFuture<Entry> createEntry(long currentTerm, Config config) {
         long index = lastIndex.incrementAndGet();
         Entry entry = Entry.newBuilder()
-                           .setIndex(index)
-                           .setTerm(currentTerm)
-                           .setNewConfiguration(config)
-                           .build();
+                .setIndex(index)
+                .setTerm(currentTerm)
+                .setNewConfiguration(config)
+                .build();
         addEntry(entry);
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
@@ -177,10 +177,10 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     public CompletableFuture<Entry> createEntry(long currentTerm, LeaderElected leader) {
         long index = lastIndex.incrementAndGet();
         Entry entry = Entry.newBuilder()
-                           .setIndex(index)
-                           .setTerm(currentTerm)
-                           .setLeaderElected(leader)
-                           .build();
+                .setIndex(index)
+                .setTerm(currentTerm)
+                .setLeaderElected(leader)
+                .build();
         addEntry(entry);
         appendListeners.forEach(listener -> listener.accept(entry));
         return CompletableFuture.completedFuture(entry);
@@ -191,8 +191,13 @@ public class InMemoryLogEntryStore implements LogEntryStore {
         entryMap.clear();
     }
 
-    private void addEntry(Entry entry){
+    private void addEntry(Entry entry) {
         entryMap.put(entry.getIndex(), entry);
         dateMap.put(entry.getIndex(), new Date());
+    }
+
+    @Override
+    public void close(boolean deleteData) {
+        if (deleteData) delete();
     }
 }

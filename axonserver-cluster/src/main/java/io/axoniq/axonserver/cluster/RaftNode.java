@@ -352,6 +352,7 @@ public class RaftNode {
         updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
         logEntryApplier.stop();
         stopLogCleaning();
+        raftGroup.localLogEntryStore().close(false);
         logger.info("{} in term {}: Node stopped.", groupId(), currentTerm());
     }
 
