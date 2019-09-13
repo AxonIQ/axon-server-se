@@ -187,5 +187,14 @@ public abstract class SegmentBasedLogEntryStore {
 
     protected abstract void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier);
 
+    /**
+     * Confirms that store is gracefully closed
+     */
+    public abstract boolean isClosed();
+
+    /**
+     * Gracefully closes all thread executors that are active
+     * @param deleteData cleans up and removes store data
+     */
     public abstract void close(boolean deleteData);
 }

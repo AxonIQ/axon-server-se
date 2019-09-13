@@ -55,21 +55,21 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     @Override
     public void initSegments(long lastInitialized) {
         logger.info("Initializing {} segment of '{}' context.", lastInitialized, context);
-        File storageDir  = new File(storageProperties.getStorage(context));
+        File storageDir = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
         logEntryTransformer = logEntryTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
         initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir, false);
     }
 
     public CompletableFuture<Long> write(long term, int type, byte[] bytes) {
-        if( bytes.length == 0) throw new LogException(ErrorCode.VALIDATION_FAILED, "Cannot store empty log entry");
+        if (bytes.length == 0) throw new LogException(ErrorCode.VALIDATION_FAILED, "Cannot store empty log entry");
         PreparedTransaction preparedTransaction = prepareTransaction(bytes);
         return store(term, type, preparedTransaction);
     }
 
     @Override
     public SegmentEntryIterator getIterator(long nextIndex) {
-        if( nextIndex > lastToken.get()) return null;
+        if (nextIndex > lastToken.get()) return null;
         logger.trace("{}: Create iterator at: {}", context, nextIndex);
         return super.getIterator(nextIndex);
     }
@@ -79,17 +79,17 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     public Entry getEntry(long index) {
-        if( index > lastToken.get()) return null;
+        if (index > lastToken.get()) return null;
         long segment = getSegmentFor(index);
         ByteBufferEntrySource entrySource = readBuffers.get(segment);
-        if( entrySource != null) {
+        if (entrySource != null) {
             Integer position = positionsPerSegmentMap.get(segment).get(index);
-            if( position == null) {
+            if (position == null) {
                 return null;
             }
             return entrySource.duplicate().readLogEntry(position, index);
         }
-        if( next != null) {
+        if (next != null) {
             return next.getEntry(index);
         }
         return null;
@@ -126,10 +126,10 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         writePositionRef.set(writePosition);
         synchronizer.init(writePosition);
 
-        if( clear)
+        if (clear)
             buffer.clearFromPosition();
 
-        if( next != null) {
+        if (next != null) {
             next.initSegments(first);
         }
     }
@@ -138,15 +138,15 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         String[] entrylogFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getLogSuffix());
 
         return Arrays.stream(entrylogFiles)
-                     .map(this::getSegment)
-                     .filter(segment -> segment < lastInitialized)
-                     .max(Long::compareTo)
-                     .orElse(lastToken.get() + 1);
+                .map(this::getSegment)
+                .filter(segment -> segment < lastInitialized)
+                .max(Long::compareTo)
+                .orElse(lastToken.get() + 1);
     }
 
     private PreparedTransaction prepareTransaction(byte[] bytes) {
         byte[] transformed = logEntryTransformer.transform(bytes);
-        return new PreparedTransaction(claim(transformed.length),  transformed);
+        return new PreparedTransaction(claim(transformed.length), transformed);
     }
 
     private CompletableFuture<Long> store(long term, int type, PreparedTransaction preparedTransaction) {
@@ -191,7 +191,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     public void cleanup(int delay) {
         synchronizer.shutdown(false);
         readBuffers.forEach((s, source) -> source.clean(delay));
-        if( next != null) next.cleanup(delay);
+        if (next != null) next.cleanup(delay);
     }
 
     @Override
@@ -201,7 +201,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     @Override
     protected Optional<EntrySource> getEventSource(long segment) {
-        if( readBuffers.containsKey(segment) ) {
+        if (readBuffers.containsKey(segment)) {
             return Optional.of(readBuffers.get(segment).duplicate());
         }
         return Optional.empty();
@@ -215,7 +215,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        return next!= null ? next.getBackupFilenames(lastSegmentBackedUp): Stream.empty();
+        return next != null ? next.getBackupFilenames(lastSegmentBackedUp) : Stream.empty();
     }
 
     @Override
@@ -248,7 +248,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         logger.info("Removing {} segment of '{}' context.", segment, context);
         positionsPerSegmentMap.remove(segment);
         ByteBufferEntrySource eventSource = readBuffers.remove(segment);
-        if( eventSource != null) eventSource.clean(0);
+        if (eventSource != null) eventSource.clean(0);
         FileUtils.delete(storageProperties.logFile(context, segment));
     }
 
@@ -256,10 +256,10 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         try {
             logger.info("Completing segment {} of '{}' context.", writePosition.segment, context);
             indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment), false);
-        } catch( RuntimeException re) {
+        } catch (RuntimeException re) {
             logger.warn("Failed to create index", re);
         }
-        if( next != null) {
+        if (next != null) {
             next.handover(writePosition.segment, () -> {
                 positionsPerSegmentMap.remove(writePosition.segment);
                 ByteBufferEntrySource source = readBuffers.remove(writePosition.segment);
@@ -284,9 +284,9 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         writeBuffer.putInt(bytes.length);
     }
 
-    private WritePosition claim(int eventBlockSize)  {
+    private WritePosition claim(int eventBlockSize) {
         int totalSize = HEADER_BYTES + eventBlockSize + TX_CHECKSUM_BYTES;
-        if( totalSize > storageProperties.getSegmentSize()-9)
+        if (totalSize > storageProperties.getSegmentSize() - 9)
             throw new LogException(ErrorCode.PAYLOAD_TOO_LARGE, "Size of transaction too large, max size = " + (storageProperties.getSegmentSize() - 9));
         WritePosition writePosition;
         do {
@@ -315,23 +315,23 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         if (exists) {
             size = file.length();
             logger.info("Segment file {} of '{}' context already exists with size {}. Reopening.",
-                        segment,
-                        context,
-                        size);
+                    segment,
+                    context,
+                    size);
         } else {
             logger.info("Segment file {} of '{}' context does not exist. Creating a new one with size of {}.",
-                        segment,
-                        context,
-                        size);
+                    segment,
+                    context,
+                    size);
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             int bufferLimit = buffer.limit();
             logger.info("Opened buffer for segment file {} of '{}' context with limit {}.",
-                        segment,
-                        context,
-                        bufferLimit);
+                    segment,
+                    context,
+                    bufferLimit);
             checkBuffer(segment, size, bufferLimit);
             if (!exists) {
                 buffer.put(VERSION);
@@ -340,8 +340,8 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
                 buffer.position(5);
             }
             WritableEntrySource writableEventSource = new WritableEntrySource(buffer,
-                                                                              logEntryTransformer,
-                                                                              storageProperties.isCleanerHackNeeded());
+                    logEntryTransformer,
+                    storageProperties.isCleanerHackNeeded());
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {
@@ -372,7 +372,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     public void clear(long lastIndex) {
         logger.info("Clearing log entries, setting last index to {} for '{}' context.", lastIndex, context);
-        if (next != null ) {
+        if (next != null) {
             next.getSegments().forEach(segment -> next.removeSegment(segment));
         }
         getSegments().forEach(this::removeSegment);
@@ -385,13 +385,13 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     public void delete() {
         logger.info("Deleting '{}' context.", context);
         clear(0);
-        File storageDir  = new File(storageProperties.getStorage(context));
+        File storageDir = new File(storageProperties.getStorage(context));
         storageDir.delete();
         synchronizer.shutdown(true);
     }
 
     public void clearOlderThan(long time, TimeUnit timeUnit, LongSupplier lastAppliedIndexSupplier) {
-        if( next != null) {
+        if (next != null) {
             next.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
         }
     }
@@ -401,7 +401,8 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         return Long.valueOf(segmentName.substring(0, segmentName.indexOf('.')));
     }
 
-    public boolean isShutdown() {
+    @Override
+    public boolean isClosed() {
         return synchronizer.isShutdown();
     }
 
@@ -410,10 +411,10 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         synchronizer.shutdown(true);
         readBuffers.forEach((s, source) -> {
             source.clean(0);
-            if(deleteData) removeSegment(s);
+            if (deleteData) removeSegment(s);
         });
 
-        if( next != null) next.close(deleteData);
+        if (next != null) next.close(deleteData);
 
         if (deleteData) {
             delete();

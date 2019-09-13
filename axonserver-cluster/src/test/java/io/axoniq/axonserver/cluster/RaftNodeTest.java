@@ -6,8 +6,6 @@ import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.FileSegmentLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryEventStoreFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
-import io.axoniq.axonserver.cluster.replication.file.Synchronizer;
-import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.junit.*;
@@ -81,19 +79,17 @@ public class RaftNodeTest {
         when(raftGroup.logEntryProcessor()).thenReturn(new LogEntryProcessor(new InMemoryProcessorStore()));
         when(raftGroup.localElectionStore()).thenReturn(new InMemoryElectionStore());
 
-
         FakeScheduler scheduler = new FakeScheduler();
         testSubject = new RaftNode("myNode", raftGroup, scheduler, snapshotManager);
         when(raftGroup.localNode()).thenReturn(testSubject);
 
-
         testSubject.start();
 
-        assertFalse(primaryLogEntryStore.isShutdown());
+        assertFalse(primaryLogEntryStore.isClosed());
 
         testSubject.stop();
 
-        assertTrue(primaryLogEntryStore.isShutdown());
+        assertTrue(primaryLogEntryStore.isClosed());
 
     }
 
