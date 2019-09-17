@@ -19,10 +19,14 @@ public class CommandOptions {
     public static final Option ADDRESS = Option.builder("S").hasArg().longOpt("server").desc("Server to send command to (default http://localhost:8024)")
                                                .build();
     public static final Option APPLICATION = Option.builder("a").hasArg().longOpt("application").required().desc("Name of the application").build();
-    public static final Option ROLES = Option.builder("r").required().hasArgs().valueSeparator(',').longOpt("roles").desc("Roles for the application (READ, WRITE, ADMIN), use role@context for other context than default").build();
-    public static final Option USER_ROLES = Option.builder("r").hasArgs().valueSeparator(',').longOpt("roles").desc("[Optional] roles for the user (READ, ADMIN)").build();
+    public static final Option ROLES = Option.builder("r").required().hasArgs().valueSeparator(',').longOpt("roles")
+                                             .desc("Roles for the application, use role@context").build();
+    public static final Option USER_ROLES = Option.builder("r").hasArgs().valueSeparator(',').longOpt("roles").desc(
+            "[Optional] roles for the user").build();
     public static final Option DESCRIPTION = Option.builder("d").hasArgs().longOpt("description").desc("[Optional] Description of the application").build();
     public static final Option NODENAME = Option.builder("n").longOpt("node").required().hasArg().desc("Name of the node").build();
+    public static final Option NODEROLE = Option.builder("r").longOpt("role").hasArg().desc(
+            "Role of the node (PRIMARY,MESSAGING_ONLY,ACTIVE_BACKUP,PASSIVE_BACKUP").build();
     public static final Option CONTEXT = Option.builder("c").longOpt("context").required().hasArg().desc("Name of the context").build();
     public static final Option NODES = Option.builder("n").hasArgs().valueSeparator(',').longOpt("nodes").desc("[Optional - Enterprise Edition only] member nodes for context").build();
     public static final Option CONTEXT_TO_REGISTER_IN = Option.builder("c").longOpt("context").hasArg().desc("[Optional - Enterprise Edition only] context to register node in").build();

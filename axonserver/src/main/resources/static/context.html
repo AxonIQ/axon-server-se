@@ -17,7 +17,8 @@
                     newContext: {nodes: []},
                     admin: globals.admin,
                     webSocketInfo: globals.webSocketInfo,
-                    nodes: []
+                    nodes: [],
+                    roles: ["PRIMARY", "ACTIVE_BACKUP", "PASSIVE_BACKUP", "MESSAGING_ONLY"]
                 }, mounted() {
                     this.loadContexts();
                     axios.get("v1/public").then(response => {
@@ -59,7 +60,11 @@
                             return;
                         }
                         if (confirm("Add node " + context.selectedNode + " to context " + context.context)) {
-                            axios.post("v1/context/" + context.context + "/" + context.selectedNode).then(
+                            var queryString = "";
+                            if (context.selectedRole) {
+                                queryString = "?role=" + context.selectedRole;
+                            }
+                            axios.post("v1/context/" + context.context + "/" + context.selectedNode + queryString).then(
                                     response => this.loadContexts()
                             )
                         }
@@ -151,14 +156,20 @@
                 </td>
                 <td>
                     <ul>
-                        <li v-for="node in context.nodes"><span class="nodeName">{{node}}</span>
-                            <span v-if="admin && context.nodes.length > 1" @click="deleteNodeFromContext(node,context)"
+                        <li v-for="node in context.roles">
+                            <span class="nodeName">{{node.node}}</span>
+                            <span class="nodeRoleName">{{node.role}}</span>
+                            <span v-if="admin && context.nodes.length > 1"
+                                  @click="deleteNodeFromContext(node.node,context)"
                                   title="Delete"><i
                                     class="far fa-trash-alt"></i></span></li>
                     </ul>
                     <span v-if="admin">
                     <select class="nodeName" v-model="context.selectedNode">
                         <option v-for="n in nodes">{{n.name}}</option>
+                    </select>
+                    <select class="nodeRoleName" v-model="context.selectedRole">
+                        <option v-for="n in roles">{{n}}</option>
                     </select>
                     <span @click="addNodeToContext(context)" title="Add"><i class="fas fa-plus"></i></span>
                 </span>

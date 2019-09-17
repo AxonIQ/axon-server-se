@@ -15,8 +15,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
 
-import static io.axoniq.cli.CommandOptions.CONTEXT;
-import static io.axoniq.cli.CommandOptions.NODENAME;
+import static io.axoniq.cli.CommandOptions.*;
 
 /**
  * @author Marc Gathier
@@ -24,9 +23,12 @@ import static io.axoniq.cli.CommandOptions.NODENAME;
 public class AddNodeToContext extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {
         // check args
-        CommandLine commandLine = processCommandLine(args[0], args, CONTEXT, NODENAME, CommandOptions.TOKEN);
+        CommandLine commandLine = processCommandLine(args[0], args, CONTEXT, NODENAME, NODEROLE, CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/context", CONTEXT, NODENAME);
+        if (commandLine.hasOption(NODEROLE.getOpt())) {
+            url += "?role=" + commandLine.getOptionValue(NODEROLE.getOpt());
+        }
 
         try (CloseableHttpClient httpclient = createClient(commandLine) ) {
             RestResponse response = postJSON(httpclient, url, null, 202, getToken(commandLine),
