@@ -11,6 +11,13 @@ service MessagingClusterService {
     // calling side is service provider to called side
     rpc OpenStream (stream ConnectorCommand) returns (stream ConnectorResponse) {
     }
+
+    rpc GetContextLeader (ContextName) returns (NodeInfo) {
+
+    }
+
+    rpc GetCluster (EmptyRequest) returns (stream NodeInfo) {
+    }
 }
 
 /**
@@ -64,6 +71,7 @@ service RaftConfigService {
 
     rpc DeleteProcessorLBStrategy (ProcessorLBStrategy) returns (Confirmation) {
     }
+
 }
 
 /**
@@ -117,6 +125,10 @@ service RaftGroupService {
     }
 
     rpc TransferLeadership (ContextName) returns (Confirmation) {}
+}
+
+message EmptyRequest {
+
 }
 
 message NodeContext {

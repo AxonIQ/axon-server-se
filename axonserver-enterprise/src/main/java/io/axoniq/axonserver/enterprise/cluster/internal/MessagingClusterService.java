@@ -8,8 +8,12 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
+import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SendingStreamObserver;
@@ -23,11 +27,15 @@ import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.ContextName;
+import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.EmptyRequest;
 import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
 import io.axoniq.axonserver.grpc.internal.ForwardedQueryResponse;
 import io.axoniq.axonserver.grpc.internal.Group;
 import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
 import io.axoniq.axonserver.grpc.internal.MessagingClusterServiceGrpc;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.QueryHandlerStatus;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
@@ -48,6 +56,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 import javax.annotation.PreDestroy;
 
 import static io.axoniq.axonserver.enterprise.cluster.internal.ForwardedQueryResponseUtils.getDispatchingClient;
@@ -79,6 +88,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
     private final ClusterController clusterController;
+    private final RaftLeaderProvider raftLeaderProvider;
     private final ApplicationEventPublisher eventPublisher;
 
 
@@ -108,10 +118,12 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     public MessagingClusterService(CommandDispatcher commandDispatcher,
                                    QueryDispatcher queryDispatcher,
                                    ClusterController clusterController,
+                                   RaftLeaderProvider raftLeaderProvider,
                                    ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.clusterController = clusterController;
+        this.raftLeaderProvider = raftLeaderProvider;
         this.eventPublisher = eventPublisher;
     }
 
@@ -119,6 +131,36 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     public StreamObserver<ConnectorCommand> openStream(StreamObserver<ConnectorResponse> responseObserver1) {
         SendingStreamObserver<ConnectorResponse> responseObserver = new SendingStreamObserver<>(responseObserver1);
         return new ConnectorReceivingStreamObserver(responseObserver);
+    }
+
+    @Override
+    public void getContextLeader(ContextName request, StreamObserver<NodeInfo> responseObserver) {
+        String leader = raftLeaderProvider.getLeader(request.getContext());
+        if (leader == null) {
+            responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.NO_LEADER_AVAILABLE,
+                                                                String.format("No leader for %s",
+                                                                              request.getContext())));
+        }
+
+        responseObserver.onNext(clusterController.getNode(leader).toNodeInfo());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void getCluster(EmptyRequest request, StreamObserver<NodeInfo> responseObserver) {
+        clusterController.nodes().forEach(n -> responseObserver.onNext(toNodeInfo(n)));
+        responseObserver.onCompleted();
+    }
+
+    private NodeInfo toNodeInfo(ClusterNode n) {
+        return NodeInfo.newBuilder(n.toNodeInfo())
+                       .addAllContexts(n.getContexts()
+                                        .stream()
+                                        .map(ccn -> ContextRole.newBuilder()
+                                                               .setName(ccn.getContext().getName())
+                                                               .build())
+                                        .collect(Collectors.toList()))
+                       .build();
     }
 
     /**
