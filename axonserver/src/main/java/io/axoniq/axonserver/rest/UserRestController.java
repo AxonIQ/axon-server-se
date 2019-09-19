@@ -62,6 +62,7 @@ public class UserRestController {
 
     @PostMapping("users")
     public void createUser(@RequestBody @Valid UserJson userJson, Principal principal) {
+        auditLog.info("[{}] Request to create user \"{}\" with roles {}.", AuditLog.username(principal), userJson.getUserName(), userJson.getRoles());
         Set<String> validRoles = roleController.listRoles().stream().map(Role::getRole).collect(Collectors.toSet());
         Set<UserRole> roles = new HashSet<>();
         if( userJson.roles != null) {
@@ -74,27 +75,28 @@ public class UserRestController {
                 }
             }
         }
-        auditLog.info("[{}] Create user \"{}\" with roles {}.", AuditLog.username(principal), userJson.getUserName(), roles);
+        auditLog.info("[{}] Create user \"{}\" with translated roles {}.", AuditLog.username(principal), userJson.getUserName(), roles);
         userController.updateUser(userJson.userName, userJson.password, roles);
     }
 
     @GetMapping("public/users")
-    public List<UserJson> listUsers() {
+    public List<UserJson> listUsers(Principal principal) {
+        auditLog.info("[{}] Request to list users and their roles.", AuditLog.username(principal));
         try {
             return userController.getUsers().stream().map(UserJson::new).sorted(Comparator.comparing(UserJson::getUserName)).collect(Collectors.toList());
         } catch (Exception exception) {
-            logger.info("List users failed - {}", exception.getMessage(), exception);
+            logger.info("[{}] List users failed - {}", AuditLog.username(principal), exception.getMessage(), exception);
             throw new MessagingPlatformException(ErrorCode.OTHER, exception.getMessage());
         }
     }
 
     @DeleteMapping(path = "users/{name}")
-    public void dropUser(@PathVariable("name") String name) {
+    public void dropUser(@PathVariable("name") String name, Principal principal) {
         try {
-            auditLog.info("Request to delete user \"{}\".", name);
+            auditLog.info("[{}] Request to delete user \"{}\".", AuditLog.username(principal), name);
             userController.deleteUser(name);
         } catch (Exception exception) {
-            auditLog.error("Delete user {} failed - {}", name, exception.getMessage());
+            auditLog.error("[{}] Delete user {} failed - {}", AuditLog.username(principal), name, exception.getMessage());
             throw new MessagingPlatformException(ErrorCode.OTHER, exception.getMessage());
         }
     }
