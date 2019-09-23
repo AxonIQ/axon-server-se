@@ -17,8 +17,6 @@ import io.opencensus.exporter.trace.jaeger.JaegerTraceExporter;
 import io.opencensus.trace.Tracing;
 import io.opencensus.trace.config.TraceConfig;
 import io.opencensus.trace.samplers.Samplers;
-import io.prometheus.client.CollectorRegistry;
-import io.prometheus.client.exporter.HTTPServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +28,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.io.IOException;
-import java.util.Optional;
 import javax.annotation.PreDestroy;
 
 /**
@@ -43,8 +40,6 @@ import javax.annotation.PreDestroy;
 public class AxonServerEnterprise {
 
     private static final Logger log = LoggerFactory.getLogger(AxonServerEnterprise.class);
-
-    private HTTPServer prometheusServer;
 
     public static void main(String[] args) {
         try {
@@ -108,7 +103,5 @@ public class AxonServerEnterprise {
     public void clean() {
         GrpcFlowControlledDispatcherListener.shutdown();
         JaegerTraceExporter.unregister();
-        Optional.ofNullable(prometheusServer)
-                .ifPresent(HTTPServer::stop);
     }
 }
