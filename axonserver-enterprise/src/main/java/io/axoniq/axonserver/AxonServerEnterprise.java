@@ -7,14 +7,17 @@ import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.licensing.LicenseConfiguration;
 import io.axoniq.axonserver.licensing.LicenseException;
 import io.axoniq.axonserver.rest.PluginImportSelector;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.opencensus.contrib.grpc.metrics.RpcViews;
 import io.opencensus.contrib.zpages.ZPageHandlers;
 import io.opencensus.exporter.stats.prometheus.PrometheusStatsCollector;
+import io.opencensus.exporter.stats.prometheus.PrometheusStatsConfiguration;
 import io.opencensus.exporter.trace.jaeger.JaegerExporterConfiguration;
 import io.opencensus.exporter.trace.jaeger.JaegerTraceExporter;
 import io.opencensus.trace.Tracing;
 import io.opencensus.trace.config.TraceConfig;
 import io.opencensus.trace.samplers.Samplers;
+import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.exporter.HTTPServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +41,7 @@ import javax.annotation.PreDestroy;
 @EnableScheduling
 @Import(PluginImportSelector.class)
 public class AxonServerEnterprise {
+
     private static final Logger log = LoggerFactory.getLogger(AxonServerEnterprise.class);
 
     private HTTPServer prometheusServer;
@@ -45,7 +49,7 @@ public class AxonServerEnterprise {
     public static void main(String[] args) {
         try {
             LicenseConfiguration.getInstance();
-        } catch(LicenseException ex) {
+        } catch (LicenseException ex) {
             log.error(ex.getMessage());
             System.exit(-1);
         }
@@ -54,7 +58,8 @@ public class AxonServerEnterprise {
     }
 
     @Autowired
-    public void configureGrpcMetrics(GrpcMetricsConfig metricsConfig) throws IOException {
+    public void configureGrpcMetrics(GrpcMetricsConfig metricsConfig, PrometheusMeterRegistry prometheusMeterRegistry)
+            throws IOException {
         if (metricsConfig.isEnabled()) {
             TraceConfig traceConfig = Tracing.getTraceConfig();
             traceConfig.updateActiveTraceParams(
@@ -70,8 +75,12 @@ public class AxonServerEnterprise {
             }
 
             if (metricsConfig.isEnabledPrometheus()) {
-                PrometheusStatsCollector.createAndRegister();
-                prometheusServer = new HTTPServer(metricsConfig.getPrometheusPort(), true);
+                PrometheusStatsCollector.createAndRegister(PrometheusStatsConfiguration.builder()
+                                                                                       .setNamespace("axonserver_grpc")
+                                                                                       .setRegistry(
+                                                                                               prometheusMeterRegistry
+                                                                                                       .getPrometheusRegistry())
+                                                                                       .build());
             }
 
             if (metricsConfig.isEnabledJaeger()) {

@@ -31,11 +31,6 @@ public class GrpcMetricsConfig {
      * Enables exporter for Prometheus.
      */
     private boolean enabledPrometheus = false;
-    /**
-     * HTTP port access Prometheus exporter. Will not be considered if {@link #enabledPrometheus} is set to {@code
-     * false}.
-     */
-    private int prometheusPort = 8889;
 
     /**
      * Enables exporter for Jaeger.
@@ -81,14 +76,6 @@ public class GrpcMetricsConfig {
 
     public void setEnabledPrometheus(boolean enabledPrometheus) {
         this.enabledPrometheus = enabledPrometheus;
-    }
-
-    public int getPrometheusPort() {
-        return prometheusPort;
-    }
-
-    public void setPrometheusPort(int prometheusPort) {
-        this.prometheusPort = prometheusPort;
     }
 
     public boolean isEnabledJaeger() {
