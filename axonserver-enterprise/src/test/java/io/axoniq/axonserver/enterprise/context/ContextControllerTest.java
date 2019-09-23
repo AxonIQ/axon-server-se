@@ -10,6 +10,7 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.topology.Topology;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -55,6 +56,8 @@ public class ContextControllerTest {
     private GrpcRaftController raftController;
     @MockBean
     private GrpcMetricsConfig grpcMetricsConfig;
+    @MockBean
+    private PrometheusMeterRegistry prometheusMeterRegistry;
 
     private List<NodeInfoWithLabel> initialNodes = new ArrayList<>();
 
