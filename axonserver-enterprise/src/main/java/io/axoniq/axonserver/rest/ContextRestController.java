@@ -7,6 +7,8 @@ import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.topology.Topology;
@@ -162,7 +164,18 @@ public class ContextRestController {
         }
 
         try {
-            raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
+            raftServiceFactory.getRaftConfigService()
+                              .addContext(
+                                      Context.newBuilder()
+                                             .setName(contextJson.getContext())
+                                             .addAllMembers(contextJson.getNodes()
+                                                                       .stream()
+                                                                       .map(n -> ContextMember.newBuilder()
+                                                                                              .setNodeName(n)
+                                                                                              .build()
+                                                                       )
+                                                                       .collect(Collectors.toList()))
+                                             .build());
             return ResponseEntity.ok(new RestResponse(true, null));
         } catch (Exception ex) {
             return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));

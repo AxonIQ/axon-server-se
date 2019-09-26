@@ -9,6 +9,8 @@ import io.axoniq.axonserver.grpc.GrpcBufferingInterceptor;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.ContextInterceptor;
+import io.axoniq.axonserver.saas.SaasAdminService;
+import io.axoniq.axonserver.saas.SaasUserService;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
@@ -39,6 +41,8 @@ public class MessagingClusterServer implements SmartLifecycle{
     private final GrpcRaftGroupService grpcRaftGroupService;
     private final GrpcRaftConfigService grpcRaftConfigService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final SaasAdminService saasAdminService;
+    private final SaasUserService saasUserService;
     private final FeatureChecker limits;
     private Server server;
 
@@ -49,6 +53,8 @@ public class MessagingClusterServer implements SmartLifecycle{
                                   LeaderElectionService leaderElectionService,
                                   GrpcRaftGroupService grpcRaftGroupService,
                                   GrpcRaftConfigService grpcRaftConfigService,
+                                  SaasAdminService saasAdminService,
+                                  SaasUserService saasUserService,
                                   FeatureChecker limits,
                                   ApplicationEventPublisher applicationEventPublisher) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
@@ -58,6 +64,8 @@ public class MessagingClusterServer implements SmartLifecycle{
         this.leaderElectionService = leaderElectionService;
         this.grpcRaftGroupService = grpcRaftGroupService;
         this.grpcRaftConfigService = grpcRaftConfigService;
+        this.saasAdminService = saasAdminService;
+        this.saasUserService = saasUserService;
         this.limits = limits;
         this.applicationEventPublisher = applicationEventPublisher;
     }
@@ -108,9 +116,7 @@ public class MessagingClusterServer implements SmartLifecycle{
         serverBuilder.addService(internalEventStoreService);
         serverBuilder.addService(grpcRaftGroupService);
         serverBuilder.addService(grpcRaftConfigService);
-
-        serverBuilder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
-
+        serverBuilder.addService(saasAdminService);
 
         if( messagingPlatformConfiguration.getAccesscontrol() != null && messagingPlatformConfiguration.getAccesscontrol().isEnabled()) {
             serverBuilder.addService(ServerInterceptors.intercept(messagingClusterService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
@@ -120,8 +126,16 @@ public class MessagingClusterServer implements SmartLifecycle{
                                                                   new ContextInterceptor()));
             serverBuilder.addService(ServerInterceptors.intercept(grpcRaftGroupService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
             serverBuilder.addService(ServerInterceptors.intercept(grpcRaftConfigService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
+            serverBuilder.addService(ServerInterceptors.intercept(saasAdminService,
+                                                                  new InternalAuthenticationInterceptor(
+                                                                          messagingPlatformConfiguration)));
+            serverBuilder.addService(ServerInterceptors.intercept(saasUserService,
+                                                                  new InternalAuthenticationInterceptor(
+                                                                          messagingPlatformConfiguration),
+                                                                  new ContextInterceptor()));
         } else {
             serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new ContextInterceptor()));
+            serverBuilder.addService(ServerInterceptors.intercept(saasUserService, new ContextInterceptor()));
         }
         if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);

@@ -40,6 +40,7 @@ public class ApplicationController {
                                               updatedApplication.getDescription(),
                                               updatedApplication.getTokenPrefix(),
                                               updatedApplication.getHashedToken());
+                application.setMetaData(updatedApplication.getMetaData());
             } else {
                 application.getContexts().clear();
                 application.setHashedToken(updatedApplication.getHashedToken());

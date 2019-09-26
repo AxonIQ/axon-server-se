@@ -457,6 +457,7 @@ message TransactionWithToken {
 message Context {
     string name = 1;
     repeated ContextMember members = 2;
+    map<string, string> meta_data = 3;
 }
 
 message ContextUpdateConfirmation {
@@ -480,6 +481,7 @@ message Application {
     string token_prefix = 3;
     string token = 4;
     repeated ApplicationContextRole roles_per_context = 5;
+    map<string, string> meta_data = 6;
 }
 
 message ApplicationContextRole {
@@ -521,6 +523,7 @@ message ContextConfiguration {
     string context = 1;
     repeated NodeInfoWithLabel nodes = 2;
     bool pending = 3;
+    map<string, string> meta_data = 4;
 }
 
 message NodeInfoWithLabel {

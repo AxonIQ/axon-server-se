@@ -8,6 +8,8 @@ import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
 import io.axoniq.axonserver.config.FeatureChecker;
+import io.axoniq.axonserver.saas.SaasAdminService;
+import io.axoniq.axonserver.saas.SaasUserService;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -59,6 +61,8 @@ public class MessagingClusterServerTest {
                                                  leaderElectionService,
                                                  grpcRaftGroupService,
                                                  grpcRaftConfigService,
+                                                 mock(SaasAdminService.class),
+                                                 mock(SaasUserService.class),
                                                  limits, mock(ApplicationEventPublisher.class));
     }
 

@@ -57,6 +57,9 @@ public class ContextController {
 
         if( context == null) {
             context = new Context(contextConfiguration.getContext());
+            if (contextConfiguration.getMetaDataCount() > 0) {
+                context.setMetaDataMap(contextConfiguration.getMetaDataMap());
+            }
             entityManager.persist(context);
         }
         context.changePending(contextConfiguration.getPending());

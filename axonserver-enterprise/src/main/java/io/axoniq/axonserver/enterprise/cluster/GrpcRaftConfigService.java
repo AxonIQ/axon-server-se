@@ -4,7 +4,6 @@ import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextNames;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
@@ -19,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * Binding of {@link RaftConfigService} gRPC API.
@@ -63,11 +61,7 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void createContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, () -> localRaftConfigService.addContext(request.getName(),
-                                                                       request.getMembersList()
-                                                                              .stream()
-                                                                              .map(ContextMember::getNodeId)
-                                                                              .collect(Collectors.toList())));
+        wrap(responseObserver, () -> localRaftConfigService.addContext(request));
     }
 
     @Override

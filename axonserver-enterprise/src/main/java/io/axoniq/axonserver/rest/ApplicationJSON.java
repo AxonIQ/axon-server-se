@@ -7,6 +7,7 @@ import io.axoniq.axonserver.access.application.JpaApplication;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -21,6 +22,8 @@ public class ApplicationJSON {
 
     private String token;
     private List<ApplicationRoleJSON> roles = new ArrayList<>();
+
+    private Map<String, String> metaData;
 
     public ApplicationJSON() {
     }

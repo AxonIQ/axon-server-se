@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.internal.Application;
+import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
@@ -39,10 +40,9 @@ public interface RaftConfigService {
 
     /**
      * Create a new context and adds all specified nodes to the context. Node information for the nodes must be present (nodes must have joined).
-     * @param context name of the context
-     * @param nodes list of node names
+     * @param context definition of the context
      */
-    void addContext(String context, List<String> nodes);
+    void addContext(Context context);
 
     /**
      * Handles a join request from another node. Can only be executed on the leader of the _admin context.

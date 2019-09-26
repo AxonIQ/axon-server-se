@@ -1,9 +1,15 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -12,6 +18,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 import javax.persistence.OneToMany;
 import javax.persistence.PreRemove;
 import javax.persistence.Temporal;
@@ -34,6 +41,10 @@ public class Context implements Serializable {
     @Column(name="PENDING_SINCE")
     @Temporal(TemporalType.TIMESTAMP)
     private Date pendingSince;
+
+    @Column(name = "META_DATA")
+    @Lob
+    private String metaData;
 
     public Context() {
     }
@@ -121,5 +132,35 @@ public class Context implements Serializable {
         return nodes.stream().filter(n -> n.getClusterNode().getName().equals(node))
                     .map(ContextClusterNode::getClusterNodeLabel)
                     .findFirst().orElse(null);
+    }
+
+    public String getMetaData() {
+        return metaData;
+    }
+
+    public void setMetaData(String metaData) {
+        this.metaData = metaData;
+    }
+
+    public void setMetaDataMap(Map<String, String> metaDataMap) {
+        this.metaData = null;
+        try {
+            this.metaData = new ObjectMapper().writeValueAsString(metaDataMap);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Map<String, String> getMetaDataMap() {
+        if (metaData == null) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            return (Map<String, String>) new ObjectMapper().readValue(metaData, Map.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Collections.emptyMap();
+        }
     }
 }

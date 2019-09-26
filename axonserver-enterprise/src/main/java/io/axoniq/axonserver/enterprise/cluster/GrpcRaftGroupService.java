@@ -95,8 +95,13 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext());
-        confirm(responseObserver, completable);
+        try {
+            CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext());
+            confirm(responseObserver, completable);
+        } catch (Exception ex) {
+            logger.warn("Failed to delete context: {}", request.getContext(), ex);
+            responseObserver.onError(ex);
+        }
     }
 
     @Override
@@ -107,14 +112,24 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void mergeAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request);
-        confirm(responseObserver, completable);
+        try {
+            CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request);
+            confirm(responseObserver, completable);
+        } catch (Exception ex) {
+            logger.warn("Failed to update application: {}", request.getName(), ex);
+            responseObserver.onError(ex);
+        }
     }
 
     @Override
     public void deleteAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
-        confirm(responseObserver, completable);
+        try {
+            CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
+            confirm(responseObserver, completable);
+        } catch (Exception ex) {
+            logger.warn("Failed to delete application: {}", request.getName(), ex);
+            responseObserver.onError(ex);
+        }
     }
 
     @Override

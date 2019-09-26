@@ -380,13 +380,21 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void addContext() {
-        testSubject.addContext("second", Arrays.asList("node1", "node2"));
+        testSubject.addContext(createContext("second", Arrays.asList("node1", "node2")));
     }
 
     @Test(expected = Throwable.class)
     public void addContextTwice() {
-        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
-        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
+        testSubject.addContext(createContext("twice", Arrays.asList("node1", "node2")));
+        testSubject.addContext(createContext("twice", Arrays.asList("node1", "node2")));
+    }
+
+    private Context createContext(String twice, List<String> asList) {
+        return Context.newBuilder().setName(twice).addAllMembers(asList.stream().map(n -> ContextMember.newBuilder()
+                                                                                                       .setNodeName(n)
+                                                                                                       .build())
+                                                                       .collect(
+                                                                               Collectors.toList())).build();
     }
 
     @Test
