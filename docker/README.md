@@ -21,9 +21,9 @@ $ mvn clean verify jib:dockerBuild
 
 > 'Jib' separates your application into multiple layers, splitting dependencies from classes. Now you don’t have to wait for Docker to rebuild your entire Java application - just deploy the layers that changed.
 
-Jib maven plugin is configured in the [parent pom](../pom.xml) to skip Docker image build by default. Specific maven submodules ([`axonserver-enterprise`](../axonserver-enterprise/pom.xml), [`axonserver-cli`](../axonserver-cli/pom.xml), [`sample-command-processor-axonserver-client`](../sample-applications/sample-command-processor-axonserver-client/pom.xml)) are configured to build multi-layered docker image.
+Jib maven plugin is configured in the [parent pom](../pom.xml) to skip Docker image build by default. Specific maven submodules ([`axonserver-enterprise`](../axonserver-enterprise/pom.xml), [`sample-command-processor-axonserver-client`](../sample-applications/sample-command-processor-axonserver-client/pom.xml)) are configured to build multi-layered docker image.
 
-Your new images `axonserver-enterprise`, `axonserver-cli`, `sample-command-processor-axonserver-client` should be available in your local Docker daemon:
+Your new images `axonserver-enterprise`, `sample-command-processor-axonserver-client` should be available in your local Docker daemon:
 ```bash
 $ docker images
 ```
