@@ -457,7 +457,7 @@ public class EventDispatcher implements AxonServerClientService {
 
                                 @Override
                                 public void onCompleted() {
-                                    logger.warn("{}: Tracking event processor closed by leader", trackerInfo.context);
+                                    logger.info("{}: Tracking event processor closed", trackerInfo.context);
                                     removeTrackerInfo();
                                     StreamObserverUtils.complete(responseObserver);
                                 }
@@ -479,10 +479,10 @@ public class EventDispatcher implements AxonServerClientService {
 
         @Override
         public void onError(Throwable reason) {
-            logger.warn("Error on connection from client: {}", reason.getMessage());
-            if (eventStoreRequestObserver != null) {
-                StreamObserverUtils.complete(eventStoreRequestObserver);
+            if (!GrpcExceptionBuilder.isCancelled(reason)) {
+                logger.warn("Error on connection from client: {}", reason.getMessage());
             }
+            StreamObserverUtils.complete(eventStoreRequestObserver);
             removeTrackerInfo();
         }
 
@@ -500,9 +500,7 @@ public class EventDispatcher implements AxonServerClientService {
 
         @Override
         public void onCompleted() {
-            if (eventStoreRequestObserver != null) {
-                StreamObserverUtils.complete(eventStoreRequestObserver);
-            }
+            StreamObserverUtils.complete(eventStoreRequestObserver);
             removeTrackerInfo();
             StreamObserverUtils.complete(responseObserver);
         }

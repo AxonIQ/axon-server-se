@@ -21,7 +21,7 @@ public class StreamObserverUtils {
             if (responseStreamObserver != null) {
                 responseStreamObserver.onCompleted();
             }
-        } catch (Throwable t) {
+        } catch (Exception t) {
             // Ignore errors here
         }
     }
@@ -31,7 +31,7 @@ public class StreamObserverUtils {
             if (responseStreamObserver != null) {
                 responseStreamObserver.onError(cause);
             }
-        } catch (Throwable t) {
+        } catch (Exception t) {
             // Ignore errors here
         }
     }

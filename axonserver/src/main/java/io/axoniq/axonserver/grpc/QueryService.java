@@ -12,7 +12,15 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
-import io.axoniq.axonserver.grpc.query.*;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
+import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.grpc.query.QueryServiceGrpc;
+import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -26,10 +34,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.PreDestroy;
 
 /**
  * GRPC service to handle query bus requests from Axon Application
@@ -149,7 +157,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
             @Override
             public void onError(Throwable cause) {
-                logger.warn("{}: Error on connection from subscriber - {}", client, cause.getMessage());
+                if (!GrpcExceptionBuilder.isCancelled(cause)) {
+                    logger.warn("{}: Error on connection from subscriber - {}", client, cause.getMessage());
+                }
 
                 cleanup();
             }

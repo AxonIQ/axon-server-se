@@ -168,7 +168,9 @@ public class CommandService implements AxonServerClientService {
 
             @Override
             public void onError(Throwable cause) {
-                logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
+                if (!GrpcExceptionBuilder.isCancelled(cause)) {
+                    logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
+                }
                 cleanup();
             }
 

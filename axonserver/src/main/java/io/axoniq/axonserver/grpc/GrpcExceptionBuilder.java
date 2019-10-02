@@ -12,6 +12,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.grpc.Metadata;
+import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,5 +69,11 @@ public class GrpcExceptionBuilder {
             return description.substring(stdPrefix.length());
         }
         return createMessage(throwable);
+    }
+
+    public static boolean isCancelled(Throwable cause) {
+        return (cause instanceof StatusRuntimeException && ((StatusRuntimeException) cause).getStatus().getCode()
+                                                                                           .equals(
+                                                                                                   Status.Code.CANCELLED));
     }
 }
