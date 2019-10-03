@@ -151,6 +151,7 @@ public class TopologyEvents {
     }
 
     public static class QueryHandlerDisconnected extends TopologyBaseEvent {
+
         private final String context;
         private final String client;
 
@@ -180,6 +181,25 @@ public class TopologyEvents {
         public ClientIdentification clientIdentification() {
             return new ClientIdentification(context, client);
         }
+    }
 
+    public static class ApplicationInactivityTimeout {
+
+        private final ClientIdentification clientIdentification;
+
+        private final String componentName;
+
+        public ApplicationInactivityTimeout(ClientIdentification clientIdentification, String componentName) {
+            this.clientIdentification = clientIdentification;
+            this.componentName = componentName;
+        }
+
+        public ClientIdentification clientIdentification() {
+            return clientIdentification;
+        }
+
+        public String componentName() {
+            return componentName;
+        }
     }
 }
