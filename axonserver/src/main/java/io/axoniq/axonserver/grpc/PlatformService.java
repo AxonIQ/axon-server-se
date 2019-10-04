@@ -166,6 +166,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .findFirst().orElse(false);
     }
 
+    public void sendAllClient(PlatformOutboundInstruction instruction) {
+        connectionMap.values()
+                     .forEach(stream -> stream.onNext(instruction));
+    }
+
     private void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
                      .filter(e -> e.getKey().client.equals(clientName))

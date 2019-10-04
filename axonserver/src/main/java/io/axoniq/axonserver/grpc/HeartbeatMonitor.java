@@ -3,7 +3,9 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
+import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
+import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,6 +31,8 @@ public class HeartbeatMonitor {
 
     private final ApplicationEventPublisher eventPublisher;
 
+    private final Publisher<PlatformOutboundInstruction> heartbeatPublisher;
+
     private final Map<ClientIdentification, Instant> lastReceivedHeartBeats = new ConcurrentHashMap<>();
 
     private final Map<ClientIdentification, String> clientComponents = new ConcurrentHashMap<>();
@@ -39,6 +43,7 @@ public class HeartbeatMonitor {
         platformService.onInboundInstruction(HEARTBEAT, this::onHeartBeat);
         this.eventPublisher = eventPublisher;
         this.heartbeatTimeout = heartbeatTimeout;
+        this.heartbeatPublisher = platformService::sendAllClient;
     }
 
     private void onHeartBeat(String client, String context, PlatformInboundInstruction heartbeat) {
@@ -62,6 +67,16 @@ public class HeartbeatMonitor {
             }
         });
     }
+
+
+    @Scheduled(initialDelay = 5_000, fixedDelay = 1_000)
+    public void sendHeartbeat() {
+        heartbeatPublisher.publish(PlatformOutboundInstruction
+                                           .newBuilder()
+                                           .setHeartbeat(Heartbeat.newBuilder())
+                                           .build());
+    }
+
 
     @EventListener
     public void on(ApplicationDisconnected evt) {
