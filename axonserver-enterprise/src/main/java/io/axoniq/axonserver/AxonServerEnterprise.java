@@ -68,7 +68,6 @@ public class AxonServerEnterprise {
             RpcViews.registerAllViews();
 
             if (metricsConfig.iszPagedEnabled()) {
-                jaegerEnabled = true;
                 ZPageHandlers.startHttpServerAndRegisterAll(metricsConfig.getzPagesPort());
             }
 
@@ -81,6 +80,7 @@ public class AxonServerEnterprise {
             }
 
             if (metricsConfig.isJaegerEnabled()) {
+                jaegerEnabled = true;
                 JaegerExporterConfiguration jaegerConf =
                         JaegerExporterConfiguration.builder()
                                                    .setServiceName(metricsConfig.getJaegerServiceName())
