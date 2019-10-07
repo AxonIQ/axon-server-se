@@ -39,6 +39,8 @@ import javax.annotation.PreDestroy;
 @Import(PluginImportSelector.class)
 public class AxonServerEnterprise {
 
+    private boolean jaegerEnabled = false;
+
     private static final Logger log = LoggerFactory.getLogger(AxonServerEnterprise.class);
 
     public static void main(String[] args) {
@@ -66,6 +68,7 @@ public class AxonServerEnterprise {
             RpcViews.registerAllViews();
 
             if (metricsConfig.iszPagedEnabled()) {
+                jaegerEnabled = true;
                 ZPageHandlers.startHttpServerAndRegisterAll(metricsConfig.getzPagesPort());
             }
 
@@ -101,6 +104,8 @@ public class AxonServerEnterprise {
     @PreDestroy
     public void clean() {
         GrpcFlowControlledDispatcherListener.shutdown();
-        JaegerTraceExporter.unregister();
+        if (jaegerEnabled) {
+            JaegerTraceExporter.unregister();
+        }
     }
 }
