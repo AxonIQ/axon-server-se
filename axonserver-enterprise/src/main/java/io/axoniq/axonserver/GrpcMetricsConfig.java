@@ -16,12 +16,12 @@ public class GrpcMetricsConfig {
     /**
      * Enables Axon Server gRPC metrics.
      */
-    private boolean enabled = true;
+    private boolean enabled = false;
 
     /**
      * Enables ZPages for displaying traces/stats.
      */
-    private boolean enabledZPages = true;
+    private boolean enabledZPages = false;
     /**
      * HTTP port to access ZPages. Will not be considered if {@link #enabledZPages} is set to {@code false}.
      */

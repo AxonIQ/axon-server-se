@@ -71,7 +71,6 @@ public class AxonServerEnterprise {
 
             if (metricsConfig.isEnabledPrometheus()) {
                 PrometheusStatsCollector.createAndRegister(PrometheusStatsConfiguration.builder()
-                                                                                       .setNamespace("axonserver_grpc")
                                                                                        .setRegistry(
                                                                                                prometheusMeterRegistry
                                                                                                        .getPrometheusRegistry())
