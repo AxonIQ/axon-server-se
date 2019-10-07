@@ -71,6 +71,14 @@ public class GrpcExceptionBuilder {
         return createMessage(throwable);
     }
 
+    /**
+     * Checks if the given exception is a gRPC CANCELLED exception. This exception occurs when the client cancels the
+     * connection
+     * (usually on a non-clean exit)
+     *
+     * @param cause the exception to analyse
+     * @return true if the exception is that the connections is cancelled
+     */
     public static boolean isCancelled(Throwable cause) {
         return (cause instanceof StatusRuntimeException && ((StatusRuntimeException) cause).getStatus().getCode()
                                                                                            .equals(

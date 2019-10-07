@@ -13,6 +13,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
 /**
+ * Utility class to easily retrieve the real exception in case of an exception thrown in a concurrent call.
  * @author Marc Gathier
  * @since 4.2.2
  */
