@@ -21,27 +21,27 @@ public class GrpcMetricsConfig {
     /**
      * Enables ZPages for displaying traces/stats.
      */
-    private boolean enabledZPages = false;
+    private boolean zPagedEnabled = false;
     /**
-     * HTTP port to access ZPages. Will not be considered if {@link #enabledZPages} is set to {@code false}.
+     * HTTP port to access ZPages. Will not be considered if {@link #zPagedEnabled} is set to {@code false}.
      */
     private int zPagesPort = 8888;
 
     /**
      * Enables exporter for Prometheus.
      */
-    private boolean enabledPrometheus = false;
+    private boolean prometheusEnabled = false;
 
     /**
      * Enables exporter for Jaeger.
      */
-    private boolean enabledJaeger = false;
+    private boolean jaegerEnabled = false;
     /**
-     * Endpoint to access Jaeger exporter. Will not be considered if {@link #enabledJaeger} is set to {@code false}.
+     * Endpoint to access Jaeger exporter. Will not be considered if {@link #jaegerEnabled} is set to {@code false}.
      */
     private String jaegerEndpoint = "";
     /**
-     * Service name to be set to Jaeger exporter. Will not be considered if {@link #enabledJaeger} is set to {@code
+     * Service name to be set to Jaeger exporter. Will not be considered if {@link #jaegerEnabled} is set to {@code
      * false}.
      */
     private String jaegerServiceName = "axonserver";
@@ -54,12 +54,12 @@ public class GrpcMetricsConfig {
         this.enabled = enabled;
     }
 
-    public boolean isEnabledZPages() {
-        return enabledZPages;
+    public boolean iszPagedEnabled() {
+        return zPagedEnabled;
     }
 
-    public void setEnabledZPages(boolean enabledZPages) {
-        this.enabledZPages = enabledZPages;
+    public void setzPagedEnabled(boolean zPagedEnabled) {
+        this.zPagedEnabled = zPagedEnabled;
     }
 
     public int getzPagesPort() {
@@ -70,20 +70,20 @@ public class GrpcMetricsConfig {
         this.zPagesPort = zPagesPort;
     }
 
-    public boolean isEnabledPrometheus() {
-        return enabledPrometheus;
+    public boolean isPrometheusEnabled() {
+        return prometheusEnabled;
     }
 
-    public void setEnabledPrometheus(boolean enabledPrometheus) {
-        this.enabledPrometheus = enabledPrometheus;
+    public void setPrometheusEnabled(boolean prometheusEnabled) {
+        this.prometheusEnabled = prometheusEnabled;
     }
 
-    public boolean isEnabledJaeger() {
-        return enabledJaeger;
+    public boolean isJaegerEnabled() {
+        return jaegerEnabled;
     }
 
-    public void setEnabledJaeger(boolean enabledJaeger) {
-        this.enabledJaeger = enabledJaeger;
+    public void setJaegerEnabled(boolean jaegerEnabled) {
+        this.jaegerEnabled = jaegerEnabled;
     }
 
     public String getJaegerEndpoint() {

@@ -65,11 +65,11 @@ public class AxonServerEnterprise {
             // we are using a deprecated method here since exporters are not updated yet to work with RpcViews.registerAllGrpcViews();
             RpcViews.registerAllViews();
 
-            if (metricsConfig.isEnabledZPages()) {
+            if (metricsConfig.iszPagedEnabled()) {
                 ZPageHandlers.startHttpServerAndRegisterAll(metricsConfig.getzPagesPort());
             }
 
-            if (metricsConfig.isEnabledPrometheus()) {
+            if (metricsConfig.isPrometheusEnabled()) {
                 PrometheusStatsCollector.createAndRegister(PrometheusStatsConfiguration.builder()
                                                                                        .setRegistry(
                                                                                                prometheusMeterRegistry
@@ -77,7 +77,7 @@ public class AxonServerEnterprise {
                                                                                        .build());
             }
 
-            if (metricsConfig.isEnabledJaeger()) {
+            if (metricsConfig.isJaegerEnabled()) {
                 JaegerExporterConfiguration jaegerConf =
                         JaegerExporterConfiguration.builder()
                                                    .setServiceName(metricsConfig.getJaegerServiceName())
