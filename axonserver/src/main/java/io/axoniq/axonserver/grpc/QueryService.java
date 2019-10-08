@@ -12,6 +12,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
+import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -157,7 +158,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
             @Override
             public void onError(Throwable cause) {
-                if (!GrpcExceptionBuilder.isCancelled(cause)) {
+                if (!ExceptionUtils.isCancelled(cause)) {
                     logger.warn("{}: Error on connection from subscriber - {}", client, cause.getMessage());
                 }
 

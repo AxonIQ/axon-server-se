@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
@@ -479,7 +480,7 @@ public class EventDispatcher implements AxonServerClientService {
 
         @Override
         public void onError(Throwable reason) {
-            if (!GrpcExceptionBuilder.isCancelled(reason)) {
+            if (!ExceptionUtils.isCancelled(reason)) {
                 logger.warn("Error on connection from client: {}", reason.getMessage());
             }
             cleanup();
