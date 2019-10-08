@@ -166,6 +166,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .findFirst().orElse(false);
     }
 
+    /**
+     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
+     *
+     * @param instruction the {@link PlatformInboundInstruction} to be sent
+     */
     public void sendAllClient(PlatformOutboundInstruction instruction) {
         connectionMap.values()
                      .forEach(stream -> stream.onNext(instruction));
@@ -298,6 +303,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         }
     }
 
+    /**
+     * De-registers a client if it turns out to be inactive/not properly connected
+     * @param evt the event of inactivity timeout for a specific client component
+     */
     @EventListener
     public void on(TopologyEvents.ApplicationInactivityTimeout evt) {
         ClientComponent clientComponent = new ClientComponent(evt.clientIdentification().getClient(),

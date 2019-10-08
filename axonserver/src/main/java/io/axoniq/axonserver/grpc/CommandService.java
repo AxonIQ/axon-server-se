@@ -236,6 +236,12 @@ public class CommandService implements AxonServerClientService {
         Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
     }
 
+    /**
+     * Stops the {@link GrpcCommandDispatcherListener} responsible to forward commands to the client component that
+     * turns out to be inactive/not properly connected.
+     *
+     * @param evt the event of inactivity timeout for a specific client component
+     */
     @EventListener
     public void on(ApplicationInactivityTimeout evt) {
         stopListenerFor(evt.clientIdentification());
