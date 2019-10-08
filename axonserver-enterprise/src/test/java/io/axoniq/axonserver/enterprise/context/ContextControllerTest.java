@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
-import io.axoniq.axonserver.GrpcMetricsConfig;
+import io.axoniq.axonserver.GrpcMonitoringProperties;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
@@ -55,7 +55,7 @@ public class ContextControllerTest {
     @MockBean
     private GrpcRaftController raftController;
     @MockBean
-    private GrpcMetricsConfig grpcMetricsConfig;
+    private GrpcMonitoringProperties grpcMetricsConfig;
     @MockBean
     private PrometheusMeterRegistry prometheusMeterRegistry;
 

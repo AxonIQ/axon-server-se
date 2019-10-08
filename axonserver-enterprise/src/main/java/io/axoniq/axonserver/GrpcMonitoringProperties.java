@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @ConfigurationProperties(prefix = "axoniq.axonserver.metrics.grpc")
 @Configuration
-public class GrpcMetricsConfig {
+public class GrpcMonitoringProperties {
 
     /**
      * Enables Axon Server gRPC metrics.
