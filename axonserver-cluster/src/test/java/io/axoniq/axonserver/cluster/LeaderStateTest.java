@@ -5,23 +5,25 @@ import io.axoniq.axonserver.cluster.election.InMemoryElectionStore;
 import io.axoniq.axonserver.cluster.exception.LeadershipTransferInProgressException;
 import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
+import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
+import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import org.junit.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
@@ -35,11 +37,12 @@ import static org.junit.Assert.*;
 public class LeaderStateTest {
 
     private LeaderState testSubject;
-    AtomicReference<RaftNode> nodeRef = new AtomicReference<>();
+
     private AtomicReference<String> timeoutTarget = new AtomicReference<>();
     private AtomicInteger responseDelay = new AtomicInteger(1000);
-    FakeScheduler fakeScheduler = new FakeScheduler();
-    AtomicReference<MembershipState> stateRef = new AtomicReference<>();
+    private FakeScheduler fakeScheduler = new FakeScheduler();
+    private AtomicReference<MembershipState> stateRef = new AtomicReference<>();
+    private RaftGroup raftGroup;
 
     @Before
     public void setup() {
@@ -60,6 +63,7 @@ public class LeaderStateTest {
 
             @Override
             public void update(List<Node> nodes) {
+                groupMembers = nodes;
 
             }
         };
@@ -69,7 +73,7 @@ public class LeaderStateTest {
         ElectionStore electionStore = new InMemoryElectionStore();
         LogEntryProcessor logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
         BiConsumer<Long,String> termUpdateHandler = (newTerm, cause) -> electionStore.updateCurrentTerm(newTerm);
-        RaftGroup raftGroup = new RaftGroup() {
+        raftGroup = new RaftGroup() {
             @Override
             public LogEntryStore localLogEntryStore() {
                 return logEntryStore;
@@ -112,7 +116,13 @@ public class LeaderStateTest {
                                                                                                             .setLastLogIndex(request.getPrevLogIndex() + request.getEntriesCount())
                                                                                                             .build())
                                                                               .build();
-                        fakeScheduler.schedule(() -> listener.accept(response), responseDelay.get(), TimeUnit.MILLISECONDS);
+                        if (responseDelay.get() == 0) {
+                            listener.accept(response);
+                        } else {
+                            fakeScheduler.schedule(() -> listener.accept(response),
+                                                   responseDelay.get(),
+                                                   TimeUnit.MILLISECONDS);
+                        }
                     }
 
                     @Override
@@ -172,7 +182,7 @@ public class LeaderStateTest {
     }
 
     @Test
-    public void startAndStop() throws InterruptedException, TimeoutException, ExecutionException {
+    public void startAndStop() throws InterruptedException {
         testSubject.start();
         Thread.sleep(10);
         fakeScheduler.timeElapses(500);
@@ -198,7 +208,40 @@ public class LeaderStateTest {
 
         assertNotNull(timeoutTarget.get());
         assertTrue(transferDone.isDone());
+    }
 
+    @Test
+    public void addNode() throws Exception {
+        responseDelay.set(0);
 
+        LogEntryApplier logEntryApplier = new LogEntryApplier(raftGroup,
+                                                              new DefaultScheduler(),
+                                                              testSubject::applied,
+                                                              c -> raftGroup.raftConfiguration()
+                                                                            .update(c.getNodesList()));
+        try {
+            logEntryApplier.start();
+
+            testSubject.start();
+
+            ConfigChangeResult configuration = testSubject
+                    .addServer(Node.newBuilder()
+                                   .setNodeId("NewNode")
+                                   .setHost("localhost")
+                                   .setPort(1234)
+                                   .setNodeName("NewNodeName")
+                                   .setRole(Role.ACTIVE_BACKUP)
+                                   .build()).get(15, TimeUnit.SECONDS);
+
+            assertTrue(configuration.hasSuccess());
+
+            Optional<Node> optionalNode = raftGroup.raftConfiguration().groupMembers().stream().filter(n -> n
+                    .getNodeId().equals("NewNode")).findFirst();
+
+            assertTrue(optionalNode.isPresent());
+            assertEquals(Role.ACTIVE_BACKUP, optionalNode.get().getRole());
+        } finally {
+            logEntryApplier.stop();
+        }
     }
 }

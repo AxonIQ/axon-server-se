@@ -50,8 +50,8 @@ public class Context implements Serializable {
         this.name = name;
     }
 
-    public Set<ClusterNode> getNodes() {
-        return nodes.stream().map(ContextClusterNode::getClusterNode).collect(Collectors.toSet());
+    public Set<ContextClusterNode> getNodes() {
+        return nodes;
     }
 
     public Collection<String> getNodeNames() {

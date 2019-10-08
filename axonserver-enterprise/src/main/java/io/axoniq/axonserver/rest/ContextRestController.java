@@ -7,6 +7,7 @@ import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.topology.Topology;
@@ -72,6 +73,8 @@ public class ContextRestController {
             json.setLeader(raftLeaderProvider.getLeader(context.getName()));
             json.setNodes(context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).sorted()
                                  .collect(Collectors.toList()));
+            json.setRoles(context.getAllNodes().stream().map(ContextJSON.NodeAndRole::new).sorted()
+                                 .collect(Collectors.toList()));
             return json;
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());
     }
@@ -119,10 +122,14 @@ public class ContextRestController {
 
     @PostMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> updateNodeRoles(@PathVariable("context") String name,
-                                                        @PathVariable("node") String node) {
+                                                        @PathVariable("node") String node,
+                                                        @PathVariable("role") String role) {
         logger.info("Add node request received for node: {} - and context: {}", node, name);
         try {
-            raftServiceFactory.getRaftConfigService().addNodeToContext(name, node);
+            raftServiceFactory.getRaftConfigService().addNodeToContext(name,
+                                                                       node,
+                                                                       role == null ? Role.PRIMARY : Role
+                                                                               .valueOf(role));
             return ResponseEntity.accepted()
                                  .body(new RestResponse(true,
                                                         "Started to add node to context. This may take some time depending on the number of events already in the context"));

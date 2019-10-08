@@ -148,6 +148,16 @@ message Node {
     uint32 port = 3;
     // cluster node name
     string nodeName = 4;
+    // the role of the node in the cluster
+    Role role = 5;
+}
+
+// roles that a node can have inside a cluster
+enum Role {
+    PRIMARY = 0;
+    ACTIVE_BACKUP = 2;
+    PASSIVE_BACKUP = 3;
+    MESSAGING_ONLY = 4;
 }
 
 message ConfigChangeResult {

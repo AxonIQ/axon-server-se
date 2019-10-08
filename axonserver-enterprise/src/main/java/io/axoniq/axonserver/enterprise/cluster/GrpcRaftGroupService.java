@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextEntry;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
@@ -61,7 +61,8 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void addServer(Context request, StreamObserver<ContextUpdateConfirmation> responseObserver) {
-        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.addNodeToContext(request.getName(), toNode(request.getMembers(0)));
+        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService
+                .addNodeToContext(request.getName(), ContextMemberConverter.asNode(request.getMembers(0)));
         forwardWhenComplete(responseObserver, completable);
     }
 
@@ -154,15 +155,6 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     public void getStatus(Context request, StreamObserver<Context> responseObserver) {
         localRaftGroupService.getStatus(responseObserver::onNext);
         responseObserver.onCompleted();
-    }
-
-    private Node toNode(ContextMember member) {
-        return Node.newBuilder()
-                   .setPort(member.getPort())
-                   .setHost(member.getHost())
-                   .setNodeId(member.getNodeId())
-                   .setNodeName(member.getNodeName())
-                   .build();
     }
 
     @Override

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.jpa;
 
 import io.axoniq.axonserver.RaftAdminGroup;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
@@ -147,11 +148,18 @@ public class ClusterNode implements Serializable, AxonServerNode {
         this.name = name;
     }
 
-    public void addContext(Context context, String clusterNodeLabel) {
-        ContextClusterNode contextClusterNode = contexts.stream()
-                                                        .filter(ccn -> ccn.getContext().equals(context))
-                                                        .findFirst()
-                                                        .orElse(new ContextClusterNode(context, this, clusterNodeLabel));
+    /**
+     * Adds this node the specified context with given label and role. If this node is already a member of the context
+     * this is a no-op.
+     *
+     * @param context          the context where to add the node to
+     * @param clusterNodeLabel unique label for the node
+     * @param role             the role of this node in the context
+     */
+    public void addContext(Context context, String clusterNodeLabel, Role role) {
+        if (!contexts.stream().anyMatch(ccn -> ccn.getContext().equals(context))) {
+            new ContextClusterNode(context, this, clusterNodeLabel, role);
+        }
     }
 
     public static ClusterNode from(NodeInfo connect) {

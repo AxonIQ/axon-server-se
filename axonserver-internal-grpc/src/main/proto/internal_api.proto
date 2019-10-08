@@ -122,6 +122,7 @@ service RaftGroupService {
 message NodeContext {
     string node_name = 1;
     string context = 2;
+    int32 role = 3;
 }
 
 message ConnectorCommand {
@@ -460,6 +461,7 @@ message ContextMember {
     int32 port = 3;
     State state = 4;
     string node_name = 5;
+    int32 role = 6; // TODO: change to Role or even replace ContextMember with Node from raft.proto (as separate refactor activity)
 }
 
 message Application {
@@ -514,6 +516,7 @@ message ContextConfiguration {
 message NodeInfoWithLabel {
     NodeInfo node = 1;
     string label = 2;
+    int32 role = 3;
 }
 
 message ContextName {

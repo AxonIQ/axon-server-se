@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
@@ -38,9 +39,13 @@ public class RemoteRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void addNodeToContext(String context, String node) {
+    public void addNodeToContext(String context, String node, Role role) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder().setNodeName(node).setContext(context).build(),
+        raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder()
+                                                          .setNodeName(node)
+                                                          .setRole(role.getNumber())
+                                                          .setContext(context)
+                                                          .build(),
                                                new CompletableStreamObserver<>(completableFuture,
                                                                                "addNodeToContext",
                                                                                logger));

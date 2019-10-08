@@ -2,11 +2,14 @@ package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
-import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
+import io.axoniq.axonserver.grpc.cluster.Role;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
@@ -22,6 +25,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.persistence.EntityManager;
 
@@ -62,18 +66,33 @@ public class ContextControllerTest {
         ClusterNode node1 = new ClusterNode("node1", "node1", "node1", 8124, 8224, 8024);
 
         ClusterNode node2 = new ClusterNode("node2", "node2", "node2", 8124, 8224, 8024);
-        node1.addContext(defaultContext, "node1");
-        node2.addContext(defaultContext, "node2");
-        initialNodes.add(nodeInfo(node1));
-        initialNodes.add(nodeInfo(node2));
+        node1.addContext(defaultContext, "node1", Role.PRIMARY);
+        node2.addContext(defaultContext, "node2", Role.PRIMARY);
+        initialNodes.add(nodeInfo(node1, Role.PRIMARY));
+        initialNodes.add(nodeInfo(node2, Role.PRIMARY));
         entityManager.persist(node1);
         entityManager.persist(node2);
         entityManager.flush();
+        doAnswer(invocationOnMock -> {
+            NodeInfo nodeInfo = invocationOnMock.getArgument(0);
+            ClusterNode clusterNode = new ClusterNode(nodeInfo.getNodeName(),
+                                                      nodeInfo.getHostName(),
+                                                      nodeInfo.getInternalHostName(),
+                                                      nodeInfo.getGrpcPort(),
+                                                      nodeInfo.getGrpcInternalPort(),
+                                                      nodeInfo.getHttpPort());
+            entityManager.persist(clusterNode);
+            return clusterNode;
+        }).when(clusterController).addConnection(any(NodeInfo.class));
         testSubject = new ContextController(entityManager, clusterController);
     }
 
-    private NodeInfoWithLabel nodeInfo(ClusterNode clusterNode) {
-        return NodeInfoWithLabel.newBuilder().setNode(clusterNode.toNodeInfo()).setLabel(clusterNode.getName()).build();
+    private NodeInfoWithLabel nodeInfo(ClusterNode clusterNode, Role role) {
+        return NodeInfoWithLabel.newBuilder()
+                                .setNode(clusterNode.toNodeInfo())
+                                .setLabel(clusterNode.getName())
+                                .setRole(role.getNumber())
+                                .build();
     }
 
     @Test
@@ -90,13 +109,35 @@ public class ContextControllerTest {
         entityManager.flush();
 
         List<NodeInfoWithLabel> nodes = new ArrayList<>(initialNodes);
-        nodes.add(nodeInfo(node3));
+        nodes.add(nodeInfo(node3, Role.ACTIVE_BACKUP));
 
         testSubject.updateContext(io.axoniq.axonserver.grpc.internal.ContextConfiguration.newBuilder().setContext(Topology.DEFAULT_CONTEXT).addAllNodes(nodes).build());
 
         entityManager.flush();
         Context defaultContext = entityManager.find(Context.class, Topology.DEFAULT_CONTEXT);
         assertEquals(3, defaultContext.getNodes().size());
+        Optional<ContextClusterNode> optionalMember = defaultContext
+                .getNodes().stream().filter(c -> c.getClusterNode().getName().equals("node3")).findFirst();
+        assertTrue(optionalMember.isPresent());
+        assertEquals(Role.ACTIVE_BACKUP, optionalMember.get().getRole());
+    }
+
+    @Test
+    public void addNewNodeToContext() {
+        ClusterNode node3 = new ClusterNode("node3", "node3", "node3", 8124, 8224, 8024);
+        List<NodeInfoWithLabel> nodes = new ArrayList<>(initialNodes);
+        nodes.add(nodeInfo(node3, Role.ACTIVE_BACKUP));
+
+        testSubject.updateContext(io.axoniq.axonserver.grpc.internal.ContextConfiguration.newBuilder().setContext(
+                Topology.DEFAULT_CONTEXT).addAllNodes(nodes).build());
+
+        entityManager.flush();
+        Context defaultContext = entityManager.find(Context.class, Topology.DEFAULT_CONTEXT);
+        assertEquals(3, defaultContext.getNodes().size());
+        Optional<ContextClusterNode> optionalMember = defaultContext
+                .getNodes().stream().filter(c -> c.getClusterNode().getName().equals("node3")).findFirst();
+        assertTrue(optionalMember.isPresent());
+        assertEquals(Role.ACTIVE_BACKUP, optionalMember.get().getRole());
     }
 
     @Test
@@ -106,7 +147,8 @@ public class ContextControllerTest {
         entityManager.persist(test1);
 
         entityManager.createQuery("select c from ClusterNode c", ClusterNode.class).getResultList().forEach(n -> n.addContext(test1,
-                                                                                                                              n.getName()));
+                                                                                                                              n.getName(),
+                                                                                                                              Role.PRIMARY));
         // when delete context test1
         testSubject.deleteContext("test1");
         // expect nodes 1 and node 2 no longer contain context text1
@@ -131,19 +173,11 @@ public class ContextControllerTest {
     }
 
     @Test
-    public void update() {
-    }
-
-    @Test
     public void on() {
-        RemoteConnection remoteConnection = mock(RemoteConnection.class);
-        ClusterNode node2 = new ClusterNode("node2", null, null, null, null, null);
-        when(remoteConnection.getClusterNode()).thenReturn(node2);
-
-//        ClusterEvents.AxonServerInstanceConnected axonhubInstanceConnected = new ClusterEvents.AxonServerInstanceConnected(remoteConnection, 10, Collections.emptyList(),
-//                                                                                                                           Collections
-//                                                                                                                             .singletonList(
-//                                                                                                                                     ContextRole.newBuilder().setName("test1").build()), Collections.emptyList());
-//        testSubject.on(axonhubInstanceConnected);
+        testSubject.updateContext(io.axoniq.axonserver.grpc.internal.ContextConfiguration.newBuilder().setContext(
+                "test1").addNodes(initialNodes.get(0)).build());
+        assertEquals(2, testSubject.getContexts().count());
+        testSubject.on(new ContextEvents.AdminContextDeleted("_admin"));
+        assertEquals(0, testSubject.getContexts().count());
     }
 }

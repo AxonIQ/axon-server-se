@@ -4,6 +4,7 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
@@ -86,7 +87,9 @@ public class ContextController {
         newNodes.forEach((node, nodeInfo) -> {
             if( !currentNodes.containsKey(node)) {
                 logger.debug("{}: Node not in current configuration {}", contextConfiguration.getContext(), node);
-                clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel());
+                clusterInfoMap.get(node).addContext(finalContext,
+                                                    nodeInfo.getLabel(),
+                                                    Role.forNumber(nodeInfo.getRole()));
             }
         });
     }
@@ -108,8 +111,7 @@ public class ContextController {
     @EventListener
     @Transactional
     public void on(ContextEvents.AdminContextDeleted contextDeleted) {
-        List<Context> allContexts = entityManager.createQuery("select c from Context c").getResultList();
-        allContexts.forEach(c -> entityManager.remove(c));
+        deleteAll();
     }
 
     @Transactional
@@ -123,7 +125,7 @@ public class ContextController {
 
     @Transactional
     public void deleteAll() {
-        List<Context> allContexts = entityManager.createQuery("select c from Context c").getResultList();
-        allContexts.forEach(context -> entityManager.remove(context));
+        List<Context> allContexts = entityManager.createQuery("select c from Context c", Context.class).getResultList();
+        allContexts.forEach(entityManager::remove);
     }
 }

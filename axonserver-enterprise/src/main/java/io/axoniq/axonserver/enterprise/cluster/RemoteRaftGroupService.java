@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
@@ -46,7 +47,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<ContextUpdateConfirmation> addNodeToContext(String context, Node node) {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
-        ContextMember contextMember = asContextMember(node);
+        ContextMember contextMember = ContextMemberConverter.asContextMember(node);
         stub.addServer(Context.newBuilder().setName(context).addMembers(contextMember).build(),
                        new CompletableStreamObserver<>(result, "addNodeToContext", logger));
         return result;

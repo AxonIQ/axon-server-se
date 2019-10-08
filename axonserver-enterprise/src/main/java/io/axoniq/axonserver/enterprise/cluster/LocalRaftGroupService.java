@@ -7,6 +7,7 @@ import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextApplicationConsu
 import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextUserConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
@@ -65,12 +66,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                      .setSuccess(true)
                                                      .addAllMembers(raftNode.currentGroupMembers()
                                                                             .stream()
-                                                                            .map(n -> ContextMember.newBuilder()
-                                                                                                   .setNodeName(n.getNodeName())
-                                                                                                   .setNodeId(n.getNodeId())
-                                                                                                   .setPort(n.getPort())
-                                                                                                   .setHost(n.getHost())
-                                                                                                   .build())
+                                                                            .map(ContextMemberConverter::asContextMember)
                                                                             .collect(Collectors.toList()))
                                                      .build());
         } else {

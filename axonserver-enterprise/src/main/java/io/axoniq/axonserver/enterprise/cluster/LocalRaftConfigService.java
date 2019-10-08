@@ -17,6 +17,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
@@ -95,7 +96,7 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void addNodeToContext(String context, String node) {
+    public void addNodeToContext(String context, String node, Role role) {
         logger.info("Add node request invoked for node: {} - and context: {}", node, context);
         Context contextDefinition = contextController.getContext(context);
 
@@ -112,7 +113,7 @@ class LocalRaftConfigService implements RaftConfigService {
         }
         ContextConfiguration oldConfiguration = createContextConfigBuilder(contextDefinition).build();
         String nodeLabel = generateNodeLabel(node);
-        Node raftNode = createNode(clusterNode, nodeLabel);
+        Node raftNode = createNode(clusterNode, nodeLabel, role);
 
         ContextConfiguration contextConfiguration =
                 ContextConfiguration.newBuilder(oldConfiguration).setPending(true)
@@ -166,11 +167,12 @@ class LocalRaftConfigService implements RaftConfigService {
         return node + "-" + UUID.randomUUID();
     }
 
-    private Node createNode(ClusterNode clusterNode, String nodeLabel) {
+    private Node createNode(ClusterNode clusterNode, String nodeLabel, Role role) {
         return Node.newBuilder().setNodeId(nodeLabel)
                    .setHost(clusterNode.getInternalHostName())
                    .setPort(clusterNode.getGrpcInternalPort())
                    .setNodeName(clusterNode.getName())
+                   .setRole(role == null ? Role.PRIMARY : role)
                    .build();
     }
 
@@ -392,7 +394,7 @@ class LocalRaftConfigService implements RaftConfigService {
         nodes.forEach(n -> {
             ClusterNode clusterNode = contextController.getNode(n);
             String nodeLabel = generateNodeLabel(n);
-            raftNodes.add(createNode(clusterNode, nodeLabel));
+            raftNodes.add(createNode(clusterNode, nodeLabel, Role.PRIMARY));
         });
         Node target = raftNodes.get(0);
 
@@ -558,7 +560,9 @@ class LocalRaftConfigService implements RaftConfigService {
             }
 
             builder.addNodes(NodeInfoWithLabel.newBuilder().setNode(node.toNodeInfo())
-                                              .setLabel(contextMember.getNodeId()));
+                                              .setLabel(contextMember.getNodeId())
+                                              .setRole(contextMember.getRole())
+            );
         });
 
         return builder.build();
@@ -577,6 +581,7 @@ class LocalRaftConfigService implements RaftConfigService {
         return NodeInfoWithLabel.newBuilder()
                                 .setLabel(nodeLabel)
                                 .setNode(nodeInfo)
+                                .setRole(Role.PRIMARY.getNumber())
                                 .build();
     }
 
@@ -620,7 +625,10 @@ class LocalRaftConfigService implements RaftConfigService {
         ContextConfiguration contextConfiguration = ContextConfiguration
                 .newBuilder()
                 .setContext(contextName)
-                .addNodes(NodeInfoWithLabel.newBuilder().setNode(nodeInfo).setLabel(nodeLabelForContext))
+                .addNodes(NodeInfoWithLabel.newBuilder()
+                                           .setNode(nodeInfo)
+                                           .setRole(Role.PRIMARY.getNumber())
+                                           .setLabel(nodeLabelForContext))
                 .build();
         RaftNode adminLeader = grpcRaftController.waitForLeader(grpcRaftController.getRaftGroup(getAdmin()));
         getFuture(adminLeader
@@ -808,6 +816,7 @@ class LocalRaftConfigService implements RaftConfigService {
                 .addNodes(NodeInfoWithLabel.newBuilder()
                                            .setNode(n.getClusterNode().toNodeInfo())
                                            .setLabel(n.getClusterNodeLabel())
+                                           .setRole(n.getRole().getNumber())
                                            .build()));
         return groupConfigurationBuilder;
     }

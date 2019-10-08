@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
@@ -88,7 +89,8 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
         wrap(responseObserver,
-             () -> localRaftConfigService.addNodeToContext(request.getContext(), request.getNodeName()));
+             () -> localRaftConfigService
+                     .addNodeToContext(request.getContext(), request.getNodeName(), Role.forNumber(request.getRole())));
     }
 
     @Override
