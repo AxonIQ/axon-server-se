@@ -482,8 +482,7 @@ public class EventDispatcher implements AxonServerClientService {
             if (!GrpcExceptionBuilder.isCancelled(reason)) {
                 logger.warn("Error on connection from client: {}", reason.getMessage());
             }
-            StreamObserverUtils.complete(eventStoreRequestObserver);
-            removeTrackerInfo();
+            cleanup();
         }
 
         private void removeTrackerInfo() {
@@ -500,9 +499,13 @@ public class EventDispatcher implements AxonServerClientService {
 
         @Override
         public void onCompleted() {
+            cleanup();
+            StreamObserverUtils.complete(responseObserver);
+        }
+
+        private void cleanup() {
             StreamObserverUtils.complete(eventStoreRequestObserver);
             removeTrackerInfo();
-            StreamObserverUtils.complete(responseObserver);
         }
     }
 }
