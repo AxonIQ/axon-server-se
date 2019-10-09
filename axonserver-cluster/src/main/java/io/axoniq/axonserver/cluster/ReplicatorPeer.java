@@ -39,7 +39,7 @@ import static java.lang.String.format;
  * @author Milan Savic
  * @since 4.1
  */
-public class ReplicatorPeer {
+public class ReplicatorPeer implements ReplicatorPeerStatus {
 
     private interface ReplicatorPeerState {
 
@@ -618,4 +618,13 @@ public class ReplicatorPeer {
         matchIndexUpdates.next(matchIndexValue);
         nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, matchIndexValue + 1));
     }
+
+    public boolean primaryNode() {
+        return raftPeer.primaryNode();
+    }
+
+    public boolean votingNode() {
+        return raftPeer.votingNode();
+    }
+
 }
