@@ -23,7 +23,6 @@ import static org.junit.Assert.*;
  * Unit tests for {@link HeartbeatMonitor}
  *
  * @author Sara Pellegrini
- * @since 4.2
  */
 public class HeartbeatMonitorTest {
 
