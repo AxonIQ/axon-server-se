@@ -272,6 +272,11 @@ public abstract class AbstractMembershipState implements MembershipState {
         return currentGroupMembers().stream().anyMatch(n -> n.getNodeId().equals(candidateId));
     }
 
+    /**
+     * Retrieves the current node definition from the active configuration.
+     *
+     * @return the current node definition
+     */
     protected Node currentNode() {
         return currentGroupMembers().stream().filter(n -> n.getNodeId().equals(me())).findFirst().orElse(null);
     }

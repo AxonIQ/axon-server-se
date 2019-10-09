@@ -32,10 +32,21 @@ public class RoleUtils {
         return roleNumber == null ? DEFAULT_ROLE : Role.forNumber(roleNumber);
     }
 
+    /**
+     * Returns if role is a role that participates in leader election.
+     *
+     * @param role the role
+     * @return true if role is a role that participates in leader election
+     */
     public static boolean votingNode(Role role) {
         return Role.PRIMARY.equals(role) || Role.ACTIVE_BACKUP.equals(role);
     }
 
+    /**
+     * Returns if role is a primary node role.
+     * @param role the role
+     * @return true if role is a primary node role
+     */
     public static boolean primaryNode(Role role) {
         return Role.PRIMARY.equals(role);
     }
