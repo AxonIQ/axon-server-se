@@ -31,4 +31,12 @@ public class RoleUtils {
     public static Role forNumber(Integer roleNumber) {
         return roleNumber == null ? DEFAULT_ROLE : Role.forNumber(roleNumber);
     }
+
+    public static boolean votingNode(Role role) {
+        return Role.PRIMARY.equals(role) || Role.ACTIVE_BACKUP.equals(role);
+    }
+
+    public static boolean primaryNode(Role role) {
+        return Role.PRIMARY.equals(role);
+    }
 }

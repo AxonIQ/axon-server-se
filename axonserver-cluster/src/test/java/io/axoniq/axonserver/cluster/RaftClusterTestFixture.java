@@ -341,6 +341,16 @@ public class RaftClusterTestFixture {
             public String nodeName() {
                 return nodeName;
             }
+
+            @Override
+            public boolean primaryNode() {
+                return true;
+            }
+
+            @Override
+            public boolean votingNode() {
+                return true;
+            }
         }
 
     }

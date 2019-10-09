@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.exception.StreamAlreadyClosedException;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -335,5 +336,15 @@ public class GrpcRaftPeer implements RaftPeer {
             }
             throw new LogException(ErrorCode.SENDING_FAILED, e.getMessage());
         }
+    }
+
+    @Override
+    public boolean primaryNode() {
+        return RoleUtils.primaryNode(node.getRole());
+    }
+
+    @Override
+    public boolean votingNode() {
+        return RoleUtils.votingNode(node.getRole());
     }
 }

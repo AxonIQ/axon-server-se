@@ -8,6 +8,7 @@ import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -165,13 +166,17 @@ public abstract class AbstractMembershipState implements MembershipState {
 
             if (electionFactory == null) {
                 electionFactory = (disruptLeader) -> {
-                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
+                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup,
+                                                                   currentConfiguration,
+                                                                   n -> RoleUtils.votingNode(n.getRole()));
                     return new DefaultElection(raftGroup, termUpdateHandler, otherPeers, disruptLeader);
                 };
             }
             if (preVoteFactory == null) {
                 preVoteFactory = () -> {
-                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
+                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup,
+                                                                   currentConfiguration,
+                                                                   n -> RoleUtils.votingNode(n.getRole()));
                     return new DefaultPreVote(raftGroup, termUpdateHandler, otherPeers);
                 };
             }
@@ -265,6 +270,10 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     protected boolean member(String candidateId) {
         return currentGroupMembers().stream().anyMatch(n -> n.getNodeId().equals(candidateId));
+    }
+
+    protected Node currentNode() {
+        return currentGroupMembers().stream().filter(n -> n.getNodeId().equals(me())).findFirst().orElse(null);
     }
 
     protected boolean shouldGoAwayIfNotMember() {

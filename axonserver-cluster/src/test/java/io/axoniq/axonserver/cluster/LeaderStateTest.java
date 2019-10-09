@@ -157,6 +157,16 @@ public class LeaderStateTest {
                     public void sendTimeoutNow() {
                         timeoutTarget.set(node.getNodeId());
                     }
+
+                    @Override
+                    public boolean primaryNode() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean votingNode() {
+                        return true;
+                    }
                 };
             }
 

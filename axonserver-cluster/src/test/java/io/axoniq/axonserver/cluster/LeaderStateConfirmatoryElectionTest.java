@@ -7,6 +7,7 @@ import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.MajorityMatchStrategy;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import org.junit.*;
 import reactor.core.publisher.Mono;
 
@@ -47,9 +48,9 @@ public class LeaderStateConfirmatoryElectionTest {
         scheduler = new FakeScheduler();
 
 
-        FakeRaftPeer node0 = new FakeRaftPeer(scheduler, "node0", "Node-Name-0");
-        FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1", "Node-Name-1");
-        FakeRaftPeer node2 = new FakeRaftPeer(scheduler, "node2", "Node-Name-2");
+        FakeRaftPeer node0 = new FakeRaftPeer(scheduler, "node0", "Node-Name-0", Role.PRIMARY);
+        FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1", "Node-Name-1", Role.PRIMARY);
+        FakeRaftPeer node2 = new FakeRaftPeer(scheduler, "node2", "Node-Name-2", Role.PRIMARY);
 
         addClusterNode("node0", node0);
         addClusterNode("node1", node1);

@@ -48,4 +48,8 @@ public interface RaftPeer {
      * Sends a message to the peer to timeout immediately, causing it to start a new election.
      */
     void sendTimeoutNow();
+
+    boolean primaryNode();
+
+    boolean votingNode();
 }

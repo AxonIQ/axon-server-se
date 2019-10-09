@@ -13,7 +13,6 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 
 import static java.lang.String.format;
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * @author Sara Pellegrini
@@ -53,7 +52,7 @@ public class DefaultElection implements Election {
              termUpdateHandler,
              electionStore,
              otherNodes,
-             new MajorityStrategy(() -> (int) (stream(otherNodes.spliterator(), false).count() + 1)), disruptLeader);
+             new PrimaryAndVotingMajorityStrategy(otherNodes), disruptLeader);
     }
 
     public DefaultElection(RequestVoteRequest requestPrototype,

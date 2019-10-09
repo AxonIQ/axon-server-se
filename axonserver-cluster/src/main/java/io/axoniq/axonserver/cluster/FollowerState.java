@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.FollowerConfiguration;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -397,7 +398,7 @@ public class FollowerState extends AbstractMembershipState {
      */
     private void checkMessageReceived() {
         long now = scheduler.get().clock().millis();
-        if (!processing.get() && nextTimeout.get() < now) {
+        if (!processing.get() && nextTimeout.get() < now && RoleUtils.primaryNode(currentNode().getRole())) {
             String message = format("%s in term %s: Timeout in follower state: %s ms.",
                                     groupId(),
                                     currentTerm(),
@@ -446,7 +447,10 @@ public class FollowerState extends AbstractMembershipState {
         //2. If votedFor is null or candidateId, and candidate's log is at least as up-to-date as receiver's log, grant
         // vote
         String votedFor = votedFor();
-        if (!preVote && votedFor != null && !votedFor.equals(request.getCandidateId())) {
+        // if this node has role active-backup it participates in the election, but always returns true, except when the
+        // term in the request is before the current term
+        boolean primary = RoleUtils.primaryNode(currentNode().getRole());
+        if (primary && !preVote && votedFor != null && !votedFor.equals(request.getCandidateId())) {
             logger.info("{} in term {}: Vote not granted. Already voted for: {}.", groupId(), currentTerm(), votedFor);
             return false;
         }
@@ -462,7 +466,7 @@ public class FollowerState extends AbstractMembershipState {
             return false;
         }
 
-        if (request.getLastLogIndex() < lastLog.getIndex()) {
+        if (primary && request.getLastLogIndex() < lastLog.getIndex()) {
             logger.info("{} in term {}: {}not granted. Requested last log index {}, my last log index {}.",
                         groupId(),
                         currentTerm(),
@@ -473,7 +477,7 @@ public class FollowerState extends AbstractMembershipState {
         }
 
         logger.info("{} in term {}: {} granted for {}.", groupId(), currentTerm(), type, request.getCandidateId());
-        if (!preVote) {
+        if (primary && !preVote) {
             markVotedFor(request.getCandidateId());
         }
         return true;
