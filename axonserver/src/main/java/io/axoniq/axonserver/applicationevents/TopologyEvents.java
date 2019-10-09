@@ -184,7 +184,7 @@ public class TopologyEvents {
     }
 
     /**
-     * It happens any AxonServer doesn't receive any heartbeat from a client
+     * It should be published any time AxonServer doesn't receive any heartbeat from a client
      * for a period of time greater then the set timeout.
      */
     public static class ApplicationInactivityTimeout {
