@@ -29,7 +29,7 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
  * Uses heartbeats to verify if the connections with clients are still alive.
  *
  * @author Sara Pellegrini
- * @since 4.2
+ * @since 4.2.2
  */
 @Component
 public class HeartbeatMonitor {
