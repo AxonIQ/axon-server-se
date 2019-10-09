@@ -11,6 +11,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
@@ -168,7 +169,9 @@ public class CommandService implements AxonServerClientService {
 
             @Override
             public void onError(Throwable cause) {
-                logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
+                if (!ExceptionUtils.isCancelled(cause)) {
+                    logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
+                }
                 cleanup();
             }
 
