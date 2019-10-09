@@ -62,7 +62,7 @@ public class HeartbeatMonitor {
                      platformService.onInboundInstruction(HEARTBEAT, (client, context, instruction) ->
                              listener.accept(new ClientIdentification(context, client), instruction)),
              eventPublisher,
-             platformService::sendAllClient,
+             platformService::sendToAllClient,
              heartbeatTimeout, Clock.systemUTC());
     }
 

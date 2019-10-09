@@ -193,15 +193,29 @@ public class TopologyEvents {
 
         private final String componentName;
 
+        /**
+         * Creates an {@link ApplicationInactivityTimeout} event.
+         *
+         * @param clientIdentification the client identifier
+         * @param componentName        the client component name
+         */
         public ApplicationInactivityTimeout(ClientIdentification clientIdentification, String componentName) {
             this.clientIdentification = clientIdentification;
             this.componentName = componentName;
         }
 
+        /**
+         * Returns the client identifier.
+         * @return the client identifier.
+         */
         public ClientIdentification clientIdentification() {
             return clientIdentification;
         }
 
+        /**
+         * Returns the component name.
+         * @return the component name.
+         */
         public String componentName() {
             return componentName;
         }

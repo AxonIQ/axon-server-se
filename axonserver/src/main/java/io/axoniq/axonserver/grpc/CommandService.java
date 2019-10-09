@@ -235,7 +235,7 @@ public class CommandService implements AxonServerClientService {
     }
 
     private void stopListenerFor(ClientIdentification clientIdentification) {
-        GrpcFlowControlledDispatcherListener listener = dispatcherListeners.get(clientIdentification);
+        GrpcFlowControlledDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
         Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
     }
 
