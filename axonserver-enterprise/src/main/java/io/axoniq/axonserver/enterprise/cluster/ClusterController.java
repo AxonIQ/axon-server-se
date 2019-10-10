@@ -11,7 +11,6 @@ import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.enterprise.config.FlowControl;
 import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ChannelCloser;
@@ -19,10 +18,8 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Feature;
-import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,7 +28,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -42,7 +38,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.persistence.EntityManager;
 
@@ -58,7 +53,6 @@ public class ClusterController implements SmartLifecycle {
     private final TagsConfiguration tagsConfiguration;
     private final EntityManager entityManager;
     private final StubFactory stubFactory;
-    private final NodeSelectionStrategy nodeSelectionStrategy;
     private final RaftGroupRepositoryManager raftGroupRepositoryManager;
     private final QueryDispatcher queryDispatcher;
     private final CommandDispatcher commandDispatcher;
@@ -76,7 +70,6 @@ public class ClusterController implements SmartLifecycle {
                              TagsConfiguration tagsConfiguration,
                              EntityManager entityManager,
                              StubFactory stubFactory,
-                             NodeSelectionStrategy nodeSelectionStrategy,
                              RaftGroupRepositoryManager raftGroupRepositoryManager,
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
@@ -88,7 +81,6 @@ public class ClusterController implements SmartLifecycle {
         this.tagsConfiguration = tagsConfiguration;
         this.entityManager = entityManager;
         this.stubFactory = stubFactory;
-        this.nodeSelectionStrategy = nodeSelectionStrategy;
         this.raftGroupRepositoryManager = raftGroupRepositoryManager;
         this.queryDispatcher = queryDispatcher;
         this.commandDispatcher = commandDispatcher;
@@ -368,45 +360,6 @@ public class ClusterController implements SmartLifecycle {
                                                                                           .isConnected());
     }
 
-    public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
-        Collection<String> nodesInContext = getNodesInContext(context);
-        if (nodesInContext.isEmpty()) {
-            throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
-                                                 "No AxonServers found for context: " + context);
-        }
-        if (clientName == null || clientName.isEmpty()) {
-            return getMe();
-        }
-
-        List<String> activeNodes = new ArrayList<>();
-        if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
-            activeNodes.add(messagingPlatformConfiguration.getName());
-        }
-        nodesInContext.stream().map(remoteConnections::get).filter(remoteConnection -> remoteConnection != null &&
-                remoteConnection.isConnected()).forEach(e -> activeNodes.add(e.getClusterNode().getName()));
-
-        if (activeNodes.isEmpty()) {
-            throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
-                                                 "No active Axon servers found for context: " + context);
-        }
-        String nodeName = nodeSelectionStrategy.selectNode(new ClientIdentification(context,clientName), componentName, activeNodes);
-        ClusterNode node = getNode(nodeName);
-        if( node != null && ! StringUtils.isEmpty(node.getHostName())) return node;
-        return getMe();
-    }
-
-    private Collection<String> getNodesInContext(String context) {
-        if( getMe().isAdmin() ) {
-            Context contextJPA = entityManager.find(Context.class, context);
-            if( contextJPA != null) {
-                return contextJPA.getNodeNames();
-            }
-        }
-        Set<JpaRaftGroupNode> nodes = raftGroupRepositoryManager
-                .findByGroupId(context);
-        return nodes.stream().map(JpaRaftGroupNode::getNodeName).collect(Collectors.toSet());
-
-    }
 
     public Set<String> remoteNodeNames() {
         return remoteConnections.keySet();
@@ -416,26 +369,6 @@ public class ClusterController implements SmartLifecycle {
         return entityManager.createNamedQuery("ClusterNode.findAll", ClusterNode.class).getResultList()
                             .stream();
     }
-
-    public boolean canRebalance(String clientName, String componentName, String context) {
-        Context context1 = entityManager.find(Context.class, context);
-        if (context1 == null || context1.getNodes().size() <= 1) {
-            return false;
-        }
-        List<String> activeNodes = new ArrayList<>();
-        Collection<String> nodesInContext = context1.getNodeNames();
-        if (nodesInContext.contains(messagingPlatformConfiguration.getName())) {
-            activeNodes.add(messagingPlatformConfiguration.getName());
-        }
-        remoteConnections.entrySet().stream().filter(e -> e.getValue().isConnected()).forEach(e -> activeNodes
-                .add(e.getKey()));
-        if (activeNodes.size() <= 1) {
-            return false;
-        }
-
-        return nodeSelectionStrategy.canRebalance(new ClientIdentification(context,clientName), componentName, activeNodes);
-    }
-
 
     public void addNodeListener(Consumer<ClusterEvent> nodeListener) {
         nodeListeners.add(nodeListener);

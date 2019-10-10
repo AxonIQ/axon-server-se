@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -55,7 +56,11 @@ public class Context implements Serializable {
     }
 
     public Collection<String> getNodeNames() {
-        return nodes.stream().map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
+        return getNodeNames(n -> true);
+    }
+
+    public Collection<String> getNodeNames(Predicate<ContextClusterNode> filter) {
+        return nodes.stream().filter(filter).map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
     }
 
     @Override
@@ -85,8 +90,9 @@ public class Context implements Serializable {
         nodes.remove(ccn);
     }
 
+    @Deprecated // Duplicate method, change usage to getNodes
     public Set<ContextClusterNode> getAllNodes() {
-        return nodes;
+        return getNodes();
     }
 
     public void addClusterNode(ContextClusterNode contextClusterNode) {

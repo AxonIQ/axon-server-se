@@ -19,17 +19,17 @@ public class AutoRebalancing  {
     private final Logger logger = LoggerFactory.getLogger(AutoRebalancing.class);
 
     private final PlatformService platformService;
-    private final ClusterController clusterController;
+    private final NodeSelector nodeSelector;
     private final FeatureChecker featureChecker;
 
     private final boolean enabled;
 
     public AutoRebalancing(PlatformService platformService,
-                           ClusterController clusterController,
+                           NodeSelector nodeSelector,
                            FeatureChecker featureChecker,
                            @Value("${axoniq.axonserver.cluster.auto-balancing:true}") boolean enabled) {
         this.platformService = platformService;
-        this.clusterController = clusterController;
+        this.nodeSelector = nodeSelector;
         this.featureChecker = featureChecker;
         this.enabled = enabled;
     }
@@ -40,7 +40,8 @@ public class AutoRebalancing  {
         if( !Feature.CONNECTION_BALANCING.enabled(featureChecker) || !enabled) return;
         Set<PlatformService.ClientComponent> connectedClients = platformService.getConnectedClients();
         logger.debug("Rebalance: {}", connectedClients);
-        connectedClients.stream().filter(e -> clusterController.canRebalance(e.getClient(), e.getComponent(), e.getContext())).findFirst()
-                .ifPresent(platformService::requestReconnect);
+        connectedClients.stream().filter(e -> nodeSelector
+                .canRebalance(e.getClient(), e.getComponent(), e.getContext())).findFirst()
+                        .ifPresent(platformService::requestReconnect);
     }
 }

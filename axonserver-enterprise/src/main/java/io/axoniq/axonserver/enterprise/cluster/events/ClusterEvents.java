@@ -41,6 +41,10 @@ public class ClusterEvents {
         public RemoteConnection getRemoteConnection() {
             return remoteConnection;
         }
+
+        public String getNodeName() {
+            return remoteConnection.getClusterNode().getName();
+        }
     }
 
     @KeepNames
