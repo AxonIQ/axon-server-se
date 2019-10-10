@@ -23,7 +23,16 @@ import java.util.stream.Collectors;
 import javax.persistence.EntityManager;
 
 /**
+ * Component used for determining to which Axon Server node a client needs to connect. If the current node is an Admin node,
+ * the candidates are retrieved from the global configuration, otherwise the candidates are retrieved from the RAFT configuration
+ * of the context.
+ * Clients can only connect to nodes with PRIMARY or MESSAGING_ONLY role.
+ *
+ * Maintains a set of connected Axon Server nodes to ensure that the candidate returned is actually active.
+ *
+ * Delegates the selection of the most suitable candidate to the {@link NodeSelectionStrategy}.
  * @author Marc Gathier
+ * @since 4.3
  */
 @Component
 public class NodeSelector {
@@ -35,11 +44,20 @@ public class NodeSelector {
     private final Function<String, Context> contextSelector;
     private final Function<String, Set<JpaRaftGroupNode>> raftNodeSelector;
 
-    public NodeSelector(String nodeName,
-                        NodeSelectionStrategy nodeSelectionStrategy,
-                        Function<String, ClusterNode> clusterNodeSelector,
-                        Function<String, Context> contextSelector,
-                        Function<String, Set<JpaRaftGroupNode>> raftNodeSelector) {
+    /**
+     * Constructor for testing purposes.
+     *
+     * @param nodeName              the name of the current node
+     * @param nodeSelectionStrategy the node selection strategy to use
+     * @param clusterNodeSelector   function to find a {@link ClusterNode} based on its name
+     * @param contextSelector       function to fina a {@link Context} based on its name
+     * @param raftNodeSelector      function to retrieve the {@link JpaRaftGroupNode}s for a context
+     */
+    NodeSelector(String nodeName,
+                 NodeSelectionStrategy nodeSelectionStrategy,
+                 Function<String, ClusterNode> clusterNodeSelector,
+                 Function<String, Context> contextSelector,
+                 Function<String, Set<JpaRaftGroupNode>> raftNodeSelector) {
         this.nodeName = nodeName;
         this.clusterNodeSelector = clusterNodeSelector;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
@@ -47,6 +65,13 @@ public class NodeSelector {
         this.raftNodeSelector = raftNodeSelector;
     }
 
+    /**
+     * Autowired constructor.
+     * @param messagingPlatformConfiguration the AxonServer configuration
+     * @param nodeSelectionStrategy the {@link NodeSelectionStrategy} to use
+     * @param entityManager entity manager to retrieve context and cluster node information
+     * @param raftGroupRepositoryManager    provides access to the raft group information
+     */
     @Autowired
     public NodeSelector(MessagingPlatformConfiguration messagingPlatformConfiguration,
                         NodeSelectionStrategy nodeSelectionStrategy,
@@ -61,6 +86,13 @@ public class NodeSelector {
     }
 
 
+    /**
+     * Find the best node for a client to connect to.
+     * @param clientName    the name of the client
+     * @param componentName the component (application) name
+     * @param context       the context where the client wants to connect to
+     * @return the node where the client should connect to
+     */
     public ClusterNode findNodeForClient(String clientName, String componentName, String context) {
         List<String> activeNodes = activeNodes(context);
         if (activeNodes.isEmpty()) {
@@ -82,6 +114,13 @@ public class NodeSelector {
         return me;
     }
 
+    /**
+     * Checks if the given client is a candidate for re-balancing.
+     * @param clientName    the name of the client
+     * @param componentName the component (application) name
+     * @param context       the context where the client wants to connect to
+     * @return true if the client should move to another node
+     */
     public boolean canRebalance(String clientName, String componentName, String context) {
         List<String> activeNodes = activeNodes(context);
         if (activeNodes.size() <= 1) {
@@ -93,14 +132,22 @@ public class NodeSelector {
                                                   activeNodes);
     }
 
+    /**
+     * Event handler that updates the activeConnections when an Axon Server node is connected.
+     * @param connected the event
+     */
     @EventListener
     public void on(ClusterEvents.AxonServerInstanceConnected connected) {
         activeConnections.add(connected.getNodeName());
     }
 
+    /**
+     * Event handler that updates the activeConnections when an Axon Server node is disconnected.
+     * @param disconnected the event
+     */
     @EventListener
-    public void on(ClusterEvents.AxonServerInstanceDisconnected connected) {
-        activeConnections.add(connected.getNodeName());
+    public void on(ClusterEvents.AxonServerInstanceDisconnected disconnected) {
+        activeConnections.add(disconnected.getNodeName());
     }
 
     private Collection<String> getNodesInContext(ClusterNode me, String context) {
