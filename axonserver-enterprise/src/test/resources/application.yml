@@ -10,6 +10,9 @@ spring:
   datasource:
     url:  jdbc:h2:mem:test
 
+  flyway:
+    locations: classpath:/db/enterprise,classpath:/db/migration
+
 
 axoniq:
   axonserver:
