@@ -123,7 +123,7 @@ public class ContextRestController {
     @PostMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> updateNodeRoles(@PathVariable("context") String name,
                                                         @PathVariable("node") String node,
-                                                        @PathVariable("role") String role) {
+                                                        @RequestParam(value = "role", required = false, defaultValue = "PRIMARY") String role) {
         logger.info("Add node request received for node: {} - and context: {}", node, name);
         try {
             raftServiceFactory.getRaftConfigService().addNodeToContext(name,
