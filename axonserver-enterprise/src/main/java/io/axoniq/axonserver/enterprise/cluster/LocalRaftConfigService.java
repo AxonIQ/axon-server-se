@@ -5,6 +5,7 @@ import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
 import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.cluster.RaftNode;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
@@ -172,7 +173,7 @@ class LocalRaftConfigService implements RaftConfigService {
                    .setHost(clusterNode.getInternalHostName())
                    .setPort(clusterNode.getGrpcInternalPort())
                    .setNodeName(clusterNode.getName())
-                   .setRole(role == null ? Role.PRIMARY : role)
+                   .setRole(RoleUtils.getOrDefault(role))
                    .build();
     }
 

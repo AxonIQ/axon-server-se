@@ -2,6 +2,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.cluster.RaftGroup;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -103,8 +104,7 @@ public class RaftStatusRestController {
                                          .with("name", next.getNodeName())
                                          .with("port", next.getPort())
                                          .with("host", next.getHost())
-                                         .with("role",
-                                               next.getRole() == null ? Role.PRIMARY.name() : next.getRole().name());
+                                         .with("role", RoleUtils.getOrDefault(next.getRole()).name());
                 }
             };
         }
