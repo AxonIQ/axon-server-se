@@ -412,6 +412,12 @@ public class FollowerState extends AbstractMembershipState {
 
     @Override
     public void forceStepDown() {
+        if (!RoleUtils.primaryNode(currentNode().getRole())) {
+            logger.warn("{} in term {}: Request to start new election ignored, node is not a primary node.",
+                        groupId(),
+                        currentTerm());
+            return;
+        }
         String cause = format("%s in term %s: Forced transition from Follower to Candidate.", groupId(), currentTerm());
         logger.warn(cause);
         changeStateTo(((CandidateState) stateFactory().candidateState()).withDisruptAllowed(), cause);
