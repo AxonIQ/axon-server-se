@@ -12,18 +12,32 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 public class DefaultSnapshotContext implements SnapshotContext {
 
     private final AppendEntryFailure failure;
+    private final boolean eventStore;
 
-    public DefaultSnapshotContext(AppendEntryFailure failure) {
+    /**
+     * Constructor
+     *
+     * @param failure    failure response from remote peer
+     * @param eventStore true if remote peer is an eventStore
+     */
+    public DefaultSnapshotContext(AppendEntryFailure failure, boolean eventStore) {
         this.failure = failure;
+        this.eventStore = eventStore;
     }
 
     @Override
     public long fromEventSequence() {
+        if (!eventStore) {
+            return Long.MAX_VALUE;
+        }
         return failure.getLastAppliedEventSequence()+1;
     }
 
     @Override
     public long fromSnapshotSequence() {
+        if (!eventStore) {
+            return Long.MAX_VALUE;
+        }
         return failure.getLastAppliedSnapshotSequence()+1;
     }
 

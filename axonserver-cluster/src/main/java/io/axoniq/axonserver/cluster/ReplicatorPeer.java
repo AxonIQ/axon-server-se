@@ -9,6 +9,7 @@ import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.cluster.util.MaxMessageSizePredicate;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.DummyEntry;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
@@ -325,7 +326,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
                 while (canSend()
                         && System.currentTimeMillis() < maxTime
                         && sent < raftGroup.raftConfiguration().maxEntriesPerBatch() && iterator.hasNext()) {
-                    Entry entry = iterator.next();
+                    Entry entry = transform(iterator.next());
                     //
                     TermIndex previous = iterator.previous();
                     logger.trace("{} in term {}: Send request {} to {}: {}",
@@ -376,6 +377,18 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
             return sent;
         }
 
+        private Entry transform(Entry next) {
+            if (raftPeer.eventStore()
+                    || !next.hasSerializedObject()
+                    || !raftGroup.raftConfiguration().isSerializedEventData(next.getSerializedObject().getType())) {
+                return next;
+            }
+
+            return Entry.newBuilder(next)
+                        .setDummyEntry(DummyEntry.getDefaultInstance())
+                        .build();
+        }
+
         public void handleResponse(AppendEntriesResponse response) {
             logger.trace("{} in term {}: Received response from {}: {}.",
                          groupId(),
@@ -409,7 +422,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
                 }
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(response.getFailure().getLastAppliedIndex() + 1);
-                snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
+                snapshotContext.set(new DefaultSnapshotContext(response.getFailure(), raftPeer.eventStore()));
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));

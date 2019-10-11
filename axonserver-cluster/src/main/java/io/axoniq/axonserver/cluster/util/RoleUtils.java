@@ -33,7 +33,8 @@ public class RoleUtils {
     }
 
     /**
-     * Returns if role is a role that participates in leader election.
+     * Returns if role is a role that participates in leader election. The node may be a primary node or a
+     * active backup node.
      *
      * @param role the role
      * @return true if role is a role that participates in leader election
@@ -49,5 +50,15 @@ public class RoleUtils {
      */
     public static boolean primaryNode(Role role) {
         return Role.PRIMARY.equals(role);
+    }
+
+    /**
+     * Checks if role represents a role that stores event data.
+     *
+     * @param role the role to check
+     * @return true if role represents a role that stores event data
+     */
+    public static boolean hasStorage(Role role) {
+        return !Role.MESSAGING_ONLY.equals(role);
     }
 }

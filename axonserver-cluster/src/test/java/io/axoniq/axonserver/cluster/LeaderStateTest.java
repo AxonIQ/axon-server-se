@@ -167,6 +167,11 @@ public class LeaderStateTest {
                     public boolean votingNode() {
                         return true;
                     }
+
+                    @Override
+                    public Role role() {
+                        return Role.PRIMARY;
+                    }
                 };
             }
 

@@ -1,7 +1,9 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.RaftAdminGroup;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.springframework.stereotype.Component;
@@ -30,10 +32,12 @@ public class RaftGroupRepositoryManager {
         return findByNodeName(messagingPlatformConfiguration.getName());
     }
 
-    public Set<String> getMyContextNames() {
+    public Set<String> storageContexts() {
         return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
                                       .stream()
+                                      .filter(group -> RoleUtils.hasStorage(group.getRole()))
                                       .map(JpaRaftGroupNode::getGroupId)
+                                      .filter(n -> !RaftAdminGroup.isAdmin(n))
                                       .collect(Collectors.toSet());
     }
 
