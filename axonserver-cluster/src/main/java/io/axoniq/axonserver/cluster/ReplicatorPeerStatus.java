@@ -12,4 +12,8 @@ public interface ReplicatorPeerStatus {
     boolean primaryNode();
 
     long matchIndex();
+
+    long nextIndex();
+
+    String nodeName();
 }

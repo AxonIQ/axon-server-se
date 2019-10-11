@@ -8,13 +8,11 @@ import org.junit.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
- * @since 4.2
  */
 public class PrimaryAndVotingMajorityStrategyTest {
 
@@ -118,7 +116,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
         assertFalse(majorityStrategy.isWon().isDone());
     }
 
-    @Test(expected = TimeoutException.class)
+    @Test
     public void testLostWith3VotesOnlyBackupNodes() {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter2", Role.PRIMARY),
                                              new FakeRaftPeer("voter3", Role.PRIMARY),

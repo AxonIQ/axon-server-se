@@ -3,6 +3,7 @@ package io.axoniq.axonserver.cluster.util;
 import io.axoniq.axonserver.cluster.ReplicatorPeerStatus;
 
 import java.time.Clock;
+import java.util.function.Supplier;
 
 import static java.lang.String.format;
 
@@ -18,9 +19,10 @@ public class LeaderTimeoutChecker {
 
     private final Iterable<ReplicatorPeerStatus> replicatorPeers;
     private final long maxElectionTimeout;
-    private final Clock clock;
+    private final Supplier<Clock> clock;
 
-    public LeaderTimeoutChecker(Iterable<ReplicatorPeerStatus> replicatorPeers, long maxElectionTimeout, Clock clock) {
+    public LeaderTimeoutChecker(Iterable<ReplicatorPeerStatus> replicatorPeers, long maxElectionTimeout,
+                                Supplier<Clock> clock) {
         this.replicatorPeers = replicatorPeers;
         this.maxElectionTimeout = maxElectionTimeout;
         this.clock = clock;
@@ -62,7 +64,7 @@ public class LeaderTimeoutChecker {
             fullNodes = 1;
             primaryCount = 1;
             fullCount = 1;
-            long minTimestamp = clock.millis() - maxElectionTimeout;
+            long minTimestamp = clock.get().millis() - maxElectionTimeout;
 
             for (ReplicatorPeerStatus replicatorPeer : replicatorPeers) {
                 if (replicatorPeer.primaryNode()) {

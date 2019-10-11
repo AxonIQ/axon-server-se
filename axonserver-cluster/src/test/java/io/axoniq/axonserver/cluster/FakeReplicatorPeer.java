@@ -40,4 +40,14 @@ public class FakeReplicatorPeer implements ReplicatorPeerStatus {
     public void setMatchIndex(long matchIndex) {
         this.matchIndex = matchIndex;
     }
+
+    @Override
+    public long nextIndex() {
+        return 0;
+    }
+
+    @Override
+    public String nodeName() {
+        return "Name";
+    }
 }
