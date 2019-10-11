@@ -206,7 +206,8 @@
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
         </dependency>
-        
+
+        <!-- logback json deps to support json logging (#59) -->
         <dependency>
             <groupId>ch.qos.logback.contrib</groupId>
             <artifactId>logback-json-classic</artifactId>
