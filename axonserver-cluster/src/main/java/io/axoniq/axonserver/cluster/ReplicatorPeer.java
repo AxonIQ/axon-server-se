@@ -326,7 +326,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
                 while (canSend()
                         && System.currentTimeMillis() < maxTime
                         && sent < raftGroup.raftConfiguration().maxEntriesPerBatch() && iterator.hasNext()) {
-                    Entry entry = transform(iterator.next());
+                    Entry entry = checkReplaceByDummy(iterator.next());
                     //
                     TermIndex previous = iterator.previous();
                     logger.trace("{} in term {}: Send request {} to {}: {}",
@@ -377,7 +377,8 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
             return sent;
         }
 
-        private Entry transform(Entry next) {
+        private Entry checkReplaceByDummy(Entry next) {
+            // send dummy entry to peer if the entry is an event or snapshot and the peer is not an event store.
             if (raftPeer.eventStore()
                     || !next.hasSerializedObject()
                     || !raftGroup.raftConfiguration().isSerializedEventData(next.getSerializedObject().getType())) {

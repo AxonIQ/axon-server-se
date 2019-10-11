@@ -25,6 +25,12 @@ public class DefaultSnapshotContext implements SnapshotContext {
         this.eventStore = eventStore;
     }
 
+    /**
+     * Returns the first event token to include in a install snapshot sequence. If the target node is not an event store
+     * the operation returns Long.MAX_VALUE to prevent any events being included in the snapshot.
+     *
+     * @return first event token to include in snapshot
+     */
     @Override
     public long fromEventSequence() {
         if (!eventStore) {
@@ -33,6 +39,11 @@ public class DefaultSnapshotContext implements SnapshotContext {
         return failure.getLastAppliedEventSequence()+1;
     }
 
+    /**
+     * Returns the first aggregate snapshot token to include in a install snapshot sequence. If the target node is not an event store
+     * the operation returns Long.MAX_VALUE to prevent any aggregate snapshots being included in the snapshot.
+     * @return first snapshot token to include in snapshot
+     */
     @Override
     public long fromSnapshotSequence() {
         if (!eventStore) {
