@@ -9,6 +9,7 @@ import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,6 +33,7 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
  * @since 4.2.2
  */
 @Component
+@ConditionalOnProperty(value = "axoniq.axonserver.heartbeat.enabled")
 public class HeartbeatMonitor {
 
     private final Clock clock;
@@ -95,6 +97,7 @@ public class HeartbeatMonitor {
 
     /**
      * Collects components when application connect to AxonServer.
+     *
      * @param evt the connection event
      */
     @EventListener
@@ -106,7 +109,8 @@ public class HeartbeatMonitor {
     /**
      * Checks if the connections are still alive, if not publish an {@link ApplicationInactivityTimeout} event.
      */
-    @Scheduled(initialDelay = 10_000, fixedRateString = "${axoniq.axonserver.client-heartbeat-check-rate:1000}")
+    @Scheduled(initialDelayString = "${axoniq.axonserver.client-heartbeat-check-initial-delay:10000}",
+            fixedRateString = "${axoniq.axonserver.client-heartbeat-check-rate:1000}")
     public void checkClientsStillAlive() {
         Instant timeout = Instant.now(clock).minus(heartbeatTimeout, ChronoUnit.MILLIS);
         lastReceivedHeartBeats.forEach((client, instant) -> {
@@ -121,7 +125,8 @@ public class HeartbeatMonitor {
     /**
      * Sends an heartbeat signal every 500 milliseconds.
      */
-    @Scheduled(initialDelay = 5_000, fixedRateString = "${axoniq.axonserver.client-heartbeat-frequency:500}")
+    @Scheduled(initialDelayString = "${axoniq.axonserver.client-heartbeat-initial-delay:5000}",
+            fixedRateString = "${axoniq.axonserver.client-heartbeat-frequency:500}")
     public void sendHeartbeat() {
         heartbeatPublisher.publish(PlatformOutboundInstruction
                                            .newBuilder()
