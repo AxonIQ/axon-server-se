@@ -28,6 +28,14 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.2.3
+----------------------------
+
+- Cleaned-up logging
+- Fix for specific error while reading aggregate
+- Optional heartbeat between Axon Server and Axon Framework clients
+- Added option to include gRPC metrics and tracing
+
 Changes in Axon Server 4.2.2
 ----------------------------
 
