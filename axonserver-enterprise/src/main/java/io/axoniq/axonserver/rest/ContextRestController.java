@@ -5,6 +5,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -26,8 +27,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
@@ -92,7 +95,7 @@ public class ContextRestController {
             @RequestParam(name = "includeAdmin", required = false, defaultValue = "false") boolean includeAdmin) {
         if (clusterTopology.isAdminNode()) {
             return contextController.getContexts()
-                                    .map(context -> context.getName())
+                                    .map(Context::getName)
                                     .filter(name -> includeAdmin || !isAdmin(name))
                                     .sorted()
                                     .collect(Collectors.toList());
@@ -190,5 +193,10 @@ public class ContextRestController {
         } catch (Exception ex) {
             return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
         }
+    }
+
+    @GetMapping(path = "context/roles")
+    public Set<String> roles() {
+        return Arrays.stream(Role.values()).map(Enum::name).collect(Collectors.toSet());
     }
 }

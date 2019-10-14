@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
 import io.axoniq.axonserver.RaftAdminGroup;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -131,7 +132,9 @@ public class ClusterNode implements Serializable, AxonServerNode {
 
     @Override
     public Collection<String> getStorageContextNames() {
-        return contexts.stream().map(ccn -> ccn.getContext().getName())
+        return contexts.stream()
+                       .filter(ccn -> RoleUtils.hasStorage(ccn.getRole()))
+                       .map(ccn -> ccn.getContext().getName())
                        .filter(n -> !RaftAdminGroup.isAdmin(n))
                        .collect(Collectors.toSet());
     }
