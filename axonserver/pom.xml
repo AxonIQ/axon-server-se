@@ -30,7 +30,7 @@
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
 
         <mapdb.version>3.0.7</mapdb.version>
-        <jackson.version>2.9.4</jackson.version>
+        <jackson.version>2.9.10</jackson.version>
     </properties>
 
     <dependencies>
@@ -383,6 +383,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.0.0</version>
                 <executions>
                     <execution>
                         <id>attach-README</id>

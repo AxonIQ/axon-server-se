@@ -9,11 +9,24 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.*;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
-import io.axoniq.axonserver.grpc.control.*;
+import io.axoniq.axonserver.grpc.control.ClientIdentification;
+import io.axoniq.axonserver.grpc.control.EventProcessorReference;
+import io.axoniq.axonserver.grpc.control.EventProcessorSegmentReference;
+import io.axoniq.axonserver.grpc.control.NodeInfo;
+import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
+import io.axoniq.axonserver.grpc.control.PlatformInfo;
+import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
+import io.axoniq.axonserver.grpc.control.RequestReconnect;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
@@ -23,7 +36,12 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -146,6 +164,16 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .filter(e -> e.getKey().client.equals(client))
                             .map(e -> requestReconnect(e.getKey()))
                             .findFirst().orElse(false);
+    }
+
+    /**
+     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
+     *
+     * @param instruction the {@link PlatformInboundInstruction} to be sent
+     */
+    public void sendToAllClients(PlatformOutboundInstruction instruction) {
+        connectionMap.values()
+                     .forEach(stream -> stream.onNext(instruction));
     }
 
     private void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
@@ -273,6 +301,18 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     clientComponent.context, clientComponent.component, clientComponent.client, null
             ));
         }
+    }
+
+    /**
+     * De-registers a client if it turns out to be inactive/not properly connected
+     * @param evt the event of inactivity timeout for a specific client component
+     */
+    @EventListener
+    public void on(TopologyEvents.ApplicationInactivityTimeout evt) {
+        ClientComponent clientComponent = new ClientComponent(evt.clientIdentification().getClient(),
+                                                              evt.componentName(),
+                                                              evt.clientIdentification().getContext());
+        deregisterClient(clientComponent);
     }
 
     /**

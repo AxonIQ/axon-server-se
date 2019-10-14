@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.exception.ConcurrencyExceptions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
@@ -183,10 +184,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             private Void error(Throwable exception) {
+                exception = ConcurrencyExceptions.unwrap(exception);
                 if( isClientException(exception)) {
-                    logger.warn("Error while storing events: {}", exception.getMessage());
+                    logger.info("{}: Error while storing events: {}", context, exception.getMessage());
                 } else {
-                    logger.warn("Error while storing events", exception);
+                    logger.warn("{}: Error while storing events", context, exception);
                 }
                 responseObserver.onError(exception);
                 return null;
