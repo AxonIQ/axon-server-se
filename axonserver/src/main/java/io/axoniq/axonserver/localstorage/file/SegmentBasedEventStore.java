@@ -211,7 +211,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
         for (Long segment : getSegments()) {
             SortedSet<PositionInfo> positionInfos = getPositions(segment, aggregateId);
-            if (positionInfos != null ) {
+            if (positionInfos != null && !positionInfos.isEmpty()) {
                 PositionInfo last = positionInfos.last();
                 if( last.getAggregateSequenceNumber() < minSequenceNumber) {
                     return Optional.empty();
