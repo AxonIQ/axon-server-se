@@ -171,7 +171,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      *
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
-    public void sendToAllClient(PlatformOutboundInstruction instruction) {
+    public void sendToAllClients(PlatformOutboundInstruction instruction) {
         connectionMap.values()
                      .forEach(stream -> stream.onNext(instruction));
     }

@@ -250,6 +250,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private void stopListenerFor(ClientIdentification clientIdentification) {
         GrpcQueryDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
         Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
+        logger.warn("GrpcQueryDispatcherListener stopped for client: {}", clientIdentification);
     }
 
     /**

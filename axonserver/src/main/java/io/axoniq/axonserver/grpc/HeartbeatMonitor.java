@@ -46,13 +46,13 @@ public class HeartbeatMonitor {
 
     private final Map<ClientIdentification, String> clientComponents = new ConcurrentHashMap<>();
 
-
     /**
      * Constructs a {@link HeartbeatMonitor} that uses {@link PlatformService} to send and receive heartbeats messages.
      *
      * @param platformService  the platform service
      * @param eventPublisher   the internal event publisher
-     * @param heartbeatTimeout the max period of inactivity before is published an {@link ApplicationInactivityTimeout}
+     * @param heartbeatTimeout the max period of inactivity before is published an {@link ApplicationInactivityTimeout};
+     *                         it is expressed in milliseconds
      */
     @Autowired
     public HeartbeatMonitor(PlatformService platformService,
@@ -62,18 +62,19 @@ public class HeartbeatMonitor {
                      platformService.onInboundInstruction(HEARTBEAT, (client, context, instruction) ->
                              listener.accept(new ClientIdentification(context, client), instruction)),
              eventPublisher,
-             platformService::sendToAllClient,
+             platformService::sendToAllClients,
              heartbeatTimeout, Clock.systemUTC());
     }
 
     /**
      * Primary constructor of {@link HeartbeatMonitor}
      *
-     * @param heartbeatListenerRegistration consumers of heartbeats listener
+     * @param heartbeatListenerRegistration consumers of heartbeats listener used to register a listener
+     *                                      for the heartbeats received from clients
      * @param eventPublisher                the internal event publisher
      * @param heartbeatPublisher            the heartbeat publisher
      * @param heartbeatTimeout              the max period of inactivity before is published an {@link
-     *                                      ApplicationInactivityTimeout}
+     *                                      ApplicationInactivityTimeout}; it is expressed in milliseconds
      * @param clock                         the clock
      */
     public HeartbeatMonitor(
@@ -105,7 +106,7 @@ public class HeartbeatMonitor {
     /**
      * Checks if the connections are still alive, if not publish an {@link ApplicationInactivityTimeout} event.
      */
-    @Scheduled(initialDelay = 10_000, fixedDelay = 1_000)
+    @Scheduled(initialDelay = 10_000, fixedRateString = "${axoniq.axonserver.client-heartbeat-check-rate:1000}")
     public void checkClientsStillAlive() {
         Instant timeout = Instant.now(clock).minus(heartbeatTimeout, ChronoUnit.MILLIS);
         lastReceivedHeartBeats.forEach((client, instant) -> {
@@ -120,7 +121,7 @@ public class HeartbeatMonitor {
     /**
      * Sends an heartbeat signal every 500 milliseconds.
      */
-    @Scheduled(initialDelay = 5_000, fixedDelay = 500)
+    @Scheduled(initialDelay = 5_000, fixedRateString = "${axoniq.axonserver.client-heartbeat-frequency:500}")
     public void sendHeartbeat() {
         heartbeatPublisher.publish(PlatformOutboundInstruction
                                            .newBuilder()
