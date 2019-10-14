@@ -41,14 +41,51 @@
         <grpc.version>1.22.1</grpc.version>
         <netty.tcnative.version>2.0.25.Final</netty.tcnative.version>
         <netty.version>4.1.35.Final</netty.version>
-        <axonserver.api.version>4.2</axonserver.api.version>
-        <axonserver.se.version>4.2.1</axonserver.se.version>
+        <axonserver.api.version>4.2.1</axonserver.api.version>
+        <axonserver.se.version>4.2.2</axonserver.se.version>
         <axon.version>4.1.2</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
+        <opencensus.version>0.23.0</opencensus.version>
+        <prometheus.version>0.6.0</prometheus.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.opencensus</groupId>
+                <artifactId>opencensus-api</artifactId>
+                <version>${opencensus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opencensus</groupId>
+                <artifactId>opencensus-contrib-grpc-metrics</artifactId>
+                <version>${opencensus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opencensus</groupId>
+                <artifactId>opencensus-contrib-zpages</artifactId>
+                <version>${opencensus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opencensus</groupId>
+                <artifactId>opencensus-impl</artifactId>
+                <version>${opencensus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opencensus</groupId>
+                <artifactId>opencensus-exporter-stats-prometheus</artifactId>
+                <version>${opencensus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.prometheus</groupId>
+                <artifactId>simpleclient_httpserver</artifactId>
+                <version>${prometheus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opencensus</groupId>
+                <artifactId>opencensus-exporter-trace-jaeger</artifactId>
+                <version>${opencensus.version}</version>
+            </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
