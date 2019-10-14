@@ -18,9 +18,12 @@
                     admin: globals.admin,
                     webSocketInfo: globals.webSocketInfo,
                     nodes: [],
-                    roles: ["PRIMARY", "ACTIVE_BACKUP", "PASSIVE_BACKUP", "MESSAGING_ONLY"]
+                    roles: []
                 }, mounted() {
                     this.loadContexts();
+                    axios.get("v1/context/roles").then(response => {
+                        this.roles = response.data;
+                    });
                     axios.get("v1/public").then(response => {
                         this.nodes = response.data;
                         this.initNewContext();
