@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
@@ -27,10 +28,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
 
@@ -65,7 +70,7 @@ public class CommandService implements AxonServerClientService {
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
-    private final Set<GrpcFlowControlledDispatcherListener> dispatcherListenerSet = new CopyOnWriteArraySet<>();
+    private final Map<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
@@ -80,12 +85,12 @@ public class CommandService implements AxonServerClientService {
 
     @PreDestroy
     public void cleanup() {
-        dispatcherListenerSet.forEach(GrpcFlowControlledDispatcherListener::cancel);
-        dispatcherListenerSet.clear();
+        dispatcherListeners.forEach((client, listener) -> listener.cancel());
+        dispatcherListeners.clear();
     }
 
     public Set<GrpcFlowControlledDispatcherListener> listeners() {
-        return dispatcherListenerSet;
+        return new HashSet<>(dispatcherListeners.values());
     }
 
     @Override
@@ -145,13 +150,15 @@ public class CommandService implements AxonServerClientService {
             }
 
             private void flowControl(FlowControl flowControl) {
-                clientRef.compareAndSet(null, new ClientIdentification(context, flowControl.getClientId()));
+                ClientIdentification clientIdentification = new ClientIdentification(context,
+                                                                                     flowControl.getClientId());
+                clientRef.compareAndSet(null, clientIdentification);
                 if (listenerRef.compareAndSet(null,
                                               new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
                                                                                 clientRef.get().toString(),
                                                                                 wrappedResponseObserver,
                                                                                 processingThreads))) {
-                    dispatcherListenerSet.add(listenerRef.get());
+                    dispatcherListeners.put(clientIdentification, listenerRef.get());
                 }
                 listenerRef.get().addPermits(flowControl.getPermits());
             }
@@ -183,7 +190,7 @@ public class CommandService implements AxonServerClientService {
                 GrpcCommandDispatcherListener listener = listenerRef.get();
                 if (listener != null) {
                     listener.cancel();
-                    dispatcherListenerSet.remove(listener);
+                    dispatcherListeners.remove(clientRef.get());
                 }
             }
 
@@ -225,5 +232,22 @@ public class CommandService implements AxonServerClientService {
         } catch (RuntimeException ex) {
             logger.warn("Response to client {} failed", clientId, ex);
         }
+    }
+
+    private void stopListenerFor(ClientIdentification clientIdentification) {
+        GrpcFlowControlledDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
+        Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
+        logger.warn("GrpcCommandDispatcherListener stopped for client: {}", clientIdentification);
+    }
+
+    /**
+     * Stops the {@link GrpcCommandDispatcherListener} responsible to forward commands to the client component that
+     * turns out to be inactive/not properly connected.
+     *
+     * @param evt the event of inactivity timeout for a specific client component
+     */
+    @EventListener
+    public void on(ApplicationInactivityTimeout evt) {
+        stopListenerFor(evt.clientIdentification());
     }
 }

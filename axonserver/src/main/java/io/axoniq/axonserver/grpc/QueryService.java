@@ -11,6 +11,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
@@ -33,10 +34,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
 
@@ -55,7 +60,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
-    private final Set<GrpcQueryDispatcherListener> dispatcherListenerSet = new CopyOnWriteArraySet<>();
+    private final Map<ClientIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -70,9 +75,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
     @PreDestroy
     public void cleanup() {
-        dispatcherListenerSet.forEach(GrpcFlowControlledDispatcherListener::cancel);
-        dispatcherListenerSet.clear();
+        dispatcherListeners.forEach((client, listener) -> listener.cancel());
+        dispatcherListeners.clear();
     }
+
 
     @Override
     public StreamObserver<QueryProviderOutbound> openStream(
@@ -133,13 +139,14 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             }
 
             private void flowControl(FlowControl flowControl) {
-                client.compareAndSet(null, new ClientIdentification(context,
-                                                                    flowControl.getClientId()));
+                ClientIdentification clientIdentification = new ClientIdentification(context,
+                                                                                     flowControl.getClientId());
+                client.compareAndSet(null, clientIdentification);
                 if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
                                                                                  client.get().toString(),
                                                                                  wrappedQueryProviderInboundObserver,
                                                                                  processingThreads))) {
-                    dispatcherListenerSet.add(listener.get());
+                    dispatcherListeners.put(clientIdentification, listener.get());
                 }
                 listener.get().addPermits(flowControl.getPermits());
             }
@@ -170,7 +177,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client.get().getClient()));
                 }
                 if (listener.get() != null) {
-                    dispatcherListenerSet.remove(listener.get());
+                    dispatcherListeners.remove(client.get());
                     listener.get().cancel();
                 }
             }
@@ -218,7 +225,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     }
 
     public Set<GrpcQueryDispatcherListener> listeners() {
-        return dispatcherListenerSet;
+        return new HashSet<>(dispatcherListeners.values());
     }
 
     private class GrpcQueryResponseConsumer implements QueryResponseConsumer {
@@ -239,4 +246,22 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             responseObserver.onCompleted();
         }
     }
+
+    private void stopListenerFor(ClientIdentification clientIdentification) {
+        GrpcQueryDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
+        Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
+        logger.warn("GrpcQueryDispatcherListener stopped for client: {}", clientIdentification);
+    }
+
+    /**
+     * Stops the {@link GrpcQueryDispatcherListener} responsible to forward queries to the client component that
+     * turns out to be inactive/not properly connected.
+     *
+     * @param evt the event of inactivity timeout for a specific client component
+     */
+    @EventListener
+    public void on(ApplicationInactivityTimeout evt) {
+        stopListenerFor(evt.clientIdentification());
+    }
+
 }
