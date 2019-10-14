@@ -9,12 +9,14 @@
 
 package io.axoniq.axonserver.localstorage;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.junit.*;
 import org.junit.rules.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,10 +37,17 @@ public class InputStreamAggregateReaderTest {
         testStorageContainer.createDummyEvents(1000, 100);
 
         SnapshotWriteStorage snapshotWriteStorage = new SnapshotWriteStorage(testStorageContainer.getTransactionManager(testStorageContainer.getSnapshotManagerChain()));
-        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(75)
-                                        .setAggregateType("Snapshot")
-                                        .setPayload(SerializedObject
-                                                            .newBuilder().build()).build());
+
+        byte[] data = new byte[10000];
+        Arrays.fill(data, (byte) 'a');
+        for (int i = 0; i < 100; i++) {
+            snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(75)
+                                            .setAggregateType("Snapshot")
+                                            .setPayload(SerializedObject
+                                                                .newBuilder()
+                                                                .setData(ByteString.copyFrom(data))
+                                                                .build()).build()).get();
+        }
 
     }
 
@@ -89,6 +98,15 @@ public class InputStreamAggregateReaderTest {
 
         Assert.assertEquals(10, events.size());
         Assert.assertEquals("Demo", events.get(0).getAggregateType());
+    }
+
+    @Test
+    public void readEventsFromNonExistingAggregate() throws InterruptedException {
+        Thread.sleep(2000); // Wait some time so that files are synchronized
+        AtomicLong sequenceNumber = new AtomicLong();
+        testSubject.readEvents("100000", true, 0,
+                               event -> sequenceNumber.set(event.getAggregateSequenceNumber()));
+        Assert.assertEquals(0, sequenceNumber.intValue());
     }
 
 }
