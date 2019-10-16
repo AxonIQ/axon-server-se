@@ -85,7 +85,7 @@ public class Context implements Serializable {
     }
 
     @PreRemove
-    public void clearContexts() {
+    public void clearNodes() {
         nodes.forEach(ccn -> ccn.getClusterNode().remove(ccn));
         nodes.clear();
     }

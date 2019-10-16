@@ -205,7 +205,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
     }
 
     public void removeContext(String context) {
-        getContext(context).ifPresent(this::remove);
+        getContext(context).ifPresent(ContextClusterNode::preDelete);
 
     }
 
