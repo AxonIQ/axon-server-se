@@ -195,6 +195,11 @@ public class ContextRestController {
         }
     }
 
+    /**
+     * Returns a set of roles that can be assigned to nodes in a context.
+     *
+     * @return set of role names
+     */
     @GetMapping(path = "context/roles")
     public Set<String> roles() {
         return Arrays.stream(Role.values()).map(Enum::name).collect(Collectors.toSet());
