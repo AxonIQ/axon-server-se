@@ -165,13 +165,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                       ConfigChangeResult configChangeResult,
                                                                       Throwable throwable) {
         ContextUpdateConfirmation.Builder builder = ContextUpdateConfirmation.newBuilder();
-
-        raftNode.currentGroupMembers().forEach(n -> builder.addMembers(ContextMember.newBuilder()
-                                                                                    .setNodeId(n.getNodeId())
-                                                                                    .setNodeName(n.getNodeName())
-                                                                                    .setPort(n.getPort())
-                                                                                    .setHost(n.getHost())));
-
+        raftNode.currentGroupMembers().forEach(n -> builder.addMembers(ContextMemberConverter.asContextMember(n)));
         builder.setPending(raftNode.isCurrentConfigurationPending());
 
         if (throwable != null) {

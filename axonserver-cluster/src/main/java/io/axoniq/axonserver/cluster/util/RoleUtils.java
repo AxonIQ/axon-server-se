@@ -33,6 +33,16 @@ public class RoleUtils {
     }
 
     /**
+     * Returns role if it is not null. If it is null, returns the default role.
+     *
+     * @param role the role to check
+     * @return the role or the default role
+     */
+    public static Role getOrDefault(Role role) {
+        return role == null ? DEFAULT_ROLE : role;
+    }
+
+    /**
      * Returns if role is a context member role that allows clients to connect.
      *
      * @param role the role
