@@ -91,7 +91,7 @@ public class LocalRaftConfigServiceTest {
                         contextMap.put(context.getName(), context);
                     }
                     Map<String, ClusterNode> currentNodes = new HashMap<>();
-                    context.getAllNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
+                    context.getNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()));
                     Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();
                     contextConfiguration.getNodesList().forEach(n -> newNodes.put(n.getNode().getNodeName(), n));
 
@@ -129,12 +129,12 @@ public class LocalRaftConfigServiceTest {
         private Map<String, Node> nodes = new ConcurrentHashMap<>();
 
         private GroupDB(io.axoniq.axonserver.enterprise.jpa.Context context) {
-            context.getAllNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), Node.newBuilder()
-                                                                                          .setNodeName(ccn.getClusterNode()
+            context.getNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), Node.newBuilder()
+                                                                                       .setNodeName(ccn.getClusterNode()
                                                                                                           .getName())
-                                                                                          .setNodeId(ccn.getClusterNodeLabel())
-                                                                                          .setRole(ccn.getRole())
-                                                                                          .build()));
+                                                                                       .setNodeId(ccn.getClusterNodeLabel())
+                                                                                       .setRole(ccn.getRole())
+                                                                                       .build()));
         }
 
         public GroupDB() {

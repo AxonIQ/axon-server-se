@@ -73,6 +73,9 @@ public class ClusterControllerTest {
     private GrpcRaftController raftController;
     private Context context;
 
+    @Autowired
+    private ClusterNodeRepository clusterNodeRepository;
+
     @Before
     public void setUp()  {
         context = new Context(Topology.DEFAULT_CONTEXT);
@@ -127,8 +130,10 @@ public class ClusterControllerTest {
         RaftGroupRepositoryManager mockRaftGroupRepositoryManager = mock(RaftGroupRepositoryManager.class);
         CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
-        testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration, tagsConfiguration,
-                                            entityManager, stubFactory,
+        testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration,
+                                            clusterNodeRepository,
+                                            tagsConfiguration,
+                                            stubFactory,
                                             mockRaftGroupRepositoryManager,
                                             queryDispatcher, commandDispatcher,
                                             eventPublisher, limits, channelCloser);

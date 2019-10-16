@@ -18,8 +18,6 @@ import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
-import javax.persistence.NamedQueries;
-import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.PreRemove;
 import javax.persistence.Table;
@@ -33,12 +31,6 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
  */
 @Entity
 @Table(uniqueConstraints={@UniqueConstraint(columnNames = {"internalHostName", "grpcInternalPort"})})
-@NamedQueries(
-        {
-                @NamedQuery(name = "ClusterNode.findAll", query = "select c from ClusterNode c"),
-                @NamedQuery(name = "ClusterNode.findByInternalHostNameAndPort", query=" select c from ClusterNode c where c.internalHostName = :internalHostName and c.grpcInternalPort = :internalPort")
-        }
-)
 public class ClusterNode implements Serializable, AxonServerNode {
 
     @Id
@@ -213,8 +205,8 @@ public class ClusterNode implements Serializable, AxonServerNode {
     }
 
     public void removeContext(String context) {
-        Optional<ContextClusterNode> contextClusterNode = getContext(context);
-        contextClusterNode.ifPresent(ContextClusterNode::preDelete);
+        getContext(context).ifPresent(this::remove);
+
     }
 
     public boolean isAdmin() {

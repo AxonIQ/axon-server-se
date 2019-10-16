@@ -4,6 +4,7 @@ import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.context.ContextRepository;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -20,7 +21,6 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.persistence.EntityManager;
 
 /**
  * Component used for determining to which Axon Server node a client needs to connect. If the current node is an Admin node,
@@ -69,18 +69,20 @@ public class NodeSelector {
      * Autowired constructor.
      * @param messagingPlatformConfiguration the AxonServer configuration
      * @param nodeSelectionStrategy the {@link NodeSelectionStrategy} to use
-     * @param entityManager entity manager to retrieve context and cluster node information
+     * @param clusterNodeRepository repository of nodes in the cluster
+     * @param contextRepository repository of contexts defined in the cluster
      * @param raftGroupRepositoryManager    provides access to the raft group information
      */
     @Autowired
     public NodeSelector(MessagingPlatformConfiguration messagingPlatformConfiguration,
                         NodeSelectionStrategy nodeSelectionStrategy,
-                        EntityManager entityManager,
+                        ClusterNodeRepository clusterNodeRepository,
+                        ContextRepository contextRepository,
                         RaftGroupRepositoryManager raftGroupRepositoryManager) {
         this(messagingPlatformConfiguration.getName(),
              nodeSelectionStrategy,
-             node -> entityManager.find(ClusterNode.class, node),
-             context -> entityManager.find(Context.class, context),
+             clusterNodeRepository::getOne,
+             contextRepository::getOne,
              raftGroupRepositoryManager::findByGroupId
         );
     }

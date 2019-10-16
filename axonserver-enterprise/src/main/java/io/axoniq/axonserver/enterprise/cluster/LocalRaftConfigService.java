@@ -80,7 +80,7 @@ class LocalRaftConfigService implements RaftConfigService {
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final CopyOnWriteArraySet<String> contextsInProgress = new CopyOnWriteArraySet<>();
-    private Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
+    private final Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
 
 
     public LocalRaftConfigService(GrpcRaftController grpcRaftController, ContextController contextController,
@@ -220,7 +220,7 @@ class LocalRaftConfigService implements RaftConfigService {
             if (exception != null) {
                 logger.warn("{}: Could not delete context from {}", context, String.join(",", nodeNames), exception);
 
-                contextInAdmin.getAllNodes().stream().filter(c -> nodeNames.contains(c.getClusterNode().getName()))
+                contextInAdmin.getNodes().stream().filter(c -> nodeNames.contains(c.getClusterNode().getName()))
                               .forEach(c -> updatedContextConfigurationBuilder.addNodes(NodeInfoWithLabel.newBuilder()
                                                                                                          .setLabel(c.getClusterNodeLabel())
                                                                                                          .setNode(c.getClusterNode()
@@ -331,7 +331,7 @@ class LocalRaftConfigService implements RaftConfigService {
         Set<ContextClusterNode> membersToDelete =
                 clusterNode.getContexts()
                            .stream()
-                           .filter(contextClusterNode -> contextClusterNode.getContext().getAllNodes().size() > 1)
+                           .filter(contextClusterNode -> contextClusterNode.getContext().getNodes().size() > 1)
                            .filter(contextClusterNode -> !isAdmin(contextClusterNode.getContext().getName()))
                            .collect(Collectors.toSet());
 
@@ -444,7 +444,7 @@ class LocalRaftConfigService implements RaftConfigService {
                                                            .addAllRoles(app.getContexts().stream().findFirst()
                                                                            .map(ac ->
                                                                                         ac.getRoles().stream()
-                                                                                          .map(r -> r.getRole())
+                                                                                          .map(io.axoniq.axonserver.access.application.ApplicationContextRole::getRole)
                                                                                           .collect(
                                                                                                   Collectors.toList())
                                                                            ).orElse(Collections.emptyList())).build();
@@ -736,7 +736,7 @@ class LocalRaftConfigService implements RaftConfigService {
 
         if (!invalidContexts.isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                 String.format("Context unknown {}", invalidContexts));
+                                                 String.format("Context unknown: %s", invalidContexts));
         }
     }
 
@@ -751,7 +751,7 @@ class LocalRaftConfigService implements RaftConfigService {
 
         if (!invalidContexts.isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                 String.format("Context unknown {}", invalidContexts));
+                                                 String.format("Context unknown: %s", invalidContexts));
         }
     }
 
@@ -812,7 +812,7 @@ class LocalRaftConfigService implements RaftConfigService {
     private ContextConfiguration.Builder createContextConfigBuilder(Context context) {
         ContextConfiguration.Builder groupConfigurationBuilder = ContextConfiguration.newBuilder()
                                                                                      .setContext(context.getName());
-        context.getAllNodes().forEach(n -> groupConfigurationBuilder
+        context.getNodes().forEach(n -> groupConfigurationBuilder
                 .setPending(context.isChangePending())
                 .addNodes(NodeInfoWithLabel.newBuilder()
                                            .setNode(n.getClusterNode().toNodeInfo())

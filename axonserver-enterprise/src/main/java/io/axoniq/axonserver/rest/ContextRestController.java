@@ -5,6 +5,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
+import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -71,9 +72,9 @@ public class ContextRestController {
                 json.setPendingSince(context.getPendingSince().getTime());
             }
             json.setLeader(raftLeaderProvider.getLeader(context.getName()));
-            json.setNodes(context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).sorted()
+            json.setNodes(context.getNodes().stream().map(n -> n.getClusterNode().getName()).sorted()
                                  .collect(Collectors.toList()));
-            json.setRoles(context.getAllNodes().stream().map(ContextJSON.NodeAndRole::new).sorted()
+            json.setRoles(context.getNodes().stream().map(ContextJSON.NodeAndRole::new).sorted()
                                  .collect(Collectors.toList()));
             return json;
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());
@@ -92,7 +93,7 @@ public class ContextRestController {
             @RequestParam(name = "includeAdmin", required = false, defaultValue = "false") boolean includeAdmin) {
         if (clusterTopology.isAdminNode()) {
             return contextController.getContexts()
-                                    .map(context -> context.getName())
+                                    .map(Context::getName)
                                     .filter(name -> includeAdmin || !isAdmin(name))
                                     .sorted()
                                     .collect(Collectors.toList());

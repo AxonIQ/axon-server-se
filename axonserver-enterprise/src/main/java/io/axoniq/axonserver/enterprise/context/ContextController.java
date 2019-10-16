@@ -16,53 +16,64 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
-import javax.persistence.EntityManager;
 
 /**
+ * Manages updates in context configuration as they are stored for the ADMIN nodes.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Controller
 public class ContextController {
     private final Logger logger = LoggerFactory.getLogger(ContextController.class);
-    private final EntityManager entityManager;
+    private final ContextRepository contextRepository;
     private final ClusterController clusterController;
 
+    /**
+     * Constructor for the context controller.
+     *
+     * @param contextRepository for access to stored context data
+     * @param clusterController for access to cluster information
+     */
     public ContextController(
-            EntityManager entityManager,
+            ContextRepository contextRepository,
             ClusterController clusterController) {
-        this.entityManager = entityManager;
+        this.contextRepository = contextRepository;
         this.clusterController = clusterController;
     }
 
     public Stream<Context> getContexts() {
-        return entityManager.createQuery("select c from Context c", Context.class)
-                            .getResultList()
-                            .stream();
+        return contextRepository.findAll()
+                                .stream();
     }
 
-    public Context getContext(String contextName){
-        return entityManager.find(Context.class, contextName);
+    public Context getContext(String contextName) {
+        return contextRepository.findById(contextName).orElse(null);
     }
 
+    /**
+     * Updates the information stored in the ADMIN tables regarding a context and its members to
+     * reflect the passed configuration.
+     * @param contextConfiguration the updated context configuration
+     */
     @Transactional
     public void updateContext(ContextConfiguration contextConfiguration) {
-        Context context = entityManager.find(Context.class, contextConfiguration.getContext());
+        Optional<Context> optionalContext = contextRepository.findById(contextConfiguration.getContext());
         if( ! contextConfiguration.getPending() && contextConfiguration.getNodesCount() == 0) {
-            entityManager.remove(context);
+            optionalContext.ifPresent(contextRepository::delete);
             return;
         }
 
 
+        Context context = optionalContext.orElse(null);
         if( context == null) {
-            context = new Context(contextConfiguration.getContext());
-            entityManager.persist(context);
+            context = contextRepository.save(new Context(contextConfiguration.getContext()));
         }
         context.changePending(contextConfiguration.getPending());
         Map<String, ClusterNode> currentNodes = new HashMap<>();
-        context.getAllNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
+        context.getNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
         Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();
         contextConfiguration.getNodesList().forEach(n -> newNodes.put(n.getNode().getNodeName(), n));
 
@@ -83,7 +94,7 @@ public class ContextController {
                 logger.debug("{}: Node not in new configuration {}", contextConfiguration.getContext(), node);
                 clusterNode.removeContext(finalContext.getName());
             }
-            });
+        });
         newNodes.forEach((node, nodeInfo) -> {
             if( !currentNodes.containsKey(node)) {
                 logger.debug("{}: Node not in current configuration {}", contextConfiguration.getContext(), node);
@@ -99,15 +110,19 @@ public class ContextController {
     }
 
     public ClusterNode getNode(String node) {
-        return entityManager.find(ClusterNode.class, node);
+        return clusterController.getNode(node);
     }
 
-
+    @Transactional
     public void deleteContext(String context) {
-        Context contextJpa = entityManager.find(Context.class, context);
-        if( contextJpa != null) entityManager.remove(contextJpa);
+        contextRepository.deleteById(context);
     }
 
+    /**
+     * Registers an event listener that listens for {@link io.axoniq.axonserver.enterprise.ContextEvents.AdminContextDeleted} events.
+     * This event occurs when the current node is no longer an admin node, in which case the admin tables for the context can be cleared.
+     * @param contextDeleted only used for registering the listener
+     */
     @EventListener
     @Transactional
     public void on(ContextEvents.AdminContextDeleted contextDeleted) {
@@ -125,7 +140,6 @@ public class ContextController {
 
     @Transactional
     public void deleteAll() {
-        List<Context> allContexts = entityManager.createQuery("select c from Context c", Context.class).getResultList();
-        allContexts.forEach(entityManager::remove);
+        contextRepository.deleteAll();
     }
 }

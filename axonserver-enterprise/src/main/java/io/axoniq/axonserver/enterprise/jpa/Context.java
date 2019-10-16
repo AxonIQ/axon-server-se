@@ -80,15 +80,16 @@ public class Context implements Serializable {
         return Objects.hash(name);
     }
 
+    public void remove(ContextClusterNode ccn) {
+        nodes.remove(ccn);
+    }
+
     @PreRemove
     public void clearContexts() {
         nodes.forEach(ccn -> ccn.getClusterNode().remove(ccn));
         nodes.clear();
     }
 
-    public void remove(ContextClusterNode ccn) {
-        nodes.remove(ccn);
-    }
 
     @Deprecated // Duplicate method, change usage to getNodes
     public Set<ContextClusterNode> getAllNodes() {
