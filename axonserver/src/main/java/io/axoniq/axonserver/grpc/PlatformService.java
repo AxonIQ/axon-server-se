@@ -17,6 +17,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentR
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
+import io.axoniq.axonserver.component.version.ClientVersionUpdate;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.EventProcessorReference;
 import io.axoniq.axonserver.grpc.control.EventProcessorSegmentReference;
@@ -125,6 +126,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                                                      client.getTagsMap()));
                     clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
                     registerClient(clientComponent, sendingStreamObserver);
+                    eventPublisher.publishEvent(new ClientVersionUpdate(client.getClientId(),
+                                                                        context,
+                                                                        client.getVersion()));
                 }
             }
 
@@ -176,7 +180,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .forEach(stream -> stream.onNext(instruction));
     }
 
-    private void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
+
+    /**
+     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
+     *
+     * @param instruction the {@link PlatformInboundInstruction} to be sent
+     */
+    public void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
                      .filter(e -> e.getKey().client.equals(clientName))
                      .map(Map.Entry::getValue)
