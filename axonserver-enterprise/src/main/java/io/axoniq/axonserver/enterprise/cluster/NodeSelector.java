@@ -81,8 +81,8 @@ public class NodeSelector {
                         RaftGroupRepositoryManager raftGroupRepositoryManager) {
         this(messagingPlatformConfiguration.getName(),
              nodeSelectionStrategy,
-             clusterNodeRepository::getOne,
-             contextRepository::getOne,
+             n -> clusterNodeRepository.findById(n).orElse(null),
+             c -> contextRepository.findById(c).orElse(null),
              raftGroupRepositoryManager::findByGroupId
         );
     }
