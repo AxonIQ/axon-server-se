@@ -186,7 +186,7 @@ public class ContextStateProvider {
         public void applicationDisconnected(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
             String proxy = applicationDisconnected.isProxied() ? applicationDisconnected.getProxy() : currentNode;
             ClientDetails old = clients.remove(applicationDisconnected.getClient());
-            if (!proxy.equals(old.proxy)) {
+            if (old != null && !proxy.equals(old.proxy)) {
                 clients.put(applicationDisconnected.getClient(), old);
             }
         }
