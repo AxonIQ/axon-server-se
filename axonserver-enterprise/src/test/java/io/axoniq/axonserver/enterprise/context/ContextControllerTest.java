@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.context;
 
 import io.axoniq.axonserver.AxonServerEnterprise;
+import io.axoniq.axonserver.GrpcMonitoringProperties;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
@@ -9,6 +10,7 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.topology.Topology;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -52,6 +54,10 @@ public class ContextControllerTest {
     private LogReplicationService logReplicationService;
     @MockBean
     private GrpcRaftController raftController;
+    @MockBean
+    private GrpcMonitoringProperties grpcMetricsConfig;
+    @MockBean
+    private PrometheusMeterRegistry prometheusMeterRegistry;
 
     private List<NodeInfoWithLabel> initialNodes = new ArrayList<>();
 

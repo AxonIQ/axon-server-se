@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import java.util.HashMap;
 import java.util.Map;
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
 /**
@@ -59,9 +60,8 @@ public class    MigrationDBConfiguration {
     }
 
     @Bean(name = "transactionManager")
-    public PlatformTransactionManager readingTransactionManager(@Qualifier("migrationEntityManagerFactory") LocalContainerEntityManagerFactoryBean migrationEntityManagerFactory){
-        JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(migrationEntityManagerFactory.getObject());
-        return transactionManager;
+    public PlatformTransactionManager readingTransactionManager(
+            @Qualifier("migrationEntityManagerFactory") EntityManagerFactory migrationEntityManagerFactory) {
+        return new JpaTransactionManager(migrationEntityManagerFactory);
     }
 }
