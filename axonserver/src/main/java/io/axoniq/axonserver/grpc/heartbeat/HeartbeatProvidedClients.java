@@ -21,6 +21,8 @@ import static java.util.Arrays.asList;
 import static java.util.stream.StreamSupport.stream;
 
 /**
+ * {@link Clients} which support the heartbeat feature.
+ *
  * @author Sara Pellegrini
  * @since 4.2.3
  */
@@ -29,9 +31,11 @@ public class HeartbeatProvidedClients implements Clients {
 
     private static final Logger log = LoggerFactory.getLogger(HeartbeatProvidedClients.class);
 
-    private final List<String> supportedAxonFrameworkVersions = asList("4.2.1", "4.3", "5");
+    private final List<Version> supportedAxonFrameworkVersions = asList(new BackwardCompatibilityVersion("4.2.1"),
+                                                                        new BackwardCompatibilityVersion("4.3"),
+                                                                        new BackwardCompatibilityVersion("5"));
 
-    private final Clients connectedClients;
+    private final Clients clients;
 
     private final Function<ClientIdentification, Version> versionSupplier;
 
@@ -45,25 +49,30 @@ public class HeartbeatProvidedClients implements Clients {
              });
     }
 
-    public HeartbeatProvidedClients(Clients connectedClients,
+    public HeartbeatProvidedClients(Clients allClients,
                                     Function<ClientIdentification, Version> versionSupplier) {
-        this.connectedClients = connectedClients;
+        this.clients = allClients;
         this.versionSupplier = versionSupplier;
     }
 
+    /**
+     * Returns an iterator over {@link Client}s supporting the heartbeat feature.
+     *
+     * @return an iterator over {@link Client}s supporting the heartbeat feature.
+     */
     @NotNull
     @Override
     public Iterator<Client> iterator() {
-        return stream(connectedClients.spliterator(), false)
+        return stream(clients.spliterator(), false)
                 .filter(this::supportHeartbeat)
                 .iterator();
     }
 
     private boolean supportHeartbeat(Client client) {
         Version clientVersion = versionSupplier.apply(new ClientIdentification(client.context(), client.name()));
-        for (String supportedVersionClass : supportedAxonFrameworkVersions) {
+        for (Version supportedVersion : supportedAxonFrameworkVersions) {
             try {
-                if (clientVersion.greaterOrEqualThan(supportedVersionClass)) {
+                if (clientVersion.greaterOrEqualThan(supportedVersion)) {
                     return true;
                 }
             } catch (UnsupportedOperationException e1) {

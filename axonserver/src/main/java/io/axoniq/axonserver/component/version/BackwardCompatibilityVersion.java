@@ -5,6 +5,11 @@ import javax.annotation.Nonnull;
 import static java.lang.Integer.parseInt;
 
 /**
+ * Implementation of {@link Version} useful in case of parallel release branches.
+ * Indeed when more that one release branch coexist, it is possible to say if a version is greater than another version
+ * only if the to versions derives from the same ancestor. In all the other case it is impossible to compare two
+ * versions, and {@link BackwardCompatibilityVersion#greaterOrEqualThan(Version)} returns false.
+ *
  * @author Sara Pellegrini
  * @since 4.2.2
  */
@@ -17,14 +22,31 @@ public class BackwardCompatibilityVersion implements Version {
         this.name = name;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return the version name
+     */
     @Override
     public String name() {
         return name;
     }
 
+    /**
+     * {@inheritDoc}
+     * </p>
+     * This implementation consider that a version is greater than another one, when the last specified number is
+     * greater or equal than the corresponding value in the other version, while all the previous version numbers
+     * are equal.
+     * In other words, to make an example, 4.1.3 is greater than 4.1.2 but not than 4.3, because it belongs to another
+     * release branch.
+     *
+     * @param version the other version to compare with
+     * @return {@code true} if this version can be considered greater or equal than the specified one, {@code false} otherwise
+     */
     @Override
-    public boolean greaterOrEqualThan(String versionClass) {
-        String[] split = versionClass.split(DOT_REGEX);
+    public boolean greaterOrEqualThan(Version version) {
+        String[] split = version.name().split(DOT_REGEX);
         if (split.length < 1 || split.length > 3) {
             throw new IllegalArgumentException("Version class format is not compliant");
         }

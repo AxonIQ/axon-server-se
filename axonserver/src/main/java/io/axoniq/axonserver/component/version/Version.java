@@ -3,6 +3,8 @@ package io.axoniq.axonserver.component.version;
 import static java.lang.Integer.parseInt;
 
 /**
+ * Represents an artifact version.
+ *
  * @author Sara Pellegrini
  * @since 4.2.1
  */
@@ -11,25 +13,60 @@ public interface Version {
     String DOT_REGEX = "\\.";
     String DASH_REGEX = "-";
 
+    /**
+     * Returns the full version name, that can be composed by a major number, a minor number and optionally a patch
+     * number, all separated by dots. The full name can also contain a tag at the end, separated from the previous part
+     * by a dash.
+     *
+     * @return the version name
+     */
     String name();
 
+    /**
+     * Returns the major number of the version
+     *
+     * @return the major number
+     */
     default int major() {
-        return parseInt(name().split(DASH_REGEX)[0].split(DOT_REGEX)[0]);
+        try {
+            return parseInt(name().split(DASH_REGEX)[0].split(DOT_REGEX)[0]);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("The version name is not consistent with version pattern.");
+        }
     }
 
+    /**
+     * Returns the minor number of the version
+     * @return the minor number
+     */
     default int minor() {
         String[] split = name().split(DASH_REGEX)[0].split(DOT_REGEX);
         return (split.length >= 2) ? parseInt(split[1]) : 0;
     }
 
+    /**
+     * Returns the patch number of the version
+     * @return the patch number
+     */
     default int patch() {
         String[] split = name().split(DASH_REGEX)[0].split(DOT_REGEX);
         return (split.length >= 3) ? parseInt(split[2]) : 0;
     }
 
+    /**
+     * Returns {@code true} if the two objects represent the same version.
+     * @param version the second version
+     * @return {@code true} if this instance represent the same version of the argument, {@link false} otherwise
+     */
     default boolean match(Version version) {
         return name().equals(version.name());
     }
 
-    boolean greaterOrEqualThan(String versionClass);
+    /**
+     * Returns {@code true} if this version can be considered greater or equal than the specified one.
+     *
+     * @param version the other version to compare with
+     * @return {@code true} if this version can be considered greater or equal than the specified one, {@code false} otherwise
+     */
+    boolean greaterOrEqualThan(Version version);
 }
