@@ -7,7 +7,6 @@ import io.axoniq.axonserver.component.version.ClientVersionsCache;
 import io.axoniq.axonserver.component.version.UnknownVersion;
 import io.axoniq.axonserver.component.version.Version;
 import io.axoniq.axonserver.message.ClientIdentification;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
+import javax.annotation.Nonnull;
 
 import static java.util.Arrays.asList;
 import static java.util.stream.StreamSupport.stream;
@@ -74,7 +74,7 @@ public class HeartbeatProvidedClients implements Clients {
      *
      * @return an iterator over {@link Client}s supporting the heartbeat feature.
      */
-    @NotNull
+    @Nonnull
     @Override
     public Iterator<Client> iterator() {
         return stream(clients.spliterator(), false)

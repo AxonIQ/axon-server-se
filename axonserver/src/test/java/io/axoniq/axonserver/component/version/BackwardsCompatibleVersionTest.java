@@ -9,7 +9,7 @@ import static org.junit.Assert.*;
  *
  * @author Sara Pellegrini
  */
-public class BackwardCompatibilityVersionTest {
+public class BackwardsCompatibleVersionTest {
 
     private final BackwardsCompatibleVersion version3 = new BackwardsCompatibleVersion("3");
     private final BackwardsCompatibleVersion version3_1 = new BackwardsCompatibleVersion("3.1");
