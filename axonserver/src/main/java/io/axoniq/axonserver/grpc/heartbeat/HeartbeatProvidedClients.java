@@ -92,7 +92,7 @@ public class HeartbeatProvidedClients implements Clients {
             } catch (UnsupportedOperationException e1) {
                 return false;
             } catch (Exception e2) {
-                log.debug("Impossible to compare the client version with supported versions.", e2);
+                log.debug("Can not compare the client version with supported versions.", e2);
             }
         }
         return false;
