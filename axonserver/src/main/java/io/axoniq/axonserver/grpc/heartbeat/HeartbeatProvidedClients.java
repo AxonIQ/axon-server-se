@@ -2,7 +2,7 @@ package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.component.version.BackwardCompatibilityVersion;
+import io.axoniq.axonserver.component.version.BackwardsCompatibleVersion;
 import io.axoniq.axonserver.component.version.ClientVersionsCache;
 import io.axoniq.axonserver.component.version.UnknownVersion;
 import io.axoniq.axonserver.component.version.Version;
@@ -31,24 +31,38 @@ public class HeartbeatProvidedClients implements Clients {
 
     private static final Logger log = LoggerFactory.getLogger(HeartbeatProvidedClients.class);
 
-    private final List<Version> supportedAxonFrameworkVersions = asList(new BackwardCompatibilityVersion("4.2.1"),
-                                                                        new BackwardCompatibilityVersion("4.3"),
-                                                                        new BackwardCompatibilityVersion("5"));
+    private final List<Version> supportedAxonFrameworkVersions = asList(new BackwardsCompatibleVersion("4.2.1"),
+                                                                        new BackwardsCompatibleVersion("4.3"),
+                                                                        new BackwardsCompatibleVersion("5"));
 
     private final Clients clients;
 
     private final Function<ClientIdentification, Version> versionSupplier;
 
+    /**
+     * Constructs a {@link HeartbeatProvidedClients} starting from all clients and the {@link ClientVersionsCache} used
+     * to retrieve the Axon Framework version for each of them.
+     *
+     * @param allClients    all the clients available
+     * @param versionsCache the {@link ClientVersionsCache} used to retrieve the Axon Framework version of each client
+     */
     @Autowired
     public HeartbeatProvidedClients(Clients allClients, ClientVersionsCache versionsCache) {
         this(allClients,
              clientIdentification -> {
                  String version = versionsCache.apply(clientIdentification);
                  return (version == null || version.isEmpty()) ?
-                         new UnknownVersion() : new BackwardCompatibilityVersion(version);
+                         new UnknownVersion() : new BackwardsCompatibleVersion(version);
              });
     }
 
+    /**
+     * Constructs a {@link HeartbeatProvidedClients} starting from all clients and a function to retrieve
+     * the Axon Framework version for each of them.
+     *
+     * @param allClients all the clients available
+     * @param versionSupplier the function used to retrieve the Axon Framework version of each client
+     */
     public HeartbeatProvidedClients(Clients allClients,
                                     Function<ClientIdentification, Version> versionSupplier) {
         this.clients = allClients;

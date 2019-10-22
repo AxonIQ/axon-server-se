@@ -2,6 +2,8 @@ package io.axoniq.axonserver.component.version;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.message.ClientIdentification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -13,10 +15,12 @@ import java.util.function.Function;
  * Provides the versions of all clients connected directly to the local Axon Server instance.
  *
  * @author Sara Pellegrini
- * @since 4.2.1
+ * @since 4.2.3
  */
 @Component
 public class ClientVersionsCache implements Function<ClientIdentification, String> {
+
+    private Logger logger = LoggerFactory.getLogger(ClientVersionsCache.class);
 
     private final Map<ClientIdentification, String> versions = new HashMap<>();
 
@@ -39,6 +43,7 @@ public class ClientVersionsCache implements Function<ClientIdentification, Strin
     @EventListener
     public void on(ClientVersionUpdate update) {
         versions.put(update.client(), update.version());
+        logger.debug("Version update received from client {} to version {}.", update.client(), update.version());
     }
 
     /**
@@ -50,5 +55,6 @@ public class ClientVersionsCache implements Function<ClientIdentification, Strin
     public void on(ApplicationDisconnected evt) {
         ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClient());
         versions.remove(client);
+        logger.trace("Version cleaned for client {} because disconnected.", client);
     }
 }

@@ -3,7 +3,7 @@ package io.axoniq.axonserver.grpc.heartbeat;
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.instance.FakeClient;
-import io.axoniq.axonserver.component.version.BackwardCompatibilityVersion;
+import io.axoniq.axonserver.component.version.BackwardsCompatibleVersion;
 import org.junit.*;
 
 import java.util.Arrays;
@@ -41,7 +41,7 @@ public class HeartbeatProvidedClientsTest {
         versionSupplier.put("G", "5.1.3");
         HeartbeatProvidedClients testSubjects = new HeartbeatProvidedClients(
                 clients,
-                clientId -> new BackwardCompatibilityVersion(versionSupplier.get(clientId.getClient())));
+                clientId -> new BackwardsCompatibleVersion(versionSupplier.get(clientId.getClient())));
 
         Iterator<Client> iterator = testSubjects.iterator();
         assertEquals("D", iterator.next().name());

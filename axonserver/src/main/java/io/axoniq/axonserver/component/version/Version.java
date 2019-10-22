@@ -6,11 +6,18 @@ import static java.lang.Integer.parseInt;
  * Represents an artifact version.
  *
  * @author Sara Pellegrini
- * @since 4.2.1
+ * @since 4.2.3
  */
 public interface Version {
 
+    /**
+     * Regex representing a dot.
+     */
     String DOT_REGEX = "\\.";
+
+    /**
+     * Regex representing a dash.
+     */
     String DASH_REGEX = "-";
 
     /**

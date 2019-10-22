@@ -8,17 +8,22 @@ import static java.lang.Integer.parseInt;
  * Implementation of {@link Version} useful in case of parallel release branches.
  * Indeed when more that one release branch coexist, it is possible to say if a version is greater than another version
  * only if the to versions derives from the same ancestor. In all the other case it is impossible to compare two
- * versions, and {@link BackwardCompatibilityVersion#greaterOrEqualThan(Version)} returns false.
+ * versions, and {@link BackwardsCompatibleVersion#greaterOrEqualThan(Version)} returns false.
  *
  * @author Sara Pellegrini
- * @since 4.2.2
+ * @since 4.2.3
  */
-public class BackwardCompatibilityVersion implements Version {
+public class BackwardsCompatibleVersion implements Version {
 
     @Nonnull
     private final String name;
 
-    public BackwardCompatibilityVersion(@Nonnull String name) {
+    /**
+     * Builds a {@link BackwardsCompatibleVersion} with the specified version name.
+     *
+     * @param name the version name
+     */
+    public BackwardsCompatibleVersion(@Nonnull String name) {
         this.name = name;
     }
 

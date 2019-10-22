@@ -5,34 +5,34 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for {@link BackwardCompatibilityVersion}
+ * Unit tests for {@link BackwardsCompatibleVersion}
  *
  * @author Sara Pellegrini
  */
 public class BackwardCompatibilityVersionTest {
 
-    private final BackwardCompatibilityVersion version3 = new BackwardCompatibilityVersion("3");
-    private final BackwardCompatibilityVersion version3_1 = new BackwardCompatibilityVersion("3.1");
-    private final BackwardCompatibilityVersion version3_1_3 = new BackwardCompatibilityVersion("3.1.3");
-    private final BackwardCompatibilityVersion version4 = new BackwardCompatibilityVersion("4");
-    private final BackwardCompatibilityVersion version4_0 = new BackwardCompatibilityVersion("4.0");
-    private final BackwardCompatibilityVersion version4_0_1 = new BackwardCompatibilityVersion("4.0.1");
-    private final BackwardCompatibilityVersion version4_1 = new BackwardCompatibilityVersion("4.1");
-    private final BackwardCompatibilityVersion version4_1_2 = new BackwardCompatibilityVersion("4.1.2");
-    private final BackwardCompatibilityVersion version4_1_3 = new BackwardCompatibilityVersion("4.1.3");
-    private final BackwardCompatibilityVersion version4_1_4 = new BackwardCompatibilityVersion("4.1.4");
-    private final BackwardCompatibilityVersion version4_2 = new BackwardCompatibilityVersion("4.2");
-    private final BackwardCompatibilityVersion version4_2_1 = new BackwardCompatibilityVersion("4.2.1");
-    private final BackwardCompatibilityVersion version5 = new BackwardCompatibilityVersion("5");
-    private final BackwardCompatibilityVersion version5_1 = new BackwardCompatibilityVersion("5.1");
-    private final BackwardCompatibilityVersion version5_1_3 = new BackwardCompatibilityVersion("5.1.3");
+    private final BackwardsCompatibleVersion version3 = new BackwardsCompatibleVersion("3");
+    private final BackwardsCompatibleVersion version3_1 = new BackwardsCompatibleVersion("3.1");
+    private final BackwardsCompatibleVersion version3_1_3 = new BackwardsCompatibleVersion("3.1.3");
+    private final BackwardsCompatibleVersion version4 = new BackwardsCompatibleVersion("4");
+    private final BackwardsCompatibleVersion version4_0 = new BackwardsCompatibleVersion("4.0");
+    private final BackwardsCompatibleVersion version4_0_1 = new BackwardsCompatibleVersion("4.0.1");
+    private final BackwardsCompatibleVersion version4_1 = new BackwardsCompatibleVersion("4.1");
+    private final BackwardsCompatibleVersion version4_1_2 = new BackwardsCompatibleVersion("4.1.2");
+    private final BackwardsCompatibleVersion version4_1_3 = new BackwardsCompatibleVersion("4.1.3");
+    private final BackwardsCompatibleVersion version4_1_4 = new BackwardsCompatibleVersion("4.1.4");
+    private final BackwardsCompatibleVersion version4_2 = new BackwardsCompatibleVersion("4.2");
+    private final BackwardsCompatibleVersion version4_2_1 = new BackwardsCompatibleVersion("4.2.1");
+    private final BackwardsCompatibleVersion version5 = new BackwardsCompatibleVersion("5");
+    private final BackwardsCompatibleVersion version5_1 = new BackwardsCompatibleVersion("5.1");
+    private final BackwardsCompatibleVersion version5_1_3 = new BackwardsCompatibleVersion("5.1.3");
 
     @Test
     public void testMatch() {
-        boolean match = version4_1_3.match(new BackwardCompatibilityVersion("4.1.3"));
+        boolean match = version4_1_3.match(new BackwardsCompatibleVersion("4.1.3"));
         assertTrue(match);
 
-        match = version4_1_3.match(new BackwardCompatibilityVersion("4.1"));
+        match = version4_1_3.match(new BackwardsCompatibleVersion("4.1"));
         assertFalse(match);
     }
 
@@ -128,11 +128,11 @@ public class BackwardCompatibilityVersionTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testTooManyVersionNumbersInVersionClass() {
-        version4_1_3.greaterOrEqualThan(new BackwardCompatibilityVersion("4.1.3.5"));
+        version4_1_3.greaterOrEqualThan(new BackwardsCompatibleVersion("4.1.3.5"));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testTooFewVersionNumbersInVersionClass() {
-        version4_1_3.greaterOrEqualThan(new BackwardCompatibilityVersion("4.1.3.5"));
+        version4_1_3.greaterOrEqualThan(new BackwardsCompatibleVersion("4.1.3.5"));
     }
 }
