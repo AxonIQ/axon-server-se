@@ -133,6 +133,6 @@ public class BackwardsCompatibleVersionTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testTooFewVersionNumbersInVersionClass() {
-        version4_1_3.greaterOrEqualThan(new BackwardsCompatibleVersion("4.1.3.5"));
+        version4_1_3.greaterOrEqualThan(new BackwardsCompatibleVersion(""));
     }
 }
