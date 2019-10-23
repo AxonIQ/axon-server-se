@@ -1,7 +1,5 @@
 package io.axoniq.axonserver.component.version;
 
-import javax.annotation.Nonnull;
-
 import static java.lang.Integer.parseInt;
 
 /**
@@ -15,7 +13,6 @@ import static java.lang.Integer.parseInt;
  */
 public class BackwardsCompatibleVersion implements Version {
 
-    @Nonnull
     private final String name;
 
     /**
@@ -23,7 +20,7 @@ public class BackwardsCompatibleVersion implements Version {
      *
      * @param name the version name
      */
-    public BackwardsCompatibleVersion(@Nonnull String name) {
+    public BackwardsCompatibleVersion(String name) {
         this.name = name;
     }
 
