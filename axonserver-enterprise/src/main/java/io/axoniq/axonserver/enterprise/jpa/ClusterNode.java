@@ -130,6 +130,13 @@ public class ClusterNode implements Serializable, AxonServerNode {
         return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
 
+    /**
+     * Return the names of contexts that store event data on this node. Excludes contexts that are admin contexts or
+     * have
+     * role messaging-only.
+     *
+     * @return names of contexts that store event data on this node
+     */
     @Override
     public Collection<String> getStorageContextNames() {
         return contexts.stream()
