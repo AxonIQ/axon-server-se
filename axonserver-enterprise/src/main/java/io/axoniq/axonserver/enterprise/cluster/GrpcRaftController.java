@@ -46,6 +46,7 @@ import static java.util.Collections.singletonList;
 @Controller
 public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
+    private static final boolean NO_EVENT_STORE = false;
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftController.class);
     private final JpaRaftStateRepository raftStateRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
@@ -88,7 +89,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
             try {
-                createRaftGroup(context.getGroupId(), context.getNodeId(), false);
+                createRaftGroup(context.getGroupId(), context.getNodeId(), NO_EVENT_STORE);
             } catch (Exception ex) {
                 logger.warn("{}: Failed to initialize context", context.getGroupId(), ex);
             }
@@ -247,7 +248,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
      *
      * @param groupId the groupId of the raft group
      * @param nodeId  the id to use to register the current node if the group does not exist yet
-     * @return
+     * @return the existing or newly created raft node
      */
     @Override
     public RaftNode getOrCreateRaftNode(String groupId, String nodeId) {
@@ -261,7 +262,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
-                raftGroup = createRaftGroup(groupId, nodeId, false);
+                raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE);
             }
         }
         return raftGroup.localNode();

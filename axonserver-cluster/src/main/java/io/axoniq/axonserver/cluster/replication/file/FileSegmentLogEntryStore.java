@@ -44,7 +44,7 @@ import java.util.stream.Stream;
 public class FileSegmentLogEntryStore implements LogEntryStore {
 
     private static final byte[] DUMMY_CONTENT = "X".getBytes();
-    private final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);
+    private static final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);
     private final List<Consumer<Entry>> appendListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final String name;

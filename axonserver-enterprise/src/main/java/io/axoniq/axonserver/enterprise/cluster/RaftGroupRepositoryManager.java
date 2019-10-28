@@ -32,6 +32,9 @@ public class RaftGroupRepositoryManager {
         return findByNodeName(messagingPlatformConfiguration.getName());
     }
 
+    /**
+     * @return the names of all raft groups that have an event store on this node
+     */
     public Set<String> storageContexts() {
         return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
                                       .stream()

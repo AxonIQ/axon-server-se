@@ -16,6 +16,9 @@ import static io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter.
 @Component
 public class SnapshotLogEntryConsumer implements LogEntryConsumer {
 
+    /**
+     * The type of log entries the consumer applies.
+     */
     public static final String LOG_ENTRY_TYPE = "Append.SNAPSHOT";
 
     private final LocalEventStore localEventStore;
