@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
 import io.axoniq.axonserver.RaftAdminGroup;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -129,9 +130,18 @@ public class ClusterNode implements Serializable, AxonServerNode {
         return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
     }
 
+    /**
+     * Return the names of contexts that store event data on this node. Excludes contexts that are admin contexts or
+     * have
+     * role messaging-only.
+     *
+     * @return names of contexts that store event data on this node
+     */
     @Override
     public Collection<String> getStorageContextNames() {
-        return contexts.stream().map(ccn -> ccn.getContext().getName())
+        return contexts.stream()
+                       .filter(ccn -> RoleUtils.hasStorage(ccn.getRole()))
+                       .map(ccn -> ccn.getContext().getName())
                        .filter(n -> !RaftAdminGroup.isAdmin(n))
                        .collect(Collectors.toSet());
     }
