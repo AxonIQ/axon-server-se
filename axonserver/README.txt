@@ -3,6 +3,18 @@ This is the Axon Server Standard Edition, version 4.2
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.2.2
+-------------------------------
+
+* Cleaned-up logging
+* Fix for specific error while reading aggregate
+* Optional heartbeat between Axon Server and Axon Framework clients
+
+Release Notes for version 4.2.1
+-------------------------------
+
+* Fixes required for enterprise edition only
+
 Release Notes for version 4.2
 -------------------------------
 
