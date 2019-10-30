@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.cluster;
 
-import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.Role;
 
 /**
@@ -23,13 +22,8 @@ public class FakeReplicatorPeer implements ReplicatorPeerStatus {
     }
 
     @Override
-    public boolean primaryNode() {
-        return RoleUtils.primaryNode(role);
-    }
-
-    @Override
-    public boolean votingNode() {
-        return RoleUtils.votingNode(role);
+    public Role role() {
+        return role;
     }
 
     @Override

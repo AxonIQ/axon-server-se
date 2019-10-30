@@ -112,4 +112,8 @@ public interface RaftConfiguration {
     default boolean isSerializedEventData(String type) {
         return false;
     }
+
+    default Integer minActiveBackups() {
+        return 1;
+    }
 }

@@ -11,6 +11,7 @@ import reactor.core.publisher.MonoSink;
 
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 import static java.lang.String.format;
 
@@ -39,18 +40,19 @@ public class DefaultPreVote implements Election {
                                .build(),
              termUpdateHandler,
              raftGroup.localElectionStore(),
-             otherNodes);
+             otherNodes, () -> raftGroup.raftConfiguration().minActiveBackups());
     }
 
     public DefaultPreVote(RequestVoteRequest requestPrototype,
                           BiConsumer<Long, String> termUpdateHandler,
                           ElectionStore electionStore,
-                          Iterable<RaftPeer> otherNodes) {
+                          Iterable<RaftPeer> otherNodes,
+                          Supplier<Integer> minActiveBackupsProvider) {
         this(requestPrototype,
              termUpdateHandler,
              electionStore,
              otherNodes,
-             new PrimaryAndVotingMajorityStrategy(otherNodes));
+             new PrimaryAndVotingMajorityStrategy(otherNodes, minActiveBackupsProvider));
     }
 
     public DefaultPreVote(RequestVoteRequest requestPrototype,

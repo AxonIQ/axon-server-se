@@ -89,7 +89,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
             try {
-                createRaftGroup(context.getGroupId(), context.getNodeId(), NO_EVENT_STORE);
+                createRaftGroup(context.getGroupId(), context.getNodeId(), NO_EVENT_STORE, context.getRole());
             } catch (Exception ex) {
                 logger.warn("{}: Failed to initialize context", context.getGroupId(), ex);
             }
@@ -126,7 +126,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                         .setNodeName(nodeName)
                         .setRole(Role.PRIMARY)
                         .build();
-        RaftGroup raftGroup = createRaftGroup(groupId, nodeLabel, !isAdmin(groupId));
+        RaftGroup raftGroup = createRaftGroup(groupId, nodeLabel, !isAdmin(groupId), Role.PRIMARY);
         raftGroup.raftConfiguration().update(singletonList(node));
         if( replicationServerStarted) {
             raftGroup.connect();
@@ -134,7 +134,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return raftGroup;
     }
 
-    private RaftGroup createRaftGroup(String groupId, String localNodeId, boolean initializeEventStore) {
+    private RaftGroup createRaftGroup(String groupId, String localNodeId, boolean initializeEventStore, Role role) {
         synchronized (raftGroupMap) {
             RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
             if( existingRaftGroup != null) return existingRaftGroup;
@@ -164,7 +164,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
             raftGroupMap.put(groupId, raftGroup);
             if (replicationServerStarted) {
-                raftGroup.localNode().start();
+                raftGroup.localNode().start(role);
             }
             return raftGroup;
         }
@@ -262,7 +262,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
-                raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE);
+                raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE, Role.UNRECOGNIZED);
             }
         }
         return raftGroup.localNode();

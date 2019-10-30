@@ -390,6 +390,12 @@ public abstract class AbstractMembershipState implements MembershipState {
         return handler.apply(followerState);
     }
 
+    protected <R> R handleAsSecondary(Function<MembershipState, R> handler, String cause) {
+        MembershipState secondaryState = stateFactory().secondaryState();
+        changeStateTo(secondaryState, cause);
+        return handler.apply(secondaryState);
+    }
+
     @Override
     public List<Node> currentGroupMembers() {
         return currentConfiguration.groupMembers();

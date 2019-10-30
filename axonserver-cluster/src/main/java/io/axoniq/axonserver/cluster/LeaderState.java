@@ -10,6 +10,7 @@ import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.LeaderTimeoutChecker;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Config;
@@ -74,7 +75,8 @@ public class LeaderState extends AbstractMembershipState {
 
         leaderTimeoutChecker = new LeaderTimeoutChecker(this::replicatorPeers,
                                                         maxElectionTimeout(),
-                                                        () -> scheduler.get().clock());
+                                                        () -> scheduler.get().clock(),
+                                                        () -> raftGroup().raftConfiguration().minActiveBackups());
     }
 
     /**
@@ -593,7 +595,7 @@ public class LeaderState extends AbstractMembershipState {
          * @return true if peer is able to become leader
          */
         public boolean isPossibleLeader(ReplicatorPeer peer) {
-            return !nonVotingReplicaMap.containsKey(peer.nodeId()) && peer.primaryNode();
+            return !nonVotingReplicaMap.containsKey(peer.nodeId()) && RoleUtils.primaryNode(peer.role());
         }
     }
 }

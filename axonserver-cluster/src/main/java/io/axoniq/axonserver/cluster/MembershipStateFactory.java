@@ -2,7 +2,7 @@ package io.axoniq.axonserver.cluster;
 
 /**
  * @author Sara Pellegrini
- * @since 4.0
+ * @since 4.1
  */
 public interface MembershipStateFactory {
 
@@ -11,6 +11,10 @@ public interface MembershipStateFactory {
     MembershipState leaderState();
 
     MembershipState followerState();
+
+    MembershipState prospectState();
+
+    MembershipState secondaryState();
 
     MembershipState candidateState();
 
