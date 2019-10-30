@@ -2,8 +2,6 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -17,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,7 +23,6 @@ import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -34,6 +32,7 @@ public class NodeSelectorTest {
     private NodeSelector testSubject;
     private ClusterNode me = new ClusterNode("me", "myHost", null, null, null, null);
     private Map<String, Context> contextMap;
+    private Set<String> connectedAxonServerNodes = new HashSet<>();
 
     @Before
     public void setUp() {
@@ -71,7 +70,7 @@ public class NodeSelectorTest {
                                         List<String> activeNodes) {
                 return !me.getName().equals(selectNode(clientName, componentName, activeNodes));
             }
-        }, clusterMap::get, contextMap::get, this::asRaftGroups);
+        }, clusterMap::get, contextMap::get, this::asRaftGroups, connectedAxonServerNodes);
     }
 
     private Set<JpaRaftGroupNode> asRaftGroups(String context) {
@@ -98,7 +97,7 @@ public class NodeSelectorTest {
 
     @Test
     public void findNodeForClientCurrentIsBackupNode() {
-        testSubject.on(new ClusterEvents.AxonServerInstanceConnected(remoteConnection("aSecondNode")));
+        connectedAxonServerNodes.add("aSecondNode");
         assertEquals("aSecondNode", testSubject.findNodeForClient("myClient", "myApplication", "second").getName());
     }
 
@@ -114,15 +113,7 @@ public class NodeSelectorTest {
 
     @Test
     public void canRebalance() {
-        testSubject.on(new ClusterEvents.AxonServerInstanceConnected(remoteConnection("aSecondNode")));
+        connectedAxonServerNodes.add("aSecondNode");
         assertTrue(testSubject.canRebalance("myClient", "myApplication", "first"));
-    }
-
-    private RemoteConnection remoteConnection(String name) {
-        ClusterNode clusterNode = new ClusterNode();
-        clusterNode.setName(name);
-        RemoteConnection remoteConnection = mock(RemoteConnection.class);
-        when(remoteConnection.getClusterNode()).thenReturn(clusterNode);
-        return remoteConnection;
     }
 }

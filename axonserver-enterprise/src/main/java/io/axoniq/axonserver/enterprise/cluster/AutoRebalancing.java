@@ -13,11 +13,13 @@ import java.util.Set;
 
 /**
  * Component that balances client application connections across Axon Server nodes.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
 @Component
-public class AutoRebalancing  {
+public class AutoRebalancing {
+
     private final Logger logger = LoggerFactory.getLogger(AutoRebalancing.class);
 
     private final PlatformService platformService;
@@ -52,7 +54,9 @@ public class AutoRebalancing  {
      */
     @Scheduled(fixedRateString = "${axoniq.axonserver.cluster.balancing-rate:15000}")
     protected void rebalance() {
-        if( !Feature.CONNECTION_BALANCING.enabled(featureChecker) || !enabled) return;
+        if (!Feature.CONNECTION_BALANCING.enabled(featureChecker) || !enabled) {
+            return;
+        }
         Set<PlatformService.ClientComponent> connectedClients = platformService.getConnectedClients();
         logger.debug("Rebalance: {}", connectedClients);
         connectedClients.stream()

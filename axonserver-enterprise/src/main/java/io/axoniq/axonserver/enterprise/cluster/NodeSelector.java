@@ -3,7 +3,6 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextRepository;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
@@ -12,13 +11,11 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -37,12 +34,12 @@ import java.util.stream.Collectors;
 @Component
 public class NodeSelector {
 
-    private final Set<String> activeConnections = new CopyOnWriteArraySet<>();
     private final String nodeName;
     private final Function<String, ClusterNode> clusterNodeSelector;
     private final NodeSelectionStrategy nodeSelectionStrategy;
     private final Function<String, Context> contextSelector;
     private final Function<String, Set<JpaRaftGroupNode>> raftNodeSelector;
+    private final Iterable<String> activeConnections;
 
     /**
      * Constructor for testing purposes.
@@ -52,17 +49,20 @@ public class NodeSelector {
      * @param clusterNodeSelector   function to find a {@link ClusterNode} based on its name
      * @param contextSelector       function to fina a {@link Context} based on its name
      * @param raftNodeSelector      function to retrieve the {@link JpaRaftGroupNode}s for a context
+     * @param activeConnections     provides names of axon server nodes that are currently connected to this node
      */
     NodeSelector(String nodeName,
                  NodeSelectionStrategy nodeSelectionStrategy,
                  Function<String, ClusterNode> clusterNodeSelector,
                  Function<String, Context> contextSelector,
-                 Function<String, Set<JpaRaftGroupNode>> raftNodeSelector) {
+                 Function<String, Set<JpaRaftGroupNode>> raftNodeSelector,
+                 Iterable<String> activeConnections) {
         this.nodeName = nodeName;
         this.clusterNodeSelector = clusterNodeSelector;
         this.nodeSelectionStrategy = nodeSelectionStrategy;
         this.contextSelector = contextSelector;
         this.raftNodeSelector = raftNodeSelector;
+        this.activeConnections = activeConnections;
     }
 
     /**
@@ -72,18 +72,21 @@ public class NodeSelector {
      * @param clusterNodeRepository repository of nodes in the cluster
      * @param contextRepository repository of contexts defined in the cluster
      * @param raftGroupRepositoryManager    provides access to the raft group information
+     * @param activeConnections provides names of axon server nodes that are currently connected to this node
      */
     @Autowired
     public NodeSelector(MessagingPlatformConfiguration messagingPlatformConfiguration,
                         NodeSelectionStrategy nodeSelectionStrategy,
                         ClusterNodeRepository clusterNodeRepository,
                         ContextRepository contextRepository,
-                        RaftGroupRepositoryManager raftGroupRepositoryManager) {
+                        RaftGroupRepositoryManager raftGroupRepositoryManager,
+                        ActiveConnections activeConnections) {
         this(messagingPlatformConfiguration.getName(),
              nodeSelectionStrategy,
              n -> clusterNodeRepository.findById(n).orElse(null),
              c -> contextRepository.findById(c).orElse(null),
-             raftGroupRepositoryManager::findByGroupId
+             raftGroupRepositoryManager::findByGroupId,
+             activeConnections
         );
     }
 
@@ -134,24 +137,6 @@ public class NodeSelector {
                                                   activeNodes);
     }
 
-    /**
-     * Event handler that updates the activeConnections when an Axon Server node is connected.
-     * @param connected the event
-     */
-    @EventListener
-    public void on(ClusterEvents.AxonServerInstanceConnected connected) {
-        activeConnections.add(connected.getNodeName());
-    }
-
-    /**
-     * Event handler that updates the activeConnections when an Axon Server node is disconnected.
-     * @param disconnected the event
-     */
-    @EventListener
-    public void on(ClusterEvents.AxonServerInstanceDisconnected disconnected) {
-        activeConnections.add(disconnected.getNodeName());
-    }
-
     private Collection<String> getNodesInContext(ClusterNode me, String context) {
         if (me.isAdmin()) {
             Context contextJPA = contextSelector.apply(context);
@@ -170,7 +155,16 @@ public class NodeSelector {
     private List<String> activeNodes(String context) {
         Collection<String> nodesInContext = getNodesInContext(clusterNodeSelector.apply(nodeName), context);
         return nodesInContext.stream()
-                             .filter(n -> n.equals(nodeName) || activeConnections.contains(n))
+                             .filter(n -> n.equals(nodeName) || contains(activeConnections, n))
                              .collect(Collectors.toList());
+    }
+
+    private boolean contains(Iterable<String> strings, String s) {
+        for (String string : strings) {
+            if (string.equals(s)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
