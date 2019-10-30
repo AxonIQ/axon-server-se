@@ -46,6 +46,9 @@ public class ContextControllerTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private ContextRepository contextRepository;
+
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
@@ -84,7 +87,13 @@ public class ContextControllerTest {
             entityManager.persist(clusterNode);
             return clusterNode;
         }).when(clusterController).addConnection(any(NodeInfo.class));
-        testSubject = new ContextController(entityManager, clusterController);
+
+        doAnswer(i -> {
+            String node = i.getArgument(0);
+            return entityManager.find(ClusterNode.class, node);
+        }).when(clusterController).getNode(anyString());
+
+        testSubject = new ContextController(contextRepository, clusterController);
     }
 
     private NodeInfoWithLabel nodeInfo(ClusterNode clusterNode, Role role) {

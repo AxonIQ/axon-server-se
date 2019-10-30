@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.Role;
 
 import java.io.Serializable;
@@ -33,7 +34,7 @@ public class ContextClusterNode implements Serializable {
 
     private String clusterNodeLabel;
 
-    private Integer role;
+    private Role role;
 
     public ContextClusterNode() {
     }
@@ -41,7 +42,7 @@ public class ContextClusterNode implements Serializable {
     public ContextClusterNode(Context context, ClusterNode clusterNode, String clusterNodeLabel, Role role) {
         this.clusterNodeLabel = clusterNodeLabel;
         this.key = new Key(context, clusterNode);
-        setRole(role);
+        this.role = role;
         context.addClusterNode(this);
         clusterNode.addContext(this);
     }
@@ -69,16 +70,13 @@ public class ContextClusterNode implements Serializable {
     }
 
 
-    void setRole(Integer role) {
+
+    public void setRole(Role role) {
         this.role = role;
     }
 
-    public void setRole(Role role) {
-        this.role = role == null ? null : role.getNumber();
-    }
-
     public Role getRole() {
-        return this.role == null ? Role.PRIMARY : Role.forNumber(this.role);
+        return RoleUtils.getOrDefault(role);
     }
 
     @Override
