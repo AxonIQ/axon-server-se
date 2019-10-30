@@ -12,23 +12,29 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
+import io.axoniq.axonserver.logging.AuditLog;
+import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
  * REST controller to retrieve details about client applications
+ *
  * @author Sara Pellegrini
  * @since 4.0
  */
 @RestController
 @RequestMapping("v1/components")
 public class ClientApplicationRestController {
+
+    private final Logger auditLog = AuditLog.getLogger();
 
     private final Clients clients;
 
@@ -38,22 +44,31 @@ public class ClientApplicationRestController {
 
     /**
      * retrieve instances of a specific client application (component)
+     *
      * @param component the name of the component to retrieve
-     * @param context the required context
+     * @param context   the required context
      * @return
      */
     @GetMapping("{component}/instances")
-    public Iterable getComponentInstances(@PathVariable("component") String component, @RequestParam("context") String context ){
-        return new ComponentItems<>(component,context,clients);
+    public Iterable getComponentInstances(@PathVariable("component") String component,
+                                          @RequestParam("context") String context, Principal principal) {
+        auditLog.info("[{}] Request for a list of clients belonging to component \"{}\" and context=\"{}\"",
+                      AuditLog.username(principal),
+                      component,
+                      context);
+
+        return new ComponentItems<>(component, context, clients);
     }
 
     /**
      * returns a list of currently connected clients
+     *
      * @return stream containing all currently connected clients
      */
     @GetMapping("clients")
-    public Stream<Client> listClients() {
-        return StreamSupport.stream(clients.spliterator(),false);
-    }
+    public Stream<Client> listClients(Principal principal) {
+        auditLog.info("[{}] Request for a list of all connected clients.", AuditLog.username(principal));
 
+        return StreamSupport.stream(clients.spliterator(), false);
+    }
 }

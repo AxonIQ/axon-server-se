@@ -13,6 +13,7 @@ import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
@@ -21,6 +22,7 @@ import io.axoniq.axonserver.rest.json.CommandResponseJson;
 import io.axoniq.axonserver.topology.Topology;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
+import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +56,8 @@ import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 @RequestMapping("/v1")
 public class CommandRestController {
 
+    private final Logger auditLog = AuditLog.getLogger();
+
     private final CommandDispatcher commandDispatcher;
     private final CommandRegistrationCache registrationCache;
 
@@ -63,12 +68,16 @@ public class CommandRestController {
     }
 
     @GetMapping("/components/{component}/commands")
-    public Iterable<ComponentCommand> getByComponent(@PathVariable("component") String component, @RequestParam("context") String context){
+    public Iterable<ComponentCommand> getByComponent(@PathVariable("component") String component, @RequestParam("context") String context, Principal principal){
+        auditLog.info("[{}] Request to list all Commands for which component \"{}\" in context \"{}\" has a registered handler.", AuditLog.username(principal), component, context);
+
         return new ComponentItems<>(component, context, new DefaultCommands( registrationCache));
     }
 
     @GetMapping("commands")
-    public List<JsonClientMapping> get() {
+    public List<JsonClientMapping> get(Principal principal) {
+        auditLog.info("[{}] Request to list all Commands which have a registered handler.", AuditLog.username(principal));
+
         return registrationCache.getAll().entrySet().stream().map(JsonClientMapping::from).collect(Collectors.toList());
     }
 
@@ -78,19 +87,26 @@ public class CommandRestController {
                     required = false, dataType = "string", paramType = "header")
     })
     public Future<CommandResponseJson> execute(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
-                                               @RequestBody @Valid CommandRequestJson command) {
+                                               @RequestBody @Valid CommandRequestJson command, Principal principal) {
+        auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
+
         CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
         commandDispatcher.dispatch(context, new SerializedCommand(command.asCommand()), r -> result.complete(new CommandResponseJson(r.wrapped())), false);
         return result;
     }
 
     @GetMapping("commands/queues")
-    public List<JsonQueueInfo> queues() {
+    public List<JsonQueueInfo> queues(Principal principal) {
+        auditLog.info("[{}] Request to list all CommandQueues.", AuditLog.username(principal));
+
         return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(Collectors.toList());
     }
 
     @GetMapping("commands/count")
-    public int count() {
+    public int count(Principal principal) {
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}] Request for the active command count.", AuditLog.username(principal));
+        }
         return commandDispatcher.activeCommandCount();
     }
 

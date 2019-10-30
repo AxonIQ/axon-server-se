@@ -15,7 +15,9 @@ import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
+import io.axoniq.axonserver.logging.AuditLog;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -36,6 +39,8 @@ import java.util.stream.StreamSupport;
 @RestController
 @RequestMapping("v1")
 public class EventProcessorRestController {
+
+    private final Logger auditLog = AuditLog.getLogger();
 
     private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
@@ -62,14 +67,22 @@ public class EventProcessorRestController {
 
     @GetMapping("components/{component}/processors")
     public Iterable componentProcessors(@PathVariable("component") String component,
-                                        @RequestParam("context") String context) {
+                                        @RequestParam("context") String context,
+                                        Principal principal) {
+        auditLog.info("[{}] Request to list Event processors in component \"{}\" for context \"{}\".",
+                      AuditLog.username(principal), component, context);
+
         return new ComponentEventProcessors(component, context, eventProcessors);
     }
 
     @PatchMapping("components/{component}/processors/{processor}/pause")
     public void pause(@PathVariable("component") String component,
                       @PathVariable("processor") String processor,
-                      @RequestParam("context") String context) {
+                      @RequestParam("context") String context,
+                      Principal principal) {
+        auditLog.info("[{}] Request to pause Event processor \"{}\" in component \"{}\" for context \"{}\".",
+                      AuditLog.username(principal), processor, component, context);
+
         clientIterable(component, context)
                 .forEach(client -> processorEventsSource.pauseProcessorRequest(client.name(), processor));
     }
@@ -77,7 +90,11 @@ public class EventProcessorRestController {
     @PatchMapping("components/{component}/processors/{processor}/start")
     public void start(@PathVariable("component") String component,
                       @PathVariable("processor") String processor,
-                      @RequestParam("context") String context) {
+                      @RequestParam("context") String context,
+                      Principal principal) {
+        auditLog.info("[{}] Request to start Event processor \"{}\" in component \"{}\" for context \"{}\".",
+                      AuditLog.username(principal), processor, component, context);
+
         clientIterable(component, context)
                 .forEach(client -> processorEventsSource.startProcessorRequest(client.name(), processor));
     }
