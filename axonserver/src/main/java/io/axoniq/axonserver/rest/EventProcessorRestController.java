@@ -40,7 +40,7 @@ import java.util.stream.StreamSupport;
 @RequestMapping("v1")
 public class EventProcessorRestController {
 
-    private final Logger auditLog = AuditLog.getLogger();
+    private static final Logger auditLog = AuditLog.getLogger();
 
     private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
@@ -68,9 +68,9 @@ public class EventProcessorRestController {
     @GetMapping("components/{component}/processors")
     public Iterable componentProcessors(@PathVariable("component") String component,
                                         @RequestParam("context") String context,
-                                        Principal principal) {
-        auditLog.info("[{}] Request to list Event processors in component \"{}\" for context \"{}\".",
-                      AuditLog.username(principal), component, context);
+                                        final Principal principal) {
+        auditLog.info("[{}@{}] Request to list Event processors in component \"{}\".",
+                      AuditLog.username(principal), context, component);
 
         return new ComponentEventProcessors(component, context, eventProcessors);
     }
@@ -79,9 +79,9 @@ public class EventProcessorRestController {
     public void pause(@PathVariable("component") String component,
                       @PathVariable("processor") String processor,
                       @RequestParam("context") String context,
-                      Principal principal) {
-        auditLog.info("[{}] Request to pause Event processor \"{}\" in component \"{}\" for context \"{}\".",
-                      AuditLog.username(principal), processor, component, context);
+                      final Principal principal) {
+        auditLog.info("[{}@{}] Request to pause Event processor \"{}\" in component \"{}\".",
+                      AuditLog.username(principal), context, processor, component);
 
         clientIterable(component, context)
                 .forEach(client -> processorEventsSource.pauseProcessorRequest(client.name(), processor));
@@ -91,9 +91,9 @@ public class EventProcessorRestController {
     public void start(@PathVariable("component") String component,
                       @PathVariable("processor") String processor,
                       @RequestParam("context") String context,
-                      Principal principal) {
-        auditLog.info("[{}] Request to start Event processor \"{}\" in component \"{}\" for context \"{}\".",
-                      AuditLog.username(principal), processor, component, context);
+                      final Principal principal) {
+        auditLog.info("[{}@{}] Request to start Event processor \"{}\" in component \"{}\".",
+                      AuditLog.username(principal), context, processor, component);
 
         clientIterable(component, context)
                 .forEach(client -> processorEventsSource.startProcessorRequest(client.name(), processor));
@@ -104,7 +104,11 @@ public class EventProcessorRestController {
                             @PathVariable("processor") String processor,
                             @PathVariable("segment") int segment,
                             @RequestParam("target") String target,
-                            @RequestParam("context") String context) {
+                            @RequestParam("context") String context,
+                            final Principal principal) {
+        auditLog.info("[{}@{}] Request to move segment {} of event processor \"{}\" in component \"{}\" to \"{}\".",
+                      AuditLog.username(principal), context, segment, processor, component, target);
+
         clientIterable(component, context).forEach(client -> {
             if (!target.equals(client.name())) {
                 processorEventsSource.releaseSegment(client.name(), processor, segment);
@@ -122,7 +126,11 @@ public class EventProcessorRestController {
     @PatchMapping("components/{component}/processors/{processor}/segments/split")
     public void splitSegment(@PathVariable("component") String component,
                              @PathVariable("processor") String processorName,
-                             @RequestParam("context") String context) {
+                             @RequestParam("context") String context,
+                             final Principal principal) {
+        auditLog.info("[{}@{}] Request to split segment of event processor \"{}\" in component \"{}\".",
+                      AuditLog.username(principal), context, processorName, component);
+
         List<String> clientNames = StreamSupport.stream(clientIterable(component, context).spliterator(), false)
                                                 .map(Client::name)
                                                 .collect(Collectors.toList());
@@ -139,7 +147,11 @@ public class EventProcessorRestController {
     @PatchMapping("components/{component}/processors/{processor}/segments/merge")
     public void mergeSegment(@PathVariable("component") String component,
                              @PathVariable("processor") String processorName,
-                             @RequestParam("context") String context) {
+                             @RequestParam("context") String context,
+                             final Principal principal) {
+        auditLog.info("[{}@{}] Request to merge segment of event processor \"{}\" in component \"{}\".",
+                      AuditLog.username(principal), context, processorName, component);
+
         List<String> clientNames = StreamSupport.stream(clientIterable(component, context).spliterator(), false)
                                                 .map(Client::name)
                                                 .collect(Collectors.toList());

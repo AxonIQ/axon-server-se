@@ -38,7 +38,7 @@ public class DevelopmentRestController {
     @DeleteMapping("purge-events")
     @ApiOperation(value="Clears all event and snapshot data from Axon Server", notes = "Only for development/test environments.")
     public void resetEventStore(Principal principal) {
-        auditLog.info("[{}] Request to delete all events in context \"default\".", AuditLog.username(principal));
+        auditLog.warn("[{}] Request to delete all events in context \"default\".", AuditLog.username(principal));
 
         eventStoreLocator.getEventStore("default").deleteAllEventData("default");
     }

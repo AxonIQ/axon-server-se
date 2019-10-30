@@ -34,7 +34,7 @@ import java.util.stream.StreamSupport;
 @RequestMapping("v1/components")
 public class ClientApplicationRestController {
 
-    private final Logger auditLog = AuditLog.getLogger();
+    private static final Logger auditLog = AuditLog.getLogger();
 
     private final Clients clients;
 

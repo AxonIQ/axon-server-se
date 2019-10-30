@@ -56,7 +56,7 @@ import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 @RequestMapping("/v1")
 public class CommandRestController {
 
-    private final Logger auditLog = AuditLog.getLogger();
+    private static final Logger auditLog = AuditLog.getLogger();
 
     private final CommandDispatcher commandDispatcher;
     private final CommandRegistrationCache registrationCache;

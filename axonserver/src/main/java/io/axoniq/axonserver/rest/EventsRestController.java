@@ -17,6 +17,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.rest.json.MetaDataJson;
 import io.axoniq.axonserver.rest.json.SerializedObjectJson;
@@ -39,6 +40,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -61,6 +63,9 @@ import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 @RestController("EventsRestController")
 @RequestMapping("/v1")
 public class EventsRestController {
+
+    private static final Logger auditLog = AuditLog.getLogger();
+
     private final EventDispatcher eventStoreClient;
     private final Logger logger = LoggerFactory.getLogger(EventsRestController.class);
 
@@ -76,7 +81,11 @@ public class EventsRestController {
     public SseEmitter findSnapshots(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
                                     @RequestParam(value = "aggregateId", required = true) String aggregateId,
                                     @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
-                                    @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence) {
+                                    @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
+                                    final Principal principal) {
+        auditLog.info("[{}@{}] Request for list of snapshots of aggregate \"{}\", [{}-{}]",
+                      AuditLog.username(principal), context, aggregateId, initialSequence, maxSequence);
+
         SseEmitter sseEmitter = new SseEmitter();
         GetAggregateSnapshotsRequest request = GetAggregateSnapshotsRequest.newBuilder()
                                                                            .setAggregateId(aggregateId)
@@ -123,8 +132,11 @@ public class EventsRestController {
                                           @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
                                           @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
                                           @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
-                                          @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout
-                                          ) {
+                                          @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout,
+                                          final Principal principal) {
+        auditLog.info("[{}@{}] Request for an event-stream of aggregate \"{}\", starting at sequence {}, token {}.",
+                      AuditLog.username(principal), context, aggregateId, initialSequence, trackingToken);
+
         SseEmitter sseEmitter = new SseEmitter(TimeUnit.SECONDS.toMillis(timeout));
         if( aggregateId != null) {
 
@@ -205,7 +217,10 @@ public class EventsRestController {
                     required = false, dataType = "string", paramType = "header")
     })
     public Future<Void> submitEvents(@RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
-                                     @Valid @RequestBody JsonEventList jsonEvents) {
+                                     @Valid @RequestBody JsonEventList jsonEvents,
+                                     final Principal principal) {
+        auditLog.info("[{}@{}] Request to submit events.", AuditLog.username(principal), context);
+
         if( jsonEvents.messages.isEmpty()) throw new IllegalArgumentException("Missing messages");
         CompletableFuture<Void> result = new CompletableFuture<>();
         StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context, new StreamObserver<Confirmation>() {
@@ -248,7 +263,9 @@ public class EventsRestController {
     @Deprecated
     public Future<Void> appendSnapshotOld(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
-            @RequestBody @Valid JsonEvent jsonEvent) {
+            @RequestBody @Valid JsonEvent jsonEvent,
+            final Principal principal) {
+        auditLog.info("[{}@{}] Request to ");
         return appendSnapshot(context, jsonEvent);
     }
 

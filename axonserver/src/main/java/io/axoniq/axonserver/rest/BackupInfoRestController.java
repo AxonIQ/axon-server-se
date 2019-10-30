@@ -41,7 +41,7 @@ import javax.sql.DataSource;
 @RequestMapping("/v1/backup")
 public class BackupInfoRestController {
 
-    private final Logger auditLog = AuditLog.getLogger();
+    private static final Logger auditLog = AuditLog.getLogger();
 
     private final DataSource dataSource;
     private final LocalEventStore localEventStore;
