@@ -17,52 +17,52 @@ service MessagingClusterService {
  * Services on config leader
  */
 service RaftConfigService {
-    rpc InitCluster (ContextNames) returns (Confirmation) {
+    rpc InitCluster (ContextNames) returns (InstructionResult) {
     }
 
-    rpc JoinCluster (NodeInfo) returns (Confirmation) {
+    rpc JoinCluster (NodeInfo) returns (InstructionResult) {
     }
 
-    rpc DeleteNode (NodeName) returns (Confirmation) {
+    rpc DeleteNode (NodeName) returns (InstructionResult) {
     }
 
-    rpc CreateContext (Context) returns (Confirmation) {
+    rpc CreateContext (Context) returns (InstructionResult) {
     }
 
-    rpc AddNodeToContext (NodeContext) returns (Confirmation) {
+    rpc AddNodeToContext (NodeContext) returns (InstructionResult) {
     }
 
-    rpc DeleteNodeFromContext (NodeContext) returns (Confirmation) {
+    rpc DeleteNodeFromContext (NodeContext) returns (InstructionResult) {
     }
 
-    rpc DeleteContext (ContextName) returns (Confirmation) {
+    rpc DeleteContext (ContextName) returns (InstructionResult) {
     }
 
     rpc UpdateApplication (Application) returns (Application) {
     }
 
-    rpc DeleteApplication (Application) returns (Confirmation) {
+    rpc DeleteApplication (Application) returns (InstructionResult) {
     }
 
     rpc RefreshToken (Application) returns (Application) {
     }
 
-    rpc UpdateUser (User) returns (Confirmation) {
+    rpc UpdateUser (User) returns (InstructionResult) {
     }
 
-    rpc DeleteUser (User) returns (Confirmation) {
+    rpc DeleteUser (User) returns (InstructionResult) {
     }
 
-    rpc UpdateLoadBalanceStrategy (LoadBalanceStrategy) returns (Confirmation) {
+    rpc UpdateLoadBalanceStrategy (LoadBalanceStrategy) returns (InstructionResult) {
     }
 
-    rpc DeleteLoadBalanceStrategy (LoadBalanceStrategy) returns (Confirmation) {
+    rpc DeleteLoadBalanceStrategy (LoadBalanceStrategy) returns (InstructionResult) {
     }
 
-    rpc UpdateProcessorLBStrategy (ProcessorLBStrategy) returns (Confirmation) {
+    rpc UpdateProcessorLBStrategy (ProcessorLBStrategy) returns (InstructionResult) {
     }
 
-    rpc DeleteProcessorLBStrategy (ProcessorLBStrategy) returns (Confirmation) {
+    rpc DeleteProcessorLBStrategy (ProcessorLBStrategy) returns (InstructionResult) {
     }
 }
 
@@ -74,7 +74,7 @@ service RaftGroupService {
     rpc InitContext (Context) returns (ContextConfiguration) {
     }
 
-    rpc DeleteContext (ContextName) returns (Confirmation) {
+    rpc DeleteContext (ContextName) returns (InstructionResult) {
     }
 
     rpc AddServer (Context) returns (ContextUpdateConfirmation) {
@@ -83,40 +83,40 @@ service RaftGroupService {
     rpc RemoveServer (Context) returns (ContextUpdateConfirmation) {
     }
 
-    rpc MergeAppAuthorization (ContextApplication) returns (Confirmation) {
+    rpc MergeAppAuthorization (ContextApplication) returns (InstructionResult) {
     }
 
-    rpc DeleteAppAuthorization (ContextApplication) returns (Confirmation) {
+    rpc DeleteAppAuthorization (ContextApplication) returns (InstructionResult) {
     }
 
-    rpc MergeUserAuthorization (ContextUser) returns (Confirmation) {
+    rpc MergeUserAuthorization (ContextUser) returns (InstructionResult) {
     }
 
-    rpc DeleteUserAuthorization (ContextUser) returns (Confirmation) {
+    rpc DeleteUserAuthorization (ContextUser) returns (InstructionResult) {
     }
 
-    rpc MergeLoadBalanceStrategy (ContextLoadBalanceStrategy) returns (Confirmation) {
+    rpc MergeLoadBalanceStrategy (ContextLoadBalanceStrategy) returns (InstructionResult) {
     }
 
-    rpc DeleteLoadBalanceStrategy (ContextLoadBalanceStrategy) returns (Confirmation) {
+    rpc DeleteLoadBalanceStrategy (ContextLoadBalanceStrategy) returns (InstructionResult) {
     }
 
-    rpc MergeProcessorLBStrategy (ContextProcessorLBStrategy) returns (Confirmation) {
+    rpc MergeProcessorLBStrategy (ContextProcessorLBStrategy) returns (InstructionResult) {
     }
 
-    rpc DeleteProcessorLBStrategy (ContextProcessorLBStrategy) returns (Confirmation) {
+    rpc DeleteProcessorLBStrategy (ContextProcessorLBStrategy) returns (InstructionResult) {
     }
 
     rpc GetStatus (Context) returns (stream Context) {
     }
 
-    rpc AppendEntry (ContextEntry) returns (Confirmation) {
+    rpc AppendEntry (ContextEntry) returns (InstructionResult) {
     }
 
     rpc Configuration (ContextName) returns (ContextConfiguration) {
     }
 
-    rpc TransferLeadership (ContextName) returns (Confirmation) {}
+    rpc TransferLeadership (ContextName) returns (InstructionResult) {}
 }
 
 message NodeContext {
@@ -243,7 +243,7 @@ message ConnectRequest {
 
 message ConnectorResponse {
     oneof response {
-        Confirmation confirmation = 1;
+        InstructionResult confirmation = 1;
         ForwardedCommand command = 2;
         ConnectResponse connect_response = 3;
         ForwardedQuery query = 4;
@@ -397,7 +397,7 @@ message SynchronizationReplicaOutbound {
         StartSynchronization start = 1;
         Permits permits = 2;
         TransactionConfirmation confirmation = 3;
-        Confirmation safepoint_confirmation = 4;
+        InstructionResult safepoint_confirmation = 4;
     }
 
 }
