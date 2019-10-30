@@ -31,7 +31,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
     private static final SerializedCommandProviderInbound DEFAULT_INSTANCE = new SerializedCommandProviderInbound(CommandProviderInbound.getDefaultInstance());
     private volatile CommandProviderInbound wrapped;
     private final SerializedCommand serializedCommand;
-    private final Confirmation confirmation;
+    private final InstructionResult confirmation;
 
     public SerializedCommandProviderInbound(CommandProviderInbound defaultInstance) {
         wrapped = defaultInstance;
@@ -39,7 +39,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
         confirmation = defaultInstance.hasConfirmation() ? defaultInstance.getConfirmation() : null;
     }
 
-    public SerializedCommandProviderInbound(SerializedCommand serializedCommand, Confirmation confirmation) {
+    public SerializedCommandProviderInbound(SerializedCommand serializedCommand, InstructionResult confirmation) {
         this.serializedCommand = serializedCommand;
         this.confirmation = confirmation;
     }
@@ -112,7 +112,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
         return wrapped;
     }
 
-    public ConfirmationOrBuilder getConfirmation() {
+    public InstructionResultOrBuilder getInstructionResult() {
         return confirmation;
     }
 
@@ -122,7 +122,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
 
     public static class Builder extends GeneratedMessageV3.Builder<Builder> {
         private SerializedCommand serializedCommand;
-        private Confirmation confirmation;
+        private InstructionResult confirmation;
 
         @Override
         protected GeneratedMessageV3.FieldAccessorTable internalGetFieldAccessorTable() {
@@ -149,8 +149,8 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
             return this;
         }
 
-        public Builder setConfirmation(Confirmation messageId) {
-            confirmation = messageId;
+        public Builder setConfirmation(InstructionResult confirmation) {
+            this.confirmation = confirmation;
             return this;
         }
     }
