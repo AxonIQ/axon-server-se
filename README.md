@@ -71,7 +71,6 @@ we have that:
     (2) candidate's log is at least as up-to-date as receiver's log
     - **active back-up returns always true, immediately**
     -----------------------------------------------
-    - *if votes received from majority of servers: become leader*
     - ***in order to be elected a node should receive, in the same term, 
     votes from the majority of primary nodes and at least n active 
     backup nodes (where n <= # backup nodes)***
