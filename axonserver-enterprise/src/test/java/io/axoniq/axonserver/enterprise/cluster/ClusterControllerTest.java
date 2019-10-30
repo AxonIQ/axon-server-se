@@ -3,19 +3,17 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.AxonServer;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterServiceInterface;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
-import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
+import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.ChannelCloser;
-import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.licensing.Limits;
@@ -34,12 +32,9 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,8 +42,6 @@ import javax.persistence.EntityManager;
 
 import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -78,10 +71,14 @@ public class ClusterControllerTest {
     private LogReplicationService logReplicationService;
     @MockBean
     private GrpcRaftController raftController;
+    private Context context;
+
+    @Autowired
+    private ClusterNodeRepository clusterNodeRepository;
 
     @Before
     public void setUp()  {
-        Context context = new Context(Topology.DEFAULT_CONTEXT);
+        context = new Context(Topology.DEFAULT_CONTEXT);
         entityManager.persist(context);
         FeatureChecker limits = new FeatureChecker() {
             @Override
@@ -131,12 +128,12 @@ public class ClusterControllerTest {
         when(raftController.isAutoStartup()).thenReturn(false);
 
         RaftGroupRepositoryManager mockRaftGroupRepositoryManager = mock(RaftGroupRepositoryManager.class);
-        when( mockRaftGroupRepositoryManager.findByGroupId(anyString())).thenReturn(Collections.singleton(new JpaRaftGroupNode("default",
-                                                                                                                               Node.newBuilder().setNodeId("MyName").setNodeName("MyName").build())));
         CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
-        testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration, tagsConfiguration,
-                                            entityManager, stubFactory, nodeSelectionStrategy,
+        testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration,
+                                            clusterNodeRepository,
+                                            tagsConfiguration,
+                                            stubFactory,
                                             mockRaftGroupRepositoryManager,
                                             queryDispatcher, commandDispatcher,
                                             eventPublisher, limits, channelCloser);
@@ -193,18 +190,6 @@ public class ClusterControllerTest {
     }
 
     @Test
-    public void findNodeForClient() {
-        List<ClusterNode> clusterNodes = new ArrayList<>();
-        clusterNodes.add(new ClusterNode("MyName", "hostName", "internalHostName", 0, 0, 0));
-        Context context = new Context(Topology.DEFAULT_CONTEXT);
-        clusterNodes.get(0).addContext(context, "MyName", Role.PRIMARY);
-        testSubject.start();
-        when(nodeSelectionStrategy.selectNode(any(), any(), any())).thenReturn("Dummy");
-        ClusterNode node = testSubject.findNodeForClient("client", "component", Topology.DEFAULT_CONTEXT);
-        assertEquals(testSubject.getMe(), node);
-    }
-
-    @Test
     public void messagingNodes() {
         long initial = testSubject.nodes().count();
         testSubject.addConnection(NodeInfo.newBuilder()
@@ -219,11 +204,6 @@ public class ClusterControllerTest {
                 .setGrpcInternalPort(0)
                 .build());
         assertEquals(initial+1, testSubject.nodes().count());
-    }
-
-    @Test
-    public void canRebalance()  {
-        assertFalse(testSubject.canRebalance("client", "component", Topology.DEFAULT_CONTEXT));
     }
 
     @Test

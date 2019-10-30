@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.topology;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.topology.AxonServerNode;
@@ -24,10 +25,14 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 public class ClusterTopology implements Topology {
     private final ClusterController clusterController;
     private final GrpcRaftController raftController;
+    private final NodeSelector nodeSelector;
 
-    public ClusterTopology(ClusterController clusterController, GrpcRaftController raftController) {
+    public ClusterTopology(ClusterController clusterController,
+                           GrpcRaftController raftController,
+                           NodeSelector nodeSelector) {
         this.clusterController = clusterController;
         this.raftController = raftController;
+        this.nodeSelector = nodeSelector;
     }
 
     @Override
@@ -66,7 +71,7 @@ public class ClusterTopology implements Topology {
 
     @Override
     public AxonServerNode findNodeForClient(String clientName, String componentName, String context) {
-        return clusterController.findNodeForClient(clientName, componentName, context);
+        return nodeSelector.findNodeForClient(clientName, componentName, context);
     }
 
     @Override

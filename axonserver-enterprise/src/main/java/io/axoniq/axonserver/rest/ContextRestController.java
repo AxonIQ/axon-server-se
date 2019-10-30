@@ -74,9 +74,9 @@ public class ContextRestController {
                 json.setPendingSince(context.getPendingSince().getTime());
             }
             json.setLeader(raftLeaderProvider.getLeader(context.getName()));
-            json.setNodes(context.getAllNodes().stream().map(n -> n.getClusterNode().getName()).sorted()
+            json.setNodes(context.getNodes().stream().map(n -> n.getClusterNode().getName()).sorted()
                                  .collect(Collectors.toList()));
-            json.setRoles(context.getAllNodes().stream().map(ContextJSON.NodeAndRole::new).sorted()
+            json.setRoles(context.getNodes().stream().map(ContextJSON.NodeAndRole::new).sorted()
                                  .collect(Collectors.toList()));
             return json;
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());

@@ -8,6 +8,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupRepositoryManager;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
@@ -67,8 +68,9 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @Conditional(ClusteringAllowed.class)
-    public Topology topology(ClusterController clusterController, GrpcRaftController grpcRaftController) {
-        return new ClusterTopology(clusterController, grpcRaftController);
+    public Topology topology(ClusterController clusterController, GrpcRaftController grpcRaftController,
+                             NodeSelector nodeSelector) {
+        return new ClusterTopology(clusterController, grpcRaftController, nodeSelector);
     }
 
     @Bean

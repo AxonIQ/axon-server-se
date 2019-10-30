@@ -24,7 +24,7 @@ public class JpaRaftGroupNode {
     private String host;
     private int port;
     private String nodeName;
-    private Integer role;
+    private Role role;
 
     public JpaRaftGroupNode(String groupId, Node node) {
         this.groupId = groupId;
@@ -32,7 +32,7 @@ public class JpaRaftGroupNode {
         this.host = node.getHost();
         this.port = node.getPort();
         this.nodeName = node.getNodeName();
-        this.role = node.getRoleValue();
+        this.role = node.getRole();
     }
 
     public JpaRaftGroupNode() {
@@ -88,16 +88,13 @@ public class JpaRaftGroupNode {
                    .build();
     }
 
-    void setRole(Integer role) {
+
+    public void setRole(Role role) {
         this.role = role;
     }
 
-    public void setRole(Role role) {
-        this.role = RoleUtils.getNumber(role);
-    }
-
     public Role getRole() {
-        return RoleUtils.forNumber(this.role);
+        return RoleUtils.getOrDefault(role);
     }
 
     public static class Key implements Serializable {
