@@ -35,7 +35,6 @@ public class SnapshotLogEntryConsumer implements LogEntryConsumer {
     @Override
     public void consumeLogEntry(String groupId, Entry e) throws Exception {
         TransactionWithToken transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
-        localEventStore.initContext(groupId, false);
         localEventStore.syncSnapshots(groupId, asSerializedTransactionWithToken(transactionWithToken));
     }
 }

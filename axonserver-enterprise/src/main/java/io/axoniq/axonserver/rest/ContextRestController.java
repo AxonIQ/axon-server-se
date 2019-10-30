@@ -202,6 +202,9 @@ public class ContextRestController {
      */
     @GetMapping(path = "context/roles")
     public Set<String> roles() {
-        return Arrays.stream(Role.values()).map(Enum::name).collect(Collectors.toSet());
+        return Arrays.stream(Role.values())
+                     .filter(r -> r.getNumber() >= 0)
+                     .map(Enum::name)
+                     .collect(Collectors.toSet());
     }
 }
