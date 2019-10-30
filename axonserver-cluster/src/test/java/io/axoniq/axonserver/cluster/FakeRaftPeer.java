@@ -171,4 +171,9 @@ public class FakeRaftPeer implements RaftPeer {
     public boolean votingNode() {
         return RoleUtils.votingNode(role);
     }
+
+    @Override
+    public Role role() {
+        return role;
+    }
 }

@@ -102,4 +102,14 @@ public interface RaftConfiguration {
     default boolean forceSnapshotOnJoin() {
         return false;
     }
+
+    /**
+     * Checks if a specific serialized object contains event or snapshot data to be stored in the event store.
+     *
+     * @param type serialized object type
+     * @return true if serialized object represents event or snapshot data
+     */
+    default boolean isSerializedEventData(String type) {
+        return false;
+    }
 }

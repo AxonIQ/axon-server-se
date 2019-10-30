@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -350,6 +351,11 @@ public class RaftClusterTestFixture {
             @Override
             public boolean votingNode() {
                 return true;
+            }
+
+            @Override
+            public Role role() {
+                return Role.PRIMARY;
             }
         }
 

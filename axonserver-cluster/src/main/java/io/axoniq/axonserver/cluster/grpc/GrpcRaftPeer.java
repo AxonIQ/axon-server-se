@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.cluster.TimeoutNowRequest;
 import io.axoniq.axonserver.grpc.cluster.TimeoutNowResponse;
 import io.grpc.stub.CallStreamObserver;
@@ -346,5 +347,10 @@ public class GrpcRaftPeer implements RaftPeer {
     @Override
     public boolean votingNode() {
         return RoleUtils.votingNode(node.getRole());
+    }
+
+    @Override
+    public Role role() {
+        return node.getRole();
     }
 }

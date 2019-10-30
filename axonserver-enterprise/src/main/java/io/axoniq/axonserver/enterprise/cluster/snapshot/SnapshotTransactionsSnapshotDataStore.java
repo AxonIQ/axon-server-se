@@ -66,6 +66,7 @@ public class SnapshotTransactionsSnapshotDataStore implements SnapshotDataStore 
     public void applySnapshotData(SerializedObject serializedObject) {
         try {
             TransactionWithToken transactionWithToken = TransactionWithToken.parseFrom(serializedObject.getData());
+            localEventStore.initContext(context, false);
             localEventStore.syncSnapshots(context, SerializedTransactionWithTokenConverter.asSerializedTransactionWithToken(transactionWithToken));
         } catch (InvalidProtocolBufferException e) {
             throw new SnapshotDeserializationException("Unable to deserialize events transaction.", e);

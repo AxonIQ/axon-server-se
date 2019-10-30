@@ -69,7 +69,12 @@ message Entry {
         SerializedObject serializedObject = 3;
         Config newConfiguration = 4;
         LeaderElected leaderElected = 5;
+        DummyEntry dummyEntry = 6;
     }
+}
+
+// Dummy content for sending an entry that is not to be applied on the remote peer
+message DummyEntry {
 }
 
 message AppendEntriesResponse {

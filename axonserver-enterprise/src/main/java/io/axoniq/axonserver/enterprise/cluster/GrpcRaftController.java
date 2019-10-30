@@ -18,6 +18,7 @@ import io.axoniq.axonserver.enterprise.config.RaftProperties;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
@@ -34,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
@@ -46,6 +46,7 @@ import static java.util.Collections.singletonList;
 @Controller
 public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
+    private static final boolean NO_EVENT_STORE = false;
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftController.class);
     private final JpaRaftStateRepository raftStateRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
@@ -88,7 +89,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
             try {
-                createRaftGroup(context.getGroupId(), context.getNodeId());
+                createRaftGroup(context.getGroupId(), context.getNodeId(), NO_EVENT_STORE);
             } catch (Exception ex) {
                 logger.warn("{}: Failed to initialize context", context.getGroupId(), ex);
             }
@@ -108,14 +109,24 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
 
+    /**
+     * Creates a new raft group (when a context is created) with the current node as a primary member.
+     * Initializes the event store for the context (if the group is not the _admin group)
+     *
+     * @param groupId   the name of the raft group
+     * @param nodeLabel the unique id of the node
+     * @param nodeName  the name of the node
+     * @return the created raft group
+     */
     public RaftGroup initRaftGroup(String groupId, String nodeLabel, String nodeName) {
         Node node = Node.newBuilder()
                         .setNodeId(nodeLabel)
                         .setHost(messagingPlatformConfiguration.getFullyQualifiedInternalHostname())
                         .setPort(messagingPlatformConfiguration.getInternalPort())
                         .setNodeName(nodeName)
+                        .setRole(Role.PRIMARY)
                         .build();
-        RaftGroup raftGroup = createRaftGroup(groupId, nodeLabel);
+        RaftGroup raftGroup = createRaftGroup(groupId, nodeLabel, !isAdmin(groupId));
         raftGroup.raftConfiguration().update(singletonList(node));
         if( replicationServerStarted) {
             raftGroup.connect();
@@ -123,7 +134,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return raftGroup;
     }
 
-    private RaftGroup createRaftGroup(String groupId, String localNodeId) {
+    private RaftGroup createRaftGroup(String groupId, String localNodeId, boolean initializeEventStore) {
         synchronized (raftGroupMap) {
             RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
             if( existingRaftGroup != null) return existingRaftGroup;
@@ -142,7 +153,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                                                     messagingPlatformConfiguration,
                                                     newConfigurationConsumer);
 
-            if (!isAdmin(groupId)) {
+            if (initializeEventStore) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
             }
             applicationContext.getBeansOfType(LogEntryConsumer.class)
@@ -231,6 +242,14 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         return group.localNode();
     }
 
+    /**
+     * Finds a raft node. If it does not exists yet (node is just added to a raft group), it creates a new raft group on
+     * this node.
+     *
+     * @param groupId the groupId of the raft group
+     * @param nodeId  the id to use to register the current node if the group does not exist yet
+     * @return the existing or newly created raft node
+     */
     @Override
     public RaftNode getOrCreateRaftNode(String groupId, String nodeId) {
         RaftGroup raftGroup = raftGroupMap.get(groupId);
@@ -243,7 +262,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
-                raftGroup = createRaftGroup(groupId, nodeId);
+                raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE);
             }
         }
         return raftGroup.localNode();
@@ -276,10 +295,10 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
     /**
      * Retrieve all non-admin Contexts that this node is member of.
-     * @return List of context names
+     * @return Iterable of context names
      */
     public Iterable<String> getStorageContexts() {
-        return raftGroupMap.keySet().stream().filter(groupId -> !isAdmin(groupId)).collect(Collectors.toList());
+        return raftGroupNodeRepository.storageContexts();
     }
 
     public Set<String> raftGroups() {

@@ -22,18 +22,21 @@ import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManager;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
+import io.axoniq.axonserver.enterprise.logconsumer.EventLogEntryConsumer;
+import io.axoniq.axonserver.enterprise.logconsumer.SnapshotLogEntryConsumer;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
-
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -90,6 +93,10 @@ public class GrpcRaftGroup implements RaftGroup {
             @Override
             public void update(List<Node> nodes) {
                 membersStore.set(nodes);
+                nodes.stream()
+                     .filter(n -> n.getNodeId().equals(localNodeId) && RoleUtils.hasStorage(n.getRole()))
+                     .findFirst()
+                     .ifPresent(n -> localEventStore.initContext(groupId, false));
             }
 
             @Override
@@ -161,6 +168,12 @@ public class GrpcRaftGroup implements RaftGroup {
             public int maxMessageSize() {
                 return messagingPlatformConfiguration.getMaxMessageSize();
             }
+
+            @Override
+            public boolean isSerializedEventData(String type) {
+                return EventLogEntryConsumer.LOG_ENTRY_TYPE.equals(type)
+                        || SnapshotLogEntryConsumer.LOG_ENTRY_TYPE.equals(type);
+            }
         };
 
         List<SnapshotDataStore> dataProviders = snapshotDataProvidersFactory.apply(groupId);
@@ -208,13 +221,25 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public long lastAppliedEventSequence() {
-        if( isAdmin(context)) return 0L;
-        return localEventStore.getLastToken(context);
+        try {
+            return localEventStore.getLastToken(context);
+        } catch (MessagingPlatformException mpe) {
+            if (ErrorCode.NO_EVENTSTORE.equals(mpe.getErrorCode())) {
+                return -1;
+            }
+            throw mpe;
+        }
     }
 
     @Override
     public long lastAppliedSnapshotSequence() {
-        if( isAdmin(context)) return 0L;
-        return localEventStore.getLastSnapshot(context);
+        try {
+            return localEventStore.getLastSnapshot(context);
+        } catch (MessagingPlatformException mpe) {
+            if (ErrorCode.NO_EVENTSTORE.equals(mpe.getErrorCode())) {
+                return -1;
+            }
+            throw mpe;
+        }
     }
 }
