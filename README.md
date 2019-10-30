@@ -45,3 +45,77 @@ application reconnects to the messaging platform the blacklist is empty.
 ### Event failure
 
 ## Query routing
+
+# Clustering
+
+## Node types
+
+Any node can join a cluster with 4 different possible roles:
+
+| Node type          | Events\Snapshots storage| Messaging | Voting                            | Eligible  | Participate in committing and leader step-down      |
+| ------------------ |:----------:             |:---------:|:---------:                        |:---------:|:---------:                                          |
+| **PRIMARY**        | yes                     | yes       | yes                               | yes       | yes, majority                                       |
+| **MESSAGING ONLY** | no                      | yes       | no                                | no        | no                                                  |
+| **ACTIVE BACK-UP** | yes                     | no        | yes, at least n (always vote true)| no        | yes, at least n                                     |
+| **PASSIVE BACK-UP**| yes                     | no        | no                                | no        | no                                                  |
+
+### Roles of nodes and RAFT modification
+
+In order to introduces different roles for raft nodes, some rules 
+of thumb derived from raft protocol must be changed. In particular
+we have that:
+
+- Leader Election 
+    - a follower (primary) deny a vote if term < currentTerm
+    - a follower (primary) grant a vote if (1) votedFor is null or candidateId and
+    (2) candidate's log is at least as up-to-date as receiver's log
+    - **active back-up returns always true, immediately**
+    -----------------------------------------------
+    - *if votes received from majority of servers: become leader*
+    - ***in order to be elected a node should receive, in the same term, 
+    votes from the majority of primary nodes and at least n active 
+    backup nodes where (n <= # backup nodes) ??***
+    
+- Leader Step-down (the goal is to avoid a client is connected to a 
+leader that is unable to perform a commit)
+    - ***if election timeout elapses without a successful round of 
+    heartbeats to a majority of its cluster and at least n active 
+    backup node (n <= # backup nodes), the leader steps down***
+    
+- Followers
+    - **if election timeout elapses without receiving AppendEntries 
+    from current leader or granting vote to candidate, it converts to 
+    pre-vote state if it is a primaryNode**
+    
+- Committing - performed by leader only
+    - **if there exists an X such that (1) X > commitIndex, (2) a majority 
+    of primary nodes' matchIndex[i] >= X, (3) log[X].term == currentTerm,
+    (5) at least n active back-up node having matchIndex >= X, then set commitIndex = X**
+
+
+The following graph represents the state diagram of raft nodes:
+
+
+@startuml
+scale 350 width
+[*] -up-> Prospect
+[*] -right-> Idle
+Prospect -right-> Secondary
+Prospect -down-> Follower
+Secondary -up-> Fatal
+Idle -up-> Secondary
+Idle -right-> Follower
+Follower -right-> Candidate
+Follower -right-> PreVote
+Follower -up-> Fatal
+PreVote -right-> Candidate
+Candidate -down-> Leader
+Candidate --> Candidate
+Candidate -left-> Follower
+Leader -up-> Follower
+PreVote -left-> Follower
+PreVote -up-> Removed
+Secondary -up-> Removed
+Candidate -up-> Removed
+'Leader -up-> Removed
+@enduml
