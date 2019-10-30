@@ -9,14 +9,20 @@ import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import java.util.function.Supplier;
 
 /**
+ * Events published when something happens in the Axon Server cluster.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class ClusterEvents {
     private ClusterEvents() {
     }
 
+    /**
+     * Event on new Axon Server node added to the cluster.
+     */
     @KeepNames
     public static class AxonServerNodeConnected {
+
         private final NodeInfo nodeInfo;
 
         public AxonServerNodeConnected(NodeInfo nodeInfo) {
@@ -28,6 +34,9 @@ public class ClusterEvents {
         }
     }
 
+    /**
+     * Event on known Axon Server node connects to current node.
+     */
     @KeepNames
     public static class AxonServerInstanceConnected extends TopologyEvents.TopologyBaseEvent {
 
@@ -41,10 +50,18 @@ public class ClusterEvents {
         public RemoteConnection getRemoteConnection() {
             return remoteConnection;
         }
+
+        public String getNodeName() {
+            return remoteConnection.getClusterNode().getName();
+        }
     }
 
+    /**
+     * Event on known Axon Server node disconnects from current node.
+     */
     @KeepNames
     public static class AxonServerInstanceDisconnected extends TopologyEvents.TopologyBaseEvent {
+
         private final String nodeName;
 
         public AxonServerInstanceDisconnected(String nodeName) {
@@ -59,7 +76,7 @@ public class ClusterEvents {
 
 
     /**
-     * @author Marc Gathier
+     * Event when current node is no longer leader for a context.
      */
     @KeepNames
     public static class LeaderStepDown extends TopologyEvents.TopologyBaseEvent {
@@ -77,7 +94,7 @@ public class ClusterEvents {
     }
 
     /**
-     * @author Marc Gathier
+     * Event when there is a change of leader for a context.
      */
     @KeepNames
     public static class LeaderConfirmation extends TopologyEvents.TopologyBaseEvent {
@@ -100,6 +117,9 @@ public class ClusterEvents {
         }
     }
 
+    /**
+     * Event when the current node becomes leader for a context.
+     */
     @KeepNames
     public static class BecomeLeader extends TopologyEvents.TopologyBaseEvent {
 
@@ -121,8 +141,12 @@ public class ClusterEvents {
         }
     }
 
+    /**
+     * Event when an axon server node is deleted from the cluster.
+     */
     @KeepNames
     public static class AxonServerNodeDeleted extends TopologyEvents.TopologyBaseEvent {
+
         private final String node;
 
         public AxonServerNodeDeleted(String name) {

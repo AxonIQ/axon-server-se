@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -18,7 +19,9 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 /**
+ * Stores information about a Context.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Entity(name = "Context")
 public class Context implements Serializable {
@@ -55,7 +58,11 @@ public class Context implements Serializable {
     }
 
     public Collection<String> getNodeNames() {
-        return nodes.stream().map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
+        return getNodeNames(n -> true);
+    }
+
+    public Collection<String> getNodeNames(Predicate<ContextClusterNode> filter) {
+        return nodes.stream().filter(filter).map(t -> t.getClusterNode().getName()).collect(Collectors.toSet());
     }
 
     @Override
@@ -75,18 +82,22 @@ public class Context implements Serializable {
         return Objects.hash(name);
     }
 
-    @PreRemove
-    public void clearContexts() {
-        nodes.forEach(ccn -> ccn.getClusterNode().remove(ccn));
-        nodes.clear();
-    }
-
+    /**
+     * removes a reference to a cluster node.
+     *
+     * @param ccn the reference to the cluster node
+     */
     public void remove(ContextClusterNode ccn) {
         nodes.remove(ccn);
     }
 
-    public Set<ContextClusterNode> getAllNodes() {
-        return nodes;
+    /**
+     * Before removing a context ensure that the reference is also removed from the clusternode.
+     */
+    @PreRemove
+    public void clearNodes() {
+        nodes.forEach(ccn -> ccn.getClusterNode().remove(ccn));
+        nodes.clear();
     }
 
     public void addClusterNode(ContextClusterNode contextClusterNode) {

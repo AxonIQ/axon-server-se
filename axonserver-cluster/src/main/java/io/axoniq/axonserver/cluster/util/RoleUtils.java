@@ -41,4 +41,14 @@ public class RoleUtils {
     public static Role getOrDefault(Role role) {
         return role == null ? DEFAULT_ROLE : role;
     }
+
+    /**
+     * Returns if role is a context member role that allows clients to connect.
+     *
+     * @param role the role
+     * @return true if a client can connect to a node with this role
+     */
+    public static boolean allowsClientConnect(Role role) {
+        return Role.PRIMARY.equals(role) || Role.MESSAGING_ONLY.equals(role);
+    }
 }

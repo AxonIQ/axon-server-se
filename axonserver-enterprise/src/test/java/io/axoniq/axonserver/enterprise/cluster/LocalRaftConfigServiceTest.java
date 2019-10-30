@@ -91,7 +91,7 @@ public class LocalRaftConfigServiceTest {
                         contextMap.put(context.getName(), context);
                     }
                     Map<String, ClusterNode> currentNodes = new HashMap<>();
-                    context.getAllNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
+                    context.getNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()));
                     Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();
                     contextConfiguration.getNodesList().forEach(n -> newNodes.put(n.getNode().getNodeName(), n));
 
@@ -129,12 +129,12 @@ public class LocalRaftConfigServiceTest {
         private Map<String, Node> nodes = new ConcurrentHashMap<>();
 
         private GroupDB(io.axoniq.axonserver.enterprise.jpa.Context context) {
-            context.getAllNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), Node.newBuilder()
-                                                                                          .setNodeName(ccn.getClusterNode()
+            context.getNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), Node.newBuilder()
+                                                                                       .setNodeName(ccn.getClusterNode()
                                                                                                           .getName())
-                                                                                          .setNodeId(ccn.getClusterNodeLabel())
-                                                                                          .setRole(ccn.getRole())
-                                                                                          .build()));
+                                                                                       .setNodeId(ccn.getClusterNodeLabel())
+                                                                                       .setRole(ccn.getRole())
+                                                                                       .build()));
         }
 
         public GroupDB() {
@@ -280,6 +280,7 @@ public class LocalRaftConfigServiceTest {
 
         when(grpcRaftController.getRaftNode("_admin")).thenReturn(adminNode);
         ContextController contextcontroller = mock(ContextController.class);
+        ClusterController clusterController = mock(ClusterController.class);
         RaftGroupServiceFactory raftGroupServiceFactory = mock(RaftGroupServiceFactory.class);
 
         when(raftGroupServiceFactory.getRaftGroupService(anyString())).thenReturn(fakeRaftGroupService);
@@ -297,7 +298,7 @@ public class LocalRaftConfigServiceTest {
                 return "localhost";
             }
         });
-        when(contextcontroller.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
+        when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
             String name = invocationOnMock.getArgument(0);
             return adminDB.nodeMap.get(name);
         });
@@ -320,6 +321,7 @@ public class LocalRaftConfigServiceTest {
         UserController userController = mock(UserController.class);
         testSubject = new LocalRaftConfigService(grpcRaftController,
                                                  contextcontroller,
+                                                 clusterController,
                                                  raftGroupServiceFactory,
                                                  applicationController,
                                                  userController,
