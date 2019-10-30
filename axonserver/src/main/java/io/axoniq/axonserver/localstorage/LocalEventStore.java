@@ -57,6 +57,7 @@ import java.util.stream.Stream;
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
+    private static final boolean CREATE_IF_MISSING = true;
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
@@ -128,8 +129,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private Workers workers(String context) {
+        return workers(context, false);
+    }
+
+    private Workers workers(String context, boolean createIfMissing) {
         Workers workers = workersMap.get(context);
-        if( workers == null) throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
+        if (workers == null) {
+            if (createIfMissing) {
+                synchronized (workersMap) {
+                    initContext(context, false);
+                    workers = workersMap.get(context);
+                }
+            } else {
+                throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
+            }
+        }
         return workers;
     }
     @Override
@@ -369,13 +383,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public long syncEvents(String context, SerializedTransactionWithToken value) {
-        SyncStorage writeStorage = workers(context).eventSyncStorage;
+        SyncStorage writeStorage = workers(context, CREATE_IF_MISSING).eventSyncStorage;
         writeStorage.sync(value.getToken(), value.getEvents());
         return value.getToken() + value.getEvents().size();
     }
 
     public long syncSnapshots(String context, SerializedTransactionWithToken value) {
-        SyncStorage writeStorage = workers(context).snapshotSyncStorage;
+        SyncStorage writeStorage = workers(context, CREATE_IF_MISSING).snapshotSyncStorage;
         writeStorage.sync(value.getToken(), value.getEvents());
         return value.getToken() + value.getEvents().size();
     }
