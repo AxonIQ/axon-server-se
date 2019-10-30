@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -22,6 +23,14 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    private final boolean setWebSocketAllowedOrigins;
+    private final String webSocketAllowedOrigins;
+
+    public WebSocketConfig(MessagingPlatformConfiguration config) {
+        this.setWebSocketAllowedOrigins = config.isSetWebSocketAllowedOrigins();
+        this.webSocketAllowedOrigins = config.getWebSocketAllowedOrigins();
+    }
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         config.enableSimpleBroker("/topic");
@@ -30,6 +39,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/axonserver-platform-websocket").setAllowedOrigins("*").withSockJS();
+        if (setWebSocketAllowedOrigins) {
+            registry.addEndpoint("/axonserver-platform-websocket")
+                    .setAllowedOrigins(webSocketAllowedOrigins)
+                    .withSockJS();
+        } else {
+            registry.addEndpoint("/axonserver-platform-websocket")
+                    .withSockJS();
+        }
     }
 }

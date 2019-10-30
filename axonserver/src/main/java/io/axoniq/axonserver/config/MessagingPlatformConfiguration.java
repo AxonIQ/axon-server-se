@@ -25,9 +25,10 @@ import java.net.UnknownHostException;
 @Configuration
 @ConfigurationProperties(prefix = "axoniq.axonserver")
 public class MessagingPlatformConfiguration {
+
     private static final Logger logger = LoggerFactory.getLogger(MessagingPlatformConfiguration.class);
     private static final int RESERVED = 10000;
-    private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE-RESERVED;
+    private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     /**
      * gRPC port for axonserver platform
      */
@@ -45,7 +46,8 @@ public class MessagingPlatformConfiguration {
      */
     private String hostname;
     /**
-     * Domain of this node as communicated to clients. Optional, if set will be appended to the hostname in communication
+     * Domain of this node as communicated to clients. Optional, if set will be appended to the hostname in
+     * communication
      * with clients.
      */
     private String domain;
@@ -76,7 +78,14 @@ public class MessagingPlatformConfiguration {
      */
     private long minKeepAliveTime = 1000;
 
-
+    /**
+     * Set WebSocket CORS Allowed Origins
+     */
+    private boolean setWebSocketAllowedOrigins = false;
+    /**
+     * WebSocket CORS Allowed Origins value to set if enabled
+     */
+    private String webSocketAllowedOrigins = "*";
 
     @NestedConfigurationProperty
     private SslConfiguration ssl = new SslConfiguration();
@@ -91,7 +100,7 @@ public class MessagingPlatformConfiguration {
     /**
      * Expiry interval (minutes) of metrics
      */
-    private int metricsInterval =15;
+    private int metricsInterval = 15;
 
     private final SystemInfoProvider systemInfoProvider;
     /**
@@ -141,7 +150,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getName() {
-        if( name == null) {
+        if (name == null) {
             name = getHostname();
         }
 
@@ -153,11 +162,11 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getHostname() {
-        if( StringUtils.isEmpty(hostname )) {
+        if (StringUtils.isEmpty(hostname)) {
             try {
                 hostname = systemInfoProvider.getHostName();
-                if(!StringUtils.isEmpty(domain) && hostname.endsWith("." + domain)) {
-                        hostname = hostname.substring(0, hostname.length() - domain.length() - 1);
+                if (!StringUtils.isEmpty(domain) && hostname.endsWith("." + domain)) {
+                    hostname = hostname.substring(0, hostname.length() - domain.length() - 1);
                 }
             } catch (UnknownHostException e) {
                 logger.warn("Could not determine hostname from inet address: {}", e.getMessage());
@@ -179,7 +188,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalHostname() {
-        if( StringUtils.isEmpty(internalHostname)) {
+        if (StringUtils.isEmpty(internalHostname)) {
             internalHostname = getHostname();
         }
         return internalHostname;
@@ -190,16 +199,15 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if( StringUtils.isEmpty(internalDomain)) {
+        if (StringUtils.isEmpty(internalDomain)) {
             internalDomain = getDomain();
         }
         return internalDomain;
     }
 
     public int getHttpPort() {
-        if( httpPort == 0) {
+        if (httpPort == 0) {
             httpPort = systemInfoProvider.getPort();
-
         }
         return httpPort;
     }
@@ -209,13 +217,17 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getFullyQualifiedHostname() {
-        if( ! StringUtils.isEmpty(getDomain())) return getHostname() + "." + getDomain();
+        if (!StringUtils.isEmpty(getDomain())) {
+            return getHostname() + "." + getDomain();
+        }
 
         return getHostname();
     }
 
     public String getFullyQualifiedInternalHostname() {
-        if( ! StringUtils.isEmpty(getInternalDomain()) ) return getInternalHostname() + "." + getInternalDomain();
+        if (!StringUtils.isEmpty(getInternalDomain())) {
+            return getInternalHostname() + "." + getInternalDomain();
+        }
 
         return getInternalHostname();
     }
@@ -285,11 +297,13 @@ public class MessagingPlatformConfiguration {
     }
 
     public int getMaxTransactionSize() {
-        if( maxMessageSize == 0) return DEFAULT_MAX_TRANSACTION_SIZE;
+        if (maxMessageSize == 0) {
+            return DEFAULT_MAX_TRANSACTION_SIZE;
+        }
 
         return maxMessageSize - RESERVED;
-
     }
+
     public String getPidFileLocation() {
         return pidFileLocation;
     }
@@ -316,5 +330,21 @@ public class MessagingPlatformConfiguration {
 
     public void setExecutorThreadCount(int executorThreadCount) {
         this.executorThreadCount = executorThreadCount;
+    }
+
+    public boolean isSetWebSocketAllowedOrigins() {
+        return setWebSocketAllowedOrigins;
+    }
+
+    public void setSetWebSocketAllowedOrigins(boolean setWebSocketAllowedOrigins) {
+        this.setWebSocketAllowedOrigins = setWebSocketAllowedOrigins;
+    }
+
+    public String getWebSocketAllowedOrigins() {
+        return webSocketAllowedOrigins;
+    }
+
+    public void setWebSocketAllowedOrigins(String webSocketAllowedOrigins) {
+        this.webSocketAllowedOrigins = webSocketAllowedOrigins;
     }
 }
