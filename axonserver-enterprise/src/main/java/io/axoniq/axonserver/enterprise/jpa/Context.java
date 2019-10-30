@@ -19,7 +19,9 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 /**
+ * Stores information about a Context.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Entity(name = "Context")
 public class Context implements Serializable {
@@ -80,20 +82,22 @@ public class Context implements Serializable {
         return Objects.hash(name);
     }
 
+    /**
+     * removes a reference to a cluster node.
+     *
+     * @param ccn the reference to the cluster node
+     */
     public void remove(ContextClusterNode ccn) {
         nodes.remove(ccn);
     }
 
+    /**
+     * Before removing a context ensure that the reference is also removed from the clusternode.
+     */
     @PreRemove
     public void clearNodes() {
         nodes.forEach(ccn -> ccn.getClusterNode().remove(ccn));
         nodes.clear();
-    }
-
-
-    @Deprecated // Duplicate method, change usage to getNodes
-    public Set<ContextClusterNode> getAllNodes() {
-        return getNodes();
     }
 
     public void addClusterNode(ContextClusterNode contextClusterNode) {

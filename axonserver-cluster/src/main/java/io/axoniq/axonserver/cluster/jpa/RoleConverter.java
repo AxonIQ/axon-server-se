@@ -7,7 +7,9 @@ import javax.persistence.AttributeConverter;
 import javax.persistence.Converter;
 
 /**
+ * Maps enum Role to integer to store in database.
  * @author Marc Gathier
+ * @since 4.3
  */
 @Converter(autoApply = true)
 public class RoleConverter implements AttributeConverter<Role, Integer> {

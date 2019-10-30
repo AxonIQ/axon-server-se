@@ -417,12 +417,13 @@ public class ClusterController implements SmartLifecycle {
      * port)
      * so if it is an unknown host it will set-up a temporary connection that is updated once the remote node connects.
      *
+     * If the node is already known, no action is performed.
+     *
      * @param node the node to connect to
      */
     public void connect(Node node) {
-        Optionals.ifPresentOrElse(clusterNodeRepository.findById(node.getNodeName()),
-                                  c -> {
-                                  },
-                                  () -> startRemoteConnection(new ClusterNode(node), true));
+        if (!clusterNodeRepository.findById(node.getNodeName()).isPresent()) {
+            startRemoteConnection(new ClusterNode(node), true);
+        }
     }
 }

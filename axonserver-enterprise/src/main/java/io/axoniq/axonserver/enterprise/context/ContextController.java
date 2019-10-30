@@ -6,7 +6,6 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +13,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -44,11 +42,21 @@ public class ContextController {
         this.clusterController = clusterController;
     }
 
+    /**
+     * Get a stream of all contexts.
+     *
+     * @return stream of all contexts.
+     */
     public Stream<Context> getContexts() {
         return contextRepository.findAll()
                                 .stream();
     }
 
+    /**
+     * Returns a context based on its name. Returns null if context not found.
+     * @param contextName the name of the context
+     * @return the context or null
+     */
     public Context getContext(String contextName) {
         return contextRepository.findById(contextName).orElse(null);
     }
@@ -67,10 +75,8 @@ public class ContextController {
         }
 
 
-        Context context = optionalContext.orElse(null);
-        if( context == null) {
-            context = contextRepository.save(new Context(contextConfiguration.getContext()));
-        }
+        Context context = optionalContext.orElseGet(() -> contextRepository
+                .save(new Context(contextConfiguration.getContext())));
         context.changePending(contextConfiguration.getPending());
         Map<String, ClusterNode> currentNodes = new HashMap<>();
         context.getNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
@@ -80,7 +86,7 @@ public class ContextController {
         Map<String, ClusterNode> clusterInfoMap = new HashMap<>();
         for (NodeInfoWithLabel nodeInfo : contextConfiguration.getNodesList()) {
             String nodeName = nodeInfo.getNode().getNodeName();
-            ClusterNode clusterNode = getNode(nodeName);
+            ClusterNode clusterNode = clusterController.getNode(nodeName);
             if( clusterNode == null) {
                 logger.debug("{}: Creating new connection to {}", contextConfiguration.getContext(), nodeInfo.getNode().getNodeName());
                 clusterNode = clusterController.addConnection(nodeInfo.getNode());
@@ -105,14 +111,6 @@ public class ContextController {
         });
     }
 
-    public Iterable<String> getRemoteNodes() {
-        return clusterController.remoteNodeNames();
-    }
-
-    public ClusterNode getNode(String node) {
-        return clusterController.getNode(node);
-    }
-
     @Transactional
     public void deleteContext(String context) {
         contextRepository.deleteById(context);
@@ -127,15 +125,6 @@ public class ContextController {
     @Transactional
     public void on(ContextEvents.AdminContextDeleted contextDeleted) {
         deleteAll();
-    }
-
-    @Transactional
-    public void addNode(NodeInfo nodeInfo) {
-        clusterController.addConnection(nodeInfo);
-    }
-
-    public Collection<String> getMyContextNames() {
-        return clusterController.getMe().getContextNames();
     }
 
     @Transactional

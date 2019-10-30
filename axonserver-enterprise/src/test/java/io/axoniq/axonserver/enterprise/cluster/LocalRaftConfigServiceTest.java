@@ -280,6 +280,7 @@ public class LocalRaftConfigServiceTest {
 
         when(grpcRaftController.getRaftNode("_admin")).thenReturn(adminNode);
         ContextController contextcontroller = mock(ContextController.class);
+        ClusterController clusterController = mock(ClusterController.class);
         RaftGroupServiceFactory raftGroupServiceFactory = mock(RaftGroupServiceFactory.class);
 
         when(raftGroupServiceFactory.getRaftGroupService(anyString())).thenReturn(fakeRaftGroupService);
@@ -297,7 +298,7 @@ public class LocalRaftConfigServiceTest {
                 return "localhost";
             }
         });
-        when(contextcontroller.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
+        when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
             String name = invocationOnMock.getArgument(0);
             return adminDB.nodeMap.get(name);
         });
@@ -320,6 +321,7 @@ public class LocalRaftConfigServiceTest {
         UserController userController = mock(UserController.class);
         testSubject = new LocalRaftConfigService(grpcRaftController,
                                                  contextcontroller,
+                                                 clusterController,
                                                  raftGroupServiceFactory,
                                                  applicationController,
                                                  userController,
