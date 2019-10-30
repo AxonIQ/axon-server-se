@@ -74,13 +74,13 @@ we have that:
     - *if votes received from majority of servers: become leader*
     - ***in order to be elected a node should receive, in the same term, 
     votes from the majority of primary nodes and at least n active 
-    backup nodes where (n <= # backup nodes) ??***
+    backup nodes (where n <= # backup nodes)***
     
 - Leader Step-down (the goal is to avoid a client is connected to a 
 leader that is unable to perform a commit)
     - ***if election timeout elapses without a successful round of 
     heartbeats to a majority of its cluster and at least n active 
-    backup node (n <= # backup nodes), the leader steps down***
+    backup node (where n <= # backup nodes), the leader steps down***
     
 - Followers
     - **if election timeout elapses without receiving AppendEntries 
@@ -96,8 +96,9 @@ leader that is unable to perform a commit)
 The following graph represents the state diagram of raft nodes:
 
 
+```puml
 @startuml
-scale 350 width
+scale 500 width
 [*] -up-> Prospect
 [*] -right-> Idle
 Prospect -right-> Secondary
@@ -119,3 +120,4 @@ Secondary -up-> Removed
 Candidate -up-> Removed
 'Leader -up-> Removed
 @enduml
+```
