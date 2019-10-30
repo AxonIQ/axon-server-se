@@ -60,7 +60,7 @@ public interface MembershipState extends ClusterConfiguration{
         return emptyList();
     }
 
-    default Iterator<ReplicatorPeer> replicatorPeers() {
+    default Iterator<ReplicatorPeerStatus> replicatorPeers() {
         throw new UnsupportedOperationException("Operation only supported in leader state");
     }
 
