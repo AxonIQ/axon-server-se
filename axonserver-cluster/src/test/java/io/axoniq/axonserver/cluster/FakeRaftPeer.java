@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
@@ -11,6 +12,7 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
+import io.axoniq.axonserver.grpc.cluster.Role;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -25,6 +27,7 @@ public class FakeRaftPeer implements RaftPeer {
     private final Scheduler scheduler;
     private final String nodeId;
     private final String nodeName;
+    private final Role role;
     private long term;
     private boolean voteGranted;
     private Consumer<AppendEntriesResponse> appendEntriesResponseConsumer = response -> {
@@ -33,13 +36,18 @@ public class FakeRaftPeer implements RaftPeer {
     };
 
     public FakeRaftPeer(Scheduler scheduler, String nodeId) {
-        this(scheduler, nodeId, nodeId);
+        this(scheduler, nodeId, nodeId, Role.PRIMARY);
     }
 
-    public FakeRaftPeer(Scheduler scheduler, String nodeId, String nodeName) {
+    public FakeRaftPeer(String nodeId, Role role) {
+        this(null, nodeId, nodeId, role);
+    }
+
+    public FakeRaftPeer(Scheduler scheduler, String nodeId, String nodeName, Role role) {
         this.scheduler = scheduler;
         this.nodeId = nodeId;
         this.nodeName = nodeName;
+        this.role = role;
     }
 
     @Override
@@ -152,5 +160,20 @@ public class FakeRaftPeer implements RaftPeer {
 
     public void setVoteGranted(boolean voteGranted) {
         this.voteGranted = voteGranted;
+    }
+
+    @Override
+    public boolean primaryNode() {
+        return RoleUtils.primaryNode(role);
+    }
+
+    @Override
+    public boolean votingNode() {
+        return RoleUtils.votingNode(role);
+    }
+
+    @Override
+    public Role role() {
+        return role;
     }
 }

@@ -561,7 +561,7 @@ public class RaftNode {
      * @return Replicator Peer iterator
      */
     // TODO: 2/28/2019 do we really want to expose these???
-    public Iterator<ReplicatorPeer> replicatorPeers() {
+    public Iterator<ReplicatorPeerStatus> replicatorPeers() {
         return state.get().replicatorPeers();
     }
 

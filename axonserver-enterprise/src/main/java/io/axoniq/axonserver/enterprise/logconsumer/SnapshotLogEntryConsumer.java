@@ -16,7 +16,10 @@ import static io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter.
 @Component
 public class SnapshotLogEntryConsumer implements LogEntryConsumer {
 
-    private static final String APPEND_SNAPSHOT = "Append.SNAPSHOT";
+    /**
+     * The type of log entries the consumer applies.
+     */
+    public static final String LOG_ENTRY_TYPE = "Append.SNAPSHOT";
 
     private final LocalEventStore localEventStore;
 
@@ -26,12 +29,13 @@ public class SnapshotLogEntryConsumer implements LogEntryConsumer {
 
     @Override
     public String entryType() {
-        return APPEND_SNAPSHOT;
+        return LOG_ENTRY_TYPE;
     }
 
     @Override
     public void consumeLogEntry(String groupId, Entry e) throws Exception {
         TransactionWithToken transactionWithToken = TransactionWithToken.parseFrom(e.getSerializedObject().getData());
+        localEventStore.initContext(groupId, false);
         localEventStore.syncSnapshots(groupId, asSerializedTransactionWithToken(transactionWithToken));
     }
 }

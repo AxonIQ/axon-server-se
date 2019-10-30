@@ -27,8 +27,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
@@ -191,5 +193,15 @@ public class ContextRestController {
         } catch (Exception ex) {
             return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
         }
+    }
+
+    /**
+     * Returns a set of roles that can be assigned to nodes in a context.
+     *
+     * @return set of role names
+     */
+    @GetMapping(path = "context/roles")
+    public Set<String> roles() {
+        return Arrays.stream(Role.values()).map(Enum::name).collect(Collectors.toSet());
     }
 }

@@ -13,7 +13,6 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 
 import static java.lang.String.format;
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * @author Marc Gathier
@@ -51,7 +50,7 @@ public class DefaultPreVote implements Election {
              termUpdateHandler,
              electionStore,
              otherNodes,
-             new MajorityStrategy(() -> (int) (stream(otherNodes.spliterator(), false).count() + 1)));
+             new PrimaryAndVotingMajorityStrategy(otherNodes));
     }
 
     public DefaultPreVote(RequestVoteRequest requestPrototype,

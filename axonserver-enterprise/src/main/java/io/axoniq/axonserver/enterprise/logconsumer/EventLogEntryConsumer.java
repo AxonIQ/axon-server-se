@@ -19,7 +19,10 @@ import static io.axoniq.axonserver.grpc.SerializedTransactionWithTokenConverter.
 @Component
 public class EventLogEntryConsumer implements LogEntryConsumer {
 
-    private static final String APPEND_EVENT = "Append.EVENT";
+    /**
+     * The type of log entries the consumer applies.
+     */
+    public static final String LOG_ENTRY_TYPE = "Append.EVENT";
 
     private final Logger logger = LoggerFactory.getLogger(EventLogEntryConsumer.class);
     private final LocalEventStore localEventStore;
@@ -30,7 +33,7 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
 
     @Override
     public String entryType() {
-        return APPEND_EVENT;
+        return LOG_ENTRY_TYPE;
     }
 
     @Override
@@ -44,6 +47,7 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                          transactionWithToken.getEventsCount()
             );
         }
+        localEventStore.initContext(groupId, false);
         localEventStore.syncEvents(groupId, asSerializedTransactionWithToken(transactionWithToken));
     }
 }

@@ -42,7 +42,9 @@ import java.util.stream.Stream;
  * @author Marc Gathier
  */
 public class FileSegmentLogEntryStore implements LogEntryStore {
-    private final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);
+
+    private static final byte[] DUMMY_CONTENT = "X".getBytes();
+    private static final Logger logger = LoggerFactory.getLogger(FileSegmentLogEntryStore.class);
     private final List<Consumer<Entry>> appendListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final String name;
@@ -166,6 +168,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
                         break;
                     case LEADERELECTED:
                         writeCompleted = primaryLogEntryStore.write(e.getTerm(), Entry.DataCase.LEADERELECTED.getNumber(), e.getLeaderElected().toByteArray());
+                        break;
+                    case DUMMYENTRY:
+                        writeCompleted = primaryLogEntryStore.write(e.getTerm(),
+                                                                    Entry.DataCase.DUMMYENTRY.getNumber(),
+                                                                    DUMMY_CONTENT);
                         break;
                     case DATA_NOT_SET:
                         break;

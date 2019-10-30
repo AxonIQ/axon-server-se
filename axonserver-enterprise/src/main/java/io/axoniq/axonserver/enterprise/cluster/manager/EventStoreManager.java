@@ -24,8 +24,6 @@ import java.nio.charset.Charset;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
-
 /**
  * @author Marc Gathier
  */
@@ -71,7 +69,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              LocalEventStore localEventStore,
                              ChannelProvider channelProvider) {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
-             channelProvider, () -> contextController.getMyContextNames().iterator(),
+             channelProvider, () -> contextController.storageContexts().iterator(),
              leaderProvider::getLeaderOrWait,
              lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
@@ -116,7 +114,6 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     private void initContext(String context, boolean validating) {
-        if( isAdmin(context)) return;
         logger.debug("Init context: {}", context);
         localEventStore.initContext(context, validating);
     }
