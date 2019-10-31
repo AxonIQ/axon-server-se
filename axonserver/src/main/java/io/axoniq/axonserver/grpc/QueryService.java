@@ -238,7 +238,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
         @Override
         public void onNext(QueryResponse queryResponse) {
-            responseObserver.onNext(queryResponse);
+            try {
+                responseObserver.onNext(queryResponse);
+            } catch (Exception ex) {
+                logger.debug("Sending response failed", ex);
+            }
         }
 
         @Override
