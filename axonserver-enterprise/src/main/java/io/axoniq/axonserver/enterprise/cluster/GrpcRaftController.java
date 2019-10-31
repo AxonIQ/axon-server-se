@@ -176,10 +176,12 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         } else if( stateChanged.toLeader() && ! stateChanged.fromLeader()) {
             eventPublisher.publishEvent(new ClusterEvents.BecomeLeader(stateChanged.getGroupId(),
                                                                        node::unappliedEntries));
-        } else if( stateChanged.toFollower() && !StringUtils.isEmpty(node.getLeaderName()) ) {
-            eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(), node.getLeaderName(), false));
         } else if( stateChanged.toCandidate() ) {
             eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(), null, false));
+        } else if (!StringUtils.isEmpty(node.getLeaderName())) {
+            eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(),
+                                                                             node.getLeaderName(),
+                                                                             false));
         }
 
         if( stateChanged.getTo().equals(RemovedState.class.getSimpleName()) ) {
