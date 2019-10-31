@@ -203,7 +203,7 @@ public class ContextRestController {
     @GetMapping(path = "context/roles")
     public Set<String> roles() {
         return Arrays.stream(Role.values())
-                     .filter(r -> r.getNumber() >= 0)
+                     .filter(r -> !Role.UNRECOGNIZED.equals(r))
                      .map(Enum::name)
                      .collect(Collectors.toSet());
     }
