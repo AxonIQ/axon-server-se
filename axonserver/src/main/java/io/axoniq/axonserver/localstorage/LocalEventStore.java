@@ -102,9 +102,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      * @param context the name of the context
      */
     public void deleteContext(String context) {
+        deleteContext(context, false);
+    }
+
+    /**
+     * Deletes the specified context, optionally keeping the data
+     *
+     * @param context  the name of the context
+     * @param keepData flag to set if the data must be preserved
+     */
+    public void deleteContext(String context, boolean keepData) {
         Workers workers = workersMap.remove(context);
         if( workers == null) return;
-        workers.close(true);
+        workers.close(!keepData);
     }
 
     /**
@@ -351,10 +361,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public long getLastToken(String context) {
+        workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).eventStorageEngine.getLastToken();
     }
 
+    private Workers openIfExist(String context) {
+        if (this.eventStoreFactory.exists(context)) {
+            Workers workers = new Workers(context);
+            workers.init(false);
+            return workers;
+        }
+        return null;
+    }
+
     public long getLastSnapshot(String context) {
+        workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).snapshotStorageEngine.getLastToken();
     }
 

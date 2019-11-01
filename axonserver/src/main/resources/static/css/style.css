@@ -663,6 +663,18 @@ select {
 	width: 100px;
 }
 
+.hidden {
+    display: none;
+}
+
+.modal {
+    padding: 20px;
+}
+
+.modal .button-bar {
+    margin-top: 20px;
+}
+
 @media only screen and (max-width: 1024px){
 	.column-wrapper{
 		display: block;

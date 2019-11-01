@@ -37,4 +37,8 @@ public interface EventStoreFactory {
      * @return the transaction manager
      */
     StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine);
+
+    default boolean exists(String context) {
+        return true;
+    }
 }

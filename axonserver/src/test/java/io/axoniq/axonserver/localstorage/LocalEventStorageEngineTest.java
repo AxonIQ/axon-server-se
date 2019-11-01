@@ -84,7 +84,7 @@ public class LocalEventStorageEngineTest {
 
     @Test
     public void deleteContext() {
-        testSubject.deleteContext(SAMPLE_CONTEXT);
+        testSubject.deleteContext(SAMPLE_CONTEXT, false);
     }
 
     @Test
