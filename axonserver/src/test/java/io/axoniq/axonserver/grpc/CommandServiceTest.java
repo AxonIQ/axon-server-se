@@ -9,10 +9,12 @@
 
 package io.axoniq.axonserver.grpc;
 
+import com.google.common.collect.Iterables;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
@@ -79,6 +81,24 @@ public class CommandServiceTest {
                 .build());
         verify(eventPublisher).publishEvent(isA(SubscriptionEvents.SubscribeCommand.class));
     }
+
+    @Test
+    public void unsupportedCommandInstruction() {
+        CountingStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        String instructionId = "instructionId";
+        requestStream.onNext(CommandProviderOutbound.newBuilder()
+                                                    .setInstructionId(instructionId)
+                                                    .build());
+        InstructionResultOrBuilder result = responseStream.responseList.get(responseStream.responseList.size() - 1)
+                                                                       .getInstructionResult();
+
+        assertEquals(instructionId, result.getInstructionId());
+        assertTrue(result.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());
+    }
+
     @Test
     public void unsubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());

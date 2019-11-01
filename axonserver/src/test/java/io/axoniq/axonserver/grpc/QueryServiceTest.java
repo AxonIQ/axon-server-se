@@ -14,6 +14,7 @@ import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -87,6 +88,23 @@ public class QueryServiceTest {
                 .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("query"))
                 .build());
         verify(eventPublisher).publishEvent(isA(SubscriptionEvents.SubscribeQuery.class));
+    }
+
+    @Test
+    public void unsupportedQueryInstruction() {
+        CountingStreamObserver<QueryProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        String instructionId = "instructionId";
+        requestStream.onNext(QueryProviderOutbound.newBuilder()
+                                                  .setInstructionId(instructionId)
+                                                  .build());
+
+        InstructionResult result = responseStream.responseList.get(responseStream.responseList.size() - 1)
+                                                              .getConfirmation();
+        assertEquals(instructionId, result.getInstructionId());
+        assertTrue(result.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());
     }
 
     @Test

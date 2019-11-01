@@ -13,6 +13,7 @@ import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
@@ -28,6 +29,7 @@ import org.mockito.runners.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -96,6 +98,33 @@ public class PlatformServiceTest {
         platformService.requestReconnect("client");
     }
 
+    @Test
+    public void unsupportedInstruction() {
+        AtomicReference<PlatformOutboundInstruction> lastOutbound = new AtomicReference<>();
+        StreamObserver<PlatformInboundInstruction> requestStream = platformService
+                .openStream(new StreamObserver<PlatformOutboundInstruction>() {
+                    @Override
+                    public void onNext(PlatformOutboundInstruction value) {
+                        lastOutbound.set(value);
+                    }
+
+                    @Override
+                    public void onError(Throwable t) { fail("Failure is not an option :)"); }
+
+                    @Override
+                    public void onCompleted() { }
+                });
+
+        String instructionId = "instructionId";
+        requestStream.onNext(PlatformInboundInstruction.newBuilder()
+                                                       .setInstructionId(instructionId)
+                                                       .build());
+
+        InstructionResult result = lastOutbound.get().getResult();
+        assertEquals(instructionId, result.getInstructionId());
+        assertTrue(result.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());
+    }
 
     @Test
     public void onPauseEventProcessorRequest() {
