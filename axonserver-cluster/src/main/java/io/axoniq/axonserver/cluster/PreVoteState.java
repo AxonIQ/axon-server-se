@@ -48,8 +48,8 @@ public class PreVoteState extends VotingState {
         }
         if (result.won()) {
             changeStateTo(stateFactory().candidateState(), result.cause());
-        } else if (result.goAway()) {
-            changeStateTo(stateFactory().removedState(), result.cause());
+//        } else if (result.goAway()) {
+//            changeStateTo(stateFactory().removedState(), result.cause());
         } else {
             changeStateTo(stateFactory().followerState(), result.cause());
         }

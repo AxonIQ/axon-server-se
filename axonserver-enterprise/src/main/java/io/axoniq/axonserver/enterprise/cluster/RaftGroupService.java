@@ -58,7 +58,7 @@ public interface RaftGroupService {
 
     CompletableFuture<Void> deleteLoadBalancingStrategy(String context, LoadBalanceStrategy loadBalancingStrategy);
 
-    CompletableFuture<Void> deleteContext(String context);
+    CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore);
 
     /**
      * Append an entry to the raft log.

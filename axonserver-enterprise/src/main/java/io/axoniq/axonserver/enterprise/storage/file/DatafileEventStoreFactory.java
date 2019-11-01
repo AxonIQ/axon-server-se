@@ -11,6 +11,8 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
+import java.io.File;
+
 /**
  * @author Marc Gathier
  */
@@ -51,5 +53,17 @@ public class DatafileEventStoreFactory implements EventStoreFactory {
     @Override
     public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
         return storageTransactionManagerFactory.createTransactionManager(eventStorageEngine);
+    }
+
+    @Override
+    public boolean exists(String context) {
+        String folder = embeddedDBProperties.getEvent().getStorage(context);
+        File events = new File(folder);
+        if (!events.isDirectory()) {
+            return false;
+        }
+
+        String[] files = events.list((dir, name) -> name.endsWith(embeddedDBProperties.getEvent().getEventsSuffix()));
+        return files != null && files.length > 0;
     }
 }

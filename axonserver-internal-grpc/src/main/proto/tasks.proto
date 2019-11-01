@@ -1,0 +1,30 @@
+syntax = "proto3";
+package io.axoniq.axonserver.grpc.tasks;
+import "common.proto";
+option java_multiple_files = true;
+
+message ScheduleTask {
+    string task_id = 1;
+    string task_executor = 2;
+    io.axoniq.axonserver.grpc.SerializedObject payload = 3;
+    int64 instant = 4;
+    ErrorHandler error_handler = 5;
+}
+
+message UpdateTask {
+    string task_id = 1;
+    int64 instant = 2;
+    Status status = 3;
+}
+
+message ErrorHandler {
+    oneof handler {
+        int64 reschedule_after = 1;
+        Status status = 2;
+    }
+}
+
+enum Status {
+    COMPLETED = 0;
+    FAILED = 1;
+}

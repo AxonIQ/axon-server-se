@@ -26,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -285,14 +286,15 @@ public class LocalRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteContext(String context) {
+    @Transactional
+    public CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore) {
         RaftNode raftNode = null;
         try {
             raftNode = grpcRaftController.getRaftNode(context);
         } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
-        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context));
+        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context, preserveEventStore));
     }
 
     @Override

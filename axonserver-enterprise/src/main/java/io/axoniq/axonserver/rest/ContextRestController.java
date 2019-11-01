@@ -6,6 +6,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.enterprise.task.DeleteNodeFromContextJob;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -49,6 +50,7 @@ public class ContextRestController {
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
     private final ClusterTopology clusterTopology;
+    private final DeleteNodeFromContextJob deleteNodeFromContextJob;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final Logger logger = LoggerFactory.getLogger(ContextRestController.class);
@@ -57,11 +59,13 @@ public class ContextRestController {
                                  RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
                                  ClusterTopology clusterTopology,
+                                 DeleteNodeFromContextJob deleteNodeFromContextJob,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
         this.contextController = contextController;
         this.clusterTopology = clusterTopology;
+        this.deleteNodeFromContextJob = deleteNodeFromContextJob;
         this.limits = limits;
     }
 
@@ -143,10 +147,14 @@ public class ContextRestController {
 
     @DeleteMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> deleteNodeFromContext(@PathVariable("context") String name,
-                                                              @PathVariable("node") String node) {
-        logger.info("Delete node request received for node: {} - and context: {}", node, name);
+                                                              @PathVariable("node") String node,
+                                                              @RequestParam(name = "preserveEventStore", required = false, defaultValue = "false") boolean preserveEventStore) {
+        logger.warn("Delete node request received for node: {} - and context: {} {}",
+                    node,
+                    name,
+                    preserveEventStore ? "- Keeping event store" : "");
         try {
-            raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
+            deleteNodeFromContextJob.deleteNodeFromContext(name, node, preserveEventStore);
             return ResponseEntity.accepted()
                                  .body(new RestResponse(true,
                                                         "Accepted delete request"));

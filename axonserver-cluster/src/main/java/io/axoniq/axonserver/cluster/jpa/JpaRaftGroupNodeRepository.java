@@ -12,4 +12,6 @@ public interface JpaRaftGroupNodeRepository extends JpaRepository<JpaRaftGroupNo
     Set<JpaRaftGroupNode> findByGroupId(String groupId);
 
     Set<JpaRaftGroupNode> findByNodeName(String nodeName);
+
+    void deleteAllByGroupId(String groupId);
 }

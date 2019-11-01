@@ -66,8 +66,8 @@ public class CandidateState extends VotingState {
         }
         if (result.won()) {
             changeStateTo(stateFactory().leaderState(), result.cause());
-        } else if (result.goAway()) {
-            changeStateTo(stateFactory().removedState(), result.cause());
+//        } else if (result.goAway()) {
+//            changeStateTo(stateFactory().removedState(), result.cause());
         } else {
             changeStateTo(stateFactory().followerState(), result.cause());
         }

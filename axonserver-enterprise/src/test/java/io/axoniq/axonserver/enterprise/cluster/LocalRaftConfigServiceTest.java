@@ -244,7 +244,7 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public CompletableFuture<Void> deleteContext(String context) {
+        public CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore) {
             groupDBs.remove(context);
             return CompletableFuture.completedFuture(null);
         }

@@ -55,14 +55,20 @@ public class ContextEvents {
     @KeepNames
     public static class ContextDeleted extends TopologyEvents.TopologyBaseEvent {
         private final String context;
+        private final boolean preserveEventStore;
 
-        public ContextDeleted(String context) {
+        public ContextDeleted(String context, boolean preserveEventStore) {
             super(false);
             this.context = context;
+            this.preserveEventStore = preserveEventStore;
         }
 
         public String getContext() {
             return context;
+        }
+
+        public boolean preserveEventStore() {
+            return preserveEventStore;
         }
 
     }
