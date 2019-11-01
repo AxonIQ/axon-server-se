@@ -13,6 +13,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
@@ -28,6 +29,7 @@ import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;
+import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -56,6 +58,7 @@ import javax.annotation.PreDestroy;
 @Service("QueryService")
 public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implements AxonServerClientService {
 
+    private final Topology topology;
     private final QueryDispatcher queryDispatcher;
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
@@ -66,8 +69,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private int processingThreads = 1;
 
 
-    public QueryService(QueryDispatcher queryDispatcher, ContextProvider contextProvider,
+    public QueryService(Topology topology, QueryDispatcher queryDispatcher, ContextProvider contextProvider,
                         ApplicationEventPublisher eventPublisher) {
+        this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
@@ -133,7 +137,19 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response, () ->
                                 wrappedQueryProviderInboundObserver.onNext(unsubscribeMessage(response.getSubscriptionIdentifier()))));
                         break;
-                    case REQUEST_NOT_SET:
+                    case RESULT:
+                        InstructionResult result = queryProviderOutbound.getResult();
+                        if (isUnsupportedInstructionErrorResult(result)) {
+                            logger.warn("Unsupported instruction sent to the client {} of context {}.", client.get().getClient(), context);
+                        } else {
+                            logger.trace("Received instruction result from the client {} of context {}. Result {}.",
+                                         client.get().getClient(),
+                                         context,
+                                         result);
+                        }
+                        break;
+                    default:
+                        sendUnsupportedInstruction(queryProviderOutbound, wrappedQueryProviderInboundObserver);
                         break;
                 }
             }
@@ -193,6 +209,31 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                 }
             }
         };
+    }
+
+    private void sendUnsupportedInstruction(QueryProviderOutbound queryProviderOutbound,
+                                            SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver) {
+        wrappedQueryProviderInboundObserver.onNext(
+                QueryProviderInbound.newBuilder()
+                                    .setConfirmation(unsupportedInstruction(queryProviderOutbound))
+                                    .build());
+    }
+
+    private InstructionResult unsupportedInstruction(QueryProviderOutbound queryProviderOutbound) {
+        return InstructionResult.newBuilder()
+                                .setSuccess(false)
+                                .setInstructionId(queryProviderOutbound.getInstructionId())
+                                .setError(ErrorMessage.newBuilder()
+                                                      .addDetails("Unknown query instruction")
+                                                      .setLocation(topology.getMe().getName())
+                                                      .setErrorCode(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode())
+                                                      .build())
+                                .build();
+    }
+
+    private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {
+        return instructionResult.hasError()
+                && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
     @NotNull

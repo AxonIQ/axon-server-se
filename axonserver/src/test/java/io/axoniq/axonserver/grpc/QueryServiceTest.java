@@ -10,8 +10,10 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
+import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -21,6 +23,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
@@ -50,7 +53,9 @@ public class QueryServiceTest {
         queryQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
         when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
-        testSubject = new QueryService(queryDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
+        Topology topology = new DefaultTopology(configuration);
+        testSubject = new QueryService(topology, queryDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
     }
 
     @Test

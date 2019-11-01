@@ -9,8 +9,10 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
@@ -19,6 +21,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
+import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
@@ -48,7 +51,9 @@ public class CommandServiceTest {
 
         when(commandDispatcher.getCommandQueues()).thenReturn(commandQueue);
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
-        testSubject = new CommandService(commandDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
+        Topology topology = new DefaultTopology(configuration);
+        testSubject = new CommandService(topology, commandDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
     }
 
     @Test

@@ -12,18 +12,22 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.topology.Topology;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,6 +70,7 @@ public class CommandService implements AxonServerClientService {
                               .build();
 
 
+    private final Topology topology;
     private final CommandDispatcher commandDispatcher;
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
@@ -74,10 +79,12 @@ public class CommandService implements AxonServerClientService {
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
-    public CommandService(CommandDispatcher commandDispatcher,
+    public CommandService(Topology topology,
+                          CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
                           ApplicationEventPublisher eventPublisher
     ) {
+        this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
@@ -143,8 +150,16 @@ public class CommandService implements AxonServerClientService {
                                                                                                .getCommandResponse()),
                                                          false);
                         break;
-
-                    case REQUEST_NOT_SET:
+                    case RESULT:
+                        InstructionResult result = commandFromSubscriber.getResult();
+                        if (isUnsupportedInstructionErrorResult(result)) {
+                            logger.warn("Unsupported command instruction sent to the client of context {}.", context);
+                        } else {
+                            logger.trace("Received command instruction result {}.", result);
+                        }
+                        break;
+                    default:
+                        sendUnsupportedInstruction(commandFromSubscriber, wrappedResponseObserver);
                         break;
                 }
             }
@@ -205,6 +220,34 @@ public class CommandService implements AxonServerClientService {
                 }
             }
         };
+    }
+
+    private void sendUnsupportedInstruction(CommandProviderOutbound commandFromSubscriber,
+                                            SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver) {
+        wrappedResponseObserver.onNext(new SerializedCommandProviderInbound(CommandProviderInbound.newBuilder()
+                                                                                                  .setInstructionId(commandFromSubscriber.getInstructionId())
+                                                                                                  .setConfirmation(
+                                                                                                          unsupportedInstruction(
+                                                                                                                  commandFromSubscriber))
+                                                                                                  .build()));
+    }
+
+    private InstructionResult unsupportedInstruction(CommandProviderOutbound commandFromSubscriber) {
+        return InstructionResult
+                .newBuilder()
+                .setInstructionId(commandFromSubscriber.getInstructionId())
+                .setSuccess(false)
+                .setError(ErrorMessage.newBuilder()
+                                      .setLocation(topology.getMe().getName())
+                                      .setErrorCode(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode())
+                                      .addDetails("Unsupported command instruction")
+                                      .build())
+                .build();
+    }
+
+    private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {
+        return instructionResult.hasError()
+                && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
     public void dispatch(Command command, StreamObserver<SerializedCommandResponse> responseObserver) {

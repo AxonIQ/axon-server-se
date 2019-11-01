@@ -17,6 +17,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentR
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.EventProcessorReference;
 import io.axoniq.axonserver.grpc.control.EventProcessorSegmentReference;
@@ -30,6 +31,7 @@ import io.axoniq.axonserver.grpc.control.RequestReconnect;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -78,6 +80,22 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+        onInboundInstruction(RequestCase.RESULT, (client, context, instruction) -> {
+            InstructionResult result = instruction.getResult();
+            if (isUnsupportedInstructionErrorResult(result)) {
+                logger.warn("Unsupported instruction sent to the client {} of context {}.", client, context);
+            } else {
+                logger.trace("Received instruction result from the client {} of context {}. Result {}.",
+                             client,
+                             context,
+                             result);
+            }
+        });
+    }
+
+    private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {
+        return instructionResult.hasError()
+                && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
     @Override
@@ -115,16 +133,18 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             @Override
             protected void consume(PlatformInboundInstruction instruction) {
                 RequestCase requestCase = instruction.getRequestCase();
-                handlers.getOrDefault(requestCase, new ArrayDeque<>())
-                        .forEach(consumer -> consumer.accept(clientComponent.client, context, instruction));
-
-                if (instruction.hasRegister()) {
+                if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
                     ClientIdentification client = instruction.getRegister();
                     eventPublisher.publishEvent(new ClientTagsUpdate(client.getClientId(),
                                                                      context,
                                                                      client.getTagsMap()));
                     clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
                     registerClient(clientComponent, sendingStreamObserver);
+                } else if (!handlers.containsKey(requestCase)) {
+                    sendUnsupportedInstruction(instruction, sendingStreamObserver);
+                } else {
+                    handlers.getOrDefault(requestCase, new ArrayDeque<>())
+                            .forEach(consumer -> consumer.accept(clientComponent.client, context, instruction));
                 }
             }
 
@@ -143,6 +163,28 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 deregisterClient(clientComponent);
             }
         };
+    }
+
+    private void sendUnsupportedInstruction(PlatformInboundInstruction instruction,
+                                            SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
+        PlatformOutboundInstruction unsupportedInstruction =
+                PlatformOutboundInstruction.newBuilder()
+                                           .setResult(unsupportedInstructionResult(instruction))
+                                           .build();
+        sendingStreamObserver.onNext(unsupportedInstruction);
+    }
+
+    private InstructionResult unsupportedInstructionResult(PlatformInboundInstruction instruction) {
+        return InstructionResult.newBuilder()
+                                .setInstructionId(instruction.getInstructionId())
+                                .setSuccess(false)
+                                .setError(
+                                        ErrorMessage.newBuilder()
+                                                    .setErrorCode(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode())
+                                                    .addDetails("Unsupported instruction")
+                                                    .setLocation(topology.getMe().getName())
+                                                    .build())
+                                .build();
     }
 
     public boolean requestReconnect(ClientComponent clientName) {
