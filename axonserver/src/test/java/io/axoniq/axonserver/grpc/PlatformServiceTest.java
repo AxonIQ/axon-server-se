@@ -47,7 +47,10 @@ public class PlatformServiceTest {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         clusterController = new DefaultTopology(configuration);
-        platformService = new PlatformService(clusterController, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        platformService = new PlatformService(clusterController,
+                                              () -> Topology.DEFAULT_CONTEXT,
+                                              eventPublisher,
+                                              new DefaultUnsupportedInstructionResultFactory());
     }
 
     @Test

@@ -64,17 +64,20 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
+    private final UnsupportedInstructionResultFactory unsupportedInstructionResultFactory;
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
 
 
     public QueryService(Topology topology, QueryDispatcher queryDispatcher, ContextProvider contextProvider,
-                        ApplicationEventPublisher eventPublisher) {
+                        ApplicationEventPublisher eventPublisher,
+                        UnsupportedInstructionResultFactory unsupportedInstructionResultFactory) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+        this.unsupportedInstructionResultFactory = unsupportedInstructionResultFactory;
     }
 
     @PreDestroy
@@ -213,22 +216,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
     private void sendUnsupportedInstruction(QueryProviderOutbound queryProviderOutbound,
                                             SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver) {
-        wrappedQueryProviderInboundObserver.onNext(
-                QueryProviderInbound.newBuilder()
-                                    .setResult(unsupportedInstruction(queryProviderOutbound))
-                                    .build());
-    }
-
-    private InstructionResult unsupportedInstruction(QueryProviderOutbound queryProviderOutbound) {
-        return InstructionResult.newBuilder()
-                                .setSuccess(false)
-                                .setInstructionId(queryProviderOutbound.getInstructionId())
-                                .setError(ErrorMessage.newBuilder()
-                                                      .addDetails("Unknown query instruction")
-                                                      .setLocation(topology.getMe().getName())
-                                                      .setErrorCode(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode())
-                                                      .build())
-                                .build();
+        InstructionResult unsupportedInstruction = unsupportedInstructionResultFactory
+                .create(queryProviderOutbound.getInstructionId(), topology.getMe().getName());
+        wrappedQueryProviderInboundObserver.onNext(QueryProviderInbound.newBuilder()
+                                                                       .setResult(unsupportedInstruction)
+                                                                       .build());
     }
 
     private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {

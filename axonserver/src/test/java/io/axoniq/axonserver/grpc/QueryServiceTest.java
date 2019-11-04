@@ -56,7 +56,11 @@ public class QueryServiceTest {
         when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
-        testSubject = new QueryService(topology, queryDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        testSubject = new QueryService(topology,
+                                       queryDispatcher,
+                                       () -> Topology.DEFAULT_CONTEXT,
+                                       eventPublisher,
+                                       new DefaultUnsupportedInstructionResultFactory());
     }
 
     @Test

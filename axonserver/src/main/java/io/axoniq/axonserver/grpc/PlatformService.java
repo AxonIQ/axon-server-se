@@ -31,7 +31,6 @@ import io.axoniq.axonserver.grpc.control.RequestReconnect;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -64,22 +63,27 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
+    private final UnsupportedInstructionResultFactory unsupportedInstructionResultFactory;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
      *
-     * @param topology        the {@link Topology} of the group this Axon Server instance participates in
-     * @param contextProvider a {@link ContextProvider} used to retrieve the context this Axon Server instance is
-     *                        working under
-     * @param eventPublisher  the {@link ApplicationEventPublisher} to publish events through this Axon Server
-     *                        instance
+     * @param topology                            the {@link Topology} of the group this Axon Server instance
+     *                                            participates in
+     * @param contextProvider                     a {@link ContextProvider} used to retrieve the context this Axon
+     *                                            Server instance is working under
+     * @param eventPublisher                      the {@link ApplicationEventPublisher} to publish events through this
+     *                                            Axon Server
+     * @param unsupportedInstructionResultFactory creates unsupported {@link InstructionResult} message
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
-                           ApplicationEventPublisher eventPublisher) {
+                           ApplicationEventPublisher eventPublisher,
+                           UnsupportedInstructionResultFactory unsupportedInstructionResultFactory) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+        this.unsupportedInstructionResultFactory = unsupportedInstructionResultFactory;
         onInboundInstruction(RequestCase.RESULT, (client, context, instruction) -> {
             InstructionResult result = instruction.getResult();
             if (isUnsupportedInstructionErrorResult(result)) {
@@ -169,22 +173,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                             SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
         PlatformOutboundInstruction unsupportedInstruction =
                 PlatformOutboundInstruction.newBuilder()
-                                           .setResult(unsupportedInstructionResult(instruction))
+                                           .setResult(unsupportedInstructionResultFactory
+                                                              .create(instruction.getInstructionId(),
+                                                                      topology.getMe().getName()))
                                            .build();
         sendingStreamObserver.onNext(unsupportedInstruction);
-    }
-
-    private InstructionResult unsupportedInstructionResult(PlatformInboundInstruction instruction) {
-        return InstructionResult.newBuilder()
-                                .setInstructionId(instruction.getInstructionId())
-                                .setSuccess(false)
-                                .setError(
-                                        ErrorMessage.newBuilder()
-                                                    .setErrorCode(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode())
-                                                    .addDetails("Unsupported instruction")
-                                                    .setLocation(topology.getMe().getName())
-                                                    .build())
-                                .build();
     }
 
     public boolean requestReconnect(ClientComponent clientName) {

@@ -27,7 +27,6 @@ import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -76,18 +75,20 @@ public class CommandService implements AxonServerClientService {
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
+    private final UnsupportedInstructionResultFactory unsupportedInstructionResultFactory;
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
     public CommandService(Topology topology,
                           CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
-                          ApplicationEventPublisher eventPublisher
-    ) {
+                          ApplicationEventPublisher eventPublisher,
+                          UnsupportedInstructionResultFactory unsupportedInstructionResultFactory) {
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+        this.unsupportedInstructionResultFactory = unsupportedInstructionResultFactory;
     }
 
     @PreDestroy
@@ -223,26 +224,14 @@ public class CommandService implements AxonServerClientService {
     }
 
     private void sendUnsupportedInstruction(CommandProviderOutbound commandFromSubscriber,
-                                            SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver) {
-        wrappedResponseObserver.onNext(new SerializedCommandProviderInbound(CommandProviderInbound.newBuilder()
-                                                                                                  .setInstructionId(commandFromSubscriber.getInstructionId())
-                                                                                                  .setResult(
-                                                                                                          unsupportedInstruction(
-                                                                                                                  commandFromSubscriber))
-                                                                                                  .build()));
-    }
-
-    private InstructionResult unsupportedInstruction(CommandProviderOutbound commandFromSubscriber) {
-        return InstructionResult
-                .newBuilder()
-                .setInstructionId(commandFromSubscriber.getInstructionId())
-                .setSuccess(false)
-                .setError(ErrorMessage.newBuilder()
-                                      .setLocation(topology.getMe().getName())
-                                      .setErrorCode(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode())
-                                      .addDetails("Unsupported command instruction")
-                                      .build())
-                .build();
+                                             SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver) {
+        InstructionResult unsupportedInstruction = unsupportedInstructionResultFactory
+                .create(commandFromSubscriber.getInstructionId(), topology.getMe().getName());
+        CommandProviderInbound cpi = CommandProviderInbound.newBuilder()
+                                                           .setInstructionId(commandFromSubscriber.getInstructionId())
+                                                           .setResult(unsupportedInstruction)
+                                                           .build();
+        wrappedResponseObserver.onNext(new SerializedCommandProviderInbound(cpi));
     }
 
     private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {

@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.grpc;
 
-import com.google.common.collect.Iterables;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
@@ -55,7 +54,11 @@ public class CommandServiceTest {
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
-        testSubject = new CommandService(topology, commandDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        testSubject = new CommandService(topology,
+                                         commandDispatcher,
+                                         () -> Topology.DEFAULT_CONTEXT,
+                                         eventPublisher,
+                                         new DefaultUnsupportedInstructionResultFactory());
     }
 
     @Test
