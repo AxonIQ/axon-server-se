@@ -32,6 +32,10 @@
             <field template="*"/>
             <method access="protected+"/>
         </class>
+        <class template="@javax.persistence.Embeddable class *">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
         <class template="class io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider">
             <method access="protected+"/>
         </class>

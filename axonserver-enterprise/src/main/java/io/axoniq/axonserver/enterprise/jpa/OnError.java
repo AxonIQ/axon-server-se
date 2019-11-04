@@ -1,7 +1,9 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
+import io.axoniq.axonserver.grpc.tasks.ErrorHandler;
 import io.axoniq.axonserver.grpc.tasks.Status;
 
+import java.util.Optional;
 import javax.persistence.Embeddable;
 
 /**
@@ -17,6 +19,14 @@ public class OnError {
 
     private Status statusOnError;
 
+    public OnError() {
+    }
+
+    public OnError(ErrorHandler errorHandler) {
+        this.rescheduleInterval = errorHandler.getRescheduleAfter() > 0 ? errorHandler.getRescheduleAfter() : 1000;
+        this.statusOnError = errorHandler.getStatus();
+    }
+
     public Long getRescheduleInterval() {
         return rescheduleInterval;
     }
@@ -31,5 +41,12 @@ public class OnError {
 
     public void setStatusOnError(Status statusOnError) {
         this.statusOnError = statusOnError;
+    }
+
+    public ErrorHandler asErrorHandler() {
+        return ErrorHandler.newBuilder()
+                           .setRescheduleAfter(rescheduleInterval)
+                           .setStatus(Optional.ofNullable(statusOnError).orElse(Status.FAILED))
+                           .build();
     }
 }

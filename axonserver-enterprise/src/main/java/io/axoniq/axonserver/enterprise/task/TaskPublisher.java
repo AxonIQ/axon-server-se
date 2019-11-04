@@ -6,6 +6,8 @@ import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
 import io.axoniq.axonserver.enterprise.jpa.Payload;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -17,6 +19,8 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
  */
 @Component
 public class TaskPublisher {
+
+    private final Logger logger = LoggerFactory.getLogger(TaskPublisher.class);
 
     private final RaftGroupServiceFactory raftGroupServiceFactory;
     private final TaskPayloadSerializer taskPayloadSerializer;
@@ -41,7 +45,7 @@ public class TaskPublisher {
                                         .setTaskExecutor(taskHandler)
                                         .build();
 
-        System.out.println(taskHandler + " => " + task.getPayload().getData().toStringUtf8());
+        logger.debug("Publish task {} with payload {}", taskHandler, task.getPayload().getData().toStringUtf8());
 
         raftGroupServiceFactory.getRaftGroupService(getAdmin()).appendEntry(getAdmin(),
                                                                             ScheduleTask.class.getName(),

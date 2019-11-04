@@ -11,7 +11,7 @@ import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupRepositoryManager;
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
+import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProviderImpl;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftLoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftProcessorLoadBalancingControllerFacade;
@@ -52,7 +52,8 @@ public class AxonServerEnterpriseConfiguration {
     @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
             MessagingPlatformConfiguration messagingPlatformConfiguration,
-            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider, RaftGroupRepositoryManager raftGroupRepositoryManager,
+            ClusterController clusterController, RaftLeaderProviderImpl raftLeaderProvider,
+            RaftGroupRepositoryManager raftGroupRepositoryManager,
             LifecycleController lifecycleController, LocalEventStore localEventStore,
             ChannelProvider channelProvider) {
         return new EventStoreManager(messagingPlatformConfiguration, clusterController, lifecycleController, raftLeaderProvider, raftGroupRepositoryManager,

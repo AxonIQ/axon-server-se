@@ -11,7 +11,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
+ * Consumes an update task request from the RAFT log. Updates the task with the new information.
+ * If the new status is completed, it deletes the task from the repository.
+ *
  * @author Marc Gathier
+ * @since 4.3
  */
 @Component
 public class UpdateTaskConsumer implements LogEntryConsumer {
@@ -19,6 +23,11 @@ public class UpdateTaskConsumer implements LogEntryConsumer {
     private final Logger logger = LoggerFactory.getLogger(UpdateTaskConsumer.class);
     private final TaskRepository taskRepository;
 
+    /**
+     * Constructor for the log consumer.
+     *
+     * @param taskRepository the task repository
+     */
     public UpdateTaskConsumer(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
     }
@@ -32,18 +41,19 @@ public class UpdateTaskConsumer implements LogEntryConsumer {
     @Transactional
     public void consumeLogEntry(String groupId, Entry entry) throws Exception {
         UpdateTask updateTask = UpdateTask.parseFrom(entry.getSerializedObject().getData());
-        logger.warn("Received updated task: {} status {}", updateTask.getTaskId(), updateTask.getStatus());
+        logger.debug("Received updated task: {} status {}", updateTask.getTaskId(), updateTask.getStatus());
         taskRepository.findFirstByTaskId(updateTask.getTaskId()).ifPresent(t -> update(t, updateTask));
     }
 
     private void update(Task task, UpdateTask updateTask) {
-        if (updateTask.getInstant() > 0) {
-            task.setTimestamp(updateTask.getInstant());
-            taskRepository.save(task);
-        } else {
-            if (Status.COMPLETED.equals(updateTask.getStatus())) {
-                taskRepository.delete(task);
-            }
+        if (Status.COMPLETED.equals(updateTask.getStatus())) {
+            taskRepository.delete(task);
+            return;
         }
+
+        task.setTimestamp(updateTask.getInstant());
+        task.getErrorHandler().setRescheduleInterval(updateTask.getRescheduleAfter());
+        task.setStatus(updateTask.getStatus());
+        taskRepository.save(task);
     }
 }

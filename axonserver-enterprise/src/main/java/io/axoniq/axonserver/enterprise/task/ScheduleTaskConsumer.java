@@ -32,7 +32,7 @@ public class ScheduleTaskConsumer implements LogEntryConsumer {
     @Transactional
     public void consumeLogEntry(String groupId, Entry entry) throws Exception {
         ScheduleTask scheduleTask = ScheduleTask.parseFrom(entry.getSerializedObject().getData());
-        logger.warn("Received task: {} for {}", scheduleTask.getTaskId(), scheduleTask.getTaskExecutor());
+        logger.debug("Received task: {} for {}", scheduleTask.getTaskId(), scheduleTask.getTaskExecutor());
         Task task = new Task(scheduleTask);
         taskRepository.save(task);
     }

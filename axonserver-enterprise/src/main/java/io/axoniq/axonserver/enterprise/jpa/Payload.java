@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
 
 import javax.persistence.Embeddable;
@@ -45,5 +46,12 @@ public class Payload {
 
     public void setData(byte[] data) {
         this.data = data;
+    }
+
+    public SerializedObject asSerializedTask() {
+        return SerializedObject.newBuilder()
+                               .setType(type)
+                               .setData(ByteString.copyFrom(data))
+                               .build();
     }
 }

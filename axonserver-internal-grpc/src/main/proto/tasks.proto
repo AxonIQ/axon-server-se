@@ -9,12 +9,14 @@ message ScheduleTask {
     io.axoniq.axonserver.grpc.SerializedObject payload = 3;
     int64 instant = 4;
     ErrorHandler error_handler = 5;
+    Status status = 6;
 }
 
 message UpdateTask {
     string task_id = 1;
     int64 instant = 2;
     Status status = 3;
+    int64 reschedule_after = 4;
 }
 
 message ErrorHandler {
@@ -25,6 +27,7 @@ message ErrorHandler {
 }
 
 enum Status {
-    COMPLETED = 0;
-    FAILED = 1;
+    SCHEDULED = 0;
+    COMPLETED = 1;
+    FAILED = 2;
 }

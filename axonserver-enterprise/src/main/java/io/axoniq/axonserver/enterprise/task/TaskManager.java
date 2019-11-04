@@ -9,6 +9,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
@@ -23,15 +27,19 @@ public class TaskManager {
     private final TaskRepository taskRepository;
     private final RaftLeaderProvider raftLeaderProvider;
     private final TaskResultPublisher taskResultPublisher;
+    private final Clock clock;
 
 
-    public TaskManager(AdminTaskExecutor taskExecutor, TaskRepository taskRepository,
+    public TaskManager(AdminTaskExecutor taskExecutor,
+                       TaskRepository taskRepository,
                        RaftLeaderProvider raftLeaderProvider,
-                       TaskResultPublisher taskResultPublisher) {
+                       TaskResultPublisher taskResultPublisher,
+                       Clock clock) {
         this.taskExecutor = taskExecutor;
         this.taskRepository = taskRepository;
         this.raftLeaderProvider = raftLeaderProvider;
         this.taskResultPublisher = taskResultPublisher;
+        this.clock = clock;
     }
 
     @Scheduled(fixedDelayString = "1000", initialDelayString = "10000")
@@ -42,7 +50,7 @@ public class TaskManager {
         }
 
         try {
-            taskRepository.findExecutableTasks(System.currentTimeMillis())
+            taskRepository.findExecutableTasks(clock.millis())
                           .forEach(this::executeTask);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -50,17 +58,21 @@ public class TaskManager {
     }
 
     private void executeTask(Task task) {
+        long retry = 0;
+        Status status = task.getStatus();
         try {
             taskExecutor.executeTask(task);
-            task.setStatus(Status.COMPLETED);
+            status = Status.COMPLETED;
         } catch (TransientException transientException) {
-            logger.error("Failed to execute task", transientException);
-            task.setTimestamp(System.currentTimeMillis() + 1000);
+            logger.warn("Failed to execute task", transientException);
+            retry = Optional.ofNullable(task.getErrorHandler().getRescheduleInterval()).orElse(1000L);
         } catch (Exception e) {
-            logger.error("Failed to execute task", e);
-            task.setStatus(Status.FAILED);
+            logger.warn("Failed to execute task", e);
+            status = Optional.ofNullable(task.getErrorHandler().getStatusOnError()).orElse(Status.FAILED);
         }
-        taskRepository.save(task);
-        taskResultPublisher.publishResult(task, task.getStatus(), 0L);
+        taskResultPublisher.publishResult(task.getTaskId(),
+                                          status,
+                                          clock.millis() + Math.min(retry, TimeUnit.MINUTES.toMillis(1)),
+                                          retry * 2);
     }
 }

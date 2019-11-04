@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.task;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,7 @@ public class DeleteNodeFromContextJob implements ScheduledJob {
                                   100);
     }
 
+    @KeepNames
     public static class NodeContext {
 
         private String node;

@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
  */
 public class RaftLeaderProviderTest {
 
-    private RaftLeaderProvider testSubject = new RaftLeaderProvider("me", 1000);
+    private RaftLeaderProviderImpl testSubject = new RaftLeaderProviderImpl("me", 1000);
 
     @Test
     public void getLeader() {

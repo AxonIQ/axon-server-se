@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.jpa;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
 import io.axoniq.axonserver.grpc.tasks.Status;
 
+import java.util.Optional;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -28,7 +29,7 @@ public class Task {
 
     private Long timestamp;
 
-    private OnError errorHandler;
+    private OnError errorHandler = new OnError();
 
     private Status status;
 
@@ -40,6 +41,8 @@ public class Task {
         taskExecutor = scheduleTask.getTaskExecutor();
         payload = new Payload(scheduleTask.getPayload());
         timestamp = scheduleTask.getInstant();
+        status = Status.SCHEDULED;
+        errorHandler = new OnError(scheduleTask.getErrorHandler());
     }
 
     public Long getId() {
@@ -96,5 +99,21 @@ public class Task {
 
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    public ScheduleTask asScheduleTask() {
+        ScheduleTask.Builder scheduleTask = ScheduleTask.newBuilder()
+                                                        .setInstant(timestamp)
+                                                        .setTaskExecutor(taskExecutor)
+                                                        .setStatus(Optional.of(status).orElse(Status.SCHEDULED))
+                                                        .setTaskId(taskId);
+        if (payload != null) {
+            scheduleTask.setPayload(payload.asSerializedTask());
+        }
+
+        if (errorHandler != null) {
+            scheduleTask.setErrorHandler(errorHandler.asErrorHandler());
+        }
+        return scheduleTask.build();
     }
 }
