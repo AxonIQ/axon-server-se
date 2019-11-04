@@ -36,7 +36,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
     public SerializedCommandProviderInbound(CommandProviderInbound defaultInstance) {
         wrapped = defaultInstance;
         serializedCommand = defaultInstance.hasCommand() ? new SerializedCommand(defaultInstance.getCommand()) : null;
-        confirmation = defaultInstance.hasConfirmation() ? defaultInstance.getConfirmation() : null;
+        confirmation = defaultInstance.hasResult() ? defaultInstance.getResult() : null;
     }
 
     public SerializedCommandProviderInbound(SerializedCommand serializedCommand, InstructionResult confirmation) {
@@ -105,7 +105,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
             if( serializedCommand != null) {
                 builder.setCommand(serializedCommand.wrapped());
             } else if( confirmation != null) {
-                builder.setConfirmation(confirmation);
+                builder.setResult(confirmation);
             }
             wrapped = builder.build();
         }

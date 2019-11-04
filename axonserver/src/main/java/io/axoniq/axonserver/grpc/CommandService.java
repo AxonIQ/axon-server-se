@@ -226,7 +226,7 @@ public class CommandService implements AxonServerClientService {
                                             SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver) {
         wrappedResponseObserver.onNext(new SerializedCommandProviderInbound(CommandProviderInbound.newBuilder()
                                                                                                   .setInstructionId(commandFromSubscriber.getInstructionId())
-                                                                                                  .setConfirmation(
+                                                                                                  .setResult(
                                                                                                           unsupportedInstruction(
                                                                                                                   commandFromSubscriber))
                                                                                                   .build()));

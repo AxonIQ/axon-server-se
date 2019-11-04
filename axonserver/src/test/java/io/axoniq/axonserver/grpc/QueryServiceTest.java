@@ -101,7 +101,7 @@ public class QueryServiceTest {
                                                   .build());
 
         InstructionResult result = responseStream.responseList.get(responseStream.responseList.size() - 1)
-                                                              .getConfirmation();
+                                                              .getResult();
         assertEquals(instructionId, result.getInstructionId());
         assertTrue(result.hasError());
         assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());

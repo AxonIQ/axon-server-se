@@ -215,7 +215,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                             SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver) {
         wrappedQueryProviderInboundObserver.onNext(
                 QueryProviderInbound.newBuilder()
-                                    .setConfirmation(unsupportedInstruction(queryProviderOutbound))
+                                    .setResult(unsupportedInstruction(queryProviderOutbound))
                                     .build());
     }
 
