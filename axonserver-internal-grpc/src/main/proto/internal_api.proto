@@ -397,18 +397,18 @@ message SynchronizationReplicaOutbound {
         StartSynchronization start = 1;
         Permits permits = 2;
         TransactionConfirmation confirmation = 3;
-        InstructionResult safepoint_confirmation = 4;
     }
-
+    // Reserved for backwards compatibility - safepoint_confirmation
+    reserved 4;
 }
 
 message SynchronizationReplicaInbound {
     oneof request {
         TransactionWithToken event = 1;
         TransactionWithToken snapshot = 2;
-        SafepointMessage safepoint = 3;
     }
-
+    // Reserved for backwards compatibility - safepoint
+    reserved 3;
 }
 message StartSynchronization {
     int64 event_token = 1;
@@ -425,12 +425,6 @@ message Permits {
 message TransactionConfirmation {
     int64 token = 1;
     string type = 2;
-}
-
-message SafepointMessage {
-    int64 token = 1;
-    string context = 2;
-    string type = 3;
 }
 
 message TransactionWithToken {
