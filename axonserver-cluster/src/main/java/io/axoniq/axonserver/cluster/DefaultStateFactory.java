@@ -45,7 +45,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.registerConfigurationListener = configuration::registerChangeListener;
         this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
                                                        () -> raftGroup.localNode().replicatorPeers(),
-                                                       () -> raftGroup.raftConfiguration().minActiveBackups());
+                                                       raftGroup::minActiveBackups);
     }
 
     private MembershipStateFactory stateFactory() {

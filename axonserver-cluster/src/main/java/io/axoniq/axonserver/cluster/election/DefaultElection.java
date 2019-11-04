@@ -41,7 +41,7 @@ public class DefaultElection implements Election {
                                .build(),
              termUpdateHandler,
              raftGroup.localElectionStore(),
-             otherNodes, () -> raftGroup.raftConfiguration().minActiveBackups(), disruptLeader);
+             otherNodes, () -> raftGroup.minActiveBackups(), disruptLeader);
     }
 
     public DefaultElection(RequestVoteRequest requestPrototype,

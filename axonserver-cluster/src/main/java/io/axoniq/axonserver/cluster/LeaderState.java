@@ -76,7 +76,7 @@ public class LeaderState extends AbstractMembershipState {
         leaderTimeoutChecker = new LeaderTimeoutChecker(this::replicatorPeers,
                                                         maxElectionTimeout(),
                                                         () -> scheduler.get().clock(),
-                                                        () -> raftGroup().raftConfiguration().minActiveBackups());
+                                                        () -> raftGroup().minActiveBackups());
     }
 
     /**

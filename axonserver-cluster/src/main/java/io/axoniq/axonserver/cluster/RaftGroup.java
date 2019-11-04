@@ -58,4 +58,14 @@ public interface RaftGroup {
         long start = Math.max(logEntryProcessor().commitIndex()+1, localLogEntryStore().firstLogIndex());
         return localLogEntryStore().createIterator(start);
     }
+
+    /**
+     * Returns the minimum number of active backup nodes required for leader election and transaction processing.
+     *
+     * @return minimum number of active backup nodes required for leader election and transaction processing
+     */
+    default Integer minActiveBackups() {
+        return 1;
+    }
+
 }

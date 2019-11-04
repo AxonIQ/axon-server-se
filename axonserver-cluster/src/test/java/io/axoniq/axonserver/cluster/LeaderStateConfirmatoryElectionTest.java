@@ -57,7 +57,7 @@ public class LeaderStateConfirmatoryElectionTest {
         addClusterNode("node2", node2);
         matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
                                                   () -> raftGroup.localNode().replicatorPeers(),
-                                                  () -> raftGroup.raftConfiguration().minActiveBackups());
+                                                  () -> raftGroup.minActiveBackups());
     }
 
     private void addClusterNode(String nodeId, FakeRaftPeer peer){

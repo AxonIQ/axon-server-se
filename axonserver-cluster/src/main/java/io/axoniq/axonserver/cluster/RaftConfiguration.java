@@ -113,7 +113,4 @@ public interface RaftConfiguration {
         return false;
     }
 
-    default Integer minActiveBackups() {
-        return 1;
-    }
 }
