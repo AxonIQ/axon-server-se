@@ -64,7 +64,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
-    private final UnsupportedInstructionResultFactory unsupportedInstructionResultFactory;
+    private final UnsupportedInstructionAckFactory unsupportedInstructionResultFactory;
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -72,7 +72,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
     public QueryService(Topology topology, QueryDispatcher queryDispatcher, ContextProvider contextProvider,
                         ApplicationEventPublisher eventPublisher,
-                        UnsupportedInstructionResultFactory unsupportedInstructionResultFactory) {
+                        UnsupportedInstructionAckFactory unsupportedInstructionResultFactory) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
@@ -104,6 +104,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             protected void consume(QueryProviderOutbound queryProviderOutbound) {
                 switch (queryProviderOutbound.getRequestCase()) {
                     case SUBSCRIBE:
+                        sendSuccessfulInstructionAck(queryProviderOutbound, wrappedQueryProviderInboundObserver);
                         QuerySubscription subscription = queryProviderOutbound
                                 .getSubscribe();
                         checkInitClient(subscription.getClientId(), subscription.getComponentName());
@@ -114,6 +115,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                       queryHandler.get()));
                         break;
                     case UNSUBSCRIBE:
+                        sendSuccessfulInstructionAck(queryProviderOutbound, wrappedQueryProviderInboundObserver);
                         if (client.get() != null) {
                             eventPublisher.publishEvent(
                                     new SubscriptionEvents.UnsubscribeQuery(context,
@@ -123,32 +125,36 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         }
                         break;
                     case FLOW_CONTROL:
+                        sendSuccessfulInstructionAck(queryProviderOutbound, wrappedQueryProviderInboundObserver);
                         flowControl(queryProviderOutbound.getFlowControl());
                         break;
                     case QUERY_RESPONSE:
+                        sendSuccessfulInstructionAck(queryProviderOutbound, wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
                                                        client.get().getClient(),
                                                        false);
                         break;
                     case QUERY_COMPLETE:
+                        sendSuccessfulInstructionAck(queryProviderOutbound, wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
                                                        client.get().getClient(),
                                                        false);
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
+                        sendSuccessfulInstructionAck(queryProviderOutbound, wrappedQueryProviderInboundObserver);
                         SubscriptionQueryResponse response = queryProviderOutbound.getSubscriptionQueryResponse();
                         eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response, () ->
                                 wrappedQueryProviderInboundObserver.onNext(unsubscribeMessage(response.getSubscriptionIdentifier()))));
                         break;
-                    case RESULT:
-                        InstructionResult result = queryProviderOutbound.getResult();
-                        if (isUnsupportedInstructionErrorResult(result)) {
+                    case ACK:
+                        InstructionAck ack = queryProviderOutbound.getAck();
+                        if (isUnsupportedInstructionErrorResult(ack)) {
                             logger.warn("Unsupported instruction sent to the client {} of context {}.", client.get().getClient(), context);
                         } else {
-                            logger.trace("Received instruction result from the client {} of context {}. Result {}.",
+                            logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
                                          client.get().getClient(),
                                          context,
-                                         result);
+                                         ack);
                         }
                         break;
                     default:
@@ -214,16 +220,32 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         };
     }
 
-    private void sendUnsupportedInstruction(QueryProviderOutbound queryProviderOutbound,
-                                            SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver) {
-        InstructionResult unsupportedInstruction = unsupportedInstructionResultFactory
-                .create(queryProviderOutbound.getInstructionId(), topology.getMe().getName());
-        wrappedQueryProviderInboundObserver.onNext(QueryProviderInbound.newBuilder()
-                                                                       .setResult(unsupportedInstruction)
-                                                                       .build());
+    private void sendSuccessfulInstructionAck(QueryProviderOutbound queryProviderOutbound,
+                                              SendingStreamObserver<QueryProviderInbound> stream) {
+        InstructionAck success = InstructionAck.newBuilder()
+                                               .setInstructionId(queryProviderOutbound.getInstructionId())
+                                               .setSuccess(true)
+                                               .build();
+        sendInstructionAck(queryProviderOutbound.getInstructionId(), success, stream);
     }
 
-    private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {
+    private void sendUnsupportedInstruction(QueryProviderOutbound queryProviderOutbound,
+                                            SendingStreamObserver<QueryProviderInbound> stream) {
+        InstructionAck unsupportedInstruction = unsupportedInstructionResultFactory
+                .create(queryProviderOutbound.getInstructionId(), topology.getMe().getName());
+       sendInstructionAck(queryProviderOutbound.getInstructionId(), unsupportedInstruction, stream);
+    }
+
+    private void sendInstructionAck(String instructionId, InstructionAck instructionAck, SendingStreamObserver<QueryProviderInbound> stream) {
+        if (instructionId == null || instructionId.equals("")) {
+            return;
+        }
+        stream.onNext(QueryProviderInbound.newBuilder()
+                                          .setAck(instructionAck)
+                                          .build());
+    }
+
+    private boolean isUnsupportedInstructionErrorResult(InstructionAck instructionResult) {
         return instructionResult.hasError()
                 && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }

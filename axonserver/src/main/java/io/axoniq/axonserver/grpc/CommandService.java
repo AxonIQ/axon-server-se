@@ -75,7 +75,7 @@ public class CommandService implements AxonServerClientService {
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
-    private final UnsupportedInstructionResultFactory unsupportedInstructionResultFactory;
+    private final UnsupportedInstructionAckFactory unsupportedInstructionResultFactory;
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
@@ -83,7 +83,7 @@ public class CommandService implements AxonServerClientService {
                           CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
                           ApplicationEventPublisher eventPublisher,
-                          UnsupportedInstructionResultFactory unsupportedInstructionResultFactory) {
+                          UnsupportedInstructionAckFactory unsupportedInstructionResultFactory) {
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
@@ -128,6 +128,7 @@ public class CommandService implements AxonServerClientService {
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
                 switch (commandFromSubscriber.getRequestCase()) {
                     case SUBSCRIBE:
+                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
                         checkInitClient(commandFromSubscriber.getSubscribe().getClientId(),
                                         commandFromSubscriber.getSubscribe().getComponentName());
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(context,
@@ -136,6 +137,7 @@ public class CommandService implements AxonServerClientService {
                                 , commandHandlerRef.get()));
                         break;
                     case UNSUBSCRIBE:
+                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
                         if (clientRef.get() != null) {
                             eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(context,
                                                                                                   commandFromSubscriber
@@ -144,19 +146,21 @@ public class CommandService implements AxonServerClientService {
                         }
                         break;
                     case FLOW_CONTROL:
+                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
                         flowControl(commandFromSubscriber.getFlowControl());
                         break;
                     case COMMAND_RESPONSE:
+                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
                         commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber
                                                                                                .getCommandResponse()),
                                                          false);
                         break;
-                    case RESULT:
-                        InstructionResult result = commandFromSubscriber.getResult();
-                        if (isUnsupportedInstructionErrorResult(result)) {
+                    case ACK:
+                        InstructionAck ack = commandFromSubscriber.getAck();
+                        if (isUnsupportedInstructionErrorResult(ack)) {
                             logger.warn("Unsupported command instruction sent to the client of context {}.", context);
                         } else {
-                            logger.trace("Received command instruction result {}.", result);
+                            logger.trace("Received command instruction ack {}.", ack);
                         }
                         break;
                     default:
@@ -223,18 +227,34 @@ public class CommandService implements AxonServerClientService {
         };
     }
 
-    private void sendUnsupportedInstruction(CommandProviderOutbound commandFromSubscriber,
-                                             SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver) {
-        InstructionResult unsupportedInstruction = unsupportedInstructionResultFactory
-                .create(commandFromSubscriber.getInstructionId(), topology.getMe().getName());
-        CommandProviderInbound cpi = CommandProviderInbound.newBuilder()
-                                                           .setInstructionId(commandFromSubscriber.getInstructionId())
-                                                           .setResult(unsupportedInstruction)
-                                                           .build();
-        wrappedResponseObserver.onNext(new SerializedCommandProviderInbound(cpi));
+    private void sendSuccessfulInstructionAck(CommandProviderOutbound commandProviderOutbound,
+                                              SendingStreamObserver<SerializedCommandProviderInbound> stream) {
+        InstructionAck success = InstructionAck.newBuilder()
+                                               .setInstructionId(commandProviderOutbound.getInstructionId())
+                                               .setSuccess(true)
+                                               .build();
+        sendInstructionAck(commandProviderOutbound.getInstructionId(), success, stream);
     }
 
-    private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {
+    private void sendUnsupportedInstruction(CommandProviderOutbound commandFromSubscriber,
+                                            SendingStreamObserver<SerializedCommandProviderInbound> stream) {
+        InstructionAck unsupportedInstruction = unsupportedInstructionResultFactory
+                .create(commandFromSubscriber.getInstructionId(), topology.getMe().getName());
+        sendInstructionAck(commandFromSubscriber.getInstructionId(), unsupportedInstruction, stream);
+    }
+
+    private void sendInstructionAck(String instructionId, InstructionAck instructionAck,
+                                    SendingStreamObserver<SerializedCommandProviderInbound> stream) {
+        if (instructionId == null || instructionId.equals("")) {
+            return;
+        }
+        CommandProviderInbound cpi = CommandProviderInbound.newBuilder()
+                                                           .setAck(instructionAck)
+                                                           .build();
+        stream.onNext(new SerializedCommandProviderInbound(cpi));
+    }
+
+    private boolean isUnsupportedInstructionErrorResult(InstructionAck instructionResult) {
         return instructionResult.hasError()
                 && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }

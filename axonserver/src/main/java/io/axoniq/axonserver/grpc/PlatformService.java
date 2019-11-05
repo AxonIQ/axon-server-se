@@ -63,43 +63,43 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
-    private final UnsupportedInstructionResultFactory unsupportedInstructionResultFactory;
+    private final UnsupportedInstructionAckFactory unsupportedInstructionAckFactory;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
      *
-     * @param topology                            the {@link Topology} of the group this Axon Server instance
-     *                                            participates in
-     * @param contextProvider                     a {@link ContextProvider} used to retrieve the context this Axon
-     *                                            Server instance is working under
-     * @param eventPublisher                      the {@link ApplicationEventPublisher} to publish events through this
-     *                                            Axon Server
-     * @param unsupportedInstructionResultFactory creates unsupported {@link InstructionResult} message
+     * @param topology                         the {@link Topology} of the group this Axon Server instance
+     *                                         participates in
+     * @param contextProvider                  a {@link ContextProvider} used to retrieve the context this Axon
+     *                                         Server instance is working under
+     * @param eventPublisher                   the {@link ApplicationEventPublisher} to publish events through this
+     *                                         Axon Server
+     * @param unsupportedInstructionAckFactory creates unsupported {@link InstructionAck} message
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher,
-                           UnsupportedInstructionResultFactory unsupportedInstructionResultFactory) {
+                           UnsupportedInstructionAckFactory unsupportedInstructionAckFactory) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
-        this.unsupportedInstructionResultFactory = unsupportedInstructionResultFactory;
-        onInboundInstruction(RequestCase.RESULT, (client, context, instruction) -> {
-            InstructionResult result = instruction.getResult();
-            if (isUnsupportedInstructionErrorResult(result)) {
+        this.unsupportedInstructionAckFactory = unsupportedInstructionAckFactory;
+        onInboundInstruction(RequestCase.ACK, (client, context, instruction) -> {
+            InstructionAck ack = instruction.getAck();
+            if (isUnsupportedInstructionErrorResult(ack)) {
                 logger.warn("Unsupported instruction sent to the client {} of context {}.", client, context);
             } else {
-                logger.trace("Received instruction result from the client {} of context {}. Result {}.",
+                logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
                              client,
                              context,
-                             result);
+                             ack);
             }
         });
     }
 
-    private boolean isUnsupportedInstructionErrorResult(InstructionResult instructionResult) {
-        return instructionResult.hasError()
-                && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
+    private boolean isUnsupportedInstructionErrorResult(InstructionAck instructionAck) {
+        return instructionAck.hasError()
+                && instructionAck.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
     @Override
@@ -138,6 +138,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             protected void consume(PlatformInboundInstruction instruction) {
                 RequestCase requestCase = instruction.getRequestCase();
                 if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
+                    sendSuccessfulInstructionAck(instruction, sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
                     eventPublisher.publishEvent(new ClientTagsUpdate(client.getClientId(),
                                                                      context,
@@ -148,7 +149,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     sendUnsupportedInstruction(instruction, sendingStreamObserver);
                 } else {
                     handlers.getOrDefault(requestCase, new ArrayDeque<>())
-                            .forEach(consumer -> consumer.accept(clientComponent.client, context, instruction));
+                            .forEach(consumer -> {
+                                sendSuccessfulInstructionAck(instruction, sendingStreamObserver);
+                                consumer.accept(clientComponent.client, context, instruction);
+                            });
                 }
             }
 
@@ -169,13 +173,30 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         };
     }
 
+    private void sendSuccessfulInstructionAck(PlatformInboundInstruction instruction,
+                                              SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
+        InstructionAck successfulInstructionAck = InstructionAck.newBuilder()
+                                                                .setInstructionId(instruction.getInstructionId())
+                                                                .setSuccess(true)
+                                                                .build();
+        sendInstructionAck(instruction.getInstructionId(), successfulInstructionAck, sendingStreamObserver);
+    }
+
     private void sendUnsupportedInstruction(PlatformInboundInstruction instruction,
                                             SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
+        InstructionAck unsupportedInstructionAck = unsupportedInstructionAckFactory
+                .create(instruction.getInstructionId(), topology.getMe().getName());
+        sendInstructionAck(instruction.getInstructionId(), unsupportedInstructionAck, sendingStreamObserver);
+    }
+
+    private void sendInstructionAck(String instructionId, InstructionAck instructionAck,
+                                    SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
+        if (instructionId == null || instructionId.equals("")) {
+            return;
+        }
         PlatformOutboundInstruction unsupportedInstruction =
                 PlatformOutboundInstruction.newBuilder()
-                                           .setResult(unsupportedInstructionResultFactory
-                                                              .create(instruction.getInstructionId(),
-                                                                      topology.getMe().getName()))
+                                           .setAck(instructionAck)
                                            .build();
         sendingStreamObserver.onNext(unsupportedInstruction);
     }

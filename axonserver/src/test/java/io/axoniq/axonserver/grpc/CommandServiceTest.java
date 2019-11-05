@@ -58,7 +58,7 @@ public class CommandServiceTest {
                                          commandDispatcher,
                                          () -> Topology.DEFAULT_CONTEXT,
                                          eventPublisher,
-                                         new DefaultUnsupportedInstructionResultFactory());
+                                         new DefaultUnsupportedInstructionAckFactory());
     }
 
     @Test
@@ -94,12 +94,22 @@ public class CommandServiceTest {
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                                                     .setInstructionId(instructionId)
                                                     .build());
-        InstructionResultOrBuilder result = responseStream.responseList.get(responseStream.responseList.size() - 1)
-                                                                       .getInstructionResult();
+        InstructionAckOrBuilder result = responseStream.responseList.get(responseStream.responseList.size() - 1)
+                                                                    .getInstructionResult();
 
         assertEquals(instructionId, result.getInstructionId());
         assertTrue(result.hasError());
         assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());
+    }
+
+    @Test
+    public void unsupportedCommandInstructionWithoutInstructionId() {
+        CountingStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        requestStream.onNext(CommandProviderOutbound.newBuilder().build());
+
+        assertEquals(0, responseStream.responseList.size());
     }
 
     @Test

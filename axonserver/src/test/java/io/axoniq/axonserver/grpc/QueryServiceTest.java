@@ -60,7 +60,7 @@ public class QueryServiceTest {
                                        queryDispatcher,
                                        () -> Topology.DEFAULT_CONTEXT,
                                        eventPublisher,
-                                       new DefaultUnsupportedInstructionResultFactory());
+                                       new DefaultUnsupportedInstructionAckFactory());
     }
 
     @Test
@@ -104,11 +104,21 @@ public class QueryServiceTest {
                                                   .setInstructionId(instructionId)
                                                   .build());
 
-        InstructionResult result = responseStream.responseList.get(responseStream.responseList.size() - 1)
-                                                              .getResult();
-        assertEquals(instructionId, result.getInstructionId());
-        assertTrue(result.hasError());
-        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());
+        InstructionAck ack = responseStream.responseList.get(responseStream.responseList.size() - 1)
+                                                           .getAck();
+        assertEquals(instructionId, ack.getInstructionId());
+        assertTrue(ack.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), ack.getError().getErrorCode());
+    }
+
+    @Test
+    public void unsupportedQueryInstructionWithoutInstructionId() {
+        CountingStreamObserver<QueryProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        requestStream.onNext(QueryProviderOutbound.newBuilder().build());
+
+        assertEquals(0, responseStream.responseList.size());
     }
 
     @Test

@@ -50,7 +50,7 @@ public class PlatformServiceTest {
         platformService = new PlatformService(clusterController,
                                               () -> Topology.DEFAULT_CONTEXT,
                                               eventPublisher,
-                                              new DefaultUnsupportedInstructionResultFactory());
+                                              new DefaultUnsupportedInstructionAckFactory());
     }
 
     @Test
@@ -103,30 +103,28 @@ public class PlatformServiceTest {
 
     @Test
     public void unsupportedInstruction() {
-        AtomicReference<PlatformOutboundInstruction> lastOutbound = new AtomicReference<>();
-        StreamObserver<PlatformInboundInstruction> requestStream = platformService
-                .openStream(new StreamObserver<PlatformOutboundInstruction>() {
-                    @Override
-                    public void onNext(PlatformOutboundInstruction value) {
-                        lastOutbound.set(value);
-                    }
-
-                    @Override
-                    public void onError(Throwable t) { fail("Failure is not an option :)"); }
-
-                    @Override
-                    public void onCompleted() { }
-                });
+        CountingStreamObserver<PlatformOutboundInstruction> responseStream = new CountingStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseStream);
 
         String instructionId = "instructionId";
         requestStream.onNext(PlatformInboundInstruction.newBuilder()
                                                        .setInstructionId(instructionId)
                                                        .build());
 
-        InstructionResult result = lastOutbound.get().getResult();
-        assertEquals(instructionId, result.getInstructionId());
-        assertTrue(result.hasError());
-        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());
+        InstructionAck ack = responseStream.responseList.get(responseStream.responseList.size() - 1).getAck();
+        assertEquals(instructionId, ack.getInstructionId());
+        assertTrue(ack.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), ack.getError().getErrorCode());
+    }
+
+    @Test
+    public void unsupportedInstructionWithoutInstructionId() {
+        CountingStreamObserver<PlatformOutboundInstruction> responseStream = new CountingStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseStream);
+
+        requestStream.onNext(PlatformInboundInstruction.newBuilder().build());
+
+        assertEquals(0, responseStream.responseList.size());
     }
 
     @Test
