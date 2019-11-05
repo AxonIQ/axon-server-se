@@ -64,7 +64,12 @@ public class Applications implements Iterable<Application> {
     @Override
     @Nonnull
     public Iterator<Application> iterator() {
-        List<Map.Entry<ComponentContext, Set<ConnectedClient>>> sortedComponents = clientsPerComponent.entrySet().stream().sorted(
+        List<Map.Entry<ComponentContext, Set<ConnectedClient>>> sortedComponents = clientsPerComponent.entrySet()
+                                                                                                      .stream()
+                                                                                                      .filter(c -> clusterController
+                                                                                                              .validContext(
+                                                                                                                      c.getKey().context))
+                                                                                                      .sorted(
                 (o1, o2) -> {
                     ConnectedClient client1 = o1.getValue().stream().min(Comparator.comparing(v -> v.axonHubServer))
                                                               .orElse(new ConnectedClient("", "ZZZZ"));
