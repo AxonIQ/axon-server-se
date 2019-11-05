@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.grpc.InstructionResult;
+import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
@@ -48,10 +48,10 @@ public class GrpcRaftConfigServiceTest {
     }
 
     @NotNull
-    private StreamObserver<InstructionResult> fakeResponseObserver() {
-        return new StreamObserver<InstructionResult>() {
+    private StreamObserver<InstructionAck> fakeResponseObserver() {
+        return new StreamObserver<InstructionAck>() {
             @Override
-            public void onNext(InstructionResult value) {
+            public void onNext(InstructionAck value) {
 
             }
 

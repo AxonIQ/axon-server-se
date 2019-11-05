@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.grpc.InstructionResult;
+import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
@@ -52,17 +52,17 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     }
 
     @Override
-    public void initCluster(ContextNames request, StreamObserver<InstructionResult> responseObserver) {
+    public void initCluster(ContextNames request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.init(request.getContextsList()));
     }
 
     @Override
-    public void joinCluster(NodeInfo request, StreamObserver<InstructionResult> responseObserver) {
+    public void joinCluster(NodeInfo request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> serviceFactory.get().join(request));
     }
 
     @Override
-    public void createContext(Context request, StreamObserver<InstructionResult> responseObserver) {
+    public void createContext(Context request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.addContext(request.getName(),
                                                                        request.getMembersList()
                                                                               .stream()
@@ -71,14 +71,14 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     }
 
     @Override
-    public void deleteNode(NodeName request, StreamObserver<InstructionResult> responseObserver) {
+    public void deleteNode(NodeName request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.deleteNode(request.getNode()));
     }
 
-    private void wrap(StreamObserver<InstructionResult> responseObserver, Runnable action) {
+    private void wrap(StreamObserver<InstructionAck> responseObserver, Runnable action) {
         try {
             io.grpc.Context.current().fork().wrap(action).run();
-            responseObserver.onNext(InstructionResult.newBuilder().build());
+            responseObserver.onNext(InstructionAck.newBuilder().build());
             responseObserver.onCompleted();
         } catch (Exception ex) {
             responseObserver.onError(GrpcExceptionBuilder.build(ex));
@@ -86,13 +86,13 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     }
 
     @Override
-    public void addNodeToContext(NodeContext request, StreamObserver<InstructionResult> responseObserver) {
+    public void addNodeToContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver,
              () -> localRaftConfigService.addNodeToContext(request.getContext(), request.getNodeName()));
     }
 
     @Override
-    public void deleteNodeFromContext(NodeContext request, StreamObserver<InstructionResult> responseObserver) {
+    public void deleteNodeFromContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver,
              () -> localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNodeName()));
     }
@@ -118,37 +118,37 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     }
 
     @Override
-    public void updateUser(User request, StreamObserver<InstructionResult> responseObserver) {
+    public void updateUser(User request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.updateUser(request));
     }
 
     @Override
-    public void deleteUser(User request, StreamObserver<InstructionResult> responseObserver) {
+    public void deleteUser(User request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.deleteUser(request));
     }
 
     @Override
-    public void deleteContext(ContextName request, StreamObserver<InstructionResult> responseObserver) {
+    public void deleteContext(ContextName request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.deleteContext(request.getContext()));
     }
 
     @Override
-    public void deleteApplication(Application request, StreamObserver<InstructionResult> responseObserver) {
+    public void deleteApplication(Application request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.deleteApplication(request));
     }
 
     @Override
-    public void updateLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<InstructionResult> responseObserver) {
+    public void updateLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.updateLoadBalancingStrategy(request));
     }
 
     @Override
-    public void deleteLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<InstructionResult> responseObserver) {
+    public void deleteLoadBalanceStrategy(LoadBalanceStrategy request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.deleteLoadBalancingStrategy(request));
     }
 
     @Override
-    public void updateProcessorLBStrategy(ProcessorLBStrategy request, StreamObserver<InstructionResult> responseObserver) {
+    public void updateProcessorLBStrategy(ProcessorLBStrategy request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver, () -> localRaftConfigService.updateProcessorLoadBalancing(request));
     }
 }
