@@ -82,4 +82,6 @@ public interface RaftGroupService {
      * @return completable future that completes when follower is up-to-date and signalled to start election
      */
     CompletableFuture<Void> transferLeadership(String context);
+
+    CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node);
 }

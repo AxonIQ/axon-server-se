@@ -30,7 +30,7 @@ public class SubscriptionCountBasedNodeSelectionStrategyTest {
     public void setUp() {
         QueryHandlerSelector queryHandlerSelector= (queryDefinition, componentName, queryHandlers) -> null;
         QueryRegistrationCache queryRegistry = new QueryRegistrationCache(queryHandlerSelector);
-        commandRegistry = new CommandRegistrationCache();
+        commandRegistry = new CommandRegistrationCache(topology);
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         configuration.setName(ME);
         testSubject = new SubscriptionCountBasedNodeSelectionStrategy(commandRegistry, queryRegistry, configuration);

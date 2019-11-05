@@ -6,7 +6,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.enterprise.task.DeleteNodeFromContextJob;
+import io.axoniq.axonserver.enterprise.task.job.PrepareDeleteNodeFromContextJob;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.validation.Valid;
 
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
@@ -50,7 +51,7 @@ public class ContextRestController {
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
     private final ClusterTopology clusterTopology;
-    private final DeleteNodeFromContextJob deleteNodeFromContextJob;
+    private final PrepareDeleteNodeFromContextJob deleteNodeFromContextJob;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final Logger logger = LoggerFactory.getLogger(ContextRestController.class);
@@ -59,7 +60,7 @@ public class ContextRestController {
                                  RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
                                  ClusterTopology clusterTopology,
-                                 DeleteNodeFromContextJob deleteNodeFromContextJob,
+                                 PrepareDeleteNodeFromContextJob deleteNodeFromContextJob,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
@@ -104,7 +105,10 @@ public class ContextRestController {
                                     .sorted()
                                     .collect(Collectors.toList());
         } else {
-            return clusterTopology.getMyStorageContextNames();
+            return StreamSupport.stream(clusterTopology.getMyContextNames().spliterator(), false)
+                                .filter(name -> includeAdmin || !isAdmin(name))
+                                .sorted()
+                                .collect(Collectors.toList());
         }
     }
 
@@ -154,7 +158,7 @@ public class ContextRestController {
                     name,
                     preserveEventStore ? "- Keeping event store" : "");
         try {
-            deleteNodeFromContextJob.deleteNodeFromContext(name, node, preserveEventStore);
+            deleteNodeFromContextJob.prepareDeleteNodeFromContext(name, node, preserveEventStore);
             return ResponseEntity.accepted()
                                  .body(new RestResponse(true,
                                                         "Accepted delete request"));

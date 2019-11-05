@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.DeleteContextRequest;
+import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -187,6 +188,13 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     @Override
     public void transferLeadership(ContextName request, StreamObserver<Confirmation> responseObserver) {
         io.grpc.Context.current().fork().wrap(() -> doTransferLeadership(request, responseObserver)).run();
+    }
+
+    @Override
+    public void preDeleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.prepareDeleteNodeFromContext(request.getContext(),
+                                                                                                 request.getNodeName());
+        confirm(responseObserver, completable);
     }
 
     private void doTransferLeadership(ContextName request,

@@ -117,6 +117,11 @@ service RaftGroupService {
     }
 
     rpc TransferLeadership (ContextName) returns (Confirmation) {}
+
+    // Notify a node that a node will be deleted from a context.
+    rpc PreDeleteNodeFromContext (NodeContext) returns (Confirmation) {
+    }
+
 }
 
 message NodeContext {

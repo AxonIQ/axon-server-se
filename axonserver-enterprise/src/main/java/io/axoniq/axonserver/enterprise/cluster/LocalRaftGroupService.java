@@ -49,7 +49,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     private final Logger logger = LoggerFactory.getLogger(LocalRaftGroupService.class);
     private final ExecutorService asyncPool = Executors.newCachedThreadPool();
 
-    private GrpcRaftController grpcRaftController;
+    private final GrpcRaftController grpcRaftController;
 
     public LocalRaftGroupService(GrpcRaftController grpcRaftController) {
         this.grpcRaftController = grpcRaftController;
@@ -305,5 +305,11 @@ public class LocalRaftGroupService implements RaftGroupService {
         } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
+    }
+
+    @Override
+    public CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node) {
+        grpcRaftController.prepareDeleteNodeFromContext(context, node);
+        return CompletableFuture.completedFuture(null);
     }
 }

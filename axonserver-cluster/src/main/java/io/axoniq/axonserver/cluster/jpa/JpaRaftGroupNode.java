@@ -11,7 +11,9 @@ import javax.persistence.Id;
 import javax.persistence.IdClass;
 
 /**
+ * An entity describing a member of a raft group
  * @author Marc Gathier
+ * @since 4.1
  */
 @Entity
 @IdClass(JpaRaftGroupNode.Key.class)
@@ -25,6 +27,9 @@ public class JpaRaftGroupNode {
     private int port;
     private String nodeName;
     private Role role;
+
+    // deletion of the member of the raft group has been initiated
+    private boolean pendingDelete;
 
     public JpaRaftGroupNode(String groupId, Node node) {
         this.groupId = groupId;
@@ -95,6 +100,14 @@ public class JpaRaftGroupNode {
 
     public Role getRole() {
         return RoleUtils.getOrDefault(role);
+    }
+
+    public boolean isPendingDelete() {
+        return pendingDelete;
+    }
+
+    public void setPendingDelete(boolean pendingDelete) {
+        this.pendingDelete = pendingDelete;
     }
 
     public static class Key implements Serializable {

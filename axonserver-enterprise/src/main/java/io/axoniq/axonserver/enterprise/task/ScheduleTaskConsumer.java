@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
+ * Consumer for {@link ScheduleTask} log entries. Creates an entry in the controldb.
  * @author Marc Gathier
+ * @since 4.3
  */
 @Component
 public class ScheduleTaskConsumer implements LogEntryConsumer {

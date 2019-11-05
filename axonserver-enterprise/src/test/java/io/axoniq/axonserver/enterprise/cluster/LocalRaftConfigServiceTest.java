@@ -261,6 +261,11 @@ public class LocalRaftConfigServiceTest {
         public CompletableFuture<Void> transferLeadership(String context) {
             return CompletableFuture.completedFuture(null);
         }
+
+        @Override
+        public CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node) {
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     @Before

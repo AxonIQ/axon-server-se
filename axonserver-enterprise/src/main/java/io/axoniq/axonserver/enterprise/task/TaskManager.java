@@ -16,7 +16,11 @@ import java.util.concurrent.TimeUnit;
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
+ * Component that reads tasks from the controldb and tries to execute them.
+ * It will only process tasks when the current node is the admin leader.
+ *
  * @author Marc Gathier
+ * @since 4.3
  */
 @Component
 public class TaskManager {
@@ -42,6 +46,10 @@ public class TaskManager {
         this.clock = clock;
     }
 
+    /**
+     * Checks if there are tasks available to run. If the current node is not the admin leader it does not perform any
+     * actions.
+     */
     @Scheduled(fixedDelayString = "1000", initialDelayString = "10000")
     @Transactional
     public void checkForTasks() {
@@ -53,7 +61,7 @@ public class TaskManager {
             taskRepository.findExecutableTasks(clock.millis())
                           .forEach(this::executeTask);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            logger.warn("Failed to run executable tasks", ex);
         }
     }
 
@@ -68,7 +76,7 @@ public class TaskManager {
             retry = Optional.ofNullable(task.getErrorHandler().getRescheduleInterval()).orElse(1000L);
         } catch (Exception e) {
             logger.warn("Failed to execute task", e);
-            status = Optional.ofNullable(task.getErrorHandler().getStatusOnError()).orElse(Status.FAILED);
+            status = Status.FAILED;
         }
         taskResultPublisher.publishResult(task.getTaskId(),
                                           status,

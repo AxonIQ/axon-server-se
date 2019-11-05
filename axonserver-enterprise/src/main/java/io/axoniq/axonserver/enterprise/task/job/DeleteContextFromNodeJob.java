@@ -1,12 +1,17 @@
-package io.axoniq.axonserver.enterprise.task;
+package io.axoniq.axonserver.enterprise.task.job;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
+import io.axoniq.axonserver.enterprise.task.ScheduledJob;
+import io.axoniq.axonserver.enterprise.task.TransientException;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Job that removes a context from a node, potentially keeping the event data. This is called after the context is updated with
+ * the new configuration without the specified node.
  * @author Marc Gathier
+ * @since 4.3
  */
 @Component
 public class DeleteContextFromNodeJob implements ScheduledJob {
@@ -20,7 +25,7 @@ public class DeleteContextFromNodeJob implements ScheduledJob {
 
     @Override
     public void execute(Object payload) {
-        DeleteNodeFromContextJob.NodeContext nodeContext = (DeleteNodeFromContextJob.NodeContext) payload;
+        NodeContext nodeContext = (NodeContext) payload;
         try {
             raftGroupServiceFactory.getRaftGroupServiceForNode(nodeContext.getNode())
                                    .deleteContext(nodeContext.getContext(), nodeContext.isPreserveEventStore()).get(1,

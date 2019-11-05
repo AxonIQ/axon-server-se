@@ -187,11 +187,6 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                                                                              node.getLeaderName(),
                                                                              false));
         }
-
-//        if( stateChanged.getTo().equals(RemovedState.class.getSimpleName()) ) {
-//            delete(stateChanged.getGroupId(), false);
-//        }
-//
     }
 
     @EventListener
@@ -341,4 +336,8 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         }
     }
 
+    public void prepareDeleteNodeFromContext(String context, String node) {
+        raftGroupNodeRepository.prepareDeleteNodeFromContext(context, node);
+        eventPublisher.publishEvent(new ContextEvents.PrepareDeleteNodeFromContext(context, node));
+    }
 }
