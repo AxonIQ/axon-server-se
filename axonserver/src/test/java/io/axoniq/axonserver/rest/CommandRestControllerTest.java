@@ -47,14 +47,14 @@ public class CommandRestControllerTest {
 
     @Test
     public void get() throws Exception {
-        List<CommandRestController.JsonClientMapping> commands = testSubject.get();
+        List<CommandRestController.JsonClientMapping> commands = testSubject.get(null);
         ObjectMapper mapper = new ObjectMapper();
         assertNotEquals("[]", mapper.writeValueAsString(commands));
     }
 
     @Test
     public void getByComponent(){
-        Iterator<ComponentCommand> iterator = testSubject.getByComponent("component", Topology.DEFAULT_CONTEXT).iterator();
+        Iterator<ComponentCommand> iterator = testSubject.getByComponent("component", Topology.DEFAULT_CONTEXT, null).iterator();
         assertTrue(iterator.hasNext());
         GsonMedia gsonMedia = new GsonMedia();
         iterator.next().printOn(gsonMedia);
@@ -65,7 +65,7 @@ public class CommandRestControllerTest {
 
     @Test
     public void getByNotExistingComponent(){
-        Iterator<ComponentCommand> iterator = testSubject.getByComponent("otherComponent", Topology.DEFAULT_CONTEXT).iterator();
+        Iterator<ComponentCommand> iterator = testSubject.getByComponent("otherComponent", Topology.DEFAULT_CONTEXT, null).iterator();
         assertFalse(iterator.hasNext());
     }
 

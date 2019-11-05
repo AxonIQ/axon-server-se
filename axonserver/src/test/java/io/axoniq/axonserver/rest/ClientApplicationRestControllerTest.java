@@ -35,7 +35,7 @@ public class ClientApplicationRestControllerTest {
                                         new FakeClient("clientC",DEFAULT_CONTEXT, false)).iterator();
 
         ClientApplicationRestController controller = new ClientApplicationRestController(clients);
-        Iterator iterator = controller.getComponentInstances("test", DEFAULT_CONTEXT).iterator();
+        Iterator iterator = controller.getComponentInstances("test", DEFAULT_CONTEXT, null).iterator();
         assertTrue(iterator.hasNext());
         iterator.next();
         assertFalse(iterator.hasNext());
@@ -50,7 +50,7 @@ public class ClientApplicationRestControllerTest {
         Clients clients = () -> asList((Client) clientA, clientB, clientC).iterator();
 
         ClientApplicationRestController controller = new ClientApplicationRestController(clients);
-        List<Client> clientList = controller.listClients().collect(Collectors.toList());
+        List<Client> clientList = controller.listClients(null).collect(Collectors.toList());
         assertEquals(3, clientList.size());
         assertTrue(clientList.contains(clientA));
         assertTrue(clientList.contains(clientB));
