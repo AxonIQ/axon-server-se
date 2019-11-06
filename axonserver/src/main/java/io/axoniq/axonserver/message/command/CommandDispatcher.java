@@ -75,7 +75,7 @@ public class CommandDispatcher {
     }
 
     public MeterFactory.RateMeter commandRate(String context) {
-        return commandRatePerContext.computeIfAbsent(context, c->  metricRegistry.rateMeter(COMMANDRATE_NAME, c));
+        return commandRatePerContext.computeIfAbsent(context, c -> metricRegistry.rateMeter(c, COMMANDRATE_NAME));
     }
 
     @EventListener
@@ -111,7 +111,11 @@ public class CommandDispatcher {
         }
 
         logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClient());
-        commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(), responseObserver, commandHandler.getClient(), commandHandler.getComponentName()));
+        commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(),
+                                                                                command.wrapped().getClientId(),
+                                                                                responseObserver,
+                                                                                commandHandler.getClient(),
+                                                                                commandHandler.getComponentName()));
         commandQueues.put(commandHandler.queueName(), new WrappedCommand( commandHandler.getClient(), command));
     }
 
@@ -121,7 +125,10 @@ public class CommandDispatcher {
         if (toPublisher != null) {
             logger.debug("Sending response to: {}", toPublisher);
             if (!proxied) {
-                metricRegistry.add(toPublisher.getRequestIdentifier(), toPublisher.getClientId(), System.currentTimeMillis() - toPublisher.getTimestamp());
+                metricRegistry.add(toPublisher.getRequestIdentifier(),
+                                   toPublisher.getSourceClientId(),
+                                   toPublisher.getClientId(),
+                                   System.currentTimeMillis() - toPublisher.getTimestamp());
             }
             toPublisher.getResponseConsumer().accept(commandResponse);
         } else {
@@ -156,8 +163,12 @@ public class CommandDispatcher {
 
         logger.debug("Dispatch {} to: {}", request.getName(), client.getClient());
 
-        commandCache.put(request.getMessageIdentifier(), new CommandInformation(request.getName(), commandInformation.getResponseConsumer(),
-                client.getClient(), client.getComponentName()));
+        commandCache.put(request.getMessageIdentifier(), new CommandInformation(request.getName(),
+                                                                                request.wrapped().getClientId(),
+                                                                                commandInformation
+                                                                                        .getResponseConsumer(),
+                                                                                client.getClient(),
+                                                                                client.getComponentName()));
         return client.queueName();
     }
 

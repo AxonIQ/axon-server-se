@@ -15,7 +15,9 @@ import io.axoniq.axonserver.serializer.Printable;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -31,6 +33,11 @@ import java.util.function.ToDoubleFunction;
 @Service
 public class MeterFactory {
 
+    public static final String CONTEXT = "context";
+    public static final String REQUEST = "request";
+    public static final String SOURCE = "source";
+    public static final String TARGET = "target";
+
     private final MeterRegistry meterRegistry;
     private final MetricCollector clusterMetrics;
     private final Clock clock = Clock.systemDefaultZone();
@@ -41,12 +48,12 @@ public class MeterFactory {
         this.clusterMetrics = clusterMetrics;
     }
 
-    public RateMeter rateMeter(String... name) {
-        return new RateMeter(String.join(".", name));
+    public RateMeter rateMeter(String context, String... name) {
+        return new RateMeter(context, String.join(".", name));
     }
 
-    public Timer timer(String name) {
-        return meterRegistry.timer(name);
+    public Timer timer(String name, String request, String context, String source, String target) {
+        return meterRegistry.timer(name, REQUEST, request, CONTEXT, context, SOURCE, source, TARGET, target);
     }
 
     public <T> Gauge gauge(String name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
@@ -58,6 +65,23 @@ public class MeterFactory {
         return clusterMetrics;
     }
 
+    public SnapshotMetric snapshot(String metric, Tags tags) {
+        long count = 0;
+        long max = 0;
+        double total = 0;
+
+        for (Timer timer : meterRegistry.find(metric).tags(tags).timers()) {
+            HistogramSnapshot snapshot = timer.takeSnapshot();
+            if (snapshot != null) {
+                total += snapshot.total();
+                count += snapshot.count();
+                max = Math.max(max, (long) snapshot.max());
+            }
+        }
+
+        return new SnapshotMetric(count, max, count == 0 ? 0 : total / count);
+    }
+
     /**
      * Meter to keep rates of events. These are implemented using an IntervalCounter (that counts number of events in a specific timebucket), and
      * exposed to the actuator/metrics endpoints by {@link Gauge}s.
@@ -67,14 +91,25 @@ public class MeterFactory {
 
         private final Counter counter;
         private final String name;
+        private final Tags tags;
 
-        private RateMeter(String name) {
+        private RateMeter(String context, String name) {
             this.name = name;
+            this.tags = Tags.of(CONTEXT, context);
             meter = new IntervalCounter(clock);
-            counter = meterRegistry.counter(name + ".count");
-            meterRegistry.gauge(name + ".oneMinuteRate", meter, IntervalCounter::getOneMinuteRate);
-            meterRegistry.gauge(name + ".fiveMinuteRate", meter, IntervalCounter::getFiveMinuteRate);
-            meterRegistry.gauge(name + ".fifteenMinuteRate", meter, IntervalCounter::getFifteenMinuteRate);
+            counter = meterRegistry.counter(name + ".count", CONTEXT, context);
+            meterRegistry.gauge(name + ".oneMinuteRate",
+                                tags,
+                                meter,
+                                IntervalCounter::getOneMinuteRate);
+            meterRegistry.gauge(name + ".fiveMinuteRate",
+                                tags,
+                                meter,
+                                IntervalCounter::getFiveMinuteRate);
+            meterRegistry.gauge(name + ".fifteenMinuteRate",
+                                tags,
+                                meter,
+                                IntervalCounter::getFifteenMinuteRate);
         }
 
 
@@ -85,25 +120,25 @@ public class MeterFactory {
 
         public long getCount() {
             AtomicLong count = new AtomicLong(meter.count());
-            new Metrics(name + ".count", clusterMetrics).forEach(m -> count.addAndGet(m.size()));
+            new Metrics(name + ".count", tags, clusterMetrics).forEach(m -> count.addAndGet(m.size()));
             return count.get();
         }
 
         public double getOneMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getOneMinuteRate());
-            new Metrics(name + ".oneMinuteRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".oneMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
             return rate.get();
         }
 
         public double getFiveMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFiveMinuteRate());
-            new Metrics(name + ".fiveMinuteRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".fiveMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
             return rate.get();
         }
 
         public double getFifteenMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFifteenMinuteRate());
-            new Metrics(name + ".fifteenMinuteRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".fifteenMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
             return rate.get();
         }
 

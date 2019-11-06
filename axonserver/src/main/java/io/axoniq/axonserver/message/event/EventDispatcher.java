@@ -140,7 +140,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
                                                  String eventsMetricName) {
-        return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(eventsMetricName, context));
+        return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(context, eventsMetricName));
     }
 
 

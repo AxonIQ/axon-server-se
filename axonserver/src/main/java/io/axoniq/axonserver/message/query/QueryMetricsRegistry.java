@@ -14,8 +14,8 @@ import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.Metrics;
-import io.axoniq.axonserver.metric.SnapshotMetric;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,27 +40,35 @@ public class QueryMetricsRegistry {
         this.meterFactory = meterFactory;
     }
 
-    public void add(QueryDefinition query, ClientIdentification clientId, long duration) {
+    public void add(QueryDefinition query, String sourceClientId, ClientIdentification clientId, long duration) {
         try {
-            timer(query, clientId).record(duration, TimeUnit.MILLISECONDS);
+            timer(query, sourceClientId, clientId).record(duration, TimeUnit.MILLISECONDS);
         } catch( Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
     public ClusterMetric clusterMetric(QueryDefinition query, ClientIdentification clientId){
-        String metricName = metricName(query, clientId);
-        return new CompositeMetric(new SnapshotMetric(timer(query, clientId).takeSnapshot()), new Metrics(metricName, meterFactory.clusterMetrics()));
+        Tags tags = Tags.of(MeterFactory.CONTEXT, clientId.getContext(),
+                            MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                            MeterFactory.TARGET, clientId.getClient());
+        return new CompositeMetric(meterFactory.snapshot("axon.query", tags),
+                                   new Metrics("axon.query", tags, meterFactory.clusterMetrics()));
     }
 
 
-    private Timer timer(QueryDefinition query, ClientIdentification clientId) {
-        String metricName = metricName(query, clientId);
-        return timerMap.computeIfAbsent(metricName, meterFactory::timer);
+    private Timer timer(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
+        String metricName = metricName(query, sourceClientId, clientId);
+        return timerMap.computeIfAbsent(metricName, n ->
+                meterFactory.timer("axon.query",
+                                   query.getQueryName().replaceAll("\\.", "/"),
+                                   clientId.getContext(),
+                                   sourceClientId,
+                                   clientId.getClient()));
     }
 
-    private String metricName(QueryDefinition query, ClientIdentification clientId) {
-        return String.format( "axon.query.%s.%s", query.getQueryName(), clientId.metricName());
+    private String metricName(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
+        return String.format("%s.%s.%s", query.getQueryName(), sourceClientId, clientId.metricName());
     }
 
     public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
@@ -72,8 +80,8 @@ public class QueryMetricsRegistry {
         return meterFactory.gauge(name, objectToWatch, gaugeFunction);
     }
 
-    public MeterFactory.RateMeter rateMeter(String... name) {
-        return meterFactory.rateMeter(name);
+    public MeterFactory.RateMeter rateMeter(String context, String... name) {
+        return meterFactory.rateMeter(context, name);
     }
 
 

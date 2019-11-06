@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.metric;
 
+import io.micrometer.core.instrument.Tags;
+
 import java.util.Iterator;
 
 import static java.util.stream.StreamSupport.stream;
@@ -21,17 +23,18 @@ public class Metrics implements Iterable<ClusterMetric> {
 
     private String metricName;
 
+    private final Tags tags;
     private MetricCollector target;
 
-    public Metrics(String metricName, MetricCollector target) {
+    public Metrics(String metricName, Tags tags, MetricCollector target) {
         this.metricName = metricName;
+        this.tags = tags;
         this.target = target;
     }
 
     @Override
     public Iterator<ClusterMetric> iterator() {
-        return stream(target.getAll().spliterator(), false)
-                .filter(metric -> metric.getName().equals(metricName))
+        return stream(target.getAll(metricName, tags).spliterator(), false)
                 .map(metric -> (ClusterMetric) new NodeMetric(metric))
                 .iterator();
     }

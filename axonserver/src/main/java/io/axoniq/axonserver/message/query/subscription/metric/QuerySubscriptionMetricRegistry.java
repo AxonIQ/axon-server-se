@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.message.query.subscription.metric;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
-import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
 import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.UPDATE;
 
@@ -32,7 +30,6 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.Response
 @Component
 public class QuerySubscriptionMetricRegistry  {
     private final MeterRegistry localRegistry;
-    private final Function<String, ClusterMetric> clusterRegistry;
     private final Map<String, String> queries = new ConcurrentHashMap<>();
     private final Map<String, String> contexts = new ConcurrentHashMap<>();
     private final Map<String, Counter> totalSubscriptionsMap = new ConcurrentHashMap<>();
@@ -40,10 +37,8 @@ public class QuerySubscriptionMetricRegistry  {
     private final Map<String, Counter> updatesMap = new ConcurrentHashMap<>();
 
 
-    public QuerySubscriptionMetricRegistry(MeterRegistry localRegistry,
-                                                 Function<String, ClusterMetric> clusterRegistry) {
+    public QuerySubscriptionMetricRegistry(MeterRegistry localRegistry) {
         this.localRegistry = localRegistry;
-        this.clusterRegistry = clusterRegistry;
     }
 
     public HubSubscriptionMetrics get(String component, String query, String context) {
@@ -52,7 +47,7 @@ public class QuerySubscriptionMetricRegistry  {
         Counter updates = updatesMetric(component,query, context);
         return new HubSubscriptionMetrics(new CounterMetric(activeSubscriptionsMetricName(query, context), ()-> (long)active.get()),
                                           new CounterMetric(total.getId().getName(), () -> (long)total.count()),
-                                          new CounterMetric(updates.getId().getName(), () -> (long)updates.count()), clusterRegistry);
+                                          new CounterMetric(updates.getId().getName(), () -> (long) updates.count()));
     }
 
 

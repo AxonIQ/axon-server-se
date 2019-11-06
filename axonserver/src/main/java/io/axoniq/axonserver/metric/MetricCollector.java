@@ -9,12 +9,14 @@
 
 package io.axoniq.axonserver.metric;
 
-import java.util.function.Function;
+import io.micrometer.core.instrument.Tags;
+
+import java.util.function.BiFunction;
 
 /**
  * @author Marc Gathier
  */
-public interface MetricCollector extends Function<String, ClusterMetric>  {
+public interface MetricCollector extends BiFunction<String, Tags, ClusterMetric> {
 
-    Iterable<AxonServerMetric> getAll();
+    Iterable<AxonServerMetric> getAll(String metricName, Tags tags);
 }

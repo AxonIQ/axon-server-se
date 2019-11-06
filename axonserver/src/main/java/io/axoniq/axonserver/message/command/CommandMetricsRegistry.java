@@ -14,8 +14,8 @@ import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.Metrics;
-import io.axoniq.axonserver.metric.SnapshotMetric;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,25 +42,36 @@ public class CommandMetricsRegistry {
     }
 
 
-    public void add(String command, ClientIdentification clientId, long duration) {
+    public void add(String command, String sourceClientId, ClientIdentification clientId, long duration) {
         try {
-            timer(command, clientId).record(duration, TimeUnit.MILLISECONDS);
+            timer(command, sourceClientId, clientId).record(duration, TimeUnit.MILLISECONDS);
         } catch( Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
-    private Timer timer(String command, ClientIdentification clientId) {
-        return timerMap.computeIfAbsent(metricName(command, clientId), meterFactory::timer);
+    private Timer timer(String command, String sourceClientId, ClientIdentification clientId) {
+        return timerMap.computeIfAbsent(metricName(command, sourceClientId, clientId),
+                                        n -> meterFactory.timer("axon.command",
+                                                                command.replaceAll("\\.", "/"),
+                                                                clientId.getContext(),
+                                                                sourceClientId,
+                                                                clientId.getClient()));
     }
 
-    private static String metricName(String command, ClientIdentification clientId) {
-        return String.format("axon.command.%s.%s", command, clientId.metricName());
+    private static String metricName(String command, String sourceClientId, ClientIdentification clientId) {
+        return String.format("%s.%s.%s", command, sourceClientId, clientId.metricName());
     }
 
     private ClusterMetric clusterMetric(String command, ClientIdentification clientId){
-        String metricName = metricName(command, clientId);
-        return new CompositeMetric(new SnapshotMetric(timer(command, clientId).takeSnapshot()), new Metrics(metricName, meterFactory.clusterMetrics()));
+        Tags tags = Tags.of(MeterFactory.CONTEXT,
+                            clientId.getContext(),
+                            MeterFactory.REQUEST,
+                            command.replaceAll("\\.", "/"),
+                            MeterFactory.TARGET,
+                            clientId.getClient());
+        return new CompositeMetric(meterFactory.snapshot("axon.command", tags),
+                                   new Metrics("axon.command", tags, meterFactory.clusterMetrics()));
     }
 
     public CommandMetric commandMetric(String command, ClientIdentification clientId, String componentName) {
@@ -71,8 +82,8 @@ public class CommandMetricsRegistry {
         return meterFactory.gauge(activeCommandsGauge, objectToWatch, gaugeFunction);
     }
 
-    public MeterFactory.RateMeter rateMeter(String... meterName) {
-        return meterFactory.rateMeter(meterName);
+    public MeterFactory.RateMeter rateMeter(String context, String... meterName) {
+        return meterFactory.rateMeter(context, meterName);
     }
 
     public static class CommandMetric {

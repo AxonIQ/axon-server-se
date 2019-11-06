@@ -34,27 +34,7 @@ public class ApplicationSubscriptionMetricRegistryTest {
 
     @Before
     public void setUp() {
-        testSubject = new ApplicationSubscriptionMetricRegistry(new SimpleMeterRegistry(), metric -> clusterMetricMap.computeIfAbsent(metric, m -> new ClusterMetric(){
-            @Override
-            public long size() {
-                return 0;
-            }
-
-            @Override
-            public long min() {
-                return 0;
-            }
-
-            @Override
-            public long max() {
-                return 0;
-            }
-
-            @Override
-            public double mean() {
-                return 0;
-            }
-        }));
+        testSubject = new ApplicationSubscriptionMetricRegistry(new SimpleMeterRegistry());
     }
 
     @Test
