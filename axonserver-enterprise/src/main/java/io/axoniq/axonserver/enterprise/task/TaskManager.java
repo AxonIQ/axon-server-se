@@ -73,7 +73,7 @@ public class TaskManager {
             status = Status.COMPLETED;
         } catch (TransientException transientException) {
             logger.warn("Failed to execute task", transientException);
-            retry = Optional.ofNullable(task.getErrorHandler().getRescheduleInterval()).orElse(1000L);
+            retry = Optional.ofNullable(task.getRescheduleInterval()).orElse(1000L);
         } catch (Exception e) {
             logger.warn("Failed to execute task", e);
             status = Status.FAILED;

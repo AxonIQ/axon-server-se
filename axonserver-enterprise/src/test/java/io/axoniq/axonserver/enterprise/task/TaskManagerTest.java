@@ -2,7 +2,6 @@ package io.axoniq.axonserver.enterprise.task;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.internal.FakeClock;
-import io.axoniq.axonserver.enterprise.jpa.OnError;
 import io.axoniq.axonserver.enterprise.jpa.Task;
 import io.axoniq.axonserver.grpc.tasks.Status;
 import org.junit.*;
@@ -74,7 +73,7 @@ public class TaskManagerTest {
             tasks.stream().filter(t -> taskId.equals(t.getTaskId())).findFirst().ifPresent(t -> {
                 t.setStatus(status);
                 t.setTimestamp(newSchedule);
-                t.getErrorHandler().setRescheduleInterval(retry);
+                t.setRescheduleInterval(retry);
             });
         };
         testSubject = new TaskManager(executor, repository, leaderProvider, resultPublisher, clock);
@@ -136,7 +135,6 @@ public class TaskManagerTest {
         task.setStatus(status);
         task.setTimestamp(timestamp);
         task.setTaskId(UUID.randomUUID().toString());
-        task.setErrorHandler(new OnError());
         return task;
     }
 }

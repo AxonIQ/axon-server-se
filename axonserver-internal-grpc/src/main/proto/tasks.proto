@@ -8,8 +8,7 @@ message ScheduleTask {
     string task_executor = 2;
     io.axoniq.axonserver.grpc.SerializedObject payload = 3;
     int64 instant = 4;
-    ErrorHandler error_handler = 5;
-    Status status = 6;
+    int64 reschedule_after = 5;
 }
 
 message UpdateTask {
@@ -17,13 +16,6 @@ message UpdateTask {
     int64 instant = 2;
     Status status = 3;
     int64 reschedule_after = 4;
-}
-
-message ErrorHandler {
-    oneof handler {
-        int64 reschedule_after = 1;
-        Status status = 2;
-    }
 }
 
 enum Status {

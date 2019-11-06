@@ -52,7 +52,7 @@ public class UpdateTaskConsumer implements LogEntryConsumer {
         }
 
         task.setTimestamp(updateTask.getInstant());
-        task.getErrorHandler().setRescheduleInterval(updateTask.getRescheduleAfter());
+        task.setRescheduleInterval(updateTask.getRescheduleAfter());
         task.setStatus(updateTask.getStatus());
         taskRepository.save(task);
     }

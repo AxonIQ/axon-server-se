@@ -5,8 +5,23 @@ create table task
     data                blob,
     type                varchar(200),
     status              INTEGER,
-    status_on_error     INTEGER,
     reschedule_interval BIGINT,
     task_executor       varchar(200),
     timestamp           BIGINT not null
 );
+
+alter table JPA_RAFT_GROUP_NODE
+    add (
+        pending_delete boolean
+        );
+
+alter table CONTEXT_CLUSTER_NODE
+    add (
+        pending_delete boolean
+        );
+
+update JPA_RAFT_GROUP_NODE
+set pending_delete = false;
+
+update CONTEXT_CLUSTER_NODE
+set pending_delete = false;

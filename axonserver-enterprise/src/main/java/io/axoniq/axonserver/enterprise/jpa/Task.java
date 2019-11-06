@@ -3,7 +3,6 @@ package io.axoniq.axonserver.enterprise.jpa;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
 import io.axoniq.axonserver.grpc.tasks.Status;
 
-import java.util.Optional;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -29,9 +28,9 @@ public class Task {
 
     private Long timestamp;
 
-    private OnError errorHandler = new OnError();
-
     private Status status;
+
+    private Long rescheduleInterval;
 
     public Task() {
     }
@@ -42,7 +41,8 @@ public class Task {
         payload = new Payload(scheduleTask.getPayload());
         timestamp = scheduleTask.getInstant();
         status = Status.SCHEDULED;
-        errorHandler = new OnError(scheduleTask.getErrorHandler());
+        this.rescheduleInterval = scheduleTask.getRescheduleAfter() > 0 ? scheduleTask.getRescheduleAfter() : 1000;
+
     }
 
     public Long getId() {
@@ -85,14 +85,6 @@ public class Task {
         this.timestamp = timestamp;
     }
 
-    public OnError getErrorHandler() {
-        return errorHandler;
-    }
-
-    public void setErrorHandler(OnError errorHandler) {
-        this.errorHandler = errorHandler;
-    }
-
     public Status getStatus() {
         return status;
     }
@@ -101,19 +93,24 @@ public class Task {
         this.status = status;
     }
 
+    public Long getRescheduleInterval() {
+        return rescheduleInterval;
+    }
+
+    public void setRescheduleInterval(Long rescheduleInterval) {
+        this.rescheduleInterval = rescheduleInterval;
+    }
+
     public ScheduleTask asScheduleTask() {
         ScheduleTask.Builder scheduleTask = ScheduleTask.newBuilder()
                                                         .setInstant(timestamp)
                                                         .setTaskExecutor(taskExecutor)
-                                                        .setStatus(Optional.of(status).orElse(Status.SCHEDULED))
                                                         .setTaskId(taskId);
         if (payload != null) {
             scheduleTask.setPayload(payload.asSerializedTask());
         }
 
-        if (errorHandler != null) {
-            scheduleTask.setErrorHandler(errorHandler.asErrorHandler());
-        }
+        scheduleTask.setRescheduleAfter(rescheduleInterval);
         return scheduleTask.build();
     }
 }
