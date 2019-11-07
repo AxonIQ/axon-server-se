@@ -15,6 +15,12 @@ import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
+import io.axoniq.axonserver.grpc.InstructionAckSource;
+import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
+import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -32,6 +38,7 @@ import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -147,6 +154,31 @@ public class AxonServerStandardConfiguration {
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    @Qualifier("platformInstructionAckSource")
+    public InstructionAckSource<PlatformOutboundInstruction> platformInstructionAckSource() {
+        return new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction.newBuilder()
+                                                                                   .setAck(ack)
+                                                                                   .build());
+    }
+
+    @Bean
+    @Qualifier("commandInstructionAckSource")
+    public InstructionAckSource<SerializedCommandProviderInbound> commandInstructionAckSource() {
+        return new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(CommandProviderInbound
+                                                                                                     .newBuilder()
+                                                                                                     .setAck(ack)
+                                                                                                     .build()));
+    }
+
+    @Bean
+    @Qualifier("queryInstructionAckSource")
+    public InstructionAckSource<QueryProviderInbound> queryInstructionAckSource() {
+        return new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
+                                                                            .setAck(ack)
+                                                                            .build());
     }
 
 }

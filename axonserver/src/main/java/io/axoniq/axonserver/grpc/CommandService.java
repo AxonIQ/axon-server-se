@@ -29,6 +29,7 @@ import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -75,7 +76,7 @@ public class CommandService implements AxonServerClientService {
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
-    private final UnsupportedInstructionAckFactory unsupportedInstructionResultFactory;
+    private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
@@ -83,12 +84,13 @@ public class CommandService implements AxonServerClientService {
                           CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
                           ApplicationEventPublisher eventPublisher,
-                          UnsupportedInstructionAckFactory unsupportedInstructionResultFactory) {
+                          @Qualifier("commandInstructionAckSource")
+                          InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
-        this.unsupportedInstructionResultFactory = unsupportedInstructionResultFactory;
+        this.instructionAckSource = instructionAckSource;
     }
 
     @PreDestroy
@@ -128,7 +130,8 @@ public class CommandService implements AxonServerClientService {
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
                 switch (commandFromSubscriber.getRequestCase()) {
                     case SUBSCRIBE:
-                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         checkInitClient(commandFromSubscriber.getSubscribe().getClientId(),
                                         commandFromSubscriber.getSubscribe().getComponentName());
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(context,
@@ -137,7 +140,8 @@ public class CommandService implements AxonServerClientService {
                                 , commandHandlerRef.get()));
                         break;
                     case UNSUBSCRIBE:
-                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         if (clientRef.get() != null) {
                             eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(context,
                                                                                                   commandFromSubscriber
@@ -146,11 +150,13 @@ public class CommandService implements AxonServerClientService {
                         }
                         break;
                     case FLOW_CONTROL:
-                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         flowControl(commandFromSubscriber.getFlowControl());
                         break;
                     case COMMAND_RESPONSE:
-                        sendSuccessfulInstructionAck(commandFromSubscriber, wrappedResponseObserver);
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber
                                                                                                .getCommandResponse()),
                                                          false);
@@ -164,7 +170,9 @@ public class CommandService implements AxonServerClientService {
                         }
                         break;
                     default:
-                        sendUnsupportedInstruction(commandFromSubscriber, wrappedResponseObserver);
+                        instructionAckSource.sendUnsupportedInstruction(commandFromSubscriber.getInstructionId(),
+                                                                        topology.getMe().getName(),
+                                                                        wrappedResponseObserver);
                         break;
                 }
             }
@@ -225,33 +233,6 @@ public class CommandService implements AxonServerClientService {
                 }
             }
         };
-    }
-
-    private void sendSuccessfulInstructionAck(CommandProviderOutbound commandProviderOutbound,
-                                              SendingStreamObserver<SerializedCommandProviderInbound> stream) {
-        InstructionAck success = InstructionAck.newBuilder()
-                                               .setInstructionId(commandProviderOutbound.getInstructionId())
-                                               .setSuccess(true)
-                                               .build();
-        sendInstructionAck(commandProviderOutbound.getInstructionId(), success, stream);
-    }
-
-    private void sendUnsupportedInstruction(CommandProviderOutbound commandFromSubscriber,
-                                            SendingStreamObserver<SerializedCommandProviderInbound> stream) {
-        InstructionAck unsupportedInstruction = unsupportedInstructionResultFactory
-                .create(commandFromSubscriber.getInstructionId(), topology.getMe().getName());
-        sendInstructionAck(commandFromSubscriber.getInstructionId(), unsupportedInstruction, stream);
-    }
-
-    private void sendInstructionAck(String instructionId, InstructionAck instructionAck,
-                                    SendingStreamObserver<SerializedCommandProviderInbound> stream) {
-        if (instructionId == null || instructionId.equals("")) {
-            return;
-        }
-        CommandProviderInbound cpi = CommandProviderInbound.newBuilder()
-                                                           .setAck(instructionAck)
-                                                           .build();
-        stream.onNext(new SerializedCommandProviderInbound(cpi));
     }
 
     private boolean isUnsupportedInstructionErrorResult(InstructionAck instructionResult) {

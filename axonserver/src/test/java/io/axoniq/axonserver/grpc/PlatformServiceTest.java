@@ -50,7 +50,8 @@ public class PlatformServiceTest {
         platformService = new PlatformService(clusterController,
                                               () -> Topology.DEFAULT_CONTEXT,
                                               eventPublisher,
-                                              new DefaultUnsupportedInstructionAckFactory());
+                                              new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
+                                                      .newBuilder().setAck(ack).build()));
     }
 
     @Test

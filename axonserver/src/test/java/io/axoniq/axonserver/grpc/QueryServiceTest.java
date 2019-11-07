@@ -60,7 +60,9 @@ public class QueryServiceTest {
                                        queryDispatcher,
                                        () -> Topology.DEFAULT_CONTEXT,
                                        eventPublisher,
-                                       new DefaultUnsupportedInstructionAckFactory());
+                                       new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
+                                                                                                    .setAck(ack)
+                                                                                                    .build()));
     }
 
     @Test

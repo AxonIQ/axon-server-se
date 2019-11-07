@@ -15,6 +15,7 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -58,7 +59,8 @@ public class CommandServiceTest {
                                          commandDispatcher,
                                          () -> Topology.DEFAULT_CONTEXT,
                                          eventPublisher,
-                                         new DefaultUnsupportedInstructionAckFactory());
+                                         new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
+                                                 CommandProviderInbound.newBuilder().setAck(ack).build())));
     }
 
     @Test

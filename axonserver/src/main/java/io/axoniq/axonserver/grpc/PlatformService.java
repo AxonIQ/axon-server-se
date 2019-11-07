@@ -33,6 +33,7 @@ import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -63,27 +64,26 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
-    private final UnsupportedInstructionAckFactory unsupportedInstructionAckFactory;
+    private final InstructionAckSource<PlatformOutboundInstruction> instructionAckSource;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
      *
-     * @param topology                         the {@link Topology} of the group this Axon Server instance
-     *                                         participates in
-     * @param contextProvider                  a {@link ContextProvider} used to retrieve the context this Axon
-     *                                         Server instance is working under
-     * @param eventPublisher                   the {@link ApplicationEventPublisher} to publish events through this
-     *                                         Axon Server
-     * @param unsupportedInstructionAckFactory creates unsupported {@link InstructionAck} message
+     * @param topology             the {@link Topology} of the group this Axon Server instance participates in
+     * @param contextProvider      a {@link ContextProvider} used to retrieve the context this Axon Server instance is
+     *                             working under
+     * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
+     * @param instructionAckSource responsible for sending instruction acknowledgements
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher,
-                           UnsupportedInstructionAckFactory unsupportedInstructionAckFactory) {
+                           @Qualifier("platformInstructionAckSource")
+                           InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
-        this.unsupportedInstructionAckFactory = unsupportedInstructionAckFactory;
+        this.instructionAckSource = instructionAckSource;
         onInboundInstruction(RequestCase.ACK, (client, context, instruction) -> {
             InstructionAck ack = instruction.getAck();
             if (isUnsupportedInstructionErrorResult(ack)) {
@@ -138,7 +138,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             protected void consume(PlatformInboundInstruction instruction) {
                 RequestCase requestCase = instruction.getRequestCase();
                 if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
-                    sendSuccessfulInstructionAck(instruction, sendingStreamObserver);
+                    instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(), sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
                     eventPublisher.publishEvent(new ClientTagsUpdate(client.getClientId(),
                                                                      context,
@@ -146,11 +146,14 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
                     registerClient(clientComponent, sendingStreamObserver);
                 } else if (!handlers.containsKey(requestCase)) {
-                    sendUnsupportedInstruction(instruction, sendingStreamObserver);
+                    instructionAckSource.sendUnsupportedInstruction(instruction.getInstructionId(),
+                                                                    topology.getMe().getName(),
+                                                                    sendingStreamObserver);
                 } else {
                     handlers.getOrDefault(requestCase, new ArrayDeque<>())
                             .forEach(consumer -> {
-                                sendSuccessfulInstructionAck(instruction, sendingStreamObserver);
+                                instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
+                                                                       sendingStreamObserver);
                                 consumer.accept(clientComponent.client, context, instruction);
                             });
                 }
@@ -171,34 +174,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 deregisterClient(clientComponent);
             }
         };
-    }
-
-    private void sendSuccessfulInstructionAck(PlatformInboundInstruction instruction,
-                                              SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
-        InstructionAck successfulInstructionAck = InstructionAck.newBuilder()
-                                                                .setInstructionId(instruction.getInstructionId())
-                                                                .setSuccess(true)
-                                                                .build();
-        sendInstructionAck(instruction.getInstructionId(), successfulInstructionAck, sendingStreamObserver);
-    }
-
-    private void sendUnsupportedInstruction(PlatformInboundInstruction instruction,
-                                            SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
-        InstructionAck unsupportedInstructionAck = unsupportedInstructionAckFactory
-                .create(instruction.getInstructionId(), topology.getMe().getName());
-        sendInstructionAck(instruction.getInstructionId(), unsupportedInstructionAck, sendingStreamObserver);
-    }
-
-    private void sendInstructionAck(String instructionId, InstructionAck instructionAck,
-                                    SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver) {
-        if (instructionId == null || instructionId.equals("")) {
-            return;
-        }
-        PlatformOutboundInstruction unsupportedInstruction =
-                PlatformOutboundInstruction.newBuilder()
-                                           .setAck(instructionAck)
-                                           .build();
-        sendingStreamObserver.onNext(unsupportedInstruction);
     }
 
     public boolean requestReconnect(ClientComponent clientName) {
