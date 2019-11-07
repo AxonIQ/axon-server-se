@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.task.job;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.task.ScheduledJob;
@@ -11,6 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -56,7 +57,9 @@ public class PrepareDeleteNodeFromContextJob implements ScheduledJob {
         targetNodes.addAll(adminNodes);
         targetNodes.forEach(n -> sendPreDeleteNodeFromContext(n, nodeContext));
 
-        taskPublisher.publishTask(DeleteNodeFromContextJob.class.getName(), nodeContext, 1_000);
+        taskPublisher.publishTask(DeleteNodeFromContextJob.class.getName(),
+                                  nodeContext,
+                                  Duration.of(1, ChronoUnit.SECONDS));
     }
 
     private void sendPreDeleteNodeFromContext(String node, NodeContext nodeContext) {
@@ -75,10 +78,9 @@ public class PrepareDeleteNodeFromContextJob implements ScheduledJob {
         }
     }
 
-    public void prepareDeleteNodeFromContext(String name, String node, boolean preserveContext)
-            throws JsonProcessingException {
+    public void prepareDeleteNodeFromContext(String name, String node, boolean preserveContext) {
         taskPublisher.publishTask(PrepareDeleteNodeFromContextJob.class.getName(),
                                   new NodeContext(node, name, preserveContext),
-                                  0);
+                                  Duration.ZERO);
     }
 }

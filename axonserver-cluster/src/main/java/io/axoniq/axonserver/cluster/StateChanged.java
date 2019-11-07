@@ -10,8 +10,8 @@ public class StateChanged {
 
     private final String groupId;
     private final String nodeId;
-    private final Class from;
-    private final Class to;
+    private final Class<? extends MembershipState> from;
+    private final Class<? extends MembershipState> to;
     private final String cause;
     private final Long currentTerm;
 
@@ -41,38 +41,24 @@ public class StateChanged {
                 '}';
     }
 
-    public Class getFrom() {
-        return from;
-    }
-
-    public Class getTo() {
-        return to;
-    }
-
     public boolean fromLeader() {
-        return from.equals(LeaderState.class);
+        return LeaderState.class.equals(from);
     }
     public boolean fromFollower() {
-        return from.equals(FollowerState.class);
+        return FollowerState.class.equals(from);
     }
-
     public boolean fromCandidate() {
-        return from.equals(CandidateState.class);
+        return CandidateState.class.equals(from);
     }
 
     public boolean toLeader() {
-        return to.equals(LeaderState.class);
+        return LeaderState.class.equals(to);
     }
     public boolean toFollower() {
-        return to.equals(FollowerState.class);
+        return FollowerState.class.equals(to);
     }
-
     public boolean toCandidate() {
-        return to.equals(CandidateState.class);
-    }
-
-    public boolean toRemoved() {
-        return to.equals(RemovedState.class);
+        return CandidateState.class.equals(to);
     }
 
     public String getGroupId() {

@@ -5,6 +5,9 @@ import io.axoniq.axonserver.enterprise.task.ScheduledJob;
 import io.axoniq.axonserver.enterprise.task.TaskPublisher;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+
 /**
  * Job that deletes removes a node from a context. Sends a request to the leader of the context.
  * The leader will send the updated configuration to all other (remaining) nodes.
@@ -36,6 +39,8 @@ public class DeleteNodeFromContextJob implements ScheduledJob {
         NodeContext nodeContext = (NodeContext) payload;
         raftConfigServiceFactory.getRaftConfigService().deleteNodeFromContext(nodeContext.getContext(),
                                                                               nodeContext.getNode());
-        taskPublisher.publishTask(DeleteContextFromNodeJob.class.getName(), nodeContext, 100);
+        taskPublisher.publishTask(DeleteContextFromNodeJob.class.getName(),
+                                  nodeContext,
+                                  Duration.of(100, ChronoUnit.MILLIS));
     }
 }

@@ -64,11 +64,12 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void createContext(Context request, StreamObserver<Confirmation> responseObserver) {
-        wrap(responseObserver, () -> localRaftConfigService.addContext(request.getName(),
-                                                                       request.getMembersList()
-                                                                              .stream()
-                                                                              .map(ContextMember::getNodeId)
-                                                                              .collect(Collectors.toList())));
+        wrap(responseObserver, () -> localRaftConfigService.addContext(
+                request.getName(),
+                request.getMembersList()
+                       .stream()
+                       .map(ContextMember::getNodeId)
+                       .collect(Collectors.toList())));
     }
 
     @Override

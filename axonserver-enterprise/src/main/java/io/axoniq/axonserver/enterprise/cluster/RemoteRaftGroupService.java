@@ -190,12 +190,6 @@ public class RemoteRaftGroupService implements RaftGroupService {
 
             @Override
             public void onError(Throwable throwable) {
-                // If the remote server is unavailable, handle as if the deleteContext was completed successfully.
-//                if(throwable instanceof StatusRuntimeException && ((StatusRuntimeException) throwable).getStatus().getCode().equals(Status.Code.UNAVAILABLE)) {
-//                        result.complete(null);
-//                        return;
-//                }
-
                 logger.warn("Remote action failed", throwable);
                 result.completeExceptionally(GrpcExceptionBuilder.parse(throwable));
             }

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
@@ -42,10 +43,10 @@ public class TaskPublisher {
      * @param payload     the payload to pass to the task upon execution.
      * @param delay       time to wait before executing the task
      */
-    public void publishTask(String taskHandler, Object payload, long delay) {
+    public void publishTask(String taskHandler, Object payload, Duration delay) {
         Payload serializedPayload = taskPayloadSerializer.serialize(payload);
         ScheduleTask task = ScheduleTask.newBuilder()
-                                        .setInstant(System.currentTimeMillis() + delay)
+                                        .setInstant(System.currentTimeMillis() + delay.toMillis())
                                         .setPayload(SerializedObject.newBuilder()
                                                                     .setData(ByteString.copyFrom(serializedPayload
                                                                                                          .getData()))
