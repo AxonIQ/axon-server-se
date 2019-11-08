@@ -7,6 +7,7 @@ import java.util.function.Function;
 /**
  * Default implementation of {@link InstructionAckSource}.
  *
+ * @param <T> the type of message to be sent
  * @author Milan Savic
  * @since 4.2.3
  */

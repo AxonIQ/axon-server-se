@@ -6,6 +6,7 @@ import io.grpc.stub.StreamObserver;
 /**
  * Responsible for sending instruction acknowledgements.
  *
+ * @param <T> the type of message to be sent
  * @author Milan Savic
  * @since 4.2.3
  */
