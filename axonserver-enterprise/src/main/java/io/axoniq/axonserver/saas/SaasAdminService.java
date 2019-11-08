@@ -170,6 +170,17 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
         }
     }
 
+    @Override
+    public void refreshToken(Application request, StreamObserver<Application> responseObserver) {
+        try {
+            Application response = raftConfigServiceFactory.getRaftConfigService().refreshToken(request);
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (Exception ex) {
+            responseObserver.onError(ex);
+        }
+    }
+
     private void wrap(StreamObserver<Confirmation> responseObserver, Runnable action) {
         try {
             io.grpc.Context.current().fork().wrap(action).run();
