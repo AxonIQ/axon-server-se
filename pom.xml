@@ -41,8 +41,8 @@
         <grpc.version>1.22.1</grpc.version>
         <netty.tcnative.version>2.0.25.Final</netty.tcnative.version>
         <netty.version>4.1.35.Final</netty.version>
-        <axonserver.api.version>4.2.1</axonserver.api.version>
-        <axonserver.se.version>4.2.2</axonserver.se.version>
+        <axonserver.api.version>4.2.2-SNAPSHOT</axonserver.api.version>
+        <axonserver.se.version>4.2.2-SNAPSHOT</axonserver.se.version>
         <axon.version>4.1.2</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <opencensus.version>0.23.0</opencensus.version>
