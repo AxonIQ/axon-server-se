@@ -39,10 +39,16 @@ import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.ApplicationEventMulticaster;
+import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -57,6 +63,8 @@ import java.util.Set;
  */
 @Configuration
 public class AxonServerStandardConfiguration {
+
+    private final Logger logger = LoggerFactory.getLogger(AxonServerStandardConfiguration.class);
 
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
@@ -181,4 +189,17 @@ public class AxonServerStandardConfiguration {
                                                                             .build());
     }
 
+    @Bean
+    public ApplicationEventMulticaster applicationEventMulticaster() {
+        return new SimpleApplicationEventMulticaster() {
+            @Override
+            protected void invokeListener(ApplicationListener<?> listener, ApplicationEvent event) {
+                try {
+                    super.invokeListener(listener, event);
+                } catch (RuntimeException ex) {
+                    logger.warn("Invoking listener {} failed", listener, ex);
+                }
+            }
+        };
+    }
 }
