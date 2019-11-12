@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
+import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -40,6 +41,31 @@ public class LocalEventStorageEngineTest {
 
     @Before
     public void setup() {
+        StorageTransactionManagerFactory transactionManagerFactory = eventStore -> new StorageTransactionManager() {
+            @Override
+            public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
+                CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
+                pendingTransactions.add(pendingTransaction);
+                return pendingTransaction;
+            }
+
+            @Override
+            public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
+                return () -> {
+                };
+            }
+
+            @Override
+            public void cancelPendingTransactions() {
+                pendingTransactions.forEach(p -> p
+                        .completeExceptionally(new RuntimeException("Transaction cancelled")));
+            }
+
+            @Override
+            public void deleteAllEventData() {
+
+            }
+        };
         testSubject = new LocalEventStore(new EventStoreFactory() {
             @Override
             public EventStorageEngine createEventStorageEngine(String context) {
@@ -50,34 +76,7 @@ public class LocalEventStorageEngineTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return new FakeEventStore(EventType.SNAPSHOT);
             }
-
-            @Override
-            public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
-                return new StorageTransactionManager() {
-                    @Override
-                    public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
-                        CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
-                        pendingTransactions.add(pendingTransaction);
-                        return pendingTransaction;
-                    }
-
-                    @Override
-                    public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
-                        return () -> {
-                        };
-                    }
-
-                    @Override
-                    public void cancelPendingTransactions() {
-                        pendingTransactions.forEach(p -> p.completeExceptionally(new RuntimeException("Transaction cancelled")));
-                    }
-
-                    @Override
-                    public void deleteAllEventData() {
-
-                    }
-                };
-            }
+        }, transactionManagerFactory, new EventStoreExistChecker() {
         }, 5, 1000);
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
