@@ -206,7 +206,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                                     me(), request.getTerm(), currentTerm(), request.getCandidateId());
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestPreVote(request), message);
             logger.info(
-                    "{} in term {}: Request for vote received from {} for term {}. {} voted {} (handled as follower).",
+                    "{} in term {}: Request for pre-vote received from {} for term {}. {} voted {} (handled as follower).",
                     groupId(),
                     currentTerm(),
                     request.getCandidateId(),
@@ -215,13 +215,13 @@ public abstract class AbstractMembershipState implements MembershipState {
                     vote != null && vote.getVoteGranted());
             return vote;
         }
-        logger.info("{} in term {}: Request for vote received from {} in term {}. {} voted rejected.",
+        logger.info("{} in term {}: Request for pre-vote received from {} in term {}. {} voted rejected.",
                     groupId(),
                     currentTerm(),
                     request.getCandidateId(),
                     request.getTerm(),
                     me());
-        return responseFactory().voteRejected(request.getRequestId(), false);
+        return responseFactory().voteRejected(request.getRequestId());
     }
 
     @Override
@@ -246,8 +246,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                     request.getCandidateId(),
                     request.getTerm(),
                     me());
-        boolean isMember = member(request.getCandidateId());
-        return responseFactory().voteRejected(request.getRequestId(), !isMember && shouldGoAwayIfNotMember());
+        return responseFactory().voteRejected(request.getRequestId());
     }
 
     @Override
@@ -266,10 +265,6 @@ public abstract class AbstractMembershipState implements MembershipState {
                               groupId(), currentTerm(), request.getTerm());
         logger.trace(cause);
         return responseFactory().installSnapshotFailure(request.getRequestId(), cause);
-    }
-
-    protected boolean member(String candidateId) {
-        return currentGroupMembers().stream().anyMatch(n -> n.getNodeId().equals(candidateId));
     }
 
     /**

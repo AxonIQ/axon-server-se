@@ -5,16 +5,12 @@ import io.axoniq.axonserver.cluster.snapshot.SnapshotContext;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotDeserializationException;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.jpa.Task;
-import io.axoniq.axonserver.enterprise.task.TaskRepository;
+import io.axoniq.axonserver.enterprise.taskscheduler.TaskManager;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
-import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
-import java.util.stream.Collectors;
-
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 
 /**
@@ -26,19 +22,19 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
  */
 public class TaskSnapshotDataStore implements SnapshotDataStore {
 
-    public static final String ENTRY_TYPE = ScheduleTask.class.getName();
-    private final TaskRepository taskRepository;
-    private final boolean adminContext;
+    private static final String ENTRY_TYPE = ScheduleTask.class.getName();
+    private final TaskManager taskManager;
+    private final String context;
 
     /**
      * Creates Context Snapshot Data Store for streaming/applying {@link Context} data.
      *
      * @param context        the application context
-     * @param taskRepository the repository used for retrieving/saving tasks
+     * @param taskManager    the task manager used for retrieving/saving tasks
      */
-    public TaskSnapshotDataStore(String context, TaskRepository taskRepository) {
-        this.adminContext = isAdmin(context);
-        this.taskRepository = taskRepository;
+    public TaskSnapshotDataStore(String context, TaskManager taskManager) {
+        this.context = context;
+        this.taskManager = taskManager;
     }
 
     @Override
@@ -48,19 +44,16 @@ public class TaskSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext) {
-        if (!adminContext) {
-            return Flux.empty();
-        }
-        List<Task> tasks = taskRepository.findAll();
+        List<Task> tasks = taskManager.findAllByContext(context);
 
         return Flux.fromIterable(tasks)
-                   .map(t -> t.asScheduleTask())
+                   .map(Task::asScheduleTask)
                    .map(this::toSerializedObject);
     }
 
     @Override
     public boolean canApplySnapshotData(String type) {
-        return adminContext && ENTRY_TYPE.equals(type);
+        return ENTRY_TYPE.equals(type);
     }
 
 
@@ -69,7 +62,7 @@ public class TaskSnapshotDataStore implements SnapshotDataStore {
         try {
             ScheduleTask scheduleTask = ScheduleTask
                     .parseFrom(serializedObject.getData());
-            taskRepository.save(new Task(scheduleTask));
+            taskManager.schedule(context, scheduleTask);
         } catch (InvalidProtocolBufferException e) {
             throw new SnapshotDeserializationException("Unable to deserialize application data.", e);
         }
@@ -77,9 +70,7 @@ public class TaskSnapshotDataStore implements SnapshotDataStore {
 
     @Override
     public void clear() {
-        if (adminContext) {
-            taskRepository.deleteAll();
-        }
+        taskManager.deleteAllByContext(context);
     }
 
     private SerializedObject toSerializedObject(ScheduleTask scheduleTask) {

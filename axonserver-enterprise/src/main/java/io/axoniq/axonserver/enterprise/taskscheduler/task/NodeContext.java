@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.task.job;
+package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.KeepNames;
 

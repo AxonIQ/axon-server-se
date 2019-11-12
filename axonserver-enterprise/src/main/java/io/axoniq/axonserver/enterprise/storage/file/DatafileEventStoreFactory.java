@@ -7,11 +7,7 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-
-import java.io.File;
 
 /**
  * @author Marc Gathier
@@ -19,13 +15,11 @@ import java.io.File;
 public class DatafileEventStoreFactory implements EventStoreFactory {
     protected final EmbeddedDBProperties embeddedDBProperties;
     protected final EventTransformerFactory eventTransformerFactory;
-    protected final StorageTransactionManagerFactory storageTransactionManagerFactory;
 
-    public DatafileEventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                     StorageTransactionManagerFactory storageTransactionManagerFactory) {
+    public DatafileEventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                     EventTransformerFactory eventTransformerFactory) {
         this.embeddedDBProperties = embeddedDBProperties;
         this.eventTransformerFactory = eventTransformerFactory;
-        this.storageTransactionManagerFactory = storageTransactionManagerFactory;
     }
 
     @Override
@@ -50,20 +44,4 @@ public class DatafileEventStoreFactory implements EventStoreFactory {
         return first;
     }
 
-    @Override
-    public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
-        return storageTransactionManagerFactory.createTransactionManager(eventStorageEngine);
-    }
-
-    @Override
-    public boolean exists(String context) {
-        String folder = embeddedDBProperties.getEvent().getStorage(context);
-        File events = new File(folder);
-        if (!events.isDirectory()) {
-            return false;
-        }
-
-        String[] files = events.list((dir, name) -> name.endsWith(embeddedDBProperties.getEvent().getEventsSuffix()));
-        return files != null && files.length > 0;
-    }
 }

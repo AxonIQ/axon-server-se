@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.task;
+package io.axoniq.axonserver.enterprise.taskscheduler;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.internal.FakeClock;
@@ -7,13 +7,17 @@ import io.axoniq.axonserver.grpc.tasks.Status;
 import org.junit.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -32,14 +36,17 @@ public class TaskManagerTest {
 
     @Before
     public void setUp() {
-        AdminTaskExecutor executor = task -> {
+        ScheduledTaskExecutor executor = task -> {
+            CompletableFuture<Void> result = new CompletableFuture<>();
             executionAttempts.incrementAndGet();
             if (transientError.get()) {
-                throw new TransientException("Failed");
+                result.completeExceptionally(new TransientException("Failed"));
+            } else if (nonTransientError.get()) {
+                result.completeExceptionally(new RuntimeException("Failed"));
+            } else {
+                result.complete(null);
             }
-            if (nonTransientError.get()) {
-                throw new RuntimeException("Failed");
-            }
+            return result;
         };
 
 
@@ -50,7 +57,7 @@ public class TaskManagerTest {
                         .filter(t -> t.getTimestamp() <= timestamp)
                         .filter(t -> Status.SCHEDULED.equals(t.getStatus()))
                         .collect(Collectors.toList());
-        }).when(repository).findExecutableTasks(anyLong());
+        }).when(repository).findExecutableTasks(anyLong(), anySet());
 
 
         RaftLeaderProvider leaderProvider = new RaftLeaderProvider() {
@@ -68,13 +75,19 @@ public class TaskManagerTest {
             public String getLeaderOrWait(String context, boolean aBoolean) {
                 return null;
             }
+
+            @Override
+            public Set<String> leaderFor() {
+                return leader.get() ? Collections.singleton(getAdmin()) : Collections.emptySet();
+            }
         };
-        TaskResultPublisher resultPublisher = (taskId, status, newSchedule, retry) -> {
+        TaskResultPublisher resultPublisher = (context, taskId, status, newSchedule, retry) -> {
             tasks.stream().filter(t -> taskId.equals(t.getTaskId())).findFirst().ifPresent(t -> {
                 t.setStatus(status);
                 t.setTimestamp(newSchedule);
-                t.setRescheduleInterval(retry);
+                t.setRetryInterval(retry);
             });
+            return CompletableFuture.completedFuture(null);
         };
         testSubject = new TaskManager(executor, repository, leaderProvider, resultPublisher, clock);
     }
@@ -132,6 +145,7 @@ public class TaskManagerTest {
 
     private Task task(long timestamp, Status status) {
         Task task = new Task();
+        task.setContext(getAdmin());
         task.setStatus(status);
         task.setTimestamp(timestamp);
         task.setTaskId(UUID.randomUUID().toString());

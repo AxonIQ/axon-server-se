@@ -11,7 +11,7 @@ import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupRepositoryManager;
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProviderImpl;
+import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftLoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.enterprise.cluster.raftfacade.RaftProcessorLoadBalancingControllerFacade;
@@ -52,7 +52,7 @@ public class AxonServerEnterpriseConfiguration {
     @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
             MessagingPlatformConfiguration messagingPlatformConfiguration,
-            ClusterController clusterController, RaftLeaderProviderImpl raftLeaderProvider,
+            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider,
             RaftGroupRepositoryManager raftGroupRepositoryManager,
             LifecycleController lifecycleController, LocalEventStore localEventStore,
             ChannelProvider channelProvider) {
@@ -83,9 +83,9 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
     @Conditional(MemoryMappedStorage.class)
-    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                               StorageTransactionManagerFactory storageTransactionManagerFactory) {
-        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
+    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                               EventTransformerFactory eventTransformerFactory) {
+        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory);
     }
 
     @Bean

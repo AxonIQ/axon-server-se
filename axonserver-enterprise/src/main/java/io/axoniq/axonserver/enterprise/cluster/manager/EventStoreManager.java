@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
-import com.google.common.hash.Hashing;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -20,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 
-import java.nio.charset.Charset;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -116,12 +114,6 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private void initContext(String context, boolean validating) {
         logger.debug("Init context: {}", context);
         localEventStore.initContext(context, validating);
-    }
-
-    public static int hash(String context, String node){
-        return Hashing.goodFastHash(32).hashString(context + node,
-                                                          Charset.defaultCharset()).asInt();
-
     }
 
     @Override

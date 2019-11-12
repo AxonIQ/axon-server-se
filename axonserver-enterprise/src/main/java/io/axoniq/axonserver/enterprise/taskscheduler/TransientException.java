@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.task;
+package io.axoniq.axonserver.enterprise.taskscheduler;
 
 /**
  * Exception to be thrown when a task fails with an error that may disappear by itself (or by restarting a component).

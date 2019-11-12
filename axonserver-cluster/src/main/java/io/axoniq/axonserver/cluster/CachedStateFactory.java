@@ -76,16 +76,6 @@ public class CachedStateFactory implements MembershipStateFactory {
     }
 
     @Override
-    public MembershipState removedState() {
-        MembershipState state = removed.get();
-        if (state == null){
-            state = delegate.removedState();
-            removed.set(state);
-        }
-        return state;
-    }
-
-    @Override
     public MembershipState fatalState() {
         MembershipState state = fatal.get();
         if (state == null) {

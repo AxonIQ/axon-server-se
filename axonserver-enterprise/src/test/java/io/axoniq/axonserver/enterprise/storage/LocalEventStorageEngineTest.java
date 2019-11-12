@@ -6,10 +6,11 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
+import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
+import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -35,11 +36,12 @@ public class LocalEventStorageEngineTest {
         embeddedDBProperties.getEvent().setSegmentSize(512*1024L);
         embeddedDBProperties.getEvent().setForceInterval(100);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
-        EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
-                                                                            new DefaultStorageTransactionManagerFactory());
+        EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties,
+                                                                            new DefaultEventTransformerFactory());
 
-        testSubject = new LocalEventStore(eventStoreFactory);
-//        testSubject = new EmbeddedEventStore(new JdbcEventStoreFactory(new StorageProperties()));
+        testSubject = new LocalEventStore(eventStoreFactory, SingleInstanceTransactionManager::new,
+                                          new EventStoreExistChecker() {
+                                          });
         testSubject.initContext("default", false);
     }
 

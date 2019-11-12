@@ -3,8 +3,8 @@ package io.axoniq.axonserver.enterprise.jpa;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
 import io.axoniq.axonserver.grpc.tasks.Status;
 
+import java.util.Optional;
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
 /**
@@ -17,9 +17,6 @@ import javax.persistence.Id;
 public class Task {
 
     @Id
-    @GeneratedValue
-    private Long id;
-
     private String taskId;
 
     private String taskExecutor;
@@ -30,27 +27,22 @@ public class Task {
 
     private Status status;
 
-    private Long rescheduleInterval;
+    private Long retryInterval;
+
+    private String context;
 
     public Task() {
     }
 
-    public Task(ScheduleTask scheduleTask) {
+    public Task(String context, ScheduleTask scheduleTask) {
         taskId = scheduleTask.getTaskId();
         taskExecutor = scheduleTask.getTaskExecutor();
         payload = new Payload(scheduleTask.getPayload());
         timestamp = scheduleTask.getInstant();
         status = Status.SCHEDULED;
-        this.rescheduleInterval = scheduleTask.getRescheduleAfter() > 0 ? scheduleTask.getRescheduleAfter() : 1000;
+        this.context = context;
+        this.retryInterval = scheduleTask.getRetryInterval() > 0 ? scheduleTask.getRetryInterval() : 1000;
 
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getTaskId() {
@@ -93,24 +85,33 @@ public class Task {
         this.status = status;
     }
 
-    public Long getRescheduleInterval() {
-        return rescheduleInterval;
+    public Long getRetryInterval() {
+        return Optional.ofNullable(retryInterval).orElse(1000L);
     }
 
-    public void setRescheduleInterval(Long rescheduleInterval) {
-        this.rescheduleInterval = rescheduleInterval;
+    public void setRetryInterval(Long retryInterval) {
+        this.retryInterval = retryInterval;
+    }
+
+    public String getContext() {
+        return context;
+    }
+
+    public void setContext(String context) {
+        this.context = context;
     }
 
     public ScheduleTask asScheduleTask() {
         ScheduleTask.Builder scheduleTask = ScheduleTask.newBuilder()
                                                         .setInstant(timestamp)
                                                         .setTaskExecutor(taskExecutor)
-                                                        .setTaskId(taskId);
+                                                        .setTaskId(taskId)
+                                                        .setRetryInterval(retryInterval);
+
         if (payload != null) {
             scheduleTask.setPayload(payload.asSerializedTask());
         }
 
-        scheduleTask.setRescheduleAfter(rescheduleInterval);
         return scheduleTask.build();
     }
 }

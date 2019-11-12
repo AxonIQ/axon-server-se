@@ -59,13 +59,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     }
 
     @Override
-    public RemovedState removedState() {
-        return RemovedState.builder()
-                           .raftGroup(raftGroup)
-                           .build();
-    }
-
-    @Override
     public MembershipState fatalState() {
         return new FatalState(new DefaultResponseFactory(raftGroup));
     }

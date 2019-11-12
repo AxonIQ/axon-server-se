@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.task;
+package io.axoniq.axonserver.enterprise.taskscheduler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

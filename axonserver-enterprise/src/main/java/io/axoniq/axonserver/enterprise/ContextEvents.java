@@ -3,7 +3,6 @@ package io.axoniq.axonserver.enterprise;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import org.springframework.context.ApplicationEvent;
 
 /**
  * @author Marc Gathier
@@ -78,7 +77,7 @@ public class ContextEvents {
      * Event published when there is an intent to remove a node from a context.
      */
     @KeepNames
-    public static class PrepareDeleteNodeFromContext extends ApplicationEvent {
+    public static class DeleteNodeFromContextRequested extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
         private final String node;
@@ -89,7 +88,7 @@ public class ContextEvents {
          * @param context the context where the node will be deleted
          * @param node    the node that will be deleted from the context
          */
-        public PrepareDeleteNodeFromContext(
+        public DeleteNodeFromContextRequested(
                 String context, String node) {
             super(false);
             this.context = context;

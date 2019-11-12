@@ -101,7 +101,6 @@ public class PreVoteStateTest {
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(0).build();
         RequestVoteResponse response = preVoteState.requestVote(request);
         assertFalse(response.getVoteGranted());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -125,7 +124,6 @@ public class PreVoteStateTest {
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(0).build();
         RequestVoteResponse response = preVoteState.requestVote(request);
         assertFalse(response.getVoteGranted());
-        assertFalse(response.getGoAway());
     }
 
     @Test

@@ -10,7 +10,9 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * @author Marc Gathier
@@ -69,6 +71,14 @@ public class RaftLeaderProviderImpl implements RaftLeaderProvider {
     public boolean isLeader(String context) {
         String leader = leaderMap.get(context);
         return leader != null && leader.equals(node);
+    }
+
+    @Override
+    public Set<String> leaderFor() {
+        return leaderMap.keySet()
+                        .stream()
+                        .filter(this::isLeader)
+                        .collect(Collectors.toSet());
     }
 
     /**

@@ -95,11 +95,6 @@ public class LeaderStateConfirmatoryElectionTest {
             }
 
             @Override
-            public boolean goAway() {
-                return false;
-            }
-
-            @Override
             public String cause() {
                 return "Test case: election won!";
             }
@@ -110,11 +105,6 @@ public class LeaderStateConfirmatoryElectionTest {
         return new Election.Result() {
             @Override
             public boolean won() {
-                return false;
-            }
-
-            @Override
-            public boolean goAway() {
                 return false;
             }
 

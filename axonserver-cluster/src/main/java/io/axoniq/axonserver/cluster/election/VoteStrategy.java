@@ -8,11 +8,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface VoteStrategy {
 
-    default void registerVoteReceived( String voter, boolean granted) {
-        registerVoteReceived(voter, granted, false);
-    }
-
-    void registerVoteReceived(String voter, boolean granted, boolean goAway);
+    void registerVoteReceived(String voter, boolean granted);
 
     CompletableFuture<Election.Result> isWon();
 

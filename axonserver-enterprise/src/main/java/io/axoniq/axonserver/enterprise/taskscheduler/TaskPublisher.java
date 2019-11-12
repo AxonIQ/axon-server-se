@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.task;
+package io.axoniq.axonserver.enterprise.taskscheduler;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
@@ -11,11 +11,10 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.UUID;
-
-import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Component to publish a new task to all admin nodes.
+ * Component to publish a new task to all nodes.
  * @author Marc Gathier
  * @since 4.3
  */
@@ -39,11 +38,13 @@ public class TaskPublisher {
      * type {@link ScheduleTask}, that
      * will be stored in the control db upon applying the entry.
      *
+     * @param context     the context in which to schedule the task
      * @param taskHandler the name of the class implementing the the task. There must be a Spring bean for this class.
      * @param payload     the payload to pass to the task upon execution.
      * @param delay       time to wait before executing the task
      */
-    public void publishTask(String taskHandler, Object payload, Duration delay) {
+    public CompletableFuture<Void> publishScheduledTask(String context, String taskHandler, Object payload,
+                                                        Duration delay) {
         Payload serializedPayload = taskPayloadSerializer.serialize(payload);
         ScheduleTask task = ScheduleTask.newBuilder()
                                         .setInstant(System.currentTimeMillis() + delay.toMillis())
@@ -58,8 +59,8 @@ public class TaskPublisher {
 
         logger.debug("Publish task {} with payload {}", taskHandler, task.getPayload().getData().toStringUtf8());
 
-        raftGroupServiceFactory.getRaftGroupService(getAdmin()).appendEntry(getAdmin(),
-                                                                            ScheduleTask.class.getName(),
-                                                                            task.toByteArray());
+        return raftGroupServiceFactory.getRaftGroupService(context).appendEntry(context,
+                                                                                ScheduleTask.class.getName(),
+                                                                                task.toByteArray());
     }
 }

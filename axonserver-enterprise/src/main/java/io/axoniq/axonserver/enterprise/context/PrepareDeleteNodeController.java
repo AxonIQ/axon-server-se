@@ -21,7 +21,7 @@ public class PrepareDeleteNodeController {
     }
 
     @EventListener
-    public void on(ContextEvents.PrepareDeleteNodeFromContext prepareDeleteNodeFromContext) {
+    public void on(ContextEvents.DeleteNodeFromContextRequested prepareDeleteNodeFromContext) {
         if (nodeName.equals(prepareDeleteNodeFromContext.getNode())) {
             platformService.requestReconnectForContext(prepareDeleteNodeFromContext.getContext());
         }

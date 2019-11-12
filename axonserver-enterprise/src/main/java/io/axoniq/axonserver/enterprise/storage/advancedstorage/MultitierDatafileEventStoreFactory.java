@@ -7,7 +7,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 /**
@@ -19,9 +18,8 @@ public class MultitierDatafileEventStoreFactory extends DatafileEventStoreFactor
 
     public MultitierDatafileEventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
                                               EventTransformerFactory eventTransformerFactory,
-                                              StorageTransactionManagerFactory storageTransactionManagerFactory,
                                               AdvancedStorageProperties advancedStorageProperties) {
-        super(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
+        super(embeddedDBProperties, eventTransformerFactory);
         this.advancedStorageProperties = advancedStorageProperties;
     }
 

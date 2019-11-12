@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.task;
+package io.axoniq.axonserver.enterprise.taskscheduler;
 
 import io.axoniq.axonserver.enterprise.jpa.Payload;
 

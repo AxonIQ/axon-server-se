@@ -338,6 +338,6 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
     public void prepareDeleteNodeFromContext(String context, String node) {
         raftGroupNodeRepository.prepareDeleteNodeFromContext(context, node);
-        eventPublisher.publishEvent(new ContextEvents.PrepareDeleteNodeFromContext(context, node));
+        eventPublisher.publishEvent(new ContextEvents.DeleteNodeFromContextRequested(context, node));
     }
 }

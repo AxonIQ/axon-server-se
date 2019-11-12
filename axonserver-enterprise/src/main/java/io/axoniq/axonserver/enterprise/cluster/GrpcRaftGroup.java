@@ -22,7 +22,6 @@ import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
-import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManager;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
@@ -104,10 +103,6 @@ public class GrpcRaftGroup implements RaftGroup {
                         membersStore.set(nodes);
                     }
                 });
-                nodes.stream()
-                     .filter(n -> n.getNodeId().equals(localNodeId) && RoleUtils.hasStorage(n.getRole()))
-                     .findFirst()
-                     .ifPresent(n -> localEventStore.initContext(groupId, false));
             }
 
             @Override
