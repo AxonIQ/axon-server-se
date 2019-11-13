@@ -78,13 +78,22 @@ public class CommandRegistrationCache {
      */
     public void add( String command, CommandHandler commandHandler) {
         logger.trace("Add command {} to {}", command, commandHandler.client);
+        add(command, commandHandler, 100);
+    }
+
+    private void add(String command, CommandHandler commandHandler, int loadFactor) {
+        logger.trace("Add command {} to {}", command, commandHandler.client);
         ClientIdentification clientIdentification = commandHandler.getClient();
-        ConsistentHash consistentHash = consistentHashPerContext.computeIfAbsent(clientIdentification.getContext(), c -> new ConsistentHash());
-        if( ! consistentHash.contains(clientIdentification.getClient())) {
-            consistentHashPerContext.put(clientIdentification.getContext(), consistentHash.with(clientIdentification.getClient(), 100, cmd -> provides(clientIdentification,cmd)));
+        ConsistentHash consistentHash = consistentHashPerContext.computeIfAbsent(clientIdentification.getContext(),
+                                                                                 c -> new ConsistentHash());
+        if (!consistentHash.contains(clientIdentification.getClient())) {
+            consistentHashPerContext.put(clientIdentification.getContext(),
+                                         consistentHash.with(clientIdentification.getClient(),
+                                                             loadFactor,
+                                                             cmd -> provides(clientIdentification, cmd)));
         }
         logger.trace("Consistent hash = {}", consistentHashPerContext.get(clientIdentification.getContext()));
-        registrationsPerClient.computeIfAbsent(clientIdentification, key ->new CopyOnWriteArraySet<>()).add(command);
+        registrationsPerClient.computeIfAbsent(clientIdentification, key -> new CopyOnWriteArraySet<>()).add(command);
         commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
     }
 
@@ -149,7 +158,8 @@ public class CommandRegistrationCache {
     @EventListener
     public void on(SubscriptionEvents.SubscribeCommand event) {
         CommandSubscription request = event.getRequest();
-        add( request.getCommand(), event.getHandler());
+        int loadFactor = request.getLoadFactor() == 0 ? 100 : request.getLoadFactor();
+        add(request.getCommand(), event.getHandler(), loadFactor);
     }
 
     @EventListener
