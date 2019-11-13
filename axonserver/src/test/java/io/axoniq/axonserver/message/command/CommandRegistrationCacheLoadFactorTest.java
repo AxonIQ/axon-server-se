@@ -43,14 +43,31 @@ public class CommandRegistrationCacheLoadFactorTest {
         assertTrue(aroundPercentage("client1", 10, counter));
         assertTrue(aroundPercentage("client2", 50, counter));
         assertTrue(aroundPercentage("client3", 40, counter));
-        System.out.println(counter);
     }
 
+    @Test
+    public void testLoadFactorSetToZero() {
+        CommandRegistrationCache testSubject = new CommandRegistrationCache();
+
+        testSubject.on(createSubscribeCommand("client1", 0));
+        testSubject.on(createSubscribeCommand("client2", 200));
+
+        Map<String, AtomicInteger> counter = new HashMap<>();
+
+        Command command = Command.newBuilder().setName("command").build();
+        for (int i = 0; i < 100000; i++) {
+            String routingKey = UUID.randomUUID().toString();
+            CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
+            counter.computeIfAbsent(handler.getClient().getClient(), c -> new AtomicInteger()).incrementAndGet();
+        }
+
+        assertTrue(aroundPercentage("client1", 33, counter));
+        assertTrue(aroundPercentage("client2", 66, counter));
+    }
 
     private boolean aroundPercentage(String client, int expectedPercentage, Map<String, AtomicInteger> counter) {
         Integer total = counter.values().stream().map(AtomicInteger::get).reduce(Integer::sum).orElse(0);
         int actualPercentage = counter.get(client).get() * 100 / total;
-        System.out.println(actualPercentage);
         return Math.abs(actualPercentage - expectedPercentage) < 5;
     }
 
