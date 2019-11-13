@@ -40,9 +40,9 @@ public class CommandRegistrationCacheLoadFactorTest {
             counter.computeIfAbsent(handler.getClient().getClient(), c -> new AtomicInteger()).incrementAndGet();
         }
 
-        assertTrue(aroundPercentage("client1", 10, counter));
-        assertTrue(aroundPercentage("client2", 50, counter));
-        assertTrue(aroundPercentage("client3", 40, counter));
+        assertTrue(matchPercentage("client1", 10, counter));
+        assertTrue(matchPercentage("client2", 50, counter));
+        assertTrue(matchPercentage("client3", 40, counter));
     }
 
     @Test
@@ -61,16 +61,15 @@ public class CommandRegistrationCacheLoadFactorTest {
             counter.computeIfAbsent(handler.getClient().getClient(), c -> new AtomicInteger()).incrementAndGet();
         }
 
-        assertTrue(aroundPercentage("client1", 33, counter));
-        assertTrue(aroundPercentage("client2", 66, counter));
+        assertTrue(matchPercentage("client1", 33, counter));
+        assertTrue(matchPercentage("client2", 66, counter));
     }
 
-    private boolean aroundPercentage(String client, int expectedPercentage, Map<String, AtomicInteger> counter) {
+    private boolean matchPercentage(String client, int expectedPercentage, Map<String, AtomicInteger> counter) {
         Integer total = counter.values().stream().map(AtomicInteger::get).reduce(Integer::sum).orElse(0);
         int actualPercentage = counter.get(client).get() * 100 / total;
         return Math.abs(actualPercentage - expectedPercentage) < 5;
     }
-
 
     private SubscribeCommand createSubscribeCommand(
             String client, int loadFactor) {
