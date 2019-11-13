@@ -76,7 +76,7 @@ public class CommandRegistrationCache {
      * @param command the name of the command
      * @param commandHandler the handler of the command
      */
-    public void add( String command, CommandHandler commandHandler) {
+    public void add(String command, CommandHandler commandHandler) {
         logger.trace("Add command {} to {}", command, commandHandler.client);
         add(command, commandHandler, 100);
     }
