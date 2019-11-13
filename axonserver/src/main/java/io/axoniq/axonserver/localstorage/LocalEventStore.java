@@ -26,6 +26,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
+import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -69,6 +70,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
     private long newPermitsTimeout=120000;
 
+    private final StorageTransactionManagerFactory storageTransactionManagerFactory;
+    private final EventStoreExistChecker eventStoreExistChecker;
     private final int maxEventCount;
 
     /**
@@ -77,15 +80,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     private final int blacklistedSendAfter;
 
-    public LocalEventStore(EventStoreFactory eventStoreFactory) {
-        this(eventStoreFactory, Short.MAX_VALUE, 1000);
+    public LocalEventStore(EventStoreFactory eventStoreFactory,
+                           StorageTransactionManagerFactory storageTransactionManagerFactory,
+                           EventStoreExistChecker eventStoreExistChecker) {
+        this(eventStoreFactory, storageTransactionManagerFactory, eventStoreExistChecker, Short.MAX_VALUE, 1000);
     }
 
     @Autowired
     public LocalEventStore(EventStoreFactory eventStoreFactory,
+                           StorageTransactionManagerFactory storageTransactionManagerFactory,
+                           EventStoreExistChecker eventStoreExistChecker,
                            @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter) {
         this.eventStoreFactory = eventStoreFactory;
+        this.storageTransactionManagerFactory = storageTransactionManagerFactory;
+        this.eventStoreExistChecker = eventStoreExistChecker;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
     }
@@ -102,9 +111,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      * @param context the name of the context
      */
     public void deleteContext(String context) {
+        deleteContext(context, false);
+    }
+
+    /**
+     * Deletes the specified context, optionally keeping the data
+     *
+     * @param context  the name of the context
+     * @param keepData flag to set if the data must be preserved
+     */
+    public void deleteContext(String context, boolean keepData) {
         Workers workers = workersMap.remove(context);
         if( workers == null) return;
-        workers.close(true);
+        workers.close(!keepData);
     }
 
     /**
@@ -351,10 +370,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public long getLastToken(String context) {
+        workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).eventStorageEngine.getLastToken();
     }
 
+    private Workers openIfExist(String context) {
+        if (this.eventStoreExistChecker.exists(context)) {
+            Workers workers = new Workers(context);
+            workers.init(false);
+            return workers;
+        }
+        return null;
+    }
+
     public long getLastSnapshot(String context) {
+        workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).snapshotStorageEngine.getLastToken();
     }
 
@@ -442,8 +472,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.eventStorageEngine = eventStoreFactory.createEventStorageEngine(context);
             this.snapshotStorageEngine = eventStoreFactory.createSnapshotStorageEngine(context);
             this.context = context;
-            this.eventWriteStorage = new EventWriteStorage(eventStoreFactory.createTransactionManager(this.eventStorageEngine));
-            this.snapshotWriteStorage = new SnapshotWriteStorage(eventStoreFactory.createTransactionManager(this.snapshotStorageEngine));
+            this.eventWriteStorage = new EventWriteStorage(storageTransactionManagerFactory
+                                                                   .createTransactionManager(this.eventStorageEngine));
+            this.snapshotWriteStorage = new SnapshotWriteStorage(storageTransactionManagerFactory
+                                                                         .createTransactionManager(this.snapshotStorageEngine));
             this.aggregateReader = new AggregateReader(eventStorageEngine, new SnapshotReader(snapshotStorageEngine));
             this.trackingEventManager = new TrackingEventProcessorManager(eventStorageEngine, blacklistedSendAfter);
 

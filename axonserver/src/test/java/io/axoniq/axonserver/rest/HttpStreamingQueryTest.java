@@ -12,6 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -20,7 +21,6 @@ import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
@@ -129,6 +129,7 @@ public class HttpStreamingQueryTest {
 
             }
         };
+
         LocalEventStore localEventStore = new LocalEventStore(new EventStoreFactory() {
             @Override
             public EventStorageEngine createEventStorageEngine(String context) {
@@ -139,11 +140,7 @@ public class HttpStreamingQueryTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return engine;
             }
-
-            @Override
-            public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
-                return null;
-            }
+        }, eventStore -> null, new EventStoreExistChecker() {
         });
         localEventStore.initContext(Topology.DEFAULT_CONTEXT, false);
         EventStoreLocator eventStoreLocator = new DefaultEventStoreLocator(localEventStore);

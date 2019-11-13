@@ -31,6 +31,8 @@ public class CommandOptions {
     public static final Option NODES = Option.builder("n").hasArgs().valueSeparator(',').longOpt("nodes").desc("[Optional - Enterprise Edition only] member nodes for context").build();
     public static final Option CONTEXT_TO_REGISTER_IN = Option.builder("c").longOpt("context").hasArg().desc("[Optional - Enterprise Edition only] context to register node in").build();
     public static final Option DONT_REGISTER_IN_CONTEXTS = Option.builder().longOpt("no-contexts").desc("[Optional - Enterprise Edition only] add node to cluster, but don't register it in any contexts").build();
+    public static final Option PRESERVE_EVENT_STORE = Option.builder().longOpt("preserve-event-store").desc(
+            "[Optional - Enterprise Edition only] keep event store contents").build();
     public static final Option INTERNALHOST = Option.builder("h").longOpt("internal-host").desc("Internal hostname of the node").required().hasArg().build();
     public static final Option INTERNALPORT = Option.builder("p").longOpt("internal-port").desc("Internal port of the node (default 8224)").type(PatternOptionBuilder.NUMBER_VALUE).hasArg().build();
     public static final Option TOKEN = Option.builder("t").longOpt("access-token").desc("[Optional] Access token to authenticate at server").hasArg().build();
