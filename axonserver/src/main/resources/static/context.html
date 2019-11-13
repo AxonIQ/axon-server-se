@@ -54,12 +54,6 @@
                             this.removeNodeData = {"node": node, "context": context.context, "preserveData": false};
                             this.$modal.show('delete-node-from-context');
                         }
-                        //
-                        // else if (confirm("Delete node " + node + " from context " + context.context)) {
-                        //     axios.delete("v1/context/" + context.context + "/" + node).then(
-                        //             response => this.loadContexts()
-                        //     )
-                        // }
                     },
                     doDeleteNodeFromContext() {
                         axios.delete("v1/context/" + this.removeNodeData.context + "/" + this.removeNodeData.node
@@ -277,9 +271,9 @@
                         <li>
                             <span>&nbsp;</span>
                             <span>
+                                <button @click.prevent="doDeleteNodeFromContext()" class="button">Remove</button>
                                 <button @click.prevent="hideModal('delete-node-from-context')"
                                         class="button">Cancel</button>
-                                <button @click.prevent="doDeleteNodeFromContext()" class="button">Remove</button>
                             </span>
                         </li>
                     </ul>
@@ -287,7 +281,7 @@
 
             </div>
     </modal>
-    <modal name="delete-context" width="500" height="250">
+    <modal name="delete-context" width="600" height="250">
             <div class="column configuration modal">
                 <h2>Delete context {{deleteContextData.context}}</h2>
                 <p>
@@ -300,10 +294,13 @@
                             <span><input v-model="deleteContextData.retypeContext"/></span>
                         </li>
                         <li>
+                            <span></span>
+                        </li>
+                        <li>
                             <span>&nbsp;</span>
                             <span>
-                                <button @click.prevent="hideModal('delete-context')" class="button">Cancel</button>
                                 <button @click.prevent="doDeleteContext()" class="button">Delete</button>
+                                <button @click.prevent="hideModal('delete-context')" class="button">Cancel</button>
                             </span>
                         </li>
                     </ul>
@@ -311,7 +308,7 @@
 
             </div>
     </modal>
-    <modal name="confirm" width="500" height="250">
+    <modal name="confirm" width="450" height="220">
             <div class="column configuration modal">
                 <h2>{{confirmData.title}}</h2>
                 <p>
@@ -322,8 +319,8 @@
                         <li>
                             <span>&nbsp;</span>
                             <span>
-                                <button @click.prevent="hideModal('confirm')" class="button">Cancel</button>
                                 <button @click.prevent="confirmData.apply()" class="button">OK</button>
+                                <button @click.prevent="hideModal('confirm')" class="button">Cancel</button>
                             </span>
                         </li>
                     </ul>
