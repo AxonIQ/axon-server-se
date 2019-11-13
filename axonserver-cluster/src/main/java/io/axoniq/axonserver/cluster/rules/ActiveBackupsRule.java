@@ -9,8 +9,7 @@ import java.util.function.Supplier;
 
 /**
  * Rule to check if a condition is true for a minimum number of backup nodes. Returns true if there are no backup nodes
- * available,
- * even if minimum > 0.
+ * available, even if minimum > 0.
  *
  * @author Marc Gathier
  * @since 4.3

@@ -266,7 +266,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
-                raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE, Role.UNRECOGNIZED);
+                raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE, null);
             }
         }
         return raftGroup.localNode();

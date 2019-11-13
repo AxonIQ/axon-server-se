@@ -42,7 +42,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
     private final AtomicInteger lastSnapshotChunk = new AtomicInteger(-1);
     protected final AtomicBoolean processing = new AtomicBoolean();
     protected volatile boolean heardFromLeader;
-    private long followerStateStated;
+    private long followerStateStatedAt;
 
     protected BaseFollowerState(Builder builder) {
         super(builder);
@@ -56,7 +56,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
         scheduler.set(schedulerFactory().get());
         lastMessage.set(scheduler.get().clock().millis());
-        followerStateStated = lastMessage.get();
+        followerStateStatedAt = lastMessage.get();
         // initially the timeout is increased to prevent leader elections when node restarts
     }
 
@@ -117,7 +117,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
                             groupId(),
                             currentTerm(),
                             me(),
-                            System.currentTimeMillis() - followerStateStated
+                            System.currentTimeMillis() - followerStateStatedAt
                 );
             }
             String cause = format("%s in term %s: %s received AppendEntriesRequest with term = %s from %s",
@@ -351,7 +351,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
 
 
     @Override
-    public void forceStepDown() {
+    public void forceStartElection() {
         if (!RoleUtils.primaryNode(currentNode().getRole())) {
             logger.warn("{} in term {}: Request to start new election ignored, node is not a primary node.",
                         groupId(),

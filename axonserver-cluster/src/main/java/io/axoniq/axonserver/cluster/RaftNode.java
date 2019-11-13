@@ -259,6 +259,21 @@ public class RaftNode {
             }
         }
 
+        moveToInitialState(role);
+
+        logEntryApplier.start();
+        if (raftGroup.raftConfiguration().isLogCompactionEnabled()) {
+            scheduledLogCleaning = scheduleLogCleaning();
+        }
+        logger.info("{} in term {}: Node started.", groupId(), currentTerm());
+    }
+
+    private void moveToInitialState(Role role) {
+        if (role == null) {
+            updateState(state.get(), stateFactory.prospectState(), "Role unknown");
+            return;
+        }
+
         switch (role) {
             case PRIMARY:
                 updateState(state.get(), stateFactory.followerState(), "Role " + role);
@@ -271,12 +286,6 @@ public class RaftNode {
             default:
                 updateState(state.get(), stateFactory.prospectState(), "Role unknown");
         }
-
-        logEntryApplier.start();
-        if (raftGroup.raftConfiguration().isLogCompactionEnabled()) {
-            scheduledLogCleaning = scheduleLogCleaning();
-        }
-        logger.info("{} in term {}: Node started.", groupId(), currentTerm());
     }
 
     /**
@@ -469,7 +478,7 @@ public class RaftNode {
     public void stepdown() {
         logger.info("{} in term {}: Stepping down started.", groupId(), currentTerm());
         runOnCurrentState(s -> {
-            s.forceStepDown();
+            s.forceStartElection();
             return null;
         });
         logger.info("{} in term {}: Node stepped down.", groupId(), currentTerm());

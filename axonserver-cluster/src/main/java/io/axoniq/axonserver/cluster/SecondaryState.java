@@ -2,16 +2,12 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Marc Gathier
  * @since 4.3
  */
 public class SecondaryState extends BaseFollowerState {
-
-    private static final Logger logger = LoggerFactory.getLogger(SecondaryState.class);
 
     protected SecondaryState(Builder builder) {
         super(builder);

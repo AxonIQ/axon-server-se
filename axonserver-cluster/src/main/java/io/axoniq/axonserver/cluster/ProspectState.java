@@ -39,7 +39,7 @@ public class ProspectState extends BaseFollowerState {
             logger.info("{} in term {}: Current node is empty", groupId(), currentTerm());
             return super.appendEntries(request);
         }
-        logger.info("{} in term {}: Role: {}", groupId(), currentTerm(), currentNode().getRole());
+        logger.trace("{} in term {}: Role: {}", groupId(), currentTerm(), currentNode().getRole());
         if (currentNode.getRole().equals(Role.PRIMARY)) {
             return handleAsFollower(f -> f.appendEntries(request), "Found node as primary");
         }

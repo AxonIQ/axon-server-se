@@ -40,7 +40,7 @@ public class DefaultPreVote implements Election {
                                .build(),
              termUpdateHandler,
              raftGroup.localElectionStore(),
-             otherNodes, raftGroup::minActiveBackups);
+             otherNodes, raftGroup.raftConfiguration()::minActiveBackups);
     }
 
     public DefaultPreVote(RequestVoteRequest requestPrototype,

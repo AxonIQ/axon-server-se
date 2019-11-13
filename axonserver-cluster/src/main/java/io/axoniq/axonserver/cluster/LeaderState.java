@@ -76,7 +76,7 @@ public class LeaderState extends AbstractMembershipState {
         leaderTimeoutChecker = new LeaderTimeoutChecker(this::replicatorPeers,
                                                         maxElectionTimeout(),
                                                         () -> scheduler.get().clock(),
-                                                        () -> raftGroup().minActiveBackups());
+                                                        () -> raftGroup().raftConfiguration().minActiveBackups());
     }
 
     /**
@@ -238,7 +238,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
-    public void forceStepDown() {
+    public void forceStartElection() {
         String message = format("%s in term %s: Forced Step Down of %s.", groupId(), currentTerm(), me());
         logger.info(message);
         stepDown(message);

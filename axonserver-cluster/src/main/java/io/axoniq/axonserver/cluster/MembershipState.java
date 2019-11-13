@@ -52,7 +52,7 @@ public interface MembershipState extends ClusterConfiguration{
         return null;
     }
 
-    default void forceStepDown() {
+    default void forceStartElection() {
 
     }
 

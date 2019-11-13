@@ -180,6 +180,11 @@ public class GrpcRaftGroup implements RaftGroup {
                 return EventLogEntryConsumer.LOG_ENTRY_TYPE.equals(type)
                         || SnapshotLogEntryConsumer.LOG_ENTRY_TYPE.equals(type);
             }
+
+            @Override
+            public Integer minActiveBackups() {
+                return storageOptions.getMinActiveBackups();
+            }
         };
 
         List<SnapshotDataStore> dataProviders = snapshotDataProvidersFactory.apply(groupId);
