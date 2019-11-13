@@ -180,8 +180,8 @@ public class RaftNode {
                     try {
                         StateChanged change = new StateChanged(groupId(),
                                                                nodeId,
-                                                               currentStateName,
-                                                               newStateName,
+                                                               currentState,
+                                                               newState,
                                                                cause,
                                                                currentTerm());
                         stateChangeListeners.accept(change);
@@ -588,8 +588,8 @@ public class RaftNode {
             try {
                 StateChanged change = new StateChanged(groupId(),
                                                        nodeId,
-                                                       toString(state.get()),
-                                                       toString(state.get()),
+                                                       state.get(),
+                                                       state.get(),
                                                        format("Leader changed to %s",leaderId),
                                                        currentTerm());
                 stateChangeListeners.accept(change);

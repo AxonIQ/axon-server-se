@@ -64,4 +64,13 @@ public class RaftGroupRepositoryManager {
     public Set<JpaRaftGroupNode> findByNodeName(String nodeName) {
         return new HashSet<>(raftGroupNodeRepository.findByNodeName(nodeName));
     }
+
+    public void prepareDeleteNodeFromContext(String context, String node) {
+        raftGroupNodeRepository.findByGroupIdAndNodeName(context, node)
+                               .ifPresent(n -> {
+                                   n.setPendingDelete(true);
+                                   raftGroupNodeRepository.save(n);
+                               });
+    }
+
 }

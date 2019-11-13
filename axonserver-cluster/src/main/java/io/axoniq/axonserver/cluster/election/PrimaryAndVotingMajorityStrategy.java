@@ -49,34 +49,24 @@ public class PrimaryAndVotingMajorityStrategy implements VoteStrategy {
 
 
     @Override
-    public void registerVoteReceived(String voter, boolean granted, boolean goAway) {
-        if (goAway) {
-            log.info("Received goAway from {}", voter);
-            won.complete(electionResult(false, true));
-            return;
-        }
+    public void registerVoteReceived(String voter, boolean granted) {
         votes.put(voter, granted);
 
         if (majorityRejectedRule.test(false)) {
-            won.complete(electionResult(false, false));
+            won.complete(electionResult(false));
         } else {
             if (majorityApprovedRule.test(true)) {
-                won.complete(electionResult(true, false));
+                won.complete(electionResult(true));
             }
         }
 
     }
 
-    private Election.Result electionResult(boolean won, boolean goAway) {
+    private Election.Result electionResult(boolean won) {
         return new Election.Result() {
             @Override
             public boolean won() {
                 return won;
-            }
-
-            @Override
-            public boolean goAway() {
-                return goAway;
             }
 
             @Override

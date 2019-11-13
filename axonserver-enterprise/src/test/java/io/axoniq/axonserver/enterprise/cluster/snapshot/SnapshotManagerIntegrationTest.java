@@ -21,6 +21,7 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.Raf
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -215,10 +216,11 @@ public class SnapshotManagerIntegrationTest {
         EventStoreFactory eventStoreFactory = mock(EventStoreFactory.class);
         when(eventStoreFactory.createEventStorageEngine(CONTEXT)).thenReturn(eventStore);
         when(eventStoreFactory.createSnapshotStorageEngine(CONTEXT)).thenReturn(snapshotStore);
-        when(eventStoreFactory.createTransactionManager(eventStore)).thenReturn(new SingleInstanceTransactionManager(eventStore));
-        when(eventStoreFactory.createTransactionManager(snapshotStore)).thenReturn(new SingleInstanceTransactionManager(snapshotStore));
 
-        LocalEventStore localEventStore = new LocalEventStore(eventStoreFactory);
+        LocalEventStore localEventStore = new LocalEventStore(eventStoreFactory,
+                                                              SingleInstanceTransactionManager::new,
+                                                              new EventStoreExistChecker() {
+                                                              });
         localEventStore.initContext(CONTEXT, false);
         EventTransactionsSnapshotDataStore eventTransactionsSnapshotDataProvider =
                 new EventTransactionsSnapshotDataStore(CONTEXT, localEventStore);

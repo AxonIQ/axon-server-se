@@ -75,6 +75,7 @@ public class ContextJSON {
         this.roles = roles;
     }
 
+    @KeepNames
     public static class NodeAndRole implements Comparable<NodeAndRole> {
 
         private String node;

@@ -127,7 +127,6 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -150,7 +149,6 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -171,7 +169,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(0L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -194,7 +191,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -217,7 +213,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test

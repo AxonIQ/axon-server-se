@@ -193,9 +193,9 @@ class LocalRaftConfigService implements RaftConfigService {
         if (contextInAdmin == null) {
             logger.warn("Could not find context {} in admin tables, sending deleteContext to all nodes", context);
             clusterController.remoteNodeNames().forEach(node -> raftGroupServiceFactory.getRaftGroupServiceForNode(node)
-                                                                                       .deleteContext(context));
+                                                                                       .deleteContext(context, false));
             raftGroupServiceFactory.getRaftGroupServiceForNode(this.messagingPlatformConfiguration.getName())
-                                   .deleteContext(context);
+                                   .deleteContext(context, false);
             contextsInProgress.remove(context);
             return;
         }
@@ -212,7 +212,7 @@ class LocalRaftConfigService implements RaftConfigService {
         int nodeIdx = 0;
         Iterable<String> nodes = new HashSet<>(nodeNames);
         for (String name : nodes) {
-            workers[nodeIdx] = raftGroupServiceFactory.getRaftGroupServiceForNode(name).deleteContext(context);
+            workers[nodeIdx] = raftGroupServiceFactory.getRaftGroupServiceForNode(name).deleteContext(context, false);
             workers[nodeIdx].thenAccept(r -> nodeNames.remove(name));
             nodeIdx++;
         }

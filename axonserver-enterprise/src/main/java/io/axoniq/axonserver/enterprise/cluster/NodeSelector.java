@@ -141,12 +141,12 @@ public class NodeSelector {
         if (me.isAdmin()) {
             Context contextJPA = contextSelector.apply(context);
             if (contextJPA != null) {
-                return contextJPA.getNodeNames(n -> RoleUtils.allowsClientConnect(n.getRole()));
+                return contextJPA.getNodeNames(n -> RoleUtils.allowsClientConnect(n.getRole()) && !n.isPendingDelete());
             }
         }
         Set<JpaRaftGroupNode> nodes = raftNodeSelector.apply(context);
         return nodes.stream()
-                    .filter(n -> RoleUtils.allowsClientConnect(n.getRole()))
+                    .filter(n -> !n.isPendingDelete() && RoleUtils.allowsClientConnect(n.getRole()))
                     .map(JpaRaftGroupNode::getNodeName)
                     .collect(Collectors.toSet());
     }

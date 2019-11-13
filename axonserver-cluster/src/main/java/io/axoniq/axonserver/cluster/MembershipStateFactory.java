@@ -20,7 +20,5 @@ public interface MembershipStateFactory {
 
     MembershipState preVoteState();
 
-    MembershipState removedState();
-
     MembershipState fatalState();
 }

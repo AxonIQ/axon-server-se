@@ -26,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -48,7 +49,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     private final Logger logger = LoggerFactory.getLogger(LocalRaftGroupService.class);
     private final ExecutorService asyncPool = Executors.newCachedThreadPool();
 
-    private GrpcRaftController grpcRaftController;
+    private final GrpcRaftController grpcRaftController;
 
     public LocalRaftGroupService(GrpcRaftController grpcRaftController) {
         this.grpcRaftController = grpcRaftController;
@@ -285,14 +286,15 @@ public class LocalRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteContext(String context) {
+    @Transactional
+    public CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore) {
         RaftNode raftNode = null;
         try {
             raftNode = grpcRaftController.getRaftNode(context);
         } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
-        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context));
+        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context, preserveEventStore));
     }
 
     @Override
@@ -303,5 +305,11 @@ public class LocalRaftGroupService implements RaftGroupService {
         } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
+    }
+
+    @Override
+    public CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node) {
+        grpcRaftController.prepareDeleteNodeFromContext(context, node);
+        return CompletableFuture.completedFuture(null);
     }
 }

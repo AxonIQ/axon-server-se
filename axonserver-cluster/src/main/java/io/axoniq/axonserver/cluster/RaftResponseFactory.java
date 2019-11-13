@@ -60,21 +60,9 @@ public interface RaftResponseFactory {
      *
      * @param requestId   the RequestVoteRequest identifier
      * @param voteGranted true if the vote is granted, false otherwise
-     * @param goAway      true to avoid future requests from this node
      * @return the {@link RequestVoteResponse}
      */
-    RequestVoteResponse voteResponse(String requestId, boolean voteGranted, boolean goAway);
-
-    /**
-     * Builds a {@link RequestVoteResponse} with the specified parameters.
-     *
-     * @param requestId   the RequestVoteRequest identifier
-     * @param voteGranted true if the vote is granted, false otherwise
-     * @return the {@link RequestVoteResponse}
-     */
-    default RequestVoteResponse voteResponse(String requestId, boolean voteGranted) {
-        return voteResponse(requestId, voteGranted, false);
-    }
+    RequestVoteResponse voteResponse(String requestId, boolean voteGranted);
 
     /**
      * Builds a {@link RequestVoteResponse} that reject the request for vote.
@@ -83,17 +71,6 @@ public interface RaftResponseFactory {
      * @return the {@link RequestVoteResponse}
      */
     default RequestVoteResponse voteRejected(String requestId) {
-        return voteRejected(requestId, false);
-    }
-
-    /**
-     * Builds a {@link RequestVoteResponse} that reject the request for vote.
-     *
-     * @param requestId the RequestVoteRequest identifier
-     * @param goAway    true to avoid future requests from this node
-     * @return the {@link RequestVoteResponse}
-     */
-    default RequestVoteResponse voteRejected(String requestId, boolean goAway) {
-        return voteResponse(requestId, false, goAway);
+        return voteResponse(requestId, false);
     }
 }

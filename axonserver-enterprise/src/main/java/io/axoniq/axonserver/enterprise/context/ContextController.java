@@ -127,6 +127,19 @@ public class ContextController {
         deleteAll();
     }
 
+    @EventListener
+    @Transactional
+    public void on(ContextEvents.DeleteNodeFromContextRequested prepareDeleteNodeFromContext) {
+        contextRepository.findById(prepareDeleteNodeFromContext.getContext())
+                         .ifPresent(c -> {
+                             c.getNode(prepareDeleteNodeFromContext.getNode()).ifPresent(ccn -> {
+                                 ccn.setPendingDelete(true);
+                                 contextRepository.save(c);
+                             });
+                         });
+    }
+
+
     @Transactional
     public void deleteAll() {
         contextRepository.deleteAll();
