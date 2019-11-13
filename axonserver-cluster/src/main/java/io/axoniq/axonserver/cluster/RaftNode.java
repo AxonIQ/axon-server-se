@@ -16,6 +16,7 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -179,8 +180,8 @@ public class RaftNode {
                     try {
                         StateChanged change = new StateChanged(groupId(),
                                                                nodeId,
-                                                               currentStateName,
-                                                               newStateName,
+                                                               currentState,
+                                                               newState,
                                                                cause,
                                                                currentTerm());
                         stateChangeListeners.accept(change);
@@ -190,7 +191,6 @@ public class RaftNode {
                     }
                 });
                 newState.start();
-                logger.info("{} in term {}: Updated state to {}", groupId(), currentTerm(), newStateName);
             } catch (RuntimeException ex) {
                 logger.warn(
                         "{} in term {}: transition to {} failed, moving to currentState (node: {}, currentState: {})",
@@ -198,7 +198,8 @@ public class RaftNode {
                         currentTerm(),
                         newStateName,
                         nodeId,
-                        currentStateName);
+                        currentStateName,
+                        ex);
                 newState.stop();
                 MembershipState followerState = stateFactory.followerState();
                 followerState.start();
@@ -237,6 +238,10 @@ public class RaftNode {
      * Starts this node.
      */
     public void start() {
+        start(Role.PRIMARY);
+    }
+
+    public void start(Role role) {
         logger.info("{} in term {}: Starting the node...", groupId(), currentTerm());
         if (!state.get().isIdle()) {
             logger.debug("{} in term {}: Node is already started!", groupId(), currentTerm());
@@ -253,12 +258,34 @@ public class RaftNode {
                 raftGroup.logEntryProcessor().reset();
             }
         }
-        updateState(state.get(), stateFactory.followerState(), "Node started");
+
+        moveToInitialState(role);
+
         logEntryApplier.start();
         if (raftGroup.raftConfiguration().isLogCompactionEnabled()) {
             scheduledLogCleaning = scheduleLogCleaning();
         }
         logger.info("{} in term {}: Node started.", groupId(), currentTerm());
+    }
+
+    private void moveToInitialState(Role role) {
+        if (role == null) {
+            updateState(state.get(), stateFactory.prospectState(), "Role unknown");
+            return;
+        }
+
+        switch (role) {
+            case PRIMARY:
+                updateState(state.get(), stateFactory.followerState(), "Role " + role);
+                break;
+            case MESSAGING_ONLY:
+            case ACTIVE_BACKUP:
+            case PASSIVE_BACKUP:
+                updateState(state.get(), stateFactory.secondaryState(), "Role " + role);
+                break;
+            default:
+                updateState(state.get(), stateFactory.prospectState(), "Role unknown");
+        }
     }
 
     /**
@@ -451,7 +478,7 @@ public class RaftNode {
     public void stepdown() {
         logger.info("{} in term {}: Stepping down started.", groupId(), currentTerm());
         runOnCurrentState(s -> {
-            s.forceStepDown();
+            s.forceStartElection();
             return null;
         });
         logger.info("{} in term {}: Node stepped down.", groupId(), currentTerm());
@@ -570,8 +597,8 @@ public class RaftNode {
             try {
                 StateChanged change = new StateChanged(groupId(),
                                                        nodeId,
-                                                       toString(state.get()),
-                                                       toString(state.get()),
+                                                       state.get(),
+                                                       state.get(),
                                                        format("Leader changed to %s",leaderId),
                                                        currentTerm());
                 stateChangeListeners.accept(change);

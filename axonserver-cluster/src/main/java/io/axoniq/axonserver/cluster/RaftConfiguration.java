@@ -112,4 +112,14 @@ public interface RaftConfiguration {
     default boolean isSerializedEventData(String type) {
         return false;
     }
+
+    /**
+     * Returns the minimum number of active backup nodes required for leader election and transaction processing.
+     *
+     * @return minimum number of active backup nodes required for leader election and transaction processing
+     */
+    default Integer minActiveBackups() {
+        return 1;
+    }
+
 }

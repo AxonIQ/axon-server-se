@@ -1,0 +1,41 @@
+syntax = "proto3";
+package io.axoniq.axonserver.grpc.tasks;
+import "common.proto";
+option java_multiple_files = true;
+
+// Log entry type for distributing a scheduled task
+message ScheduleTask {
+    // Unique identification of the task
+    string task_id = 1;
+    // Class that executes the task
+    string task_executor = 2;
+    // Payload for the task to be executed
+    io.axoniq.axonserver.grpc.SerializedObject payload = 3;
+    // Timestamp at which the task should be executed
+    int64 instant = 4;
+    // Interval to reschedule the task in case of a transient exception
+    int64 retry_interval = 5;
+}
+
+message UpdateTask {
+    // Unique identification of the task
+    string task_id = 1;
+    // Timestamp at which the task should be executed (if status is scheduled)
+    int64 instant = 2;
+    // New status of the task
+    Status status = 3;
+    // Interval to reschedule the task in case of a transient exception
+    int64 retry_interval = 4;
+}
+
+enum Status {
+    // Task is scheduled for execution
+    SCHEDULED = 0;
+    // Task execution completed successfully
+    COMPLETED = 1;
+    // Task execution failed with non transient exception
+    FAILED = 2;
+    // Task execution is in progress
+    RUNNING = 3;
+
+}

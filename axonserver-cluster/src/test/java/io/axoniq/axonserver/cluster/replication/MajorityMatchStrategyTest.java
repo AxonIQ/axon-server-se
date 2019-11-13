@@ -24,7 +24,7 @@ public class MajorityMatchStrategyTest {
     public void setup() {
         replicationPeers = Arrays.asList(new FakeReplicatorPeer(0, Role.PRIMARY),
                                          new FakeReplicatorPeer(0, Role.PRIMARY));
-        testSubject = new MajorityMatchStrategy(() -> 10L, () -> replicationPeers.iterator());
+        testSubject = new MajorityMatchStrategy(() -> 10L, () -> replicationPeers.iterator(), () -> 1);
 
     }
 

@@ -6,6 +6,8 @@ import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -33,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.validation.Valid;
 
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
@@ -49,6 +52,7 @@ public class ContextRestController {
     private final RaftLeaderProvider raftLeaderProvider;
     private final ContextController contextController;
     private final ClusterTopology clusterTopology;
+    private final PrepareDeleteNodeFromContextTask deleteNodeFromContextJob;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final Logger logger = LoggerFactory.getLogger(ContextRestController.class);
@@ -57,11 +61,13 @@ public class ContextRestController {
                                  RaftLeaderProvider raftLeaderProvider,
                                  ContextController contextController,
                                  ClusterTopology clusterTopology,
+                                 PrepareDeleteNodeFromContextTask deleteNodeFromContextJob,
                                  FeatureChecker limits) {
         this.raftServiceFactory = raftServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
         this.contextController = contextController;
         this.clusterTopology = clusterTopology;
+        this.deleteNodeFromContextJob = deleteNodeFromContextJob;
         this.limits = limits;
     }
 
@@ -78,6 +84,9 @@ public class ContextRestController {
                                  .collect(Collectors.toList()));
             json.setRoles(context.getNodes().stream().map(ContextJSON.NodeAndRole::new).sorted()
                                  .collect(Collectors.toList()));
+            if (context.getNodes().stream().anyMatch(ContextClusterNode::isPendingDelete)) {
+                json.setChangePending(true);
+            }
             return json;
         }).sorted(Comparator.comparing(ContextJSON::getContext)).collect(Collectors.toList());
     }
@@ -100,7 +109,10 @@ public class ContextRestController {
                                     .sorted()
                                     .collect(Collectors.toList());
         } else {
-            return clusterTopology.getMyStorageContextNames();
+            return StreamSupport.stream(clusterTopology.getMyContextNames().spliterator(), false)
+                                .filter(name -> includeAdmin || !isAdmin(name))
+                                .sorted()
+                                .collect(Collectors.toList());
         }
     }
 
@@ -143,10 +155,14 @@ public class ContextRestController {
 
     @DeleteMapping(path = "context/{context}/{node}")
     public ResponseEntity<RestResponse> deleteNodeFromContext(@PathVariable("context") String name,
-                                                              @PathVariable("node") String node) {
-        logger.info("Delete node request received for node: {} - and context: {}", node, name);
+                                                              @PathVariable("node") String node,
+                                                              @RequestParam(name = "preserveEventStore", required = false, defaultValue = "false") boolean preserveEventStore) {
+        logger.info("Delete node request received for node: {} - and context: {} {}",
+                    node,
+                    name,
+                    preserveEventStore ? "- Keeping event store" : "");
         try {
-            raftServiceFactory.getRaftConfigService().deleteNodeFromContext(name, node);
+            deleteNodeFromContextJob.prepareDeleteNodeFromContext(name, node, preserveEventStore);
             return ResponseEntity.accepted()
                                  .body(new RestResponse(true,
                                                         "Accepted delete request"));
@@ -202,6 +218,9 @@ public class ContextRestController {
      */
     @GetMapping(path = "context/roles")
     public Set<String> roles() {
-        return Arrays.stream(Role.values()).map(Enum::name).collect(Collectors.toSet());
+        return Arrays.stream(Role.values())
+                     .filter(r -> !Role.UNRECOGNIZED.equals(r))
+                     .map(Enum::name)
+                     .collect(Collectors.toSet());
     }
 }

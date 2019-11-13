@@ -56,7 +56,8 @@ public class LeaderStateConfirmatoryElectionTest {
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
         matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
-                                                  () -> raftGroup.localNode().replicatorPeers());
+                                                  () -> raftGroup.localNode().replicatorPeers(),
+                                                  () -> raftGroup.raftConfiguration().minActiveBackups());
     }
 
     private void addClusterNode(String nodeId, FakeRaftPeer peer){
@@ -94,11 +95,6 @@ public class LeaderStateConfirmatoryElectionTest {
             }
 
             @Override
-            public boolean goAway() {
-                return false;
-            }
-
-            @Override
             public String cause() {
                 return "Test case: election won!";
             }
@@ -109,11 +105,6 @@ public class LeaderStateConfirmatoryElectionTest {
         return new Election.Result() {
             @Override
             public boolean won() {
-                return false;
-            }
-
-            @Override
-            public boolean goAway() {
                 return false;
             }
 

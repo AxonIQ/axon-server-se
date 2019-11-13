@@ -47,7 +47,6 @@ public class EventLogEntryConsumer implements LogEntryConsumer {
                          transactionWithToken.getEventsCount()
             );
         }
-        localEventStore.initContext(groupId, false);
         localEventStore.syncEvents(groupId, asSerializedTransactionWithToken(transactionWithToken));
     }
 }

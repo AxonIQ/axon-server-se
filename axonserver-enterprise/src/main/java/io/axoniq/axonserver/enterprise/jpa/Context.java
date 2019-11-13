@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -132,5 +133,9 @@ public class Context implements Serializable {
         return nodes.stream().filter(n -> n.getClusterNode().getName().equals(node))
                     .map(ContextClusterNode::getClusterNodeLabel)
                     .findFirst().orElse(null);
+    }
+
+    public Optional<ContextClusterNode> getNode(String node) {
+        return nodes.stream().filter(ccn -> ccn.getClusterNode().getName().equals(node)).findFirst();
     }
 }

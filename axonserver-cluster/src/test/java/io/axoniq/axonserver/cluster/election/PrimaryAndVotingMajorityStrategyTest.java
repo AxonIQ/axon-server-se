@@ -20,7 +20,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testWonWith3Votes() throws ExecutionException, InterruptedException {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", true);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter3", true);
@@ -31,7 +31,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testLostWith3Votes() throws ExecutionException, InterruptedException {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter2", false);
         majorityStrategy.registerVoteReceived("voter3", false);
@@ -42,7 +42,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testWonWith2Votes() throws ExecutionException, InterruptedException {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter3", true);
@@ -53,10 +53,9 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testLostWith2Votes() throws ExecutionException, InterruptedException {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", false);
-        majorityStrategy.registerVoteReceived("voter2", true);
-        majorityStrategy.registerVoteReceived("voter3", false);
+        majorityStrategy.registerVoteReceived("voter2", false);
         assertFalse(majorityStrategy.isWon().get().won());
     }
 
@@ -64,7 +63,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testUncompletedWith1Votes() {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", false);
         assertFalse(majorityStrategy.isWon().isDone());
     }
@@ -73,9 +72,8 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testUncompletedWith2Votes() {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", false);
-        majorityStrategy.registerVoteReceived("voter2", true);
         assertFalse(majorityStrategy.isWon().isDone());
     }
 
@@ -83,7 +81,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testDiscardDuplicateVotes() {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter1", false);
@@ -94,7 +92,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
     public void testWonDiscardingDuplicateVotes() throws ExecutionException, InterruptedException {
         List<RaftPeer> peers = Arrays.asList(new FakeRaftPeer("voter1", Role.PRIMARY),
                                              new FakeRaftPeer("voter2", Role.PRIMARY));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter1", false);
         majorityStrategy.registerVoteReceived("voter1", false);
@@ -109,7 +107,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
                                              new FakeRaftPeer("voter3", Role.PRIMARY),
                                              new FakeRaftPeer("voter4", Role.ACTIVE_BACKUP),
                                              new FakeRaftPeer("voter5", Role.ACTIVE_BACKUP));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", true);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter3", true);
@@ -122,7 +120,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
                                              new FakeRaftPeer("voter3", Role.PRIMARY),
                                              new FakeRaftPeer("voter4", Role.ACTIVE_BACKUP),
                                              new FakeRaftPeer("voter5", Role.ACTIVE_BACKUP));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", true);
         majorityStrategy.registerVoteReceived("voter4", true);
         majorityStrategy.registerVoteReceived("voter5", true);
@@ -135,7 +133,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
                                              new FakeRaftPeer("voter3", Role.PRIMARY),
                                              new FakeRaftPeer("voter4", Role.ACTIVE_BACKUP),
                                              new FakeRaftPeer("voter5", Role.ACTIVE_BACKUP));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", true);
         majorityStrategy.registerVoteReceived("voter2", true);
         majorityStrategy.registerVoteReceived("voter4", true);
@@ -148,7 +146,7 @@ public class PrimaryAndVotingMajorityStrategyTest {
                                              new FakeRaftPeer("voter3", Role.PRIMARY),
                                              new FakeRaftPeer("voter4", Role.PASSIVE_BACKUP),
                                              new FakeRaftPeer("voter5", Role.PASSIVE_BACKUP));
-        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers);
+        PrimaryAndVotingMajorityStrategy majorityStrategy = new PrimaryAndVotingMajorityStrategy(peers, () -> 1);
         majorityStrategy.registerVoteReceived("voter1", true);
         majorityStrategy.registerVoteReceived("voter2", true);
         assertTrue(majorityStrategy.isWon().get().won());

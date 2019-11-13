@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.cluster.util;
 
 import io.axoniq.axonserver.cluster.ReplicatorPeerStatus;
+import io.axoniq.axonserver.cluster.rules.PrimaryMajorityAndActiveBackupsRule;
 
 import java.time.Clock;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
-
-import static java.lang.String.format;
 
 /**
  * Utility class to check timeouts for a node in leader state. Timeout occurs when node has not heard from majority of
@@ -20,12 +20,18 @@ public class LeaderTimeoutChecker {
     private final Iterable<ReplicatorPeerStatus> replicatorPeers;
     private final long maxElectionTimeout;
     private final Supplier<Clock> clock;
+    private final Predicate<Long> timeoutRule;
 
     public LeaderTimeoutChecker(Iterable<ReplicatorPeerStatus> replicatorPeers, long maxElectionTimeout,
-                                Supplier<Clock> clock) {
+                                Supplier<Clock> clock, Supplier<Integer> minActiveBackupsProvider) {
         this.replicatorPeers = replicatorPeers;
         this.maxElectionTimeout = maxElectionTimeout;
         this.clock = clock;
+        this.timeoutRule = new PrimaryMajorityAndActiveBackupsRule<>(replicatorPeers, ReplicatorPeerStatus::role,
+                                                                     (peer, timeout) -> peer.lastMessageReceived()
+                                                                             >= timeout,
+                                                                     any -> true,
+                                                                     minActiveBackupsProvider);
     }
 
     /**
@@ -34,66 +40,20 @@ public class LeaderTimeoutChecker {
      * @return an object containing the result of the check and information on why the check failed
      */
     public CheckResult heardFromFollowers() {
-        TimeoutChecker timeoutChecker = new TimeoutChecker();
-        if (!timeoutChecker.primaryMajority()) {
-            String message = format("no messages received from majority of primary nodes for %sms",
-                                    maxElectionTimeout);
-            return new CheckResult(false, message, timeoutChecker.nextCheck);
-        }
-
-        if (!timeoutChecker.fullMajority()) {
-            String message = format(
-                    "no messages received from non-primary nodes for %s ms",
-                    maxElectionTimeout);
-            return new CheckResult(false, message, timeoutChecker.nextCheck);
-        }
-
-        return new CheckResult(true, null, timeoutChecker.nextCheck);
-    }
-
-    private class TimeoutChecker {
-
-        int primaryNodes;
-        int primaryCount;
-        int fullNodes;
-        int fullCount;
-        long nextCheck = maxElectionTimeout;
-
-        public TimeoutChecker() {
-            primaryNodes = 1;
-            fullNodes = 1;
-            primaryCount = 1;
-            fullCount = 1;
-            long minTimestamp = clock.get().millis() - maxElectionTimeout;
-
+        long minTimestamp = clock.get().millis() - maxElectionTimeout;
+        if (timeoutRule.test(minTimestamp)) {
+            long nextCheck = maxElectionTimeout;
             for (ReplicatorPeerStatus replicatorPeer : replicatorPeers) {
-                if (replicatorPeer.primaryNode()) {
-                    primaryNodes++;
-                    if (replicatorPeer.lastMessageReceived() >= minTimestamp) {
-                        primaryCount++;
-                        nextCheck = Math.min(nextCheck, replicatorPeer.lastMessageReceived() - minTimestamp);
-                    }
-                }
-                if (replicatorPeer.votingNode()) {
-                    fullNodes++;
-                    if (replicatorPeer.lastMessageReceived() >= minTimestamp) {
-                        fullCount++;
-                        nextCheck = Math.min(nextCheck, replicatorPeer.lastMessageReceived() - minTimestamp);
-                    }
+                if (RoleUtils.votingNode(replicatorPeer.role())
+                        && replicatorPeer.lastMessageReceived() > minTimestamp) {
+                    nextCheck = Math.min(nextCheck, replicatorPeer.lastMessageReceived() - minTimestamp);
                 }
             }
+            return new CheckResult(true, null, nextCheck);
         }
 
-        public boolean fullMajority() {
-            return fullCount >= (int) Math.ceil((fullNodes + 0.1f) / 2f) &&
-                    (primaryNodes == fullNodes || fullCount > primaryCount);
-        }
-
-        public boolean primaryMajority() {
-            return primaryCount >= (int) Math.ceil((primaryNodes + 0.1f) / 2f);
-        }
+        return new CheckResult(false, "no messages received", maxElectionTimeout);
     }
-
 
     public static class CheckResult {
 

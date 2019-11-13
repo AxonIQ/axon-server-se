@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.DummyEntry;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -633,12 +634,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
         nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, matchIndexValue + 1));
     }
 
-    public boolean primaryNode() {
-        return raftPeer.primaryNode();
+    public Role role() {
+        return raftPeer.role();
     }
-
-    public boolean votingNode() {
-        return raftPeer.votingNode();
-    }
-
 }

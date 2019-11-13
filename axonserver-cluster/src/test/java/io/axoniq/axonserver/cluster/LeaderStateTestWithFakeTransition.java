@@ -102,17 +102,6 @@ public class LeaderStateTestWithFakeTransition {
     }
 
     @Test
-    public void testRequestVoteWhenCandidateIsNotAMember() {
-        leaderState.start();
-        RequestVoteRequest request = RequestVoteRequest.newBuilder()
-                                                       .setCandidateId("node4")
-                                                       .build();
-        RequestVoteResponse response = leaderState.requestVote(request);
-        assertFalse(response.getVoteGranted());
-        assertTrue(response.getGoAway());
-    }
-
-    @Test
     public void testAppendEntriesSameTerm() {
         leaderState.start();
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder().setTerm(1).build();

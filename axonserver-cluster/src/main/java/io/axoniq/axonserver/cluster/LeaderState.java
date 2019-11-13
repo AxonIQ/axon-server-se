@@ -10,6 +10,7 @@ import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.LeaderTimeoutChecker;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Config;
@@ -74,7 +75,8 @@ public class LeaderState extends AbstractMembershipState {
 
         leaderTimeoutChecker = new LeaderTimeoutChecker(this::replicatorPeers,
                                                         maxElectionTimeout(),
-                                                        () -> scheduler.get().clock());
+                                                        () -> scheduler.get().clock(),
+                                                        () -> raftGroup().raftConfiguration().minActiveBackups());
     }
 
     /**
@@ -126,19 +128,19 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
-        pendingConfigurationChange = clusterConfiguration.removeServer(nodeId)
-                                                         .thenApply(configChangeResult -> checkCurrentNodeDeleted(
-                configChangeResult, nodeId));
+        pendingConfigurationChange = clusterConfiguration.removeServer(nodeId);
+//                                                         .thenApply(configChangeResult -> checkCurrentNodeDeleted(
+//                configChangeResult, nodeId));
         return pendingConfigurationChange;
     }
 
-    private ConfigChangeResult checkCurrentNodeDeleted(ConfigChangeResult configChangeResult, String nodeId) {
-        if (nodeId.equals(me())) {
-            logger.warn("{} in term {}: Check Current leader deleted: {}", groupId(), currentTerm(), nodeId);
-            changeStateTo(stateFactory().removedState(), "Node deleted from group");
-        }
-        return configChangeResult;
-    }
+//    private ConfigChangeResult checkCurrentNodeDeleted(ConfigChangeResult configChangeResult, String nodeId) {
+//        if (nodeId.equals(me())) {
+//            logger.warn("{} in term {}: Check Current leader deleted: {}", groupId(), currentTerm(), nodeId);
+//            changeStateTo(stateFactory().removedState(), "Node deleted from group");
+//        }
+//        return configChangeResult;
+//    }
 
     @Override
     public void start() {
@@ -197,7 +199,7 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (!request.getDisruptAllowed() && heardFromFollowers()) {
-            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+            return responseFactory().voteRejected(request.getRequestId());
         }
 
         return super.requestVote(request);
@@ -206,10 +208,10 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
         if (heardFromFollowers()) {
-            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+            return responseFactory().voteRejected(request.getRequestId());
         }
 
-        return super.requestVote(request);
+        return super.requestPreVote(request);
     }
 
 
@@ -236,7 +238,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
-    public void forceStepDown() {
+    public void forceStartElection() {
         String message = format("%s in term %s: Forced Step Down of %s.", groupId(), currentTerm(), me());
         logger.info(message);
         stepDown(message);
@@ -593,7 +595,7 @@ public class LeaderState extends AbstractMembershipState {
          * @return true if peer is able to become leader
          */
         public boolean isPossibleLeader(ReplicatorPeer peer) {
-            return !nonVotingReplicaMap.containsKey(peer.nodeId()) && peer.primaryNode();
+            return !nonVotingReplicaMap.containsKey(peer.nodeId()) && RoleUtils.primaryNode(peer.role());
         }
     }
 }

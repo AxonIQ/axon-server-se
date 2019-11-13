@@ -79,24 +79,22 @@ public class DefaultResponseFactoryTest {
 
     @Test
     public void testRequestVoteFailure() {
-        RequestVoteResponse response = testSubject.voteResponse(requestId, false, true);
+        RequestVoteResponse response = testSubject.voteResponse(requestId, false);
         assertEquals(currentTerm, response.getTerm());
         assertEquals(localNodeId, response.getResponseHeader().getNodeId());
         assertEquals(requestId, response.getResponseHeader().getRequestId());
         assertEquals(groupId, response.getGroupId());
         assertFalse(response.getVoteGranted());
-        assertTrue(response.getGoAway());
     }
 
 
     @Test
     public void testRequestVoteSuccess() {
-        RequestVoteResponse response = testSubject.voteResponse(requestId, true, false);
+        RequestVoteResponse response = testSubject.voteResponse(requestId, true);
         assertEquals(currentTerm, response.getTerm());
         assertEquals(localNodeId, response.getResponseHeader().getNodeId());
         assertEquals(requestId, response.getResponseHeader().getRequestId());
         assertEquals(groupId, response.getGroupId());
-        assertFalse(response.getGoAway());
         assertTrue(response.getVoteGranted());
     }
 

@@ -41,7 +41,7 @@ public class DefaultPreVoteTest {
         node1 = new FakeRaftPeer(fakeScheduler, "Node1");
         node2 = new FakeRaftPeer(fakeScheduler, "Node2");
         List<RaftPeer> otherPeers = asList(node1, node2);
-        testSubject = new DefaultPreVote(prototype, updateTerm, electionStore, otherPeers);
+        testSubject = new DefaultPreVote(prototype, updateTerm, electionStore, otherPeers, () -> 1);
     }
 
     @Test

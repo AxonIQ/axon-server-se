@@ -22,7 +22,6 @@ import io.axoniq.axonserver.cluster.replication.file.LogEntryTransformerFactory;
 import io.axoniq.axonserver.cluster.replication.file.PrimaryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.file.SecondaryLogEntryStore;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
-import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManager;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
@@ -33,6 +32,10 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Collections;
 import java.util.List;
@@ -58,7 +61,9 @@ public class GrpcRaftGroup implements RaftGroup {
                          LocalEventStore localEventStore,
                          GrpcRaftClientFactory clientFactory,
                          MessagingPlatformConfiguration messagingPlatformConfiguration,
-                         NewConfigurationConsumer newConfigurationConsumer) {
+                         NewConfigurationConsumer newConfigurationConsumer,
+                         PlatformTransactionManager platformTransactionManager
+    ) {
         this.clientFactory = clientFactory;
         context = groupId;
         this.localEventStore = localEventStore;
@@ -92,11 +97,12 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public void update(List<Node> nodes) {
-                membersStore.set(nodes);
-                nodes.stream()
-                     .filter(n -> n.getNodeId().equals(localNodeId) && RoleUtils.hasStorage(n.getRole()))
-                     .findFirst()
-                     .ifPresent(n -> localEventStore.initContext(groupId, false));
+                new TransactionTemplate(platformTransactionManager).execute(new TransactionCallbackWithoutResult() {
+                    @Override
+                    protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
+                        membersStore.set(nodes);
+                    }
+                });
             }
 
             @Override
@@ -173,6 +179,11 @@ public class GrpcRaftGroup implements RaftGroup {
             public boolean isSerializedEventData(String type) {
                 return EventLogEntryConsumer.LOG_ENTRY_TYPE.equals(type)
                         || SnapshotLogEntryConsumer.LOG_ENTRY_TYPE.equals(type);
+            }
+
+            @Override
+            public Integer minActiveBackups() {
+                return storageOptions.getMinActiveBackups();
             }
         };
 

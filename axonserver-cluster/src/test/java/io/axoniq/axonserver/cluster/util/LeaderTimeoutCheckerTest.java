@@ -25,7 +25,7 @@ public class LeaderTimeoutCheckerTest {
 
     @Before
     public void setUp() throws Exception {
-        testSubject = new LeaderTimeoutChecker(peers, 100, () -> clock);
+        testSubject = new LeaderTimeoutChecker(peers, 100, () -> clock, () -> 1);
     }
 
     @Test

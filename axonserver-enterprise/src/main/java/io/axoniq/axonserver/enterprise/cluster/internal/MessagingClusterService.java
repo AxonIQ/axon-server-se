@@ -440,7 +440,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             ClientIdentification clientIdentification =
                     new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName());
             if (clientStatus.getConnected()) {
-                if (! messagingServerName.equals(connectedClients.get(clientIdentification))) {
+                if (messagingServerName != null && !messagingServerName.equals(connectedClients
+                                                                                       .get(clientIdentification))) {
                     // Unknown client
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(
                             clientStatus.getContext(),

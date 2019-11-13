@@ -85,7 +85,7 @@ public class FollowerStateTest {
 
         CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
         when(currentConfiguration.groupMembers()).thenReturn(asList(node("node1", Role.PRIMARY),
-                                                                    node("node2", Role.ACTIVE_BACKUP),
+                                                                    node("node2", Role.PRIMARY),
                                                                     node("node3", Role.PRIMARY)));
 
         followerState = spy(FollowerState.builder()
@@ -118,13 +118,6 @@ public class FollowerStateTest {
     }
 
     @Test
-    public void testBackupNoTransitionToPreVoteState() {
-        when(localNode.nodeId()).thenReturn("node2");
-        fakeScheduler.timeElapses(electionTimeout + 1);
-        verify(transitionHandler, times(0)).updateState(any(), any(PreVoteState.class), any());
-    }
-
-    @Test
     public void testRequestVoteGranted() {
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setCandidateId("node1")
@@ -134,7 +127,6 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -157,7 +149,6 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -178,7 +169,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(0L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -201,31 +191,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
-    }
-
-    @Test
-    public void testRequestVoteGrantedAfterMinElectionTimeoutHasPassedAndLogIsNotUpToDateForBackupNode() {
-        when(localNode.nodeId()).thenReturn("node2");
-        followerState.appendEntries(firstAppend());
-
-        // wait min election timeout to pass in order to have vote granted
-        fakeScheduler.timeElapses(MIN_ELECTION_TIMEOUT + 1);
-
-        RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
-                                                                                   .setRequestId(UUID.randomUUID()
-                                                                                                     .toString())
-                                                                                   .setCandidateId("node3")
-                                                                                   .setGroupId("defaultGroup")
-                                                                                   .setLastLogTerm(0L)
-                                                                                   .setLastLogIndex(0L)
-                                                                                   .setTerm(1)
-                                                                                   .build());
-
-        assertTrue(response.getVoteGranted());
-        assertEquals(1L, response.getTerm());
-        assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -248,7 +213,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test

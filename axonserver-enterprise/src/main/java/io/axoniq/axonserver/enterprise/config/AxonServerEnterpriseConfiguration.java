@@ -52,7 +52,8 @@ public class AxonServerEnterpriseConfiguration {
     @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
             MessagingPlatformConfiguration messagingPlatformConfiguration,
-            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider, RaftGroupRepositoryManager raftGroupRepositoryManager,
+            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider,
+            RaftGroupRepositoryManager raftGroupRepositoryManager,
             LifecycleController lifecycleController, LocalEventStore localEventStore,
             ChannelProvider channelProvider) {
         return new EventStoreManager(messagingPlatformConfiguration, clusterController, lifecycleController, raftLeaderProvider, raftGroupRepositoryManager,
@@ -82,9 +83,9 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
     @Conditional(MemoryMappedStorage.class)
-    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                               StorageTransactionManagerFactory storageTransactionManagerFactory) {
-        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
+    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                               EventTransformerFactory eventTransformerFactory) {
+        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory);
     }
 
     @Bean

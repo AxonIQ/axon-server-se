@@ -36,6 +36,8 @@ public class ContextClusterNode implements Serializable {
 
     private Role role;
 
+    private boolean pendingDelete;
+
     public ContextClusterNode() {
     }
 
@@ -77,6 +79,14 @@ public class ContextClusterNode implements Serializable {
 
     public Role getRole() {
         return RoleUtils.getOrDefault(role);
+    }
+
+    public boolean isPendingDelete() {
+        return pendingDelete;
+    }
+
+    public void setPendingDelete(boolean pendingDelete) {
+        this.pendingDelete = pendingDelete;
     }
 
     @Override

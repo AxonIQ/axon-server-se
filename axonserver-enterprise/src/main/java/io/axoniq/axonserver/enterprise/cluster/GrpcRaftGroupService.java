@@ -12,6 +12,8 @@ import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
+import io.axoniq.axonserver.grpc.internal.DeleteContextRequest;
+import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -41,12 +43,21 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
             ContextConfiguration contextConfiguration = localRaftGroupService.initContext(request.getName(),
                                                                                           request.getMembersList()
                                                                                                  .stream()
-                                                                                                 .map(contextMember -> Node.newBuilder()
-                                                                               .setNodeId(contextMember.getNodeId())
-                                                                               .setHost(contextMember.getHost())
-                                                                               .setPort(contextMember.getPort())
-                                                                               .setNodeName(contextMember.getNodeName())
-                                                                               .build())
+                                                                                                 .map(contextMember -> Node
+                                                                                                         .newBuilder()
+                                                                                                         .setNodeId(
+                                                                                                                 contextMember
+                                                                                                                         .getNodeId())
+                                                                                                         .setHost(
+                                                                                                                 contextMember
+                                                                                                                         .getHost())
+                                                                                                         .setPort(
+                                                                                                                 contextMember
+                                                                                                                         .getPort())
+                                                                                                         .setNodeName(
+                                                                                                                 contextMember
+                                                                                                                         .getNodeName())
+                                                                                                         .build())
                                                                                                  .collect(Collectors
                                                                                                                   .toList()))
                                                                              .get();
@@ -90,19 +101,24 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void removeServer(Context request, StreamObserver<ContextUpdateConfirmation> responseObserver) {
-        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.deleteNode(request.getName(), request.getMembers(0).getNodeId());
+        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.deleteNode(request.getName(),
+                                                                                                    request.getMembers(0)
+                                                                                                           .getNodeId());
         forwardWhenComplete(responseObserver, completable);
     }
 
     @Override
-    public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext());
+    public void deleteContext(DeleteContextRequest request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext(),
+                                                                                  request.getPreserveEventstore());
         confirm(responseObserver, completable);
     }
 
     @Override
     public void appendEntry(ContextEntry request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(), request.getEntryName(), request.getEntry().toByteArray());
+        CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(),
+                                                                                request.getEntryName(),
+                                                                                request.getEntry().toByteArray());
         confirm(responseObserver, completable);
     }
 
@@ -133,21 +149,24 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     @Override
     public void mergeLoadBalanceStrategy(ContextLoadBalanceStrategy request,
                                          StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
+        CompletableFuture<Void> completable = localRaftGroupService.updateLoadBalancingStrategy(request.getContext(),
+                                                                                                request.getLoadBalanceStrategy());
         confirm(responseObserver, completable);
     }
 
     @Override
     public void deleteLoadBalanceStrategy(ContextLoadBalanceStrategy request,
                                           StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
+        CompletableFuture<Void> completable = localRaftGroupService.deleteLoadBalancingStrategy(request.getContext(),
+                                                                                                request.getLoadBalanceStrategy());
         confirm(responseObserver, completable);
     }
 
     @Override
     public void mergeProcessorLBStrategy(ContextProcessorLBStrategy request,
                                          StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateProcessorLoadBalancing(request.getContext(), request.getProcessorLBStrategy());
+        CompletableFuture<Void> completable = localRaftGroupService.updateProcessorLoadBalancing(request.getContext(),
+                                                                                                 request.getProcessorLBStrategy());
         confirm(responseObserver, completable);
     }
 
@@ -169,7 +188,13 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     @Override
     public void transferLeadership(ContextName request, StreamObserver<Confirmation> responseObserver) {
         io.grpc.Context.current().fork().wrap(() -> doTransferLeadership(request, responseObserver)).run();
+    }
 
+    @Override
+    public void preDeleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.prepareDeleteNodeFromContext(request.getContext(),
+                                                                                                 request.getNodeName());
+        confirm(responseObserver, completable);
     }
 
     private void doTransferLeadership(ContextName request,
@@ -179,8 +204,8 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
                                  responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
                                  responseObserver.onCompleted();
                              }).exceptionally(cause -> {
-                                responseObserver.onError(cause);
-                                return null;
-                             });
+            responseObserver.onError(cause);
+            return null;
+        });
     }
 }
