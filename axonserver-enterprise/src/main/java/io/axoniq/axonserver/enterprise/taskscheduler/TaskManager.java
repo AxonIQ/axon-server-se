@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class TaskManager {
 
+    private static final long MAX_RETRY_INTERVAL = TimeUnit.MINUTES.toMillis(1);
     private final Logger logger = LoggerFactory.getLogger(TaskManager.class);
 
     private final ScheduledTaskExecutor taskExecutor;
@@ -54,7 +55,7 @@ public class TaskManager {
      * Checks if there are tasks available to run. If the current node is not the admin leader it does not perform any
      * actions.
      */
-    @Scheduled(fixedDelayString = "1000", initialDelayString = "10000")
+    @Scheduled(fixedDelayString = "${axoniq.axonserver.task-manager-delay:1000}", initialDelayString = "${axoniq.axonserver.task-manager-initial-delay:10000}")
     @Transactional
     public void checkForTasks() {
         try {
@@ -135,7 +136,8 @@ public class TaskManager {
                                                                     task.getTaskId(),
                                                                     Status.SCHEDULED,
                                                                     newSchedule(task),
-                                                                    task.getRetryInterval() * 2);
+                                                                    Math.min(task.getRetryInterval() * 2,
+                                                                             MAX_RETRY_INTERVAL));
         } else {
             publishResultFuture = taskResultPublisher.publishResult(task.getContext(),
                                                                     task.getTaskId(),
@@ -165,7 +167,7 @@ public class TaskManager {
     }
 
     private long newSchedule(Task task) {
-        return clock.millis() + Math.min(task.getRetryInterval(), TimeUnit.MINUTES.toMillis(1));
+        return clock.millis() + Math.min(task.getRetryInterval(), MAX_RETRY_INTERVAL);
     }
 
     private void completed(Task task) {
