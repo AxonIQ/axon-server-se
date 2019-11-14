@@ -1,8 +1,10 @@
-package io.axoniq.axonserver.grpc;
+package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
+import io.axoniq.axonserver.grpc.PlatformService;
+import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
@@ -51,20 +53,22 @@ public class HeartbeatMonitor {
     /**
      * Constructs a {@link HeartbeatMonitor} that uses {@link PlatformService} to send and receive heartbeats messages.
      *
-     * @param platformService  the platform service
-     * @param eventPublisher   the internal event publisher
-     * @param heartbeatTimeout the max period of inactivity before is published an {@link ApplicationInactivityTimeout};
-     *                         it is expressed in milliseconds
+     * @param platformService    the platform service
+     * @param heartbeatPublisher the heartbeat publisher
+     * @param eventPublisher     the internal event publisher
+     * @param heartbeatTimeout   the max period of inactivity before is published an {@link ApplicationInactivityTimeout};
+     *                           it is expressed in milliseconds
      */
     @Autowired
     public HeartbeatMonitor(PlatformService platformService,
+                            HeartbeatPublisher heartbeatPublisher,
                             ApplicationEventPublisher eventPublisher,
                             @Value("${axoniq.axonserver.client-heartbeat-timeout:5000}") long heartbeatTimeout) {
         this(listener ->
                      platformService.onInboundInstruction(HEARTBEAT, (client, context, instruction) ->
                              listener.accept(new ClientIdentification(context, client), instruction)),
              eventPublisher,
-             platformService::sendToAllClients,
+             heartbeatPublisher,
              heartbeatTimeout, Clock.systemUTC());
     }
 
@@ -84,8 +88,8 @@ public class HeartbeatMonitor {
             ApplicationEventPublisher eventPublisher,
             Publisher<PlatformOutboundInstruction> heartbeatPublisher,
             long heartbeatTimeout, Clock clock) {
-        this.clock = clock;
         heartbeatListenerRegistration.accept(this::onHeartBeat);
+        this.clock = clock;
         this.eventPublisher = eventPublisher;
         this.heartbeatTimeout = heartbeatTimeout;
         this.heartbeatPublisher = heartbeatPublisher;
