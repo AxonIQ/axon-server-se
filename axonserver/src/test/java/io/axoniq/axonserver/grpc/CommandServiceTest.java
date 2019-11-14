@@ -9,9 +9,13 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -19,6 +23,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
+import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
@@ -48,7 +53,14 @@ public class CommandServiceTest {
 
         when(commandDispatcher.getCommandQueues()).thenReturn(commandQueue);
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
-        testSubject = new CommandService(commandDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
+        Topology topology = new DefaultTopology(configuration);
+        testSubject = new CommandService(topology,
+                                         commandDispatcher,
+                                         () -> Topology.DEFAULT_CONTEXT,
+                                         eventPublisher,
+                                         new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
+                                                 CommandProviderInbound.newBuilder().setAck(ack).build())));
     }
 
     @Test
@@ -74,6 +86,34 @@ public class CommandServiceTest {
                 .build());
         verify(eventPublisher).publishEvent(isA(SubscriptionEvents.SubscribeCommand.class));
     }
+
+    @Test
+    public void unsupportedCommandInstruction() {
+        CountingStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        String instructionId = "instructionId";
+        requestStream.onNext(CommandProviderOutbound.newBuilder()
+                                                    .setInstructionId(instructionId)
+                                                    .build());
+        InstructionAckOrBuilder result = responseStream.responseList.get(responseStream.responseList.size() - 1)
+                                                                    .getInstructionResult();
+
+        assertEquals(instructionId, result.getInstructionId());
+        assertTrue(result.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), result.getError().getErrorCode());
+    }
+
+    @Test
+    public void unsupportedCommandInstructionWithoutInstructionId() {
+        CountingStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        requestStream.onNext(CommandProviderOutbound.newBuilder().build());
+
+        assertEquals(0, responseStream.responseList.size());
+    }
+
     @Test
     public void unsubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());

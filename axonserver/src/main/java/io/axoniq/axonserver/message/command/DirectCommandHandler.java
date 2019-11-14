@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -30,8 +30,12 @@ public class DirectCommandHandler extends CommandHandler<SerializedCommandProvid
 
     @Override
     public void confirm(String messageId) {
-        observer.onNext(SerializedCommandProviderInbound.newBuilder().setConfirmation(Confirmation.newBuilder().setSuccess(true).setMessageId(messageId).build()).build());
-
+        observer.onNext(SerializedCommandProviderInbound.newBuilder()
+                                                        .setAcknowledgement(InstructionAck.newBuilder()
+                                                                                          .setSuccess(true)
+                                                                                          .setInstructionId(messageId)
+                                                                                          .build())
+                                                        .build());
     }
 
 }
