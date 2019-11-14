@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.storage.jdbc.multicontext;
 
 import io.axoniq.axonserver.enterprise.storage.jdbc.MultiContextStrategy;
 import io.axoniq.axonserver.enterprise.storage.jdbc.VendorSpecific;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 
 import java.sql.Connection;
@@ -32,5 +33,10 @@ public class SingleSchemaMultiContextStrategy implements MultiContextStrategy {
     @Override
     public void init(EventTypeContext eventTypeContext, Connection connection) throws SQLException {
         vendorSpecific.createTableIfNotExists(tableName(eventTypeContext), connection);
+    }
+
+    @Override
+    public boolean exists(String context, Connection connection) throws SQLException {
+        return vendorSpecific.tableExists(tableName(new EventTypeContext(context, EventType.EVENT)), connection);
     }
 }

@@ -23,12 +23,9 @@ public class MySqlSpecific implements VendorSpecific {
 
     @Override
     public void createTableIfNotExists(String schema, String table, Connection connection) throws SQLException {
-        try (ResultSet resultSet = connection.getMetaData().getTables(schema, null, table, null)) {
-            if (resultSet.next()) {
-                return;
-            }
+        if (tableExists(schema, table, connection)) {
+            return;
         }
-
 
         String createTable = String.format(
                 "create table %s ("
@@ -84,4 +81,20 @@ public class MySqlSpecific implements VendorSpecific {
             System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
         }
     }
+
+    @Override
+    public boolean tableExists(String schema, String table, Connection connection) throws SQLException {
+        try (ResultSet resultSet = connection.getMetaData().getTables(schema, null, table, null)) {
+            if (resultSet.next()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean tableExists(String tableName, Connection connection) throws SQLException {
+        return tableExists(null, tableName, connection);
+    }
+
 }
