@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
@@ -76,12 +76,12 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
         });
     }
 
-    private void confirm(StreamObserver<Confirmation> responseObserver, CompletableFuture<Void> completable) {
+    private void confirm(StreamObserver<InstructionAck> responseObserver, CompletableFuture<Void> completable) {
         completable.whenComplete((r, t) -> {
             if (t != null) {
                 responseObserver.onError(t);
             } else {
-                responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+                responseObserver.onNext(InstructionAck.newBuilder().setSuccess(true).build());
                 responseObserver.onCompleted();
             }
         });
@@ -94,58 +94,58 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteContext(ContextName request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext());
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void appendEntry(ContextEntry request, StreamObserver<Confirmation> responseObserver) {
+    public void appendEntry(ContextEntry request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(), request.getEntryName(), request.getEntry().toByteArray());
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void mergeAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
+    public void mergeAppAuthorization(ContextApplication request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request);
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void deleteAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteAppAuthorization(ContextApplication request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void mergeUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+    public void mergeUserAuthorization(ContextUser request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.updateUser(request);
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void deleteUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteUserAuthorization(ContextUser request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.deleteUser(request);
         confirm(responseObserver, completable);
     }
 
     @Override
     public void mergeLoadBalanceStrategy(ContextLoadBalanceStrategy request,
-                                         StreamObserver<Confirmation> responseObserver) {
+                                         StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.updateLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
         confirm(responseObserver, completable);
     }
 
     @Override
     public void deleteLoadBalanceStrategy(ContextLoadBalanceStrategy request,
-                                          StreamObserver<Confirmation> responseObserver) {
+                                          StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.deleteLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
         confirm(responseObserver, completable);
     }
 
     @Override
     public void mergeProcessorLBStrategy(ContextProcessorLBStrategy request,
-                                         StreamObserver<Confirmation> responseObserver) {
+                                         StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.updateProcessorLoadBalancing(request.getContext(), request.getProcessorLBStrategy());
         confirm(responseObserver, completable);
     }
@@ -175,16 +175,16 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void transferLeadership(ContextName request, StreamObserver<Confirmation> responseObserver) {
+    public void transferLeadership(ContextName request, StreamObserver<InstructionAck> responseObserver) {
         io.grpc.Context.current().fork().wrap(() -> doTransferLeadership(request, responseObserver)).run();
 
     }
 
     private void doTransferLeadership(ContextName request,
-                                      StreamObserver<Confirmation> responseObserver) {
+                                      StreamObserver<InstructionAck> responseObserver) {
         localRaftGroupService.transferLeadership(request.getContext())
                              .thenAccept(c -> {
-                                 responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+                                 responseObserver.onNext(InstructionAck.newBuilder().setSuccess(true).build());
                                  responseObserver.onCompleted();
                              }).exceptionally(cause -> {
                                 responseObserver.onError(cause);
