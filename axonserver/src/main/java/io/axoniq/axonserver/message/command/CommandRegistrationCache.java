@@ -77,12 +77,11 @@ public class CommandRegistrationCache {
      * @param commandHandler the handler of the command
      */
     public void add(String command, CommandHandler commandHandler) {
-        logger.trace("Add command {} to {}", command, commandHandler.client);
         add(command, commandHandler, 100);
     }
 
     private void add(String command, CommandHandler commandHandler, int loadFactor) {
-        logger.trace("Add command {} to {}", command, commandHandler.client);
+        logger.trace("Add command {} to {} with load factor {}", command, commandHandler.client, loadFactor);
         ClientIdentification clientIdentification = commandHandler.getClient();
         ConsistentHash consistentHash = consistentHashPerContext.computeIfAbsent(clientIdentification.getContext(),
                                                                                  c -> new ConsistentHash());
