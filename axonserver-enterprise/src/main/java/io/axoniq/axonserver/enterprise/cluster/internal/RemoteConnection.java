@@ -275,15 +275,25 @@ public class RemoteConnection {
         }
     }
 
+    /**
+     * Propagate a client command unsubscription to the other platform node.
+     *
+     * @param context            the context
+     * @param unsubscribeRequest the unsubscribe request to propagate
+     */
     public void unsubscribeCommand(String context, CommandSubscription unsubscribeRequest) {
         publish(ConnectorCommand.newBuilder()
                                 .setUnsubscribeCommand(InternalCommandSubscription.newBuilder()
                                                                                   .setCommand(unsubscribeRequest)
                                                                                   .setContext(context))
                                 .build());
-
     }
 
+    /**
+     * Propagate a client command subscription to the other platform node.
+     * @param context the context
+     * @param commandSubscription the command subscription to propagate
+     */
     public void subscribeCommand(String context, CommandSubscription commandSubscription) {
         publish(ConnectorCommand.newBuilder()
                                 .setSubscribeCommand(InternalCommandSubscription.newBuilder()
