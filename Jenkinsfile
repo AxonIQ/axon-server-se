@@ -77,7 +77,7 @@ podTemplate(label: label,
             def props = readProperties file: 'jenkins-build.properties'
             def gcloudRegistry = props ['gcloud.registry']
             def gcloudProjectName = props ['gcloud.project.name']
-            def slackReport = "Maven build for Axon Server EE ${pomVersion} (branch \"${gitBranch}\")."
+            def slackReport = "Maven build for Axon Server ${pomVersion} (branch \"${gitBranch}\")."
             stage ('Maven build') {
                 container("maven") {
                     try {
