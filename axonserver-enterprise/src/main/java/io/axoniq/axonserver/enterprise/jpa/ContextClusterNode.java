@@ -45,8 +45,6 @@ public class ContextClusterNode implements Serializable {
         this.clusterNodeLabel = clusterNodeLabel;
         this.key = new Key(context, clusterNode);
         this.role = role;
-        context.addClusterNode(this);
-        clusterNode.addContext(this);
     }
 
     public Key getKey() {

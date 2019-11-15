@@ -9,15 +9,36 @@ import java.util.List;
 import javax.validation.constraints.NotNull;
 
 /**
+ * Definition of a context for the REST interface
  * @author Marc Gathier
+ * @since 4.0
  */
 @KeepNames
 public class ContextJSON {
+
+    /**
+     * the name of the context
+     */
     private String context;
+    /**
+     * the current leader of the context
+     */
     private String leader;
+    /**
+     * List of current members
+     */
     private List<String> nodes = new ArrayList<>();
+    /**
+     * List of current members and their roles
+     */
     private List<NodeAndRole> roles = new ArrayList<>();
+    /**
+     * Indicator for pending changes on the context
+     */
     private boolean changePending;
+    /**
+     * Timestamp of the start of the pending change
+     */
     private long pendingSince;
 
     public ContextJSON() {
@@ -35,6 +56,7 @@ public class ContextJSON {
         return nodes;
     }
 
+    @Deprecated
     public void setNodes(List<String> nodes) {
         this.nodes = nodes;
     }

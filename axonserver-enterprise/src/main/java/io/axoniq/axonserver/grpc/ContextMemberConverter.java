@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 
 /**
@@ -22,7 +21,7 @@ public class ContextMemberConverter {
                             .setPort(r.getPort())
                             .setNodeId(r.getNodeId())
                             .setNodeName(r.getNodeName())
-                            .setRole(r.getRoleValue())
+                            .setRole(r.getRole())
                             .build();
     }
 
@@ -32,7 +31,7 @@ public class ContextMemberConverter {
                    .setPort(member.getPort())
                    .setNodeId(member.getNodeId())
                    .setNodeName(member.getNodeName())
-                   .setRole(Role.forNumber(member.getRole()))
+                   .setRole(member.getRole())
                    .build();
     }
 }

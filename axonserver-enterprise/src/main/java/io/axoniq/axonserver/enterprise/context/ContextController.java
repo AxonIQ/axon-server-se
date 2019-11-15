@@ -4,7 +4,6 @@ import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import org.slf4j.Logger;
@@ -106,7 +105,7 @@ public class ContextController {
                 logger.debug("{}: Node not in current configuration {}", contextConfiguration.getContext(), node);
                 clusterInfoMap.get(node).addContext(finalContext,
                                                     nodeInfo.getLabel(),
-                                                    Role.forNumber(nodeInfo.getRole()));
+                                                    nodeInfo.getRole());
             }
         });
     }

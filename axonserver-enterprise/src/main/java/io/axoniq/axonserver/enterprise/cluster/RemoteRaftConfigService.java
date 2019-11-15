@@ -43,7 +43,7 @@ public class RemoteRaftConfigService implements RaftConfigService {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder()
                                                           .setNodeName(node)
-                                                          .setRole(role.getNumber())
+                                                          .setRole(role)
                                                           .setContext(context)
                                                           .build(),
                                                new CompletableStreamObserver<>(completableFuture,

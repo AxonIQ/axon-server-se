@@ -5,7 +5,6 @@ import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
-import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
@@ -113,7 +112,7 @@ public class LocalRaftConfigServiceTest {
                         if( !currentNodes.containsKey(node)) {
                             clusterInfoMap.get(node).addContext(finalContext,
                                                                 nodeInfo.getLabel(),
-                                                                RoleUtils.forNumber(nodeInfo.getRole()));
+                                                                nodeInfo.getRole());
                         }
                     });
 
@@ -185,7 +184,7 @@ public class LocalRaftConfigServiceTest {
                                                                                                       .setNode(NodeInfo.newBuilder()
                                                                                                                        .setNodeName(
                                                                                                                                n.getNodeName()))
-                                                                                                      .setRole(n.getRoleValue())
+                                                                                                      .setRole(n.getRole())
                                                                                                       .build())
                                                                                               .collect(Collectors
                                                                                                                .toList()))

@@ -586,7 +586,7 @@ class LocalRaftConfigService implements RaftConfigService {
         return NodeInfoWithLabel.newBuilder()
                                 .setLabel(nodeLabel)
                                 .setNode(nodeInfo)
-                                .setRole(Role.PRIMARY.getNumber())
+                                .setRole(Role.PRIMARY)
                                 .build();
     }
 
@@ -632,7 +632,7 @@ class LocalRaftConfigService implements RaftConfigService {
                 .setContext(contextName)
                 .addNodes(NodeInfoWithLabel.newBuilder()
                                            .setNode(nodeInfo)
-                                           .setRole(Role.PRIMARY.getNumber())
+                                           .setRole(Role.PRIMARY)
                                            .setLabel(nodeLabelForContext))
                 .build();
         RaftNode adminLeader = grpcRaftController.waitForLeader(grpcRaftController.getRaftGroup(getAdmin()));
@@ -821,7 +821,7 @@ class LocalRaftConfigService implements RaftConfigService {
                 .addNodes(NodeInfoWithLabel.newBuilder()
                                            .setNode(n.getClusterNode().toNodeInfo())
                                            .setLabel(n.getClusterNodeLabel())
-                                           .setRole(n.getRole().getNumber())
+                                           .setRole(n.getRole())
                                            .build()));
         return groupConfigurationBuilder;
     }

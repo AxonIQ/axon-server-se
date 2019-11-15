@@ -4,6 +4,7 @@ import "common.proto";
 import "command.proto";
 import "query.proto";
 import "control.proto";
+import "raft.proto";
 option java_multiple_files = true;
 
 service MessagingClusterService {
@@ -127,7 +128,7 @@ service RaftGroupService {
 message NodeContext {
     string node_name = 1;
     string context = 2;
-    int32 role = 3;
+    io.axoniq.axonserver.grpc.cluster.Role role = 3;
 }
 
 message ConnectorCommand {
@@ -466,7 +467,7 @@ message ContextMember {
     int32 port = 3;
     State state = 4;
     string node_name = 5;
-    int32 role = 6; // TODO: change to Role or even replace ContextMember with Node from raft.proto (as separate refactor activity)
+    io.axoniq.axonserver.grpc.cluster.Role role = 6;
 }
 
 message Application {
@@ -521,7 +522,7 @@ message ContextConfiguration {
 message NodeInfoWithLabel {
     NodeInfo node = 1;
     string label = 2;
-    int32 role = 3;
+    io.axoniq.axonserver.grpc.cluster.Role role = 3;
 }
 
 message ContextName {

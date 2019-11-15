@@ -28,10 +28,12 @@ import javax.persistence.UniqueConstraint;
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
+ * Stores cluster nodes in the controldb.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Entity
-@Table(uniqueConstraints={@UniqueConstraint(columnNames = {"internalHostName", "grpcInternalPort"})})
+@Table(uniqueConstraints = {@UniqueConstraint(columnNames = {"internalHostName", "grpcInternalPort"})})
 public class ClusterNode implements Serializable, AxonServerNode {
 
     @Id
@@ -44,7 +46,7 @@ public class ClusterNode implements Serializable, AxonServerNode {
     private Integer httpPort;
 
     @Transient
-    private Map<String,String> tags = new HashMap<>();
+    private Map<String, String> tags = new HashMap<>();
 
     @OneToMany(mappedBy = "key.clusterNode", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ContextClusterNode> contexts = new HashSet<>();
@@ -53,7 +55,8 @@ public class ClusterNode implements Serializable, AxonServerNode {
     public ClusterNode() {
     }
 
-    public ClusterNode(String name, String hostName, String internalHostName, Integer grpcPort, Integer grpcInternalPort, Integer httpPort) {
+    public ClusterNode(String name, String hostName, String internalHostName, Integer grpcPort,
+                       Integer grpcInternalPort, Integer httpPort) {
         this.hostName = hostName;
         this.internalHostName = internalHostName;
         this.grpcPort = grpcPort;
@@ -66,6 +69,15 @@ public class ClusterNode implements Serializable, AxonServerNode {
         this.internalHostName = node.getHost();
         this.grpcInternalPort = node.getPort();
         this.name = node.getNodeName();
+    }
+
+    public static ClusterNode from(NodeInfo connect) {
+        return new ClusterNode(connect.getNodeName(),
+                               connect.getHostName(),
+                               connect.getInternalHostName(),
+                               connect.getGrpcPort(),
+                               connect.getGrpcInternalPort(),
+                               connect.getHttpPort());
     }
 
     public String getHostName() {
@@ -96,26 +108,38 @@ public class ClusterNode implements Serializable, AxonServerNode {
         return grpcInternalPort;
     }
 
+    public void setGrpcInternalPort(Integer grpcInternalPort) {
+        this.grpcInternalPort = grpcInternalPort;
+    }
+
     public String getInternalHostName() {
         return internalHostName;
+    }
+
+    public void setInternalHostName(String internalHostName) {
+        this.internalHostName = internalHostName;
     }
 
     public String getName() {
         return name;
     }
 
-    /**
-     * @param tags the tags that are configured for this node
-     */
-    public void setTags(Map<String,String> tags){
-        this.tags=tags;
+    public void setName(String name) {
+        this.name = name;
     }
 
     /**
      * @return the tags configured for this node
      */
-    public Map<String,String> getTags(){
+    public Map<String, String> getTags() {
         return tags;
+    }
+
+    /**
+     * @param tags the tags that are configured for this node
+     */
+    public void setTags(Map<String, String> tags) {
+        this.tags = tags;
     }
 
     public Collection<String> getContextNames() {
@@ -138,18 +162,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
                        .collect(Collectors.toSet());
     }
 
-    public void setInternalHostName(String internalHostName) {
-        this.internalHostName = internalHostName;
-    }
-
-    public void setGrpcInternalPort(Integer grpcInternalPort) {
-        this.grpcInternalPort = grpcInternalPort;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
     /**
      * Adds this node the specified context with given label and role. If this node is already a member of the context
      * this is a no-op.
@@ -159,19 +171,22 @@ public class ClusterNode implements Serializable, AxonServerNode {
      * @param role             the role of this node in the context
      */
     public void addContext(Context context, String clusterNodeLabel, Role role) {
-        if (!contexts.stream().anyMatch(ccn -> ccn.getContext().equals(context))) {
-            new ContextClusterNode(context, this, clusterNodeLabel, role);
+        if (!getContext(context.getName()).isPresent()) {
+            ContextClusterNode newMember = new ContextClusterNode(context, this, clusterNodeLabel, role);
+            addContext(newMember);
+            context.addClusterNode(newMember);
         }
-    }
-
-    public static ClusterNode from(NodeInfo connect) {
-        return new ClusterNode(connect.getNodeName(), connect.getHostName(), connect.getInternalHostName(), connect.getGrpcPort(), connect.getGrpcInternalPort(), connect.getHttpPort());
+        ;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         ClusterNode that = (ClusterNode) o;
 
@@ -185,15 +200,15 @@ public class ClusterNode implements Serializable, AxonServerNode {
 
     public NodeInfo toNodeInfo() {
         return NodeInfo.newBuilder()
-                .setNodeName(name)
-                .setGrpcInternalPort(grpcInternalPort)
-                .setGrpcPort(grpcPort)
-                .setHostName(hostName)
-                .setInternalHostName(internalHostName)
-                .setHttpPort(httpPort)
-                .putAllTags(tags)
-                .setVersion(1)
-                .build();
+                       .setNodeName(name)
+                       .setGrpcInternalPort(grpcInternalPort)
+                       .setGrpcPort(grpcPort)
+                       .setHostName(hostName)
+                       .setInternalHostName(internalHostName)
+                       .setHttpPort(httpPort)
+                       .putAllTags(tags)
+                       .setVersion(1)
+                       .build();
     }
 
     @PreRemove
@@ -216,7 +231,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
 
     public void removeContext(String context) {
         getContext(context).ifPresent(ContextClusterNode::preDelete);
-
     }
 
     public boolean isAdmin() {

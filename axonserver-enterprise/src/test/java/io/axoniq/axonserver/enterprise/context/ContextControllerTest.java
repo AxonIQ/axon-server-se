@@ -100,7 +100,7 @@ public class ContextControllerTest {
         return NodeInfoWithLabel.newBuilder()
                                 .setNode(clusterNode.toNodeInfo())
                                 .setLabel(clusterNode.getName())
-                                .setRole(role.getNumber())
+                                .setRole(role)
                                 .build();
     }
 
