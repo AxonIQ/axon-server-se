@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.stream.Collectors;
 
 /**
@@ -37,7 +36,7 @@ import java.util.stream.Collectors;
 public class CommandRegistrationCache {
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
     private final ConcurrentMap<ClientIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
-    private final ConcurrentMap<ClientIdentification, Set<String>> registrationsPerClient = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ClientIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ConsistentHash> consistentHashPerContext= new ConcurrentHashMap<>();
 
     /**
@@ -47,7 +46,8 @@ public class CommandRegistrationCache {
     public void remove(ClientIdentification client) {
         logger.trace("Remove {}", client);
         commandHandlersPerClientContext.remove(client);
-        consistentHashPerContext.computeIfPresent(client.getContext(),  (context,current) -> current.without(client.getClient()));
+        consistentHashPerContext.computeIfPresent(client.getContext(),
+                                                  (context, current) -> current.without(client.getClient()));
         registrationsPerClient.remove(client);
         logger.trace("Consistent hash = {}", consistentHashPerContext.get(client.getContext()));
     }
@@ -59,12 +59,12 @@ public class CommandRegistrationCache {
      */
     public void remove(ClientIdentification client, String command) {
         logger.trace("Remove command {} from {}", command, client);
-        Set<String> registrations = registrationsPerClient.computeIfPresent(client, (c, set) -> {
-            set.remove(command);
-            if (set.isEmpty()) {
+        Map<String, Integer> registrations = registrationsPerClient.computeIfPresent(client, (c, commandsMap) -> {
+            commandsMap.remove(command);
+            if (commandsMap.isEmpty()) {
                 return null;
             }
-            return set;
+            return commandsMap;
         });
         if( registrations == null) {
             remove(client);
@@ -93,12 +93,13 @@ public class CommandRegistrationCache {
                                                              cmd -> provides(clientIdentification, cmd)));
         }
         logger.trace("Consistent hash = {}", consistentHashPerContext.get(clientIdentification.getContext()));
-        registrationsPerClient.computeIfAbsent(clientIdentification, key -> new CopyOnWriteArraySet<>()).add(command);
+        registrationsPerClient.computeIfAbsent(clientIdentification, key -> new ConcurrentHashMap<>()).put(command,
+                                                                                                           loadFactor);
         commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
     }
 
     private boolean provides(ClientIdentification client, String cmd) {
-        return registrationsPerClient.containsKey(client) && registrationsPerClient.get(client).contains(cmd);
+        return registrationsPerClient.containsKey(client) && registrationsPerClient.get(client).containsKey(cmd);
     }
 
     /**
@@ -107,12 +108,17 @@ public class CommandRegistrationCache {
      */
     public Map<CommandHandler, Set<RegistrationEntry>> getAll() {
         Map<CommandHandler, Set<RegistrationEntry>> resultMap = new HashMap<>();
-        commandHandlersPerClientContext.forEach((contextClient, commandHandler)
-                                                        -> resultMap.put(commandHandler,
-                                                                         registrationsPerClient.get(contextClient)
-                                                                                               .stream()
-                                                                                               .map(command -> new RegistrationEntry(contextClient.getContext(), command))
-                                                                                               .collect(Collectors.toSet())));
+        commandHandlersPerClientContext.forEach(
+                (contextClient, commandHandler) -> resultMap.put(commandHandler,
+                                                                 registrationsPerClient.get(contextClient)
+                                                                                       .entrySet()
+                                                                                       .stream()
+                                                                                       .map(command -> new RegistrationEntry(
+                                                                                               contextClient
+                                                                                                       .getContext(),
+                                                                                               command.getKey(),
+                                                                                               command.getValue()))
+                                                                                       .collect(Collectors.toSet())));
         return resultMap;
     }
 
@@ -122,7 +128,7 @@ public class CommandRegistrationCache {
      * @return a set of commandName/context values
      */
     public Set<String> getCommandsFor(ClientIdentification clientNode) {
-        return registrationsPerClient.get(clientNode);
+        return registrationsPerClient.get(clientNode).keySet();
     }
 
     /**
@@ -150,8 +156,11 @@ public class CommandRegistrationCache {
      * @return the command handler for the request, or null when not found
      */
     public CommandHandler findByClientAndCommand(ClientIdentification clientIdentification, String request) {
-        boolean found = registrationsPerClient.getOrDefault(clientIdentification, Collections.emptySet()).contains(request);
-        if( !found) return null;
+        boolean found = registrationsPerClient.getOrDefault(clientIdentification, Collections.emptyMap()).containsKey(
+                request);
+        if (!found) {
+            return null;
+        }
         return commandHandlersPerClientContext.get(clientIdentification);
     }
 
@@ -172,11 +181,16 @@ public class CommandRegistrationCache {
     public static class RegistrationEntry {
         private final String command;
         private final String context;
-
+        private final int loadFactor;
 
         public RegistrationEntry(String context, String command) {
+            this(context, command, 100);
+        }
+
+        public RegistrationEntry(String context, String command, int loadFactor) {
             this.command = command;
             this.context = context;
+            this.loadFactor = loadFactor;
         }
 
         @Override
@@ -199,6 +213,10 @@ public class CommandRegistrationCache {
 
         public String getContext() {
             return context;
+        }
+
+        public int getLoadFactor() {
+            return loadFactor;
         }
     }
 }
