@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Ensures that subscriptions from this AxonHub node are known on all connected AxonHub nodes
+ * Ensures that subscriptions from this AxonServer node are known on all connected AxonHub nodes
  * @author Marc Gathier
  */
 @Component
@@ -52,10 +52,15 @@ public class SubscriptionSynchronizer {
         commandRegistrationCache.getAll().forEach((member, commands) -> {
             if (member instanceof DirectCommandHandler) {
                 commands.forEach(command ->
-                                         event.getRemoteConnection().subscribeCommand(command.getContext(),
-                                                                                      command.getCommand(),
-                                                                                      member.getClient().getClient(),
-                                                                                      member.getComponentName()));
+                                         event.getRemoteConnection()
+                                              .subscribeCommand(
+                                                      command.getContext(),
+                                                      CommandSubscription.newBuilder()
+                                                                         .setCommand(command.getCommand())
+                                                                         .setClientId(member.getClient().getClient())
+                                                                         .setComponentName(member.getComponentName())
+                                                                         .setLoadFactor(command.getLoadFactor())
+                                                                         .build()));
             }
         });
 
@@ -106,10 +111,7 @@ public class SubscriptionSynchronizer {
             CommandSubscription request = event.getRequest();
             clusterController.activeConnections()
                              .forEach(remoteConnection ->
-                                              remoteConnection.subscribeCommand(event.getContext(),
-                                                                                request.getCommand(),
-                                                                                request.getClientId(),
-                                                                                request.getComponentName()));
+                                              remoteConnection.subscribeCommand(event.getContext(), request));
         }
     }
 
@@ -118,10 +120,7 @@ public class SubscriptionSynchronizer {
         if (!event.isProxied()) {
             CommandSubscription request = event.getRequest();
             clusterController.activeConnections().forEach(remoteConnection -> remoteConnection
-                    .unsubscribeCommand(event.getContext(),
-                                        request.getCommand(),
-                                        request.getClientId(),
-                                        request.getComponentName()));
+                    .unsubscribeCommand(event.getContext(), request));
         }
     }
 
