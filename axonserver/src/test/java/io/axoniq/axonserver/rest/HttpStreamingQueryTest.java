@@ -24,6 +24,7 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -144,7 +145,7 @@ public class HttpStreamingQueryTest {
             public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
                 return null;
             }
-        });
+        }, new SimpleMeterRegistry());
         localEventStore.initContext(Topology.DEFAULT_CONTEXT, false);
         EventStoreLocator eventStoreLocator = new DefaultEventStoreLocator(localEventStore);
         testSubject = new HttpStreamingQuery(eventStoreLocator);

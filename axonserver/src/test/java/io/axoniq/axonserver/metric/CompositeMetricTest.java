@@ -25,7 +25,7 @@ public class CompositeMetricTest {
 
     @Test
     public void size() {
-        assertEquals(3L, compositeMetric.size());
+        assertEquals(3L, compositeMetric.value());
     }
 
     @Test

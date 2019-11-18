@@ -73,7 +73,7 @@ public class QueryMetricsRegistry {
 
     public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
         ClusterMetric clusterMetric = clusterMetric(query, clientId);
-        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.size());
+        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.value());
     }
 
     public <T> Gauge gauge(String name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {

@@ -29,6 +29,8 @@ import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +71,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
     private long newPermitsTimeout=120000;
 
+    private final MeterRegistry meterRegistry;
     private final int maxEventCount;
 
     /**
@@ -77,15 +80,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     private final int blacklistedSendAfter;
 
-    public LocalEventStore(EventStoreFactory eventStoreFactory) {
-        this(eventStoreFactory, Short.MAX_VALUE, 1000);
+    public LocalEventStore(EventStoreFactory eventStoreFactory, MeterRegistry meterRegistry) {
+        this(eventStoreFactory, meterRegistry, Short.MAX_VALUE, 1000);
     }
 
     @Autowired
     public LocalEventStore(EventStoreFactory eventStoreFactory,
+                           MeterRegistry meterRegistry,
                            @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter) {
         this.eventStoreFactory = eventStoreFactory;
+        this.meterRegistry = meterRegistry;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
     }
@@ -94,6 +99,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if( workersMap.containsKey(context)) return;
         workersMap.putIfAbsent(context, new Workers(context));
         workersMap.get(context).init(validating);
+        meterRegistry.gauge("axon.lastToken", Tags.of("context", context), context, c -> (double) getLastToken(c));
     }
 
     /**

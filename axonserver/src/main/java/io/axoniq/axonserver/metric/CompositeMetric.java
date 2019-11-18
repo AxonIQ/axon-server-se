@@ -35,8 +35,8 @@ public class CompositeMetric implements ClusterMetric {
     }
 
     @Override
-    public long size() {
-        return clusterMetrics.stream().map(ClusterMetric::size).reduce(Long::sum).orElse(0L);
+    public long value() {
+        return clusterMetrics.stream().map(ClusterMetric::value).reduce(Long::sum).orElse(0L);
     }
 
     @Override
@@ -51,7 +51,19 @@ public class CompositeMetric implements ClusterMetric {
 
     @Override
     public double mean() {
-        return clusterMetrics.stream().map(metric -> metric.mean() * metric.size()).reduce(Double::sum)
-                             .orElse((double) 0) / size();
+        return clusterMetrics.stream().map(metric -> metric.mean() * metric.value())
+                             .reduce(Double::sum)
+                             .orElse((double) 0)
+                / value();
+    }
+
+    @Override
+    public double doubleValue() {
+        return clusterMetrics.stream().map(ClusterMetric::doubleValue).reduce(Double::sum).orElse(0D);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("value: %d, mean: %f", value(), mean());
     }
 }

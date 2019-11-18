@@ -26,7 +26,7 @@ public class SnapshotMetric implements ClusterMetric {
     }
 
     @Override
-    public long size() {
+    public long value() {
         return size;
     }
 
@@ -43,5 +43,10 @@ public class SnapshotMetric implements ClusterMetric {
     @Override
     public double mean() {
         return mean;
+    }
+
+    @Override
+    public double doubleValue() {
+        return 0;
     }
 }

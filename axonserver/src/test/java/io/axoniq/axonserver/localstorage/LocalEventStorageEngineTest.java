@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import java.io.ByteArrayInputStream;
@@ -78,7 +79,7 @@ public class LocalEventStorageEngineTest {
                     }
                 };
             }
-        }, 5, 1000);
+        }, new SimpleMeterRegistry(), 5, 1000);
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
 

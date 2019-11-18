@@ -22,8 +22,8 @@ public class NodeMetric implements ClusterMetric{
     }
 
     @Override
-    public long size() {
-        return metric.getSize();
+    public long value() {
+        return metric.getValue();
     }
 
     @Override
@@ -39,5 +39,10 @@ public class NodeMetric implements ClusterMetric{
     @Override
     public double mean() {
         return metric.getMean();
+    }
+
+    @Override
+    public double doubleValue() {
+        return metric.getDoubleValue();
     }
 }

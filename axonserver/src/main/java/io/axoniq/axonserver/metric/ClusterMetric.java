@@ -15,7 +15,7 @@ package io.axoniq.axonserver.metric;
  */
 public interface ClusterMetric {
 
-    long size();
+    long value();
 
     long min();
 
@@ -23,5 +23,5 @@ public interface ClusterMetric {
 
     double mean();
 
-
+    double doubleValue();
 }

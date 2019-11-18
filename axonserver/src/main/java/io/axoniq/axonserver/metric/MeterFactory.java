@@ -97,7 +97,7 @@ public class MeterFactory {
             this.name = name;
             this.tags = Tags.of(CONTEXT, context);
             meter = new IntervalCounter(clock);
-            counter = meterRegistry.counter(name + ".count", CONTEXT, context);
+            counter = meterRegistry.counter(name + ".count", tags);
             meterRegistry.gauge(name + ".oneMinuteRate",
                                 tags,
                                 meter,
@@ -120,25 +120,26 @@ public class MeterFactory {
 
         public long getCount() {
             AtomicLong count = new AtomicLong(meter.count());
-            new Metrics(name + ".count", tags, clusterMetrics).forEach(m -> count.addAndGet(m.size()));
+            new Metrics(name + ".count", tags, clusterMetrics).forEach(m -> count.addAndGet(m.value()));
             return count.get();
         }
 
         public double getOneMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getOneMinuteRate());
-            new Metrics(name + ".oneMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".oneMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.doubleValue()));
             return rate.get();
         }
 
         public double getFiveMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFiveMinuteRate());
-            new Metrics(name + ".fiveMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".fiveMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.doubleValue()));
             return rate.get();
         }
 
         public double getFifteenMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFifteenMinuteRate());
-            new Metrics(name + ".fifteenMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".fifteenMinuteRate", tags, clusterMetrics).forEach(m -> rate
+                    .addAndGet(m.doubleValue()));
             return rate.get();
         }
 

@@ -16,7 +16,7 @@ package io.axoniq.axonserver.metric;
  */
 public interface AxonServerMetric {
 
-    long getSize();
+    long getValue();
 
     long getMin();
 
@@ -25,4 +25,6 @@ public interface AxonServerMetric {
     double getMean();
 
     String getName();
+
+    double getDoubleValue();
 }

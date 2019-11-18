@@ -75,7 +75,10 @@ public class CommandMetricsRegistry {
     }
 
     public CommandMetric commandMetric(String command, ClientIdentification clientId, String componentName) {
-        return new CommandMetric(command,clientId.metricName(), componentName, clusterMetric(command, clientId).size());
+        return new CommandMetric(command,
+                                 clientId.metricName(),
+                                 componentName,
+                                 clusterMetric(command, clientId).value());
     }
 
     public <T> Gauge gauge(String activeCommandsGauge, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
