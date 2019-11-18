@@ -31,6 +31,12 @@ Once Axon Server is running you can view its configuration using the Axon Dashbo
 Changes in Axon Server 4.2.3
 ----------------------------
 
+- Fix for issue on cancelling queries on lost connection
+- Introduced acknowlegments on instructions between Axon Server and clients
+
+Changes in Axon Server 4.2.3
+----------------------------
+
 - Cleaned-up logging
 - Fix for specific error while reading aggregate
 - Optional heartbeat between Axon Server and Axon Framework clients
