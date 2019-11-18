@@ -14,7 +14,9 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 
 /**
+ * Wraps a {@link StreamObserver} to translate errors to standard exceptions ({@link io.grpc.StatusRuntimeException} with error code in meta data).
  * @author Marc Gathier
+ * @since 4.0
  */
 public class ForwardingStreamObserver<T> implements StreamObserver<T> {
 
@@ -36,7 +38,7 @@ public class ForwardingStreamObserver<T> implements StreamObserver<T> {
 
     @Override
     public void onError(Throwable cause) {
-        logger.warn(EventDispatcher.ERROR_ON_CONNECTION_FROM_EVENT_STORE, request, cause.getMessage());
+        logger.debug(EventDispatcher.ERROR_ON_CONNECTION_FROM_EVENT_STORE, request, cause.getMessage());
         responseObserver.onError(GrpcExceptionBuilder.build(cause));
     }
 

@@ -13,6 +13,7 @@ import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
@@ -28,6 +29,7 @@ import org.mockito.runners.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -45,7 +47,11 @@ public class PlatformServiceTest {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         clusterController = new DefaultTopology(configuration);
-        platformService = new PlatformService(clusterController, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        platformService = new PlatformService(clusterController,
+                                              () -> Topology.DEFAULT_CONTEXT,
+                                              eventPublisher,
+                                              new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
+                                                      .newBuilder().setAck(ack).build()));
     }
 
     @Test
@@ -96,6 +102,31 @@ public class PlatformServiceTest {
         platformService.requestReconnect("client");
     }
 
+    @Test
+    public void unsupportedInstruction() {
+        CountingStreamObserver<PlatformOutboundInstruction> responseStream = new CountingStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseStream);
+
+        String instructionId = "instructionId";
+        requestStream.onNext(PlatformInboundInstruction.newBuilder()
+                                                       .setInstructionId(instructionId)
+                                                       .build());
+
+        InstructionAck ack = responseStream.responseList.get(responseStream.responseList.size() - 1).getAck();
+        assertEquals(instructionId, ack.getInstructionId());
+        assertTrue(ack.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), ack.getError().getErrorCode());
+    }
+
+    @Test
+    public void unsupportedInstructionWithoutInstructionId() {
+        CountingStreamObserver<PlatformOutboundInstruction> responseStream = new CountingStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseStream);
+
+        requestStream.onNext(PlatformInboundInstruction.newBuilder().build());
+
+        assertEquals(0, responseStream.responseList.size());
+    }
 
     @Test
     public void onPauseEventProcessorRequest() {

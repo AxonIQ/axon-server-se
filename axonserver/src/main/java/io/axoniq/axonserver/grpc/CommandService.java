@@ -10,26 +10,36 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.topology.Topology;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
 
@@ -60,31 +70,37 @@ public class CommandService implements AxonServerClientService {
                               .build();
 
 
+    private final Topology topology;
     private final CommandDispatcher commandDispatcher;
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
-    private final Set<GrpcFlowControlledDispatcherListener> dispatcherListenerSet = new CopyOnWriteArraySet<>();
+    private final Map<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
+    private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
-    public CommandService(CommandDispatcher commandDispatcher,
+    public CommandService(Topology topology,
+                          CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
-                          ApplicationEventPublisher eventPublisher
-    ) {
+                          ApplicationEventPublisher eventPublisher,
+                          @Qualifier("commandInstructionAckSource")
+                          InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
+        this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+        this.instructionAckSource = instructionAckSource;
     }
 
     @PreDestroy
     public void cleanup() {
-        dispatcherListenerSet.forEach(GrpcFlowControlledDispatcherListener::cancel);
-        dispatcherListenerSet.clear();
+        dispatcherListeners.forEach((client, listener) -> listener.cancel());
+        dispatcherListeners.clear();
     }
 
     public Set<GrpcFlowControlledDispatcherListener> listeners() {
-        return dispatcherListenerSet;
+        return new HashSet<>(dispatcherListeners.values());
     }
 
     @Override
@@ -114,6 +130,8 @@ public class CommandService implements AxonServerClientService {
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
                 switch (commandFromSubscriber.getRequestCase()) {
                     case SUBSCRIBE:
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         checkInitClient(commandFromSubscriber.getSubscribe().getClientId(),
                                         commandFromSubscriber.getSubscribe().getComponentName());
                         eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(context,
@@ -122,6 +140,8 @@ public class CommandService implements AxonServerClientService {
                                 , commandHandlerRef.get()));
                         break;
                     case UNSUBSCRIBE:
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         if (clientRef.get() != null) {
                             eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(context,
                                                                                                   commandFromSubscriber
@@ -130,27 +150,43 @@ public class CommandService implements AxonServerClientService {
                         }
                         break;
                     case FLOW_CONTROL:
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         flowControl(commandFromSubscriber.getFlowControl());
                         break;
                     case COMMAND_RESPONSE:
+                        instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
+                                                               wrappedResponseObserver);
                         commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber
                                                                                                .getCommandResponse()),
                                                          false);
                         break;
-
-                    case REQUEST_NOT_SET:
+                    case ACK:
+                        InstructionAck ack = commandFromSubscriber.getAck();
+                        if (isUnsupportedInstructionErrorResult(ack)) {
+                            logger.warn("Unsupported command instruction sent to the client of context {}.", context);
+                        } else {
+                            logger.trace("Received command instruction ack {}.", ack);
+                        }
+                        break;
+                    default:
+                        instructionAckSource.sendUnsupportedInstruction(commandFromSubscriber.getInstructionId(),
+                                                                        topology.getMe().getName(),
+                                                                        wrappedResponseObserver);
                         break;
                 }
             }
 
             private void flowControl(FlowControl flowControl) {
-                clientRef.compareAndSet(null, new ClientIdentification(context, flowControl.getClientId()));
+                ClientIdentification clientIdentification = new ClientIdentification(context,
+                                                                                     flowControl.getClientId());
+                clientRef.compareAndSet(null, clientIdentification);
                 if (listenerRef.compareAndSet(null,
                                               new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
                                                                                 clientRef.get().toString(),
                                                                                 wrappedResponseObserver,
                                                                                 processingThreads))) {
-                    dispatcherListenerSet.add(listenerRef.get());
+                    dispatcherListeners.put(clientIdentification, listenerRef.get());
                 }
                 listenerRef.get().addPermits(flowControl.getPermits());
             }
@@ -168,7 +204,9 @@ public class CommandService implements AxonServerClientService {
 
             @Override
             public void onError(Throwable cause) {
-                logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
+                if (!ExceptionUtils.isCancelled(cause)) {
+                    logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
+                }
                 cleanup();
             }
 
@@ -180,7 +218,7 @@ public class CommandService implements AxonServerClientService {
                 GrpcCommandDispatcherListener listener = listenerRef.get();
                 if (listener != null) {
                     listener.cancel();
-                    dispatcherListenerSet.remove(listener);
+                    dispatcherListeners.remove(clientRef.get());
                 }
             }
 
@@ -195,6 +233,11 @@ public class CommandService implements AxonServerClientService {
                 }
             }
         };
+    }
+
+    private boolean isUnsupportedInstructionErrorResult(InstructionAck instructionResult) {
+        return instructionResult.hasError()
+                && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
     public void dispatch(Command command, StreamObserver<SerializedCommandResponse> responseObserver) {
@@ -222,5 +265,22 @@ public class CommandService implements AxonServerClientService {
         } catch (RuntimeException ex) {
             logger.warn("Response to client {} failed", clientId, ex);
         }
+    }
+
+    private void stopListenerFor(ClientIdentification clientIdentification) {
+        GrpcFlowControlledDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
+        Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
+        logger.warn("GrpcCommandDispatcherListener stopped for client: {}", clientIdentification);
+    }
+
+    /**
+     * Stops the {@link GrpcCommandDispatcherListener} responsible to forward commands to the client component that
+     * turns out to be inactive/not properly connected.
+     *
+     * @param evt the event of inactivity timeout for a specific client component
+     */
+    @EventListener
+    public void on(ApplicationInactivityTimeout evt) {
+        stopListenerFor(evt.clientIdentification());
     }
 }

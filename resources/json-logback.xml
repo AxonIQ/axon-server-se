@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
+                <timestampFormat>yyyy-MM-dd'T'HH:mm:ss.SSSX</timestampFormat>
+                <timestampFormatTimezoneId>Etc/UTC</timestampFormatTimezoneId>
+                <appendLineSeparator>true</appendLineSeparator>
+
+                <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter">
+                    <prettyPrint>false</prettyPrint>
+                </jsonFormatter>
+            </layout>
+        </encoder>
+    </appender>
+
+    <logger name="io.axoniq" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="io.axoniq.axonserver.AxonServer" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="io.axoniq.axonserver.grpc.Gateway" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="io.axoniq.axonserver.grpc.internal.MessagingClusterServer" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="org.springframework.boot.web.embedded.tomcat.TomcatWebServer" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="org.springframework.http.converter.json.Jackson2ObjectMapperBuilder" level="error" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="org.hibernate.orm.deprecation" level="error" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <root level="warn">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

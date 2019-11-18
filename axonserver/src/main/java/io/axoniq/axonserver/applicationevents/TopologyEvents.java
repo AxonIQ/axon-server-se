@@ -151,6 +151,7 @@ public class TopologyEvents {
     }
 
     public static class QueryHandlerDisconnected extends TopologyBaseEvent {
+
         private final String context;
         private final String client;
 
@@ -180,6 +181,43 @@ public class TopologyEvents {
         public ClientIdentification clientIdentification() {
             return new ClientIdentification(context, client);
         }
+    }
 
+    /**
+     * It should be published any time AxonServer doesn't receive any heartbeat from a client
+     * for a period of time greater then the set timeout.
+     */
+    public static class ApplicationInactivityTimeout {
+
+        private final ClientIdentification clientIdentification;
+
+        private final String componentName;
+
+        /**
+         * Creates an {@link ApplicationInactivityTimeout} event.
+         *
+         * @param clientIdentification the client identifier
+         * @param componentName        the client component name
+         */
+        public ApplicationInactivityTimeout(ClientIdentification clientIdentification, String componentName) {
+            this.clientIdentification = clientIdentification;
+            this.componentName = componentName;
+        }
+
+        /**
+         * Returns the client identifier.
+         * @return the client identifier.
+         */
+        public ClientIdentification clientIdentification() {
+            return clientIdentification;
+        }
+
+        /**
+         * Returns the component name.
+         * @return the component name.
+         */
+        public String componentName() {
+            return componentName;
+        }
     }
 }
