@@ -6,6 +6,7 @@ visit https://docs.axoniq.io.
 Release Notes for version 4.2.2
 -------------------------------
 
+* Added instruction acknowledgements
 * Client applications heartbeat support
 * Cleaned-up logging
 * Fix for specific error while reading aggregate
