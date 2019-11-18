@@ -76,7 +76,7 @@ podTemplate(label: label,
             def pomGroupId = 'io.axoniq.axonserver'
             def pomArtifactId = 'axonserver'
 
-            def slackReport = "Maven build for Axon Server ${pomVersion} (branch \"${gitBranch}\")."
+            def slackReport = "Maven build for Axon Server SE ${pomVersion} (branch \"${gitBranch}\")."
             stage ('Maven build') {
                 container("maven") {
                     try {

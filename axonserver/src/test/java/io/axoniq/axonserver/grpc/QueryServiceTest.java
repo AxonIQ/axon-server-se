@@ -10,8 +10,11 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
+import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -21,6 +24,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
@@ -50,7 +54,15 @@ public class QueryServiceTest {
         queryQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
         when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
-        testSubject = new QueryService(queryDispatcher, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
+        Topology topology = new DefaultTopology(configuration);
+        testSubject = new QueryService(topology,
+                                       queryDispatcher,
+                                       () -> Topology.DEFAULT_CONTEXT,
+                                       eventPublisher,
+                                       new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
+                                                                                                    .setAck(ack)
+                                                                                                    .build()));
     }
 
     @Test
@@ -82,6 +94,33 @@ public class QueryServiceTest {
                 .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("query"))
                 .build());
         verify(eventPublisher).publishEvent(isA(SubscriptionEvents.SubscribeQuery.class));
+    }
+
+    @Test
+    public void unsupportedQueryInstruction() {
+        CountingStreamObserver<QueryProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        String instructionId = "instructionId";
+        requestStream.onNext(QueryProviderOutbound.newBuilder()
+                                                  .setInstructionId(instructionId)
+                                                  .build());
+
+        InstructionAck ack = responseStream.responseList.get(responseStream.responseList.size() - 1)
+                                                           .getAck();
+        assertEquals(instructionId, ack.getInstructionId());
+        assertTrue(ack.hasError());
+        assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), ack.getError().getErrorCode());
+    }
+
+    @Test
+    public void unsupportedQueryInstructionWithoutInstructionId() {
+        CountingStreamObserver<QueryProviderInbound> responseStream = new CountingStreamObserver<>();
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(responseStream);
+
+        requestStream.onNext(QueryProviderOutbound.newBuilder().build());
+
+        assertEquals(0, responseStream.responseList.size());
     }
 
     @Test

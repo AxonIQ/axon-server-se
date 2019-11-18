@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
@@ -40,18 +39,13 @@ import java.util.Map;
 @Configuration
 public class WebConfiguration implements WebMvcConfigurer {
 
-    private final AxonServerAccessController accessController;
-    private final boolean accessControlEnabled;
-
-    public WebConfiguration(MessagingPlatformConfiguration configuration,
-                            AxonServerAccessController accessController) {
-        this.accessController = accessController;
-        this.accessControlEnabled = configuration.getAccesscontrol().isEnabled();
+    public WebConfiguration() {
     }
 
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.setUseSuffixPatternMatch(false);
+        configurer.setUseTrailingSlashMatch(false);
     }
 
     @Override

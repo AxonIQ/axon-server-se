@@ -12,6 +12,8 @@ Release Notes for version 4.2.3
 Release Notes for version 4.2.2
 -------------------------------
 
+* Added instruction acknowledgements
+* Client applications heartbeat support
 * Cleaned-up logging
 * Fix for specific error while reading aggregate
 * Optional heartbeat between Axon Server and Axon Framework clients
