@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
@@ -34,7 +34,8 @@ import java.util.stream.Collectors;
  * @author Marc Gathier
  */
 public class RemoteRaftGroupService implements RaftGroupService {
-    private static final Function<Confirmation, Void> TO_VOID = x -> null;
+
+    private static final Function<InstructionAck, Void> TO_VOID = x -> null;
     private static final Logger logger = LoggerFactory.getLogger(RemoteRaftGroupService.class);
 
     private final RaftGroupServiceGrpc.RaftGroupServiceStub stub;
@@ -180,9 +181,9 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.deleteContext(ContextName.newBuilder()
                                       .setContext(context)
-                                      .build(), new StreamObserver<Confirmation>() {
+                                      .build(), new StreamObserver<InstructionAck>() {
             @Override
-            public void onNext(Confirmation value) {
+            public void onNext(InstructionAck value) {
                 result.complete(null);
             }
 
