@@ -141,8 +141,8 @@
                         <li>
                             <span>&nbsp;</span>
                             <span>
-                                <button @click.prevent="hideMoveSegment()" class="button">Cancel</button>
                                 <button @click.prevent="moveSegment()" class="button">Move</button>
+                                <button @click.prevent="hideMoveSegment()" class="button">Cancel</button>
                             </span>
                         </li>
                     </ul>
@@ -166,8 +166,8 @@
                         <li>
                             <span>&nbsp;</span>
                             <span class="button-bar">
-                                <button @click.prevent="hideLoadBalance()" class="button">Cancel</button>
                                 <button @click.prevent="loadBalance()" class="button">Balance</button>
+                                <button @click.prevent="hideLoadBalance()" class="button">Cancel</button>
                             </span>
                         </li>
                     </ul>

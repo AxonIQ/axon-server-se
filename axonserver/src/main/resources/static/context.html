@@ -17,9 +17,16 @@
                     newContext: {nodes: []},
                     admin: globals.admin,
                     webSocketInfo: globals.webSocketInfo,
-                    nodes: []
+                    nodes: [],
+                    removeNodeData: {},
+                    deleteContextData: {},
+                    confirmData: {},
+                    roles: []
                 }, mounted() {
                     this.loadContexts();
+                    axios.get("v1/context/roles").then(response => {
+                        this.roles = response.data;
+                    });
                     axios.get("v1/public").then(response => {
                         this.nodes = response.data;
                         this.initNewContext();
@@ -43,12 +50,18 @@
                         if(context.nodes.length == 1) {
                             alert("Cannot delete the last node from " + context.context);
                             return;
+                        } else {
+                            this.removeNodeData = {"node": node, "context": context.context, "preserveData": false};
+                            this.$modal.show('delete-node-from-context');
                         }
-                        else if (confirm("Delete node " + node + " from context " + context.context)) {
-                            axios.delete("v1/context/" + context.context + "/" + node).then(
-                                    response => this.loadContexts()
-                            )
-                        }
+                    },
+                    doDeleteNodeFromContext() {
+                        axios.delete("v1/context/" + this.removeNodeData.context + "/" + this.removeNodeData.node
+                                             + "?preserveEventStore=" + this.removeNodeData.preserveData).then(
+                                response => {
+                                    this.loadContexts();
+                                    this.hideModal('delete-node-from-context');
+                                });
                     },
                     addNodeToContext(context) {
                         if (!context.selectedNode) {
@@ -58,11 +71,28 @@
                             alert("Node already linked to context");
                             return;
                         }
-                        if (confirm("Add node " + context.selectedNode + " to context " + context.context)) {
-                            axios.post("v1/context/" + context.context + "/" + context.selectedNode).then(
-                                    response => this.loadContexts()
-                            )
-                        }
+
+                        let me = this;
+
+                        this.confirmData = {
+                            "title": "Add node",
+                            "message": "Add node " + context.selectedNode + " to context " + context.context,
+                            "apply": function () {
+                                var queryString = "";
+                                if (context.selectedRole) {
+                                    queryString = "?role=" + context.selectedRole;
+                                }
+                                axios.post("v1/context/" + context.context + "/" + context.selectedNode
+                                                   + queryString).then(
+                                        response => {
+                                            me.loadContexts();
+                                            me.hideModal("confirm");
+                                        }
+                                )
+
+                            }
+                        };
+                        this.$modal.show("confirm");
                     },
                     containsSelectedNode(context) {
                         for (var a = 0; a < context.nodes.length; a++) {
@@ -108,12 +138,26 @@
                     deleteContext(context) {
                         if( this.isInternalContext(context) ) {
                             alert("Cannot delete internal context")
-                        } else if (confirm("Delete context " + context.context)) {
-                            axios.delete("v1/context/" + context.context).then(
-                                    response => this.loadContexts()
-                            )
+                        } else {
+                            this.deleteContextData = {"context": context.context, "retypeContext": ""};
+                            this.$modal.show('delete-context');
+                            // } if (confirm("Delete context " + context.context)) {
                         }
-
+                    },
+                    doDeleteContext() {
+                        if (this.deleteContextData.context === this.deleteContextData.retypeContext) {
+                            axios.delete("v1/context/" + this.deleteContextData.context).then(
+                                    response => {
+                                        this.loadContexts();
+                                        this.hideModal('delete-context');
+                                    }
+                            )
+                        } else {
+                            alert('Invalid context name');
+                        }
+                    },
+                    hideModal(name) {
+                        this.$modal.hide(name);
                     },
                     connect() {
                         let me = this;
@@ -151,14 +195,20 @@
                 </td>
                 <td>
                     <ul>
-                        <li v-for="node in context.nodes"><span class="nodeName">{{node}}</span>
-                            <span v-if="admin && context.nodes.length > 1" @click="deleteNodeFromContext(node,context)"
+                        <li v-for="node in context.roles">
+                            <span class="nodeName">{{node.node}}</span>
+                            <span class="nodeRoleName">{{node.role}}</span>
+                            <span v-if="admin && context.nodes.length > 1"
+                                  @click="deleteNodeFromContext(node.node,context)"
                                   title="Delete"><i
                                     class="far fa-trash-alt"></i></span></li>
                     </ul>
                     <span v-if="admin">
                     <select class="nodeName" v-model="context.selectedNode">
                         <option v-for="n in nodes">{{n.name}}</option>
+                    </select>
+                    <select class="nodeRoleName" v-model="context.selectedRole">
+                        <option v-for="n in roles">{{n}}</option>
                     </select>
                     <span @click="addNodeToContext(context)" title="Add"><i class="fas fa-plus"></i></span>
                 </span>
@@ -175,28 +225,107 @@
     </div>
 
     <section id="applicationDetails" v-if="admin && hasFeature('MULTI_CONTEXT')">
-<div class="column configuration">
-    <form id="contextForm">
-                <ul>
-                    <li>
-                        <span class="narrow">Context Name</span>
-                        <span><input v-model="newContext.context"/></span>
-                    </li>
-                    <li>
-                        <span class="narrow">Nodes</span>
-                        <span>
-                            <div v-for="node in newContext.nodes">
-                                <span class="nodeName">{{node.name}}</span>
-                                <input type="checkbox" v-model="node.selected"/> Add
-                            </div>
-                        </span>
-                    </li>
-                    <li>
-                        <span>&nbsp;</span>
-                        <span><button @click.prevent="createContext()" class="button">Save</button></span>
-                    </li>
-                </ul>
-            </form>
-        </div>
-</section>
+    <div class="column configuration">
+        <form id="contextForm">
+                    <ul>
+                        <li>
+                            <span class="narrow">Context Name</span>
+                            <span><input v-model="newContext.context"/></span>
+                        </li>
+                        <li>
+                            <span class="narrow">Primary Nodes</span>
+                            <span>
+                                <div v-for="node in newContext.nodes">
+                                    <span class="nodeName">{{node.name}}</span>
+                                    <input type="checkbox" v-model="node.selected"/> Add
+                                </div>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="narrow">&nbsp;</span>
+                            <span><button @click.prevent="createContext()" class="button">Save</button></span>
+                        </li>
+                    </ul>
+                </form>
+            </div>
+    </section>
+
+    <modal name="delete-node-from-context" width="500" height="250">
+            <div id="remove-node" class="column configuration modal">
+                <h2>Remove node from context</h2>
+
+                <form>
+                    <ul>
+                        <li>
+                            <span>Context</span>
+                            <span><input disabled v-model="removeNodeData.context"/></span>
+                        </li>
+                        <li>
+                            <span>Node</span>
+                            <span><input disabled v-model="removeNodeData.node"/></span>
+                        </li>
+                        <li>
+                            <span>Preserve Event Store</span>
+                            <span><input type="checkbox" v-model="removeNodeData.preserveData"/></span>
+                        </li>
+                        <li>
+                            <span>&nbsp;</span>
+                            <span>
+                                <button @click.prevent="doDeleteNodeFromContext()" class="button">Remove</button>
+                                <button @click.prevent="hideModal('delete-node-from-context')"
+                                        class="button">Cancel</button>
+                            </span>
+                        </li>
+                    </ul>
+                </form>
+
+            </div>
+    </modal>
+    <modal name="delete-context" width="600" height="250">
+            <div class="column configuration modal">
+                <h2>Delete context {{deleteContextData.context}}</h2>
+                <p>
+                    This will delete all data for this context. Please re-type the name of the context to delete to continue.
+                </p>
+                <form>
+                    <ul>
+                        <li>
+                            <span>Context Name</span>
+                            <span><input v-model="deleteContextData.retypeContext"/></span>
+                        </li>
+                        <li>
+                            <span></span>
+                        </li>
+                        <li>
+                            <span>&nbsp;</span>
+                            <span>
+                                <button @click.prevent="doDeleteContext()" class="button">Delete</button>
+                                <button @click.prevent="hideModal('delete-context')" class="button">Cancel</button>
+                            </span>
+                        </li>
+                    </ul>
+                </form>
+
+            </div>
+    </modal>
+    <modal name="confirm" width="450" height="220">
+            <div class="column configuration modal">
+                <h2>{{confirmData.title}}</h2>
+                <p>
+                    {{confirmData.message}}
+                </p>
+                <form>
+                    <ul>
+                        <li>
+                            <span>&nbsp;</span>
+                            <span>
+                                <button @click.prevent="confirmData.apply()" class="button">OK</button>
+                                <button @click.prevent="hideModal('confirm')" class="button">Cancel</button>
+                            </span>
+                        </li>
+                    </ul>
+                </form>
+
+            </div>
+    </modal>
 </span>
