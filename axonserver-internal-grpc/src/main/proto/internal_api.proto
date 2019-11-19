@@ -121,7 +121,7 @@ service RaftGroupService {
     }
 
     // Notify a node that a node will be deleted from a context.
-    rpc PreDeleteNodeFromContext (NodeContext) returns (Confirmation) {
+    rpc PreDeleteNodeFromContext (NodeContext) returns (InstructionAck) {
     }
 }
 

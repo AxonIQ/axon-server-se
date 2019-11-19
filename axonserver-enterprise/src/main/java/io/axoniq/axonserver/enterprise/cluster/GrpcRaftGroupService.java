@@ -191,7 +191,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void preDeleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
+    public void preDeleteNodeFromContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.prepareDeleteNodeFromContext(request.getContext(),
                                                                                                  request.getNodeName());
         confirm(responseObserver, completable);
