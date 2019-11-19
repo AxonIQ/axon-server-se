@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.grpc;
+package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
@@ -26,9 +26,18 @@ import static org.junit.Assert.*;
  */
 public class HeartbeatMonitorTest {
 
-    private final ClientIdentification client = new ClientIdentification("A", "A");
-    private final ApplicationConnected applicationConnected = new ApplicationConnected("A", "A", "A");
-    private final ApplicationDisconnected applicationDisconnected = new ApplicationDisconnected("A", "A", "A");
+    private final ClientIdentification client4_2_1 = new ClientIdentification("A", "A");
+    private final ApplicationConnected client4_2_1Connected =
+            new ApplicationConnected("A", "A", "A", "4.2.1");
+    private final ApplicationDisconnected client4_2_1Disconnected =
+            new ApplicationDisconnected("A", "A", "A");
+
+    private final ClientIdentification client4_2 = new ClientIdentification("B", "B");
+    private final ApplicationConnected client4_2Connected =
+            new ApplicationConnected("B", "B", "B", "4.2");
+    private final ApplicationDisconnected client4_2Disconnected =
+            new ApplicationDisconnected("B", "B", "B");
+
     private final PlatformInboundInstruction heartbeat = newBuilder().setHeartbeat(Heartbeat.newBuilder()).build();
 
     @Test
@@ -38,14 +47,14 @@ public class HeartbeatMonitorTest {
         List<Object> publishedEvents = new LinkedList<>();
         HeartbeatMonitor testSubject = new HeartbeatMonitor(listener::set,
                                                             publishedEvents::add,
-                                                            hb -> listener.get().accept(client, heartbeat),
+                                                            hb -> listener.get().accept(client4_2_1, heartbeat),
                                                             5000,
                                                             new FakeClock(instant::get));
-        testSubject.on(applicationConnected);
+        testSubject.on(client4_2_1Connected);
         testSubject.sendHeartbeat();
         instant.set(instant.get().plus(3000, MILLIS));
         testSubject.checkClientsStillAlive();
-        testSubject.on(applicationDisconnected);
+        testSubject.on(client4_2_1Disconnected);
         assertTrue(publishedEvents.isEmpty());
     }
 
@@ -56,14 +65,14 @@ public class HeartbeatMonitorTest {
         List<Object> publishedEvents = new LinkedList<>();
         HeartbeatMonitor testSubject = new HeartbeatMonitor(listener::set,
                                                             publishedEvents::add,
-                                                            hb -> listener.get().accept(client, heartbeat),
+                                                            hb -> listener.get().accept(client4_2_1, heartbeat),
                                                             5000,
                                                             new FakeClock(instant::get));
-        testSubject.on(applicationConnected);
+        testSubject.on(client4_2_1Connected);
         testSubject.sendHeartbeat();
         instant.set(instant.get().plus(6000, MILLIS));
         testSubject.checkClientsStillAlive();
-        testSubject.on(applicationDisconnected);
+        testSubject.on(client4_2_1Disconnected);
         assertFalse(publishedEvents.isEmpty());
         assertTrue(publishedEvents.get(0) instanceof TopologyEvents.ApplicationInactivityTimeout);
     }
@@ -80,11 +89,11 @@ public class HeartbeatMonitorTest {
                                                             },
                                                             5000,
                                                             new FakeClock(instant::get));
-        testSubject.on(applicationConnected);
+        testSubject.on(client4_2_1Connected);
         testSubject.sendHeartbeat();
         instant.set(instant.get().plus(6000, MILLIS));
         testSubject.checkClientsStillAlive();
-        testSubject.on(applicationDisconnected);
+        testSubject.on(client4_2_1Disconnected);
         assertTrue(publishedEvents.isEmpty());
     }
 }

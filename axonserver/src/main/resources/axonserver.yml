@@ -24,6 +24,7 @@ logging:
     root: WARN
     io.axoniq.axonserver.AxonServer: INFO
     io.axoniq.axonserver.grpc.Gateway: INFO
+    io.axoniq.axonserver.logging: INFO
     io.axoniq.axonserver.grpc.internal.MessagingClusterServer: INFO
     org.springframework.boot.web.embedded.tomcat.TomcatWebServer: INFO
     org.springframework.http.converter.json.Jackson2ObjectMapperBuilder: ERROR

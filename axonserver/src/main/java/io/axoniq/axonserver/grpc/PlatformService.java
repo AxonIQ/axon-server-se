@@ -17,6 +17,8 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentR
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
+import io.axoniq.axonserver.component.version.ClientVersionUpdate;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.EventProcessorReference;
 import io.axoniq.axonserver.grpc.control.EventProcessorSegmentReference;
@@ -32,6 +34,7 @@ import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -62,22 +65,42 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
+    private final InstructionAckSource<PlatformOutboundInstruction> instructionAckSource;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
      *
-     * @param topology        the {@link Topology} of the group this Axon Server instance participates in
-     * @param contextProvider a {@link ContextProvider} used to retrieve the context this Axon Server instance is
-     *                        working under
-     * @param eventPublisher  the {@link ApplicationEventPublisher} to publish events through this Axon Server
-     *                        instance
+     * @param topology             the {@link Topology} of the group this Axon Server instance participates in
+     * @param contextProvider      a {@link ContextProvider} used to retrieve the context this Axon Server instance is
+     *                             working under
+     * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
+     * @param instructionAckSource responsible for sending instruction acknowledgements
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
-                           ApplicationEventPublisher eventPublisher) {
+                           ApplicationEventPublisher eventPublisher,
+                           @Qualifier("platformInstructionAckSource")
+                           InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
+        this.instructionAckSource = instructionAckSource;
+        onInboundInstruction(RequestCase.ACK, (client, context, instruction) -> {
+            InstructionAck ack = instruction.getAck();
+            if (isUnsupportedInstructionErrorResult(ack)) {
+                logger.warn("Unsupported instruction sent to the client {} of context {}.", client, context);
+            } else {
+                logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
+                             client,
+                             context,
+                             ack);
+            }
+        });
+    }
+
+    private boolean isUnsupportedInstructionErrorResult(InstructionAck instructionAck) {
+        return instructionAck.hasError()
+                && instructionAck.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
     @Override
@@ -115,16 +138,28 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             @Override
             protected void consume(PlatformInboundInstruction instruction) {
                 RequestCase requestCase = instruction.getRequestCase();
-                handlers.getOrDefault(requestCase, new ArrayDeque<>())
-                        .forEach(consumer -> consumer.accept(clientComponent.client, context, instruction));
-
-                if (instruction.hasRegister()) {
+                if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
+                    instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(), sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
                     eventPublisher.publishEvent(new ClientTagsUpdate(client.getClientId(),
                                                                      context,
                                                                      client.getTagsMap()));
                     clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
                     registerClient(clientComponent, sendingStreamObserver);
+                    eventPublisher.publishEvent(new ClientVersionUpdate(client.getClientId(),
+                                                                        context,
+                                                                        client.getVersion()));
+                } else if (!handlers.containsKey(requestCase)) {
+                    instructionAckSource.sendUnsupportedInstruction(instruction.getInstructionId(),
+                                                                    topology.getMe().getName(),
+                                                                    sendingStreamObserver);
+                } else {
+                    handlers.getOrDefault(requestCase, new ArrayDeque<>())
+                            .forEach(consumer -> {
+                                instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
+                                                                       sendingStreamObserver);
+                                consumer.accept(clientComponent.client, context, instruction);
+                            });
                 }
             }
 
@@ -176,7 +211,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .forEach(stream -> stream.onNext(instruction));
     }
 
-    private void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
+
+    /**
+     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
+     *
+     * @param instruction the {@link PlatformInboundInstruction} to be sent
+     */
+    public void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
                      .filter(e -> e.getKey().client.equals(clientName))
                      .map(Map.Entry::getValue)

@@ -15,10 +15,31 @@
     </appender>
 
     <logger name="io.axoniq" level="info" additivity="false">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="io.axoniq.axonserver.AxonServer" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="io.axoniq.axonserver.grpc.Gateway" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="io.axoniq.axonserver.grpc.internal.MessagingClusterServer" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="org.springframework.boot.web.embedded.tomcat.TomcatWebServer" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="org.springframework.http.converter.json.Jackson2ObjectMapperBuilder" level="error" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="org.hibernate.orm.deprecation" level="error" additivity="false">
+        <appender-ref ref="STDOUT"/>
     </logger>
 
     <root level="warn">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="STDOUT"/>
     </root>
 </configuration>

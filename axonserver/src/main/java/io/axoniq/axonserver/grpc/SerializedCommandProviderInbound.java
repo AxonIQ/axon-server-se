@@ -31,17 +31,17 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
     private static final SerializedCommandProviderInbound DEFAULT_INSTANCE = new SerializedCommandProviderInbound(CommandProviderInbound.getDefaultInstance());
     private volatile CommandProviderInbound wrapped;
     private final SerializedCommand serializedCommand;
-    private final Confirmation confirmation;
+    private final InstructionAck acknowledgement;
 
     public SerializedCommandProviderInbound(CommandProviderInbound defaultInstance) {
         wrapped = defaultInstance;
         serializedCommand = defaultInstance.hasCommand() ? new SerializedCommand(defaultInstance.getCommand()) : null;
-        confirmation = defaultInstance.hasConfirmation() ? defaultInstance.getConfirmation() : null;
+        acknowledgement = defaultInstance.hasAck() ? defaultInstance.getAck() : null;
     }
 
-    public SerializedCommandProviderInbound(SerializedCommand serializedCommand, Confirmation confirmation) {
+    public SerializedCommandProviderInbound(SerializedCommand serializedCommand, InstructionAck acknowledgement) {
         this.serializedCommand = serializedCommand;
-        this.confirmation = confirmation;
+        this.acknowledgement = acknowledgement;
     }
 
     public static SerializedCommandProviderInbound getDefaultInstance() {
@@ -71,8 +71,8 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
 
     @Override
     public void writeTo(CodedOutputStream output) throws IOException {
-        if (confirmation != null) {
-            output.writeMessage(1, confirmation);
+        if (acknowledgement != null) {
+            output.writeMessage(1, acknowledgement);
         }
         if (serializedCommand != null) {
             output.writeTag(2, WireFormat.WIRETYPE_LENGTH_DELIMITED); // max 5 bytes
@@ -91,7 +91,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
     public Message.Builder toBuilder() {
         return new Builder()
                 .setCommand(serializedCommand)
-                .setConfirmation(confirmation);
+                .setAcknowledgement(acknowledgement);
     }
 
     @Override
@@ -104,16 +104,16 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
             CommandProviderInbound.Builder builder = CommandProviderInbound.newBuilder();
             if( serializedCommand != null) {
                 builder.setCommand(serializedCommand.wrapped());
-            } else if( confirmation != null) {
-                builder.setConfirmation(confirmation);
+            } else if( acknowledgement != null) {
+                builder.setAck(acknowledgement);
             }
             wrapped = builder.build();
         }
         return wrapped;
     }
 
-    public ConfirmationOrBuilder getConfirmation() {
-        return confirmation;
+    public InstructionAckOrBuilder getInstructionResult() {
+        return acknowledgement;
     }
 
     public SerializedCommand getSerializedCommand() {
@@ -122,7 +122,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
 
     public static class Builder extends GeneratedMessageV3.Builder<Builder> {
         private SerializedCommand serializedCommand;
-        private Confirmation confirmation;
+        private InstructionAck acknowledgement;
 
         @Override
         protected GeneratedMessageV3.FieldAccessorTable internalGetFieldAccessorTable() {
@@ -131,7 +131,7 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
 
         @Override
         public SerializedCommandProviderInbound build() {
-            return new SerializedCommandProviderInbound(serializedCommand, confirmation);
+            return new SerializedCommandProviderInbound(serializedCommand, acknowledgement);
         }
 
         @Override
@@ -149,8 +149,8 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
             return this;
         }
 
-        public Builder setConfirmation(Confirmation messageId) {
-            confirmation = messageId;
+        public Builder setAcknowledgement(InstructionAck acknowledgement) {
+            this.acknowledgement = acknowledgement;
             return this;
         }
     }
