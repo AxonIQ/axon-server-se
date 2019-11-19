@@ -12,9 +12,11 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserController;
+import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
@@ -23,6 +25,7 @@ import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.file.DatafileEventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
@@ -33,7 +36,6 @@ import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MetricCollector;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -113,6 +115,12 @@ public class AxonServerStandardConfiguration {
     @ConditionalOnMissingBean(FeatureChecker.class)
     public FeatureChecker featureChecker() {
         return new FeatureChecker() {};
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EventStoreExistChecker.class)
+    public EventStoreExistChecker eventStoreExistChecker(EmbeddedDBProperties embeddedDBProperties) {
+        return new DatafileEventStoreExistChecker(embeddedDBProperties);
     }
 
     @Bean

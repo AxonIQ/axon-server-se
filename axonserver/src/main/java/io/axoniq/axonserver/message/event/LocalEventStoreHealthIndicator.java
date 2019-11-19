@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.event;
 
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
@@ -33,10 +34,16 @@ public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
     protected void doHealthCheck(Health.Builder builder)  {
         builder.up();
         clusterController.getMyContextNames().forEach(context -> {
-            builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastToken(context));
-            builder.withDetail(String.format("%s.lastSnapshot", context), localEventStore.getLastSnapshot(context));
-            builder.withDetail(String.format("%s.waitingEventTransactions", context), localEventStore.getWaitingEventTransactions(context));
-            builder.withDetail(String.format("%s.waitingSnapshotTransactions", context), localEventStore.getWaitingSnapshotTransactions(context));
+            try {
+                builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastToken(context));
+                builder.withDetail(String.format("%s.lastSnapshot", context), localEventStore.getLastSnapshot(context));
+                builder.withDetail(String.format("%s.waitingEventTransactions", context),
+                                   localEventStore.getWaitingEventTransactions(context));
+                builder.withDetail(String.format("%s.waitingSnapshotTransactions", context),
+                                   localEventStore.getWaitingSnapshotTransactions(context));
+            } catch (MessagingPlatformException mpe) {
+                // ignore
+            }
         });
         localEventStore.health(builder);
     }

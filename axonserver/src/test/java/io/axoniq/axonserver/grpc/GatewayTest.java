@@ -192,7 +192,8 @@ public class GatewayTest {
             stub.getPlatformServer(ClientIdentification.newBuilder().setClientId(aLongName).build());
             fail("Should fail on too long");
         } catch (StatusRuntimeException sre) {
-            assertEquals(Status.Code.CANCELLED, sre.getStatus().getCode());
+            assertTrue(Status.Code.CANCELLED.equals(sre.getStatus().getCode()) ||
+                               Status.Code.INTERNAL.equals(sre.getStatus().getCode()));
         }
     }
 

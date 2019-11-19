@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * gRPC service to track connected applications. Each application will first call the openStream operation with a
@@ -363,6 +364,18 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      */
     public Set<ClientComponent> getConnectedClients() {
         return connectionMap.keySet();
+    }
+
+    /**
+     * Finds all clients that are currently connected to the specified context and requests these client to reconnect.
+     *
+     * @param context the context
+     */
+    public void requestReconnectForContext(String context) {
+        Set<ClientComponent> clients = connectionMap.keySet().stream().filter(c -> c.context.equals(context)).collect(
+                Collectors.toSet());
+
+        clients.forEach(this::requestReconnect);
     }
 
     /**
