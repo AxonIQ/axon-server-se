@@ -32,6 +32,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
@@ -61,8 +62,6 @@ import static io.grpc.stub.ServerCalls.*;
 @Component("EventDispatcher")
 public class EventDispatcher implements AxonServerClientService {
 
-    private static final String EVENTS_METRIC_NAME = "axon.events";
-    private static final String SNAPSHOTS_METRIC_NAME = "axon.snapshots";
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
 
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
@@ -122,7 +121,7 @@ public class EventDispatcher implements AxonServerClientService {
             @Override
             public void onNext(InputStream event) {
                 appendEventConnection.onNext(event);
-                eventsCounter(context, eventsCounter, EVENTS_METRIC_NAME).mark();
+                eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
             }
 
             @Override
@@ -139,7 +138,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
-                                                 String eventsMetricName) {
+                                                 BaseMetricName eventsMetricName) {
         return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(context, eventsMetricName));
     }
 
@@ -150,7 +149,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void appendSnapshot(String context, Event request, StreamObserver<Confirmation> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            eventsCounter(context, snapshotCounter, SNAPSHOTS_METRIC_NAME).mark();
+            eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
             eventStore.appendSnapshot(context, request).whenComplete((c, t) -> {
                 if (t != null) {
                     logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
@@ -355,11 +354,11 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public MeterFactory.RateMeter eventRate(String context) {
-        return eventsCounter(context, eventsCounter, EVENTS_METRIC_NAME);
+        return eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS);
     }
 
     public MeterFactory.RateMeter snapshotRate(String context) {
-        return eventsCounter(context, snapshotCounter, SNAPSHOTS_METRIC_NAME);
+        return eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS);
     }
 
     private static class EventTrackerInfo {

@@ -18,6 +18,7 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -40,8 +41,6 @@ import java.util.stream.Collectors;
 @Component("CommandDispatcher")
 public class CommandDispatcher {
 
-    private static final String COMMANDRATE_NAME = "axon.commands";
-    private static final String ACTIVE_COMMANDS_GAUGE = "axon.commands.active";
     private final CommandRegistrationCache registrations;
     private final CommandCache commandCache;
     private final CommandMetricsRegistry metricRegistry;
@@ -53,7 +52,7 @@ public class CommandDispatcher {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
-        metricRegistry.gauge(ACTIVE_COMMANDS_GAUGE, commandCache, ConcurrentHashMap::size);
+        metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConcurrentHashMap::size);
     }
 
 
@@ -75,7 +74,9 @@ public class CommandDispatcher {
     }
 
     public MeterFactory.RateMeter commandRate(String context) {
-        return commandRatePerContext.computeIfAbsent(context, c -> metricRegistry.rateMeter(c, COMMANDRATE_NAME));
+        return commandRatePerContext.computeIfAbsent(context,
+                                                     c -> metricRegistry
+                                                             .rateMeter(c, BaseMetricName.AXON_COMMAND_RATE));
     }
 
     @EventListener

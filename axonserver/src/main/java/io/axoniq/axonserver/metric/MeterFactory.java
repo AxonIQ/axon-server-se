@@ -48,16 +48,30 @@ public class MeterFactory {
         this.clusterMetrics = clusterMetrics;
     }
 
-    public RateMeter rateMeter(String context, String... name) {
-        return new RateMeter(context, String.join(".", name));
+    public RateMeter rateMeter(String context, MetricName metric) {
+        return new RateMeter(context, metric);
     }
 
-    public Timer timer(String name, String request, String context, String source, String target) {
-        return meterRegistry.timer(name, REQUEST, request, CONTEXT, context, SOURCE, source, TARGET, target);
+    public Counter counter(MetricName metric, Tags tags) {
+        return meterRegistry.counter(metric.metric(), tags);
     }
 
-    public <T> Gauge gauge(String name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
-        return Gauge.builder(name, objectToWatch, gaugeFunction)
+    public Counter counter(MetricName metric) {
+        return counter(metric, Tags.empty());
+    }
+
+    public Timer timer(MetricName metric, String request, String context, String source, String target) {
+        return meterRegistry.timer(metric.metric(), REQUEST, request, CONTEXT, context, SOURCE, source, TARGET, target);
+    }
+
+    public <T> Gauge gauge(MetricName metric, Tags tags, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+        return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
+                    .tags(tags)
+                    .register(meterRegistry);
+    }
+
+    public <T> Gauge gauge(MetricName metric, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+        return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
                     .register(meterRegistry);
     }
 
@@ -65,12 +79,12 @@ public class MeterFactory {
         return clusterMetrics;
     }
 
-    public SnapshotMetric snapshot(String metric, Tags tags) {
+    public SnapshotMetric snapshot(MetricName metric, Tags tags) {
         long count = 0;
         long max = 0;
         double total = 0;
 
-        for (Timer timer : meterRegistry.find(metric).tags(tags).timers()) {
+        for (Timer timer : meterRegistry.find(metric.metric()).tags(tags).timers()) {
             HistogramSnapshot snapshot = timer.takeSnapshot();
             if (snapshot != null) {
                 total += snapshot.total();
@@ -93,8 +107,8 @@ public class MeterFactory {
         private final String name;
         private final Tags tags;
 
-        private RateMeter(String context, String name) {
-            this.name = name;
+        private RateMeter(String context, MetricName metricName) {
+            this.name = metricName.metric();
             this.tags = Tags.of(CONTEXT, context);
             meter = new IntervalCounter(clock);
             counter = meterRegistry.counter(name + ".count", tags);

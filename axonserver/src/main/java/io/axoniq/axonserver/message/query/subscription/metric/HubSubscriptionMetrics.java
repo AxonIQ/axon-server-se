@@ -19,8 +19,8 @@ import io.micrometer.core.instrument.Tags;
 import java.util.function.BiFunction;
 
 /**
- * Created by Sara Pellegrini on 19/06/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class HubSubscriptionMetrics implements SubscriptionMetrics {
 

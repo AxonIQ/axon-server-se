@@ -11,11 +11,11 @@ package io.axoniq.axonserver.message.query.subscription.metric;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -29,8 +29,8 @@ import java.util.function.Supplier;
 import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.UPDATE;
 
 /**
- * Created by Sara Pellegrini on 20/06/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 @Component
 public class GlobalSubscriptionMetricRegistry implements Supplier<SubscriptionMetrics> {
@@ -42,30 +42,26 @@ public class GlobalSubscriptionMetricRegistry implements Supplier<SubscriptionMe
     private final AtomicInteger active = new AtomicInteger(0);
     private final Counter updates;
 
-    public GlobalSubscriptionMetricRegistry(MeterRegistry localMetricRegistry,
+    public GlobalSubscriptionMetricRegistry(MeterFactory localMetricRegistry,
                                             BiFunction<String, Tags, ClusterMetric> clusterMetricCollector) {
 
-        this.updates = localMetricRegistry.counter(name(GlobalSubscriptionMetricRegistry.class.getSimpleName(), "updates"));
-        this.total = localMetricRegistry.counter(name(GlobalSubscriptionMetricRegistry.class.getSimpleName(), "total"));
+        this.updates = localMetricRegistry.counter(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_UPDATES);
+        this.total = localMetricRegistry.counter(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_TOTAL);
         this.clusterMetricCollector = clusterMetricCollector;
 
-        Gauge.builder(name(GlobalSubscriptionMetricRegistry.class.getSimpleName(), "active"), active, AtomicInteger::get).register(localMetricRegistry);
+        localMetricRegistry.gauge(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_ACTIVE, active, AtomicInteger::get);
     }
 
 
     @Override
     public HubSubscriptionMetrics get() {
         return new HubSubscriptionMetrics(Tags.empty(),
-                                          new CounterMetric(name(GlobalSubscriptionMetricRegistry.class.getSimpleName(), "active"), ()-> (long)active.get()),
+                                          new CounterMetric(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_ACTIVE.metric(),
+                                                            () -> (long) active.get()),
                                           new CounterMetric(total.getId().getName(), () -> (long)total.count()),
                                           new CounterMetric(updates.getId().getName(), () -> (long) updates.count()),
                                           clusterMetricCollector);
     }
-
-    private String name(String name, String total) {
-        return String.format("axon.%s.%s", name, total);
-    }
-
 
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryRequested event){

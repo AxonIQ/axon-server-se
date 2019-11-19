@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -37,9 +38,6 @@ import java.util.stream.Collectors;
  */
 @Component("QueryDispatcher")
 public class QueryDispatcher {
-    private static final String QUERY_RATE_NAME = "axon.queries";
-    private static final String ACTIVE_QUERY_GAUGE = "axon.queries.active";
-
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
     private final QueryCache queryCache;
@@ -51,7 +49,7 @@ public class QueryDispatcher {
         this.registrationCache = registrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
-        queryMetricsRegistry.gauge(ACTIVE_QUERY_GAUGE, queryCache, QueryCache::size);
+        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, QueryCache::size);
     }
 
 
@@ -153,7 +151,9 @@ public class QueryDispatcher {
     }
 
     public MeterFactory.RateMeter queryRate(String context) {
-        return queryRatePerContext.computeIfAbsent(context, c -> queryMetricsRegistry.rateMeter(c, QUERY_RATE_NAME));
+        return queryRatePerContext.computeIfAbsent(context,
+                                                   c -> queryMetricsRegistry
+                                                           .rateMeter(c, BaseMetricName.AXON_QUERY_RATE));
     }
 
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {

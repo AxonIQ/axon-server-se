@@ -28,6 +28,9 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -73,7 +76,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
     private long newPermitsTimeout=120000;
 
-    private final MeterRegistry meterRegistry;
+    private final MeterFactory meterRegistry;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final EventStoreExistChecker eventStoreExistChecker;
     private final int maxEventCount;
@@ -86,14 +89,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public LocalEventStore(EventStoreFactory eventStoreFactory, MeterRegistry meterRegistry, StorageTransactionManagerFactory storageTransactionManagerFactory,
                            EventStoreExistChecker eventStoreExistChecker) {
-        this(eventStoreFactory, meterRegistry, storageTransactionManagerFactory, eventStoreExistChecker, Short.MAX_VALUE, 1000);
+        this(eventStoreFactory,
+             new MeterFactory(meterRegistry, new DefaultMetricCollector()),
+             storageTransactionManagerFactory,
+             eventStoreExistChecker, Short.MAX_VALUE,
+             1000);
     }
 
     @Autowired
     public LocalEventStore(EventStoreFactory eventStoreFactory,
-                           MeterRegistry meterRegistry,
+                           MeterFactory meterRegistry,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
-                           EventStoreExistChecker eventStoreExistChecker,@Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
+                           EventStoreExistChecker eventStoreExistChecker, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter) {
         this.eventStoreFactory = eventStoreFactory;
         this.meterRegistry = meterRegistry;
@@ -107,7 +114,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if( workersMap.containsKey(context)) return;
         workersMap.putIfAbsent(context, new Workers(context));
         workersMap.get(context).init(validating);
-        meterRegistry.gauge("axon.lastToken", Tags.of("context", context), context, c -> (double) getLastToken(c));
+        meterRegistry.gauge(BaseMetricName.AXON_LAST_TOKEN,
+                            Tags.of("context", context),
+                            context,
+                            c -> (double) getLastToken(c));
     }
 
     /**
