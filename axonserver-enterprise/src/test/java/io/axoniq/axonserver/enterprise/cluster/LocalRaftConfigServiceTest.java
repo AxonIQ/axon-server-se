@@ -9,13 +9,15 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
@@ -30,6 +32,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -39,7 +42,8 @@ import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.*;
 
@@ -48,8 +52,6 @@ import static org.mockito.Mockito.*;
  */
 public class LocalRaftConfigServiceTest {
     private LocalRaftConfigService testSubject;
-    private ContextController contextcontroller;
-    private ApplicationController applicationController;
     private AdminDB adminDB;
     private RaftNode adminNode;
     private FakeRaftGroupService fakeRaftGroupService = new FakeRaftGroupService();
@@ -65,7 +67,10 @@ public class LocalRaftConfigServiceTest {
         public void addContext(String name, String... nodes) {
             io.axoniq.axonserver.enterprise.jpa.Context context = contextMap.computeIfAbsent(name, io.axoniq.axonserver.enterprise.jpa.Context::new);
             for (String node : nodes) {
-                nodeMap.computeIfAbsent(node, n -> createNode(n)).addContext(context, node + "/" + context);
+                nodeMap.computeIfAbsent(node, LocalRaftConfigServiceTest.this::createNode).addContext(context,
+                                                                                                      node + "/"
+                                                                                                              + context,
+                                                                                                      Role.PRIMARY);
             }
         }
 
@@ -85,7 +90,7 @@ public class LocalRaftConfigServiceTest {
                         contextMap.put(context.getName(), context);
                     }
                     Map<String, ClusterNode> currentNodes = new HashMap<>();
-                    context.getAllNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );
+                    context.getNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()));
                     Map<String, NodeInfoWithLabel> newNodes = new HashMap<>();
                     contextConfiguration.getNodesList().forEach(n -> newNodes.put(n.getNode().getNodeName(), n));
 
@@ -105,7 +110,9 @@ public class LocalRaftConfigServiceTest {
                     });
                     newNodes.forEach((node, nodeInfo) -> {
                         if( !currentNodes.containsKey(node)) {
-                            clusterInfoMap.get(node).addContext(finalContext, nodeInfo.getLabel());
+                            clusterInfoMap.get(node).addContext(finalContext,
+                                                                nodeInfo.getLabel(),
+                                                                nodeInfo.getRole());
                         }
                     });
 
@@ -117,10 +124,16 @@ public class LocalRaftConfigServiceTest {
     }
 
     private class GroupDB {
-        private Map<String, String> nodes = new ConcurrentHashMap<>();
+
+        private Map<String, Node> nodes = new ConcurrentHashMap<>();
 
         private GroupDB(io.axoniq.axonserver.enterprise.jpa.Context context) {
-            context.getAllNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), ccn.getClusterNode().getName()));
+            context.getNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), Node.newBuilder()
+                                                                                       .setNodeName(ccn.getClusterNode()
+                                                                                                          .getName())
+                                                                                       .setNodeId(ccn.getClusterNodeLabel())
+                                                                                       .setRole(ccn.getRole())
+                                                                                       .build()));
         }
 
         public GroupDB() {
@@ -137,11 +150,12 @@ public class LocalRaftConfigServiceTest {
 
         @Override
         public CompletableFuture<ContextUpdateConfirmation> addNodeToContext(String context, Node node) {
-            groupDBs.get(context).nodes.put(node.getNodeId(), node.getNodeName());
+            groupDBs.get(context).nodes.put(node.getNodeId(), node);
             ContextUpdateConfirmation.Builder contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder()
                     .setSuccess(true);
-            groupDBs.get(context).nodes.forEach((id,name) ->
-                                                        contextUpdateConfirmation.addMembers(ContextMember.newBuilder().setNodeName(name).setNodeId(id)));
+            groupDBs.get(context).nodes.forEach((id, n) ->
+                                                        contextUpdateConfirmation
+                                                                .addMembers(ContextMemberConverter.asContextMember(n)));
 
             return CompletableFuture.completedFuture(contextUpdateConfirmation.build());
         }
@@ -159,7 +173,7 @@ public class LocalRaftConfigServiceTest {
         @Override
         public CompletableFuture<ContextConfiguration> initContext(String context, List<Node> nodes) {
             GroupDB groupDB = new GroupDB();
-            nodes.forEach(n -> groupDB.nodes.put(n.getNodeId(), n.getNodeName()));
+            nodes.forEach(n -> groupDB.nodes.put(n.getNodeId(), n));
             groupDBs.put(context, groupDB);
             ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
                                                                             .setContext(context)
@@ -170,6 +184,7 @@ public class LocalRaftConfigServiceTest {
                                                                                                       .setNode(NodeInfo.newBuilder()
                                                                                                                        .setNodeName(
                                                                                                                                n.getNodeName()))
+                                                                                                      .setRole(n.getRole())
                                                                                                       .build())
                                                                                               .collect(Collectors
                                                                                                                .toList()))
@@ -182,8 +197,9 @@ public class LocalRaftConfigServiceTest {
             groupDBs.get(context).nodes.remove(node);
             ContextUpdateConfirmation.Builder contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder()
                                                                                                    .setSuccess(true);
-            groupDBs.get(context).nodes.forEach((id,name) ->
-                                                        contextUpdateConfirmation.addMembers(ContextMember.newBuilder().setNodeName(name).setNodeId(id)));
+            groupDBs.get(context).nodes.forEach((id, n) ->
+                                                        contextUpdateConfirmation
+                                                                .addMembers(ContextMemberConverter.asContextMember(n)));
 
             return CompletableFuture.completedFuture(contextUpdateConfirmation.build());
         }
@@ -227,7 +243,7 @@ public class LocalRaftConfigServiceTest {
         }
 
         @Override
-        public CompletableFuture<Void> deleteContext(String context) {
+        public CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore) {
             groupDBs.remove(context);
             return CompletableFuture.completedFuture(null);
         }
@@ -242,6 +258,11 @@ public class LocalRaftConfigServiceTest {
 
         @Override
         public CompletableFuture<Void> transferLeadership(String context) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node) {
             return CompletableFuture.completedFuture(null);
         }
     }
@@ -262,13 +283,14 @@ public class LocalRaftConfigServiceTest {
         });
 
         when(grpcRaftController.getRaftNode("_admin")).thenReturn(adminNode);
-        contextcontroller = mock(ContextController.class);
+        ContextController contextcontroller = mock(ContextController.class);
+        ClusterController clusterController = mock(ClusterController.class);
         RaftGroupServiceFactory raftGroupServiceFactory = mock(RaftGroupServiceFactory.class);
 
         when(raftGroupServiceFactory.getRaftGroupService(anyString())).thenReturn(fakeRaftGroupService);
         when(raftGroupServiceFactory.getRaftGroupServiceForNode(anyString())).thenReturn(fakeRaftGroupService);
         when(raftGroupServiceFactory.getRaftGroupServiceForNode(any(ClusterNode.class))).thenReturn(fakeRaftGroupService);
-        applicationController = mock(ApplicationController.class);
+        ApplicationController applicationController = mock(ApplicationController.class);
         MessagingPlatformConfiguration messagingPlatformConfiguration = new MessagingPlatformConfiguration(new SystemInfoProvider() {
             @Override
             public int getPort() {
@@ -280,11 +302,13 @@ public class LocalRaftConfigServiceTest {
                 return "localhost";
             }
         });
-        when(contextcontroller.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
+        when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
             String name = invocationOnMock.getArgument(0);
             return adminDB.nodeMap.get(name);
         });
-        when(contextcontroller.getContext(anyString())).then((Answer<io.axoniq.axonserver.enterprise.jpa.Context>) invocationOnMock -> {
+        when(contextcontroller
+                     .getContext(anyString()))
+                .then((Answer<io.axoniq.axonserver.enterprise.jpa.Context>) invocationOnMock -> {
             String name = invocationOnMock.getArgument(0);
             return adminDB.contextMap.get(name);
         });
@@ -301,6 +325,7 @@ public class LocalRaftConfigServiceTest {
         UserController userController = mock(UserController.class);
         testSubject = new LocalRaftConfigService(grpcRaftController,
                                                  contextcontroller,
+                                                 clusterController,
                                                  raftGroupServiceFactory,
                                                  applicationController,
                                                  userController,
@@ -309,15 +334,37 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void addNodeToContext() {
-        testSubject.addNodeToContext("sample", "node2");
+        testSubject.addNodeToContext("sample", "node2", Role.PRIMARY);
         assertTrue(adminDB.contextMap.get("sample").getNodeNames().contains("node2"));
-        assertTrue(fakeRaftGroupService.groupDBs.get("sample").nodes.containsValue("node2"));
+        assertTrue(fakeRaftGroupService.groupDBs.get("sample").nodes
+                           .values().stream().anyMatch(n -> n.getNodeName().equals("node2")));
+    }
+
+    @Test
+    public void addNodeWithOtherRoleToContext() {
+        testSubject.addNodeToContext("sample", "node2", Role.ACTIVE_BACKUP);
+        assertTrue(adminDB.contextMap.get("sample").getNodeNames().contains("node2"));
+        ContextClusterNode ccn = adminDB.contextMap.get("sample")
+                                                   .getNodes()
+                                                   .stream()
+                                                   .filter(c -> c.getClusterNode().getName().equals("node2"))
+                                                   .findFirst()
+                                                   .orElse(null);
+
+        assertNotNull(ccn);
+        assertEquals(Role.ACTIVE_BACKUP, ccn.getRole());
+
+        Optional<Node> node = fakeRaftGroupService.groupDBs.get("sample").nodes.values().stream().filter(n -> n
+                .getNodeName().equals("node2")).findFirst();
+
+        assertTrue(node.isPresent());
+        assertEquals(Role.ACTIVE_BACKUP, node.get().getRole());
     }
 
     @Test
     public void addNodeToNonExistingContext() {
         try {
-            testSubject.addNodeToContext("myContext", "node1");
+            testSubject.addNodeToContext("myContext", "node1", Role.PRIMARY);
             fail("Expect exception");
         } catch( MessagingPlatformException mpe) {
             assertEquals(ErrorCode.CONTEXT_NOT_FOUND, mpe.getErrorCode());
@@ -327,7 +374,7 @@ public class LocalRaftConfigServiceTest {
     @Test
     public void addNonExistingNodeToContext() {
         try {
-            testSubject.addNodeToContext("sample", "node3");
+            testSubject.addNodeToContext("sample", "node3", Role.PRIMARY);
             fail("Expect exception");
         } catch( MessagingPlatformException mpe) {
             assertEquals(ErrorCode.NO_SUCH_NODE, mpe.getErrorCode());
@@ -336,7 +383,7 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void addExistingMemberToContext() {
-        testSubject.addNodeToContext("sample", "node1");
+        testSubject.addNodeToContext("sample", "node1", Role.PRIMARY);
     }
 
     @Test

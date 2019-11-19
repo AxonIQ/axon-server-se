@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
-import com.google.common.hash.Hashing;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -20,11 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 
-import java.nio.charset.Charset;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -71,7 +67,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              LocalEventStore localEventStore,
                              ChannelProvider channelProvider) {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
-             channelProvider, () -> contextController.getMyContextNames().iterator(),
+             channelProvider, () -> contextController.storageContexts().iterator(),
              leaderProvider::getLeaderOrWait,
              lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
@@ -101,7 +97,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     @EventListener
     public void on(ContextEvents.ContextDeleted contextDeleted) {
         logger.info("{}: close context", contextDeleted.getContext());
-        localEventStore.deleteContext(contextDeleted.getContext());
+        localEventStore.deleteContext(contextDeleted.getContext(), contextDeleted.preserveEventStore());
     }
 
     @Override
@@ -116,15 +112,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     }
 
     private void initContext(String context, boolean validating) {
-        if( isAdmin(context)) return;
         logger.debug("Init context: {}", context);
         localEventStore.initContext(context, validating);
-    }
-
-    public static int hash(String context, String node){
-        return Hashing.goodFastHash(32).hashString(context + node,
-                                                          Charset.defaultCharset()).asInt();
-
     }
 
     @Override

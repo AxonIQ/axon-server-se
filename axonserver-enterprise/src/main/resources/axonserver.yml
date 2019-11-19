@@ -25,6 +25,9 @@ spring:
       enabled: true
       path: /h2-console
 
+  flyway:
+    locations: classpath:/db/enterprise,classpath:/db/migration
+
 axoniq:
   axonserver:
     metrics-synchronization-rate: 2500

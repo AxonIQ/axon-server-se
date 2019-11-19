@@ -22,13 +22,8 @@ public class H2Specific implements VendorSpecific {
 
     @Override
     public void createTableIfNotExists(String schema, String table, Connection connection) throws SQLException {
-        try (ResultSet resultSet = connection.getMetaData().getTables(connection.getCatalog(),
-                                                                      schema,
-                                                                      table.toUpperCase(),
-                                                                      null)) {
-            if (resultSet.next()) {
-                return;
-            }
+        if (tableExists(schema, table, connection)) {
+            return;
         }
 
         String createTable = String.format(
@@ -57,7 +52,7 @@ public class H2Specific implements VendorSpecific {
     }
 
     private String fullyQualifiedName(String schema, String table) {
-        if( schema == null) {
+        if (schema == null) {
             return table;
         }
         return schema + "." + table;
@@ -66,7 +61,7 @@ public class H2Specific implements VendorSpecific {
     @Override
     public void createSchemaIfNotExists(String schema, Connection connection) throws SQLException {
         try (ResultSet resultSet = connection.getMetaData().getSchemas(null, schema.toUpperCase())) {
-            if( resultSet.next()) {
+            if (resultSet.next()) {
                 return;
             }
         }
@@ -80,5 +75,24 @@ public class H2Specific implements VendorSpecific {
         } catch (SQLException sql) {
             System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
         }
+    }
+
+    @Override
+    public boolean tableExists(String schema, String table, Connection connection) throws SQLException {
+        try (ResultSet resultSet = connection.getMetaData().getTables(connection.getCatalog(),
+                                                                      schema,
+                                                                      table.toUpperCase(),
+                                                                      null)) {
+            if (resultSet.next()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean tableExists(String tableName, Connection connection) throws SQLException {
+        return tableExists(null, tableName, connection);
     }
 }

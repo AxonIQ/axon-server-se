@@ -54,16 +54,53 @@ public class ContextEvents {
 
     @KeepNames
     public static class ContextDeleted extends TopologyEvents.TopologyBaseEvent {
-        private final String context;
 
-        public ContextDeleted(String context) {
+        private final String context;
+        private final boolean preserveEventStore;
+
+        public ContextDeleted(String context, boolean preserveEventStore) {
             super(false);
             this.context = context;
+            this.preserveEventStore = preserveEventStore;
         }
 
         public String getContext() {
             return context;
         }
 
+        public boolean preserveEventStore() {
+            return preserveEventStore;
+        }
+    }
+
+    /**
+     * Event published when there is an intent to remove a node from a context.
+     */
+    @KeepNames
+    public static class DeleteNodeFromContextRequested extends TopologyEvents.TopologyBaseEvent {
+
+        private final String context;
+        private final String node;
+
+        /**
+         * Constructor for the event.
+         *
+         * @param context the context where the node will be deleted
+         * @param node    the node that will be deleted from the context
+         */
+        public DeleteNodeFromContextRequested(
+                String context, String node) {
+            super(false);
+            this.context = context;
+            this.node = node;
+        }
+
+        public String getContext() {
+            return context;
+        }
+
+        public String getNode() {
+            return node;
+        }
     }
 }

@@ -46,4 +46,27 @@ public interface VendorSpecific {
     default String fullyQualified(String tableName) {
         return tableName;
     }
+
+    /**
+     * Checks if the specified table exists in the specified schema.
+     *
+     * @param schema     the schema to check
+     * @param table      the table to check
+     * @param connection the connection to use
+     * @return true if the table exists
+     *
+     * @throws SQLException
+     */
+    boolean tableExists(String schema, String table, Connection connection) throws SQLException;
+
+    /**
+     * Checks if the specified table exists in the user's default schema.
+     *
+     * @param tableName  the table to check
+     * @param connection the connection to use
+     * @return true if the table exists
+     *
+     * @throws SQLException
+     */
+    boolean tableExists(String tableName, Connection connection) throws SQLException;
 }

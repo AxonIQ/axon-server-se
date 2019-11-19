@@ -8,6 +8,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupRepositoryManager;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
@@ -51,7 +52,8 @@ public class AxonServerEnterpriseConfiguration {
     @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
             MessagingPlatformConfiguration messagingPlatformConfiguration,
-            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider, RaftGroupRepositoryManager raftGroupRepositoryManager,
+            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider,
+            RaftGroupRepositoryManager raftGroupRepositoryManager,
             LifecycleController lifecycleController, LocalEventStore localEventStore,
             ChannelProvider channelProvider) {
         return new EventStoreManager(messagingPlatformConfiguration, clusterController, lifecycleController, raftLeaderProvider, raftGroupRepositoryManager,
@@ -67,8 +69,9 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @Conditional(ClusteringAllowed.class)
-    public Topology topology(ClusterController clusterController, GrpcRaftController grpcRaftController) {
-        return new ClusterTopology(clusterController, grpcRaftController);
+    public Topology topology(ClusterController clusterController, GrpcRaftController grpcRaftController,
+                             NodeSelector nodeSelector) {
+        return new ClusterTopology(clusterController, grpcRaftController, nodeSelector);
     }
 
     @Bean
@@ -80,9 +83,9 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
     @Conditional(MemoryMappedStorage.class)
-    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                               StorageTransactionManagerFactory storageTransactionManagerFactory) {
-        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
+    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                               EventTransformerFactory eventTransformerFactory) {
+        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory);
     }
 
     @Bean

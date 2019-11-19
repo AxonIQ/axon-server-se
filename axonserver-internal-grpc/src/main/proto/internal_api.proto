@@ -4,6 +4,7 @@ import "common.proto";
 import "command.proto";
 import "query.proto";
 import "control.proto";
+import "raft.proto";
 option java_multiple_files = true;
 
 service MessagingClusterService {
@@ -74,7 +75,7 @@ service RaftGroupService {
     rpc InitContext (Context) returns (ContextConfiguration) {
     }
 
-    rpc DeleteContext (ContextName) returns (InstructionAck) {
+    rpc DeleteContext (DeleteContextRequest) returns (InstructionAck) {
     }
 
     rpc AddServer (Context) returns (ContextUpdateConfirmation) {
@@ -118,11 +119,16 @@ service RaftGroupService {
 
     rpc TransferLeadership (ContextName) returns (InstructionAck) {
     }
+
+    // Notify a node that a node will be deleted from a context.
+    rpc PreDeleteNodeFromContext (NodeContext) returns (InstructionAck) {
+    }
 }
 
 message NodeContext {
     string node_name = 1;
     string context = 2;
+    io.axoniq.axonserver.grpc.cluster.Role role = 3;
 }
 
 message ConnectorCommand {
@@ -455,6 +461,7 @@ message ContextMember {
     int32 port = 3;
     State state = 4;
     string node_name = 5;
+    io.axoniq.axonserver.grpc.cluster.Role role = 6;
 }
 
 message Application {
@@ -509,11 +516,18 @@ message ContextConfiguration {
 message NodeInfoWithLabel {
     NodeInfo node = 1;
     string label = 2;
+    io.axoniq.axonserver.grpc.cluster.Role role = 3;
 }
 
 message ContextName {
     string context = 1;
 }
+
+message DeleteContextRequest {
+    string context = 1;
+    bool preserve_eventstore = 2;
+}
+
 
 message NodeName {
     string node = 1;

@@ -58,7 +58,7 @@ public interface RaftGroupService {
 
     CompletableFuture<Void> deleteLoadBalancingStrategy(String context, LoadBalanceStrategy loadBalancingStrategy);
 
-    CompletableFuture<Void> deleteContext(String context);
+    CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore);
 
     /**
      * Append an entry to the raft log.
@@ -82,4 +82,6 @@ public interface RaftGroupService {
      * @return completable future that completes when follower is up-to-date and signalled to start election
      */
     CompletableFuture<Void> transferLeadership(String context);
+
+    CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node);
 }

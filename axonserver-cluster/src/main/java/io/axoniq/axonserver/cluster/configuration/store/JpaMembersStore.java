@@ -36,8 +36,7 @@ public class JpaMembersStore implements MembersStore {
     @Override
     public void set(List<Node> nodes) {
         String group = this.groupId.get();
-        Set<JpaRaftGroupNode> oldNodes = raftGroupNodeRepository.findByGroupId(group);
-        raftGroupNodeRepository.deleteAll(oldNodes);
+        raftGroupNodeRepository.deleteAllByGroupId(group);
         nodes.forEach(node -> raftGroupNodeRepository.save(new JpaRaftGroupNode(group, node)));
     }
 }

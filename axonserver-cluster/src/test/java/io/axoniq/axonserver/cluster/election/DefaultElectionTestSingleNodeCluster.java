@@ -30,7 +30,9 @@ public class DefaultElectionTestSingleNodeCluster {
                                                          .setGroupId("MyGroupId")
                                                          .build();
         BiConsumer<Long, String> updateTerm = (newTerm, cause) -> electionStore.updateCurrentTerm(newTerm);
-        election = new DefaultElection(prototype, updateTerm, electionStore, Collections.emptyList(), false);
+        election = new DefaultElection(prototype, updateTerm, electionStore, Collections.emptyList(),
+                                       () -> 1,
+                                       false);
     }
 
     @Test

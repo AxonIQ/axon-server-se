@@ -52,7 +52,7 @@ public interface MembershipState extends ClusterConfiguration{
         return null;
     }
 
-    default void forceStepDown() {
+    default void forceStartElection() {
 
     }
 
@@ -60,7 +60,7 @@ public interface MembershipState extends ClusterConfiguration{
         return emptyList();
     }
 
-    default Iterator<ReplicatorPeer> replicatorPeers() {
+    default Iterator<ReplicatorPeerStatus> replicatorPeers() {
         throw new UnsupportedOperationException("Operation only supported in leader state");
     }
 

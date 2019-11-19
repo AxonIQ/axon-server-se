@@ -9,9 +9,11 @@ import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.cluster.util.MaxMessageSizePredicate;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.DummyEntry;
 import io.axoniq.axonserver.grpc.cluster.Entry;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -39,7 +41,7 @@ import static java.lang.String.format;
  * @author Milan Savic
  * @since 4.1
  */
-public class ReplicatorPeer {
+public class ReplicatorPeer implements ReplicatorPeerStatus {
 
     private interface ReplicatorPeerState {
 
@@ -325,7 +327,7 @@ public class ReplicatorPeer {
                 while (canSend()
                         && System.currentTimeMillis() < maxTime
                         && sent < raftGroup.raftConfiguration().maxEntriesPerBatch() && iterator.hasNext()) {
-                    Entry entry = iterator.next();
+                    Entry entry = checkReplaceByDummy(iterator.next());
                     //
                     TermIndex previous = iterator.previous();
                     logger.trace("{} in term {}: Send request {} to {}: {}",
@@ -376,6 +378,19 @@ public class ReplicatorPeer {
             return sent;
         }
 
+        private Entry checkReplaceByDummy(Entry next) {
+            // send dummy entry to peer if the entry is an event or snapshot and the peer is not an event store.
+            if (raftPeer.eventStore()
+                    || !next.hasSerializedObject()
+                    || !raftGroup.raftConfiguration().isSerializedEventData(next.getSerializedObject().getType())) {
+                return next;
+            }
+
+            return Entry.newBuilder(next)
+                        .setDummyEntry(DummyEntry.getDefaultInstance())
+                        .build();
+        }
+
         public void handleResponse(AppendEntriesResponse response) {
             logger.trace("{} in term {}: Received response from {}: {}.",
                          groupId(),
@@ -409,7 +424,7 @@ public class ReplicatorPeer {
                 }
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(response.getFailure().getLastAppliedIndex() + 1);
-                snapshotContext.set(new DefaultSnapshotContext(response.getFailure()));
+                snapshotContext.set(new DefaultSnapshotContext(response.getFailure(), raftPeer.eventStore()));
                 updateEntryIterator();
             } else {
                 lastMessageReceived.getAndUpdate(old -> Math.max(old, clock.millis()));
@@ -617,5 +632,9 @@ public class ReplicatorPeer {
         long matchIndexValue = matchIndex.updateAndGet(old -> (old < newMatchIndex) ? newMatchIndex : old);
         matchIndexUpdates.next(matchIndexValue);
         nextIndex.updateAndGet(currentNextIndex -> Math.max(currentNextIndex, matchIndexValue + 1));
+    }
+
+    public Role role() {
+        return raftPeer.role();
     }
 }

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -14,11 +15,11 @@ import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
+import io.axoniq.axonserver.grpc.internal.DeleteContextRequest;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
+import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
     @Override
     public CompletableFuture<ContextUpdateConfirmation> addNodeToContext(String context, Node node) {
         CompletableFuture<ContextUpdateConfirmation> result = new CompletableFuture<>();
-        ContextMember contextMember = asContextMember(node);
+        ContextMember contextMember = ContextMemberConverter.asContextMember(node);
         stub.addServer(Context.newBuilder().setName(context).addMembers(contextMember).build(),
                        new CompletableStreamObserver<>(result, "addNodeToContext", logger));
         return result;
@@ -177,11 +178,12 @@ public class RemoteRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteContext(String context) {
+    public CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        stub.deleteContext(ContextName.newBuilder()
-                                      .setContext(context)
-                                      .build(), new StreamObserver<InstructionAck>() {
+        stub.deleteContext(DeleteContextRequest.newBuilder()
+                                               .setContext(context)
+                                               .setPreserveEventstore(preserveEventStore)
+                                               .build(), new StreamObserver<InstructionAck>() {
             @Override
             public void onNext(InstructionAck value) {
                 result.complete(null);
@@ -189,12 +191,6 @@ public class RemoteRaftGroupService implements RaftGroupService {
 
             @Override
             public void onError(Throwable throwable) {
-                // If the remote server is unavailable, handle as if the deleteContext was completed successfully.
-                if(throwable instanceof StatusRuntimeException && ((StatusRuntimeException) throwable).getStatus().getCode().equals(Status.Code.UNAVAILABLE)) {
-                        result.complete(null);
-                        return;
-                }
-
                 logger.warn("Remote action failed", throwable);
                 result.completeExceptionally(GrpcExceptionBuilder.parse(throwable));
             }
@@ -244,6 +240,20 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.deleteUserAuthorization(user,
                                      new CompletableStreamObserver<>(result, "deleteUser", logger, TO_VOID));
+        return result;
+    }
+
+    @Override
+    public CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        stub.preDeleteNodeFromContext(NodeContext.newBuilder()
+                                                 .setNodeName(node)
+                                                 .setContext(context)
+                                                 .build(),
+                                      new CompletableStreamObserver<>(result,
+                                                                      "prepareDeleteNodeFromContext",
+                                                                      logger,
+                                                                      TO_VOID));
         return result;
     }
 }

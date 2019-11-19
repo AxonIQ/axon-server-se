@@ -44,7 +44,8 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
         this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
-                                                       () -> raftGroup.localNode().replicatorPeers());
+                                                       () -> raftGroup.localNode().replicatorPeers(),
+                                                       raftGroup.raftConfiguration()::minActiveBackups);
     }
 
     private MembershipStateFactory stateFactory() {
@@ -55,13 +56,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     @Override
     public IdleState idleState(String nodeId) {
         return new IdleState(nodeId, new DefaultResponseFactory(raftGroup));
-    }
-
-    @Override
-    public RemovedState removedState() {
-        return RemovedState.builder()
-                           .raftGroup(raftGroup)
-                           .build();
     }
 
     @Override
@@ -96,6 +90,34 @@ public class DefaultStateFactory implements MembershipStateFactory {
                             .registerConfigurationListenerFn(registerConfigurationListener)
                             .stateFactory(stateFactory())
                             .build();
+    }
+
+    @Override
+    public ProspectState prospectState() {
+        return ProspectState.builder()
+                            .raftGroup(raftGroup)
+                            .schedulerFactory(schedulerFactory)
+                            .transitionHandler(transitionHandler)
+                            .termUpdateHandler(termUpdateHandler)
+                            .snapshotManager(snapshotManager)
+                            .currentConfiguration(currentConfiguration)
+                            .registerConfigurationListenerFn(registerConfigurationListener)
+                            .stateFactory(stateFactory())
+                            .build();
+    }
+
+    @Override
+    public SecondaryState secondaryState() {
+        return SecondaryState.builder()
+                             .raftGroup(raftGroup)
+                             .schedulerFactory(schedulerFactory)
+                             .transitionHandler(transitionHandler)
+                             .termUpdateHandler(termUpdateHandler)
+                             .snapshotManager(snapshotManager)
+                             .currentConfiguration(currentConfiguration)
+                             .registerConfigurationListenerFn(registerConfigurationListener)
+                             .stateFactory(stateFactory())
+                             .build();
     }
 
     @Override

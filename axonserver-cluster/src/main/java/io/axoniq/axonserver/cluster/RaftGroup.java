@@ -58,4 +58,5 @@ public interface RaftGroup {
         long start = Math.max(logEntryProcessor().commitIndex()+1, localLogEntryStore().firstLogIndex());
         return localLogEntryStore().createIterator(start);
     }
+
 }

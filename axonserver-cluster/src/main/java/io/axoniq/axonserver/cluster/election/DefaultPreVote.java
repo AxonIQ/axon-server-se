@@ -11,9 +11,9 @@ import reactor.core.publisher.MonoSink;
 
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 import static java.lang.String.format;
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * @author Marc Gathier
@@ -40,18 +40,19 @@ public class DefaultPreVote implements Election {
                                .build(),
              termUpdateHandler,
              raftGroup.localElectionStore(),
-             otherNodes);
+             otherNodes, raftGroup.raftConfiguration()::minActiveBackups);
     }
 
     public DefaultPreVote(RequestVoteRequest requestPrototype,
                           BiConsumer<Long, String> termUpdateHandler,
                           ElectionStore electionStore,
-                          Iterable<RaftPeer> otherNodes) {
+                          Iterable<RaftPeer> otherNodes,
+                          Supplier<Integer> minActiveBackupsProvider) {
         this(requestPrototype,
              termUpdateHandler,
              electionStore,
              otherNodes,
-             new MajorityStrategy(() -> (int) (stream(otherNodes.spliterator(), false).count() + 1)));
+             new PrimaryAndVotingMajorityStrategy(otherNodes, minActiveBackupsProvider));
     }
 
     public DefaultPreVote(RequestVoteRequest requestPrototype,
@@ -68,8 +69,8 @@ public class DefaultPreVote implements Election {
     public Mono<Result> result() {
         return Mono.create(sink -> {
             logger.info("{}: Starting pre-vote from {} in term {}", groupId(), me(), currentTerm());
-            voteStrategy.isWon().thenAccept(isWon -> notifyElectionCompleted(isWon.won(), isWon.goAway(), sink));
-            voteStrategy.registerVoteReceived(me(), true, false);
+            voteStrategy.isWon().thenAccept(isWon -> notifyElectionCompleted(isWon.won(), sink));
+            voteStrategy.registerVoteReceived(me(), true);
             otherNodes.forEach(node -> requestVote(request(), node, sink));
         });
     }
@@ -85,16 +86,16 @@ public class DefaultPreVote implements Election {
             String message = format("%s received RequestVoteResponse with greater term (%s > %s) from %s",
                                     me(), response.getTerm(), currentTerm(), voter);
             updateCurrentTerm(response.getTerm(), message);
-            sink.success(result(false, response.getGoAway(), message));
+            sink.success(result(false, message));
             return;
         }
 
         //The candidate can receive a response with lower term if the voter is receiving regular heartbeat from a leader.
         //In this case, the voter recognizes any request of vote as disruptive, refuses the vote and does't update its term.
-        if (!response.getGoAway() && (response.getTerm() < currentTerm())) {
+        if (response.getTerm() < currentTerm()) {
             return;
         }
-        voteStrategy.registerVoteReceived(voter, response.getVoteGranted(), response.getGoAway());
+        voteStrategy.registerVoteReceived(voter, response.getVoteGranted());
     }
 
     private RequestVoteRequest request() {
@@ -121,24 +122,19 @@ public class DefaultPreVote implements Election {
         termUpdateHandler.accept(term, cause);
     }
 
-    private void notifyElectionCompleted(boolean result, boolean goAway, MonoSink<Result> sink) {
+    private void notifyElectionCompleted(boolean result, MonoSink<Result> sink) {
         String electionResult = result ? "won" : "lost";
         String msg = format("%s: Election for term %s is %s by %s (%s)",
                             groupId(), electionTerm(), electionResult, me(), voteStrategy);
-        sink.success(result(result, goAway, msg));
+        sink.success(result(result, msg));
     }
 
 
-    private Result result(boolean won, boolean goAway, String cause) {
+    private Result result(boolean won, String cause) {
         return new Result() {
             @Override
             public boolean won() {
                 return won;
-            }
-
-            @Override
-            public boolean goAway() {
-                return goAway;
             }
 
             @Override
