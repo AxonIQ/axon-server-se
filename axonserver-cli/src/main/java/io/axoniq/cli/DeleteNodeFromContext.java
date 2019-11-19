@@ -17,7 +17,9 @@ import java.io.IOException;
 import static io.axoniq.cli.CommandOptions.*;
 
 /**
+ * Handler for the delete-node-from-context command.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class DeleteNodeFromContext extends AxonIQCliCommand {
 
@@ -26,11 +28,11 @@ public class DeleteNodeFromContext extends AxonIQCliCommand {
         CommandLine commandLine = processCommandLine(args[0],
                                                      args,
                                                      CONTEXT,
-                                                     NODENAME,
+                                                     NODE_NAME,
                                                      PRESERVE_EVENT_STORE,
                                                      CommandOptions.TOKEN);
 
-        String url = createUrl(commandLine, "/v1/context", CONTEXT, NODENAME);
+        String url = createUrl(commandLine, "/v1/context", CONTEXT, NODE_NAME);
 
         if (commandLine.hasOption(PRESERVE_EVENT_STORE.getLongOpt())) {
             url += "?preserveEventStore=true";
