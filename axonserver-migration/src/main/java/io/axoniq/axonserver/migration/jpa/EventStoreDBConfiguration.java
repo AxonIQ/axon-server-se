@@ -11,10 +11,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.HashMap;
 import java.util.Map;
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
 /**
@@ -53,10 +56,16 @@ public class EventStoreDBConfiguration {
     }
 
 
+    @Bean(name = "eventStoreTransactionManager")
+    public PlatformTransactionManager barTransactionManager(
+            @Qualifier("eventStoreEntityManagerFactory") EntityManagerFactory barEntityManagerFactory) {
+        return new JpaTransactionManager(barEntityManagerFactory);
+    }
+
     @Bean
     @Primary
     @ConfigurationProperties("axoniq.datasource.eventstore")
-public DataSource eventStoreDataSource() {
+    public DataSource eventStoreDataSource() {
         return eventStoreDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
