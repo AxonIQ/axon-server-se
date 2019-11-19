@@ -77,8 +77,7 @@ public class LocalEventStorageEngineTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return new FakeEventStore(EventType.SNAPSHOT);
             }
-        }, transactionManagerFactory, new EventStoreExistChecker() {
-        }, new SimpleMeterRegistry(), 5, 1000);
+        }, new SimpleMeterRegistry(), transactionManagerFactory, c -> true, 5, 1000);
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
 
