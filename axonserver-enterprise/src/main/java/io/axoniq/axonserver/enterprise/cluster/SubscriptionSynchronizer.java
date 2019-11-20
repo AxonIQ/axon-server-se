@@ -27,7 +27,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * Ensures that subscriptions from this AxonServer node are known on all connected AxonHub nodes
+ * Ensures that subscriptions from this AxonServer node are known on all connected AxonServer nodes
  *
  * @author Marc Gathier
  */
