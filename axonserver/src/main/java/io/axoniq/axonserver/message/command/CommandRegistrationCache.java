@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
@@ -41,16 +40,16 @@ public class CommandRegistrationCache {
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
     private final ConcurrentMap<ClientIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
     private final ConcurrentMap<ClientIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, ConcurrentMap<String, RoutingSelector<String>>> routingSelectors = new ConcurrentHashMap<>();
+    private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
-    private final BiFunction<String, String, RoutingSelector<String>> selectorFactory;
+    private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
 
     @Autowired
     public CommandRegistrationCache() {
-        this.selectorFactory = (context, command) -> new LoadFactorBasedSelector<>(loadFactorSolver(context, command));
+        this.selectorFactory = command -> new LoadFactorBasedSelector<>(loadFactorSolver(command));
     }
 
-    public CommandRegistrationCache(BiFunction<String, String, RoutingSelector<String>> selectorFactory) {
+    public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory) {
         this.selectorFactory = selectorFactory;
     }
 
@@ -156,13 +155,15 @@ public class CommandRegistrationCache {
 
     @Nonnull
     private RoutingSelector<String> routingSelector(String context, String command) {
-        return routingSelectors.computeIfAbsent(context, c -> new ConcurrentHashMap<>())
-                               .computeIfAbsent(command, c -> selectorFactory.apply(context, command));
+        CommandTypeIdentifier commandIdentification = new CommandTypeIdentifier(context, command);
+        return routingSelectors.computeIfAbsent(commandIdentification,
+                                                c -> selectorFactory.apply(commandIdentification));
     }
 
-    private Function<String, Integer> loadFactorSolver(String context, String command) {
-        return client -> registrationsPerClient.getOrDefault(new ClientIdentification(context, client), emptyMap())
-                                               .getOrDefault(command, 0);
+    private Function<String, Integer> loadFactorSolver(CommandTypeIdentifier command) {
+        return client -> registrationsPerClient.getOrDefault(new ClientIdentification(command.context(), client),
+                                                             emptyMap())
+                                               .getOrDefault(command.name(), 0);
     }
 
     /**
