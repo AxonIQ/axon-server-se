@@ -73,7 +73,11 @@ public abstract class SegmentBasedLogEntryStore {
             ValidationResult thisResult = resultList.get(i);
             ValidationResult nextResult = resultList.get(i+1);
             if( thisResult.getLastToken() != nextResult.getSegment()) {
-                throw new LogException(ErrorCode.VALIDATION_FAILED, String.format("Validation exception: segment %d ending at %d", thisResult.getSegment(), thisResult.getLastToken()));
+                throw new LogException(ErrorCode.VALIDATION_FAILED,
+                                       String.format("%s: Validation exception: segment %d ending at %d",
+                                                     context,
+                                                     thisResult.getSegment(),
+                                                     thisResult.getLastToken()));
             }
         }
     }
@@ -128,7 +132,7 @@ public abstract class SegmentBasedLogEntryStore {
               .forEach(segments::add);
 
         long firstValidIndex = segments.stream().filter(this::indexValid).findFirst().orElse(-1L);
-        logger.debug("First valid index: {}", firstValidIndex);
+        logger.debug("{}: First valid index: {}", context, firstValidIndex);
         return segments;
     }
 

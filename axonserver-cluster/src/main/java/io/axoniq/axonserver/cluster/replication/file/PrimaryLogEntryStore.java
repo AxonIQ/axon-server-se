@@ -54,7 +54,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     @Override
     public void initSegments(long lastInitialized) {
-        logger.info("Initializing {} segment of '{}' context.", lastInitialized, context);
+        logger.info("{}: Initializing log", context);
         File storageDir = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
         logEntryTransformer = logEntryTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
@@ -150,7 +150,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     private CompletableFuture<Long> store(long term, int type, PreparedTransaction preparedTransaction) {
-        logger.trace("Storing in {} term log entry of {} type for '{}' context.", term, type, context);
+        logger.trace("{}: Storing in {} term log entry of {} type", context, term, type);
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
             WritePosition writePosition = preparedTransaction.getClaim();
@@ -219,24 +219,24 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     @Override
-    public void rollback(long token) {
-        logger.info("Rolling back to the {} token of '{}' context.", token, context);
-        if (token >= getLastToken()) {
+    public void rollback(long index) {
+        logger.info("{}: Rolling back to index {}", context, index);
+        if (index >= getLastToken()) {
             return;
         }
         synchronizer.shutdown(false);
 
         for (long segment : getSegments()) {
-            if (segment > token) {
+            if (segment > index) {
                 removeSegment(segment);
             }
         }
 
         if (positionsPerSegmentMap.isEmpty() && next != null) {
-            next.rollback(token);
+            next.rollback(index);
         }
 
-        initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)), true);
+        initLatestSegment(Long.MAX_VALUE, index + 1, new File(storageProperties.getStorage(context)), true);
     }
 
     @Override
@@ -245,7 +245,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     protected void removeSegment(long segment) {
-        logger.info("Removing {} segment of '{}' context.", segment, context);
+        logger.info("{}: Removing {} segment", context, segment);
         positionsPerSegmentMap.remove(segment);
         ByteBufferEntrySource eventSource = readBuffers.remove(segment);
         if (eventSource != null) eventSource.clean(0);
@@ -254,16 +254,19 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     private void completeSegment(WritePosition writePosition) {
         try {
-            logger.info("Completing segment {} of '{}' context.", writePosition.segment, context);
+            logger.debug("{}: Completing segment {}", context, writePosition.segment);
             indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment), false);
         } catch (RuntimeException re) {
-            logger.warn("Failed to create index", re);
+            logger.warn("{}: Failed to create index", context, re);
         }
         if (next != null) {
             next.handover(writePosition.segment, () -> {
                 positionsPerSegmentMap.remove(writePosition.segment);
                 ByteBufferEntrySource source = readBuffers.remove(writePosition.segment);
-                logger.debug("Handed over {}, remaining segments: {}", writePosition.segment, positionsPerSegmentMap.keySet());
+                logger.debug("{}: Handed over {}, remaining segments: {}",
+                             context,
+                             writePosition.segment,
+                             positionsPerSegmentMap.keySet());
                 source.clean(storageProperties.getPrimaryCleanupDelay());
             });
         }
@@ -286,8 +289,11 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     private WritePosition claim(int eventBlockSize) {
         int totalSize = HEADER_BYTES + eventBlockSize + TX_CHECKSUM_BYTES;
-        if (totalSize > storageProperties.getSegmentSize() - 9)
-            throw new LogException(ErrorCode.PAYLOAD_TOO_LARGE, "Size of transaction too large, max size = " + (storageProperties.getSegmentSize() - 9));
+        if (totalSize > storageProperties.getSegmentSize() - 9) {
+            throw new LogException(ErrorCode.PAYLOAD_TOO_LARGE,
+                                   context + ": Size of transaction too large, max size = " + (
+                                           storageProperties.getSegmentSize() - 9));
+        }
         WritePosition writePosition;
         do {
             writePosition = writePositionRef.getAndAccumulate(
@@ -314,24 +320,24 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         boolean exists = file.exists();
         if (exists) {
             size = file.length();
-            logger.info("Segment file {} of '{}' context already exists with size {}. Reopening.",
-                    segment,
-                    context,
-                    size);
+            logger.debug("{}: File for segment {} already exists with size {}. Reopening.",
+                         context,
+                         segment,
+                         size);
         } else {
-            logger.info("Segment file {} of '{}' context does not exist. Creating a new one with size of {}.",
-                    segment,
-                    context,
-                    size);
+            logger.info("{}: File for segment {} does not exist. Creating new file with size of {}.",
+                        context,
+                        segment,
+                        size);
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             int bufferLimit = buffer.limit();
-            logger.info("Opened buffer for segment file {} of '{}' context with limit {}.",
-                    segment,
-                    context,
-                    bufferLimit);
+            logger.debug("{}: Opened buffer for segment file {} with limit {}.",
+                         context,
+                         segment,
+                         bufferLimit);
             checkBuffer(segment, size, bufferLimit);
             if (!exists) {
                 buffer.put(VERSION);
@@ -345,21 +351,23 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {
-            throw new LogException(ErrorCode.DATAFILE_READ_ERROR, "Failed to open segment: " + segment, ioException);
+            throw new LogException(ErrorCode.DATAFILE_READ_ERROR,
+                                   context + ": Failed to open segment: " + segment,
+                                   ioException);
         }
     }
 
     private void checkBuffer(long segment, long size, int bufferLimit) {
         if (bufferLimit != size) {
             logger.warn(
-                    "Buffer limit of {} and segment size of {} do not match for '{}' context. Did you change segment size in storage properties?",
+                    "{}: Buffer limit of {} and segment size of {} do not match. Did you change segment size in storage properties?",
+                    context,
                     bufferLimit,
-                    size,
-                    context);
+                    size);
         }
         if (bufferLimit == 0) {
             String message =
-                    "Segment file " + segment + " of '" + context + "' context has 0 buffer limit and size of " + size
+                    context + ": Segment file " + segment + " has 0 buffer limit and size of " + size
                             + ". It looks like it's corrupted. Aborting.";
             logger.error(message);
             throw new LogException(ErrorCode.DATAFILE_READ_ERROR, message);
@@ -371,7 +379,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     public void clear(long lastIndex) {
-        logger.info("Clearing log entries, setting last index to {} for '{}' context.", lastIndex, context);
+        logger.info("{}: Clearing log entries, setting last index to {}", context, lastIndex);
         if (next != null) {
             next.getSegments().forEach(segment -> next.removeSegment(segment));
         }
@@ -383,7 +391,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
 
     public void delete() {
-        logger.info("Deleting '{}' context.", context);
+        logger.info("{}: Deleting context.", context);
         clear(0);
         File storageDir = new File(storageProperties.getStorage(context));
         storageDir.delete();
