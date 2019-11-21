@@ -30,8 +30,11 @@ public class ScheduledTaskExecutorImpl implements ScheduledTaskExecutor {
             ScheduledTask job = (ScheduledTask) applicationContext.getBean(Class.forName(task.getTaskExecutor()));
             Object payload = serializer.deserialize(task.getPayload());
             return job.execute(payload);
-        } catch (ClassNotFoundException | BeansException ex) {
+        } catch (ClassNotFoundException ex) {
             throw new RuntimeException("Could not find handler for task as a Spring bean: " + task.getTaskExecutor(),
+                                       ex);
+        } catch (BeansException ex) {
+            throw new RuntimeException("Could not create handler for task as a Spring bean: " + task.getTaskExecutor(),
                                        ex);
         }
     }

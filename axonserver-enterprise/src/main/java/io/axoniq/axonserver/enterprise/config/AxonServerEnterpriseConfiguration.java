@@ -8,7 +8,6 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterMetricTarget;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
-import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupRepositoryManager;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
@@ -21,7 +20,6 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.Pro
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
-import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -33,7 +31,6 @@ import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
-import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -49,7 +46,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class AxonServerEnterpriseConfiguration {
 
     @Bean
-    @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
             MessagingPlatformConfiguration messagingPlatformConfiguration,
             ClusterController clusterController, RaftLeaderProvider raftLeaderProvider,
@@ -62,16 +58,8 @@ public class AxonServerEnterpriseConfiguration {
     }
 
     @Bean
-    @Conditional(ClusteringAllowed.class)
     public MetricCollector metricCollector() {
         return new ClusterMetricTarget();
-    }
-
-    @Bean
-    @Conditional(ClusteringAllowed.class)
-    public Topology topology(ClusterController clusterController, GrpcRaftController grpcRaftController,
-                             NodeSelector nodeSelector) {
-        return new ClusterTopology(clusterController, grpcRaftController, nodeSelector);
     }
 
     @Bean
