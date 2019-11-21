@@ -3,15 +3,15 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
-import io.axoniq.axonserver.config.FeatureChecker;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,6 +47,7 @@ public class MessagingClusterServerTest {
     public void setUp() {
         configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         configuration.setSsl(new SslConfiguration());
+        configuration.setInternalPort(18224);
         limits = new FeatureChecker() {
             @Override
             public boolean isEnterprise() {
