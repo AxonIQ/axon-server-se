@@ -47,6 +47,7 @@
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <opencensus.version>0.23.0</opencensus.version>
         <prometheus.version>0.6.0</prometheus.version>
+        <h2.version>1.4.197</h2.version>
     </properties>
 
     <dependencyManagement>
@@ -178,7 +179,11 @@
                 <artifactId>grpc-netty</artifactId>
                 <version>${grpc.version}</version>
             </dependency>
-
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
