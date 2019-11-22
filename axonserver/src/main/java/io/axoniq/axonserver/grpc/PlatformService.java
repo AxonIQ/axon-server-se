@@ -170,6 +170,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
             @Override
             public void onError(Throwable throwable) {
+                logger.warn("{}: error on connection - {}", sender(), throwable.getMessage());
                 deregisterClient(clientComponent);
             }
 
