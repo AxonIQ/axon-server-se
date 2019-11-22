@@ -3,6 +3,16 @@ This is the Axon Server Standard Edition, version 4.2
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.2.4
+-------------------------------
+
+* Improved support for running management server on separate port
+
+Release Notes for version 4.2.3
+-------------------------------
+
+* Fix for pending queries with lost connection
+
 Release Notes for version 4.2.2
 -------------------------------
 
