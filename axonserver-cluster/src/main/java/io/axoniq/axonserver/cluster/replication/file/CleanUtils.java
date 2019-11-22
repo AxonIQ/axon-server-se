@@ -25,9 +25,8 @@ public class CleanUtils {
     private static final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor(new AxonThreadFactory("fileCleaner"));
     private static final boolean java8 = System.getProperty("java.version").startsWith("1.8");
 
-    private static boolean cleanOldsJDK(final ByteBuffer buffer) {
-        return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
-            Boolean success = Boolean.FALSE;
+    private static void cleanOldsJDK(final ByteBuffer buffer) {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
             try {
                 Method getCleanerMethod = buffer.getClass().getMethod("cleaner", (Class[]) null);
                 if (!getCleanerMethod.isAccessible()) {
@@ -36,17 +35,15 @@ public class CleanUtils {
                 Object cleaner = getCleanerMethod.invoke(buffer, (Object[]) null);
                 Method clean = cleaner.getClass().getMethod("clean", (Class[]) null);
                 clean.invoke(cleaner, (Object[]) null);
-                success = Boolean.TRUE;
             } catch (Exception ex) {
                 logger.warn("Clean failed", ex);
             }
-            return success;
+            return null;
         });
     }
 
-    private static boolean cleanJavaWithModules(final java.nio.ByteBuffer buffer) {
-        return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
-            Boolean success = Boolean.FALSE;
+    private static void cleanJavaWithModules(final java.nio.ByteBuffer buffer) {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
             try {
                 final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
                 final Field theUnsafeField = unsafeClass.getDeclaredField("theUnsafe");
@@ -54,11 +51,10 @@ public class CleanUtils {
                 final Object theUnsafe = theUnsafeField.get(null);
                 final Method invokeCleanerMethod = unsafeClass.getMethod("invokeCleaner", ByteBuffer.class);
                 invokeCleanerMethod.invoke(theUnsafe, buffer);
-                success = Boolean.TRUE;
             } catch (Exception ex) {
                 logger.warn("Clean failed", ex);
             }
-            return success;
+            return null;
         });
     }
 
