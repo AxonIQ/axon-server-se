@@ -8,7 +8,7 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
-import org.springframework.stereotype.Controller;
+import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -25,7 +25,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 /**
  * @author Marc Gathier
  */
-@Controller
+@Component
 public class ClusterTopology implements Topology {
     private final ClusterController clusterController;
     private final GrpcRaftController raftController;

@@ -78,7 +78,6 @@ public class AxonServerEnterpriseConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
-    @Conditional(ClusteringAllowed.class)
     public StorageTransactionManagerFactory storageTransactionManagerFactory(GrpcRaftController raftController, MessagingPlatformConfiguration messagingPlatformConfiguration) {
         return new ClusterTransactionManagerFactory(raftController, messagingPlatformConfiguration);
     }
