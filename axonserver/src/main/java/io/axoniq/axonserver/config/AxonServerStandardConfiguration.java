@@ -40,6 +40,8 @@ import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,6 +197,17 @@ public class AxonServerStandardConfiguration {
         return new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                             .setAck(ack)
                                                                             .build());
+    }
+
+    /**
+     * Creates a default version information provider bean.
+     *
+     * @return a default version information provider
+     */
+    @Bean
+    @ConditionalOnMissingBean(VersionInfoProvider.class)
+    public VersionInfoProvider versionInfoProvider() {
+        return new DefaultVersionInfoProvider();
     }
 
     @Bean
