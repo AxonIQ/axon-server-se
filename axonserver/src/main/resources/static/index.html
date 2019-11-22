@@ -108,8 +108,8 @@
                         data: {
                             version: "Version"
                         }, mounted() {
-                    axios.get("actuator/info").then(response => {
-                        this.version = response.data.app.name + " " + response.data.app.version;
+                    axios.get("v1/public/version").then(response => {
+                        this.version = response.data.productName + " " + response.data.version;
                     });
                 }
                     });
