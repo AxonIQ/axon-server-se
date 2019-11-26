@@ -101,10 +101,11 @@
                 <configuration>
                     <skip>false</skip>
                     <container>
-                        <mainClass>io.axoniq.sample.MyApplication</mainClass>
+                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                     </container>
                     <to>
                         <image>sample-command-processor-axonserver-client</image>
+                        <tags>${project.parent.version}</tags>
                     </to>
                 </configuration>
             </plugin>

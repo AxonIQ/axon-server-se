@@ -198,8 +198,15 @@
                 <artifactId>jib-maven-plugin</artifactId>
                 <configuration>
                     <skip>false</skip>
+                    <container>
+                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                    </container>
+                    <from>
+                        <image>gcr.io/distroless/java:11</image>
+                    </from>
                     <to>
-                        <image>axonserver-enterprise</image>
+                        <image>axoniq/axon-server-enterprise</image>
+                        <tags>${project.parent.version}</tags>
                     </to>
                 </configuration>
             </plugin>
