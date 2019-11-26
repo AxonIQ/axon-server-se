@@ -415,7 +415,23 @@
                     </execution>
                 </executions>
             </plugin>
-
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>1.8.0</version>
+                <configuration>
+                    <container>
+                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                    </container>
+                    <from>
+                        <image>gcr.io/distroless/java:11</image>
+                    </from>
+                    <to>
+                        <image>axoniq/axon-server</image>
+                        <tags>${project.parent.version}</tags>
+                    </to>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
