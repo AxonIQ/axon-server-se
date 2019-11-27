@@ -1,36 +1,46 @@
 package io.axoniq.axonserver.cluster.replication;
 
-import com.google.common.collect.Iterables;
-import io.axoniq.axonserver.cluster.ReplicatorPeer;
+import io.axoniq.axonserver.cluster.ReplicatorPeerStatus;
+import io.axoniq.axonserver.cluster.rules.PrimaryMajorityAndActiveBackupsRule;
 
+import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
+ * Checks if a commit index as returned by a peer causes transactions to be completed, based on the status of the other members.
+ * Transaction is completed when majority of the primary nodes have committed the index and if there are
+ * active backup nodes, at least n active backup nodes have committed the index.
+ *
  * @author Marc Gathier
+ * @since 4.1
  */
 public class MajorityMatchStrategy implements MatchStrategy {
 
-    private final Supplier<Long> lastLogIndexSupplier;
-    private final Iterable<ReplicatorPeer> replicatorPeers;
+    private final Predicate<Long> primaryVotingAndActiveBackupsRule;
 
-    public MajorityMatchStrategy(Supplier<Long> lastLogIndexSupplier, Iterable<ReplicatorPeer> replicatorPeers) {
-        this.lastLogIndexSupplier = lastLogIndexSupplier;
-        this.replicatorPeers = replicatorPeers;
+    /**
+     * Constructor for the strategy
+     *
+     * @param lastLogIndexSupplier provides the last log index on the current node
+     * @param replicatorPeers      other peers in the group
+     */
+    public MajorityMatchStrategy(Supplier<Long> lastLogIndexSupplier, Iterable<ReplicatorPeerStatus> replicatorPeers,
+                                 Supplier<Integer> minActiveBackupsProvider) {
+        this.primaryVotingAndActiveBackupsRule = new PrimaryMajorityAndActiveBackupsRule<>(replicatorPeers,
+                                                                                           ReplicatorPeerStatus::role,
+                                                                                           (peer, nextCommitCandidate) ->
+                                                                                                   peer.matchIndex()
+                                                                                                           >= nextCommitCandidate,
+                                                                                           (nextCommitCandidate) ->
+                                                                                                   nextCommitCandidate
+                                                                                                           <= lastLogIndexSupplier
+                                                                                                           .get(),
+                                                                                           minActiveBackupsProvider
+        );
     }
 
     @Override
     public boolean match(long nextCommitCandidate) {
-
-        int majority = (int) Math.ceil((size(replicatorPeers) + 1.1) / 2f);
-        Stream<Long> matchIndexes = Stream.concat(Stream.of(lastLogIndexSupplier.get()),
-                                                  StreamSupport.stream(replicatorPeers.spliterator(), false)
-                                                                   .map(ReplicatorPeer::matchIndex));
-        return matchIndexes.filter(p -> p >= nextCommitCandidate).count() >= majority;
-    }
-
-    private int size(Iterable<?> replicatorPeers) {
-        return Iterables.size(replicatorPeers);
+        return primaryVotingAndActiveBackupsRule.test(nextCommitCandidate);
     }
 }

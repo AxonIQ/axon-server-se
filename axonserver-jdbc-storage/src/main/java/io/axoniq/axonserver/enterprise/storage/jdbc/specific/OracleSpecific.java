@@ -57,6 +57,15 @@ public class OracleSpecific implements VendorSpecific {
         } catch (SQLException sql) {
             System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
         }
+    }
 
+    @Override
+    public boolean tableExists(String schema, String table, Connection connection) throws SQLException {
+        return true;
+    }
+
+    @Override
+    public boolean tableExists(String tableName, Connection connection) throws SQLException {
+        return true;
     }
 }

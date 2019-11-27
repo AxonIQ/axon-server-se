@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
@@ -21,8 +22,9 @@ public interface RaftConfigService {
      * Adds a node to a context. The node information should already be present.
      * @param name the name of the context
      * @param node the name of the node
+     * @param role the role of the node in the context
      */
-    void addNodeToContext(String name, String node);
+    void addNodeToContext(String name, String node, Role role);
 
     /**
      * Deletes a context from all nodes where it is present.

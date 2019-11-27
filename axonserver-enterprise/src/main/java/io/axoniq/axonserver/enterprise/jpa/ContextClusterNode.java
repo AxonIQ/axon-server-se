@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.enterprise.jpa;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
+import io.axoniq.axonserver.grpc.cluster.Role;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -32,14 +34,17 @@ public class ContextClusterNode implements Serializable {
 
     private String clusterNodeLabel;
 
+    private Role role;
+
+    private boolean pendingDelete;
+
     public ContextClusterNode() {
     }
 
-    public ContextClusterNode(Context context, ClusterNode clusterNode, String clusterNodeLabel) {
+    public ContextClusterNode(Context context, ClusterNode clusterNode, String clusterNodeLabel, Role role) {
         this.clusterNodeLabel = clusterNodeLabel;
         this.key = new Key(context, clusterNode);
-        context.addClusterNode(this);
-        clusterNode.addContext(this);
+        this.role = role;
     }
 
     public Key getKey() {
@@ -64,6 +69,23 @@ public class ContextClusterNode implements Serializable {
         return key.clusterNode;
     }
 
+
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
+    public Role getRole() {
+        return RoleUtils.getOrDefault(role);
+    }
+
+    public boolean isPendingDelete() {
+        return pendingDelete;
+    }
+
+    public void setPendingDelete(boolean pendingDelete) {
+        this.pendingDelete = pendingDelete;
+    }
 
     @Override
     public boolean equals(Object o) {

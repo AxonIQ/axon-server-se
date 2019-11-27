@@ -79,13 +79,12 @@ public class DefaultResponseFactory implements RaftResponseFactory {
     }
 
     @Override
-    public RequestVoteResponse voteResponse(String requestId, boolean voteGranted, boolean goAway) {
+    public RequestVoteResponse voteResponse(String requestId, boolean voteGranted) {
         return RequestVoteResponse.newBuilder()
                                   .setResponseHeader(responseHeader(requestId))
                                   .setGroupId(raftGroup.raftConfiguration().groupId())
                                   .setVoteGranted(voteGranted)
                                   .setTerm(raftGroup.localElectionStore().currentTerm())
-                                  .setGoAway(goAway)
                                   .build();
     }
 

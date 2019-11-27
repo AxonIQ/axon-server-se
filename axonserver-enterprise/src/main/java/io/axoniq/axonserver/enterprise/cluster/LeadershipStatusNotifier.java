@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.State;
 import org.slf4j.Logger;
@@ -35,7 +34,7 @@ public class LeadershipStatusNotifier {
 
     private static final Logger logger = LoggerFactory.getLogger(LeadershipStatusNotifier.class);
 
-    private final ContextController contextController;
+    private final ClusterController clusterController;
     private final RaftGroupServiceFactory raftServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ApplicationEventPublisher eventPublisher;
@@ -43,16 +42,16 @@ public class LeadershipStatusNotifier {
     /**
      * Creates an instance of Leadership Status Notifier.
      *
-     * @param contextController  used for getting information about contexts
+     * @param clusterController  used for getting information about the cluster
      * @param raftServiceFactory used for instantiating {@link RaftGroupService}
      * @param raftLeaderProvider provides the information about the last known leader for given context
      * @param eventPublisher     publishes leadership confirmation events
      */
-    public LeadershipStatusNotifier(ContextController contextController,
+    public LeadershipStatusNotifier(ClusterController clusterController,
                                     RaftGroupServiceFactory raftServiceFactory,
                                     RaftLeaderProvider raftLeaderProvider,
                                     ApplicationEventPublisher eventPublisher) {
-        this.contextController = contextController;
+        this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.raftLeaderProvider = raftLeaderProvider;
         this.eventPublisher = eventPublisher;
@@ -72,7 +71,7 @@ public class LeadershipStatusNotifier {
 
     private void checkLeadershipChanges(
             Map<String, Set<String>> leadersPerContext) {
-        Collection<String> myContexts = contextController.getMyContextNames();
+        Collection<String> myContexts = clusterController.getMe().getContextNames();
         leadersPerContext.forEach((context, leaders) -> {
             // Ignore information for contexts that I am a member of as leader information for these contexts
             // is updated through the raft groups
@@ -103,7 +102,7 @@ public class LeadershipStatusNotifier {
 
     private void updateLeadership(Map<String, Set<String>> leadersPerContext) {
         List<CompletableFuture<Void>> futures = new ArrayList<>();
-        contextController.getRemoteNodes()
+        clusterController.remoteNodeNames()
                          .forEach(node -> futures.add(raftServiceFactory.getRaftGroupServiceForNode(node)
                                                             .getStatus(context -> updateLeader(context, leadersPerContext))));
 

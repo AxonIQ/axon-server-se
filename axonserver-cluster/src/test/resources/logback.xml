@@ -13,6 +13,10 @@
             additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
+    <logger name="io.axoniq.axonserver.cluster" level="trace"
+            additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
     <logger name="io.grpc.netty" level="error"
             additivity="false">
         <appender-ref ref="STDOUT" />

@@ -182,13 +182,13 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
                 .map(Object::toString)
                 .collect(Collectors.joining(","));
         if (!segmentsToBeDeleted.isEmpty()) {
-            logger.info("Deleting segments {}.", formattedSegmentsToBeDeleted);
+            logger.info("{}: Deleting segments {}.", context, formattedSegmentsToBeDeleted);
         } else {
-            logger.debug("Deleting segments {}.", formattedSegmentsToBeDeleted);
+            logger.debug("{}: Deleting segments {}.", context, formattedSegmentsToBeDeleted);
         }
 
         segmentsToBeDeleted.forEach(this::removeSegment);
-        logger.debug("Segments deleted {}.", formattedSegmentsToBeDeleted);
+        logger.debug("{}: Segments deleted {}.", context, formattedSegmentsToBeDeleted);
     }
 
     private boolean olderThan(Long segment, long filter) {
@@ -233,8 +233,8 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
             return eventSource;
         } catch (IOException ioException) {
             throw new LogException(ErrorCode.DATAFILE_READ_ERROR,
-                    "Error while opening segment: " + segment,
-                    ioException);
+                                   context + ": Error while opening segment: " + segment,
+                                   ioException);
         }
     }
 

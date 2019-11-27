@@ -26,14 +26,20 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.AxonServerSnapshotManager;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.SnapshotDataStore;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
+import io.axoniq.axonserver.enterprise.logconsumer.EventLogEntryConsumer;
+import io.axoniq.axonserver.enterprise.logconsumer.SnapshotLogEntryConsumer;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
-
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -55,7 +61,9 @@ public class GrpcRaftGroup implements RaftGroup {
                          LocalEventStore localEventStore,
                          GrpcRaftClientFactory clientFactory,
                          MessagingPlatformConfiguration messagingPlatformConfiguration,
-                         NewConfigurationConsumer newConfigurationConsumer) {
+                         NewConfigurationConsumer newConfigurationConsumer,
+                         PlatformTransactionManager platformTransactionManager
+    ) {
         this.clientFactory = clientFactory;
         context = groupId;
         this.localEventStore = localEventStore;
@@ -89,7 +97,12 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public void update(List<Node> nodes) {
-                membersStore.set(nodes);
+                new TransactionTemplate(platformTransactionManager).execute(new TransactionCallbackWithoutResult() {
+                    @Override
+                    protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
+                        membersStore.set(nodes);
+                    }
+                });
             }
 
             @Override
@@ -161,6 +174,17 @@ public class GrpcRaftGroup implements RaftGroup {
             public int maxMessageSize() {
                 return messagingPlatformConfiguration.getMaxMessageSize();
             }
+
+            @Override
+            public boolean isSerializedEventData(String type) {
+                return EventLogEntryConsumer.LOG_ENTRY_TYPE.equals(type)
+                        || SnapshotLogEntryConsumer.LOG_ENTRY_TYPE.equals(type);
+            }
+
+            @Override
+            public Integer minActiveBackups() {
+                return storageOptions.getMinActiveBackups();
+            }
         };
 
         List<SnapshotDataStore> dataProviders = snapshotDataProvidersFactory.apply(groupId);
@@ -208,13 +232,25 @@ public class GrpcRaftGroup implements RaftGroup {
 
     @Override
     public long lastAppliedEventSequence() {
-        if( isAdmin(context)) return 0L;
-        return localEventStore.getLastToken(context);
+        try {
+            return localEventStore.getLastToken(context);
+        } catch (MessagingPlatformException mpe) {
+            if (ErrorCode.NO_EVENTSTORE.equals(mpe.getErrorCode())) {
+                return -1;
+            }
+            throw mpe;
+        }
     }
 
     @Override
     public long lastAppliedSnapshotSequence() {
-        if( isAdmin(context)) return 0L;
-        return localEventStore.getLastSnapshot(context);
+        try {
+            return localEventStore.getLastSnapshot(context);
+        } catch (MessagingPlatformException mpe) {
+            if (ErrorCode.NO_EVENTSTORE.equals(mpe.getErrorCode())) {
+                return -1;
+            }
+            throw mpe;
+        }
     }
 }

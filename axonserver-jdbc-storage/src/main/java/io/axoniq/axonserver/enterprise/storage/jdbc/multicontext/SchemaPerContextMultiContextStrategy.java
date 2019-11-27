@@ -35,6 +35,11 @@ public class SchemaPerContextMultiContextStrategy implements MultiContextStrateg
         vendorSpecific.createTableIfNotExists(schema(eventTypeContext.getContext()), table(eventTypeContext.getEventType()), connection);
     }
 
+    @Override
+    public boolean exists(String context, Connection connection) throws SQLException {
+        return vendorSpecific.tableExists(schema(context), table(EventType.EVENT), connection);
+    }
+
     @NotNull
     public String schema(String context) {
         return ("axon_" + context);

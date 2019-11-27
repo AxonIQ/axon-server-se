@@ -2,9 +2,11 @@ package io.axoniq.axonserver.enterprise.grpc;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
+import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
@@ -49,7 +51,9 @@ public class ClusterServiceTest {
 //        Mockito.when(clusterController.nodes()).then((Answer<Stream<? extends AxonServerNode>>) invocationOnMock -> nodes.stream().skip(1));
         configuration = new MessagingPlatformConfiguration(null);
 
-        testSubject = new PlatformService(clusterController, () -> Topology.DEFAULT_CONTEXT, eventPublisher);
+        testSubject = new PlatformService(clusterController, () -> Topology.DEFAULT_CONTEXT, eventPublisher,
+                                          new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
+                                                  .newBuilder().setAck(ack).build()));
     }
 
     @Test

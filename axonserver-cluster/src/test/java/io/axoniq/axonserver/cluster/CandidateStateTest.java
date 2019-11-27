@@ -102,7 +102,6 @@ public class CandidateStateTest {
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(1).build();
         RequestVoteResponse response = candidateState.requestVote(request);
         assertFalse(response.getVoteGranted());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -126,7 +125,6 @@ public class CandidateStateTest {
         RequestVoteRequest request = RequestVoteRequest.newBuilder().setTerm(0).build();
         RequestVoteResponse response = candidateState.requestVote(request);
         assertFalse(response.getVoteGranted());
-        assertFalse(response.getGoAway());
     }
 
     @Test

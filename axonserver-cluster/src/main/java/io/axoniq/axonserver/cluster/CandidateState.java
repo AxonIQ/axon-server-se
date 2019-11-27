@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.Election.Result;
+import io.axoniq.axonserver.cluster.exception.ConcurrentMembershipStateModificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +46,10 @@ public class CandidateState extends VotingState {
 
         long timeout = now() + maxElectionTimeout();
         newElection(disruptAllowed).result().subscribe(result -> onElectionResult(result, timeout),
-                                         error -> logger.warn("{} in term {}: Failed to run election. {}",
-                                                              groupId(),
-                                                              currentTerm(),
-                                                              error));
+                                                       error -> logger.warn("{} in term {}: Failed to run election. {}",
+                                                                            groupId(),
+                                                                            currentTerm(),
+                                                                            error));
         resetElectionTimeout();
     }
 
@@ -64,12 +65,16 @@ public class CandidateState extends VotingState {
             logger.warn("{} in term {}: Failed to run election. Election took too long", groupId(), currentTerm());
             return;
         }
-        if (result.won()) {
-            changeStateTo(stateFactory().leaderState(), result.cause());
-        } else if (result.goAway()) {
-            changeStateTo(stateFactory().removedState(), result.cause());
-        } else {
-            changeStateTo(stateFactory().followerState(), result.cause());
+        try {
+            if (result.won()) {
+                changeStateTo(stateFactory().leaderState(), result.cause());
+            } else {
+                changeStateTo(stateFactory().followerState(), result.cause());
+            }
+        } catch (ConcurrentMembershipStateModificationException ex) {
+            logger.info("{} in term {}: Failed to process election result, election already completed.",
+                        groupId(),
+                        currentTerm());
         }
     }
 

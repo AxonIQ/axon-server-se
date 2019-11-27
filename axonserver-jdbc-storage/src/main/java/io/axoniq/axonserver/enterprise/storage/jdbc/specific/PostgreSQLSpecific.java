@@ -29,17 +29,9 @@ public class PostgreSQLSpecific implements VendorSpecific {
 
     @Override
     public void createTableIfNotExists(String schema, String table, Connection connection) throws SQLException {
-        try (ResultSet resultSet = connection.getMetaData().getTables(null, schema == null ? null : schema.toLowerCase(),
-                                                                      table == null ? null : table.toLowerCase(), new String[] {"TABLE"})) {
-            while (resultSet.next()) {
-                System.out.println(resultSet.getString(1));
-                System.out.println(resultSet.getString(2));
-                System.out.println(resultSet.getString(3));
-                System.out.println(resultSet.getString(4));
-                if( table.equalsIgnoreCase(resultSet.getString(3))) return;
-            }
+        if (tableExists(schema, table, connection)) {
+            return;
         }
-
 
         String createTable = String.format(
                 "create table %s ("
@@ -100,5 +92,29 @@ public class PostgreSQLSpecific implements VendorSpecific {
         } catch (SQLException sql) {
             System.out.println(sql.getErrorCode() + " - " + sql.getMessage());
         }
+    }
+
+    @Override
+    public boolean tableExists(String schema, String table, Connection connection) throws SQLException {
+        try (ResultSet resultSet = connection.getMetaData().getTables(null,
+                                                                      schema == null ? null : schema.toLowerCase(),
+                                                                      table == null ? null : table.toLowerCase(),
+                                                                      new String[]{"TABLE"})) {
+            while (resultSet.next()) {
+                System.out.println(resultSet.getString(1));
+                System.out.println(resultSet.getString(2));
+                System.out.println(resultSet.getString(3));
+                System.out.println(resultSet.getString(4));
+                if (table.equalsIgnoreCase(resultSet.getString(3))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean tableExists(String tableName, Connection connection) throws SQLException {
+        return tableExists(defaultSchema, tableName, connection);
     }
 }

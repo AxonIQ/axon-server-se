@@ -27,4 +27,15 @@ public interface MultiContextStrategy {
      * @throws SQLException when not able to create/check the database objects
      */
     void init(EventTypeContext eventTypeContext, Connection connection) throws SQLException;
+
+    /**
+     * Checks if the specified context exists.
+     *
+     * @param context    the name of the context
+     * @param connection the database connection to use
+     * @return true if events table exists
+     *
+     * @throws SQLException
+     */
+    boolean exists(String context, Connection connection) throws SQLException;
 }

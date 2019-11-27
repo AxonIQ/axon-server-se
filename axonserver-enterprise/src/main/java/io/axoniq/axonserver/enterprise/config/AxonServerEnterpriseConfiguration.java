@@ -20,7 +20,6 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.Pro
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
-import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -32,7 +31,6 @@ import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
-import io.axoniq.axonserver.topology.Topology;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -48,10 +46,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class AxonServerEnterpriseConfiguration {
 
     @Bean
-    @Conditional(ClusteringAllowed.class)
     public EventStoreManager eventStoreManager(
             MessagingPlatformConfiguration messagingPlatformConfiguration,
-            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider, RaftGroupRepositoryManager raftGroupRepositoryManager,
+            ClusterController clusterController, RaftLeaderProvider raftLeaderProvider,
+            RaftGroupRepositoryManager raftGroupRepositoryManager,
             LifecycleController lifecycleController, LocalEventStore localEventStore,
             ChannelProvider channelProvider) {
         return new EventStoreManager(messagingPlatformConfiguration, clusterController, lifecycleController, raftLeaderProvider, raftGroupRepositoryManager,
@@ -60,15 +58,8 @@ public class AxonServerEnterpriseConfiguration {
     }
 
     @Bean
-    @Conditional(ClusteringAllowed.class)
     public MetricCollector metricCollector() {
         return new ClusterMetricTarget();
-    }
-
-    @Bean
-    @Conditional(ClusteringAllowed.class)
-    public Topology topology(ClusterController clusterController, GrpcRaftController grpcRaftController) {
-        return new ClusterTopology(clusterController, grpcRaftController);
     }
 
     @Bean
@@ -80,14 +71,13 @@ public class AxonServerEnterpriseConfiguration {
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
     @Conditional(MemoryMappedStorage.class)
-    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                               StorageTransactionManagerFactory storageTransactionManagerFactory) {
-        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
+    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                               EventTransformerFactory eventTransformerFactory) {
+        return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory);
     }
 
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
-    @Conditional(ClusteringAllowed.class)
     public StorageTransactionManagerFactory storageTransactionManagerFactory(GrpcRaftController raftController, MessagingPlatformConfiguration messagingPlatformConfiguration) {
         return new ClusterTransactionManagerFactory(raftController, messagingPlatformConfiguration);
     }

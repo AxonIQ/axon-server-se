@@ -1,13 +1,17 @@
 package io.axoniq.axonserver.enterprise.topology;
 
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,13 +25,18 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 /**
  * @author Marc Gathier
  */
+@Component
 public class ClusterTopology implements Topology {
     private final ClusterController clusterController;
     private final GrpcRaftController raftController;
+    private final NodeSelector nodeSelector;
 
-    public ClusterTopology(ClusterController clusterController, GrpcRaftController raftController) {
+    public ClusterTopology(ClusterController clusterController,
+                           GrpcRaftController raftController,
+                           NodeSelector nodeSelector) {
         this.clusterController = clusterController;
         this.raftController = raftController;
+        this.nodeSelector = nodeSelector;
     }
 
     @Override
@@ -66,12 +75,12 @@ public class ClusterTopology implements Topology {
 
     @Override
     public AxonServerNode findNodeForClient(String clientName, String componentName, String context) {
-        return clusterController.findNodeForClient(clientName, componentName, context);
+        return nodeSelector.findNodeForClient(clientName, componentName, context);
     }
 
     @Override
     public Iterable<String> getMyContextNames() {
-        return raftController.getStorageContexts();
+        return raftController.getContexts();
     }
 
     @Override
@@ -91,14 +100,26 @@ public class ClusterTopology implements Topology {
         return clusterController.isAdminNode();
     }
 
+    @Override
+    public boolean validContext(String context) {
+        if (isAdminNode()) {
+            return true;
+        }
+        return raftController.getRaftGroup(context) != null;
+    }
+
     public Stream<AxonServerNode> nodesFromRaftGroups() {
         Map<ClusterNode, Set<String>> contextPerNode = new HashMap<>();
+        Map<ClusterNode, Set<String>> storageContextPerNode = new HashMap<>();
         clusterController.nodes().forEach(n -> contextPerNode.put(n, new HashSet<>()));
         raftController.getContexts().forEach(context -> {
             raftController.getRaftGroup(context).raftConfiguration().groupMembers().forEach(
                     node -> {
                         ClusterNode clusterNode = clusterController.getNode(node.getNodeName());
                         contextPerNode.computeIfAbsent(clusterNode, c -> new HashSet<>()).add(context);
+                        if (RoleUtils.hasStorage(node.getRole())) {
+                            storageContextPerNode.computeIfAbsent(clusterNode, c -> new HashSet<>()).add(context);
+                        }
                     }
             );
         });
@@ -136,6 +157,11 @@ public class ClusterTopology implements Topology {
             @Override
             public Collection<String> getContextNames() {
                 return e.getValue();
+            }
+
+            @Override
+            public Collection<String> getStorageContextNames() {
+                return storageContextPerNode.getOrDefault(e.getKey(), Collections.emptySet());
             }
         });
     }

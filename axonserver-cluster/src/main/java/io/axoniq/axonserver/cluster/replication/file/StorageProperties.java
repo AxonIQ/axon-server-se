@@ -28,6 +28,7 @@ public class StorageProperties {
     private String logStorageFolder = "log";
     private boolean useMmapIndex;
     private boolean cleanerHackEnabled;
+    private int minActiveBackups = 1;
 
     public int getSyncInterval() {
         return syncInterval;
@@ -167,5 +168,13 @@ public class StorageProperties {
     public boolean isCleanerHackNeeded() {
         String os = System.getProperty("os.name").toLowerCase();
         return os.startsWith("win");
+    }
+
+    public int getMinActiveBackups() {
+        return minActiveBackups;
+    }
+
+    public void setMinActiveBackups(int minActiveBackups) {
+        this.minActiveBackups = minActiveBackups;
     }
 }

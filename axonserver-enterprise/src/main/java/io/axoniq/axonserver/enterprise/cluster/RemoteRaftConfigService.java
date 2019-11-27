@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.InstructionAck;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextName;
@@ -27,7 +28,7 @@ import static io.axoniq.axonserver.enterprise.CompetableFutureUtils.getFuture;
  */
 public class RemoteRaftConfigService implements RaftConfigService {
     private static final Logger logger = LoggerFactory.getLogger(RemoteRaftConfigService.class);
-    private static final Function<Confirmation, Void> TO_VOID = x -> null;
+    private static final Function<InstructionAck, Void> TO_VOID = x -> null;
 
     private final RaftConfigServiceGrpc.RaftConfigServiceStub raftConfigServiceStub;
 
@@ -36,9 +37,13 @@ public class RemoteRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void addNodeToContext(String context, String node) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder().setNodeName(node).setContext(context).build(),
+    public void addNodeToContext(String context, String node, Role role) {
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
+        raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder()
+                                                          .setNodeName(node)
+                                                          .setRole(role)
+                                                          .setContext(context)
+                                                          .build(),
                                                new CompletableStreamObserver<>(completableFuture,
                                                                                "addNodeToContext",
                                                                                logger));
@@ -55,7 +60,7 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public void deleteContext(String context) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.deleteContext(ContextName.newBuilder()
                                                        .setContext(context)
                                                        .build(),
@@ -67,7 +72,7 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public void deleteNodeFromContext(String context, String node) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.deleteNodeFromContext(NodeContext.newBuilder().setNodeName(node).setContext(context).build(),
                                                     new CompletableStreamObserver<>(completableFuture,
                                                                                     "deleteNodeFromContext",
@@ -77,7 +82,7 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public void addContext(Context context) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.createContext(context,
                                             new CompletableStreamObserver<>(completableFuture, "addContext", logger));
         getFuture(completableFuture);
@@ -85,14 +90,14 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public void join(NodeInfo nodeInfo) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.joinCluster(nodeInfo, new CompletableStreamObserver<>(completableFuture, "join", logger));
         getFuture(completableFuture);
     }
 
     @Override
     public void init(List<String> contexts) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.initCluster(ContextNames.newBuilder().addAllContexts(contexts).build(),
                                           new CompletableStreamObserver<>(completableFuture, "init", logger));
         getFuture(completableFuture);
