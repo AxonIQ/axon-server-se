@@ -6,8 +6,9 @@ import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
-import io.axoniq.axonserver.grpc.Confirmation;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.grpc.InstructionAck;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 @Service
 public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplBase {
 
+    private static final InstructionAck CONFIRMATION = InstructionAck.newBuilder().setSuccess(true).build();
     private final RaftConfigServiceFactory raftConfigServiceFactory;
     private final ClusterController clusterController;
     private final ContextController contextController;
@@ -66,11 +68,11 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     public void getContexts(EmptyRequest request, StreamObserver<Context> responseObserver) {
         contextController.getContexts().forEach(c -> {
             responseObserver.onNext(Context.newBuilder().setName(c.getName())
-                                           .addAllMembers(c.getAllNodes().stream().map(ccn -> ContextMember.newBuilder()
-                                                                                                           .setNodeName(
+                                           .addAllMembers(c.getNodes().stream().map(ccn -> ContextMember.newBuilder()
+                                                                                                        .setNodeName(
                                                                                                                    ccn.getClusterNode()
                                                                                                                       .getName())
-                                                                                                           .build())
+                                                                                                        .build())
                                                            .collect(
                                                                    Collectors.toList()))
                                            .putAllMetaData(c.getMetaDataMap()).build());
@@ -87,7 +89,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     }
 
     @Override
-    public void createContext(Context request, StreamObserver<Confirmation> responseObserver) {
+    public void createContext(Context request, StreamObserver<InstructionAck> responseObserver) {
         try {
             int nodes = Integer.valueOf(request.getMetaDataMap().getOrDefault("nodes", "3"));
 
@@ -110,7 +112,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
                                             .addAllMembers(selectedNodes)
                                             .build();
             raftConfigServiceFactory.getRaftConfigService().addContext(updatedContext);
-            responseObserver.onNext(Confirmation.newBuilder().build());
+            responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
             responseObserver.onError(ex);
@@ -118,11 +120,12 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     }
 
     @Override
-    public void addNodeToContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
+    public void addNodeToContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         try {
             raftConfigServiceFactory.getRaftConfigService().addNodeToContext(request.getContext(),
-                                                                             request.getNodeName());
-            responseObserver.onNext(Confirmation.newBuilder().build());
+                                                                             request.getNodeName(),
+                                                                             Role.PRIMARY);
+            responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
             responseObserver.onError(ex);
@@ -130,11 +133,11 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     }
 
     @Override
-    public void deleteNodeFromContext(NodeContext request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteNodeFromContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         try {
             raftConfigServiceFactory.getRaftConfigService().deleteNodeFromContext(request.getContext(),
                                                                                   request.getNodeName());
-            responseObserver.onNext(Confirmation.newBuilder().build());
+            responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
             responseObserver.onError(ex);
@@ -142,7 +145,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     }
 
     @Override
-    public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteContext(ContextName request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver,
              () -> raftConfigServiceFactory.getRaftConfigService().deleteContext(request.getContext()));
     }
@@ -160,10 +163,10 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     }
 
     @Override
-    public void deleteApplication(Application request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteApplication(Application request, StreamObserver<InstructionAck> responseObserver) {
         try {
             raftConfigServiceFactory.getRaftConfigService().deleteApplication(request);
-            responseObserver.onNext(Confirmation.newBuilder().build());
+            responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
             responseObserver.onError(ex);
@@ -181,10 +184,10 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
         }
     }
 
-    private void wrap(StreamObserver<Confirmation> responseObserver, Runnable action) {
+    private void wrap(StreamObserver<InstructionAck> responseObserver, Runnable action) {
         try {
             io.grpc.Context.current().fork().wrap(action).run();
-            responseObserver.onNext(Confirmation.newBuilder().build());
+            responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
             responseObserver.onError(GrpcExceptionBuilder.build(ex));

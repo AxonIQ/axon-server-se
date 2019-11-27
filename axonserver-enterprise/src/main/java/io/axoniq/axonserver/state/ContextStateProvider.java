@@ -77,7 +77,7 @@ public class ContextStateProvider {
             builder.addApplications(clientApp.build());
         });
 
-        contextController.getContext(context).getAllNodes().forEach(n -> builder
+        contextController.getContext(context).getNodes().forEach(n -> builder
                 .addNodes(n.getClusterNode().getName()));
 
         return builder.build();

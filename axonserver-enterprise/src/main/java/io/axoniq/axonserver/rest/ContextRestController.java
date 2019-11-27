@@ -10,7 +10,6 @@ import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.licensing.Feature;
@@ -192,16 +191,16 @@ public class ContextRestController {
         try {
             raftServiceFactory.getRaftConfigService()
                               .addContext(
-                                      Context.newBuilder()
-                                             .setName(contextJson.getContext())
-                                             .addAllMembers(contextJson.getNodes()
+                                      io.axoniq.axonserver.grpc.internal.Context.newBuilder()
+                                                                                .setName(contextJson.getContext())
+                                                                                .addAllMembers(contextJson.getNodes()
                                                                        .stream()
                                                                        .map(n -> ContextMember.newBuilder()
                                                                                               .setNodeName(n)
                                                                                               .build()
                                                                        )
                                                                        .collect(Collectors.toList()))
-                                             .build());
+                                                                                .build());
             return ResponseEntity.ok(new RestResponse(true, null));
         } catch (Exception ex) {
             return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));

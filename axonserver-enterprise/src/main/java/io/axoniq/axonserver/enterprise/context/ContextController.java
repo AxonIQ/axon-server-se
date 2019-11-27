@@ -75,11 +75,11 @@ public class ContextController {
 
 
         Context context = optionalContext.orElseGet(() -> {
-            Contex c = new Context(contextConfiguration.getContext());
+            Context c = new Context(contextConfiguration.getContext());
             if (contextConfiguration.getMetaDataCount() > 0) {
                 c.setMetaDataMap(contextConfiguration.getMetaDataMap());
             }
-            entityManager.persist(c);
+            contextRepository.save(c);
             return c;
         });
         context.changePending(contextConfiguration.getPending());

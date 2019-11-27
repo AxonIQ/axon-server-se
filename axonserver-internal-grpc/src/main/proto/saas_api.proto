@@ -18,22 +18,22 @@ service SaasAdminService {
     rpc GetApplications (EmptyRequest) returns (stream Application) {
     }
 
-    rpc CreateContext (Context) returns (Confirmation) {
+    rpc CreateContext (Context) returns (InstructionAck) {
     }
 
-    rpc AddNodeToContext (NodeContext) returns (Confirmation) {
+    rpc AddNodeToContext (NodeContext) returns (InstructionAck) {
     }
 
-    rpc DeleteNodeFromContext (NodeContext) returns (Confirmation) {
+    rpc DeleteNodeFromContext (NodeContext) returns (InstructionAck) {
     }
 
-    rpc DeleteContext (ContextName) returns (Confirmation) {
+    rpc DeleteContext (ContextName) returns (InstructionAck) {
     }
 
     rpc CreateApplication (Application) returns (Application) {
     }
 
-    rpc DeleteApplication (Application) returns (Confirmation) {
+    rpc DeleteApplication (Application) returns (InstructionAck) {
     }
 
     rpc RefreshToken (Application) returns (Application) {
