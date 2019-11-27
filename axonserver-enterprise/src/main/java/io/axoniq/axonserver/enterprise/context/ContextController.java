@@ -79,8 +79,7 @@ public class ContextController {
             if (contextConfiguration.getMetaDataCount() > 0) {
                 c.setMetaDataMap(contextConfiguration.getMetaDataMap());
             }
-            contextRepository.save(c);
-            return c;
+            return contextRepository.save(c);
         });
         context.changePending(contextConfiguration.getPending());
         Map<String, ClusterNode> currentNodes = new HashMap<>();
