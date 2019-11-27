@@ -43,7 +43,9 @@ public class AxonServer {
     @PostConstruct
     public void versionSet() {
         VersionInfo versionInfo = versionInfoProvider.get();
-        logger.info("{} version {}", versionInfo.getProductName(), versionInfo.getVersion());
+        if (versionInfo != null) {
+            logger.info("{} version {}", versionInfo.getProductName(), versionInfo.getVersion());
+        }
     }
 
 
