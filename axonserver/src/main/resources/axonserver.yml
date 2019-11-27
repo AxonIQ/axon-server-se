@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: AxonServer
+    name: Axon Server
 
   jpa:
     open-in-view: false
