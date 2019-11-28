@@ -32,11 +32,11 @@ public class ByteBufferEventSource implements EventSource {
     // indicates if the low-level clean method should be called (needed to free file lock on windows)
     private final boolean cleanerHack;
 
-    public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
+    public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties, String context) {
         this.path = path;
         byte version = buffer.get();
         int flags = buffer.getInt();
-        this.eventTransformer = eventTransformerFactory.get(version, flags, storageProperties);
+        this.eventTransformer = eventTransformerFactory.get(version, flags, context);
         this.buffer = buffer;
         this.main = true;
         this.onClose = null;

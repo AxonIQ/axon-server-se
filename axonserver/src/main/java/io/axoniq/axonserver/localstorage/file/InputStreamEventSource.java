@@ -34,14 +34,15 @@ public class InputStreamEventSource implements EventSource {
 
     public InputStreamEventSource(File dataFile,
                                   EventTransformerFactory eventTransformerFactory,
-                                  StorageProperties storageProperties) {
+                                  StorageProperties storageProperties,
+                                  String context) {
         try {
             logger.debug("Open file {}", dataFile);
             dataInputStream = new PositionKeepingDataInputStream(new BufferedInputStream(new FileInputStream(dataFile),
                                                                                          storageProperties.getReadBufferSize()));
             byte version = dataInputStream.readByte();
             int modifiers = dataInputStream.readInt();
-            eventTransformer = eventTransformerFactory.get(version, modifiers, storageProperties);
+            eventTransformer = eventTransformerFactory.get(version, modifiers, context);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }

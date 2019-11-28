@@ -98,7 +98,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     private InputStreamEventSource get(long segment, boolean force) {
         if( !force && ! segments.contains(segment)) return null;
 
-        return new InputStreamEventSource(storageProperties.dataFile(context, segment), eventTransformerFactory, storageProperties);
+        return new InputStreamEventSource(storageProperties.dataFile(context, segment), eventTransformerFactory, storageProperties, context);
     }
 
     @Override
