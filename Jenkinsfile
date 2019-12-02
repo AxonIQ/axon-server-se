@@ -90,14 +90,14 @@ podTemplate(label: label,
                         junit '**/target/surefire-reports/TEST-*.xml'                   // Read the test results
                         slackReport = slackReport + "\n" + getTestSummary()
                     }
-                    when(relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
+                    if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                         sh "mvn \${MVN_BLD} -DskipTests deploy"
                     }
                 }
             }
 
             stage ('Run SonarQube') {
-                when(relevantBranch(gitBranch, sonarBranches)) {                        // Run SonarQube analyses for some branches
+                if (relevantBranch(gitBranch, sonarBranches)) {                        // Run SonarQube analyses for some branches
                     container("maven") {
                         sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
                     }
@@ -108,7 +108,7 @@ podTemplate(label: label,
                 /*
                  * Run a subsidiary build to make Docker test images.
                  */
-                when(relevantBranch(gitBranch, dockerBranches)) {
+                if (relevantBranch(gitBranch, dockerBranches)) {
                     def dockerBuild = build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
                         parameters: [
                             string(name: 'groupId', value: pomGroupId),
@@ -126,7 +126,7 @@ podTemplate(label: label,
                 /*
                  * If we have Docker images and artifacts in Nexus, we can run Canary tests on them.
                  */
-                when(relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
+                if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
                     def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
                             string(name: 'groupId', value: pomGroupId),
