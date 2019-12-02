@@ -77,7 +77,7 @@ public class AxonServers implements Iterable<AxonServer> {
 
                                      @Override
                                      public boolean isAdminLeader() {
-                                         return eventStoreLocator.isLeader(((AxonServerNode) node).getName(),
+                                         return eventStoreLocator.isLeader(node.getName(),
                                                                            ADMIN,
                                                                            false);
                                      }
