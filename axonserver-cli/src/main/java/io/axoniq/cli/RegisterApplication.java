@@ -16,7 +16,9 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 
 /**
+ * Handler for the register-application command.
  * @author Marc Gathier
+ * @since 4.0
  */
 public class RegisterApplication extends AxonIQCliCommand {
 
@@ -25,7 +27,10 @@ public class RegisterApplication extends AxonIQCliCommand {
     public static void run(String[] args) throws IOException {
         // check args
         CommandLine commandLine = processCommandLine(args[0], args, CommandOptions.APPLICATION,
-                CommandOptions.ROLES, CommandOptions.DESCRIPTION, CommandOptions.TOKEN, CommandOptions.SET_TOKEN);
+                                                     CommandOptions.APPLICATION_ROLES,
+                                                     CommandOptions.APPLICATION_DESCRIPTION,
+                                                     CommandOptions.TOKEN,
+                                                     CommandOptions.SET_TOKEN);
         String url = createUrl(commandLine, "/v1/applications");
 
         if( commandLine.hasOption(CommandOptions.SET_TOKEN.getOpt())) {
@@ -36,9 +41,11 @@ public class RegisterApplication extends AxonIQCliCommand {
         }
 
         Application application = new Application(commandLine.getOptionValue(CommandOptions.APPLICATION.getOpt()),
-                                                  commandLine.getOptionValue(CommandOptions.DESCRIPTION.getOpt()),
+                                                  commandLine.getOptionValue(CommandOptions.APPLICATION_DESCRIPTION
+                                                                                     .getOpt()),
                                                   commandLine.getOptionValue(CommandOptions.SET_TOKEN.getOpt()),
-                                                  commandLine.getOptionValues(CommandOptions.ROLES.getOpt()));
+                                                  commandLine
+                                                          .getOptionValues(CommandOptions.APPLICATION_ROLES.getOpt()));
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {

@@ -13,9 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -23,11 +25,9 @@ import java.util.function.BooleanSupplier;
 
 /**
  * @author Marc Gathier
- * Copied code from Tomcat to clean buffer: org.apache.tomcat.util.buf.ByteBufferUtils
+ * @since 4.0
  */
 public class CleanUtils {
-    private static final Method cleanerMethod;
-    private static final Method cleanMethod;
     private static final Logger logger = LoggerFactory.getLogger(CleanUtils.class);
     private static final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("fileCleaner") {
         @Override
@@ -38,41 +38,46 @@ public class CleanUtils {
         }
     });
     private static final int RETRIES = 5;
+    private static final boolean java8 = System.getProperty("java.version").startsWith("1.8");
 
-    static {
-        ByteBuffer tempBuffer = ByteBuffer.allocateDirect(0);
-        Method cleanerMethodLocal;
-        Method cleanMethodLocal;
-
-        try {
-            cleanerMethodLocal = tempBuffer.getClass().getMethod("cleaner");
-            cleanerMethodLocal.setAccessible(true);
-            Object cleanerObject = cleanerMethodLocal.invoke(tempBuffer);
-            if (cleanerObject instanceof Runnable) {
-                cleanMethodLocal = Runnable.class.getMethod("run");
-            } else {
-                cleanMethodLocal = cleanerObject.getClass().getMethod("clean");
+    private static void cleanOldsJDK(final ByteBuffer buffer) {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            try {
+                Method getCleanerMethod = buffer.getClass().getMethod("cleaner", (Class[]) null);
+                if (!getCleanerMethod.isAccessible()) {
+                    getCleanerMethod.setAccessible(true);
+                }
+                Object cleaner = getCleanerMethod.invoke(buffer, (Object[]) null);
+                Method clean = cleaner.getClass().getMethod("clean", (Class[]) null);
+                clean.invoke(cleaner, (Object[]) null);
+            } catch (Exception ex) {
+                logger.warn("Clean failed", ex);
             }
-
-            cleanMethodLocal.invoke(cleanerObject);
-        } catch (IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException | IllegalAccessException methodException) {
-            if( logger.isDebugEnabled()) {
-                logger.warn("Unable to configure clean method. If you are running on Windows with a Java version 9 or higher start Axon Server with --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED", methodException);
-            } else {
-                logger.warn("Unable to configure clean method. If you are running on Windows with a Java version 9 or higher start Axon Server with --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED");
-            }
-            cleanerMethodLocal = null;
-            cleanMethodLocal = null;
-        }
-
-        cleanerMethod = cleanerMethodLocal;
-        cleanMethod = cleanMethodLocal;
+            return null;
+        });
     }
+
+    private static void cleanJavaWithModules(final java.nio.ByteBuffer buffer) {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            try {
+                final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+                final Field theUnsafeField = unsafeClass.getDeclaredField("theUnsafe");
+                theUnsafeField.setAccessible(true);
+                final Object theUnsafe = theUnsafeField.get(null);
+                final Method invokeCleanerMethod = unsafeClass.getMethod("invokeCleaner", ByteBuffer.class);
+                invokeCleanerMethod.invoke(theUnsafe, buffer);
+            } catch (Exception ex) {
+                logger.warn("Clean failed", ex);
+            }
+            return null;
+        });
+    }
+
     private CleanUtils() {
     }
 
     public static void cleanDirectBuffer(ByteBuffer buf, BooleanSupplier allowed, long delay, String file) {
-        if (cleanMethod != null && buf != null) {
+        if (buf != null) {
             if (delay <= 0) {
                 doCleanup(allowed, buf, 10, file, RETRIES);
             } else {
@@ -96,9 +101,13 @@ public class CleanUtils {
             return;
         }
         try {
-            cleanMethod.invoke(cleanerMethod.invoke(buf));
+            if (java8) {
+                cleanOldsJDK(buf);
+            } else {
+                cleanJavaWithModules(buf);
+            }
             logger.debug("Memory mapped buffer cleared for {}", file);
-        } catch (Throwable exception) {
+        } catch (Exception exception) {
             logger.warn("Clean failed", exception);
         }
     }
