@@ -36,7 +36,7 @@ public class IndexManager {
         try {
             return getIndex(segment) != null;
         } catch (Exception ex) {
-            logger.warn("Failed to validate index for segment: {}", segment, ex);
+            logger.warn("{}: Failed to validate index for segment: {}", context, segment, ex);
         }
         return false;
     }
@@ -83,7 +83,7 @@ public class IndexManager {
         db.close();
 
         if( ! tempFile.renameTo(storageProperties.indexFile(context, segment)) ) {
-            throw new LogException(ErrorCode.INDEX_WRITE_ERROR, "Failed to rename index file:" + tempFile);
+            throw new LogException(ErrorCode.INDEX_WRITE_ERROR, context + ": Failed to rename index file:" + tempFile);
         }
     }
 

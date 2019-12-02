@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.cluster.jpa;
 
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.Role;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -9,11 +11,14 @@ import javax.persistence.Id;
 import javax.persistence.IdClass;
 
 /**
+ * An entity describing a member of a raft group
  * @author Marc Gathier
+ * @since 4.1
  */
 @Entity
 @IdClass(JpaRaftGroupNode.Key.class)
 public class JpaRaftGroupNode {
+
     @Id
     private String groupId;
     @Id
@@ -21,6 +26,10 @@ public class JpaRaftGroupNode {
     private String host;
     private int port;
     private String nodeName;
+    private Role role;
+
+    // deletion of the member of the raft group has been initiated
+    private boolean pendingDelete;
 
     public JpaRaftGroupNode(String groupId, Node node) {
         this.groupId = groupId;
@@ -28,6 +37,7 @@ public class JpaRaftGroupNode {
         this.host = node.getHost();
         this.port = node.getPort();
         this.nodeName = node.getNodeName();
+        this.role = node.getRole();
     }
 
     public JpaRaftGroupNode() {
@@ -75,14 +85,33 @@ public class JpaRaftGroupNode {
 
     public Node asNode() {
         return Node.newBuilder()
-            .setNodeId(getNodeId())
-            .setNodeName(getNodeName())
-            .setHost(getHost())
-            .setPort(getPort())
-            .build();
+                   .setNodeId(getNodeId())
+                   .setNodeName(getNodeName())
+                   .setHost(getHost())
+                   .setPort(getPort())
+                   .setRole(getRole())
+                   .build();
     }
-    
+
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
+    public Role getRole() {
+        return RoleUtils.getOrDefault(role);
+    }
+
+    public boolean isPendingDelete() {
+        return pendingDelete;
+    }
+
+    public void setPendingDelete(boolean pendingDelete) {
+        this.pendingDelete = pendingDelete;
+    }
+
     public static class Key implements Serializable {
+
         private String groupId;
         private String nodeId;
 

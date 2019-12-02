@@ -12,18 +12,43 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 public class DefaultSnapshotContext implements SnapshotContext {
 
     private final AppendEntryFailure failure;
+    private final boolean eventStore;
 
-    public DefaultSnapshotContext(AppendEntryFailure failure) {
+    /**
+     * Constructor
+     *
+     * @param failure    failure response from remote peer
+     * @param eventStore true if remote peer is an eventStore
+     */
+    public DefaultSnapshotContext(AppendEntryFailure failure, boolean eventStore) {
         this.failure = failure;
+        this.eventStore = eventStore;
     }
 
+    /**
+     * Returns the first event token to include in a install snapshot sequence. If the target node is not an event store
+     * the operation returns Long.MAX_VALUE to prevent any events being included in the snapshot.
+     *
+     * @return first event token to include in snapshot
+     */
     @Override
     public long fromEventSequence() {
+        if (!eventStore) {
+            return Long.MAX_VALUE;
+        }
         return failure.getLastAppliedEventSequence()+1;
     }
 
+    /**
+     * Returns the first aggregate snapshot token to include in a install snapshot sequence. If the target node is not an event store
+     * the operation returns Long.MAX_VALUE to prevent any aggregate snapshots being included in the snapshot.
+     * @return first snapshot token to include in snapshot
+     */
     @Override
     public long fromSnapshotSequence() {
+        if (!eventStore) {
+            return Long.MAX_VALUE;
+        }
         return failure.getLastAppliedSnapshotSequence()+1;
     }
 

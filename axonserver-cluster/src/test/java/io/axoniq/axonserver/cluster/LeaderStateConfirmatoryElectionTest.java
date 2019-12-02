@@ -7,6 +7,7 @@ import io.axoniq.axonserver.cluster.replication.InMemoryLogEntryStore;
 import io.axoniq.axonserver.cluster.replication.MajorityMatchStrategy;
 import io.axoniq.axonserver.cluster.snapshot.FakeSnapshotManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import org.junit.*;
 import reactor.core.publisher.Mono;
 
@@ -47,15 +48,16 @@ public class LeaderStateConfirmatoryElectionTest {
         scheduler = new FakeScheduler();
 
 
-        FakeRaftPeer node0 = new FakeRaftPeer(scheduler, "node0", "Node-Name-0");
-        FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1", "Node-Name-1");
-        FakeRaftPeer node2 = new FakeRaftPeer(scheduler, "node2", "Node-Name-2");
+        FakeRaftPeer node0 = new FakeRaftPeer(scheduler, "node0", "Node-Name-0", Role.PRIMARY);
+        FakeRaftPeer node1 = new FakeRaftPeer(scheduler, "node1", "Node-Name-1", Role.PRIMARY);
+        FakeRaftPeer node2 = new FakeRaftPeer(scheduler, "node2", "Node-Name-2", Role.PRIMARY);
 
         addClusterNode("node0", node0);
         addClusterNode("node1", node1);
         addClusterNode("node2", node2);
         matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
-                                                  () -> raftGroup.localNode().replicatorPeers());
+                                                  () -> raftGroup.localNode().replicatorPeers(),
+                                                  () -> raftGroup.raftConfiguration().minActiveBackups());
     }
 
     private void addClusterNode(String nodeId, FakeRaftPeer peer){
@@ -93,11 +95,6 @@ public class LeaderStateConfirmatoryElectionTest {
             }
 
             @Override
-            public boolean goAway() {
-                return false;
-            }
-
-            @Override
             public String cause() {
                 return "Test case: election won!";
             }
@@ -108,11 +105,6 @@ public class LeaderStateConfirmatoryElectionTest {
         return new Election.Result() {
             @Override
             public boolean won() {
-                return false;
-            }
-
-            @Override
-            public boolean goAway() {
                 return false;
             }
 

@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.junit.*;
 import reactor.core.publisher.Mono;
@@ -49,6 +50,7 @@ public class FollowerStateTest {
     private RaftConfiguration raftConfiguration;
     private SnapshotManager snapshotManager;
     private LogEntryProcessor logEntryProcessor;
+    private RaftNode localNode;
 
     @Before
     public void setup() {
@@ -72,8 +74,8 @@ public class FollowerStateTest {
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.logEntryProcessor()).thenReturn(logEntryProcessor);
         when(raftGroup.raftConfiguration()).thenReturn(raftConfiguration);
-        RaftNode localNode = mock(RaftNode.class);
-        when(localNode.nodeId()).thenReturn("mockNode");
+        localNode = mock(RaftNode.class);
+        when(localNode.nodeId()).thenReturn("node3");
         when(raftGroup.localNode()).thenReturn(localNode);
 
         fakeScheduler = new FakeScheduler();
@@ -82,9 +84,9 @@ public class FollowerStateTest {
         when(snapshotManager.applySnapshotData(anyList())).thenReturn(Mono.empty());
 
         CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
-        when(currentConfiguration.groupMembers()).thenReturn(asList(node("node1"),
-                                                                    node("node2"),
-                                                                    node("node3")));
+        when(currentConfiguration.groupMembers()).thenReturn(asList(node("node1", Role.PRIMARY),
+                                                                    node("node2", Role.PRIMARY),
+                                                                    node("node3", Role.PRIMARY)));
 
         followerState = spy(FollowerState.builder()
                                          .transitionHandler(transitionHandler)
@@ -125,7 +127,6 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -138,7 +139,7 @@ public class FollowerStateTest {
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setRequestId(UUID.randomUUID()
                                                                                                      .toString())
-                                                                                   .setCandidateId("node2")
+                                                                                   .setCandidateId("node1")
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(1L)
@@ -148,7 +149,6 @@ public class FollowerStateTest {
         assertTrue(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -169,7 +169,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(0L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -182,7 +181,7 @@ public class FollowerStateTest {
         RequestVoteResponse response = followerState.requestVote(RequestVoteRequest.newBuilder()
                                                                                    .setRequestId(UUID.randomUUID()
                                                                                                      .toString())
-                                                                                   .setCandidateId("node3")
+                                                                                   .setCandidateId("node1")
                                                                                    .setGroupId("defaultGroup")
                                                                                    .setLastLogTerm(0L)
                                                                                    .setLastLogIndex(0L)
@@ -192,7 +191,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -215,7 +213,6 @@ public class FollowerStateTest {
         assertFalse(response.getVoteGranted());
         assertEquals(1L, response.getTerm());
         assertEquals("defaultGroup", response.getGroupId());
-        assertFalse(response.getGoAway());
     }
 
     @Test
@@ -431,9 +428,10 @@ public class FollowerStateTest {
                                    .build();
     }
 
-    private Node node(String id) {
+    private Node node(String id, Role role) {
         return Node.newBuilder()
                    .setNodeId(id)
+                   .setRole(role)
                    .build();
     }
 

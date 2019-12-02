@@ -102,4 +102,24 @@ public interface RaftConfiguration {
     default boolean forceSnapshotOnJoin() {
         return false;
     }
+
+    /**
+     * Checks if a specific serialized object contains event or snapshot data to be stored in the event store.
+     *
+     * @param type serialized object type
+     * @return true if serialized object represents event or snapshot data
+     */
+    default boolean isSerializedEventData(String type) {
+        return false;
+    }
+
+    /**
+     * Returns the minimum number of active backup nodes required for leader election and transaction processing.
+     *
+     * @return minimum number of active backup nodes required for leader election and transaction processing
+     */
+    default Integer minActiveBackups() {
+        return 1;
+    }
+
 }

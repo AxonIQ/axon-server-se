@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import org.junit.*;
 
 import java.util.concurrent.CompletableFuture;
@@ -101,17 +102,6 @@ public class LeaderStateTestWithFakeTransition {
     }
 
     @Test
-    public void testRequestVoteWhenCandidateIsNotAMember() {
-        leaderState.start();
-        RequestVoteRequest request = RequestVoteRequest.newBuilder()
-                                                       .setCandidateId("node4")
-                                                       .build();
-        RequestVoteResponse response = leaderState.requestVote(request);
-        assertFalse(response.getVoteGranted());
-        assertTrue(response.getGoAway());
-    }
-
-    @Test
     public void testAppendEntriesSameTerm() {
         leaderState.start();
         AppendEntriesRequest request = AppendEntriesRequest.newBuilder().setTerm(1).build();
@@ -160,13 +150,13 @@ public class LeaderStateTestWithFakeTransition {
                 .setHost("host")
                 .setPort(1234)
                 .build();
-        FakeRaftPeer raftPeerA = new FakeRaftPeer(scheduler, "nodeId-1", "nodeName");
+        FakeRaftPeer raftPeerA = new FakeRaftPeer(scheduler, "nodeId-1", "nodeName", Role.PRIMARY);
 
         addClusterNode(nodeA, raftPeerA);
         Node nodeB = nodeA.toBuilder()
                           .setNodeId("nodeId-2")
                           .build();
-        addClusterNode(nodeB, new FakeRaftPeer(scheduler, "nodeId-2", "nodeName"));
+        addClusterNode(nodeB, new FakeRaftPeer(scheduler, "nodeId-2", "nodeName", Role.PRIMARY));
         leaderState.start();
         CompletableFuture<ConfigChangeResult> futureA = leaderState.addServer(nodeA);
         CompletableFuture<ConfigChangeResult> futureB = leaderState.addServer(nodeB);

@@ -9,7 +9,6 @@ import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import org.junit.*;
@@ -38,8 +37,8 @@ public class EventWriteStorageTest {
         embeddedDBProperties.getEvent().setStorage(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(5120 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
-        EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
-                                                                            new DefaultStorageTransactionManagerFactory());
+        EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties,
+                                                                            new DefaultEventTransformerFactory());
         datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");
         datafileManagerChain.init(false);
         testSubject = new EventWriteStorage(new SingleInstanceTransactionManager(datafileManagerChain));

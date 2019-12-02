@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.exception.StreamAlreadyClosedException;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
@@ -14,6 +15,7 @@ import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.cluster.TimeoutNowRequest;
 import io.axoniq.axonserver.grpc.cluster.TimeoutNowResponse;
 import io.grpc.stub.CallStreamObserver;
@@ -335,5 +337,20 @@ public class GrpcRaftPeer implements RaftPeer {
             }
             throw new LogException(ErrorCode.SENDING_FAILED, e.getMessage());
         }
+    }
+
+    @Override
+    public boolean primaryNode() {
+        return RoleUtils.primaryNode(node.getRole());
+    }
+
+    @Override
+    public boolean votingNode() {
+        return RoleUtils.votingNode(node.getRole());
+    }
+
+    @Override
+    public Role role() {
+        return node.getRole();
     }
 }

@@ -9,6 +9,8 @@ import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
+import io.axoniq.axonserver.cluster.util.LeaderTimeoutChecker;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.Config;
@@ -39,7 +41,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -62,6 +63,7 @@ public class LeaderState extends AbstractMembershipState {
     private final AtomicBoolean leadershipTransferInProgress = new AtomicBoolean();
     private volatile CompletableFuture<ConfigChangeResult> pendingConfigurationChange;
     private volatile Replicators replicators;
+    private final LeaderTimeoutChecker leaderTimeoutChecker;
 
     private LeaderState(Builder builder) {
         super(builder);
@@ -70,6 +72,11 @@ public class LeaderState extends AbstractMembershipState {
                                                        () -> scheduler.get().clock().millis(),
                                                        this::replicator,
                                                        this::appendConfigurationChange);
+
+        leaderTimeoutChecker = new LeaderTimeoutChecker(this::replicatorPeers,
+                                                        maxElectionTimeout(),
+                                                        () -> scheduler.get().clock(),
+                                                        () -> raftGroup().raftConfiguration().minActiveBackups());
     }
 
     /**
@@ -121,19 +128,19 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
-        pendingConfigurationChange = clusterConfiguration.removeServer(nodeId)
-                                                         .thenApply(configChangeResult -> checkCurrentNodeDeleted(
-                configChangeResult, nodeId));
+        pendingConfigurationChange = clusterConfiguration.removeServer(nodeId);
+//                                                         .thenApply(configChangeResult -> checkCurrentNodeDeleted(
+//                configChangeResult, nodeId));
         return pendingConfigurationChange;
     }
 
-    private ConfigChangeResult checkCurrentNodeDeleted(ConfigChangeResult configChangeResult, String nodeId) {
-        if (nodeId.equals(me())) {
-            logger.warn("{} in term {}: Check Current leader deleted: {}", groupId(), currentTerm(), nodeId);
-            changeStateTo(stateFactory().removedState(), "Node deleted from group");
-        }
-        return configChangeResult;
-    }
+//    private ConfigChangeResult checkCurrentNodeDeleted(ConfigChangeResult configChangeResult, String nodeId) {
+//        if (nodeId.equals(me())) {
+//            logger.warn("{} in term {}: Check Current leader deleted: {}", groupId(), currentTerm(), nodeId);
+//            changeStateTo(stateFactory().removedState(), "Node deleted from group");
+//        }
+//        return configChangeResult;
+//    }
 
     @Override
     public void start() {
@@ -192,7 +199,7 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         if (!request.getDisruptAllowed() && heardFromFollowers()) {
-            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+            return responseFactory().voteRejected(request.getRequestId());
         }
 
         return super.requestVote(request);
@@ -201,10 +208,10 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
         if (heardFromFollowers()) {
-            return responseFactory().voteRejected(request.getRequestId(), !member(request.getCandidateId()));
+            return responseFactory().voteRejected(request.getRequestId());
         }
 
-        return super.requestVote(request);
+        return super.requestPreVote(request);
     }
 
 
@@ -231,7 +238,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
-    public void forceStepDown() {
+    public void forceStartElection() {
         String message = format("%s in term %s: Forced Step Down of %s.", groupId(), currentTerm(), me());
         logger.info(message);
         stepDown(message);
@@ -242,57 +249,26 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private boolean heardFromFollowers() {
-        long otherNodesCount = otherNodesCount();
-        if (otherNodesCount == 0) {
-            return true;
-        }
-        List<Long> timeSinceLastMessages = replicators.lastMessages();
-        long timeSinceLastMessageFromMajority = calculateLastMessageFromMajority(timeSinceLastMessages,
-                                                                                 otherNodesCount);
-
-        return timeSinceLastMessageFromMajority < maxElectionTimeout();
+        return leaderTimeoutChecker.heardFromFollowers().result();
     }
 
     private void checkStepdown() {
-        long otherNodesCount = otherNodesCount();
-        if (otherNodesCount == 0) {
-            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
-            return;
-        }
-        List<Long> timeSinceLastMessages = replicators.lastMessages();
-        long timeSinceLastMessageFromMajority = calculateLastMessageFromMajority(timeSinceLastMessages, otherNodesCount);
-
-        if (timeSinceLastMessageFromMajority > maxElectionTimeout()) {
-            String message = format("%s in term %s: StepDown as no messages received for %s ms (%s) other nodes(%d).",
+        LeaderTimeoutChecker.CheckResult checkResult = leaderTimeoutChecker.heardFromFollowers();
+        if (!checkResult.result()) {
+            String message = format("%s in term %s: StepDown as %s",
                                     groupId(),
                                     currentTerm(),
-                                    timeSinceLastMessageFromMajority,
-                                    timeSinceLastMessages,
-                                    otherNodesCount);
+                                    checkResult.reason());
             logger.info(message);
             changeStateTo(stateFactory().followerState(), message);
         } else {
             logger.trace("{} in term {}: Reschedule checkStepdown after {}ms",
                          groupId(),
                          currentTerm(),
-                         maxElectionTimeout() - timeSinceLastMessageFromMajority);
-            scheduler.get().schedule(this::checkStepdown, maxElectionTimeout() - timeSinceLastMessageFromMajority, MILLISECONDS);
+                         checkResult.nextCheckInterval());
+            scheduler.get().schedule(this::checkStepdown, checkResult.nextCheckInterval(), MILLISECONDS);
         }
     }
-
-    /**
-     * Calculates the elapsed time since the leader has received a message from the majority of the peers.
-     * @param timeSinceLastMessages sorted list containing elapsed time since last message per peer
-     * @param nrOfRemotePeers number of other peers
-     * @return elapsed time since last message from majority of peers
-     */
-    private long calculateLastMessageFromMajority(List<Long> timeSinceLastMessages, long nrOfRemotePeers) {
-        return timeSinceLastMessages.stream()
-                                    .skip((int)Math.floor((nrOfRemotePeers-1d)/2))
-                                    .findFirst()
-                                    .orElse(0L);
-    }
-
 
     /**
      * Stops accepting new requests from client and waits until one of the followers is up to date. When
@@ -336,7 +312,7 @@ public class LeaderState extends AbstractMembershipState {
         return replicators.replicatorPeerMap
                 .entrySet()
                 .stream()
-                .filter(e -> replicators.isPossibleLeader(e.getKey()))
+                .filter(e -> replicators.isPossibleLeader(e.getValue()))
                 .filter(e -> e.getValue().nextIndex() > lastLogEntry)
                 .map(Map.Entry::getValue)
                 .findFirst();
@@ -402,10 +378,11 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     @Override
-    public Iterator<ReplicatorPeer> replicatorPeers() {
+    public Iterator<ReplicatorPeerStatus> replicatorPeers() {
         return replicators.replicatorPeerMap.values()
                                             .stream()
                                             .filter(peer -> !replicators.nonVotingReplicaMap.containsKey(peer.nodeId()))
+                                            .map(peer -> (ReplicatorPeerStatus) peer)
                                             .iterator();
     }
 
@@ -611,19 +588,14 @@ public class LeaderState extends AbstractMembershipState {
             };
         }
 
-        public List<Long> lastMessages() {
-            long now = scheduler.get().clock().millis();
-            return replicatorPeerMap.values().stream().map(peer -> now - peer.lastMessageReceived()).sorted().collect(Collectors.toList());
-        }
-
         /**
          * Checks if this peer is a node capable of being a leader.
          *
-         * @param group the raft group id
+         * @param peer the raft peer
          * @return true if peer is able to become leader
          */
-        public boolean isPossibleLeader(String group) {
-            return !nonVotingReplicaMap.containsValue(group);
+        public boolean isPossibleLeader(ReplicatorPeer peer) {
+            return !nonVotingReplicaMap.containsKey(peer.nodeId()) && RoleUtils.primaryNode(peer.role());
         }
     }
 }

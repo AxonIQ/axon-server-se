@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -19,17 +20,23 @@ public class OtherPeers implements Iterable<RaftPeer> {
     private final Supplier<String> nodeId;
     private final CurrentConfiguration configuration;
     private final Function<Node, RaftPeer> peerMapping;
+    private final Predicate<Node> filter;
 
     public OtherPeers(RaftGroup raftGroup, CurrentConfiguration configuration) {
-        this(() -> raftGroup.localNode().nodeId(), configuration, raftGroup::peer);
+        this(() -> raftGroup.localNode().nodeId(), configuration, raftGroup::peer, n -> true);
+    }
+
+    public OtherPeers(RaftGroup raftGroup, CurrentConfiguration configuration, Predicate<Node> filter) {
+        this(() -> raftGroup.localNode().nodeId(), configuration, raftGroup::peer, filter);
     }
 
     public OtherPeers(Supplier<String> nodeId,
                       CurrentConfiguration configuration,
-                      Function<Node, RaftPeer> peerMapping) {
+                      Function<Node, RaftPeer> peerMapping, Predicate<Node> filter) {
         this.nodeId = nodeId;
         this.configuration = configuration;
         this.peerMapping = peerMapping;
+        this.filter = filter;
     }
 
     @NotNull
@@ -37,6 +44,7 @@ public class OtherPeers implements Iterable<RaftPeer> {
     public Iterator<RaftPeer> iterator() {
         return configuration.groupMembers().stream()
                             .filter(node -> !node.getNodeId().equals(nodeId.get()))
+                            .filter(filter)
                             .map(peerMapping).iterator();
     }
 }

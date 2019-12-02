@@ -10,7 +10,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
 /**
  * @author Sara Pellegrini
- * @since
+ * @since 4.1
  */
 public class FakeStateFactory implements MembershipStateFactory {
 
@@ -46,14 +46,20 @@ public class FakeStateFactory implements MembershipStateFactory {
     }
 
     @Override
-    public MembershipState removedState() {
-        lastStateCreated = new FakeState("removed");
+    public MembershipState fatalState() {
+        lastStateCreated = new FakeState("fatal");
         return lastStateCreated;
     }
 
     @Override
-    public MembershipState fatalState() {
-        lastStateCreated = new FakeState("fatal");
+    public MembershipState prospectState() {
+        lastStateCreated = new FakeState("prospect");
+        return lastStateCreated;
+    }
+
+    @Override
+    public MembershipState secondaryState() {
+        lastStateCreated = new FakeState("secondary");
         return lastStateCreated;
     }
 

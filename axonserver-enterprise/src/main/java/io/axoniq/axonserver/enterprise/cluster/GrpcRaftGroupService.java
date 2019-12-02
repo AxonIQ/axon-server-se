@@ -1,17 +1,19 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.grpc.Confirmation;
+import io.axoniq.axonserver.grpc.InstructionAck;
+import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.ContextEntry;
 import io.axoniq.axonserver.grpc.internal.ContextLoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
+import io.axoniq.axonserver.grpc.internal.DeleteContextRequest;
+import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.RaftGroupServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -41,12 +43,21 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
             ContextConfiguration contextConfiguration = localRaftGroupService.initContext(request.getName(),
                                                                                           request.getMembersList()
                                                                                                  .stream()
-                                                                                                 .map(contextMember -> Node.newBuilder()
-                                                                               .setNodeId(contextMember.getNodeId())
-                                                                               .setHost(contextMember.getHost())
-                                                                               .setPort(contextMember.getPort())
-                                                                               .setNodeName(contextMember.getNodeName())
-                                                                               .build())
+                                                                                                 .map(contextMember -> Node
+                                                                                                         .newBuilder()
+                                                                                                         .setNodeId(
+                                                                                                                 contextMember
+                                                                                                                         .getNodeId())
+                                                                                                         .setHost(
+                                                                                                                 contextMember
+                                                                                                                         .getHost())
+                                                                                                         .setPort(
+                                                                                                                 contextMember
+                                                                                                                         .getPort())
+                                                                                                         .setNodeName(
+                                                                                                                 contextMember
+                                                                                                                         .getNodeName())
+                                                                                                         .build())
                                                                                                  .collect(Collectors
                                                                                                                   .toList()))
                                                                              .get();
@@ -61,7 +72,8 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void addServer(Context request, StreamObserver<ContextUpdateConfirmation> responseObserver) {
-        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.addNodeToContext(request.getName(), toNode(request.getMembers(0)));
+        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService
+                .addNodeToContext(request.getName(), ContextMemberConverter.asNode(request.getMembers(0)));
         forwardWhenComplete(responseObserver, completable);
     }
 
@@ -76,12 +88,12 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
         });
     }
 
-    private void confirm(StreamObserver<Confirmation> responseObserver, CompletableFuture<Void> completable) {
+    private void confirm(StreamObserver<InstructionAck> responseObserver, CompletableFuture<Void> completable) {
         completable.whenComplete((r, t) -> {
             if (t != null) {
                 responseObserver.onError(t);
             } else {
-                responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+                responseObserver.onNext(InstructionAck.newBuilder().setSuccess(true).build());
                 responseObserver.onCompleted();
             }
         });
@@ -89,64 +101,72 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void removeServer(Context request, StreamObserver<ContextUpdateConfirmation> responseObserver) {
-        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.deleteNode(request.getName(), request.getMembers(0).getNodeId());
+        CompletableFuture<ContextUpdateConfirmation> completable = localRaftGroupService.deleteNode(request.getName(),
+                                                                                                    request.getMembers(0)
+                                                                                                           .getNodeId());
         forwardWhenComplete(responseObserver, completable);
     }
 
     @Override
-    public void deleteContext(ContextName request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext());
+    public void deleteContext(DeleteContextRequest request, StreamObserver<InstructionAck> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext(),
+                                                                                  request.getPreserveEventstore());
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void appendEntry(ContextEntry request, StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(), request.getEntryName(), request.getEntry().toByteArray());
+    public void appendEntry(ContextEntry request, StreamObserver<InstructionAck> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.appendEntry(request.getContext(),
+                                                                                request.getEntryName(),
+                                                                                request.getEntry().toByteArray());
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void mergeAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
+    public void mergeAppAuthorization(ContextApplication request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request);
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void deleteAppAuthorization(ContextApplication request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteAppAuthorization(ContextApplication request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void mergeUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+    public void mergeUserAuthorization(ContextUser request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.updateUser(request);
         confirm(responseObserver, completable);
     }
 
     @Override
-    public void deleteUserAuthorization(ContextUser request, StreamObserver<Confirmation> responseObserver) {
+    public void deleteUserAuthorization(ContextUser request, StreamObserver<InstructionAck> responseObserver) {
         CompletableFuture<Void> completable = localRaftGroupService.deleteUser(request);
         confirm(responseObserver, completable);
     }
 
     @Override
     public void mergeLoadBalanceStrategy(ContextLoadBalanceStrategy request,
-                                         StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
+                                         StreamObserver<InstructionAck> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.updateLoadBalancingStrategy(request.getContext(),
+                                                                                                request.getLoadBalanceStrategy());
         confirm(responseObserver, completable);
     }
 
     @Override
     public void deleteLoadBalanceStrategy(ContextLoadBalanceStrategy request,
-                                          StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteLoadBalancingStrategy(request.getContext(), request.getLoadBalanceStrategy());
+                                          StreamObserver<InstructionAck> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.deleteLoadBalancingStrategy(request.getContext(),
+                                                                                                request.getLoadBalanceStrategy());
         confirm(responseObserver, completable);
     }
 
     @Override
     public void mergeProcessorLBStrategy(ContextProcessorLBStrategy request,
-                                         StreamObserver<Confirmation> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateProcessorLoadBalancing(request.getContext(), request.getProcessorLBStrategy());
+                                         StreamObserver<InstructionAck> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.updateProcessorLoadBalancing(request.getContext(),
+                                                                                                 request.getProcessorLBStrategy());
         confirm(responseObserver, completable);
     }
 
@@ -154,15 +174,6 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     public void getStatus(Context request, StreamObserver<Context> responseObserver) {
         localRaftGroupService.getStatus(responseObserver::onNext);
         responseObserver.onCompleted();
-    }
-
-    private Node toNode(ContextMember member) {
-        return Node.newBuilder()
-                   .setPort(member.getPort())
-                   .setHost(member.getHost())
-                   .setNodeId(member.getNodeId())
-                   .setNodeName(member.getNodeName())
-                   .build();
     }
 
     @Override
@@ -175,20 +186,26 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     }
 
     @Override
-    public void transferLeadership(ContextName request, StreamObserver<Confirmation> responseObserver) {
+    public void transferLeadership(ContextName request, StreamObserver<InstructionAck> responseObserver) {
         io.grpc.Context.current().fork().wrap(() -> doTransferLeadership(request, responseObserver)).run();
+    }
 
+    @Override
+    public void preDeleteNodeFromContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
+        CompletableFuture<Void> completable = localRaftGroupService.prepareDeleteNodeFromContext(request.getContext(),
+                                                                                                 request.getNodeName());
+        confirm(responseObserver, completable);
     }
 
     private void doTransferLeadership(ContextName request,
-                                      StreamObserver<Confirmation> responseObserver) {
+                                      StreamObserver<InstructionAck> responseObserver) {
         localRaftGroupService.transferLeadership(request.getContext())
                              .thenAccept(c -> {
-                                 responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+                                 responseObserver.onNext(InstructionAck.newBuilder().setSuccess(true).build());
                                  responseObserver.onCompleted();
                              }).exceptionally(cause -> {
-                                responseObserver.onError(cause);
-                                return null;
-                             });
+            responseObserver.onError(cause);
+            return null;
+        });
     }
 }

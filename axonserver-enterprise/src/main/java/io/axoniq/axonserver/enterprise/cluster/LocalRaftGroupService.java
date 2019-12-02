@@ -7,6 +7,7 @@ import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextApplicationConsu
 import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextUserConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.ConfigChangeResult;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.Context;
@@ -25,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -47,7 +49,7 @@ public class LocalRaftGroupService implements RaftGroupService {
     private final Logger logger = LoggerFactory.getLogger(LocalRaftGroupService.class);
     private final ExecutorService asyncPool = Executors.newCachedThreadPool();
 
-    private GrpcRaftController grpcRaftController;
+    private final GrpcRaftController grpcRaftController;
 
     public LocalRaftGroupService(GrpcRaftController grpcRaftController) {
         this.grpcRaftController = grpcRaftController;
@@ -65,12 +67,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                      .setSuccess(true)
                                                      .addAllMembers(raftNode.currentGroupMembers()
                                                                             .stream()
-                                                                            .map(n -> ContextMember.newBuilder()
-                                                                                                   .setNodeName(n.getNodeName())
-                                                                                                   .setNodeId(n.getNodeId())
-                                                                                                   .setPort(n.getPort())
-                                                                                                   .setHost(n.getHost())
-                                                                                                   .build())
+                                                                            .map(ContextMemberConverter::asContextMember)
                                                                             .collect(Collectors.toList()))
                                                      .build());
         } else {
@@ -169,13 +166,7 @@ public class LocalRaftGroupService implements RaftGroupService {
                                                                       ConfigChangeResult configChangeResult,
                                                                       Throwable throwable) {
         ContextUpdateConfirmation.Builder builder = ContextUpdateConfirmation.newBuilder();
-
-        raftNode.currentGroupMembers().forEach(n -> builder.addMembers(ContextMember.newBuilder()
-                                                                                    .setNodeId(n.getNodeId())
-                                                                                    .setNodeName(n.getNodeName())
-                                                                                    .setPort(n.getPort())
-                                                                                    .setHost(n.getHost())));
-
+        raftNode.currentGroupMembers().forEach(n -> builder.addMembers(ContextMemberConverter.asContextMember(n)));
         builder.setPending(raftNode.isCurrentConfigurationPending());
 
         if (throwable != null) {
@@ -295,14 +286,15 @@ public class LocalRaftGroupService implements RaftGroupService {
     }
 
     @Override
-    public CompletableFuture<Void> deleteContext(String context) {
+    @Transactional
+    public CompletableFuture<Void> deleteContext(String context, boolean preserveEventStore) {
         RaftNode raftNode = null;
         try {
             raftNode = grpcRaftController.getRaftNode(context);
         } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
-        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context));
+        return raftNode.removeGroup().thenAccept(r -> grpcRaftController.delete(context, preserveEventStore));
     }
 
     @Override
@@ -313,5 +305,11 @@ public class LocalRaftGroupService implements RaftGroupService {
         } catch (MessagingPlatformException ex) {
             return CompletableFuture.completedFuture(null);
         }
+    }
+
+    @Override
+    public CompletableFuture<Void> prepareDeleteNodeFromContext(String context, String node) {
+        grpcRaftController.prepareDeleteNodeFromContext(context, node);
+        return CompletableFuture.completedFuture(null);
     }
 }

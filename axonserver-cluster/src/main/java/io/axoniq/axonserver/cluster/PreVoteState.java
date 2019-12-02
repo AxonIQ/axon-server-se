@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.election.Election.Result;
+import io.axoniq.axonserver.cluster.exception.ConcurrentMembershipStateModificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,12 +47,17 @@ public class PreVoteState extends VotingState {
         if (!running) {
             return;
         }
-        if (result.won()) {
-            changeStateTo(stateFactory().candidateState(), result.cause());
-        } else if (result.goAway()) {
-            changeStateTo(stateFactory().removedState(), result.cause());
-        } else {
-            changeStateTo(stateFactory().followerState(), result.cause());
+
+        try {
+            if (result.won()) {
+                changeStateTo(stateFactory().candidateState(), result.cause());
+            } else {
+                changeStateTo(stateFactory().followerState(), result.cause());
+            }
+        } catch (ConcurrentMembershipStateModificationException ex) {
+            logger.info("{} in term {}: Failed to process election result, election already completed.",
+                        groupId(),
+                        currentTerm());
         }
     }
 

@@ -47,7 +47,7 @@ message RequestVoteResponse {
     string groupId = 2;
     uint64 term = 3; // term for candidate to update itself
     bool voteGranted = 4;
-    bool goAway = 5; // returned by leader on request vote from unknown node
+    // reserve 5 (old goAway)
 }
 
 message AppendEntriesRequest {
@@ -69,7 +69,12 @@ message Entry {
         SerializedObject serializedObject = 3;
         Config newConfiguration = 4;
         LeaderElected leaderElected = 5;
+        DummyEntry dummyEntry = 6;
     }
+}
+
+// Dummy content for sending an entry that is not to be applied on the remote peer
+message DummyEntry {
 }
 
 message AppendEntriesResponse {
@@ -148,6 +153,16 @@ message Node {
     uint32 port = 3;
     // cluster node name
     string nodeName = 4;
+    // the role of the node in the cluster
+    Role role = 5;
+}
+
+// roles that a node can have inside a cluster
+enum Role {
+    PRIMARY = 0;
+    ACTIVE_BACKUP = 2;
+    PASSIVE_BACKUP = 3;
+    MESSAGING_ONLY = 4;
 }
 
 message ConfigChangeResult {
@@ -173,3 +188,4 @@ message ErrorMessage {
     string code = 1;
     string message = 2;
 }
+

@@ -2,15 +2,24 @@ spring:
   jpa:
     properties:
       hibernate:
-        show_sql: true
-        format_sql: true
-        use_sql_comments: true
+        #        show_sql: true
+        #        format_sql: true
+        #        use_sql_comments: true
         use-new-id-generator-mappings: false
 
   datasource:
     url:  jdbc:h2:mem:test
 
+  flyway:
+    locations: classpath:/db/enterprise,classpath:/db/migration
+
 
 axoniq:
   axonserver:
     metrics-synchronization-rate: 10000
+
+logging:
+  level:
+    io.axoniq: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

@@ -8,6 +8,7 @@ import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -165,13 +166,17 @@ public abstract class AbstractMembershipState implements MembershipState {
 
             if (electionFactory == null) {
                 electionFactory = (disruptLeader) -> {
-                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
+                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup,
+                                                                   currentConfiguration,
+                                                                   n -> RoleUtils.votingNode(n.getRole()));
                     return new DefaultElection(raftGroup, termUpdateHandler, otherPeers, disruptLeader);
                 };
             }
             if (preVoteFactory == null) {
                 preVoteFactory = () -> {
-                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup, currentConfiguration);
+                    Iterable<RaftPeer> otherPeers = new OtherPeers(raftGroup,
+                                                                   currentConfiguration,
+                                                                   n -> RoleUtils.votingNode(n.getRole()));
                     return new DefaultPreVote(raftGroup, termUpdateHandler, otherPeers);
                 };
             }
@@ -201,7 +206,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                                     me(), request.getTerm(), currentTerm(), request.getCandidateId());
             RequestVoteResponse vote = handleAsFollower(follower -> follower.requestPreVote(request), message);
             logger.info(
-                    "{} in term {}: Request for vote received from {} for term {}. {} voted {} (handled as follower).",
+                    "{} in term {}: Request for pre-vote received from {} for term {}. {} voted {} (handled as follower).",
                     groupId(),
                     currentTerm(),
                     request.getCandidateId(),
@@ -210,13 +215,13 @@ public abstract class AbstractMembershipState implements MembershipState {
                     vote != null && vote.getVoteGranted());
             return vote;
         }
-        logger.info("{} in term {}: Request for vote received from {} in term {}. {} voted rejected.",
+        logger.info("{} in term {}: Request for pre-vote received from {} in term {}. {} voted rejected.",
                     groupId(),
                     currentTerm(),
                     request.getCandidateId(),
                     request.getTerm(),
                     me());
-        return responseFactory().voteRejected(request.getRequestId(), false);
+        return responseFactory().voteRejected(request.getRequestId());
     }
 
     @Override
@@ -241,8 +246,7 @@ public abstract class AbstractMembershipState implements MembershipState {
                     request.getCandidateId(),
                     request.getTerm(),
                     me());
-        boolean isMember = member(request.getCandidateId());
-        return responseFactory().voteRejected(request.getRequestId(), !isMember && shouldGoAwayIfNotMember());
+        return responseFactory().voteRejected(request.getRequestId());
     }
 
     @Override
@@ -263,8 +267,13 @@ public abstract class AbstractMembershipState implements MembershipState {
         return responseFactory().installSnapshotFailure(request.getRequestId(), cause);
     }
 
-    protected boolean member(String candidateId) {
-        return currentGroupMembers().stream().anyMatch(n -> n.getNodeId().equals(candidateId));
+    /**
+     * Retrieves the current node definition from the active configuration.
+     *
+     * @return the current node definition
+     */
+    protected Node currentNode() {
+        return currentGroupMembers().stream().filter(n -> n.getNodeId().equals(me())).findFirst().orElse(null);
     }
 
     protected boolean shouldGoAwayIfNotMember() {
@@ -374,6 +383,12 @@ public abstract class AbstractMembershipState implements MembershipState {
         MembershipState followerState = stateFactory().followerState();
         changeStateTo(followerState, cause);
         return handler.apply(followerState);
+    }
+
+    protected <R> R handleAsSecondary(Function<MembershipState, R> handler, String cause) {
+        MembershipState secondaryState = stateFactory().secondaryState();
+        changeStateTo(secondaryState, cause);
+        return handler.apply(secondaryState);
     }
 
     @Override

@@ -26,36 +26,26 @@ public class MajorityStrategy implements VoteStrategy {
     }
 
     @Override
-    public void registerVoteReceived(String voter, boolean granted, boolean goAway) {
-        if( goAway) {
-            log.info("Received goAway from {}", voter);
-            won.complete(electionResult(false, true));
-            return;
-        }
+    public void registerVoteReceived(String voter, boolean granted) {
         votes.put(voter, granted);
         long votesGranted = votes.values().stream().filter(voteGranted -> voteGranted).count();
         long votesRejected = votes.values().stream().filter(voteGranted -> !voteGranted).count();
 
         if (votesGranted >= minMajority.get()){
             log.info("Election is won with following votes: {}. MinMajority: {}.", votes, minMajority.get());
-            won.complete(electionResult(true, false));
+            won.complete(electionResult(true));
         } else if (votesRejected >= minMajority.get()) {
             log.info("Election is lost with following votes: {}. MinMajority: {}.", votes, minMajority.get());
-            won.complete(electionResult(false, false));
+            won.complete(electionResult(false));
         }
 
     }
 
-    private Election.Result electionResult(boolean won, boolean goAway) {
+    private Election.Result electionResult(boolean won) {
         return new Election.Result() {
             @Override
             public boolean won() {
                 return won;
-            }
-
-            @Override
-            public boolean goAway() {
-                return goAway;
             }
 
             @Override

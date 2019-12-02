@@ -32,6 +32,10 @@
             <field template="*"/>
             <method access="protected+"/>
         </class>
+        <class template="@javax.persistence.Embeddable class *">
+            <field template="*"/>
+            <method access="protected+"/>
+        </class>
         <class template="class io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider">
             <method access="protected+"/>
         </class>
@@ -45,6 +49,9 @@
             <method access="protected+"/>
         </class>
         <class template="class * extends io.axoniq.axonserver.cluster.VotingState">
+            <method access="protected+"/>
+        </class>
+        <class template="class * extends io.axoniq.axonserver.cluster.BaseFollowerState">
             <method access="protected+"/>
         </class>
         <class template="@org.springframework.boot.context.properties.ConfigurationProperties class *">
