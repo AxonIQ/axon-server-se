@@ -38,7 +38,7 @@ public class DeleteNodeFromContextTask implements ScheduledTask {
      * @param payload the {@link NodeContext} information
      */
     @Override
-    public CompletableFuture<Void> execute(Object payload) {
+    public CompletableFuture<Void> executeAsync(Object payload) {
         NodeContext nodeContext = (NodeContext) payload;
         raftConfigServiceFactory.getRaftConfigService().deleteNodeFromContext(nodeContext.getContext(),
                                                                               nodeContext.getNode());

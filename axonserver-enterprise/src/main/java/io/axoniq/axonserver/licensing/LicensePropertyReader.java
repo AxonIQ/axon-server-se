@@ -41,7 +41,7 @@ public class LicensePropertyReader {
 
 
     Properties readLicenseProperties() {
-        String licenseFile = System.getProperty("license");
+        String licenseFile = System.getProperty("license", System.getenv("AXONIQ_LICENSE"));
         if(licenseFile == null) {
             licenseFile = "axoniq.license";
             File file = new File(licenseFile);

@@ -49,7 +49,7 @@ public class PrepareDeleteNodeFromContextTask implements ScheduledTask {
     }
 
     @Override
-    public CompletableFuture<Void> execute(Object payload) {
+    public CompletableFuture<Void> executeAsync(Object payload) {
         NodeContext nodeContext = (NodeContext) payload;
         Collection<String> nodesInContext = contextController.getContext(nodeContext.getContext()).getNodeNames();
         Collection<String> adminNodes = contextController.getContext(getAdmin()).getNodeNames();

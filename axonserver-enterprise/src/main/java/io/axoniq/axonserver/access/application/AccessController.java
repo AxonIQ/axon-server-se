@@ -87,7 +87,7 @@ public class AccessController implements AxonServerAccessController {
 
     @Override
     public Set<String> rolesForOperation(String permission) {
-        return accessControllerDB.getPathMappings(permission);
+        return accessControllerDB.rolesForOperation(permission);
     }
 
     @Override
