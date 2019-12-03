@@ -101,10 +101,10 @@ public class CommandRegistrationCache {
         logger.trace("Add command {} to {} with load factor {}", command, commandHandler.client, loadFactor);
         ClientIdentification clientIdentification = commandHandler.getClient();
         String context = clientIdentification.getContext();
-        routingSelector(context, command).register(clientIdentification.getClient());
         registrationsPerClient.computeIfAbsent(clientIdentification, key -> new ConcurrentHashMap<>()).put(command,
                                                                                                            loadFactor);
         commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
+        routingSelector(context, command).register(clientIdentification.getClient());
     }
 
 
