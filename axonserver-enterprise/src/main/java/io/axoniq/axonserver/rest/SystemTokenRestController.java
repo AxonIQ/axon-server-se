@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.access.application.AccessControllerDB;
+import io.axoniq.axonserver.access.application.SystemTokenProvider;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Returns the generated access token. Available only when server is started with profile "internal". Created to support
+ * Returns the generated access token. Available only when server is started with profile "testing-only". Created to support
  * test automation. Do not enable in production systems.
  *
  * @author Marc Gathier
@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("internal/systemtoken")
 public class SystemTokenRestController {
 
-    private final AccessControllerDB accessControllerDB;
+    private final SystemTokenProvider systemTokenProvider;
 
-    public SystemTokenRestController(AccessControllerDB accessControllerDB) {
-        this.accessControllerDB = accessControllerDB;
+    public SystemTokenRestController(SystemTokenProvider systemTokenProvider) {
+        this.systemTokenProvider = systemTokenProvider;
     }
 
     /**
@@ -33,6 +33,6 @@ public class SystemTokenRestController {
      */
     @GetMapping
     public String systemToken() {
-        return accessControllerDB.systemToken();
+        return systemTokenProvider.get();
     }
 }
