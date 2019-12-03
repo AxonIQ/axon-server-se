@@ -13,6 +13,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.command.hashing.ConsistentHashRoutingSelector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +47,7 @@ public class CommandRegistrationCache {
 
     @Autowired
     public CommandRegistrationCache() {
-        this.selectorFactory = command -> new LoadFactorBasedSelector<>(loadFactorSolver(command));
+        this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
     }
 
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory) {
