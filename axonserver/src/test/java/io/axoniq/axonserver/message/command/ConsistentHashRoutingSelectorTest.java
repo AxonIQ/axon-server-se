@@ -11,11 +11,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.*;
 
 /**
- * Unit test for {@link io.axoniq.axonserver.message.command.hashing.ConsistentHashRoutingSelector}
+ * Unit test for {@link ConsistentHashRoutingSelector}
  *
  * @author Sara Pellegrini
  */
-public class LoadFactorBasedSelectorTest {
+public class ConsistentHashRoutingSelectorTest {
+
+    private int messagesNumber = 1_000_000;
+    private double tolerance = 6;
 
     @Test
     public void testDistribution() {
@@ -25,15 +28,14 @@ public class LoadFactorBasedSelectorTest {
         testSubject.register("30");
         testSubject.register("50");
         Map<String, AtomicInteger> counter = new HashMap<>();
-        int messages = 1_000_000;
-        for (int i = 0; i < messages; i++) {
+        for (int i = 0; i < messagesNumber; i++) {
             String handler = testSubject.selectHandler(UUID.randomUUID().toString()).orElse(null);
             counter.computeIfAbsent(handler, h -> new AtomicInteger()).incrementAndGet();
         }
-        System.out.println(counter);
-        counter.forEach((handler, count) -> assertEquals(Double.parseDouble(handler),
-                                                         count.get() * 100d / messages,
-                                                         6));
+        counter.forEach((handler, count) -> {
+            double percentage = count.get() * 100d / messagesNumber;
+            assertEquals(Double.parseDouble(handler), percentage, tolerance);
+        });
     }
 
     @Test
@@ -53,19 +55,13 @@ public class LoadFactorBasedSelectorTest {
         testSubject.register("30");
         testSubject.register("50");
         Map<String, AtomicInteger> counter = new HashMap<>();
-        String handler = null;
         String routingKey = UUID.randomUUID().toString();
-        for (int i = 0; i < 1_000_000; i++) {
-            handler = testSubject.selectHandler(routingKey).orElse(null);
+        for (int i = 0; i < messagesNumber; i++) {
+            String handler = testSubject.selectHandler(routingKey).orElse(null);
             counter.computeIfAbsent(handler, h -> new AtomicInteger()).incrementAndGet();
         }
-        for (Map.Entry<String, AtomicInteger> entry : counter.entrySet()) {
-            if (entry.getKey().equals(handler)) {
-                assertEquals(1_000_000, entry.getValue().get());
-            } else {
-                assertEquals(0, entry.getValue().get());
-            }
-        }
+        assertEquals(1, counter.size());
+        assertEquals(messagesNumber, counter.values().iterator().next().get());
     }
 
     @Test
@@ -75,22 +71,26 @@ public class LoadFactorBasedSelectorTest {
         testSubject.register("30");
         testSubject.register("50");
         Map<String, AtomicInteger> counter = new HashMap<>();
-        for (int i = 0; i < 1_000_000; i++) {
+        for (int i = 0; i < messagesNumber; i++) {
             String handler = testSubject.selectHandler(UUID.randomUUID().toString()).orElse(null);
             counter.computeIfAbsent(handler, h -> new AtomicInteger()).incrementAndGet();
         }
-        counter.forEach((handler, count) -> assertEquals(Double.parseDouble(handler),
-                                                         count.get() * 100 / 1_000_000d,
-                                                         6));
+        counter.forEach((handler, count) -> {
+            double percentage = count.get() * 100d / messagesNumber;
+            assertEquals(Double.parseDouble(handler), percentage, tolerance);
+        });
 
         testSubject.unregister("50");
         counter.clear();
-        for (int i = 0; i < 1_000_000; i++) {
+        for (int i = 0; i < messagesNumber; i++) {
             String handler = testSubject.selectHandler(UUID.randomUUID().toString()).orElse(null);
             counter.computeIfAbsent(handler, h -> new AtomicInteger()).incrementAndGet();
         }
+        checkPercentage("20", 40, counter);
+        checkPercentage("30", 60, counter);
+    }
 
-        assertEquals(40, counter.get("20").get() * 100 / 1_000_000d, 6);
-        assertEquals(60, counter.get("30").get() * 100 / 1_000_000d, 6);
+    private void checkPercentage(String handler, double expectedPercentage, Map<String, AtomicInteger> counter) {
+        assertEquals(expectedPercentage, counter.get(handler).get() * 100d / messagesNumber, tolerance);
     }
 }

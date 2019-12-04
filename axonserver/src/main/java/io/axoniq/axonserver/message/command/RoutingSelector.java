@@ -5,6 +5,7 @@ import java.util.Optional;
 /**
  * Selects the best handler to dispatch the message to, chosen among registered handlers.
  *
+ * @param <Handler> the type of registered handlers
  * @author Sara Pellegrini
  * @since 4.3
  */
