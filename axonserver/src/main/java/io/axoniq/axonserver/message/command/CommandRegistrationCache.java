@@ -13,20 +13,24 @@ import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.message.command.hashing.ConsistentHash;
+import io.axoniq.axonserver.message.command.hashing.ConsistentHashRoutingSelector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
+
+import static java.util.Collections.emptyMap;
 
 /**
  * Registers the commands registered per client/context.
@@ -37,7 +41,18 @@ public class CommandRegistrationCache {
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
     private final ConcurrentMap<ClientIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
     private final ConcurrentMap<ClientIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, ConsistentHash> consistentHashPerContext= new ConcurrentHashMap<>();
+    private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
+
+    private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
+
+    @Autowired
+    public CommandRegistrationCache() {
+        this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
+    }
+
+    public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory) {
+        this.selectorFactory = selectorFactory;
+    }
 
     /**
      * Removes all registrations for a client
@@ -46,10 +61,11 @@ public class CommandRegistrationCache {
     public void remove(ClientIdentification client) {
         logger.trace("Remove {}", client);
         commandHandlersPerClientContext.remove(client);
-        consistentHashPerContext.computeIfPresent(client.getContext(),
-                                                  (context, current) -> current.without(client.getClient()));
-        registrationsPerClient.remove(client);
-        logger.trace("Consistent hash = {}", consistentHashPerContext.get(client.getContext()));
+        Map<String, Integer> remove = registrationsPerClient.remove(client);
+        if (remove != null) {
+            Set<String> commands = remove.keySet();
+            commands.forEach(command -> routingSelector(client.getContext(), command).unregister(client.getClient()));
+        }
     }
 
     /**
@@ -66,6 +82,7 @@ public class CommandRegistrationCache {
             }
             return commandsMap;
         });
+        routingSelector(client.getContext(), command).unregister(client.getClient());
         if( registrations == null) {
             remove(client);
         }
@@ -83,23 +100,13 @@ public class CommandRegistrationCache {
     private void add(String command, CommandHandler commandHandler, int loadFactor) {
         logger.trace("Add command {} to {} with load factor {}", command, commandHandler.client, loadFactor);
         ClientIdentification clientIdentification = commandHandler.getClient();
-        ConsistentHash consistentHash = consistentHashPerContext.computeIfAbsent(clientIdentification.getContext(),
-                                                                                 c -> new ConsistentHash());
-        if (!consistentHash.contains(clientIdentification.getClient())) {
-            consistentHashPerContext.put(clientIdentification.getContext(),
-                                         consistentHash.with(clientIdentification.getClient(),
-                                                             loadFactor,
-                                                             cmd -> provides(clientIdentification, cmd)));
-        }
-        logger.trace("Consistent hash = {}", consistentHashPerContext.get(clientIdentification.getContext()));
+        String context = clientIdentification.getContext();
         registrationsPerClient.computeIfAbsent(clientIdentification, key -> new ConcurrentHashMap<>()).put(command,
                                                                                                            loadFactor);
         commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
+        routingSelector(context, command).register(clientIdentification.getClient());
     }
 
-    private boolean provides(ClientIdentification client, String cmd) {
-        return registrationsPerClient.containsKey(client) && registrationsPerClient.get(client).containsKey(cmd);
-    }
 
     /**
      * Get all registrations per connection
@@ -138,14 +145,25 @@ public class CommandRegistrationCache {
      * @return a command handler for the command (or null of none found)
      */
     public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
-        ConsistentHash hash = consistentHashPerContext.get(context);
-        if( hash == null) return null;
-        String client = hash
-                                                .getMember(routingKey, request.getName())
-                                                .map(ConsistentHash.ConsistentHashMember::getClient)
-                                                .orElse(null);
-        if( client == null ) return null;
-        return commandHandlersPerClientContext.get(new ClientIdentification(context, client));
+        String command = request.getName();
+        RoutingSelector<String> routingSelector = routingSelector(context, command);
+        return routingSelector
+                .selectHandler(routingKey)
+                .map(client -> commandHandlersPerClientContext.get(new ClientIdentification(context, client)))
+                .orElse(null);
+    }
+
+    @Nonnull
+    private RoutingSelector<String> routingSelector(String context, String command) {
+        CommandTypeIdentifier commandIdentification = new CommandTypeIdentifier(context, command);
+        return routingSelectors.computeIfAbsent(commandIdentification,
+                                                c -> selectorFactory.apply(commandIdentification));
+    }
+
+    private Function<String, Integer> loadFactorSolver(CommandTypeIdentifier command) {
+        return client -> registrationsPerClient.getOrDefault(new ClientIdentification(command.context(), client),
+                                                             emptyMap())
+                                               .getOrDefault(command.name(), 0);
     }
 
     /**
@@ -155,8 +173,7 @@ public class CommandRegistrationCache {
      * @return the command handler for the request, or null when not found
      */
     public CommandHandler findByClientAndCommand(ClientIdentification clientIdentification, String request) {
-        boolean found = registrationsPerClient.getOrDefault(clientIdentification, Collections.emptyMap()).containsKey(
-                request);
+        boolean found = registrationsPerClient.getOrDefault(clientIdentification, emptyMap()).containsKey(request);
         if (!found) {
             return null;
         }
