@@ -5,14 +5,22 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.ChannelCloser;
-import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.axonserver.grpc.ProcessingInstruction;
-import io.axoniq.axonserver.grpc.ProcessingKey;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.grpc.internal.*;
+import io.axoniq.axonserver.grpc.internal.ClientStatus;
+import io.axoniq.axonserver.grpc.internal.ClientSubscriptionQueryRequest;
+import io.axoniq.axonserver.grpc.internal.ConnectRequest;
+import io.axoniq.axonserver.grpc.internal.ConnectResponse;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommand;
+import io.axoniq.axonserver.grpc.internal.ForwardedCommandResponse;
+import io.axoniq.axonserver.grpc.internal.ForwardedQuery;
+import io.axoniq.axonserver.grpc.internal.InternalCommandSubscription;
+import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
+import io.axoniq.axonserver.grpc.internal.QueryComplete;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -267,26 +275,29 @@ public class RemoteConnection {
         }
     }
 
-    public void unsubscribeCommand(String context, String command, String client, String componentName) {
+    /**
+     * Propagate a client command unsubscription to the other platform node.
+     *
+     * @param context            the context
+     * @param unsubscribeRequest the unsubscribe request to propagate
+     */
+    public void unsubscribeCommand(String context, CommandSubscription unsubscribeRequest) {
         publish(ConnectorCommand.newBuilder()
                                 .setUnsubscribeCommand(InternalCommandSubscription.newBuilder()
-                                                                                  .setCommand(
-                                                                                          CommandSubscription.newBuilder()
-                                                                                                             .setClientId(client)
-                                                                                                             .setCommand(command)
-                                                                                                             .setComponentName(componentName))
+                                                                                  .setCommand(unsubscribeRequest)
                                                                                   .setContext(context))
                                 .build());
-
     }
 
-    public void subscribeCommand(String context, String command, String client, String componentName) {
+    /**
+     * Propagate a client command subscription to the other platform node.
+     * @param context the context
+     * @param commandSubscription the command subscription to propagate
+     */
+    public void subscribeCommand(String context, CommandSubscription commandSubscription) {
         publish(ConnectorCommand.newBuilder()
                                 .setSubscribeCommand(InternalCommandSubscription.newBuilder()
-                                                                                .setCommand(CommandSubscription.newBuilder()
-                                                                                                               .setClientId(client)
-                                                                                                               .setCommand(command)
-                                                                                                               .setComponentName(componentName))
+                                                                                .setCommand(commandSubscription)
                                                                                 .setContext(context))
                                 .build());
     }
