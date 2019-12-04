@@ -147,11 +147,10 @@ public class CommandRegistrationCache {
     public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
         String command = request.getName();
         RoutingSelector<String> routingSelector = routingSelector(context, command);
-        String client = routingSelector.selectHandler(routingKey).orElse(null);
-        if (client == null) {
-            return null;
-        }
-        return commandHandlersPerClientContext.get(new ClientIdentification(context, client));
+        return routingSelector
+                .selectHandler(routingKey)
+                .map(client -> commandHandlersPerClientContext.get(new ClientIdentification(context, client)))
+                .orElse(null);
     }
 
     @Nonnull
