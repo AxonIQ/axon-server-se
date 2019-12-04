@@ -91,21 +91,21 @@ podTemplate(label: label,
                         junit '**/target/surefire-reports/TEST-*.xml'
                         slackReport = slackReport + "\n" + getTestSummary()
                     }
-                    when(relevantBranch(gitBranch, deployingBranches)) {
+                    if(relevantBranch(gitBranch, deployingBranches)) {
                         sh "mvn \${MVN_BLD} -DskipTests deploy"
                     }
                 }
             }
 
             stage ('Run SonarQube') {
-                when(relevantBranch(gitBranch, sonarBranches)) {
+                if(relevantBranch(gitBranch, sonarBranches)) {
                     container("maven") {
                         sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
                     }
                 }
             }
             stage('Trigger followup') {
-                when(relevantBranch(gitBranch, dockerBranches)) {
+                if(relevantBranch(gitBranch, dockerBranches)) {
 // Axon Server - Build Docker Images
 //   string(name: 'serverEdition', defaultValue: 'se'),
 //   string(name: 'projectVersion', defaultValue: '4.2-SNAPSHOT'),
@@ -123,7 +123,7 @@ podTemplate(label: label,
                         slackReport = slackReport + "\nNew Docker images have been pushed."
                     }
                 }
-                when(relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
+                if(relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
 // Axon Server - Canary tests
 //   string(name: 'serverEdition', defaultValue: 'se'),
 //   string(name: 'projectVersion', defaultValue: '4.2-SNAPSHOT'),
