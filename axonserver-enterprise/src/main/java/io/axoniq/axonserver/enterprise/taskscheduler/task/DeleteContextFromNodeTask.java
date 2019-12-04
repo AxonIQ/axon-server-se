@@ -24,7 +24,7 @@ public class DeleteContextFromNodeTask implements ScheduledTask {
     }
 
     @Override
-    public CompletableFuture<Void> execute(Object payload) {
+    public CompletableFuture<Void> executeAsync(Object payload) {
         NodeContext nodeContext = (NodeContext) payload;
         return raftGroupServiceFactory.getRaftGroupServiceForNode(nodeContext.getNode())
                                       .deleteContext(nodeContext.getContext(), nodeContext.isPreserveEventStore())

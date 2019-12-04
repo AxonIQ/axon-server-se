@@ -5,6 +5,7 @@ import io.axoniq.axonserver.access.application.JpaContextApplicationController;
 import io.axoniq.axonserver.access.application.JpaContextUserController;
 import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ApplicationSnapshotDataStore;
+import io.axoniq.axonserver.enterprise.cluster.snapshot.ClusterSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextApplicationSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.cluster.snapshot.ContextUserSnapshotDataStore;
@@ -46,6 +47,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
 
     private final JpaContextApplicationController contextApplicationController;
     private final ContextController contextController;
+    private final ClusterController clusterController;
     private final ApplicationContext applicationContext;
 
     public SnapshotDataProviders(
@@ -56,6 +58,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
             RaftProcessorLoadBalancingRepository raftProcessorLoadBalancingRepository,
             JpaContextApplicationController contextApplicationController,
             ContextController contextController,
+            ClusterController clusterController,
             ApplicationContext applicationContext) {
         this.applicationController = applicationController;
         this.userRepository = userRepository;
@@ -64,6 +67,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
         this.raftProcessorLoadBalancingRepository = raftProcessorLoadBalancingRepository;
         this.contextApplicationController = contextApplicationController;
         this.contextController = contextController;
+        this.clusterController = clusterController;
         this.applicationContext = applicationContext;
     }
 
@@ -75,6 +79,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
     public List<SnapshotDataStore> apply(String context){
         LocalEventStore localEventStore = applicationContext.getBean(LocalEventStore.class);
         return asList(
+                new ClusterSnapshotDataStore(context, clusterController),
                 new ContextSnapshotDataStore(context, contextController),
                 new ApplicationSnapshotDataStore(context, applicationController),
                 new ContextApplicationSnapshotDataStore(context, contextApplicationController),

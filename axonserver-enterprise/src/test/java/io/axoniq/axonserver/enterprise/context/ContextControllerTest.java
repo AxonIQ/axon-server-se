@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
@@ -50,6 +51,9 @@ public class ContextControllerTest {
 
     @Autowired
     private ContextRepository contextRepository;
+
+    @MockBean
+    private VersionInfoProvider versionInfoProvider;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;

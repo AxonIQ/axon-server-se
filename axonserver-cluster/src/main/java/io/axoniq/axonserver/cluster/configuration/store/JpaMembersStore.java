@@ -4,6 +4,8 @@ import io.axoniq.axonserver.cluster.configuration.MembersStore;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
 import io.axoniq.axonserver.grpc.cluster.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Set;
@@ -16,10 +18,10 @@ import java.util.stream.Collectors;
  */
 public class JpaMembersStore implements MembersStore {
 
+    private static final Logger logger = LoggerFactory.getLogger(JpaMembersStore.class);
     private final Supplier<String> groupId;
 
     private final JpaRaftGroupNodeRepository raftGroupNodeRepository;
-
     public JpaMembersStore(Supplier<String> groupId,
                            JpaRaftGroupNodeRepository raftGroupNodeRepository) {
         this.groupId = groupId;
@@ -38,5 +40,6 @@ public class JpaMembersStore implements MembersStore {
         String group = this.groupId.get();
         raftGroupNodeRepository.deleteAllByGroupId(group);
         nodes.forEach(node -> raftGroupNodeRepository.save(new JpaRaftGroupNode(group, node)));
+        raftGroupNodeRepository.flush();
     }
 }

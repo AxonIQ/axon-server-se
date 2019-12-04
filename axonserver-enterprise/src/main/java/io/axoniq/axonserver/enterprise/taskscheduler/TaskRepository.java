@@ -13,7 +13,7 @@ import java.util.Set;
  * @author Marc Gathier
  * @since 4.3
  */
-public interface TaskRepository extends JpaRepository<Task, Long> {
+public interface TaskRepository extends JpaRepository<Task, String> {
 
     /**
      * Finds tasks based on their status and maximum timestamp

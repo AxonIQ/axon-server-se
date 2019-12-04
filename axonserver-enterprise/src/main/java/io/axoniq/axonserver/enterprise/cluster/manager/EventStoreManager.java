@@ -22,6 +22,8 @@ import org.springframework.context.event.EventListener;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+
 /**
  * @author Marc Gathier
  */
@@ -89,6 +91,12 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         localEventStore.cancel(leaderStepDown.getContextName());
     }
 
+    @EventListener
+    public void on(ClusterEvents.BecomeLeader becomeLeader) {
+        if (!isAdmin(becomeLeader.getContext())) {
+            initContext(becomeLeader.getContext(), false);
+        }
+    }
     @EventListener
     public void on(ContextEvents.ContextCreated contextCreated) {
         initContext(contextCreated.getContext(), false);

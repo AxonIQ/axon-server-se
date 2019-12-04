@@ -13,6 +13,7 @@ import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
+import io.axoniq.axonserver.enterprise.logconsumer.AdminNodeConsumer;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
@@ -72,6 +73,7 @@ import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
 @Component
 class LocalRaftConfigService implements RaftConfigService {
 
+    private static final long MAX_PENDING_TIME = TimeUnit.SECONDS.toMillis(30);
     private final GrpcRaftController grpcRaftController;
     private final ContextController contextController;
     private final ClusterController clusterController;
@@ -108,6 +110,11 @@ class LocalRaftConfigService implements RaftConfigService {
         if (contextDefinition == null) {
             throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
                                                  String.format("Context %s not found", context));
+        }
+
+        if (contextDefinition.isChangePending()
+                && contextDefinition.getPendingSince().getTime() > System.currentTimeMillis() - MAX_PENDING_TIME) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS, context + ": pending update");
         }
         ClusterNode clusterNode = clusterController.getNode(node);
         if (clusterNode == null) {
@@ -474,7 +481,8 @@ class LocalRaftConfigService implements RaftConfigService {
                         .setPort(nodeInfo.getGrpcInternalPort())
                         .setNodeName(nodeInfo.getNodeName())
                         .build();
-        clusterController.addConnection(nodeInfo);
+        sendToAdmin(AdminNodeConsumer.class.getName(), nodeInfo.toByteArray());
+
         contexts.forEach(c -> {
             Context context = contextController.getContext(c);
             ContextConfiguration oldConfiguration = null;
@@ -519,7 +527,7 @@ class LocalRaftConfigService implements RaftConfigService {
                                                    logger.warn(
                                                            "{}: Error while restoring updated configuration in admin {}",
                                                            c,
-                                                           second.getMessage());
+                                                           second.getMessage(), second);
                                                }
                                            }).exceptionally(throwable -> resetAdminConfiguration(old,
                                                                                                  "Error while creating context",

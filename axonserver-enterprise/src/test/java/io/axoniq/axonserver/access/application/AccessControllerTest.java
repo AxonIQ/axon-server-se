@@ -2,10 +2,10 @@ package io.axoniq.axonserver.access.application;
 
 import com.google.common.collect.Sets;
 import io.axoniq.axonserver.access.jpa.FunctionRole;
-import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
 import io.axoniq.axonserver.access.jpa.PathToFunction;
-import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
 import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
+import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -76,6 +76,7 @@ public class AccessControllerTest {
         pathMappings.add(pathToFunction("path3/[^/]*/demo", "READ"));
         pathMappings.add(pathToFunction("path1", "READ"));
         pathMappings.add(pathToFunction("path2", "WRITE"));
+        pathMappings.add(pathToFunction("adminPath", "ADMIN"));
 
         when(pathToFunctionRepository.findAll()).thenReturn(pathMappings);
 
@@ -98,6 +99,8 @@ public class AccessControllerTest {
                             return Collections.singleton(functionRole("READ"));
                         case "WRITE":
                             return Collections.singleton(functionRole("WRITE"));
+                        case "ADMIN":
+                            return Collections.singleton(functionRole("ADMIN"));
                     }
                     return Collections.emptySet();
                 });
@@ -105,7 +108,7 @@ public class AccessControllerTest {
         testSubject = new AccessControllerDB(applicationRepository,
                                              pathToFunctionRepository,
                                              funtionRoleRepository,
-                                             hasher);
+                                             hasher, () -> "This is the system token");
     }
 
     private FunctionRole functionRole(String write) {
@@ -143,6 +146,13 @@ public class AccessControllerTest {
     public void authorizeWithRole() {
         assertTrue(testSubject.authorize("1234567890", "default", "path1"));
         assertTrue(testSubject.authorize("1234567890", "context2", "path2"));
+    }
+
+    @Test
+    public void authorizeWithSystemToken() {
+        assertTrue(testSubject.authorize("This is the system token", "_admin", "adminPath"));
+        assertFalse(testSubject.authorize("This is the system token", "default", "adminPath"));
+        assertFalse(testSubject.authorize("This is the system token", "default", "path1"));
     }
 
     @Test
