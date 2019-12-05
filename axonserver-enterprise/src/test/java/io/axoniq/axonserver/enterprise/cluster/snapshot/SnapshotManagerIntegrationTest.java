@@ -34,11 +34,13 @@ import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.junit.*;
 import org.junit.rules.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -82,6 +84,9 @@ public class SnapshotManagerIntegrationTest {
     private LoadBalanceStrategyRepository loadBalanceStrategyRepository;
     @Autowired
     private RaftProcessorLoadBalancingRepository processorLoadBalancingRepository;
+
+    @MockBean
+    private VersionInfoProvider versionInfoProvider;
 
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
