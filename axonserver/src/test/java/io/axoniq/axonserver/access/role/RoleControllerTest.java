@@ -10,15 +10,26 @@
 package io.axoniq.axonserver.access.role;
 
 import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.roles.RoleController;
+import io.axoniq.axonserver.access.roles.RoleRepository;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.junit.*;
 import org.junit.runner.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static java.util.stream.Collectors.toList;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Created by Sara Pellegrini on 08/03/2018.
@@ -33,31 +44,24 @@ public class RoleControllerTest {
 
     private RoleController roleController;
 
-//    @Autowired
-//    private RoleRepository roleRepository;
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @MockBean
+    private VersionInfoProvider versionInfoProvider;
 
     @Before
     public void before(){
-        // roleController = new RoleController(roleRepository);
+        roleController = new RoleController(roleRepository);
     }
 
     @Test
-    public void testFindUserRoles(){
-//        List<Role> roles = roleController.listUserRoles();
-//        assertThat(roles.size(), equalTo(2));
-//        List<String> roleNames = roles.stream().map(Role::name).sorted().collect(toList());
-//        assertThat(roleNames, contains("ADMIN","READ" ));
+    public void testFindRoles() {
+        List<Role> roles = roleController.listRoles();
+        assertThat(roles.size(), equalTo(12));
+        List<String> roleNames = roles.stream().map(Role::getRole).sorted().collect(toList());
+        assertThat(roleNames, contains("ADMIN", "CONTEXT_ADMIN", "DISPATCH_COMMANDS", "DISPATCH_QUERY",
+                                       "MONITOR", "PUBLISH_EVENTS", "READ", "READ_EVENTS", "SUBSCRIBE_COMMAND_HANDLER",
+                                       "SUBSCRIBE_QUERY_HANDLER", "USE_CONTEXT", "WRITE"));
     }
-
-
-    @Test
-    public void testFindApplicationRoles(){
-//        List<Role> roles = roleController.listApplicationRoles();
-//        assertThat(roles.size(), equalTo(3));
-//        List<String> roleNames = roles.stream().map(Role::name).sorted().collect(toList());
-//        assertThat(roleNames, contains("ADMIN", "READ","WRITE" ));
-    }
-
-
-
 }
