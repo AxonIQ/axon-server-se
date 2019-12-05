@@ -22,6 +22,7 @@ public class ContextNode {
     private String context;
     private String leader;
     private List<String> nodes = new ArrayList<>();
+    private List<NodeAndRole> roles = new ArrayList<>();
 
 
     public ContextNode(String context, List<String> nodes) {
@@ -54,5 +55,13 @@ public class ContextNode {
 
     public void setLeader(String leader) {
         this.leader = leader;
+    }
+
+    public List<NodeAndRole> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(List<NodeAndRole> roles) {
+        this.roles = roles;
     }
 }
