@@ -12,6 +12,7 @@
     <properties>
         <exec.plugin.version>1.6.0</exec.plugin.version>
         <allatori-jar.full-path>${allatori.dir}/lib/allatori.jar</allatori-jar.full-path>
+        <docker.location>eu.gcr.io/axoniq-devops</docker.location>
     </properties>
 
     <dependencies>
@@ -200,12 +201,16 @@
                     <skip>false</skip>
                     <container>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        <volumes>
+                            <volume>/eventdata</volume>
+                            <volume>/data</volume>
+                        </volumes>
                     </container>
                     <from>
                         <image>gcr.io/distroless/java:11</image>
                     </from>
                     <to>
-                        <image>axoniq/axon-server-enterprise</image>
+                        <image>${docker.location}/axonserver-enterprise</image>
                         <tags>${project.parent.version}</tags>
                     </to>
                 </configuration>

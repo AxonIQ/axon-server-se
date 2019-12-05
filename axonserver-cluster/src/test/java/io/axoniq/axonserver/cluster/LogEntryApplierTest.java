@@ -167,7 +167,7 @@ public class LogEntryApplierTest {
         logEntryStore.appendEntry(Collections.singletonList(anEntry));
         processorStore.updateCommit(1, 0);
 
-        assertWithin(100, TimeUnit.MILLISECONDS, () -> verify(lastLogEntryAppliedConsumer).accept(anEntry));
+        assertWithin(500, TimeUnit.MILLISECONDS, () -> verify(lastLogEntryAppliedConsumer).accept(anEntry));
     }
 
     @Test
