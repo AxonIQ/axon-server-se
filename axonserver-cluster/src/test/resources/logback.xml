@@ -13,7 +13,7 @@
             additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
-    <logger name="io.axoniq.axonserver.cluster" level="trace"
+    <logger name="io.axoniq.axonserver.cluster" level="debug"
             additivity="false">
         <appender-ref ref="STDOUT"/>
     </logger>

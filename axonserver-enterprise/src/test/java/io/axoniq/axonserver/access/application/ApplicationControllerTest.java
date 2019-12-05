@@ -1,10 +1,12 @@
 package io.axoniq.axonserver.access.application;
 
 import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.junit.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -31,6 +33,9 @@ public class ApplicationControllerTest {
     @Autowired
     private EntityManager entityManager;
     private BcryptHasher hasher =  new BcryptHasher();
+
+    @MockBean
+    private VersionInfoProvider versionInfoProvider;
 
 
     @Before
