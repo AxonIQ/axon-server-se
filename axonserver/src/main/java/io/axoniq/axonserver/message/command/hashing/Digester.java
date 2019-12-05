@@ -26,6 +26,10 @@ public class Digester {
     public static final String UTF_8 = "UTF-8";
     private final MessageDigest messageDigest;
 
+    private Digester(MessageDigest messageDigest) {
+        this.messageDigest = messageDigest;
+    }
+
     /**
      * Creates a new Digester instance for the given {@code algorithm}.
      *
@@ -36,7 +40,9 @@ public class Digester {
         try {
             return new Digester(MessageDigest.getInstance(algorithm));
         } catch (NoSuchAlgorithmException e) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "This environment doesn't support the MD5 hashing algorithm", e);
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "This environment doesn't support the MD5 hashing algorithm",
+                                                 e);
         }
     }
 
@@ -59,12 +65,26 @@ public class Digester {
         try {
             return newMD5Instance().update(input.getBytes(UTF_8)).digestHex();
         } catch (UnsupportedEncodingException e) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "The UTF-8 encoding is not available on this environment", e);
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "The UTF-8 encoding is not available on this environment",
+                                                 e);
         }
     }
 
-    private Digester(MessageDigest messageDigest) {
-        this.messageDigest = messageDigest;
+    private static String hex(byte[] hash) {
+        return pad(new BigInteger(1, hash).toString(16));
+    }
+
+    private static String pad(String md5) {
+        if (md5.length() == 32) {
+            return md5;
+        }
+        StringBuilder sb = new StringBuilder(32);
+        for (int t = 0; t < 32 - md5.length(); t++) {
+            sb.append("0");
+        }
+        sb.append(md5);
+        return sb.toString();
     }
 
     /**
@@ -87,21 +107,5 @@ public class Digester {
      */
     public String digestHex() {
         return hex(messageDigest.digest());
-    }
-
-    private static String hex(byte[] hash) {
-        return pad(new BigInteger(1, hash).toString(16));
-    }
-
-    private static String pad(String md5) {
-        if (md5.length() == 32) {
-            return md5;
-        }
-        StringBuilder sb = new StringBuilder(32);
-        for (int t = 0; t < 32 - md5.length(); t++) {
-            sb.append("0");
-        }
-        sb.append(md5);
-        return sb.toString();
     }
 }
