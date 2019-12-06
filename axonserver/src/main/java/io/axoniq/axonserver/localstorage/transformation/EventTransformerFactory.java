@@ -19,8 +19,7 @@ public interface EventTransformerFactory {
      * Get an event transformer. The transformer may be based on version and flags (for existing data) or based on settings in the storage properties (for new data).
      * @param version the version for existing data
      * @param flags the flags for existing data
-     * @param context the context for which to create an event transformer
      * @return the transformer
      */
-    EventTransformer get(byte version, int flags, String context);
+    EventTransformer get(byte version, int flags);
 }

@@ -15,8 +15,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -98,24 +96,16 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     private InputStreamEventSource get(long segment, boolean force) {
         if( !force && ! segments.contains(segment)) return null;
 
-        return new InputStreamEventSource(storageProperties.dataFile(context, segment), eventTransformerFactory, storageProperties, context);
+        return new InputStreamEventSource(storageProperties.dataFile(context, segment),
+                                          eventTransformerFactory,
+                                          storageProperties);
     }
 
     @Override
     protected void recreateIndex(long segment) {
         try (InputStreamEventSource is = get(segment, true);
              EventIterator iterator = createEventIterator( is,segment, segment)) {
-            Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
-            while (iterator.hasNext()) {
-                EventInformation event = iterator.next();
-                if (event.isDomainEvent()) {
-                    aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                       k -> new ConcurrentSkipListSet<>())
-                                      .add(new PositionInfo(event.getPosition(),
-                                                            event.getEvent().getAggregateSequenceNumber()));
-                }
-            }
-            indexManager.createIndex(segment, aggregatePositions);
+            recreateIndexFromIterator(segment, iterator);
         }
 
     }
