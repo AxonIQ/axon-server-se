@@ -15,6 +15,10 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.vote.AffirmativeBased;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -70,7 +74,9 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         if (accessControlConfiguration.isEnabled()) {
             final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
             http.addFilterBefore(tokenFilter, BasicAuthenticationFilter.class);
-            http.exceptionHandling() // only redirect to login page for html pages
+            http.exceptionHandling()
+                .accessDeniedHandler(this::handleAccessDenied)
+                // only redirect to login page for html pages
                 .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"),
                                                     new AntPathRequestMatcher("/**/*.html"));
             ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
@@ -99,6 +105,20 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     .httpBasic(); // Allow accessing rest calls using basic authentication header
         } else {
             http.authorizeRequests().anyRequest().permitAll();
+        }
+    }
+
+    private void handleAccessDenied(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+                                    AccessDeniedException e) throws IOException {
+        if (MediaType.TEXT_EVENT_STREAM_VALUE.equals(httpServletRequest.getHeader(HttpHeaders.ACCEPT))) {
+            httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_EVENT_STREAM_VALUE);
+            ServletOutputStream os = httpServletResponse.getOutputStream();
+            os.println("event:error");
+            os.println("data:" + HttpStatus.FORBIDDEN.getReasonPhrase());
+            os.println();
+            os.close();
+        } else {
+            httpServletResponse.sendError(HttpStatus.FORBIDDEN.value(), HttpStatus.FORBIDDEN.getReasonPhrase());
         }
     }
 
