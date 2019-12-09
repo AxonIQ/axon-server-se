@@ -31,7 +31,7 @@
 
         <mapdb.version>3.0.7</mapdb.version>
         <jackson.version>2.9.10</jackson.version>
-        <skip.integration.tests>true</skip.integration.tests>
+        <skip.integration.tests>false</skip.integration.tests>
     </properties>
 
     <dependencies>

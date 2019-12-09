@@ -153,7 +153,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             List<ProcessedEvent> eventList = preparedTransaction.getEventList();
             int eventSize = preparedTransaction.getEventSize();
             WritePosition writePosition = preparedTransaction.getWritePosition();
-            Map<String, SortedSet<PositionInfo>> indexEntries = new HashMap<>();
+            Map<String, SortedSet<PositionInfo>> indexEntries = write(writePosition, eventSize, eventList);
 
             synchronizer.register(writePosition, new StorageCallback() {
                 private final AtomicBoolean execute = new AtomicBoolean(true);
@@ -175,7 +175,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     completableFuture.completeExceptionally(cause);
                 }
             });
-            write(writePosition, eventSize, eventList, indexEntries);
+
             synchronizer.notifyWritePositions();
         } catch (RuntimeException cause) {
             completableFuture.completeExceptionally(cause);
@@ -334,8 +334,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList,
-                       Map<String, SortedSet<PositionInfo>> indexEntries) {
+    private Map<String, SortedSet<PositionInfo>> write(WritePosition writePosition, int eventSize,
+                                                       List<ProcessedEvent> eventList) {
+        Map<String, SortedSet<PositionInfo>> indexEntries = new HashMap<>();
         ByteBufferEventSource source = writePosition.buffer.duplicate();
         ByteBuffer writeBuffer = source.getBuffer();
         writeBuffer.position(writePosition.position);
@@ -359,6 +360,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(eventSize);
         source.close();
+        return indexEntries;
     }
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
