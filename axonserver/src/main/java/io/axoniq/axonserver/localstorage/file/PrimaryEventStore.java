@@ -149,11 +149,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
+            Map<String, SortedSet<PositionInfo>> indexEntries = new HashMap<>();
             FilePreparedTransaction preparedTransaction = prepareTransaction(origEventList);
-            List<ProcessedEvent> eventList = preparedTransaction.getEventList();
-            int eventSize = preparedTransaction.getEventSize();
             WritePosition writePosition = preparedTransaction.getWritePosition();
-            Map<String, SortedSet<PositionInfo>> indexEntries = write(writePosition, eventSize, eventList);
 
             synchronizer.register(writePosition, new StorageCallback() {
                 private final AtomicBoolean execute = new AtomicBoolean(true);
@@ -164,7 +162,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                         positionsPerSegmentMap.computeIfAbsent(writePosition.segment, s -> new HashMap<>()).putAll(
                                 indexEntries);
                         completableFuture.complete(firstToken);
-                        lastToken.set(firstToken + eventList.size() - 1);
+                        lastToken.set(firstToken + preparedTransaction.getEventList().size() - 1);
                         return true;
                     }
                     return false;
@@ -175,7 +173,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     completableFuture.completeExceptionally(cause);
                 }
             });
-
+            write(writePosition, preparedTransaction.getEventSize(), preparedTransaction.getEventList(), indexEntries);
             synchronizer.notifyWritePositions();
         } catch (RuntimeException cause) {
             completableFuture.completeExceptionally(cause);
@@ -334,9 +332,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private Map<String, SortedSet<PositionInfo>> write(WritePosition writePosition, int eventSize,
-                                                       List<ProcessedEvent> eventList) {
-        Map<String, SortedSet<PositionInfo>> indexEntries = new HashMap<>();
+    private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList,
+                       Map<String, SortedSet<PositionInfo>> indexEntries) {
         ByteBufferEventSource source = writePosition.buffer.duplicate();
         ByteBuffer writeBuffer = source.getBuffer();
         writeBuffer.position(writePosition.position);
@@ -360,7 +357,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(eventSize);
         source.close();
-        return indexEntries;
     }
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
