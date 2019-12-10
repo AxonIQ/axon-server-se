@@ -7,13 +7,13 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
 
@@ -41,9 +41,8 @@ public class LocalEventStorageEngineTest {
                                                                             new DefaultMultiContextEventTransformerFactory(
                                                                                     new DefaultEventTransformerFactory()));
 
-        testSubject = new LocalEventStore(eventStoreFactory, SingleInstanceTransactionManager::new,
-                                          new EventStoreExistChecker() {
-                                          });
+        testSubject = new LocalEventStore(eventStoreFactory, new SimpleMeterRegistry(), SingleInstanceTransactionManager::new,
+                                          c -> true);
         testSubject.initContext("default", false);
     }
 

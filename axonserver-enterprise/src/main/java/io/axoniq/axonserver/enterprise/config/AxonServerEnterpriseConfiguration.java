@@ -113,5 +113,4 @@ public class AxonServerEnterpriseConfiguration {
             RaftConfigServiceFactory raftServiceFactory) {
         return new RaftProcessorLoadBalancingControllerFacade(processorLoadBalancingController, raftServiceFactory);
     }
-
 }

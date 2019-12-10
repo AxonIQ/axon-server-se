@@ -8,6 +8,7 @@ import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.metric.NodeMetric;
+import io.micrometer.core.instrument.Tags;
 import org.springframework.context.event.EventListener;
 
 import java.util.Collection;
@@ -20,19 +21,29 @@ import javax.annotation.Nonnull;
 import static java.util.stream.StreamSupport.stream;
 
 /**
- * Created by Sara Pellegrini on 17/04/2018.
- * sara.pellegrini@gmail.com
+ * Collects metrics from other Axon Server nodes.
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class ClusterMetricTarget implements MetricCollector {
 
     private final Map<String, Collection<Metric>> clusterMetricMap = new ConcurrentHashMap<>();
 
-    public Iterable<AxonServerMetric> getAll() {
+    public Iterable<AxonServerMetric> getAll(String metric, Tags tags) {
         return clusterMetricMap.entrySet().stream()
                                .map(Map.Entry::getValue)
                                .flatMap(Collection::stream)
+                               .filter(m -> match(m, metric, tags))
                                .map(GrpcBackedMetric::new)
                                .collect(Collectors.toList());
+    }
+
+    private boolean match(Metric m, String metric, Tags tags) {
+        return m.getName().equals(metric) && tagsMatch(m.getTagsMap(), tags);
+    }
+
+    private boolean tagsMatch(Map<String, String> tagsMap, Tags tags) {
+        return tags.stream().allMatch(t -> t.getValue().equals(tagsMap.get(t.getKey())));
     }
 
     @EventListener
@@ -47,9 +58,8 @@ public class ClusterMetricTarget implements MetricCollector {
     }
 
     @Override
-    public ClusterMetric apply(@Nonnull String metricName) {
-        Set<ClusterMetric> metrics = stream(getAll().spliterator(), false)
-                .filter(metric -> metricName.equals(metric.getName()))
+    public ClusterMetric apply(@Nonnull String metricName, Tags tags) {
+        Set<ClusterMetric> metrics = stream(getAll(metricName, tags).spliterator(), false)
                 .map(NodeMetric::new)
                 .collect(Collectors.toSet());
         return new CompositeMetric(metrics);

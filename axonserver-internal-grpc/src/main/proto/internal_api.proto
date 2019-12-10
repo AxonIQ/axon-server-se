@@ -385,18 +385,16 @@ message NodeMetrics {
 
 message Metric {
     string name = 1;
-    int64 size = 2;
+    int64 count = 2;
     double median = 3;
-    double percentile75 = 4;
     double percentile95 = 5;
-    double percentile98 = 6;
     double percentile99 = 7;
-    double percentile999 = 8;
-    int64 max = 9;
-    int64 min = 10;
+    double max = 9;
+    double min = 10;
     double mean = 11;
-
-    repeated int64 values = 12;
+    map<string, string> tags = 13;
+    double value = 14;
+    reserved 4, 6, 8, 12;
 }
 
 message SynchronizationReplicaOutbound {
