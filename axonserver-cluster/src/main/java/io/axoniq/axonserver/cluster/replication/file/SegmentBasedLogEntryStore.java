@@ -173,14 +173,21 @@ public abstract class SegmentBasedLogEntryStore {
 
     protected abstract Entry getEntry(long index);
 
-    public SegmentEntryIterator getIterator(long nextIndex) {
+    /**
+     * Returns an iterator for the entries in the segment containing {@code nextIndex}.
+     * Returns {@code null} when no segment for index found.
+     *
+     * @param nextIndex index of first entry to return
+     * @return the iterator
+     */
+    public SegmentEntryIterator getSegmentIterator(long nextIndex) {
         long segment = getSegmentFor(nextIndex);
         Optional<EntrySource> eventSource = getEventSource(segment);
         if( eventSource.isPresent()) {
             return eventSource.get().createLogEntryIterator(segment, nextIndex, getPosition(segment, nextIndex), false);
         }
         if( next != null) {
-            return next.getIterator(nextIndex);
+            return next.getSegmentIterator(nextIndex);
         }
         return null;
     }

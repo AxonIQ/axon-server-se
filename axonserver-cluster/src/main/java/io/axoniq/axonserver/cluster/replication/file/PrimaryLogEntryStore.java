@@ -68,14 +68,14 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     @Override
-    public SegmentEntryIterator getIterator(long nextIndex) {
+    public SegmentEntryIterator getSegmentIterator(long nextIndex) {
         if (nextIndex > lastToken.get()) return null;
         logger.trace("{}: Create iterator at: {}", context, nextIndex);
-        return super.getIterator(nextIndex);
+        return super.getSegmentIterator(nextIndex);
     }
 
     public EntryIterator getEntryIterator(long nextIndex) {
-        return new MultiSegmentIterator(this::getIterator, nextIndex);
+        return new MultiSegmentIterator(this::getSegmentIterator, this::getLastToken, nextIndex);
     }
 
     public Entry getEntry(long index) {

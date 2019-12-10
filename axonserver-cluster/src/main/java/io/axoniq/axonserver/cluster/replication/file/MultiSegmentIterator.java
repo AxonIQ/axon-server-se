@@ -8,6 +8,7 @@ import org.springframework.data.util.CloseableIterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * @author Marc Gathier
@@ -17,13 +18,16 @@ public class MultiSegmentIterator implements EntryIterator {
 
     private final Function<Long, CloseableIterator<Entry>> iteratorProvider;
     private final AtomicLong nextIndex = new AtomicLong();
+    private final Supplier<Long> lastIndexProvider;
 
     private volatile Entry previous;
     private volatile Entry next;
     private volatile CloseableIterator<Entry> iterator;
 
     public MultiSegmentIterator(Function<Long, CloseableIterator<Entry>> iteratorProvider,
+                                Supplier<Long> lastIndexProvider,
                                 long nextIndex) {
+        this.lastIndexProvider = lastIndexProvider;
         this.nextIndex.set(nextIndex);
         this.iteratorProvider = iteratorProvider;
 
@@ -35,29 +39,22 @@ public class MultiSegmentIterator implements EntryIterator {
         }
     }
 
-
     @Override
     public boolean hasNext() {
-        if (iterator == null) {
-            return false;
-        }
-        if (iterator.hasNext()) {
-            return true;
-        }
-
-        close();
-        iterator = iteratorProvider.apply(nextIndex.get());
-        return hasNext();
+        return nextIndex.get() <= lastIndexProvider.get();
     }
 
     @Override
     public Entry next() {
-        if (iterator == null || !iterator.hasNext()) {
-            throw new NoSuchElementException();
+        checkMoveToNextSegment();
+        if (iterator == null || !hasNext()) {
+            throw new NoSuchElementException(String.format("%d after %d", nextIndex.get(), lastIndexProvider.get()));
         }
+
         if (next != null) {
             previous = next;
         }
+
         next = iterator.next();
         nextIndex.getAndIncrement();
         return next;
@@ -66,7 +63,7 @@ public class MultiSegmentIterator implements EntryIterator {
     @Override
     public TermIndex previous() {
         if (previous == null) {
-            return new TermIndex(0,0);
+            return new TermIndex(0, 0);
         }
         return new TermIndex(previous.getTerm(), previous.getIndex());
     }
@@ -78,4 +75,12 @@ public class MultiSegmentIterator implements EntryIterator {
         }
     }
 
+    private void checkMoveToNextSegment() {
+        if (iterator != null && iterator.hasNext()) {
+            return;
+        }
+
+        close();
+        iterator = iteratorProvider.apply(nextIndex.get());
+    }
 }
