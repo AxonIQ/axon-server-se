@@ -58,7 +58,8 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     protected void recreateIndex(long segment) {
         ByteBufferEntrySource buffer = get(segment, true);
-        try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(segment, segment, 5, false)) {
+        try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(segment,
+                                                                           EntrySource.START_POSITION)) {
             Map<Long, Integer> aggregatePositions = new HashMap<>();
             while (iterator.hasNext()) {
                 int position = iterator.position();
@@ -151,6 +152,18 @@ public class SecondaryLogEntryStore extends SegmentBasedLogEntryStore {
     @Override
     protected int getPosition(long segment, long nextIndex) {
         return indexManager.getIndex(segment).getPosition(nextIndex);
+    }
+
+    public long getTerm(long index) {
+        long segment = getSegmentFor(index);
+        if (segments.contains(segment)) {
+            Integer position = indexManager.getIndex(segment).getPosition(index);
+            EntrySource eventSource = getEventSource(segment).orElse(null);
+            if (eventSource != null && position != null) {
+                return eventSource.readTerm(position);
+            }
+        }
+        return -1;
     }
 
     protected void removeSegment(long segment) {

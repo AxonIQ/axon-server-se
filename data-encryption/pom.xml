@@ -16,7 +16,6 @@
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver-enterprise</artifactId>
             <version>${project.parent.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

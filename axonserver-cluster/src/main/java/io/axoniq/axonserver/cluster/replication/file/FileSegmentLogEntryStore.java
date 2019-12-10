@@ -200,8 +200,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     @Override
     public boolean contains(long logIndex, long logTerm) {
         if( logIndex == 0) return true;
-        Entry existingEntry = getEntry(logIndex);
-        return existingEntry != null && existingEntry.getTerm() == logTerm;
+        return logTerm == getTerm(logIndex);
     }
     @Override
     public Entry getEntry(long index) {
@@ -209,6 +208,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
         return primaryLogEntryStore.getEntry(index);
     }
 
+    private long getTerm(long index) {
+        return primaryLogEntryStore.getTerm(index);
+    }
 
     @Override
     public TermIndex lastLog() {
