@@ -20,7 +20,5 @@ public interface EventStoreExistChecker {
      * @param context
      * @return
      */
-    default boolean exists(String context) {
-        return true;
-    }
+    boolean exists(String context);
 }

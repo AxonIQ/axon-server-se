@@ -14,12 +14,13 @@ import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
 import io.axoniq.axonserver.serializer.Media;
+import io.micrometer.core.instrument.Tags;
 
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
- * Created by Sara Pellegrini on 19/06/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class HubSubscriptionMetrics implements SubscriptionMetrics {
 
@@ -27,12 +28,12 @@ public class HubSubscriptionMetrics implements SubscriptionMetrics {
     private final ClusterMetric activeSubscriptions;
     private final ClusterMetric updates;
 
-    public HubSubscriptionMetrics(CounterMetric active, CounterMetric total, CounterMetric updates,
-                                  Function<String, ClusterMetric> clusterRegistry) {
+    public HubSubscriptionMetrics(Tags tags, CounterMetric active, CounterMetric total, CounterMetric updates,
+                                  BiFunction<String, Tags, ClusterMetric> clusterRegistry) {
         this(
-                new CompositeMetric(total, clusterRegistry.apply(total.getName())),
-                new CompositeMetric(active, clusterRegistry.apply(active.getName())),
-                new CompositeMetric(updates, clusterRegistry.apply(updates.getName()))
+                new CompositeMetric(total, clusterRegistry.apply(total.getName(), tags)),
+                new CompositeMetric(active, clusterRegistry.apply(active.getName(), tags)),
+                new CompositeMetric(updates, clusterRegistry.apply(updates.getName(), tags))
         );
     }
 
@@ -46,17 +47,17 @@ public class HubSubscriptionMetrics implements SubscriptionMetrics {
 
     @Override
     public Long totalCount() {
-        return totalSubscriptions.size();
+        return totalSubscriptions.count();
     }
 
     @Override
     public Long activesCount() {
-        return activeSubscriptions.size();
+        return activeSubscriptions.count();
     }
 
     @Override
     public Long updatesCount() {
-        return updates.size();
+        return updates.count();
     }
 
 

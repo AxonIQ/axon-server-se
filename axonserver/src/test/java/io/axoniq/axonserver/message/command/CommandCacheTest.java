@@ -34,7 +34,7 @@ public class CommandCacheTest {
     @Test
     public void clearOnTimeout() {
         AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
-        testSubject.put("1234", new CommandInformation("1234", responseAtomicReference::set,
+        testSubject.put("1234", new CommandInformation("1234", "Source", responseAtomicReference::set,
                                                        new ClientIdentification("context", "client"),
                                                        "component"));
         clock.forward(100000);

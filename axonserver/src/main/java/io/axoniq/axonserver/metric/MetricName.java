@@ -10,18 +10,9 @@
 package io.axoniq.axonserver.metric;
 
 /**
- * Created by Sara Pellegrini on 17/04/2018.
- * sara.pellegrini@gmail.com
+ * @author Marc Gathier
  */
-public interface ClusterMetric {
+public interface MetricName {
 
-    long count();
-
-    double value();
-
-    double min();
-
-    double max();
-
-    double mean();
+    String metric();
 }

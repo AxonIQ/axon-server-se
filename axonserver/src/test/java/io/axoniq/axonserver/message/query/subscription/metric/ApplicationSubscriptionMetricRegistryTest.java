@@ -15,6 +15,9 @@ import io.axoniq.axonserver.grpc.query.QueryUpdate;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.metric.ClusterMetric;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.MetricCollector;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
@@ -34,27 +37,10 @@ public class ApplicationSubscriptionMetricRegistryTest {
 
     @Before
     public void setUp() {
-        testSubject = new ApplicationSubscriptionMetricRegistry(new SimpleMeterRegistry(), metric -> clusterMetricMap.computeIfAbsent(metric, m -> new ClusterMetric(){
-            @Override
-            public long size() {
-                return 0;
-            }
-
-            @Override
-            public long min() {
-                return 0;
-            }
-
-            @Override
-            public long max() {
-                return 0;
-            }
-
-            @Override
-            public double mean() {
-                return 0;
-            }
-        }));
+        MetricCollector metricCollector = new DefaultMetricCollector();
+        testSubject = new ApplicationSubscriptionMetricRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                                 metricCollector),
+                                                                metricCollector::apply);
     }
 
     @Test

@@ -14,8 +14,11 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import java.io.ByteArrayInputStream;
@@ -76,8 +79,8 @@ public class LocalEventStorageEngineTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return new FakeEventStore(EventType.SNAPSHOT);
             }
-        }, transactionManagerFactory, new EventStoreExistChecker() {
-        }, 5, 1000);
+        }, new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
+                                          transactionManagerFactory, c -> true, 5, 1000);
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
 

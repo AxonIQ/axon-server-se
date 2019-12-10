@@ -86,7 +86,7 @@ public class MetricsRestControllerTest {
         assertEquals(1, commands.size());
         assertEquals(testclient.toString(), commands.get(0).getClientId());
         assertEquals(0, commands.get(0).getCount());
-        commandMetricsRegistry.add("Sample", testclient, 1);
+        commandMetricsRegistry.add("Sample", "Source", testclient, 1);
         commands = testSubject.getCommandMetrics();
         assertEquals(1, commands.size());
         assertEquals(testclient.toString(), commands.get(0).getClientId());
@@ -100,7 +100,7 @@ public class MetricsRestControllerTest {
         assertEquals(queryClient.toString(), queries.get(0).getClientId());
         assertEquals(0, queries.get(0).getCount());
 
-        queryMetricsRegistry.add(new QueryDefinition("context", "query"), queryClient, 50);
+        queryMetricsRegistry.add(new QueryDefinition("context", "query"), "Source", queryClient, 50);
 
         queries = testSubject.getQueryMetrics();
         assertEquals(1, queries.size());

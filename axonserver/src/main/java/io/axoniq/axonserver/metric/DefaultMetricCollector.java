@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.metric;
 
+import io.micrometer.core.instrument.Tags;
+
 import java.util.Collections;
 
 /**
@@ -17,12 +19,12 @@ import java.util.Collections;
 public class DefaultMetricCollector implements MetricCollector {
 
     @Override
-    public Iterable<AxonServerMetric> getAll() {
+    public Iterable<AxonServerMetric> getAll(String name, Tags tags) {
         return Collections.emptyList();
     }
 
     @Override
-    public ClusterMetric apply(String s) {
-        return new CounterMetric(s, () -> 0L);
+    public ClusterMetric apply(String name, Tags tags) {
+        return new CounterMetric(name, () -> 0L);
     }
 }

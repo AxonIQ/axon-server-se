@@ -35,23 +35,35 @@ public class CompositeMetric implements ClusterMetric {
     }
 
     @Override
-    public long size() {
-        return clusterMetrics.stream().map(ClusterMetric::size).reduce(Long::sum).orElse(0L);
+    public double value() {
+        return clusterMetrics.stream().map(ClusterMetric::value).reduce(Double::sum).orElse(0d);
     }
 
     @Override
-    public long min() {
-        return clusterMetrics.stream().map(ClusterMetric::min).min(Long::compareTo).orElse(0L);
+    public long count() {
+        return clusterMetrics.stream().map(ClusterMetric::count).reduce(Long::sum).orElse(0L);
     }
 
     @Override
-    public long max() {
-        return clusterMetrics.stream().map(ClusterMetric::max).max(Long::compareTo).orElse(0L);
+    public double min() {
+        return clusterMetrics.stream().map(ClusterMetric::min).min(Double::compareTo).orElse(0d);
+    }
+
+    @Override
+    public double max() {
+        return clusterMetrics.stream().map(ClusterMetric::max).max(Double::compareTo).orElse(0d);
     }
 
     @Override
     public double mean() {
-        return clusterMetrics.stream().map(metric -> metric.mean() * metric.size()).reduce(Double::sum)
-                             .orElse((double) 0) / size();
+        return clusterMetrics.stream().map(metric -> metric.mean() * metric.count())
+                             .reduce(Double::sum)
+                             .orElse((double) 0)
+                / count();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("value: %d, mean: %f", value(), mean());
     }
 }
