@@ -86,6 +86,7 @@ public class StorageProperties {
      */
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
     private final SystemInfoProvider systemInfoProvider;
+    private int flags;
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -171,7 +172,7 @@ public class StorageProperties {
     }
 
     public int getFlags() {
-        return 0;
+        return flags;
     }
 
     public String getStorage(String context) {
@@ -265,4 +266,7 @@ public class StorageProperties {
     }
 
 
+    public void setFlags(int flags) {
+        this.flags = flags;
+    }
 }

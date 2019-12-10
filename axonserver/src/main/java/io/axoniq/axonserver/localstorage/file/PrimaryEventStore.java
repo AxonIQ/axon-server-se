@@ -73,7 +73,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     public void initSegments(long lastInitialized) {
         File storageDir = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
-        eventTransformer = eventTransformerFactory.get(VERSION, storageProperties.getFlags(), storageProperties);
+        eventTransformer = eventTransformerFactory.get(VERSION, storageProperties.getFlags());
         initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir);
     }
 
