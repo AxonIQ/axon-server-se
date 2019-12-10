@@ -36,7 +36,6 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -105,8 +104,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             } else {
                 sender.addPermits(queryEventsRequest.getNumberOfPermits());
             }
-
-        } catch (ParseException pe) {
+        } catch (Exception pe) {
             responseObserver.onError(pe);
             sender = null;
         }

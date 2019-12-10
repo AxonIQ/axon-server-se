@@ -63,7 +63,7 @@ public class HttpStreamingQuery {
         } catch (Exception e) {
             try {
                 logger.warn("Error while processing query {} - {}", queryString, e.getMessage(), e);
-                sseEmitter.send(SseEmitter.event().name("error").data(e.getClass().getName() + ": " + e.getMessage()));
+                sseEmitter.send(SseEmitter.event().name("error").data(e.getMessage()));
             } catch (IOException ignore) {
                 // ignore exception on sending error to client
             }
