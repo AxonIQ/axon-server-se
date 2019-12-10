@@ -102,7 +102,7 @@ public class QueryMetricsRegistry {
      */
     public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
         ClusterMetric clusterMetric = clusterMetric(query, clientId);
-        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.value());
+        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.count());
     }
 
     /**
