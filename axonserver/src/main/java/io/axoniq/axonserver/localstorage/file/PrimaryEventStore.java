@@ -159,8 +159,19 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 @Override
                 public boolean onCompleted(long firstToken) {
                     if (execute.getAndSet(false)) {
-                        positionsPerSegmentMap.computeIfAbsent(writePosition.segment, s -> new HashMap<>()).putAll(
-                                indexEntries);
+                        Map<String, SortedSet<PositionInfo>> mapForSegment = positionsPerSegmentMap.computeIfAbsent(
+                                writePosition.segment,
+                                s -> new HashMap<>());
+                        indexEntries.forEach((aggregeteId, positions) -> {
+                            mapForSegment.compute(aggregeteId, (k, old) -> {
+                                if (old == null) {
+                                    return positions;
+                                } else {
+                                    old.addAll(positions);
+                                    return old;
+                                }
+                            });
+                        });
                         completableFuture.complete(firstToken);
                         lastToken.set(firstToken + preparedTransaction.getEventList().size() - 1);
                         return true;
