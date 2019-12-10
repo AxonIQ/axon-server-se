@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -148,18 +149,20 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
+            Map<String, SortedSet<PositionInfo>> indexEntries = new HashMap<>();
             FilePreparedTransaction preparedTransaction = prepareTransaction(origEventList);
-            List<ProcessedEvent> eventList = preparedTransaction.getEventList();
-            int eventSize = preparedTransaction.getEventSize();
             WritePosition writePosition = preparedTransaction.getWritePosition();
+
             synchronizer.register(writePosition, new StorageCallback() {
                 private final AtomicBoolean execute = new AtomicBoolean(true);
 
                 @Override
                 public boolean onCompleted(long firstToken) {
                     if (execute.getAndSet(false)) {
+                        positionsPerSegmentMap.computeIfAbsent(writePosition.segment, s -> new HashMap<>()).putAll(
+                                indexEntries);
                         completableFuture.complete(firstToken);
-                        lastToken.set(firstToken + eventList.size() - 1);
+                        lastToken.set(firstToken + preparedTransaction.getEventList().size() - 1);
                         return true;
                     }
                     return false;
@@ -170,7 +173,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     completableFuture.completeExceptionally(cause);
                 }
             });
-            write(writePosition, eventSize, eventList);
+            write(writePosition, preparedTransaction.getEventSize(), preparedTransaction.getEventList(), indexEntries);
             synchronizer.notifyWritePositions();
         } catch (RuntimeException cause) {
             completableFuture.completeExceptionally(cause);
@@ -329,7 +332,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList) {
+    private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList,
+                       Map<String, SortedSet<PositionInfo>> indexEntries) {
         ByteBufferEventSource source = writePosition.buffer.duplicate();
         ByteBuffer writeBuffer = source.getBuffer();
         writeBuffer.position(writePosition.position);
@@ -343,9 +347,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             writeBuffer.putInt(event.getSerializedSize());
             writeBuffer.put(event.toByteArray());
             if (event.isDomainEvent()) {
-                positionsPerSegmentMap.get(writePosition.segment).computeIfAbsent(event.getAggregateIdentifier(),
+                indexEntries.computeIfAbsent(event.getAggregateIdentifier(),
                                                                                   k -> new ConcurrentSkipListSet<>())
-                                      .add(new PositionInfo(position, event.getAggregateSequenceNumber()));
+                            .add(new PositionInfo(position, event.getAggregateSequenceNumber()));
             }
         }
 
