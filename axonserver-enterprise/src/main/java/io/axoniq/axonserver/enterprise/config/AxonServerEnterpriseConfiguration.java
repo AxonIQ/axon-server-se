@@ -20,6 +20,8 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.Pro
 import io.axoniq.axonserver.enterprise.messaging.query.MetricsBasedQueryHandlerSelector;
 import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.file.DefaultMultiContextEventTransformerFactory;
+import io.axoniq.axonserver.enterprise.storage.file.MultiContextEventTransformerFactory;
 import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -69,10 +71,18 @@ public class AxonServerEnterpriseConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(MultiContextEventTransformerFactory.class)
+    public MultiContextEventTransformerFactory multiContextEventTransformerFactory(
+            EventTransformerFactory eventTransformerFactory) {
+        return new DefaultMultiContextEventTransformerFactory(eventTransformerFactory);
+    }
+
+
+    @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
     @Conditional(MemoryMappedStorage.class)
     public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
-                                               EventTransformerFactory eventTransformerFactory) {
+                                               MultiContextEventTransformerFactory eventTransformerFactory) {
         return new DatafileEventStoreFactory(embeddedDBProperties, eventTransformerFactory);
     }
 

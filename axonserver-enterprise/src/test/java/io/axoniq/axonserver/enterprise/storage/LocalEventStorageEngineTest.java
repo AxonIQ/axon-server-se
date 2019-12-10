@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.storage;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.file.DefaultMultiContextEventTransformerFactory;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
@@ -37,7 +38,8 @@ public class LocalEventStorageEngineTest {
         embeddedDBProperties.getEvent().setForceInterval(100);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties,
-                                                                            new DefaultEventTransformerFactory());
+                                                                            new DefaultMultiContextEventTransformerFactory(
+                                                                                    new DefaultEventTransformerFactory()));
 
         testSubject = new LocalEventStore(eventStoreFactory, SingleInstanceTransactionManager::new,
                                           new EventStoreExistChecker() {

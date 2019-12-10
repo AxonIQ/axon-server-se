@@ -20,6 +20,7 @@
         <module>package-axonserver-enterprise</module>
         <module>axonserver-cluster</module>
         <module>axonserver-jdbc-storage</module>
+        <module>data-encryption</module>
     </modules>
 
     <properties>
