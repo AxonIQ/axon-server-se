@@ -48,8 +48,8 @@ public class MeterFactory {
         this.clusterMetrics = clusterMetrics;
     }
 
-    public RateMeter rateMeter(String context, MetricName metric) {
-        return new RateMeter(context, metric);
+    public RateMeter rateMeter(MetricName metric, Tags tags) {
+        return new RateMeter(metric, tags);
     }
 
     public Counter counter(MetricName metric, Tags tags) {
@@ -60,8 +60,8 @@ public class MeterFactory {
         return counter(metric, Tags.empty());
     }
 
-    public Timer timer(MetricName metric, String request, String context, String source, String target) {
-        return meterRegistry.timer(metric.metric(), REQUEST, request, CONTEXT, context, SOURCE, source, TARGET, target);
+    public Timer timer(MetricName metric, Tags tags) {
+        return meterRegistry.timer(metric.metric(), tags);
     }
 
     public <T> Gauge gauge(MetricName metric, Tags tags, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
@@ -81,7 +81,7 @@ public class MeterFactory {
 
     public SnapshotMetric snapshot(MetricName metric, Tags tags) {
         long count = 0;
-        long max = 0;
+        double max = 0;
         double total = 0;
 
         for (Timer timer : meterRegistry.find(metric.metric()).tags(tags).timers()) {
@@ -89,11 +89,11 @@ public class MeterFactory {
             if (snapshot != null) {
                 total += snapshot.total();
                 count += snapshot.count();
-                max = Math.max(max, (long) snapshot.max());
+                max = Math.max(max, snapshot.max());
             }
         }
 
-        return new SnapshotMetric(count, max, count == 0 ? 0 : total / count);
+        return new SnapshotMetric(max, count == 0 ? 0 : total / count, count);
     }
 
     /**
@@ -107,9 +107,9 @@ public class MeterFactory {
         private final String name;
         private final Tags tags;
 
-        private RateMeter(String context, MetricName metricName) {
+        private RateMeter(MetricName metricName, Tags tags) {
             this.name = metricName.metric();
-            this.tags = Tags.of(CONTEXT, context);
+            this.tags = tags;
             meter = new IntervalCounter(clock);
             counter = meterRegistry.counter(name + ".count", tags);
             meterRegistry.gauge(name + ".oneMinuteRate",
@@ -134,26 +134,26 @@ public class MeterFactory {
 
         public long getCount() {
             AtomicLong count = new AtomicLong(meter.count());
-            new Metrics(name + ".count", tags, clusterMetrics).forEach(m -> count.addAndGet(m.value()));
+            new Metrics(name + ".count", tags, clusterMetrics).forEach(m -> count.addAndGet(m.count()));
             return count.get();
         }
 
         public double getOneMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getOneMinuteRate());
-            new Metrics(name + ".oneMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.doubleValue()));
+            new Metrics(name + ".oneMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
             return rate.get();
         }
 
         public double getFiveMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFiveMinuteRate());
-            new Metrics(name + ".fiveMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.doubleValue()));
+            new Metrics(name + ".fiveMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
             return rate.get();
         }
 
         public double getFifteenMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFifteenMinuteRate());
             new Metrics(name + ".fifteenMinuteRate", tags, clusterMetrics).forEach(m -> rate
-                    .addAndGet(m.doubleValue()));
+                    .addAndGet(m.value()));
             return rate.get();
         }
 

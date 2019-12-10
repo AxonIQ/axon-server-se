@@ -33,7 +33,6 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.Response
 @Component
 public class ApplicationSubscriptionMetricRegistry {
 
-    private static final String TAG_CONTEXT = "context";
     private static final String TAG_COMPONENT = "component";
     private final MeterFactory localMetricRegistry;
     private final BiFunction<String, Tags, ClusterMetric> clusterMetricProvider;
@@ -54,7 +53,7 @@ public class ApplicationSubscriptionMetricRegistry {
         Counter total = totalSubscriptionsMetric(componentName, context);
         Counter updates = updatesMetric(componentName, context);
         return new HubSubscriptionMetrics(
-                Tags.of(TAG_CONTEXT, context, TAG_COMPONENT, componentName),
+                Tags.of(MeterFactory.CONTEXT, context, TAG_COMPONENT, componentName),
                 new CounterMetric(activeSubscriptionsMetricName(componentName, context), () -> (long) active.get()),
                 new CounterMetric(total.getId().getName(), () -> (long) total.count()),
                 new CounterMetric(updates.getId().getName(), () -> (long) updates.count()),
@@ -93,7 +92,7 @@ public class ApplicationSubscriptionMetricRegistry {
     private AtomicInteger activeSubscriptionsMetric(String component, String context){
         return activeSubscriptionsMap.computeIfAbsent(activeSubscriptionsMetricName(component, context), name -> {
             AtomicInteger atomicInteger = new AtomicInteger(0);
-            localMetricRegistry.gauge(BaseMetricName.AXON_APPLICATION_SUBSCRIPTION_ACTIVE, Tags.of(TAG_CONTEXT,
+            localMetricRegistry.gauge(BaseMetricName.AXON_APPLICATION_SUBSCRIPTION_ACTIVE, Tags.of(MeterFactory.CONTEXT,
                                                                                                    context,
                                                                                                    TAG_COMPONENT,
                                                                                                    component),
@@ -114,7 +113,7 @@ public class ApplicationSubscriptionMetricRegistry {
         return totalSubscriptionsMap.computeIfAbsent(name(ApplicationSubscriptionMetricRegistry.class.getSimpleName(), component, context, "total"),
                                                      name -> localMetricRegistry
                                                              .counter(BaseMetricName.AXON_APPLICATION_SUBSCRIPTION_TOTAL,
-                                                                      Tags.of(TAG_CONTEXT, context,
+                                                                      Tags.of(MeterFactory.CONTEXT, context,
                                                                               TAG_COMPONENT, component)));
 
     }
@@ -126,6 +125,9 @@ public class ApplicationSubscriptionMetricRegistry {
                                                "updates"),
                                           name -> localMetricRegistry
                                                   .counter(BaseMetricName.AXON_APPLICATION_SUBSCRIPTION_UPDATES,
-                                                           Tags.of(TAG_CONTEXT, context, TAG_COMPONENT, component)));
+                                                           Tags.of(MeterFactory.CONTEXT,
+                                                                   context,
+                                                                   TAG_COMPONENT,
+                                                                   component)));
     }
 }

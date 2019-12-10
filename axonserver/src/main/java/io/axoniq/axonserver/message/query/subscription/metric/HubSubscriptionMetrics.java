@@ -47,17 +47,17 @@ public class HubSubscriptionMetrics implements SubscriptionMetrics {
 
     @Override
     public Long totalCount() {
-        return totalSubscriptions.value();
+        return totalSubscriptions.count();
     }
 
     @Override
     public Long activesCount() {
-        return activeSubscriptions.value();
+        return activeSubscriptions.count();
     }
 
     @Override
     public Long updatesCount() {
-        return updates.value();
+        return updates.count();
     }
 
 

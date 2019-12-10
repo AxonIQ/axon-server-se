@@ -38,6 +38,7 @@ import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -139,7 +140,9 @@ public class EventDispatcher implements AxonServerClientService {
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
                                                  BaseMetricName eventsMetricName) {
-        return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(context, eventsMetricName));
+        return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(eventsMetricName,
+                                                                                  Tags.of(MeterFactory.CONTEXT,
+                                                                                          context)));
     }
 
 

@@ -22,17 +22,17 @@ public class NodeMetric implements ClusterMetric{
     }
 
     @Override
-    public long value() {
+    public double value() {
         return metric.getValue();
     }
 
     @Override
-    public long min() {
+    public double min() {
         return metric.getMin();
     }
 
     @Override
-    public long max() {
+    public double max() {
         return metric.getMax();
     }
 
@@ -42,7 +42,7 @@ public class NodeMetric implements ClusterMetric{
     }
 
     @Override
-    public double doubleValue() {
-        return metric.getDoubleValue();
+    public long count() {
+        return metric.getCount();
     }
 }

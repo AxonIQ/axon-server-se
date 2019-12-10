@@ -33,7 +33,6 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.Response
 @Component
 public class QuerySubscriptionMetricRegistry  {
 
-    private static final String TAG_CONTEXT = "context";
     private static final String TAG_QUERY = "query";
 
     private final MeterFactory localRegistry;
@@ -56,7 +55,7 @@ public class QuerySubscriptionMetricRegistry  {
         Counter total = totalSubscriptionsMetric(query, context);
         Counter updates = updatesMetric(component,query, context);
         return new HubSubscriptionMetrics(
-                Tags.of(TAG_CONTEXT, context, TAG_QUERY, query),
+                Tags.of(MeterFactory.CONTEXT, context, TAG_QUERY, query),
                 new CounterMetric(activeSubscriptionsMetricName(query, context), () -> (long) active.get()),
                 new CounterMetric(total.getId().getName(), () -> (long)total.count()),
                 new CounterMetric(updates.getId().getName(), () -> (long) updates.count()), clusterMetricProvider);
@@ -97,7 +96,7 @@ public class QuerySubscriptionMetricRegistry  {
         return activeSubscriptionsMap.computeIfAbsent(activeSubscriptionsMetricName(query, context), name -> {
             AtomicInteger atomicInt = new AtomicInteger(0);
             localRegistry.gauge(BaseMetricName.AXON_QUERY_SUBSCRIPTION_ACTIVE,
-                                Tags.of(TAG_CONTEXT, context,
+                                Tags.of(MeterFactory.CONTEXT, context,
                                         TAG_QUERY, query),
                                 atomicInt,
                                 AtomicInteger::get);
@@ -123,7 +122,10 @@ public class QuerySubscriptionMetricRegistry  {
                                                           "total"),
                                                      name -> localRegistry
                                                              .counter(BaseMetricName.AXON_QUERY_SUBSCRIPTION_TOTAL,
-                                                                      Tags.of(TAG_CONTEXT, context, TAG_QUERY, query)));
+                                                                      Tags.of(MeterFactory.CONTEXT,
+                                                                              context,
+                                                                              TAG_QUERY,
+                                                                              query)));
     }
 
     private Counter updatesMetric(String component, String query, String context){
@@ -133,7 +135,7 @@ public class QuerySubscriptionMetricRegistry  {
                                                context,
                                                "updates"),
                                           name -> localRegistry.counter(BaseMetricName.AXON_QUERY_SUBSCRIPTION_UPDATES,
-                                                                        Tags.of(TAG_CONTEXT,
+                                                                        Tags.of(MeterFactory.CONTEXT,
                                                                                 context,
                                                                                 TAG_QUERY,
                                                                                 query)));

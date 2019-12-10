@@ -15,28 +15,30 @@ package io.axoniq.axonserver.metric;
  */
 public class SnapshotMetric implements ClusterMetric {
 
-    private final long size;
-    private final long max;
+    private final double value;
+    private final double max;
     private final double mean;
+    private final long count;
 
-    public SnapshotMetric(long size, long max, double mean) {
-        this.size = size;
+    public SnapshotMetric(double max, double mean, long count) {
+        this.value = mean;
         this.max = max;
         this.mean = mean;
+        this.count = count;
     }
 
     @Override
-    public long value() {
-        return size;
+    public double value() {
+        return value;
     }
 
     @Override
-    public long min() {
-        return 0L;
+    public double min() {
+        return 0d;
     }
 
     @Override
-    public long max() {
+    public double max() {
         return max;
     }
 
@@ -46,7 +48,7 @@ public class SnapshotMetric implements ClusterMetric {
     }
 
     @Override
-    public double doubleValue() {
-        return 0;
+    public long count() {
+        return count;
     }
 }

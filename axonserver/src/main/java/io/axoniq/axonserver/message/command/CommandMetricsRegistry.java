@@ -69,10 +69,15 @@ public class CommandMetricsRegistry {
     private Timer timer(String command, String sourceClientId, ClientIdentification targetClientId) {
         return timerMap.computeIfAbsent(metricName(command, sourceClientId, targetClientId),
                                         n -> meterFactory.timer(BaseMetricName.AXON_COMMAND,
-                                                                command.replaceAll("\\.", "/"),
-                                                                targetClientId.getContext(),
-                                                                sourceClientId,
-                                                                targetClientId.getClient()));
+                                                                Tags.of(
+                                                                        MeterFactory.REQUEST,
+                                                                        command.replaceAll("\\.", "/"),
+                                                                        MeterFactory.CONTEXT,
+                                                                        targetClientId.getContext(),
+                                                                        MeterFactory.SOURCE,
+                                                                        sourceClientId,
+                                                                        MeterFactory.TARGET,
+                                                                        targetClientId.getClient())));
     }
 
     private static String metricName(String command, String sourceClientId, ClientIdentification targetClientId) {
@@ -101,7 +106,7 @@ public class CommandMetricsRegistry {
         return new CommandMetric(command,
                                  clientId.metricName(),
                                  componentName,
-                                 clusterMetric(command, clientId).value());
+                                 clusterMetric(command, clientId).count());
     }
 
     /**
@@ -127,7 +132,7 @@ public class CommandMetricsRegistry {
      * @return a RateMeter object
      */
     public MeterFactory.RateMeter rateMeter(String context, BaseMetricName meterName) {
-        return meterFactory.rateMeter(context, meterName);
+        return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
     }
 
     public static class CommandMetric {

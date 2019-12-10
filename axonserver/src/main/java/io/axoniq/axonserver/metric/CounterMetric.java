@@ -30,27 +30,27 @@ public class CounterMetric implements ClusterMetric {
     }
 
     @Override
-    public long value() {
+    public long count() {
         return valueProvider.get();
     }
 
     @Override
-    public long min() {
-        return value();
+    public double min() {
+        return 0;
     }
 
     @Override
-    public long max() {
-        return value();
+    public double max() {
+        return 0;
     }
 
     @Override
     public double mean() {
-        return value();
+        return 0;
     }
 
     @Override
-    public double doubleValue() {
+    public double value() {
         return 0;
     }
 }

@@ -35,31 +35,31 @@ public class CompositeMetric implements ClusterMetric {
     }
 
     @Override
-    public long value() {
-        return clusterMetrics.stream().map(ClusterMetric::value).reduce(Long::sum).orElse(0L);
+    public double value() {
+        return clusterMetrics.stream().map(ClusterMetric::value).reduce(Double::sum).orElse(0d);
     }
 
     @Override
-    public long min() {
-        return clusterMetrics.stream().map(ClusterMetric::min).min(Long::compareTo).orElse(0L);
+    public long count() {
+        return clusterMetrics.stream().map(ClusterMetric::count).reduce(Long::sum).orElse(0L);
     }
 
     @Override
-    public long max() {
-        return clusterMetrics.stream().map(ClusterMetric::max).max(Long::compareTo).orElse(0L);
+    public double min() {
+        return clusterMetrics.stream().map(ClusterMetric::min).min(Double::compareTo).orElse(0d);
+    }
+
+    @Override
+    public double max() {
+        return clusterMetrics.stream().map(ClusterMetric::max).max(Double::compareTo).orElse(0d);
     }
 
     @Override
     public double mean() {
-        return clusterMetrics.stream().map(metric -> metric.mean() * metric.value())
+        return clusterMetrics.stream().map(metric -> metric.mean() * metric.count())
                              .reduce(Double::sum)
                              .orElse((double) 0)
-                / value();
-    }
-
-    @Override
-    public double doubleValue() {
-        return clusterMetrics.stream().map(ClusterMetric::doubleValue).reduce(Double::sum).orElse(0D);
+                / count();
     }
 
     @Override

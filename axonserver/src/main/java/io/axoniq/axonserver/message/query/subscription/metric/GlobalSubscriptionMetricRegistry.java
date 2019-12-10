@@ -42,14 +42,14 @@ public class GlobalSubscriptionMetricRegistry implements Supplier<SubscriptionMe
     private final AtomicInteger active = new AtomicInteger(0);
     private final Counter updates;
 
-    public GlobalSubscriptionMetricRegistry(MeterFactory localMetricRegistry,
+    public GlobalSubscriptionMetricRegistry(MeterFactory meterFactory,
                                             BiFunction<String, Tags, ClusterMetric> clusterMetricCollector) {
 
-        this.updates = localMetricRegistry.counter(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_UPDATES);
-        this.total = localMetricRegistry.counter(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_TOTAL);
+        this.updates = meterFactory.counter(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_UPDATES);
+        this.total = meterFactory.counter(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_TOTAL);
         this.clusterMetricCollector = clusterMetricCollector;
 
-        localMetricRegistry.gauge(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_ACTIVE, active, AtomicInteger::get);
+        meterFactory.gauge(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_ACTIVE, active, AtomicInteger::get);
     }
 
 

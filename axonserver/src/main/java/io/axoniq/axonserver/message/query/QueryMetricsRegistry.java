@@ -82,10 +82,11 @@ public class QueryMetricsRegistry {
         String metricName = metricName(query, sourceClientId, clientId);
         return timerMap.computeIfAbsent(metricName, n ->
                 meterFactory.timer(BaseMetricName.AXON_QUERY,
-                                   query.getQueryName().replaceAll("\\.", "/"),
-                                   clientId.getContext(),
-                                   sourceClientId,
-                                   clientId.getClient()));
+                                   Tags.of(
+                                           MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                                           MeterFactory.CONTEXT, clientId.getContext(),
+                                           MeterFactory.SOURCE, sourceClientId,
+                                           MeterFactory.TARGET, clientId.getClient())));
     }
 
     private String metricName(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
@@ -127,7 +128,7 @@ public class QueryMetricsRegistry {
      * @return a RateMeter object
      */
     public MeterFactory.RateMeter rateMeter(String context, BaseMetricName meterName) {
-        return meterFactory.rateMeter(context, meterName);
+        return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
     }
 
 
@@ -137,11 +138,11 @@ public class QueryMetricsRegistry {
         private final String componentName;
         private final long count;
 
-        QueryMetric(QueryDefinition queryDefinition, String clientId, String componentName, long count) {
+        QueryMetric(QueryDefinition queryDefinition, String clientId, String componentName, double count) {
             this.queryDefinition = queryDefinition;
             this.clientId = clientId;
             this.componentName = componentName;
-            this.count = count;
+            this.count = (long) count;
         }
 
         public QueryDefinition getQueryDefinition() {

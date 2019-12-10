@@ -16,15 +16,15 @@ package io.axoniq.axonserver.metric;
  */
 public interface AxonServerMetric {
 
-    long getValue();
+    double getValue();
 
-    long getMin();
+    double getMin();
 
-    long getMax();
+    double getMax();
 
     double getMean();
 
     String getName();
 
-    double getDoubleValue();
+    long getCount();
 }

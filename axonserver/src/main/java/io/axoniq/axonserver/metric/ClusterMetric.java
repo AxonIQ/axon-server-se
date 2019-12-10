@@ -15,13 +15,13 @@ package io.axoniq.axonserver.metric;
  */
 public interface ClusterMetric {
 
-    long value();
+    long count();
 
-    long min();
+    double value();
 
-    long max();
+    double min();
+
+    double max();
 
     double mean();
-
-    double doubleValue();
 }
