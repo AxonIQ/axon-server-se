@@ -34,12 +34,12 @@ public class ClusterMetricTargetTest {
         testSubject.on(metricsChangedEvent);
 
         ClusterMetric clusterMetric = testSubject.apply("sample", Tags.empty());
-        assertEquals(15, clusterMetric.value());
+        assertEquals(15, clusterMetric.value(), 0);
 
         clusterMetric = testSubject.apply("sample", Tags.of("target", "target2"));
-        assertEquals(5, clusterMetric.value());
+        assertEquals(5, clusterMetric.value(), 0);
 
         clusterMetric = testSubject.apply("sample", Tags.of("context", "context1"));
-        assertEquals(15, clusterMetric.value());
+        assertEquals(15, clusterMetric.value(), 0);
     }
 }

@@ -57,8 +57,8 @@ public class MetricsBasedQueryHandlerSelector implements QueryHandlerSelector {
         }
         int p = 0;
 
-        if (queryHandlerWithSnapshot.clusterMetric.value() > 20
-                && queryHandlerWithSnapshot1.clusterMetric.value() > 20) {
+        if (queryHandlerWithSnapshot.clusterMetric.count() > 20
+                && queryHandlerWithSnapshot1.clusterMetric.count() > 20) {
             p = Double.compare(queryHandlerWithSnapshot.clusterMetric.mean(),
                                queryHandlerWithSnapshot1.clusterMetric.mean());
         }

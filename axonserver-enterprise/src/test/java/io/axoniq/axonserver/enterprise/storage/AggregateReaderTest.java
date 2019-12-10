@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage;
 
 import io.axoniq.axonserver.grpc.SerializedObject;
+import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.AggregateReader;
 import io.axoniq.axonserver.localstorage.SnapshotReader;
@@ -10,6 +11,8 @@ import org.junit.rules.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -29,23 +32,29 @@ public class AggregateReaderTest {
         testStorageContainer.createDummyEvents(1000, 100);
 
         SnapshotWriteStorage snapshotWriteStorage = new SnapshotWriteStorage(testStorageContainer.getTransactionManager(testStorageContainer.getSnapshotManagerChain()));
-        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(5)
-                                        .setAggregateType("Snapshot")
-                                        .setPayload(SerializedObject
-                                                            .newBuilder().build()).build());
-        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(15)
-                                        .setAggregateType("Snapshot")
-                                        .setPayload(SerializedObject
-                                                            .newBuilder().build()).build());
-        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(25)
-                                        .setAggregateType("Snapshot")
-                                        .setPayload(SerializedObject
-                                                            .newBuilder().build()).build());
-        snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55").setAggregateSequenceNumber(75)
-                                        .setAggregateType("Snapshot")
-                                        .setPayload(SerializedObject
-                                                            .newBuilder().build()).build());
+        List<CompletableFuture<Confirmation>> completableFutures = new ArrayList<>();
+        completableFutures.add(snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55")
+                                                               .setAggregateSequenceNumber(5)
+                                                               .setAggregateType("Snapshot")
+                                                               .setPayload(SerializedObject
+                                                                                   .newBuilder().build()).build()));
+        completableFutures.add(snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55")
+                                                               .setAggregateSequenceNumber(15)
+                                                               .setAggregateType("Snapshot")
+                                                               .setPayload(SerializedObject
+                                                                                   .newBuilder().build()).build()));
+        completableFutures.add(snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55")
+                                                               .setAggregateSequenceNumber(25)
+                                                               .setAggregateType("Snapshot")
+                                                               .setPayload(SerializedObject
+                                                                                   .newBuilder().build()).build()));
+        completableFutures.add(snapshotWriteStorage.store(Event.newBuilder().setAggregateIdentifier("55")
+                                                               .setAggregateSequenceNumber(75)
+                                                               .setAggregateType("Snapshot")
+                                                               .setPayload(SerializedObject
+                                                                                   .newBuilder().build()).build()));
 
+        CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0])).get(1, TimeUnit.SECONDS);
     }
     @AfterClass
     public static void close() {
