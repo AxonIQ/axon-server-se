@@ -13,6 +13,8 @@ import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
+import io.axoniq.axonserver.version.VersionInfo;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -54,6 +56,7 @@ public class PublicRestController {
     private final FeatureChecker features;
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
+    private final VersionInfoProvider versionInfoSupplier;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
 
     @Value("${axoniq.axonserver.devmode.enabled:false}")
@@ -66,6 +69,7 @@ public class PublicRestController {
                                 EventDispatcher eventDispatcher,
                                 FeatureChecker features,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
+                                VersionInfoProvider versionInfoSupplier,
                                 Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
         this.axonServerProvider = axonServerProvider;
         this.topology = topology;
@@ -75,6 +79,7 @@ public class PublicRestController {
         this.features = features;
         this.sslConfiguration = messagingPlatformConfiguration.getSsl();
         this.accessControlConfiguration = messagingPlatformConfiguration.getAccesscontrol();
+        this.versionInfoSupplier = versionInfoSupplier;
         this.subscriptionMetricsRegistry = subscriptionMetricsRegistry;
     }
 
@@ -152,6 +157,12 @@ public class PublicRestController {
         }
 
         return null;
+    }
+
+    @GetMapping(path = "version")
+    @ApiOperation(value = "Retrieves version information of the product")
+    public VersionInfo versionInfo() {
+        return versionInfoSupplier.get();
     }
 
 

@@ -29,6 +29,7 @@ public class MessagingPlatformConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(MessagingPlatformConfiguration.class);
     private static final int RESERVED = 10000;
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
+    public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
     /**
      * gRPC port for axonserver platform
      */
@@ -36,7 +37,7 @@ public class MessagingPlatformConfiguration {
     /**
      * gRPC port for communication between messing platform nodes
      */
-    private int internalPort = 8224;
+    private int internalPort = DEFAULT_INTERNAL_GRPC_PORT;
     /**
      * Node name of this axonserver platform node, if not set defaults to the hostname
      */

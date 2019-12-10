@@ -11,6 +11,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
@@ -63,6 +64,7 @@ public class PublicRestControllerTest {
         clusterController = new DefaultTopology(messagePlatformConfiguration);
         testSubject = new PublicRestController(new AxonServers(clusterController, new DefaultEventStoreLocator(null)), clusterController, commandDispatcher, queryDispatcher, eventDispatcher, limits,
                                                messagePlatformConfiguration,
+                                               new DefaultVersionInfoProvider(),
                                                () -> new FakeSubscriptionMetrics(500, 400, 1000));
 
     }
