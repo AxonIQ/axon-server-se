@@ -41,7 +41,7 @@ public class InputStreamEventSource implements EventSource {
                                                                                          storageProperties.getReadBufferSize()));
             byte version = dataInputStream.readByte();
             int modifiers = dataInputStream.readInt();
-            eventTransformer = eventTransformerFactory.get(version, modifiers, storageProperties);
+            eventTransformer = eventTransformerFactory.get(version, modifiers);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }

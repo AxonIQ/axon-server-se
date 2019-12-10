@@ -9,37 +9,46 @@
 
 package io.axoniq.axonserver.metric;
 
-import io.micrometer.core.instrument.distribution.HistogramSnapshot;
-
 /**
  * Created by Sara Pellegrini on 18/04/2018.
  * sara.pellegrini@gmail.com
  */
 public class SnapshotMetric implements ClusterMetric {
 
-    private final HistogramSnapshot snapshot;
+    private final double value;
+    private final double max;
+    private final double mean;
+    private final long count;
 
-    public SnapshotMetric(HistogramSnapshot snapshot) {
-        this.snapshot = snapshot;
+    public SnapshotMetric(double max, double mean, long count) {
+        this.value = mean;
+        this.max = max;
+        this.mean = mean;
+        this.count = count;
     }
 
     @Override
-    public long size() {
-        return snapshot.count();
+    public double value() {
+        return value;
     }
 
     @Override
-    public long min() {
-        return 0L;
+    public double min() {
+        return 0d;
     }
 
     @Override
-    public long max() {
-        return (long)snapshot.max();
+    public double max() {
+        return max;
     }
 
     @Override
     public double mean() {
-        return snapshot.mean();
+        return mean;
+    }
+
+    @Override
+    public long count() {
+        return count;
     }
 }

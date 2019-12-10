@@ -15,7 +15,9 @@ import io.axoniq.axonserver.serializer.Printable;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -31,6 +33,11 @@ import java.util.function.ToDoubleFunction;
 @Service
 public class MeterFactory {
 
+    public static final String CONTEXT = "context";
+    public static final String REQUEST = "request";
+    public static final String SOURCE = "source";
+    public static final String TARGET = "target";
+
     private final MeterRegistry meterRegistry;
     private final MetricCollector clusterMetrics;
     private final Clock clock = Clock.systemDefaultZone();
@@ -41,21 +48,52 @@ public class MeterFactory {
         this.clusterMetrics = clusterMetrics;
     }
 
-    public RateMeter rateMeter(String... name) {
-        return new RateMeter(String.join(".", name));
+    public RateMeter rateMeter(MetricName metric, Tags tags) {
+        return new RateMeter(metric, tags);
     }
 
-    public Timer timer(String name) {
-        return meterRegistry.timer(name);
+    public Counter counter(MetricName metric, Tags tags) {
+        return meterRegistry.counter(metric.metric(), tags);
     }
 
-    public <T> Gauge gauge(String name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
-        return Gauge.builder(name, objectToWatch, gaugeFunction)
+    public Counter counter(MetricName metric) {
+        return counter(metric, Tags.empty());
+    }
+
+    public Timer timer(MetricName metric, Tags tags) {
+        return meterRegistry.timer(metric.metric(), tags);
+    }
+
+    public <T> Gauge gauge(MetricName metric, Tags tags, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+        return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
+                    .tags(tags)
+                    .register(meterRegistry);
+    }
+
+    public <T> Gauge gauge(MetricName metric, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+        return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
                     .register(meterRegistry);
     }
 
     public MetricCollector clusterMetrics() {
         return clusterMetrics;
+    }
+
+    public SnapshotMetric snapshot(MetricName metric, Tags tags) {
+        long count = 0;
+        double max = 0;
+        double total = 0;
+
+        for (Timer timer : meterRegistry.find(metric.metric()).tags(tags).timers()) {
+            HistogramSnapshot snapshot = timer.takeSnapshot();
+            if (snapshot != null) {
+                total += snapshot.total();
+                count += snapshot.count();
+                max = Math.max(max, snapshot.max());
+            }
+        }
+
+        return new SnapshotMetric(max, count == 0 ? 0 : total / count, count);
     }
 
     /**
@@ -67,14 +105,25 @@ public class MeterFactory {
 
         private final Counter counter;
         private final String name;
+        private final Tags tags;
 
-        private RateMeter(String name) {
-            this.name = name;
+        private RateMeter(MetricName metricName, Tags tags) {
+            this.name = metricName.metric();
+            this.tags = tags;
             meter = new IntervalCounter(clock);
-            counter = meterRegistry.counter(name + ".count");
-            meterRegistry.gauge(name + ".oneMinuteRate", meter, IntervalCounter::getOneMinuteRate);
-            meterRegistry.gauge(name + ".fiveMinuteRate", meter, IntervalCounter::getFiveMinuteRate);
-            meterRegistry.gauge(name + ".fifteenMinuteRate", meter, IntervalCounter::getFifteenMinuteRate);
+            counter = meterRegistry.counter(name + ".count", tags);
+            meterRegistry.gauge(name + ".oneMinuteRate",
+                                tags,
+                                meter,
+                                IntervalCounter::getOneMinuteRate);
+            meterRegistry.gauge(name + ".fiveMinuteRate",
+                                tags,
+                                meter,
+                                IntervalCounter::getFiveMinuteRate);
+            meterRegistry.gauge(name + ".fifteenMinuteRate",
+                                tags,
+                                meter,
+                                IntervalCounter::getFifteenMinuteRate);
         }
 
 
@@ -85,25 +134,26 @@ public class MeterFactory {
 
         public long getCount() {
             AtomicLong count = new AtomicLong(meter.count());
-            new Metrics(name + ".count", clusterMetrics).forEach(m -> count.addAndGet(m.size()));
+            new Metrics(name + ".count", tags, clusterMetrics).forEach(m -> count.addAndGet(m.count()));
             return count.get();
         }
 
         public double getOneMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getOneMinuteRate());
-            new Metrics(name + ".oneMinuteRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".oneMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
             return rate.get();
         }
 
         public double getFiveMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFiveMinuteRate());
-            new Metrics(name + ".fiveMinuteRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".fiveMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
             return rate.get();
         }
 
         public double getFifteenMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFifteenMinuteRate());
-            new Metrics(name + ".fifteenMinuteRate", clusterMetrics).forEach(m -> rate.addAndGet(m.mean()));
+            new Metrics(name + ".fifteenMinuteRate", tags, clusterMetrics).forEach(m -> rate
+                    .addAndGet(m.value()));
             return rate.get();
         }
 

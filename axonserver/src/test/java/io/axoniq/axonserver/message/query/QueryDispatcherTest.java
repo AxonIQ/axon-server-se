@@ -60,8 +60,9 @@ public class QueryDispatcherTest {
     public void queryResponse()  {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
-        when(queryCache.get("1234")).thenReturn(new QueryInformation("1234",
-                new QueryDefinition("c", QuerySubscription.newBuilder()
+        when(queryCache.get("1234")).thenReturn(new QueryInformation("1234", "Source",
+                                                                     new QueryDefinition("c",
+                                                                                         QuerySubscription.newBuilder()
                 .setQuery("q")
                 .setResultName("r")
                 .build()), Collections.singleton("client"), 2, r -> dispatchCalled.incrementAndGet(),
