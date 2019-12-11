@@ -111,16 +111,6 @@ public class InMemoryLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public long lastLogIndex() {
-        return entryMap.isEmpty() ? 0 : entryMap.lastKey();
-    }
-
-    @Override
-    public long firstLogIndex() {
-        return entryMap.isEmpty() ? 0 : entryMap.firstKey();
-    }
-
-    @Override
     public Registration registerLogAppendListener(Consumer<Entry> listener) {
         appendListeners.add(listener);
         return () -> appendListeners.remove(listener);

@@ -9,7 +9,7 @@ import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 
 import java.util.NavigableSet;
 import java.util.TreeSet;

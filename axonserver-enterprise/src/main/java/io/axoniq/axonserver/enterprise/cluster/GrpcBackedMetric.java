@@ -15,17 +15,17 @@ public class GrpcBackedMetric implements AxonServerMetric {
     }
 
     @Override
-    public long getSize() {
-        return metric.getSize();
+    public double getValue() {
+        return metric.getValue();
     }
 
     @Override
-    public long getMin() {
+    public double getMin() {
         return metric.getMin();
     }
 
     @Override
-    public long getMax() {
+    public double getMax() {
         return metric.getMax();
     }
 
@@ -37,5 +37,10 @@ public class GrpcBackedMetric implements AxonServerMetric {
     @Override
     public String getName() {
         return metric.getName();
+    }
+
+    @Override
+    public long getCount() {
+        return metric.getCount();
     }
 }

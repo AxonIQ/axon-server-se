@@ -3,6 +3,8 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import org.springframework.stereotype.Component;
@@ -38,7 +40,10 @@ public class RaftConfigServiceFactory {
     public RaftConfigService getRaftConfigService() {
         if( raftLeaderProvider.isLeader(getAdmin()) ) return localRaftConfigService;
         String leader = raftLeaderProvider.getLeader(getAdmin());
-        if( leader == null) throw new RuntimeException("No leader for " + getAdmin());
+        if (leader == null) {
+            throw new MessagingPlatformException(ErrorCode.NO_LEADER_AVAILABLE,
+                                                 "No leader for " + getAdmin());
+        }
         ClusterNode node = clusterController.getNode(leader);
         return new RemoteRaftConfigService(RaftConfigServiceGrpc.newStub(channelProvider.get(node))
                                                                 .withInterceptors(new InternalTokenAddingInterceptor(configuration.getAccesscontrol().getInternalToken())));

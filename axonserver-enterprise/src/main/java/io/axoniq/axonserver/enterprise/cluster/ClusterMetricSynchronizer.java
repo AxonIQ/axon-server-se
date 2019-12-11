@@ -9,15 +9,22 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.distribution.ValueAtPercentile;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
- * Created by Sara Pellegrini on 17/04/2018.
- * sara.pellegrini@gmail.com
+ * Synchronizes Axon Server specific metrics to other Axon Server nodes.
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 @Component
 public class ClusterMetricSynchronizer {
@@ -25,52 +32,69 @@ public class ClusterMetricSynchronizer {
     private final Publisher<ConnectorCommand> clusterPublisher;
 
     private final MeterRegistry meterRegistry;
-    private final MessagingPlatformConfiguration configuration;
+    private final String node;
 
+    @Autowired
     public ClusterMetricSynchronizer(Publisher<ConnectorCommand> clusterPublisher,
                                      MeterRegistry meterRegistry,
                                      MessagingPlatformConfiguration configuration) {
+        this(clusterPublisher, meterRegistry, configuration.getName());
+    }
+
+    public ClusterMetricSynchronizer(Publisher<ConnectorCommand> clusterPublisher,
+                                     MeterRegistry meterRegistry,
+                                     String node) {
         this.clusterPublisher = clusterPublisher;
         this.meterRegistry = meterRegistry;
-        this.configuration = configuration;
+        this.node = node;
     }
 
 
     @Scheduled(fixedRateString = "${axoniq.axonserver.metrics-synchronization-rate:15000}")
     public void shareMetrics() {
-        NodeMetrics.Builder metrics = NodeMetrics.newBuilder().setNode(configuration.getName());
+        NodeMetrics.Builder metrics = NodeMetrics.newBuilder().setNode(node);
         meterRegistry.forEachMeter(meter -> {
+            // Id contains tags
             if( isAxonMeter(meter)) {
                 if( meter instanceof Timer) {
                     HistogramSnapshot snapshot = ((Timer) meter)
                             .takeSnapshot();
                     metrics.addMetrics(
                             Metric.newBuilder().setName(meter.getId().getName())
-                                  .setSize(snapshot.count())
+                                  .setCount(snapshot.count())
                                   .setMean(snapshot.mean())
+                                  .setValue(snapshot.mean())
                                   .setMedian(getPercentile(snapshot, 0.5))
                                   .setPercentile95(getPercentile(snapshot, 0.95))
                                   .setPercentile99(getPercentile(snapshot, 0.99))
                                   .setMin(0L)
-                                  .setMax((long)snapshot.max())
+                                  .putAllTags(tags(meter.getId().getTags()))
+                                  .setMax(snapshot.max())
                     );
                 }
                 else if( meter instanceof Counter) {
                     metrics.addMetrics(
                             Metric.newBuilder().setName(meter.getId().getName())
-                                  .setSize((long) ((Counter) meter).count())
+                                  .putAllTags(tags(meter.getId().getTags()))
+                                  .setCount((long) ((Counter) meter).count())
                     );
                 } else if( meter instanceof Gauge) {
                         metrics.addMetrics(
                                 Metric.newBuilder().setName(meter.getId().getName())
-                                      .setSize((long) ((Gauge)meter).value())
-                                      .setMean(((Gauge)meter).value())
+                                      .putAllTags(tags(meter.getId().getTags()))
+                                      .setValue(((Gauge) meter).value())
                         );
                 }
             }
         });
         clusterPublisher.publish(ConnectorCommand.newBuilder()
                                                  .setMetrics(metrics).build());
+    }
+
+    private Map<String, String> tags(List<Tag> tags) {
+        Map<String, String> tagsMap = new HashMap<>();
+        tags.forEach(t -> tagsMap.put(t.getKey(), t.getValue()));
+        return tagsMap;
     }
 
     private double getPercentile(HistogramSnapshot snapshot, double percentile) {

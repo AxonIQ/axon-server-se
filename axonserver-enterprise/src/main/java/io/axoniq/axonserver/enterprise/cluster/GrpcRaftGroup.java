@@ -40,6 +40,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
@@ -97,9 +98,10 @@ public class GrpcRaftGroup implements RaftGroup {
 
             @Override
             public void update(List<Node> nodes) {
-                new TransactionTemplate(platformTransactionManager).execute(new TransactionCallbackWithoutResult() {
+                new TransactionTemplate(platformTransactionManager)
+                        .execute(new TransactionCallbackWithoutResult() {
                     @Override
-                    protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
+                    protected void doInTransactionWithoutResult(@Nonnull TransactionStatus transactionStatus) {
                         membersStore.set(nodes);
                     }
                 });

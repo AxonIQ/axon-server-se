@@ -5,10 +5,10 @@ import io.axoniq.axonserver.enterprise.storage.jdbc.serializer.ProtoMetaDataSeri
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
-import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import junit.framework.TestCase;
 import org.junit.*;
 
@@ -30,14 +30,13 @@ public class JpaLocalEventStoreTest {
     @Before
     public void setup() throws SQLException {
         StorageProperties storageProperties = new StorageProperties();
-        testSubject = new LocalEventStore(new JdbcEventStoreFactory(storageProperties,
-                                                                    new ProtoMetaDataSerializer(),
-                                                                    new SingleSchemaMultiContextStrategy(
-                                                                            storageProperties.getVendorSpecific()),
-                                                                    c -> true),
-                                          SingleInstanceTransactionManager::new,
-                                          new EventStoreExistChecker() {
-                                          });
+        testSubject = new LocalEventStore(
+                new JdbcEventStoreFactory(storageProperties,
+                                          new ProtoMetaDataSerializer(),
+                                          new SingleSchemaMultiContextStrategy(storageProperties.getVendorSpecific()),c -> true),
+                new SimpleMeterRegistry(),
+                SingleInstanceTransactionManager::new,
+                c -> true);
         testSubject.initContext("default", false);
     }
 

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.storage;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
+import io.axoniq.axonserver.enterprise.storage.file.DefaultMultiContextEventTransformerFactory;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -38,7 +39,8 @@ public class TestStorageContainer {
         embeddedDBProperties.getSnapshot().setStorage(location.getAbsolutePath());
         embeddedDBProperties.getSnapshot().setSegmentSize(512*1024L);
         EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties,
-                                                                            new DefaultEventTransformerFactory());
+                                                                            new DefaultMultiContextEventTransformerFactory(
+                                                                                    new DefaultEventTransformerFactory()));
         datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");
         datafileManagerChain.init(false);
         snapshotManagerChain = eventStoreFactory.createSnapshotStorageEngine("default");

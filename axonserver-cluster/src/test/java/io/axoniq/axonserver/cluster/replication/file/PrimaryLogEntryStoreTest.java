@@ -159,7 +159,7 @@ public class PrimaryLogEntryStoreTest {
 
         CompletableFuture.allOf(futures).get(1, TimeUnit.SECONDS);
         assertEquals(futures.length, testSubject.getLastToken());
-        SegmentEntryIterator iterator = testSubject.getIterator(2);
+        SegmentEntryIterator iterator = testSubject.getSegmentIterator(2);
         assertNotNull(iterator);
         assertTrue(iterator.hasNext());
         Entry next = iterator.next();

@@ -21,7 +21,6 @@ import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.Raf
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -34,11 +33,14 @@ import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.junit.*;
 import org.junit.rules.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -82,6 +84,9 @@ public class SnapshotManagerIntegrationTest {
     private LoadBalanceStrategyRepository loadBalanceStrategyRepository;
     @Autowired
     private RaftProcessorLoadBalancingRepository processorLoadBalancingRepository;
+
+    @MockBean
+    private VersionInfoProvider versionInfoProvider;
 
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
@@ -217,10 +222,9 @@ public class SnapshotManagerIntegrationTest {
         when(eventStoreFactory.createEventStorageEngine(CONTEXT)).thenReturn(eventStore);
         when(eventStoreFactory.createSnapshotStorageEngine(CONTEXT)).thenReturn(snapshotStore);
 
-        LocalEventStore localEventStore = new LocalEventStore(eventStoreFactory,
+        LocalEventStore localEventStore = new LocalEventStore(eventStoreFactory, new SimpleMeterRegistry(),
                                                               SingleInstanceTransactionManager::new,
-                                                              new EventStoreExistChecker() {
-                                                              });
+                                                              c -> true);
         localEventStore.initContext(CONTEXT, false);
         EventTransactionsSnapshotDataStore eventTransactionsSnapshotDataProvider =
                 new EventTransactionsSnapshotDataStore(CONTEXT, localEventStore);

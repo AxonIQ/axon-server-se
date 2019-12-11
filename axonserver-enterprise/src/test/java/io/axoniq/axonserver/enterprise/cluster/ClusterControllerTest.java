@@ -20,6 +20,7 @@ import io.axoniq.axonserver.licensing.Limits;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -71,6 +72,10 @@ public class ClusterControllerTest {
     private LogReplicationService logReplicationService;
     @MockBean
     private GrpcRaftController raftController;
+
+    @MockBean
+    private VersionInfoProvider versionInfoProvider;
+
     private Context context;
 
     @Autowired

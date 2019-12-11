@@ -2,10 +2,10 @@ package io.axoniq.axonserver.enterprise.storage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.file.EventInformation;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.file.ByteBufferEventSource;
 import io.axoniq.axonserver.localstorage.file.EventByteBufferIterator;
+import io.axoniq.axonserver.localstorage.file.EventIterator;
 import io.axoniq.axonserver.localstorage.file.EventSource;
 import io.axoniq.axonserver.localstorage.file.FileUtils;
 import io.axoniq.axonserver.localstorage.file.IndexManager;
@@ -22,8 +22,6 @@ import java.lang.ref.WeakReference;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -60,19 +58,8 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
     protected void recreateIndex(long segment) {
         ByteBufferEventSource buffer = get(segment, true);
-        EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, segment, segment);
-        Map<String, SortedSet<PositionInfo>> aggregatePositions = new HashMap<>();
-        while( iterator.hasNext()) {
-            EventInformation event = iterator.next();
-            if( event.isDomainEvent()) {
-                aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                   k -> new ConcurrentSkipListSet<>())
-                                  .add(new PositionInfo(event.getPosition(),
-                                                        event.getEvent().getAggregateSequenceNumber()));
-            }
-        }
-        indexManager.createIndex(segment, aggregatePositions);
-
+        EventIterator iterator = new EventByteBufferIterator(buffer, segment, segment);
+        recreateIndexFromIterator(segment, iterator);
     }
 
     @Override
@@ -189,7 +176,10 @@ public class SecondaryEventStore extends SegmentBasedEventStore {
 
         try(FileChannel fileChannel = new RandomAccessFile(file, "r").getChannel()) {
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, size);
-            ByteBufferEventSource eventSource = new ByteBufferEventSource(file.getAbsolutePath(), buffer, eventTransformerFactory, storageProperties);
+            ByteBufferEventSource eventSource = new ByteBufferEventSource(file.getAbsolutePath(),
+                                                                          buffer,
+                                                                          eventTransformerFactory,
+                                                                          storageProperties);
             lruMap.put(segment, new WeakReference<>(eventSource));
             return eventSource;
         } catch (IOException ioException) {
