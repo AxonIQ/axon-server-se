@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.saas;
 
 import io.axoniq.axonserver.enterprise.cluster.manager.EventStoreManager;
+import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service;
  * @author Marc Gathier
  */
 @Service
-public class SaasUserService extends SaasUserServiceGrpc.SaasUserServiceImplBase {
+public class SaasUserService extends SaasUserServiceGrpc.SaasUserServiceImplBase implements AxonServerInternalService {
 
     private final ContextProvider contextProvider;
     private final ContextStateProvider contextStateProvider;
@@ -65,5 +66,10 @@ public class SaasUserService extends SaasUserServiceGrpc.SaasUserServiceImplBase
                 }
             };
         }
+    }
+
+    @Override
+    public boolean requiresContextInterceptor() {
+        return true;
     }
 }

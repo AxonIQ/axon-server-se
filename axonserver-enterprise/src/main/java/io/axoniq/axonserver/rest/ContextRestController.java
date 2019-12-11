@@ -77,6 +77,7 @@ public class ContextRestController {
         return contextController.getContexts().map(context -> {
             ContextJSON json = new ContextJSON(context.getName());
             json.setChangePending(context.isChangePending());
+            json.setMetaData(context.getMetaDataMap());
             if (context.getPendingSince() != null) {
                 json.setPendingSince(context.getPendingSince().getTime());
             }

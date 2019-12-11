@@ -25,17 +25,20 @@ public class InternalAuthenticationInterceptor implements ServerInterceptor {
     @Override
     public <T, R> ServerCall.Listener<T> interceptCall(ServerCall<T, R> serverCall, Metadata metadata,
                                                        ServerCallHandler<T, R> serverCallHandler) {
-        String token = metadata.get(GrpcMetadataKeys.INTERNAL_TOKEN_KEY);
-        StatusRuntimeException sre = null;
-        if( token == null) {
-            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING, "Missing internal token");
-        } else if( ! token.equals(configuration.getAccesscontrol().getInternalToken())) {
-            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token");
-        }
+        if (configuration.getAccesscontrol() != null && configuration.getAccesscontrol().isEnabled()) {
+            String token = metadata.get(GrpcMetadataKeys.INTERNAL_TOKEN_KEY);
+            StatusRuntimeException sre = null;
+            if (token == null) {
+                sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING, "Missing internal token");
+            } else if (!token.equals(configuration.getAccesscontrol().getInternalToken())) {
+                sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token");
+            }
 
-        if( sre != null) {
-            serverCall.close(sre.getStatus(), sre.getTrailers());
-            return new ServerCall.Listener<T>() {};
+            if (sre != null) {
+                serverCall.close(sre.getStatus(), sre.getTrailers());
+                return new ServerCall.Listener<T>() {
+                };
+            }
         }
 
         return serverCallHandler.startCall(serverCall, metadata);

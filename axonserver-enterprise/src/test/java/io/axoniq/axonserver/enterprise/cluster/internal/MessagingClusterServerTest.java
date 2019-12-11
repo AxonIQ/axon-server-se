@@ -8,15 +8,13 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
-import io.axoniq.axonserver.config.FeatureChecker;
-import io.axoniq.axonserver.saas.SaasAdminService;
-import io.axoniq.axonserver.saas.SaasUserService;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -58,13 +56,14 @@ public class MessagingClusterServerTest {
             }
         };
 
-        testSubject = new MessagingClusterServer(configuration, clusterService, internalEventStore,
+        testSubject = new MessagingClusterServer(configuration,
                                                  logReplicationService,
                                                  leaderElectionService,
-                                                 grpcRaftGroupService,
-                                                 grpcRaftConfigService,
-                                                 mock(SaasAdminService.class),
-                                                 mock(SaasUserService.class),
+                                                 Arrays.asList(
+                                                         clusterService, internalEventStore,
+                                                         grpcRaftGroupService,
+                                                         grpcRaftConfigService
+                                                 ),
                                                  limits, mock(ApplicationEventPublisher.class));
     }
 

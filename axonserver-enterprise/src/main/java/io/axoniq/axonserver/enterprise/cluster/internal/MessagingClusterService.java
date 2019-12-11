@@ -13,6 +13,7 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.grpc.ReceivingStreamObserver;
@@ -81,7 +82,8 @@ import static io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter
  * @since 4.0
  */
 @Service("MessagingClusterService")
-public class MessagingClusterService extends MessagingClusterServiceGrpc.MessagingClusterServiceImplBase {
+public class MessagingClusterService extends MessagingClusterServiceGrpc.MessagingClusterServiceImplBase
+        implements AxonServerInternalService {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingClusterService.class);
 

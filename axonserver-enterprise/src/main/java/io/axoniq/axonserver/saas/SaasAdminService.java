@@ -6,6 +6,7 @@ import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
+import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -29,7 +30,8 @@ import java.util.stream.Collectors;
  * @author Marc Gathier
  */
 @Service
-public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplBase {
+public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplBase implements
+        AxonServerInternalService {
 
     private static final InstructionAck CONFIRMATION = InstructionAck.newBuilder().setSuccess(true).build();
     private final RaftConfigServiceFactory raftConfigServiceFactory;
@@ -115,7 +117,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
-            responseObserver.onError(ex);
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
 
@@ -128,7 +130,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
-            responseObserver.onError(ex);
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
 
@@ -140,7 +142,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
-            responseObserver.onError(ex);
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
 
@@ -158,7 +160,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception ex) {
-            responseObserver.onError(ex);
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
 
@@ -169,7 +171,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
-            responseObserver.onError(ex);
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
 
@@ -180,7 +182,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception ex) {
-            responseObserver.onError(ex);
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
         }
     }
 

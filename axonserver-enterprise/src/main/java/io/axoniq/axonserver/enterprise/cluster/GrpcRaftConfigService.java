@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.internal.Application;
@@ -26,7 +27,8 @@ import java.util.function.Supplier;
  * @since 4.1
  */
 @Service
-public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServiceImplBase {
+public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServiceImplBase implements
+        AxonServerInternalService {
 
     private final LocalRaftConfigService localRaftConfigService;
     private final Supplier<RaftConfigService> serviceFactory;

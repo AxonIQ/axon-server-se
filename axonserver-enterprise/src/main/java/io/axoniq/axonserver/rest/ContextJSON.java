@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.cluster.Role;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import javax.validation.constraints.NotNull;
 
 /**
@@ -40,6 +41,9 @@ public class ContextJSON {
      * Timestamp of the start of the pending change
      */
     private long pendingSince;
+
+    private Map<String, String> metaData;
+
 
     public ContextJSON() {
     }
@@ -95,6 +99,14 @@ public class ContextJSON {
 
     public void setRoles(List<NodeAndRole> roles) {
         this.roles = roles;
+    }
+
+    public Map<String, String> getMetaData() {
+        return metaData;
+    }
+
+    public void setMetaData(Map<String, String> metaData) {
+        this.metaData = metaData;
     }
 
     @KeepNames

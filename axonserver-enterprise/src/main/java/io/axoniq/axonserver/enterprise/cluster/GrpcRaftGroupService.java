@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -27,7 +28,8 @@ import java.util.stream.Collectors;
  * @author Marc Gathier
  */
 @Service
-public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase {
+public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase implements
+        AxonServerInternalService {
 
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftGroupService.class);
     private final LocalRaftGroupService localRaftGroupService;

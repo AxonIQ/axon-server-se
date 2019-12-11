@@ -32,6 +32,7 @@ public class ApplicationJSON {
         name = application.getName();
         description = application.getDescription();
         roles = application.getContexts().stream().map(ApplicationRoleJSON::new).collect(Collectors.toList());
+        metaData = application.getMetaDataMap();
     }
 
     public String getName() {
@@ -64,6 +65,10 @@ public class ApplicationJSON {
 
     public void setRoles(List<ApplicationRoleJSON> roles) {
         this.roles = roles;
+    }
+
+    public Map<String, String> getMetaData() {
+        return metaData;
     }
 
 
