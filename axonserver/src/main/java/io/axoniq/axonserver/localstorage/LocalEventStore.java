@@ -33,6 +33,7 @@ import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
@@ -115,10 +116,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if( workersMap.containsKey(context)) return;
         workersMap.putIfAbsent(context, new Workers(context));
         workersMap.get(context).init(validating);
-        meterFactory.gauge(BaseMetricName.AXON_LAST_TOKEN,
-                           Tags.of(MeterFactory.CONTEXT, context),
-                           context,
-                            c -> (double) getLastToken(c));
     }
 
     /**
@@ -483,6 +480,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final SyncStorage snapshotSyncStorage;
         private final AtomicBoolean initialized = new AtomicBoolean();
         private final TrackingEventProcessorManager trackingEventManager;
+        private final Gauge gauge;
 
 
         public Workers(String context) {
@@ -500,6 +498,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
             this.eventWriteStorage.registerEventListener((token, events) -> this.trackingEventManager.reschedule());
+            this.gauge = meterFactory.gauge(BaseMetricName.AXON_LAST_TOKEN,
+                                            Tags.of(MeterFactory.CONTEXT, context),
+                                            context,
+                                            c -> (double) getLastToken(c));
+
         }
 
         public synchronized void init(boolean validate) {
@@ -518,6 +521,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             trackingEventManager.close();
             eventStorageEngine.close(deleteData);
             snapshotStorageEngine.close(deleteData);
+            meterFactory.remove(gauge);
         }
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {

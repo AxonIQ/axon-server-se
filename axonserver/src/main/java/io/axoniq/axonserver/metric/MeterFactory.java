@@ -14,6 +14,7 @@ import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -94,6 +95,10 @@ public class MeterFactory {
         }
 
         return new SnapshotMetric(max, count == 0 ? 0 : total / count, count);
+    }
+
+    public void remove(Meter meter) {
+        meterRegistry.remove(meter);
     }
 
     /**
