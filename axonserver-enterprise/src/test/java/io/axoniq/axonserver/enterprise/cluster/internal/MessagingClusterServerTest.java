@@ -14,6 +14,7 @@ import org.mockito.*;
 import org.mockito.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -55,11 +56,14 @@ public class MessagingClusterServerTest {
             }
         };
 
-        testSubject = new MessagingClusterServer(configuration, clusterService, internalEventStore,
+        testSubject = new MessagingClusterServer(configuration,
                                                  logReplicationService,
                                                  leaderElectionService,
-                                                 grpcRaftGroupService,
-                                                 grpcRaftConfigService,
+                                                 Arrays.asList(
+                                                         clusterService, internalEventStore,
+                                                         grpcRaftGroupService,
+                                                         grpcRaftConfigService
+                                                 ),
                                                  limits, mock(ApplicationEventPublisher.class));
     }
 

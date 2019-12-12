@@ -52,6 +52,7 @@ public class ApplicationProtoConverter {
         if (app.getTokenPrefix() != null) {
             builder.setTokenPrefix(app.getTokenPrefix());
         }
+        builder.putAllMetaData(app.getMetaDataMap());
         app.getContexts()
            .stream()
            .map(ApplicationProtoConverter::createApplicationContextRole)
@@ -79,10 +80,11 @@ public class ApplicationProtoConverter {
                                                                   .collect(Collectors.toList());
 
         return new JpaApplication(application.getName(),
-                                                                  application.getDescription(),
-                                                                  application.getTokenPrefix(),
-                                                                  application.getToken(),
-                                                                  applicationContexts);
+                                  application.getDescription(),
+                                  application.getTokenPrefix(),
+                                  application.getToken(),
+                                  applicationContexts,
+                                  application.getMetaDataMap());
     }
 
     public static ApplicationContext createJpaApplicationContext(ApplicationContextRole applicationContextRole) {

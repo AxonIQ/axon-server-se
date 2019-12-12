@@ -4,7 +4,6 @@ import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextNames;
 import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
@@ -20,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.enterprise.CompetableFutureUtils.getFuture;
 
@@ -83,14 +81,9 @@ public class RemoteRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void addContext(String context, List<String> nodes) {
+    public void addContext(Context context) {
         CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
-        raftConfigServiceStub.createContext(Context
-                                                    .newBuilder()
-                                                    .setName(context)
-                                                    .addAllMembers(nodes.stream().map(n -> ContextMember.newBuilder().setNodeId(n).build()).collect(
-                                                            Collectors.toList()))
-                                                    .build(),
+        raftConfigServiceStub.createContext(context,
                                             new CompletableStreamObserver<>(completableFuture, "addContext", logger));
         getFuture(completableFuture);
     }

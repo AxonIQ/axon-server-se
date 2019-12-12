@@ -12,6 +12,13 @@ service MessagingClusterService {
     // calling side is service provider to called side
     rpc OpenStream (stream ConnectorCommand) returns (stream ConnectorResponse) {
     }
+
+    rpc GetContextLeader (ContextName) returns (NodeInfo) {
+
+    }
+
+    rpc GetCluster (EmptyRequest) returns (stream NodeInfo) {
+    }
 }
 
 /**
@@ -65,6 +72,7 @@ service RaftConfigService {
 
     rpc DeleteProcessorLBStrategy (ProcessorLBStrategy) returns (InstructionAck) {
     }
+
 }
 
 /**
@@ -123,6 +131,10 @@ service RaftGroupService {
     // Notify a node that a node will be deleted from a context.
     rpc PreDeleteNodeFromContext (NodeContext) returns (InstructionAck) {
     }
+}
+
+message EmptyRequest {
+
 }
 
 message NodeContext {
@@ -444,6 +456,7 @@ message TransactionWithToken {
 message Context {
     string name = 1;
     repeated ContextMember members = 2;
+    map<string, string> meta_data = 3;
 }
 
 message ContextUpdateConfirmation {
@@ -468,6 +481,7 @@ message Application {
     string token_prefix = 3;
     string token = 4;
     repeated ApplicationContextRole roles_per_context = 5;
+    map<string, string> meta_data = 6;
 }
 
 message ApplicationContextRole {
@@ -509,6 +523,7 @@ message ContextConfiguration {
     string context = 1;
     repeated NodeInfoWithLabel nodes = 2;
     bool pending = 3;
+    map<string, string> meta_data = 4;
 }
 
 message NodeInfoWithLabel {

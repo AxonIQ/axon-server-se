@@ -391,7 +391,8 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void addContext(String context, List<String> nodes) {
+    public void addContext(io.axoniq.axonserver.grpc.internal.Context contextDefinition) {
+        String context = contextDefinition.getName();
         if (!contextsInProgress.add(context)) {
             throw new UnsupportedOperationException("The creation of the context is already in progress.");
         }
@@ -403,9 +404,9 @@ class LocalRaftConfigService implements RaftConfigService {
         }
 
         List<Node> raftNodes = new ArrayList<>();
-        nodes.forEach(n -> {
-            ClusterNode clusterNode = clusterController.getNode(n);
-            String nodeLabel = generateNodeLabel(n);
+        contextDefinition.getMembersList().forEach(n -> {
+            ClusterNode clusterNode = clusterController.getNode(n.getNodeName());
+            String nodeLabel = generateNodeLabel(n.getNodeName());
             raftNodes.add(createNode(clusterNode, nodeLabel, Role.PRIMARY));
         });
         Node target = raftNodes.get(0);
@@ -413,10 +414,11 @@ class LocalRaftConfigService implements RaftConfigService {
         getFuture(
             raftGroupServiceFactory.getRaftGroupServiceForNode(target.getNodeName()).initContext(context, raftNodes)
                                    .thenAccept(contextConfiguration -> {
-                                       ContextConfiguration completed = ContextConfiguration.newBuilder(
-                                               contextConfiguration)
-                                                                                            .setPending(false)
-                                                                                            .build();
+                                       ContextConfiguration completed =
+                                               ContextConfiguration.newBuilder(contextConfiguration)
+                                                                   .setPending(false)
+                                                                   .putAllMetaData(contextDefinition.getMetaDataMap())
+                                                                   .build();
                                        appendToAdmin(ContextConfiguration.class.getName(),
                                                      completed.toByteArray());
                                    }).whenComplete((success, error) -> {

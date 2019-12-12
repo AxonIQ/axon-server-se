@@ -74,8 +74,13 @@ public class ContextController {
         }
 
 
-        Context context = optionalContext.orElseGet(() -> contextRepository
-                .save(new Context(contextConfiguration.getContext())));
+        Context context = optionalContext.orElseGet(() -> {
+            Context c = new Context(contextConfiguration.getContext());
+            if (contextConfiguration.getMetaDataCount() > 0) {
+                c.setMetaDataMap(contextConfiguration.getMetaDataMap());
+            }
+            return contextRepository.save(c);
+        });
         context.changePending(contextConfiguration.getPending());
         Map<String, ClusterNode> currentNodes = new HashMap<>();
         context.getNodes().forEach(n -> currentNodes.put(n.getClusterNode().getName(), n.getClusterNode()) );

@@ -39,6 +39,7 @@ public class InternalAuthenticationInterceptorTest {
     public void setUp() throws Exception {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         configuration.setAccesscontrol(new AccessControlConfiguration());
+        configuration.getAccesscontrol().setEnabled(true);
         configuration.getAccesscontrol().setInternalToken("MyInternalToken");
 
         status = ArgumentCaptor.forClass(Status.class);

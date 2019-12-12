@@ -2,13 +2,12 @@ package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftConfigService;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftGroupService;
+import io.axoniq.axonserver.grpc.AxonServerInternalService;
+import io.axoniq.axonserver.grpc.ContextInterceptor;
 import io.axoniq.axonserver.grpc.GrpcBufferingInterceptor;
 import io.axoniq.axonserver.licensing.Feature;
-import io.axoniq.axonserver.config.FeatureChecker;
-import io.axoniq.axonserver.grpc.ContextInterceptor;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
@@ -20,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -27,37 +27,28 @@ import java.util.concurrent.TimeUnit;
  * @author Marc Gathier
  */
 @Component("MessagingClusterServer")
-public class MessagingClusterServer implements SmartLifecycle{
-    private final Logger logger = LoggerFactory.getLogger(MessagingClusterServer.class);
-    private boolean started;
+public class MessagingClusterServer implements SmartLifecycle {
 
+    private final Logger logger = LoggerFactory.getLogger(MessagingClusterServer.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final MessagingClusterService messagingClusterService;
-    private final InternalEventStoreService internalEventStoreService;
     private final LogReplicationService logReplicationService;
     private final LeaderElectionService leaderElectionService;
-    private final GrpcRaftGroupService grpcRaftGroupService;
-    private final GrpcRaftConfigService grpcRaftConfigService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final List<AxonServerInternalService> internalServices;
     private final FeatureChecker limits;
+    private boolean started;
     private Server server;
 
     public MessagingClusterServer(MessagingPlatformConfiguration messagingPlatformConfiguration,
-                                  MessagingClusterService messagingClusterService,
-                                  InternalEventStoreService internalEventStoreService,
                                   LogReplicationService logReplicationService,
                                   LeaderElectionService leaderElectionService,
-                                  GrpcRaftGroupService grpcRaftGroupService,
-                                  GrpcRaftConfigService grpcRaftConfigService,
+                                  List<AxonServerInternalService> internalServices,
                                   FeatureChecker limits,
                                   ApplicationEventPublisher applicationEventPublisher) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
-        this.messagingClusterService = messagingClusterService;
-        this.internalEventStoreService = internalEventStoreService;
         this.logReplicationService = logReplicationService;
         this.leaderElectionService = leaderElectionService;
-        this.grpcRaftGroupService = grpcRaftGroupService;
-        this.grpcRaftConfigService = grpcRaftConfigService;
+        this.internalServices = internalServices;
         this.limits = limits;
         this.applicationEventPublisher = applicationEventPublisher;
     }
@@ -83,47 +74,43 @@ public class MessagingClusterServer implements SmartLifecycle{
     @Override
     public void start() {
         NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(messagingPlatformConfiguration.getInternalPort())
-                .permitKeepAliveTime(messagingPlatformConfiguration.getMinKeepAliveTime(), TimeUnit.MILLISECONDS)
-                .permitKeepAliveWithoutCalls(true);
+                                                             .permitKeepAliveTime(messagingPlatformConfiguration
+                                                                                          .getMinKeepAliveTime(),
+                                                                                  TimeUnit.MILLISECONDS)
+                                                             .permitKeepAliveWithoutCalls(true);
 
 
-        if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
+        if (messagingPlatformConfiguration.getMaxMessageSize() > 0) {
             serverBuilder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
         }
         String sslMessage = "no SSL";
-        if( messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl().isEnabled()) {
-            if( messagingPlatformConfiguration.getSsl().getInternalCertChainFile() == null) {
+        if (messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl().isEnabled()) {
+            if (messagingPlatformConfiguration.getSsl().getInternalCertChainFile() == null) {
                 throw new RuntimeException("axoniq.axonserver.ssl.cert-chain-file");
             }
-            if( messagingPlatformConfiguration.getSsl().getPrivateKeyFile() == null) {
+            if (messagingPlatformConfiguration.getSsl().getPrivateKeyFile() == null) {
                 throw new RuntimeException("axoniq.axonserver.ssl.private-key-file");
             }
-            serverBuilder.useTransportSecurity(new File(messagingPlatformConfiguration.getSsl().getInternalCertChainFile()),
-                    new File(messagingPlatformConfiguration.getSsl().getPrivateKeyFile()));
+            serverBuilder.useTransportSecurity(new File(messagingPlatformConfiguration.getSsl()
+                                                                                      .getInternalCertChainFile()),
+                                               new File(messagingPlatformConfiguration.getSsl().getPrivateKeyFile()));
             sslMessage = "SSL enabled";
         }
-        serverBuilder.addService(messagingClusterService);
+
+        serverBuilder.intercept(new InternalAuthenticationInterceptor(messagingPlatformConfiguration));
+
+        internalServices.forEach(service -> {
+            if (service.requiresContextInterceptor()) {
+                serverBuilder.addService(ServerInterceptors.intercept(service,
+                                                                      new ContextInterceptor()));
+            } else {
+                serverBuilder.addService(service);
+            }
+        });
         serverBuilder.addService(leaderElectionService);
         serverBuilder.addService(logReplicationService);
-        serverBuilder.addService(internalEventStoreService);
-        serverBuilder.addService(grpcRaftGroupService);
-        serverBuilder.addService(grpcRaftConfigService);
 
-        serverBuilder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
-
-
-        if( messagingPlatformConfiguration.getAccesscontrol() != null && messagingPlatformConfiguration.getAccesscontrol().isEnabled()) {
-            serverBuilder.addService(ServerInterceptors.intercept(messagingClusterService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
-            serverBuilder.addService(ServerInterceptors.intercept(leaderElectionService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
-            serverBuilder.addService(ServerInterceptors.intercept(logReplicationService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
-            serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration),
-                                                                  new ContextInterceptor()));
-            serverBuilder.addService(ServerInterceptors.intercept(grpcRaftGroupService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
-            serverBuilder.addService(ServerInterceptors.intercept(grpcRaftConfigService, new InternalAuthenticationInterceptor(messagingPlatformConfiguration)));
-        } else {
-            serverBuilder.addService(ServerInterceptors.intercept(internalEventStoreService, new ContextInterceptor()));
-        }
-        if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
+        if (messagingPlatformConfiguration.getKeepAliveTime() > 0) {
             serverBuilder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS);
             serverBuilder.keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
         }
@@ -136,7 +123,9 @@ public class MessagingClusterServer implements SmartLifecycle{
         try {
             server.start();
 
-            logger.info("Axon Server Cluster Server started on port: {} - {}", messagingPlatformConfiguration.getInternalPort(), sslMessage);
+            logger.info("Axon Server Cluster Server started on port: {} - {}",
+                        messagingPlatformConfiguration.getInternalPort(),
+                        sslMessage);
             applicationEventPublisher.publishEvent(new ReplicationServerStarted());
             started = true;
         } catch (IOException e) {
@@ -146,7 +135,8 @@ public class MessagingClusterServer implements SmartLifecycle{
 
     @Override
     public void stop() {
-        stop(() ->{});
+        stop(() -> {
+        });
     }
 
     @Override

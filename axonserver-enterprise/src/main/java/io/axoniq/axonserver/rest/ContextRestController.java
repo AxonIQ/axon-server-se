@@ -10,6 +10,7 @@ import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
 import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.rest.json.RestResponse;
@@ -76,6 +77,7 @@ public class ContextRestController {
         return contextController.getContexts().map(context -> {
             ContextJSON json = new ContextJSON(context.getName());
             json.setChangePending(context.isChangePending());
+            json.setMetaData(context.getMetaDataMap());
             if (context.getPendingSince() != null) {
                 json.setPendingSince(context.getPendingSince().getTime());
             }
@@ -188,7 +190,18 @@ public class ContextRestController {
         }
 
         try {
-            raftServiceFactory.getRaftConfigService().addContext(contextJson.getContext(), contextJson.getNodes());
+            raftServiceFactory.getRaftConfigService()
+                              .addContext(
+                                      io.axoniq.axonserver.grpc.internal.Context.newBuilder()
+                                                                                .setName(contextJson.getContext())
+                                                                                .addAllMembers(contextJson.getNodes()
+                                                                       .stream()
+                                                                       .map(n -> ContextMember.newBuilder()
+                                                                                              .setNodeName(n)
+                                                                                              .build()
+                                                                       )
+                                                                       .collect(Collectors.toList()))
+                                                                                .build());
             return ResponseEntity.ok(new RestResponse(true, null));
         } catch (Exception ex) {
             return new RestResponse(false, ex.getMessage()).asResponseEntity(ErrorCode.fromException(ex));
