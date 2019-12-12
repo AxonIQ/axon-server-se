@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.storage.file;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 /**
@@ -10,6 +11,7 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
  * @author Marc Gathier
  * @since 4.3
  */
+@KeepNames
 public interface MultiContextEventTransformerFactory {
 
     /**
