@@ -20,6 +20,7 @@ import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.saas.SaasAdminServiceGrpc;
 import io.grpc.stub.StreamObserver;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -27,9 +28,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
+ * Provides an interface to be used by Axon Cloud Console to update configuration in Axon Server.
+ * Only enabled when profile axoniq-cloud-support is enabled
+ *
  * @author Marc Gathier
+ * @since 4.3
  */
 @Service
+@Profile("axoniq-cloud-support")
 public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplBase implements
         AxonServerInternalService {
 
@@ -49,6 +55,12 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
         this.applicationRepository = applicationRepository;
     }
 
+    /**
+     * Retrieves all nodes in the cluster and their contexts.
+     *
+     * @param request          empty request, gRPC requires a request message
+     * @param responseObserver observer where nodes are published to. Each node is published as a separate response.
+     */
     @Override
     public void getNodes(EmptyRequest request, StreamObserver<NodeInfo> responseObserver) {
         clusterController.nodes().forEach(n -> responseObserver.onNext(toNodeInfo(n)));
@@ -66,14 +78,19 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
                        .build();
     }
 
+    /**
+     * Retrieves all contexts, and the nodes they are assigned to.
+     * @param request empty request, gRPC requires a request message
+     * @param responseObserver observer where contexts are published to. Each context is published as a separate response.
+     */
     @Override
     public void getContexts(EmptyRequest request, StreamObserver<Context> responseObserver) {
         contextController.getContexts().forEach(c -> {
             responseObserver.onNext(Context.newBuilder().setName(c.getName())
                                            .addAllMembers(c.getNodes().stream().map(ccn -> ContextMember.newBuilder()
                                                                                                         .setNodeName(
-                                                                                                                   ccn.getClusterNode()
-                                                                                                                      .getName())
+                                                                                                                ccn.getClusterNode()
+                                                                                                                   .getName())
                                                                                                         .build())
                                                            .collect(
                                                                    Collectors.toList()))
@@ -83,6 +100,11 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
         responseObserver.onCompleted();
     }
 
+    /**
+     * Retrieves all applications, and the assigned roles.
+     * @param request empty request, gRPC requires a request message
+     * @param responseObserver observer where applications are published to. Each application is published as a separate response.
+     */
     @Override
     public void getApplications(EmptyRequest request, StreamObserver<Application> responseObserver) {
         applicationRepository.findAll().forEach(app -> responseObserver
@@ -90,10 +112,18 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
         responseObserver.onCompleted();
     }
 
+    /**
+     * Creates a new context. If there is a meta data value {@code nodes} defined in the request, it will add the context to
+     * that number of nodes. If this is not specified it will add it to one node.
+     * The operation assigns the context to the nodes with the lowest number of contexts available.
+     *
+     * @param request the context to create
+     * @param responseObserver acknowledgement on successful completion
+     */
     @Override
     public void createContext(Context request, StreamObserver<InstructionAck> responseObserver) {
         try {
-            int nodes = Integer.valueOf(request.getMetaDataMap().getOrDefault("nodes", "3"));
+            int nodes = Integer.valueOf(request.getMetaDataMap().getOrDefault("nodes", "1"));
 
             List<ContextMember> selectedNodes = clusterController.nodes().sorted(Comparator.comparingInt(c -> c
                     .getContexts().size()))
@@ -111,6 +141,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
             }
 
             Context updatedContext = Context.newBuilder(request)
+                                            .clearMembers()
                                             .addAllMembers(selectedNodes)
                                             .build();
             raftConfigServiceFactory.getRaftConfigService().addContext(updatedContext);
@@ -152,6 +183,11 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
              () -> raftConfigServiceFactory.getRaftConfigService().deleteContext(request.getContext()));
     }
 
+    /**
+     * Create a new application and grants roles to given contexts.
+     * @param request the application and grants
+     * @param responseObserver stream where application is returned when created
+     */
     @Override
     public void createApplication(Application request, StreamObserver<Application> responseObserver) {
 
@@ -175,6 +211,11 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
         }
     }
 
+    /**
+     * Refreshes the token for a specific application.
+     * @param request contains the application to refresh the token
+     * @param responseObserver updated application, with new token inside
+     */
     @Override
     public void refreshToken(Application request, StreamObserver<Application> responseObserver) {
         try {
