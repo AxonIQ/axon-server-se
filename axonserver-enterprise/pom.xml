@@ -13,7 +13,6 @@
     <properties>
         <exec.plugin.version>1.6.0</exec.plugin.version>
         <allatori-jar.full-path>${allatori.dir}/lib/allatori.jar</allatori-jar.full-path>
-        <skip.integration.tests>true</skip.integration.tests>
     </properties>
 
     <dependencies>
@@ -144,136 +143,6 @@
                         </manifestEntries>
                     </archive>
                 </configuration>
-            </plugin>
-
-            <plugin>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <tasks>
-                                <delete includeemptydirs="true">
-                                    <fileset dir="${project.parent.basedir}/test" includes="**/*"/>
-                                </delete>
-                            </tasks>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>reserve-tomcat-port</id>
-                        <goals>
-                            <goal>reserve-network-port</goal>
-                        </goals>
-                        <phase>process-resources</phase>
-                        <configuration>
-                            <portNames>
-                                <portName>tomcat.http.port</portName>
-                                <portName>grpc.port</portName>
-                                <portName>internal.grpc.port</portName>
-                            </portNames>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <systemPropertyVariables>
-                        <license>${project.basedir}/src/main/docker/axoniq.license</license>
-                    </systemPropertyVariables>
-                    <environmentVariables>
-                        <AXONIQ_LICENSE>${project.basedir}/src/main/docker/axoniq.license</AXONIQ_LICENSE>
-                    </environmentVariables>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>pre-integration-test</id>
-                        <goals>
-                            <goal>start</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${skip.integration.tests}</skip>
-
-                            <wait>45000</wait>
-                            <jvmArguments>-Dlicense=${project.parent.basedir}/axoniq.license</jvmArguments>
-                            <environmentVariables>
-                                <AXONIQ_LICENSE>${project.parent.basedir}/axoniq.license</AXONIQ_LICENSE>
-                            </environmentVariables>
-                            <arguments>
-                                <argument>--server.port=${tomcat.http.port}</argument>
-                                <argument>--axoniq.axonserver.port=${grpc.port}</argument>
-                                <argument>--axoniq.axonserver.internal-port=${internal.grpc.port}</argument>
-                                <argument>--axoniq.axonserver.event.storage=${project.parent.basedir}/test/data
-                                </argument>
-                                <argument>--axoniq.axonserver.snapshot.storage=${project.parent.basedir}/test/data
-                                </argument>
-                                <argument>--axoniq.axonserver.autocluster.first=${hostname}:${internal.grpc.port}
-                                </argument>
-                                <argument>--axoniq.axonserver.controldb-path=${project.parent.basedir}/test/data
-                                </argument>
-                                <argument>--axoniq.axonserver.pid-file-location=${project.parent.basedir}/test/data
-                                </argument>
-                                <argument>
-                                    --axoniq.axonserver.replication.log-storage-folder=${project.parent.basedir}/test/log
-                                </argument>
-                                <argument>--spring.profiles.active=cloud-support</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>post-integration-test</id>
-                        <goals>
-                            <goal>stop</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${skip.integration.tests}</skip>
-                        </configuration>
-                    </execution>
-
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                        <configuration>
-                            <executable>true</executable>
-                            <classifier>exec</classifier>
-                            <layout>ZIP</layout>
-                            <mainClass>io.axoniq.axonserver.AxonServerEnterprise</mainClass>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <systemPropertyVariables>
-                        <test.server.port>${tomcat.http.port}</test.server.port>
-                        <test.grpc.port>${grpc.port}</test.grpc.port>
-                        <test.internal.grpc.port>${internal.grpc.port}</test.internal.grpc.port>
-                    </systemPropertyVariables>
-                    <skipITs>${skip.integration.tests}</skipITs>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
 
             <plugin>
@@ -465,28 +334,6 @@
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-        <profile>
-            <id>unix</id>
-            <activation>
-                <os>
-                    <family>unix</family>
-                </os>
-            </activation>
-            <properties>
-                <hostname>${env.HOSTNAME}</hostname>
-            </properties>
-        </profile>
-        <profile>
-            <id>windows</id>
-            <activation>
-                <os>
-                    <family>Windows</family>
-                </os>
-            </activation>
-            <properties>
-                <hostname>${env.COMPUTERNAME}</hostname>
-            </properties>
         </profile>
     </profiles>
 
