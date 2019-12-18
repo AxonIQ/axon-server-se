@@ -1,0 +1,3 @@
+FROM busybox
+ADD axoniq.license /config/axoniq.license
+ADD axonserver-monitor.properties /config/axonserver.properties

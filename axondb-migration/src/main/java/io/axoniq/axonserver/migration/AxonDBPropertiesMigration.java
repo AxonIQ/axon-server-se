@@ -120,7 +120,7 @@ public class AxonDBPropertiesMigration {
      */
     public static void main(String[] args) throws IOException {
         String axondbFile = "axondb.properties";
-        String axonserverFile = "axonserver.properties";
+        String axonserverFile = "axonserver-autocluster.properties";
 
         if (args.length > 0) {
             axondbFile = args[0];

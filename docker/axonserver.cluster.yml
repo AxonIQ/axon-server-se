@@ -1,0 +1,72 @@
+version: '3.3'
+
+services:
+
+  config:
+    build:
+      context: shared
+      dockerfile: shared/Dockerfile-autocluster
+    volumes:
+      - axon-server-config:/config
+
+  axonserver-enterprise-1:
+    image: eu.gcr.io/axoniq-devops/axonserver-enterprise
+    hostname: axonserver-enterprise-1
+    depends_on:
+      - config
+    environment:
+      - AXONIQ_LICENSE=/config/axoniq.license
+      - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-1
+      - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-1
+    volumes:
+      - axonserver-enterprise-1-data:/data
+      - axonserver-enterprise-1-eventstore:/eventdata
+      - axon-server-config:/config:ro
+    ports:
+      - '8024:8024'
+      - '8124:8124'
+  axonserver-enterprise-2:
+    image: eu.gcr.io/axoniq-devops/axonserver-enterprise
+    hostname: axonserver-enterprise-2
+    depends_on:
+      - config
+    environment:
+      - AXONIQ_LICENSE=/config/axoniq.license
+      - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-2
+      - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-2
+      - SERVER_PORT=8025
+      - AXONIQ_AXONSERVER_PORT=8125
+    volumes:
+      - axonserver-enterprise-2-data:/data
+      - axonserver-enterprise-2-eventstore:/eventdata
+      - axon-server-config:/config:ro
+    ports:
+      - '8025:8025'
+      - '8125:8125'
+  axonserver-enterprise-3:
+    image: eu.gcr.io/axoniq-devops/axonserver-enterprise
+    hostname: axonserver-enterprise-3
+    depends_on:
+      - config
+    environment:
+      - AXONIQ_LICENSE=/config/axoniq.license
+      - AXONIQ_AXONSERVER_NAME=axonserver-enterprise-3
+      - AXONIQ_AXONSERVER_HOSTNAME=axonserver-enterprise-3
+      - SERVER_PORT=8026
+      - AXONIQ_AXONSERVER_PORT=8126
+    volumes:
+      - axonserver-enterprise-3-data:/data
+      - axonserver-enterprise-3-eventstore:/eventdata
+      - axon-server-config:/config:ro
+    ports:
+      - '8026:8026'
+      - '8126:8126'
+
+volumes:
+  axonserver-enterprise-1-data:
+  axonserver-enterprise-1-eventstore:
+  axonserver-enterprise-2-data:
+  axonserver-enterprise-2-eventstore:
+  axonserver-enterprise-3-data:
+  axonserver-enterprise-3-eventstore:
+  axon-server-config:
