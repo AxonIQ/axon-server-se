@@ -78,14 +78,16 @@ podTemplate(label: label,
             def gcloudRegistry = props ['gcloud.registry']
             def gcloudProjectName = props ['gcloud.project.name']
             def slackReport = "Maven build for Axon Server EE ${pomVersion} (branch \"${gitBranch}\")."
+
             def mavenTarget = "clean verify"
+
             stage ('Maven build') {
                 container("maven") {
                     if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                         mavenTarget = "clean deploy"
                     }
                     if (relevantBranch(gitBranch, dockerBranches)) {
-                        mavenTarget = mavenTarget + " jib:build -Dgcloud.registry=${gcloudRegistry} -Dgcloud.project.name=${gcloudProjectName}"
+                        mavenTarget = "-Pdocker " + mavenTarget // + " jib:build -Dgcloud.registry=${gcloudRegistry} -Dgcloud.project.name=${gcloudProjectName}"
                     }
                     try {
                         sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"
@@ -105,9 +107,6 @@ podTemplate(label: label,
                         junit '**/target/surefire-reports/TEST-*.xml'
                         slackReport = slackReport + "\n" + getTestSummary()
                     }
-                    if (relevantBranch(gitBranch, deployingBranches)) {
-                        sh "mvn \${MVN_BLD} -DskipTests deploy"
-                    }
                 }
             }
 
@@ -118,17 +117,14 @@ podTemplate(label: label,
                     }
                 }
             }
+
             stage('Trigger followup') {
                 if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
-// Axon Server - Canary tests
-//   string(name: 'serverEdition', defaultValue: 'se'),
-//   string(name: 'projectVersion', defaultValue: '4.2-SNAPSHOT'),
-//   string(name: 'cliVersion', defaultValue: '4.1.5')
                     def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
                             string(name: 'serverEdition', value: 'ee'),
                             string(name: 'projectVersion', value: props ['project.version']),
-                            string(name: 'cliVersion', value: '4.1.5')
+                            string(name: 'cliVersion', value: '4.2.4')
                         ]
                     if (canaryTests.result == "FAILURE") {
                         slackReport = slackReport + "\nCanary Tests FAILED!"
