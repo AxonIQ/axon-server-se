@@ -30,8 +30,20 @@ $ docker images
 
 ## Axon Enterprise Cluster (`docker-compose`)
 
-The [docker-compose.cluster.yml](docker-compose.cluster.yml) file configures three Axon Enterprise server nodes.
+The [axonserver.cluster.yml](axonserver.cluster.yml) file configures three Axon Enterprise server nodes.
 It uses Docker images we created with Jib (`axonserver-enterprise`) to create three nodes `node 1`, `node 2` and `node 3`.
+The nodes are configured in a cluster, with each node subscribed to the _admin and default context.
+
+The [axonserver.cluster-with-accesscontrol.yml](axonserver.cluster-with-accesscontrol.yml) file configures three Axon Enterprise server nodes with access control setup.
+It uses Docker images we created with Jib (`axonserver-enterprise`) to create three nodes `node 1`, `node 2` and `node 3`.
+The nodes are configured in a cluster, with each node subscribed to the _admin and default context. Access control is 
+set up and the internal token is specified in [systemtoken](shared/systemtoken) file.
+
+The [axonserver.cluster-with-monitoring.yml](axonserver.cluster.yml) file configures three Axon Enterprise server nodes 
+with monitoring enabled.
+It uses Docker images we created with Jib (`axonserver-enterprise`) to create three nodes `node 1`, `node 2` and `node 3`.
+The nodes are configured in a cluster, with each node subscribed to the _admin and default context. 
+
 
 The [docker-compose.cluster.sample-application.yml](docker-compose.cluster.sample-application.yml) files configures sample application to run against our Axon cluster.
 It uses Docker images we created with Jib (`sample-command-processor-axonserver-client`) to run the application container. Additionally, application is configured to use `postgres` DB container.
@@ -49,14 +61,14 @@ You can combine different compose files to construct cluster that fits your need
 #### Cluster
 ```bash
 $ cd docker
-$ docker-compose -f docker-compose.cluster.yml up -d
+$ docker-compose -f axonserver.cluster.yml up -d
 ```
 ![Dashoard - cluster](dashboard-cluster.png)
 
 #### Cluster with sample application
 ```bash
 $ cd docker
-$ docker-compose -f docker-compose.cluster.yml -f docker-compose.cluster.sample-application.yml up -d
+$ docker-compose -f axonserver.cluster.yml -f docker-compose.cluster.sample-application.yml up -d
 ```
 
 ![Dashboard - cluster - app](dashboard-cluster-app.png)
@@ -64,7 +76,7 @@ $ docker-compose -f docker-compose.cluster.yml -f docker-compose.cluster.sample-
 #### Cluster with sample application and Prometheus metrics
 ```bash
 $ cd docker
-$ docker-compose -f docker-compose.cluster.yml -f docker-compose.cluster.sample-application.yml -f docker-compose.cluster.monitoring.yml  up -d
+$ docker-compose -f axonserver.cluster-with-monitoring.yml -f docker-compose.cluster.sample-application.yml -f docker-compose.cluster.monitoring.yml  up -d
 ```
 
  - Cluster is available here: [http://localhost:8024/#overview](http://localhost:8024/#overview).
@@ -81,16 +93,16 @@ Grafana password: `nimda`
 This command will stop and remove all containers (and named volumes `-v`) defined in the compose files:
 ```bash
 $ cd docker
-$ docker-compose -f docker-compose.cluster.yml  down -v
+$ docker-compose -f axonserver.cluster.yml  down -v
 ```
 or
 ```bash
 $ cd docker
-$ docker-compose -f docker-compose.cluster.yml -f docker-compose.cluster.sample-application.yml down -v
+$ docker-compose -f axonserver.cluster.yml -f docker-compose.cluster.sample-application.yml down -v
 ```
 or
 ```bash
 $ cd docker
-$ docker-compose -f docker-compose.cluster.yml -f docker-compose.cluster.sample-application.yml -f docker-compose.cluster.monitoring.yml  down -v
+$ docker-compose -f axonserver.cluster-with-monitoring.yml -f docker-compose.cluster.sample-application.yml -f docker-compose.cluster.monitoring.yml  down -v
 ```
 > NOTE: `-v` option will remove your persisted named volumes once the containers are removed. You can choose to exclude this option in order to backup/manage your volumes later.

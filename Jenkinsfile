@@ -11,7 +11,7 @@ def deployingBranches = [
     "master", "axonserver-ee-4.2.x"
 ]
 def dockerBranches = [
-    "master", "axonserver-ee-4.2.x"
+    "master", "axonserver-ee-4.2.x", "feature/jib-images"
 ]
 def sonarBranches = [
     "master", "axonserver-ee-4.2.x"
@@ -78,10 +78,24 @@ podTemplate(label: label,
             def gcloudRegistry = props ['gcloud.registry']
             def gcloudProjectName = props ['gcloud.project.name']
             def slackReport = "Maven build for Axon Server EE ${pomVersion} (branch \"${gitBranch}\")."
+            def mavenTarget = "clean verify"
             stage ('Maven build') {
                 container("maven") {
+                    if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
+                        mavenTarget = "clean deploy"
+                    }
+                    if (relevantBranch(gitBranch, dockerBranches)) {
+                        mavenTarget = mavenTarget + " jib:build"
+                    }
                     try {
-                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore clean package"
+                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"
+
+                        if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
+                            slackReport = slackReport + "\nDeployed to dev-nexus"
+                        }
+                        if (relevantBranch(gitBranch, dockerBranches)) {
+                            slackReport = slackReport + "\nNew Docker images have been pushed"
+                        }
                     }
                     catch (err) {
                         slackReport = slackReport + "\nMaven build FAILED!"
@@ -105,24 +119,6 @@ podTemplate(label: label,
                 }
             }
             stage('Trigger followup') {
-                if (relevantBranch(gitBranch, dockerBranches)) {
-// Axon Server - Build Docker Images
-//   string(name: 'serverEdition', defaultValue: 'se'),
-//   string(name: 'projectVersion', defaultValue: '4.2-SNAPSHOT'),
-//   string(name: 'cliVersion', defaultValue: '4.1.5')
-                    def dockerBuild = build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
-                        parameters: [
-                            string(name: 'serverEdition', value: 'ee'),
-                            string(name: 'projectVersion', value: props ['project.version']),
-                            string(name: 'cliVersion', value: '4.1.5')
-                        ]
-                    if (dockerBuild.result == "FAILURE") {
-                        slackReport = slackReport + "\nBuild of Docker images FAILED!"
-                    }
-                    else {
-                        slackReport = slackReport + "\nNew Docker images have been pushed."
-                    }
-                }
                 if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
 // Axon Server - Canary tests
 //   string(name: 'serverEdition', defaultValue: 'se'),

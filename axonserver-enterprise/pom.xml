@@ -12,7 +12,6 @@
     <properties>
         <exec.plugin.version>1.6.0</exec.plugin.version>
         <allatori-jar.full-path>${allatori.dir}/lib/allatori.jar</allatori-jar.full-path>
-        <docker.location>eu.gcr.io/axoniq-devops</docker.location>
     </properties>
 
     <dependencies>
@@ -210,8 +209,10 @@
                         <image>gcr.io/distroless/java:11</image>
                     </from>
                     <to>
-                        <image>${docker.location}/axonserver-enterprise</image>
-                        <tags>${project.parent.version}</tags>
+                        <image>
+                            ${gcloud.registry}/${gcloud.project.name}/axonserver-enterprise:${project.parent.version}
+                        </image>
+                        <credHelper>gcr</credHelper>
                     </to>
                 </configuration>
             </plugin>
