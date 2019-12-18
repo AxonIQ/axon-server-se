@@ -16,7 +16,6 @@ ZONE=
 ZONE_DEF=$(gcloud config get-value compute/zone)
 NETWORK=
 SUBNET=
-NO_PUBLIC_IP=true
 
 while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
 
@@ -92,9 +91,6 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
       echo "Missing username after \"--img-user\"."
       SHOW_USAGE=y
     fi
-  elif [[ "$1" == "--public-ip" ]] ; then
-    NO_PUBLIC_IP=false
-    shift
   else
     echo "Unknown option \"$1\"."
     SHOW_USAGE=y
@@ -155,77 +151,9 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
     echo "  --img-name <name>         The name for the image. Default is the family name, a dash, and the version."
     echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
-    echo "  --public-ip               Use a public IP during build."
     exit 1
 fi
 
-LABEL=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
-cat > target/application-image.json <<EOF
-{
-  "builders": [
-    {
-      "type": "googlecompute",
-      "project_id": "${PROJECT}",
-      "source_image_family": "centos-7",
-      "source_image_project_id": "gce-uefi-images",
-      "zone": "${ZONE}",
-      "network": "${NETWORK}",
-      "subnetwork": "${SUBNET}",
-      "omit_external_ip": ${NO_PUBLIC_IP},
-      "use_internal_ip": ${NO_PUBLIC_IP},
-      "disk_size": "10",
-      "image_name": "${IMG_NAME}",
-      "image_family": "${IMG_FAMILY}",
-      "image_labels": {
-        "version": "${LABEL}"
-      },
-      "ssh_username": "axoniq"
-    }
-  ],
-  "provisioners": [
-    {
-        "type": "file",
-        "source": "target/axoniq-${IMG_FAMILY}.conf",
-        "destination": "/tmp/axoniq-${IMG_FAMILY}.conf"
-    },
-    {
-        "type": "file",
-        "source": "${MVN_MODULE}target/${IMG_FAMILY}-${VERSION}-exec.jar",
-        "destination": "/tmp/${IMG_FAMILY}.jar"
-    },
-    {
-        "type": "file",
-        "source": "${MVN_MODULE}src/main/gce/axonserver.yml",
-        "destination": "/tmp/axonserver.yml"
-    },
-    {
-        "type": "file",
-        "source": "target/startup.sh",
-        "destination": "/tmp/startup.sh"
-    },
-    {
-        "type": "file",
-        "source": "${MVN_MODULE}src/main/gce/mount-disk.sh",
-        "destination": "/tmp/mount-disk.sh"
-    },
-    {
-      "type": "shell",
-      "inline": [ "sudo yum -y update",
-                  "sudo yum -y install java-11-openjdk-headless dejavu-sans-fonts urw-fonts wget curl",
-                  "sudo adduser -d /opt/${IMG_USER} -U ${IMG_USER}",
-                  "curl -sSO https://dl.google.com/cloudagents/install-logging-agent.sh",
-                  "sudo bash ./install-logging-agent.sh",
-                  "sudo cp /tmp/axonserver.yml /opt/${IMG_USER}/",
-                  "sudo cp /tmp/${IMG_FAMILY}.jar /opt/${IMG_USER}/",
-                  "sudo cp /tmp/startup.sh /opt/${IMG_USER}/",
-                  "sudo cp /tmp/mount-disk.sh /opt/${IMG_USER}/",
-                  "sudo chown -R ${IMG_USER}:${IMG_USER} /opt/${IMG_USER}",
-                  "sudo mkdir -p /etc/google-fluentd/config.d",
-                  "sudo cp /tmp/axoniq-${IMG_FAMILY}.conf /etc/google-fluentd/config.d/",
-                  "sudo service google-fluentd restart" ]
-    }
-  ]
-}
-EOF
-
-packer build -force -color=false target/application-image.json
+mkdir -p target
+sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < ${MVN_MODULE}src/main/gce/startup.sh > target/startup.sh
+sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < ${MVN_MODULE}src/main/gce/axoniq-axonserver.conf > target/axoniq-${IMG_FAMILY}.conf

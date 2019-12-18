@@ -4,6 +4,7 @@ SHOW_USAGE=n
 
 DISK_NAME=
 DISK_DEV=
+DISK_FORMAT=y
 DISK_MOUNT_BASE=
 DISK_MOUNT_BASE_DEF=/opt
 DISK_MOUNT_PATH=
@@ -35,6 +36,9 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
       echo "Missing device path after \"--dev\"."
       SHOW_USAGE=y
     fi
+  elif [[ "$1" == "--noFormat" ]] ; then
+    DISK_FORMAT=n
+    shift
   else
     echo "Unknown option \"$1\"."
     SHOW_USAGE=y
@@ -73,6 +77,7 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     echo "  --mountBase <path>  The directory where disks are mounted, default \"${DISK_MOUNT_BASE_DEF}\"."
     echo "  --mount <path>      The directory where to mount the disk, default \"<mount-base>/<disk-name>\"."
     echo "  --dev <path>        The device path of the disk, default \"/dev/disk/by-id/google-<disk-name>\"."
+    echo "  --noFormat          Don't format the disk if it is new. This will fail the mounting attempt."
     exit 1
 fi
 
@@ -90,6 +95,10 @@ else
     if [[ "${mnt}" == "" ]] ; then
 
         if [[ "${DISK_UUID}" == "" ]] ; then
+            if [[ "${DISK_FORMAT}" == "n" ]] ; then
+                echo "Disk is not formatted. Aborting."
+                exit 1
+            fi
             echo "Formatting disk \"${DISK_DEV}\"."
             mkfs.ext4 -m 0 -F -E lazy_itable_init=0,lazy_journal_init=0,discard ${DISK_DEV}
             DISK_UUID=`blkid -s UUID -o value ${DISK_DEV}`
