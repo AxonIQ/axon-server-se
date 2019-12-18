@@ -104,8 +104,10 @@
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                     </container>
                     <to>
-                        <image>sample-command-processor-axonserver-client</image>
-                        <tags>${project.parent.version}</tags>
+                        <image>
+                            ${gcloud.registry}/${gcloud.project.name}/sample-command-processor-axonserver-client:${project.parent.version}
+                        </image>
+                        <credHelper>gcr</credHelper>
                     </to>
                 </configuration>
             </plugin>
