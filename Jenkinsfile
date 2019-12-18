@@ -87,7 +87,7 @@ podTemplate(label: label,
                         mavenTarget = "clean deploy"
                     }
                     if (relevantBranch(gitBranch, dockerBranches)) {
-                        mavenTarget = "-Pdocker " + mavenTarget // + " jib:build -Dgcloud.registry=${gcloudRegistry} -Dgcloud.project.name=${gcloudProjectName}"
+                        mavenTarget = "-Pdocker " + mavenTarget
                     }
                     try {
                         sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"
