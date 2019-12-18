@@ -18,6 +18,7 @@ import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
@@ -427,13 +428,21 @@ public class LocalRaftConfigServiceTest {
 
     @Test
     public void addContext() {
-        testSubject.addContext("second", Arrays.asList("node1", "node2"));
+        testSubject.addContext(createContext("second", Arrays.asList("node1", "node2")));
     }
 
     @Test(expected = Throwable.class)
     public void addContextTwice() {
-        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
-        testSubject.addContext("twice", Arrays.asList("node1", "node2"));
+        testSubject.addContext(createContext("twice", Arrays.asList("node1", "node2")));
+        testSubject.addContext(createContext("twice", Arrays.asList("node1", "node2")));
+    }
+
+    private Context createContext(String twice, List<String> asList) {
+        return Context.newBuilder().setName(twice).addAllMembers(asList.stream().map(n -> ContextMember.newBuilder()
+                                                                                                       .setNodeName(n)
+                                                                                                       .build())
+                                                                       .collect(
+                                                                               Collectors.toList())).build();
     }
 
     @Test

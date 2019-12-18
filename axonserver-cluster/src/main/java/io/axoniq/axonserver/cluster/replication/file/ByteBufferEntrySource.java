@@ -76,6 +76,11 @@ public class ByteBufferEntrySource implements EntrySource {
         }
     }
 
+    @Override
+    public long readTerm(Integer position) {
+        return buffer.getLong(position + TERM_OFFSET);
+    }
+
     public ByteBufferEntrySource duplicate() {
         return new ByteBufferEntrySource(buffer.duplicate(), eventTransformer, cleanerHackNeeded);
     }
@@ -84,7 +89,7 @@ public class ByteBufferEntrySource implements EntrySource {
     }
 
     @Override
-    public SegmentEntryIterator createLogEntryIterator(long segment, long startIndex, int startPosition, boolean validating) {
+    public SegmentEntryIterator createLogEntryIterator(long startIndex, int startPosition) {
         return new SegmentEntryIterator(duplicate(startPosition), startIndex);
     }
 

@@ -143,7 +143,6 @@
                     </archive>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -161,7 +160,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
@@ -328,17 +326,17 @@
                                 <goals>
                                     <goal>repackage</goal>
                                 </goals>
+                                <configuration>
+                                    <excludes>
+                                        <exclude>
+                                            <groupId>io.axoniq.axonserver</groupId>
+                                            <artifactId>axonserver-cluster</artifactId>
+                                        </exclude>
+                                    </excludes>
+                                    <layout>ZIP</layout>
+                                </configuration>
                             </execution>
                         </executions>
-                        <configuration>
-                            <excludes>
-                                <exclude>
-                                    <groupId>io.axoniq.axonserver</groupId>
-                                    <artifactId>axonserver-cluster</artifactId>
-                                </exclude>
-                            </excludes>
-                            <layout>ZIP</layout>
-                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>

@@ -89,7 +89,7 @@ public abstract class SegmentBasedLogEntryStore {
 
     protected ValidationResult validateSegment(long segment) {
         logger.debug("{}: Validating segment: {}", context, segment);
-        Iterator<Entry> iterator = getEntries(segment, segment, true);
+        Iterator<Entry> iterator = getEntries(segment, segment);
         try {
             Entry last = null;
             while (iterator.hasNext()) {
@@ -104,14 +104,15 @@ public abstract class SegmentBasedLogEntryStore {
     public abstract void initSegments(long maxValue);
 
 
-    protected SegmentEntryIterator getEntries(long segment, long token, boolean validating) {
+    protected SegmentEntryIterator getEntries(long segment, long token) {
         Optional<EntrySource> reader = getEventSource(segment);
-        return reader.map(r -> createIterator(r, segment, token, getPosition(segment, token), validating))
-                     .orElseGet(() -> next.getEntries(segment, token, validating));
+        return reader.map(r -> createIterator(r, token, getPosition(segment, token)))
+                     .orElseGet(() -> next.getEntries(segment, token));
     }
 
-    protected SegmentEntryIterator createIterator(EntrySource eventSource, long segment, long startIndex, int startPosition, boolean validating) {
-        return eventSource.createLogEntryIterator(segment, startIndex, startPosition, validating);
+    protected SegmentEntryIterator createIterator(EntrySource eventSource, long startIndex,
+                                                  int startPosition) {
+        return eventSource.createLogEntryIterator(startIndex, startPosition);
     }
 
     public long getSegmentFor(long token) {
@@ -173,14 +174,23 @@ public abstract class SegmentBasedLogEntryStore {
 
     protected abstract Entry getEntry(long index);
 
-    public SegmentEntryIterator getIterator(long nextIndex) {
+    public abstract long getTerm(long index);
+
+    /**
+     * Returns an iterator for the entries in the segment containing {@code nextIndex}.
+     * Returns {@code null} when no segment for index found.
+     *
+     * @param nextIndex index of first entry to return
+     * @return the iterator
+     */
+    public SegmentEntryIterator getSegmentIterator(long nextIndex) {
         long segment = getSegmentFor(nextIndex);
         Optional<EntrySource> eventSource = getEventSource(segment);
         if( eventSource.isPresent()) {
-            return eventSource.get().createLogEntryIterator(segment, nextIndex, getPosition(segment, nextIndex), false);
+            return eventSource.get().createLogEntryIterator(nextIndex, getPosition(segment, nextIndex));
         }
         if( next != null) {
-            return next.getIterator(nextIndex);
+            return next.getSegmentIterator(nextIndex);
         }
         return null;
     }

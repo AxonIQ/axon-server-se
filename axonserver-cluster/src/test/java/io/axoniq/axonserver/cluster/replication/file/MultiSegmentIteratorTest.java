@@ -58,7 +58,7 @@ public class MultiSegmentIteratorTest {
         TreeMap<Long, List<Entry>> segmentsMap = new TreeMap<>();
         segmentsMap.put(5L, Arrays.asList(newEntry(1, 5), newEntry(1, 6), newEntry(1, 7), newEntry(1, 8)));
         segmentsMap.put(9L, Arrays.asList(newEntry(1, 9), newEntry(1, 10), newEntry(1, 11), newEntry(1, 12)));
-        testSubject = new MultiSegmentIterator(index -> getSegmentIterator(index, segmentsMap), 7);
+        testSubject = new MultiSegmentIterator(index -> getSegmentIterator(index, segmentsMap), () -> 12L, 7);
 
         Entry lastRead = null;
         long expectedIndex = 7;
@@ -79,7 +79,7 @@ public class MultiSegmentIteratorTest {
         TreeMap<Long, List<Entry>> segmentsMap = new TreeMap<>();
         segmentsMap.put(5L, Arrays.asList(newEntry(1, 5), newEntry(1, 6), newEntry(1, 7), newEntry(1, 8)));
         segmentsMap.put(9L, Arrays.asList(newEntry(1, 9), newEntry(1, 10), newEntry(1, 11), newEntry(1, 12)));
-        testSubject = new MultiSegmentIterator(index -> getSegmentIterator(index, segmentsMap), 5);
+        testSubject = new MultiSegmentIterator(index -> getSegmentIterator(index, segmentsMap), () -> 12L, 5);
 
         Entry lastRead = null;
         while (testSubject.hasNext()) {

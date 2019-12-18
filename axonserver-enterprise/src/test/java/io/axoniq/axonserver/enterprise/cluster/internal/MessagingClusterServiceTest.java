@@ -37,7 +37,7 @@ public class MessagingClusterServiceTest {
     @Before
     public void setUp() {
         testSubject = new MessagingClusterService(
-                commandDispatcher, queryDispatcher, clusterController, eventPublisher
+                commandDispatcher, queryDispatcher, clusterController, null, eventPublisher
         );
 
         eventPublisher.add(event -> {

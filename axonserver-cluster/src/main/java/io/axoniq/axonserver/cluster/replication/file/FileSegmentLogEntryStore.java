@@ -6,7 +6,6 @@ import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
-import io.axoniq.axonserver.cluster.replication.InMemoryEntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Config;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -201,8 +200,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     @Override
     public boolean contains(long logIndex, long logTerm) {
         if( logIndex == 0) return true;
-        Entry existingEntry = getEntry(logIndex);
-        return existingEntry != null && existingEntry.getTerm() == logTerm;
+        return logTerm == getTerm(logIndex);
     }
     @Override
     public Entry getEntry(long index) {
@@ -210,6 +208,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
         return primaryLogEntryStore.getEntry(index);
     }
 
+    private long getTerm(long index) {
+        return primaryLogEntryStore.getTerm(index);
+    }
 
     @Override
     public TermIndex lastLog() {
@@ -253,7 +254,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
         if (index < lowerBound) {
             throw new IllegalArgumentException("Read before start");
         }
-        return new InMemoryEntryIterator(this, index);
+        return primaryLogEntryStore.getEntryIterator(index);
     }
 
     @Override

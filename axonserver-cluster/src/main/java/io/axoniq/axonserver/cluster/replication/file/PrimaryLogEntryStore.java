@@ -35,7 +35,7 @@ import java.util.stream.Stream;
  */
 public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     private static final Logger logger = LoggerFactory.getLogger(PrimaryLogEntryStore.class);
-    private static final int HEADER_BYTES = 4 + 1 + 8 + 4;
+    private static final int HEADER_BYTES = 4 + 1 + 8 + 4; // Entry Size + Version byte + Term + Log Entry Type
     private static final int TX_CHECKSUM_BYTES = 4;
 
     private final LogEntryTransformerFactory logEntryTransformerFactory;
@@ -68,14 +68,14 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
     }
 
     @Override
-    public SegmentEntryIterator getIterator(long nextIndex) {
+    public SegmentEntryIterator getSegmentIterator(long nextIndex) {
         if (nextIndex > lastToken.get()) return null;
         logger.trace("{}: Create iterator at: {}", context, nextIndex);
-        return super.getIterator(nextIndex);
+        return super.getSegmentIterator(nextIndex);
     }
 
     public EntryIterator getEntryIterator(long nextIndex) {
-        return new MultiSegmentIterator(this::getIterator, nextIndex);
+        return new MultiSegmentIterator(this::getSegmentIterator, this::getLastToken, nextIndex);
     }
 
     public Entry getEntry(long index) {
@@ -100,13 +100,32 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         return positionsPerSegmentMap.get(segment).get(nextIndex);
     }
 
+    public long getTerm(long index) {
+        if (index > lastToken.get()) {
+            return -1;
+        }
+        long segment = getSegmentFor(index);
+        ByteBufferEntrySource entrySource = readBuffers.get(segment);
+        if (entrySource != null) {
+            Integer position = positionsPerSegmentMap.get(segment).get(index);
+            if (position == null) {
+                return -1;
+            }
+            return entrySource.readTerm(position);
+        }
+        if (next != null) {
+            return next.getTerm(index);
+        }
+        return -1;
+    }
+
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, boolean clear) {
         long first = getFirstFile(lastInitialized, storageDir);
         WritableEntrySource buffer = getOrOpenDatafile(first);
         indexManager.remove(first);
         FileUtils.delete(storageProperties.indexFile(context, first));
         long sequence = first;
-        try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(first, first, 5, false)) {
+        try (SegmentEntryIterator iterator = buffer.createLogEntryIterator(first, EntrySource.START_POSITION)) {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
             while (sequence < nextToken && iterator.hasNext()) {
@@ -429,6 +448,5 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         }
 
         indexManager.cleanup();
-
     }
 }

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -27,7 +28,8 @@ import java.util.stream.Collectors;
  * @author Marc Gathier
  */
 @Service
-public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase {
+public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase implements
+        AxonServerInternalService {
 
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftGroupService.class);
     private final LocalRaftGroupService localRaftGroupService;
@@ -109,9 +111,14 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void deleteContext(DeleteContextRequest request, StreamObserver<InstructionAck> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext(),
+        try {
+            CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext(),
                                                                                   request.getPreserveEventstore());
-        confirm(responseObserver, completable);
+            confirm(responseObserver, completable);
+        } catch (Exception ex) {
+            logger.warn("Failed to delete context: {}", request.getContext(), ex);
+            responseObserver.onError(ex);
+        }
     }
 
     @Override
@@ -124,14 +131,24 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
 
     @Override
     public void mergeAppAuthorization(ContextApplication request, StreamObserver<InstructionAck> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request);
-        confirm(responseObserver, completable);
+        try {
+            CompletableFuture<Void> completable = localRaftGroupService.updateApplication(request);
+            confirm(responseObserver, completable);
+        } catch (Exception ex) {
+            logger.warn("Failed to update application: {}", request.getName(), ex);
+            responseObserver.onError(ex);
+        }
     }
 
     @Override
     public void deleteAppAuthorization(ContextApplication request, StreamObserver<InstructionAck> responseObserver) {
-        CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
-        confirm(responseObserver, completable);
+        try {
+            CompletableFuture<Void> completable = localRaftGroupService.deleteApplication(request);
+            confirm(responseObserver, completable);
+        } catch (Exception ex) {
+            logger.warn("Failed to delete application: {}", request.getName(), ex);
+            responseObserver.onError(ex);
+        }
     }
 
     @Override
