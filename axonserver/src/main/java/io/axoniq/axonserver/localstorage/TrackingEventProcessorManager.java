@@ -283,7 +283,9 @@ public class TrackingEventProcessorManager {
         }
 
         public void addBlacklist(List<PayloadDescription> blacklistList) {
-            logger.debug("Blacklisted: {}", blacklistList.get(0));
+            if(logger.isDebugEnabled()){
+                blacklistList.forEach(payloadDescription -> logger.debug("Blacklisted: {}", payloadDescription));
+            }
             blacklistedTypes.addAll(blacklistList);
         }
     }
