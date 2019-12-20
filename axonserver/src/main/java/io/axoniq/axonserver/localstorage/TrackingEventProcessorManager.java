@@ -189,12 +189,16 @@ public class TrackingEventProcessorManager {
          */
         private final AtomicLong lastPermitTimestamp;
         private final StreamObserver<InputStream> eventStream;
+        private final String processor;
+        private final String clientId;
         private volatile CloseableIterator<SerializedEventWithToken> eventIterator;
         private volatile boolean running = true;
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
         private volatile int force = blacklistedSendAfter;
 
         private EventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
+            processor = request.getProcessor();
+            clientId = request.getClientId();
             permits = new AtomicInteger((int) request.getNumberOfPermits());
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(request.getTrackingToken());
@@ -283,8 +287,8 @@ public class TrackingEventProcessorManager {
         }
 
         public void addBlacklist(List<PayloadDescription> blacklistList) {
-            if(logger.isDebugEnabled()){
-                blacklistList.forEach(payloadDescription -> logger.debug("Blacklisted: {}", payloadDescription));
+            if (logger.isDebugEnabled()) {
+                blacklistList.forEach(payloadDescription -> logger.debug("Blacklisted: {} for processor {} for client {}", payloadDescription, processor, clientId));
             }
             blacklistedTypes.addAll(blacklistList);
         }
