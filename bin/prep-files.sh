@@ -157,3 +157,4 @@ fi
 mkdir -p target
 sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < ${MVN_MODULE}src/main/gce/startup.sh > target/startup.sh
 sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < ${MVN_MODULE}src/main/gce/axoniq-axonserver.conf > target/axoniq-${IMG_FAMILY}.conf
+chmod 755 target/*.sh
