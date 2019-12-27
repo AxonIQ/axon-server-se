@@ -180,7 +180,7 @@ public class QueryDispatcher {
             }
             String key = query.getMessageIdentifier() + "/" + client;
             QueryInformation queryInformation = new QueryInformation(key,
-                                                                     serializedQuery.client(),
+                                                                     serializedQuery.query().getClientId(),
                                                                      queryDefinition,
                                                                      Collections.singleton(queryHandler.getClientId()),
                                                                      expectedResults,
