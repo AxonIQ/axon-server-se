@@ -33,15 +33,29 @@ public class EventProcessorEvents {
         }
     }
 
-    public static class EventProcessorStatusUpdate extends BaseEventProcessorsEvent {
+    /**
+     * Internal Axon Server event that is notified any time is received an update about the Event Processors Status
+     * from a client application. This class implements {@link AxonServerEvent} as this event must be forwarded
+     * among all instances of AxonServer belonging to the same cluster.
+     */
+    public static class EventProcessorStatusUpdate implements AxonServerEvent {
 
         private final ClientEventProcessorInfo eventProcessorStatus;
 
-        public EventProcessorStatusUpdate(ClientEventProcessorInfo clientEventProcessorInfo, boolean proxied) {
-            super(proxied);
+        /**
+         * Creates an instance containing the new status for client's Event Processors.
+         *
+         * @param clientEventProcessorInfo the updated status for client's event processors.
+         */
+        public EventProcessorStatusUpdate(ClientEventProcessorInfo clientEventProcessorInfo) {
             this.eventProcessorStatus = clientEventProcessorInfo;
         }
 
+        /**
+         * Returns the updated status for client's event processors
+         *
+         * @return the updated status for client's event processors
+         */
         public ClientEventProcessorInfo eventProcessorStatus() {
             return this.eventProcessorStatus;
         }
