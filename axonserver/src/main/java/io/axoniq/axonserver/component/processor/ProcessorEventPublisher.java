@@ -9,7 +9,12 @@
 
 package io.axoniq.axonserver.component.processor;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.*;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.grpc.PlatformService;
@@ -19,10 +24,16 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import javax.annotation.PostConstruct;
 
 import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO;
 
@@ -78,7 +89,7 @@ public class ProcessorEventPublisher {
                                              PlatformInboundInstruction inboundInstruction) {
         ClientEventProcessorInfo processorStatus =
                 new ClientEventProcessorInfo(clientName, context, inboundInstruction.getEventProcessorInfo());
-        applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus, NOT_PROXIED));
+        applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus));
     }
 
     public void pauseProcessorRequest(String clientName, String processorName) {

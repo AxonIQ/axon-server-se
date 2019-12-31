@@ -28,14 +28,14 @@ public class WebsocketProcessorEventsSourceTest {
             triggers.incrementAndGet();
         }, 10);
 
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         Thread.sleep(20);
         assertEquals(1, triggers.get());
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         Thread.sleep(15);
         assertEquals(2, triggers.get());
     }

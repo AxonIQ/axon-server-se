@@ -47,7 +47,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
         ClientProcessor clientProcessor = mapping.map(clientName, clients.get(clientName), processorStatus.getContext(), eventProcessorInfo);
         clientData.put(eventProcessorInfo.getProcessorName(), clientProcessor);
-        return new EventProcessorStatusUpdated(processorStatus, event.isProxied());
+        return new EventProcessorStatusUpdated(processorStatus, false);
     }
 
     @EventListener
