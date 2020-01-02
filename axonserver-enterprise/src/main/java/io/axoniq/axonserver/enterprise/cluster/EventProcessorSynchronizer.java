@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
@@ -10,12 +9,9 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventPro
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
 import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
-import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-
-import static io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter.toProto;
 
 /**
  * Service which handles non-proxied application events targeted towards Event Processor instances, to be propagated
@@ -38,24 +34,6 @@ public class EventProcessorSynchronizer {
      */
     public EventProcessorSynchronizer(Publisher<ConnectorCommand> clusterMessagePublisher) {
         this.clusterMessagePublisher = clusterMessagePublisher;
-    }
-
-    /**
-     * Handle a {@link EventProcessorStatusUpdate} application event, to publish this as a {@link ConnectorCommand}
-     * where the {@link ConnectorCommand#getClientEventProcessorStatus()} field is set with a
-     * {@link ClientEventProcessorStatus} representing the entire status of that Event Processor.
-     *
-     * @param event a {@link EventProcessorStatusUpdate} to be wrapped in a {@link ConnectorCommand} to be propagated
-     *              throughout the rest of the cluster
-     */
-    @EventListener
-    public void on(EventProcessorStatusUpdate event) {
-        if( event.isProxied()) return;
-        ConnectorCommand connectorCommand =
-                ConnectorCommand.newBuilder()
-                                .setClientEventProcessorStatus(toProto(event.eventProcessorStatus()))
-                                .build();
-        clusterMessagePublisher.publish(connectorCommand);
     }
 
     /**

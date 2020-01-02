@@ -22,6 +22,7 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
@@ -74,7 +75,7 @@ public class ClusterController implements SmartLifecycle {
                              RaftGroupRepositoryManager raftGroupRepositoryManager,
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
-                             ApplicationEventPublisher applicationEventPublisher,
+                             @Qualifier("localEventPublisher") ApplicationEventPublisher applicationEventPublisher,
                              FeatureChecker limits,
                              ChannelCloser channelCloser) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
