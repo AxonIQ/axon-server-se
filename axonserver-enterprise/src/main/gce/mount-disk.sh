@@ -56,7 +56,7 @@ fi
 if [[ "${DISK_MOUNT_NAME}" == "" ]] ; then
     DISK_MOUNT_NAME=${DISK_NAME}
 fi
-if [[ "${DISK_MOUNT_BASE}" ="" ]] ; then
+if [[ "${DISK_MOUNT_BASE}" == "" ]] ; then
     DISK_MOUNT_BASE=${DISK_MOUNT_BASE_DEF}
 fi
 if [[ "${DISK_MOUNT_PATH}" == "" ]] ; then
