@@ -225,6 +225,7 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     exit 1
 fi
 
+INST_FQDN="${INST_HOSTNAME}.${INST_DOMAIN}"
 DNS_ZONE=$(${SCRIPT_DIR}/get-dns-zone.sh --project ${INST_PROJECT} --by-domain ${INST_DOMAIN})
 if [[ "${DNS_ZONE}" == "" ]] ; then
     echo "Creating DNS zone for domain \"${INST_DOMAIN}\"."
@@ -237,10 +238,14 @@ if [[ "${INST_ADDR}" == "" ]] ; then
     if [[ "${INST_ADDR}" == "" ]] ; then
         INST_ADDR=$(${SCRIPT_DIR}/get-static-ip.sh --project ${INST_PROJECT} ${INST_NAME}-addr)
         if [[ "${INST_ADDR}" == "" ]] ; then
-            ${SCRIPT_DIR}/create-static-ip.sh --project ${INST_PROJECT} 
+            echo "Reserving static IP address for \"${INST_FQDN}\"."
+            INST_ADDR=$(${SCRIPT_DIR}/create-static-ip.sh --project ${INST_PROJECT} ${INST_NAME}-addr)
         fi
+        echo "Creating DNS entry for \"${INST_NAME}\" in zone \"${DNS_ZONE}\"."
+        ${SCRIPT_DIR}/create-dns-record.sh --project ${INST_PROJECT} ${INST_NAME} ${DNS_ZONE} ${INST_ADDR}
     fi
 fi
+echo "Server \"${INST_FQDN}\" has address \"${INST_ADDR}\"."
 
 echo gcloud compute --project ${INST_PROJECT} instances create ${INST_NAME} --zone=${INST_ZONE} \
     --machine-type=${INST_TYPE} --metadata-from-file=startup-script=${INST_SETUP} \
