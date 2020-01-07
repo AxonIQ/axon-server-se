@@ -103,9 +103,9 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     echo "Options:"
     echo "  --project <name>  The GCP project, default \"${ADDR_PROJECT_DEF}\"."
     echo "  --global          Create a global static internal IP."
-    echo "  --network <name>  For global addresses, the name of the VPC, default \"${ADDR_PROJECT_DEF}-vpc\"."
+    echo "  --network <name>  For global addresses, the name of the VPC, default \"<project-name>-vpc\"."
     echo "  --prefix <name>   For global addresses, the IPv4 address prefix-length, default \"${ADDR_PREFIX}\"."
-    echo "  --subnet <name>   For regional addresses, the name of the subnet, default \"${ADDR_PROJECT_DEF}-vpc\"."
+    echo "  --subnet <name>   For regional addresses, the name of the subnet, default \"<project-name>-vpc\"."
     echo "  --region <name>   For regional addresses, the name of the region, default \"${ADDR_REGION_DEF}\"."
     exit 1
 fi

@@ -57,7 +57,7 @@ else
     SHOW_USAGE=y
 fi
 
-DNSREC_DOMAIN=$(${SCRIPT_DIR}/get-dns-zone.sh ${DNSREC_ZONE})
+DNSREC_DOMAIN=$(${SCRIPT_DIR}/get-dns-zone.sh --project ${DNSREC_PROJECT} ${DNSREC_ZONE})
 if [[ "${DNSREC_DOMAIN}" == "" ]] ; then
     echo "Zone \"${DNSREC_ZONE}\" not found or no domain set."
     SHOW_USAGE=y

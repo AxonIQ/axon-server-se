@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(dirname $0)
+
 SHOW_USAGE=n
 
 VERSION=
@@ -133,9 +135,6 @@ fi
 if [[ "${SUBNET}" == "" ]] ; then
   SUBNET=${NETWORK}
 fi
-if [[ "${MVN_MODULE}" != "" ]] ; then
-  MVN_MODULE="${MVN_MODULE}/"
-fi
 
 if [[ "${IMG_FAMILY}" == "" ]] ; then
   echo "No Image family set."
@@ -157,6 +156,16 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
     echo "  --public-ip               Use a public IP during build."
     exit 1
+fi
+
+if [[ "${MVN_MODULE}" != "" ]] ; then
+  ${SCRIPT_DIR}/prep-files.sh --mvn-module ${MVN_MODULE} --img-family ${IMG_FAMILY} --img-user ${IMG_USER} ${VERSION}
+else
+  ${SCRIPT_DIR}/prep-files.sh --img-family ${IMG_FAMILY} --img-user ${IMG_USER} ${VERSION}
+fi
+
+if [[ "${MVN_MODULE}" != "" ]] ; then
+  MVN_MODULE="${MVN_MODULE}/"
 fi
 
 LABEL=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
@@ -184,29 +193,48 @@ cat > target/application-image.json <<EOF
   ],
   "provisioners": [
     {
+        "type": "shell",
+        "inline": [ "mkdir /tmp/${LABEL}"]
+    },
+    {
         "type": "file",
         "source": "target/axoniq-${IMG_FAMILY}.conf",
-        "destination": "/tmp/axoniq-${IMG_FAMILY}.conf"
+        "destination": "/tmp/${LABEL}/axoniq-${IMG_FAMILY}.conf"
     },
     {
         "type": "file",
         "source": "${MVN_MODULE}target/${IMG_FAMILY}-${VERSION}-exec.jar",
-        "destination": "/tmp/${IMG_FAMILY}.jar"
+        "destination": "/tmp/${LABEL}/${IMG_FAMILY}.jar"
     },
     {
         "type": "file",
-        "source": "${MVN_MODULE}src/main/gce/axonserver.yml",
-        "destination": "/tmp/axonserver.yml"
+        "source": "target/axonserver-cli.jar",
+        "destination": "/tmp/${LABEL}/axonserver-cli.jar"
+    },
+    {
+        "type": "file",
+        "source": "target/check-link.sh",
+        "destination": "/tmp/${LABEL}/check-link.sh"
+    },
+    {
+        "type": "file",
+        "source": "target/set-property.sh",
+        "destination": "/tmp/${LABEL}/set-property.sh"
+    },
+    {
+        "type": "file",
+        "source": "target/mount-disk.sh",
+        "destination": "/tmp/${LABEL}/mount-disk.sh"
+    },
+    {
+        "type": "file",
+        "source": "target/setup.sh",
+        "destination": "/tmp/${LABEL}/setup.sh"
     },
     {
         "type": "file",
         "source": "target/startup.sh",
-        "destination": "/tmp/startup.sh"
-    },
-    {
-        "type": "file",
-        "source": "${MVN_MODULE}src/main/gce/mount-disk.sh",
-        "destination": "/tmp/mount-disk.sh"
+        "destination": "/tmp/${LABEL}/startup.sh"
     },
     {
       "type": "shell",
@@ -215,14 +243,15 @@ cat > target/application-image.json <<EOF
                   "sudo adduser -d /opt/${IMG_USER} -U ${IMG_USER}",
                   "curl -sSO https://dl.google.com/cloudagents/install-logging-agent.sh",
                   "sudo bash ./install-logging-agent.sh",
-                  "sudo cp /tmp/axonserver.yml /opt/${IMG_USER}/",
-                  "sudo cp /tmp/${IMG_FAMILY}.jar /opt/${IMG_USER}/",
-                  "sudo cp /tmp/startup.sh /opt/${IMG_USER}/",
-                  "sudo cp /tmp/mount-disk.sh /opt/${IMG_USER}/",
+                  "sudo cp /tmp/${LABEL}/*.{jar,sh,conf} /opt/${IMG_USER}/",
                   "sudo chown -R ${IMG_USER}:${IMG_USER} /opt/${IMG_USER}",
+                  "echo ''",
+                  "echo /opt/${IMG_USER}",
+                  "sudo ls -lF /opt/${IMG_USER}/",
                   "sudo mkdir -p /etc/google-fluentd/config.d",
-                  "sudo cp /tmp/axoniq-${IMG_FAMILY}.conf /etc/google-fluentd/config.d/",
-                  "sudo service google-fluentd restart" ]
+                  "sudo cp /tmp/${LABEL}/axoniq-${IMG_FAMILY}.conf /etc/google-fluentd/config.d/",
+                  "sudo service google-fluentd restart",
+                  "sudo rm -rf /tmp/${LABEL}" ]
     }
   ]
 }
