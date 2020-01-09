@@ -77,12 +77,13 @@ fi
 
 mkdir -p target
 sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < ${MVN_MODULE}src/main/gce/axoniq-axonserver.conf > target/axoniq-${IMG_FAMILY}.conf
+sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < ${MVN_MODULE}src/main/gce/axonserver.properties > target/axonserver.properties
 sed -e s/__IMG_USER__/${IMG_USER}/g < ${MVN_MODULE}src/main/gce/setup.sh > target/setup.sh
-for f in check-link.sh mount-disk.sh set-property.sh startup.sh ; do cp ${MVN_MODULE}src/main/gce/${f} target/${f} ; done
+for f in check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh startup.sh ; do cp ${MVN_MODULE}src/main/gce/${f} target/${f} ; done
 chmod 755 target/*.sh
 
-if [ ! -s ${MVN_MODULE}target/${IMG_FAMILY}-${IMG_VERSION}-exec.jar ] ; then
-  getLastFromNexus -v ${IMG_VERSION} -o ${MVN_MODULE}target/${IMG_FAMILY}-${IMG_VERSION}-exec.jar io.axoniq.axonserver axonserver-enterprise
+if [ ! -s ${MVN_MODULE}target/axonserver-enterprise-${IMG_VERSION}-exec.jar ] ; then
+  getLastFromNexus -v ${IMG_VERSION} -o ${MVN_MODULE}target/axonserver-enterprise-${IMG_VERSION}-exec.jar io.axoniq.axonserver axonserver-enterprise
 fi
 chmod 755 ${MVN_MODULE}target/${IMG_FAMILY}-${IMG_VERSION}-exec.jar
 if [ ! -s target/axonserver-cli.jar ] ; then

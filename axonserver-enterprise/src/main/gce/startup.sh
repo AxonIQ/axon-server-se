@@ -10,27 +10,35 @@ if [ ! -s ${HOME}/init-done ] ; then
     ${HOME}/check-link.sh --create-target ${HOME}/log /mnt/${HOSTNAME}-data/log
     ${HOME}/check-link.sh ${HOME}/events /mnt/${HOSTNAME}-events
 
-    echo "Initialising Axon Server properties."
-    touch ${HOME}/axonserver.properties
-    ${HOME}/set-property.sh spring.profiles.active axoniq-cloud-support
-    ${HOME}/set-property.sh logging.file ${HOME}/axonserver-enterprise.log
-    ${HOME}/set-property.sh axoniq.axonserver.cluster.enabled true
-    ${HOME}/set-property.sh axoniq.axonserver.hostname ${HOSTNAME}
-    ${HOME}/set-property.sh axoniq.axonserver.internal-hostname ${HOSTNAME}
-    ${HOME}/set-property.sh axoniq.axonserver.domain cloud.axoniq.net
-    ${HOME}/set-property.sh axoniq.axonserver.internal-domain cloud.axoniq.net
-    ${HOME}/set-property.sh axoniq.axonserver.event.storage ./events
-    ${HOME}/set-property.sh axoniq.axonserver.snapshot.storage ./events
-    ${HOME}/set-property.sh axoniq.axonserver.controldb-path ./control
-    ${HOME}/set-property.sh axoniq.axonserver.replication.log-storage ./log
-
-    if [ ! -s axoniq.license ] ; then
-        curl -s -H "Metadata-Flavor:Google" -o ${HOME}/axoniq.license http://metadata.google.internal/computeMetadata/v1/instance/attributes/axoniq-license
+    if [ ! -s ${HOME}/axonserver.properties ] ; then
+        echo "Creating empty properties file"
+        touch ${HOME}/axonserver.properties
     fi
 
     echo "Init done" > ${HOME}/init-done
 else
     echo "Skipping Initialisation after reboot."
 fi
+
+echo "Checking for property overrides."
+if curl -s -H "Metadata-Flavor:Google" -o ${HOME}/axonserver.properties.override http://metadata.google.internal/computeMetadata/v1/instance/attributes/axonserver-properties
+then
+    ${HOME}/get-property-names.sh --properties ${HOME}/axonserver.properties.override | while read prop ; do
+        oldValue=$(${HOME}/get-property-value.sh --properties ${HOME}/axonserver.properties ${prop} )
+        value=$(${HOME}/get-property-value.sh --properties ${HOME}/axonserver.properties.override ${prop} )
+
+        if [[ "${oldValue}" != "${value}" ]] ; then
+            echo "Overriding \"${prop}\" from \"${oldValue}\" to \"${value}\"."
+            ${HOME}/set-property.sh ${prop} ${value}
+        else
+            echo "Property \"${prop}\" is already set to \"${value}\"."
+        fi
+    done
+else
+    echo "No property overrides found."
+fi
+
+echo "Downloading license file."
+curl -s -H "Metadata-Flavor:Google" -o ${HOME}/axoniq.license http://metadata.google.internal/computeMetadata/v1/instance/attributes/axoniq-license
 
 nohup java -jar ${HOME}/axonserver.jar &

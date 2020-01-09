@@ -47,11 +47,11 @@ COUNT=$(grep -ce '^[ \t]*'${PROP}'[ \t]*=.*$' ${PROPERTIES})
 ADD_PROP=n
 if [[ "${COUNT}" == 0 || ${SKIP_IF_EXISTS} == n ]] ; then
     rm -f ${PROPERTIES}.bak
-    mv ${PROPERTIES} ${PROPERTIES}.old
+    mv ${PROPERTIES} ${PROPERTIES}.bak
     if [[ ${REMOVE_OLD} == y ]] ; then
-        ( sed -e '/^[ \t]*'${PROP}'[ \t]*=.*$/d' ${PROPERTIES}.old ; echo "" ; echo "${PROP}=${VALUE}" ) | cat -s > ${PROPERTIES}
+        ( sed -e '/^[ \t]*'${PROP}'[ \t]*=.*$/d' ${PROPERTIES}.bak ; echo "" ; echo "${PROP}=${VALUE}" ) | cat -s > ${PROPERTIES}
     else
-        ( cat ${PROPERTIES}.old ; echo "" ; echo "${PROP}=${VALUE}" ) | cat -s > ${PROPERTIES}
+        ( cat ${PROPERTIES}.bak ; echo "" ; echo "${PROP}=${VALUE}" ) | cat -s > ${PROPERTIES}
     fi
 else
     echo "Property exists and \"--if-missing\" used."

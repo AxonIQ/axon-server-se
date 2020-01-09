@@ -203,8 +203,8 @@ cat > target/application-image.json <<EOF
     },
     {
         "type": "file",
-        "source": "${MVN_MODULE}target/${IMG_FAMILY}-${VERSION}-exec.jar",
-        "destination": "/tmp/${LABEL}/${IMG_FAMILY}.jar"
+        "source": "${MVN_MODULE}target/axonserver-enterprise-${VERSION}-exec.jar",
+        "destination": "/tmp/${LABEL}/axonserver.jar"
     },
     {
         "type": "file",
@@ -223,6 +223,16 @@ cat > target/application-image.json <<EOF
     },
     {
         "type": "file",
+        "source": "target/get-property-value.sh",
+        "destination": "/tmp/${LABEL}/get-property-value.sh"
+    },
+    {
+        "type": "file",
+        "source": "target/get-property-names.sh",
+        "destination": "/tmp/${LABEL}/get-property-names.sh"
+    },
+    {
+        "type": "file",
         "source": "target/mount-disk.sh",
         "destination": "/tmp/${LABEL}/mount-disk.sh"
     },
@@ -237,13 +247,18 @@ cat > target/application-image.json <<EOF
         "destination": "/tmp/${LABEL}/startup.sh"
     },
     {
+        "type": "file",
+        "source": "target/axonserver.properties",
+        "destination": "/tmp/${LABEL}/axonserver.properties"
+    },
+    {
       "type": "shell",
       "inline": [ "sudo yum -y update",
                   "sudo yum -y install java-11-openjdk-headless dejavu-sans-fonts urw-fonts wget curl",
                   "sudo adduser -d /opt/${IMG_USER} -U ${IMG_USER}",
                   "curl -sSO https://dl.google.com/cloudagents/install-logging-agent.sh",
                   "sudo bash ./install-logging-agent.sh",
-                  "sudo cp /tmp/${LABEL}/*.{jar,sh,conf} /opt/${IMG_USER}/",
+                  "sudo cp /tmp/${LABEL}/*.{jar,sh,conf,properties} /opt/${IMG_USER}/",
                   "sudo chown -R ${IMG_USER}:${IMG_USER} /opt/${IMG_USER}",
                   "echo ''",
                   "echo /opt/${IMG_USER}",
