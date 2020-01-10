@@ -3,28 +3,17 @@
 SHOW_USAGE=n
 
 VERSION=
-IMG_VERSION=
-IMG_FAMILY=
-IMG_FAMILY_DEF=axonserver
-IMG_USER=
-IMG_USER_DEF=axonserver
+TARGET=
+TARGET_DEF=target/packer
 
 while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
 
-  if [[ "$1" == "--img-family" ]] ; then
+  if [[ "$1" == "--target" ]] ; then
     if [[ $# -gt 1 ]] ; then
-      IMG_FAMILY=$2
+      TARGET=$2
       shift 2
     else
-      echo "Missing image family name after \"--img-family\"."
-      SHOW_USAGE=y
-    fi
-  elif [[ "$1" == "--img-user" ]] ; then
-    if [[ $# -gt 1 ]] ; then
-      IMG_USER=$2
-      shift 2
-    else
-      echo "Missing username after \"--img-user\"."
+      echo "Missing directory name after \"--target\"."
       SHOW_USAGE=y
     fi
   else
@@ -41,39 +30,32 @@ else
   SHOW_USAGE=y
 fi
 
-if [[ "${IMG_FAMILY}" == "" ]] ; then
-  IMG_FAMILY=${IMG_FAMILY_DEF}
-fi
-if [[ "${IMG_USER}" == "" ]] ; then
-  IMG_USER=${IMG_USER_DEF}
-fi
-
-if [[ "${IMG_FAMILY}" == "" ]] ; then
-  echo "No Image family set."
-  SHOW_USAGE=y
+if [[ "${TARGET}" == "" ]] ; then
+  TARGET=${TARGET_DEF}
 fi
 
 if [[ "${SHOW_USAGE}" == "y" ]] ; then
   echo "Usage: $0 [OPTIONS] <version>"
   echo ""
   echo "Options:"
-  echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
-  echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
+  echo "  --target <dir-name>       The name for the target directory. Default is \"${TARGET_DEF}\"."
   exit 1
 fi
 
-mkdir -p target
-sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < axonserver-enterprise/src/main/gce/axoniq-axonserver.conf > target/axoniq-${IMG_FAMILY}.conf
-sed -e s/__IMG_USER__/${IMG_USER}/g -e s/__IMG_FAMILY__/${IMG_FAMILY}/g < axonserver-enterprise/src/main/gce/axonserver.properties > target/axonserver.properties
-sed -e s/__IMG_USER__/${IMG_USER}/g < axonserver-enterprise/src/main/gce/setup.sh > target/setup.sh
-for f in check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh startup.sh ; do cp axonserver-enterprise/src/main/gce/${f} target/${f} ; done
-chmod 755 target/*.sh
+if [ -d ${TARGET} ] ; then
+  rm -rf ${TARGET}
+fi
+mkdir -p ${TARGET}
 
-if [ ! -s axonserver-enterprise/target/axonserver-enterprise-${IMG_VERSION}-exec.jar ] ; then
-  getLastFromNexus -v ${IMG_VERSION} -o axonserver-enterprise/target/axonserver-enterprise-${IMG_VERSION}-exec.jar io.axoniq.axonserver axonserver-enterprise
+for f in setup.sh startup.sh shutdown.sh axonserver.service axoniq-axonserver.conf axonserver.properties check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh ; do
+  cp axonserver-enterprise/src/main/gce/${f} ${TARGET}/${f}
+done
+
+if [ -s axonserver-enterprise/target/axonserver-enterprise-${IMG_VERSION}-exec.jar ] ; then
+  cp axonserver-enterprise/target/axonserver-enterprise-${IMG_VERSION}-exec.jar ${TARGET}/axonserver.jar
+else
+  getLastFromNexus -v ${IMG_VERSION} -o ${TARGET}/axonserver.jar io.axoniq.axonserver axonserver-enterprise
 fi
-chmod 755 axonserver-enterprise/target/${IMG_FAMILY}-${IMG_VERSION}-exec.jar
-if [ ! -s target/axonserver-cli.jar ] ; then
-  getLastFromNexus -v ${IMG_VERSION} -o target/axonserver-cli.jar io.axoniq.axonserver axonserver-cli
-fi
-chmod 755 target/axonserver-cli.jar
+getLastFromNexus -v ${IMG_VERSION} -o ${TARGET}/axonserver-cli.jar io.axoniq.axonserver axonserver-cli
+
+chmod 755 ${TARGET}/*.{sh,jar}

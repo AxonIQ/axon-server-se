@@ -113,7 +113,7 @@ podTemplate(label: label,
             }
 
             stage ('VM image build') {
-                if (relevantBranch(gitBranch, deployingBranches)) {
+                if (relevantBranch(gitBranch, dockerBranches)) {
                     container("gcloud") {
                         sh "bin/build-image.sh --img-family axonserver-enterprise --img-version axonserver-testimage ${pomVersion}"
                     }

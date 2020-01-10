@@ -41,4 +41,4 @@ fi
 echo "Downloading license file."
 curl -s -H "Metadata-Flavor:Google" -o ${HOME}/axoniq.license http://metadata.google.internal/computeMetadata/v1/instance/attributes/axoniq-license
 
-nohup java -jar ${HOME}/axonserver.jar &
+java -jar ${HOME}/axonserver.jar >/dev/null 2>&1
