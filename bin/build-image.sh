@@ -5,7 +5,6 @@ SCRIPT_DIR=$(dirname $0)
 SHOW_USAGE=n
 
 VERSION=
-MVN_MODULE=
 IMG_VERSION=
 IMG_FAMILY=
 IMG_FAMILY_DEF=axonserver
@@ -52,14 +51,6 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
       shift 2
     else
       echo "Missing subnet name after \"--subnet\"."
-      SHOW_USAGE=y
-    fi
-  elif [[ "$1" == "--mvn-module" ]] ; then
-    if [[ $# -gt 1 ]] ; then
-      MVN_MODULE=$2
-      shift 2
-    else
-      echo "Missing module name after \"--mvn-module\"."
       SHOW_USAGE=y
     fi
   elif [[ "$1" == "--img-version" ]] ; then
@@ -149,7 +140,6 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     echo "  --zone <gce-zone>         The GCE zone to create the image (and run the instance to build it from), default \"${ZONE_DEF}\"."
     echo "  --network <gce-network>   The GCE network to use, default \"<project-name>-vpc\"."
     echo "  --subnet <gce-subnet>     The GCE subnet to use, defaults to the same name is the network."
-    echo "  --mvn-module <name>       The Maven module containing the sources and JAR. Default is the root/parent project."
     echo "  --img-version <version>   The version suffix to append to the image name. Default is the project version in lowercase."
     echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
     echo "  --img-name <name>         The name for the image. Default is the family name, a dash, and the version."
@@ -158,15 +148,7 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     exit 1
 fi
 
-if [[ "${MVN_MODULE}" != "" ]] ; then
-  ${SCRIPT_DIR}/prep-files.sh --mvn-module ${MVN_MODULE} --img-family ${IMG_FAMILY} --img-user ${IMG_USER} ${VERSION}
-else
-  ${SCRIPT_DIR}/prep-files.sh --img-family ${IMG_FAMILY} --img-user ${IMG_USER} ${VERSION}
-fi
-
-if [[ "${MVN_MODULE}" != "" ]] ; then
-  MVN_MODULE="${MVN_MODULE}/"
-fi
+${SCRIPT_DIR}/prep-files.sh --img-family ${IMG_FAMILY} --img-user ${IMG_USER} ${VERSION}
 
 LABEL=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
 cat > target/application-image.json <<EOF
@@ -203,7 +185,7 @@ cat > target/application-image.json <<EOF
     },
     {
         "type": "file",
-        "source": "${MVN_MODULE}target/axonserver-enterprise-${VERSION}-exec.jar",
+        "source": "axonserver-enterprise/target/axonserver-enterprise-${VERSION}-exec.jar",
         "destination": "/tmp/${LABEL}/axonserver.jar"
     },
     {

@@ -11,7 +11,7 @@ def deployingBranches = [
     "master", "axonserver-ee-4.2.x"
 ]
 def dockerBranches = [
-    "master", "axonserver-ee-4.2.x", "feature/jib-images"
+    "master", "axonserver-ee-4.2.x", "feature/cloud-deploy"
 ]
 def sonarBranches = [
     "master", "axonserver-ee-4.2.x"
@@ -47,7 +47,9 @@ podTemplate(label: label,
             envVars: [
                 envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ])
+            ]),
+        containerTemplate(name: 'gcloud', image: 'eu.gcr.io/axoniq-devops/gcloud-axoniq:latest', alwaysPullImage: true,
+            command: 'cat', ttyEnabled: true)
     ],
     volumes: [
         hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
@@ -110,6 +112,13 @@ podTemplate(label: label,
                 }
             }
 
+            stage ('VM image build') {
+                if (relevantBranch(gitBranch, deployingBranches)) {
+                    container("gcloud") {
+                        sh "bin/build-image.sh --img-family axonserver-enterprise --img-version axonserver-testimage ${pomVersion}"
+                    }
+                }
+            }
             stage ('Run SonarQube') {
                 if (relevantBranch(gitBranch, sonarBranches)) {
                     container("maven") {
