@@ -112,10 +112,15 @@ podTemplate(label: label,
                 }
             }
 
+            def gceZone = props ['io.axoniq.axonserver.infrastructure.gce.zone']
+
             stage ('VM image build') {
                 if (relevantBranch(gitBranch, dockerBranches)) {
                     container("gcloud") {
-                        sh "bin/build-image.sh --img-family axonserver-enterprise --img-version axonserver-testimage ${pomVersion}"
+                        sh """
+                            bin/build-image.sh --project ${gcloudProjectName} --zone ${gceZone} \
+                                --img-family axonserver-enterprise --img-version axonserver-testimage ${pomVersion}
+                        """
                     }
                 }
             }
