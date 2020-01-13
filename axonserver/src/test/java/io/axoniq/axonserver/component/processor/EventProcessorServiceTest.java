@@ -40,9 +40,6 @@ public class EventProcessorServiceTest {
                                                                        .add(subscriber),
             event -> publishedInternalEvents.add(event));
 
-    public EventProcessorServiceTest() {
-    }
-
     @Before
     public void setUp() throws Exception {
         publishedInternalEvents.clear();
