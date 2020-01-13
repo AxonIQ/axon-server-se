@@ -22,7 +22,7 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
- * Responsible to listen to all the {@link InstructionResult} received from the client applications and to act as
+ * Responsible to listen to all the {@link InstructionResult}s received from the client applications and to act as
  * a {@link InstructionResultSource.Factory} for all components interested in receiving a result of execution for
  * a specific instruction.
  *
