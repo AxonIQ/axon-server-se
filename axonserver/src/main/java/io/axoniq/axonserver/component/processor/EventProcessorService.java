@@ -20,7 +20,7 @@ import java.util.function.BiConsumer;
  * Service responsible to communicate instructions about event processor management with client applications.
  *
  * @author Sara Pellegrini
- * @since 4.3
+ * @since 4.4
  */
 @Component
 public class EventProcessorService {
