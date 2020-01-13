@@ -56,6 +56,7 @@ podTemplate(label: label,
         secretVolume(secretName: 'cacerts', mountPath: '/docker-java-home/lib/security'),
         secretVolume(secretName: 'dockercfg', mountPath: '/dockercfg'),
         secretVolume(secretName: 'jenkins-nexus', mountPath: '/nexus_settings'),
+        secretVolume(secretName: 'test-settings', mountPath: '/axoniq'),
         secretVolume(secretName: 'maven-settings', mountPath: '/maven_settings')
     ]) {
         node(label) {
@@ -112,7 +113,8 @@ podTemplate(label: label,
                 }
             }
 
-            def gceZone = props ['io.axoniq.axonserver.infrastructure.gce.zone']
+            def testSettings = readProperties file: '/axoniq/test-settings.properties'
+            def gceZone = testSettings ['io.axoniq.axonserver.infrastructure.gce.zone']
 
             stage ('VM image build') {
                 if (relevantBranch(gitBranch, dockerBranches)) {
