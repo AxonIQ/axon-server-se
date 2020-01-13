@@ -11,7 +11,7 @@ def deployingBranches = [
     "master", "axonserver-ee-4.2.x"
 ]
 def dockerBranches = [
-    "master", "axonserver-ee-4.2.x", "feature/cloud-deploy"
+    "master", "axonserver-ee-4.2.x"
 ]
 def sonarBranches = [
     "master", "axonserver-ee-4.2.x"
@@ -119,13 +119,11 @@ podTemplate(label: label,
             stage ('VM image build') {
                 if (relevantBranch(gitBranch, dockerBranches)) {
                     container("gcloud") {
-                        sh """
-                            bin/build-image.sh --project ${gcloudProjectName} --zone ${gceZone} \
-                                --img-family axonserver-enterprise --img-version axonserver-testimage ${pomVersion}
-                        """
+                        sh "bin/build-image.sh --project ${gcloudProjectName} --zone ${gceZone} --img-family axonserver-enterprise ${pomVersion}"
                     }
                 }
             }
+
             stage ('Run SonarQube') {
                 if (relevantBranch(gitBranch, sonarBranches)) {
                     container("maven") {
