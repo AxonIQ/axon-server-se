@@ -130,7 +130,7 @@ public class EventProcessorService {
         instructionResultSource
                 .onInstructionResultFor(instruction.getInstructionId())
                 .subscribe(() -> eventPublisher.publishEvent(success),
-                           error -> LOGGER.warn("Error during segment split: {}, {}", error, instruction),
+                           error -> LOGGER.warn("Error during segment merge: {}, {}", error, instruction),
                            timeout -> LOGGER.warn("The following operation is taking to long: {}", instruction));
 
         instructionPublisher.accept(event.getClientName(), instruction);
