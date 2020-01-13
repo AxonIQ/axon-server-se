@@ -49,7 +49,8 @@ public class RemoteEventPublisher implements Publisher<AxonServerEvent> {
             return ((AxonServerEventSerializer<T>) serializers.get(event.getClass())).serialize(event);
         }
         if (serializers.containsKey(AxonServerEvent.class)) {
-            return ((AxonServerEventSerializer<AxonServerEvent>) serializers.get(event.getClass())).serialize(event);
+            return ((AxonServerEventSerializer<AxonServerEvent>) serializers.get(AxonServerEvent.class))
+                    .serialize(event);
         }
         throw new RuntimeException("No serializer found for event: " + event);
     }
