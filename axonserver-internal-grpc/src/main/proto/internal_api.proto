@@ -168,6 +168,9 @@ message ConnectorCommand {
         QueryHandlerStatus query_handler_status = 37;
         ClientEventProcessorSegment split_segment = 38;
         ClientEventProcessorSegment merge_segment = 39;
+
+        /*Axon Server internal event, propagated to all nodes in the cluster*/
+        io.axoniq.axonserver.grpc.SerializedObject internal_event = 40;
     }
 }
 
