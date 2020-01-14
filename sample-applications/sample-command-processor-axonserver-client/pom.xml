@@ -95,22 +95,42 @@
                     <skip>true</skip>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>com.google.cloud.tools</groupId>
-                <artifactId>jib-maven-plugin</artifactId>
-                <configuration>
-                    <skip>false</skip>
-                    <container>
-                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
-                    </container>
-                    <to>
-                        <image>
-                            ${gcloud.registry}/${gcloud.project.name}/sample-command-processor-axonserver-client:${project.parent.version}
-                        </image>
-                        <credHelper>gcr</credHelper>
-                    </to>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>local</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                            <container>
+                                <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                            </container>
+                            <from>
+                                <image>gcr.io/distroless/java:11</image>
+                            </from>
+                            <to>
+                                <image>
+                                    ${gcloud.registry}/${gcloud.project.name}/sample-command-processor-axonserver-client:${project.parent.version}
+                                </image>
+                            </to>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>dockerBuild</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

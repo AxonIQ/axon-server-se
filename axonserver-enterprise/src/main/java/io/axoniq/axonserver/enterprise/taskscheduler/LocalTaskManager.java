@@ -117,15 +117,19 @@ public class LocalTaskManager {
             @Override
             protected void doInTransactionWithoutResult(@Nonnull TransactionStatus status) {
                 try {
-                    logger.warn("{}: Failed to execute task {}: {}", task.getContext(),
-                                task.getTaskId(),
-                                task.getTaskExecutor(),
-                                cause);
                     if (isTransient(cause)) {
+                        logger.warn("{}: Retry task {}: {} {}", task.getContext(),
+                                    task.getTaskId(),
+                                    task.getTaskExecutor(),
+                                    cause.getMessage());
                         task.setTimestamp(newSchedule(task));
                         task.setRetryInterval(Math.min(task.getRetryInterval() * 2,
                                                        MAX_RETRY_INTERVAL));
                     } else {
+                        logger.warn("{}: Failed to execute task {}: {}", task.getContext(),
+                                    task.getTaskId(),
+                                    task.getTaskExecutor(),
+                                    cause);
                         task.setTimestamp(clock.millis());
                         task.setStatus(Status.FAILED);
                         task.setRetryInterval(0L);

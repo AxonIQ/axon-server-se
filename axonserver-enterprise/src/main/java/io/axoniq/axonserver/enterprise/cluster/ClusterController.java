@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -110,7 +109,7 @@ public class ClusterController implements SmartLifecycle {
 
             RemoteConnection remoteConnection = remoteConnections.remove(name);
             if (remoteConnection != null) {
-                clusterNodeRepository.deleteById(name);
+                clusterNodeRepository.findById(name).ifPresent(c -> clusterNodeRepository.deleteById(name));
                 remoteConnection.close();
                 nodeListeners.forEach(listener -> listener
                         .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED,
@@ -229,19 +228,13 @@ public class ClusterController implements SmartLifecycle {
      * Only accepts connections if the other node is member of a context of this node or it is an admin node.
      *
      * @param nodeInfo the node information of the node connecting to this node
-     * @param admin    flag indicating if the remote node is admin node
      * @return true if connection is accepted
      */
     @Transactional
-    public synchronized boolean connect(NodeInfo nodeInfo, boolean admin) {
+    public synchronized void handleRemoteConnection(NodeInfo nodeInfo) {
         String nodeName = nodeInfo.getNodeName();
         ClusterNode node = getNode(nodeName);
         if (node == null) {
-            if (!admin && !isAnyContext(nodeName)) {
-                // received connection from unknown node, and this node is not in any context we know of and not an admin node
-                // -> refuse the connection
-                return false;
-            }
             node = addConnection(nodeInfo);
             RemoteConnection remoteConnection = remoteConnections.remove(nodeName);
             if (remoteConnection != null) {
@@ -258,20 +251,13 @@ public class ClusterController implements SmartLifecycle {
         }
 
         applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeConnected(nodeInfo));
-        return true;
-    }
-
-    private boolean isAnyContext(String nodeName) {
-        Set<JpaRaftGroupNode> groups = raftGroupRepositoryManager.findByNodeName(nodeName);
-        logger.warn("Checking if node {} is member of any known context, found {}", nodeName, groups.size());
-        return !groups.isEmpty();
     }
 
     @Transactional
     public synchronized ClusterNode addConnection(NodeInfo nodeInfo) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
-            logger.warn("Trying to join with current node name: {}", nodeInfo.getNodeName());
+            logger.info("Trying to join with current node name: {}", nodeInfo.getNodeName());
             return getMe();
         }
         if (nodeInfo.getInternalHostName().equals(messagingPlatformConfiguration.getInternalHostname())

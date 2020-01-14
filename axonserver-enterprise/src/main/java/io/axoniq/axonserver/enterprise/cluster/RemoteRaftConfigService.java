@@ -37,8 +37,8 @@ public class RemoteRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void addNodeToContext(String context, String node, Role role) {
-        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
+    public CompletableFuture<Void> addNodeToContext(String context, String node, Role role) {
+        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.addNodeToContext(NodeContext.newBuilder()
                                                           .setNodeName(node)
                                                           .setRole(role)
@@ -46,8 +46,9 @@ public class RemoteRaftConfigService implements RaftConfigService {
                                                           .build(),
                                                new CompletableStreamObserver<>(completableFuture,
                                                                                "addNodeToContext",
-                                                                               logger));
-        getFuture(completableFuture);
+                                                                               logger,
+                                                                               TO_VOID));
+        return completableFuture;
     }
 
     @Override

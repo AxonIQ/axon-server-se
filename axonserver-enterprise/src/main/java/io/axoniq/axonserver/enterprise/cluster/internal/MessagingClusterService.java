@@ -215,24 +215,12 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         ConnectRequest connectRequest = connectorCommand.getConnect();
                         messagingServerName = connectRequest.getNodeInfo().getNodeName();
 
-                        if (clusterController.connect(connectRequest.getNodeInfo(), connectRequest.getAdmin())) {
-                            logger.debug("Received connect from: {} - {}", messagingServerName, connectRequest);
+                        clusterController.handleRemoteConnection(connectRequest.getNodeInfo());
+                        logger.debug("Received connect from: {} - {}", messagingServerName, connectRequest);
 
-                            responseObserver.onNext(ConnectorResponse.newBuilder()
+                        responseObserver.onNext(ConnectorResponse.newBuilder()
                                                                      .setConnectResponse(ConnectResponse.newBuilder())
                                                                      .build());
-                        } else {
-                            logger.warn(
-                                    "Received connection from unknown node {}, closing connection", messagingServerName
-                            );
-
-                            responseObserver.onNext(
-                                    ConnectorResponse.newBuilder()
-                                                     .setConnectResponse(ConnectResponse.newBuilder().setDeleted(true))
-                                                     .build()
-                            );
-                            responseObserver.onCompleted();
-                        }
                     } catch (MessagingPlatformException mpe) {
                         responseObserver.onError(mpe);
                     }

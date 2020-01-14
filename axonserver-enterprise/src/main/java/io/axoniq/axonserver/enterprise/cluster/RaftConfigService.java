@@ -9,6 +9,7 @@ import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.User;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Request changes to the Axon Server configuration, to be handled through Raft.
@@ -23,8 +24,9 @@ public interface RaftConfigService {
      * @param name the name of the context
      * @param node the name of the node
      * @param role the role of the node in the context
+     * @return
      */
-    void addNodeToContext(String name, String node, Role role);
+    CompletableFuture<Void> addNodeToContext(String name, String node, Role role);
 
     /**
      * Deletes a context from all nodes where it is present.

@@ -9,6 +9,8 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * @author Marc Gathier
  */
@@ -24,20 +26,42 @@ public class AddNodeToContextTask implements ScheduledTask {
         this.raftServiceFactory = raftServiceFactory;
     }
 
-    @Override
-    public void execute(Object payload) {
+    public CompletableFuture<Void> executeAsync(Object payload) {
+        AddNodeToContext addNodeToContext = (AddNodeToContext) payload;
         try {
-            AddNodeToContext addNodeToContext = (AddNodeToContext) payload;
-            raftServiceFactory.getRaftConfigService().addNodeToContext(addNodeToContext.getContext(),
-                                                                       clusterController.getName(),
-                                                                       Role.PRIMARY);
+            return doExecute(addNodeToContext);
+        } catch (Exception ex) {
+            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+            completableFuture.completeExceptionally(ex);
+            return completableFuture;
+        }
+    }
+
+    private CompletableFuture<Void> doExecute(AddNodeToContext addNodeToContext) {
+        try {
+            return raftServiceFactory.getRaftConfigService().addNodeToContext(addNodeToContext.getContext(),
+                                                                              clusterController.getName(),
+                                                                              Role.PRIMARY)
+                                     .exceptionally(this::checkTransient);
         } catch (MessagingPlatformException ex) {
-            if (ex.getErrorCode().equals(ErrorCode.NO_LEADER_AVAILABLE) ||
-                    ex.getErrorCode().equals(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS)) {
+            if (ErrorCode.NO_LEADER_AVAILABLE.equals(ex.getErrorCode()) ||
+                    ErrorCode.CONTEXT_UPDATE_IN_PROGRESS.equals(ex.getErrorCode())) {
                 throw new TransientException(ex.getMessage(), ex);
             } else {
                 throw ex;
             }
         }
+    }
+
+    private Void checkTransient(Throwable ex) {
+        if (ex instanceof MessagingPlatformException) {
+            MessagingPlatformException mpe = (MessagingPlatformException) ex;
+            if (ErrorCode.CONTEXT_UPDATE_IN_PROGRESS.equals(mpe.getErrorCode()) ||
+                    ErrorCode.NO_LEADER_AVAILABLE.equals(mpe.getErrorCode())) {
+                throw new TransientException(ex.getMessage(), ex);
+            }
+            throw (MessagingPlatformException) ex;
+        }
+        throw new RuntimeException(ex);
     }
 }

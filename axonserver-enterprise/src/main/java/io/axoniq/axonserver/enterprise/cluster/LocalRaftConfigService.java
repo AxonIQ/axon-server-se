@@ -103,7 +103,7 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void addNodeToContext(String context, String node, Role role) {
+    public CompletableFuture<Void> addNodeToContext(String context, String node, Role role) {
         logger.info("Add node request invoked for node: {} - and context: {}", node, context);
         Context contextDefinition = contextController.getContext(context);
 
@@ -121,7 +121,7 @@ class LocalRaftConfigService implements RaftConfigService {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, String.format("Node %s not found", node));
         }
         if (clusterNode.getContextNames().contains(context)) {
-            return;
+            return null;
         }
         ContextConfiguration oldConfiguration = createContextConfigBuilder(contextDefinition).build();
         String nodeLabel = generateNodeLabel(node);
@@ -134,12 +134,18 @@ class LocalRaftConfigService implements RaftConfigService {
         appendToAdmin(ContextConfiguration.class.getName(), contextConfiguration.toByteArray());
 
         try {
-            raftGroupServiceFactory.getRaftGroupService(context)
-                                   .addNodeToContext(context, raftNode)
-                                   .thenAccept(result -> handleContextUpdateResult(context, result))
-                                   .exceptionally(e -> resetAdminConfiguration(oldConfiguration,
-                                                                               "Failed to add node: " + node,
-                                                                               e));
+            return raftGroupServiceFactory.getRaftGroupService(context)
+                                          .addNodeToContext(context, raftNode)
+                                          .thenAccept(result -> handleContextUpdateResult(context, result))
+                                          .exceptionally(e -> {
+                                              raftGroupServiceFactory.getRaftGroupServiceForNode(raftNode.getNodeName())
+                                                                     .deleteContext(context, false);
+                                              resetAdminConfiguration(oldConfiguration,
+                                                                      "Failed to add node: " + node,
+                                                                      e);
+                                              throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS,
+                                                                                   e.getMessage());
+                                          });
         } catch (RuntimeException throwable) {
             resetAdminConfiguration(oldConfiguration, "Failed to add node: " + node, throwable);
             throw throwable;
@@ -150,6 +156,7 @@ class LocalRaftConfigService implements RaftConfigService {
                                            ContextUpdateConfirmation result) {
         if (!result.getSuccess()) {
             logger.error("{}: {}", context, result.getMessage());
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS, result.getMessage());
         }
         ContextConfiguration updatedConfiguration = createContextConfiguration(context, result);
         try {

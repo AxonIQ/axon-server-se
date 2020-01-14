@@ -15,6 +15,8 @@ import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
 import io.axoniq.axonserver.grpc.internal.User;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +32,7 @@ import java.util.function.Supplier;
 public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServiceImplBase implements
         AxonServerInternalService {
 
+    private final Logger logger = LoggerFactory.getLogger(GrpcRaftConfigService.class);
     private final LocalRaftConfigService localRaftConfigService;
     private final Supplier<RaftConfigService> serviceFactory;
 
@@ -58,6 +61,10 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void joinCluster(NodeInfo request, StreamObserver<InstructionAck> responseObserver) {
+        logger.info("{}:{} wants to join cluster with name {}",
+                    request.getInternalHostName(),
+                    request.getGrpcInternalPort(),
+                    request.getNodeName());
         wrap(responseObserver, () -> serviceFactory.get().join(request));
     }
 

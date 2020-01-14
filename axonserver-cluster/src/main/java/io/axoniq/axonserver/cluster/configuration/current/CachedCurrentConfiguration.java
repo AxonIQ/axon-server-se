@@ -53,6 +53,11 @@ public class CachedCurrentConfiguration implements CurrentConfiguration {
         return cachedIsUncommitted.get();
     }
 
+    @Override
+    public void refresh() {
+        cachedNodes.set(null);
+    }
+
     private void update(){
         List<Node> newConfig = currentConfiguration.groupMembers();
         List<Node> oldConfig = cachedNodes.getAndSet(newConfig);

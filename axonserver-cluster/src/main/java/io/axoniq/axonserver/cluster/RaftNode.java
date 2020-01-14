@@ -162,6 +162,10 @@ public class RaftNode {
     private void updateConfig(Config newConfiguration, NewConfigurationConsumer newConfigurationConsumer) {
         raftGroup.raftConfiguration().update(newConfiguration.getNodesList());
         newConfigurationConsumer.consume(newConfiguration);
+        logger.debug("{} in term {}: Force refresh configuration",
+                     groupId(),
+                     currentTerm());
+        state.get().currentConfiguration().refresh();
     }
 
     private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
