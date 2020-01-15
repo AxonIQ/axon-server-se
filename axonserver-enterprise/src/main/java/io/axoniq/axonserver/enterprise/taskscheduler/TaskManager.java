@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.jpa.Task;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
@@ -7,6 +9,7 @@ import io.axoniq.axonserver.grpc.tasks.Status;
 import io.axoniq.axonserver.grpc.tasks.UpdateTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+
+import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * Component that reads tasks from the controldb and tries to execute them.
@@ -36,6 +41,7 @@ public class TaskManager {
     private final TaskRepository taskRepository;
     private final RaftLeaderProvider raftLeaderProvider;
     private final TaskResultPublisher taskResultPublisher;
+    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Clock clock;
     private final Map<String, String> pendingTasks = new HashMap<>();
 
@@ -43,11 +49,13 @@ public class TaskManager {
                        TaskRepository taskRepository,
                        RaftLeaderProvider raftLeaderProvider,
                        TaskResultPublisher taskResultPublisher,
+                       MessagingPlatformConfiguration messagingPlatformConfiguration,
                        Clock clock) {
         this.taskExecutor = taskExecutor;
         this.taskRepository = taskRepository;
         this.raftLeaderProvider = raftLeaderProvider;
         this.taskResultPublisher = taskResultPublisher;
+        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.clock = clock;
     }
 
@@ -96,6 +104,21 @@ public class TaskManager {
 
     public List<Task> findAllByContext(String context) {
         return taskRepository.findAllByContext(context);
+    }
+
+
+    @EventListener
+    @Transactional
+    public void on(ContextEvents.ContextDeleted contextDeleted) {
+        logger.debug("Deleting tasks for {}", contextDeleted.getContext());
+        deleteAllByContext(contextDeleted.getContext());
+    }
+
+    @EventListener
+    @Transactional
+    public void on(ContextEvents.AdminContextDeleted contextDeleted) {
+        logger.debug("Deleting tasks for _admin");
+        deleteAllByContext(getAdmin());
     }
 
     private void executeTask(Task task) {

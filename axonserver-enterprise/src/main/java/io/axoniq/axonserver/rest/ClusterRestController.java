@@ -2,17 +2,16 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.licensing.Feature;
-import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,19 +49,16 @@ public class ClusterRestController {
 
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
-    private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final ClusterTagsCache clusterTagsCache;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
-                                 GrpcRaftController grpcRaftController,
                                  FeatureChecker limits,
                                  ClusterTagsCache clusterTagsCache) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
-        this.grpcRaftController = grpcRaftController;
         this.limits = limits;
         this.clusterTagsCache = clusterTagsCache;
     }

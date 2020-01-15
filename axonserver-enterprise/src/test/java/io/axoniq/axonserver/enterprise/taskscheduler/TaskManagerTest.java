@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.internal.FakeClock;
 import io.axoniq.axonserver.enterprise.jpa.Task;
@@ -89,7 +91,14 @@ public class TaskManagerTest {
             });
             return CompletableFuture.completedFuture(null);
         };
-        testSubject = new TaskManager(executor, repository, leaderProvider, resultPublisher, clock);
+        MessagingPlatformConfiguration messagingPlatformConfiguration = new MessagingPlatformConfiguration(new SystemInfoProvider() {
+        });
+        testSubject = new TaskManager(executor,
+                                      repository,
+                                      leaderProvider,
+                                      resultPublisher,
+                                      messagingPlatformConfiguration,
+                                      clock);
     }
 
     @Test

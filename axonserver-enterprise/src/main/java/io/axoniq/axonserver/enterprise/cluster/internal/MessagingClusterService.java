@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.PreDestroy;
 
@@ -86,6 +87,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         implements AxonServerInternalService {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingClusterService.class);
+    /**
+     * Defines the period that connections from nodes are refused once the node was deleted.
+     */
+    private static final long BLACKOUT_TIME = TimeUnit.SECONDS.toMillis(10);
 
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
@@ -106,6 +111,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private int commandProcessingThreads = 1;
     private final Set<GrpcFlowControlledDispatcherListener> dispatchListeners = new CopyOnWriteArraySet<>();
 
+    private final Map<String, Long> blacklistedServers = new ConcurrentHashMap<>();
     /**
      * Instantiate a {@link MessagingClusterService} which consumes all incoming messages propagated between a cluster
      * of Axon Server instances.
@@ -191,6 +197,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         connectedClients.put(new ClientIdentification(applicationConnected.getContext(), applicationConnected.getClient()), axonServerNode);
     }
 
+    @EventListener
+    public void on(ClusterEvents.AxonServerNodeDeleted axonServerNodeDeleted) {
+        blacklistedServers.put(axonServerNodeDeleted.node(), System.currentTimeMillis() + BLACKOUT_TIME);
+    }
+
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
 
         private static final boolean PROXIED = true;
@@ -214,13 +225,20 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     try {
                         ConnectRequest connectRequest = connectorCommand.getConnect();
                         messagingServerName = connectRequest.getNodeInfo().getNodeName();
+                        if (blacklistedServers.getOrDefault(messagingServerName, 0L) > System.currentTimeMillis()) {
+                            logger.warn("{}: Blacklisted, refusing connection", messagingServerName);
+                            responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                     .setConnectResponse(ConnectResponse.newBuilder()
+                                                                                                        .setDeleted(true))
+                                                                     .build());
+                        } else {
+                            clusterController.handleRemoteConnection(connectRequest.getNodeInfo());
+                            logger.debug("Received connect from: {} - {}", messagingServerName, connectRequest);
 
-                        clusterController.handleRemoteConnection(connectRequest.getNodeInfo());
-                        logger.debug("Received connect from: {} - {}", messagingServerName, connectRequest);
-
-                        responseObserver.onNext(ConnectorResponse.newBuilder()
+                            responseObserver.onNext(ConnectorResponse.newBuilder()
                                                                      .setConnectResponse(ConnectResponse.newBuilder())
                                                                      .build());
+                        }
                     } catch (MessagingPlatformException mpe) {
                         responseObserver.onError(mpe);
                     }
@@ -420,6 +438,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             PROXIED, mergeSegment.getClient(), mergeSegment.getProcessorName(),
                             mergeSegment.getSegmentIdentifier()
                     ));
+                    break;
+                case DELETE_NODE:
+                    clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
                     break;
                 default:
                     logger.warn("Unknown operation occurred [{}]", connectorCommand.getRequestCase());

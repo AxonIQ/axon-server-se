@@ -111,4 +111,11 @@ public interface RaftConfigService {
      * @param name
      */
     void deleteNode(String name);
+
+    /**
+     * Deletes a node from the configuration. Only allowed when no more contexts on node.
+     *
+     * @param name
+     */
+    void deleteNodeIfEmpty(String name);
 }

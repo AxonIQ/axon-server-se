@@ -11,7 +11,7 @@ def deployingBranches = [
     "master", "axonserver-ee-4.2.x"
 ]
 def dockerBranches = [
-    "master", "axonserver-ee-4.2.x", "feature/jib-images"
+    "master", "axonserver-ee-4.2.x"
 ]
 def sonarBranches = [
     "master", "axonserver-ee-4.2.x"

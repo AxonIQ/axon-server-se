@@ -53,10 +53,15 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public void deleteNode(String name) {
-        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.deleteNode(NodeName.newBuilder().setNode(name).build(),
                                          new CompletableStreamObserver<>(completableFuture, "deleteNode", logger));
         getFuture(completableFuture);
+    }
+
+    @Override
+    public void deleteNodeIfEmpty(String name) {
+        // no action
     }
 
     @Override
@@ -128,61 +133,57 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public void updateUser(User request) {
-        CompletableFuture<Void> confirmation = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> confirmation = new CompletableFuture<>();
         raftConfigServiceStub.updateUser(request,
-                                         new CompletableStreamObserver<>(confirmation, "updateUser", logger, TO_VOID));
+                                         new CompletableStreamObserver<>(confirmation, "updateUser", logger));
         getFuture(confirmation);
     }
 
     @Override
     public void updateLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy) {
-        CompletableFuture<Void> confirmation = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> confirmation = new CompletableFuture<>();
         raftConfigServiceStub.updateLoadBalanceStrategy(loadBalancingStrategy,
                                                         new CompletableStreamObserver<>(confirmation,
                                                                                         "updateLoadBalancingStrategy",
-                                                                                        logger,
-                                                                                        TO_VOID));
+                                                                                        logger));
         getFuture(confirmation);
     }
 
     @Override
     public void deleteLoadBalancingStrategy(LoadBalanceStrategy loadBalancingStrategy) {
-        CompletableFuture<Void> confirmation = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> confirmation = new CompletableFuture<>();
         raftConfigServiceStub.deleteLoadBalanceStrategy(loadBalancingStrategy,
                                                         new CompletableStreamObserver<>(confirmation,
                                                                                         "deleteLoadBalancingStrategy",
-                                                                                        logger,
-                                                                                        TO_VOID));
+                                                                                        logger));
         getFuture(confirmation);
     }
 
     @Override
     public void updateProcessorLoadBalancing(ProcessorLBStrategy processorLBStrategy) {
-        CompletableFuture<Void> confirmation = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> confirmation = new CompletableFuture<>();
         raftConfigServiceStub.updateProcessorLBStrategy(processorLBStrategy,
                                                         new CompletableStreamObserver<>(confirmation,
                                                                                         "updateProcessorLoadBalancing",
-                                                                                        logger,
-                                                                                        TO_VOID));
+                                                                                        logger));
         getFuture(confirmation);
     }
 
     @Override
     public void deleteUser(User user) {
-        CompletableFuture<Void> confirmation = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> confirmation = new CompletableFuture<>();
         raftConfigServiceStub.deleteUser(user,
-                                         new CompletableStreamObserver<>(confirmation, "deleteUser", logger, TO_VOID));
+                                         new CompletableStreamObserver<>(confirmation, "deleteUser", logger));
         getFuture(confirmation);
     }
 
     @Override
     public void deleteApplication(Application application) {
-        CompletableFuture<Void> confirmation = new CompletableFuture<>();
+        CompletableFuture<InstructionAck> confirmation = new CompletableFuture<>();
         raftConfigServiceStub.deleteApplication(application,
                                                 new CompletableStreamObserver<>(confirmation,
                                                                                 "deleteApplication",
-                                                                                logger,
-                                                                                TO_VOID));
+                                                                                logger));
         getFuture(confirmation);
     }
 }
