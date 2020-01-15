@@ -339,6 +339,10 @@ public class ClusterController implements SmartLifecycle {
         return clusterNodeRepository.findAll().stream();
     }
 
+    public Stream<ClusterNode> activeNodes() {
+        return clusterNodeRepository.findAll().stream().filter(n -> isActive(n.getName()));
+    }
+
     public void addNodeListener(Consumer<ClusterEvent> nodeListener) {
         nodeListeners.add(nodeListener);
     }

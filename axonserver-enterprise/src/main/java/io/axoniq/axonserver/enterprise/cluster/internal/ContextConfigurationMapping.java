@@ -32,7 +32,9 @@ public class ContextConfigurationMapping implements Function<Context, ContextCon
     public ContextConfiguration apply(Context context) {
         ContextConfiguration.Builder builder = ContextConfiguration.newBuilder()
                                                                    .setPending(context.isChangePending())
+                                                                   .putAllMetaData(context.getMetaDataMap())
                                                                    .setContext(context.getName());
+
         for (ContextClusterNode node : context.getNodes()) {
             builder.addNodes(NodeInfoWithLabel.newBuilder()
                                               .setLabel(node.getClusterNodeLabel())

@@ -1,10 +1,15 @@
 package io.axoniq.axonserver.saas;
 
+import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.access.application.JpaApplicationRepository;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.RaftConfigService;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
@@ -20,12 +25,16 @@ import io.axoniq.axonserver.grpc.internal.NodeContext;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.saas.SaasAdminServiceGrpc;
 import io.grpc.stub.StreamObserver;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Provides an interface to be used by Axon Cloud Console to update configuration in Axon Server.
@@ -40,19 +49,32 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
         AxonServerInternalService {
 
     private static final InstructionAck CONFIRMATION = InstructionAck.newBuilder().setSuccess(true).build();
-    private final RaftConfigServiceFactory raftConfigServiceFactory;
-    private final ClusterController clusterController;
-    private final ContextController contextController;
-    private final JpaApplicationRepository applicationRepository;
+    private final Supplier<Stream<io.axoniq.axonserver.enterprise.jpa.ClusterNode>> clusterProvider;
+    private final Supplier<Stream<io.axoniq.axonserver.enterprise.jpa.Context>> contextProvider;
+    private final Supplier<List<JpaApplication>> applicationProvider;
+    private final Predicate<String> contextNameValidation = new ContextNameValidation();
+    private final Supplier<RaftConfigService> raftConfigServiceProvider;
 
+    @Autowired
     public SaasAdminService(RaftConfigServiceFactory raftConfigServiceFactory,
                             ClusterController clusterController,
                             ContextController contextController,
                             JpaApplicationRepository applicationRepository) {
-        this.raftConfigServiceFactory = raftConfigServiceFactory;
-        this.clusterController = clusterController;
-        this.contextController = contextController;
-        this.applicationRepository = applicationRepository;
+        this(clusterController::activeNodes,
+             contextController::getContexts,
+             applicationRepository::findAll,
+             raftConfigServiceFactory::getRaftConfigService);
+    }
+
+    public SaasAdminService(
+            Supplier<Stream<ClusterNode>> clusterProvider,
+            Supplier<Stream<io.axoniq.axonserver.enterprise.jpa.Context>> contextProvider,
+            Supplier<List<JpaApplication>> applicationProvider,
+            Supplier<RaftConfigService> raftConfigServiceProvider) {
+        this.clusterProvider = clusterProvider;
+        this.contextProvider = contextProvider;
+        this.applicationProvider = applicationProvider;
+        this.raftConfigServiceProvider = raftConfigServiceProvider;
     }
 
     /**
@@ -63,7 +85,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
      */
     @Override
     public void getNodes(EmptyRequest request, StreamObserver<NodeInfo> responseObserver) {
-        clusterController.nodes().forEach(n -> responseObserver.onNext(toNodeInfo(n)));
+        clusterProvider.get().forEach(n -> responseObserver.onNext(toNodeInfo(n)));
         responseObserver.onCompleted();
     }
 
@@ -85,7 +107,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
      */
     @Override
     public void getContexts(EmptyRequest request, StreamObserver<Context> responseObserver) {
-        contextController.getContexts().forEach(c -> {
+        contextProvider.get().forEach(c -> {
             responseObserver.onNext(Context.newBuilder().setName(c.getName())
                                            .addAllMembers(c.getNodes().stream().map(ccn -> ContextMember.newBuilder()
                                                                                                         .setNodeName(
@@ -107,7 +129,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
      */
     @Override
     public void getApplications(EmptyRequest request, StreamObserver<Application> responseObserver) {
-        applicationRepository.findAll().forEach(app -> responseObserver
+        applicationProvider.get().forEach(app -> responseObserver
                 .onNext(ApplicationProtoConverter.createApplication(app)));
         responseObserver.onCompleted();
     }
@@ -123,9 +145,19 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     @Override
     public void createContext(Context request, StreamObserver<InstructionAck> responseObserver) {
         try {
-            int nodes = Integer.valueOf(request.getMetaDataMap().getOrDefault("nodes", "1"));
 
-            List<ContextMember> selectedNodes = clusterController.nodes().sorted(Comparator.comparingInt(c -> c
+            if (!contextNameValidation.test(request.getName())) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME, "Invalid context name");
+            }
+
+            int nodes = Integer.valueOf(request.getMetaDataMap().getOrDefault("nodes", "1"));
+            if (nodes < 1) {
+                throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                     "Invalid number of nodes: " + nodes);
+            }
+
+
+            List<ContextMember> selectedNodes = clusterProvider.get().sorted(Comparator.comparingInt(c -> c
                     .getContexts().size()))
                                                                  .limit(nodes)
                                                                  .map(c -> ContextMember.newBuilder()
@@ -137,14 +169,15 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
                                                                  )
                                                                  .collect(Collectors.toList());
             if (selectedNodes.size() < nodes) {
-                throw new RuntimeException("Not enough nodes available");
+                throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                     "Invalid number of nodes: " + nodes);
             }
 
             Context updatedContext = Context.newBuilder(request)
                                             .clearMembers()
                                             .addAllMembers(selectedNodes)
                                             .build();
-            raftConfigServiceFactory.getRaftConfigService().addContext(updatedContext);
+            raftConfigServiceProvider.get().addContext(updatedContext);
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
@@ -155,9 +188,9 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         try {
-            raftConfigServiceFactory.getRaftConfigService().addNodeToContext(request.getContext(),
-                                                                             request.getNodeName(),
-                                                                             Role.PRIMARY);
+            raftConfigServiceProvider.get().addNodeToContext(request.getContext(),
+                                                             request.getNodeName(),
+                                                             Role.PRIMARY);
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
@@ -168,8 +201,8 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     @Override
     public void deleteNodeFromContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         try {
-            raftConfigServiceFactory.getRaftConfigService().deleteNodeFromContext(request.getContext(),
-                                                                                  request.getNodeName());
+            raftConfigServiceProvider.get().deleteNodeFromContext(request.getContext(),
+                                                                  request.getNodeName());
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
@@ -180,7 +213,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     @Override
     public void deleteContext(ContextName request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver,
-             () -> raftConfigServiceFactory.getRaftConfigService().deleteContext(request.getContext()));
+             () -> raftConfigServiceProvider.get().deleteContext(request.getContext()));
     }
 
     /**
@@ -192,7 +225,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     public void createApplication(Application request, StreamObserver<Application> responseObserver) {
 
         try {
-            Application response = raftConfigServiceFactory.getRaftConfigService().updateApplication(request);
+            Application response = raftConfigServiceProvider.get().updateApplication(request);
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception ex) {
@@ -203,7 +236,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     @Override
     public void deleteApplication(Application request, StreamObserver<InstructionAck> responseObserver) {
         try {
-            raftConfigServiceFactory.getRaftConfigService().deleteApplication(request);
+            raftConfigServiceProvider.get().deleteApplication(request);
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
@@ -219,7 +252,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     @Override
     public void refreshToken(Application request, StreamObserver<Application> responseObserver) {
         try {
-            Application response = raftConfigServiceFactory.getRaftConfigService().refreshToken(request);
+            Application response = raftConfigServiceProvider.get().refreshToken(request);
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception ex) {
