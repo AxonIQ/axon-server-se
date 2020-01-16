@@ -10,7 +10,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
 
-
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -101,10 +103,10 @@ public class Synchronizer {
 
 
     private boolean canSyncAt(WritePosition writePosition) {
-        if( current != null && current.segment != writePosition.segment) {
+        if (current != null && !Objects.equals(current.segment, writePosition.segment)) {
             log.debug("can sync at {}: {}", writePosition.segment, current.segment);
         }
-        return current != null && current.segment != writePosition.segment;
+        return current != null && !Objects.equals(current.segment, writePosition.segment);
     }
 
     public synchronized void init(WritePosition writePosition) {
@@ -131,10 +133,23 @@ public class Synchronizer {
         if( forceJob != null) forceJob.cancel(false);
         syncJob = null;
         forceJob = null;
+        waitForPendingWrites();
         while( ! syncAndCloseFile.isEmpty()) {
             syncAndCloseFile();
         }
         if( shutdown) fsync.shutdown();
     }
 
+    private void waitForPendingWrites() {
+        int retries = 1000;
+        while (!writePositions.isEmpty() && retries > 0) {
+            try {
+                Thread.sleep(1);
+                retries--;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new MessagingPlatformException(ErrorCode.INTERRUPTED, "Interrupted while closing synchronizer");
+            }
+        }
+    }
 }
