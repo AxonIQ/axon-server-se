@@ -124,14 +124,15 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
         WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
         writePositionRef.set(writePosition);
-        synchronizer.init(writePosition);
 
-        if( clear)
+        if (clear) {
             buffer.clearFromPosition();
+        }
 
-        if( next != null) {
+        if (next != null) {
             next.initSegments(first);
         }
+        synchronizer.init(writePosition);
     }
 
     private long getFirstFile(long lastInitialized, File events) {
