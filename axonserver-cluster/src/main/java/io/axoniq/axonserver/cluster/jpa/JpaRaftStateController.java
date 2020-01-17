@@ -3,6 +3,8 @@ package io.axoniq.axonserver.cluster.jpa;
 import io.axoniq.axonserver.cluster.ProcessorStore;
 import io.axoniq.axonserver.cluster.election.ElectionStore;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * @author Marc Gathier
  * @since 4.1
@@ -11,6 +13,7 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     private final String groupId;
     private final JpaRaftStateRepository repository;
     private JpaRaftState raftState;
+    private final AtomicBoolean dirty = new AtomicBoolean();
 
     public JpaRaftStateController(String groupId, JpaRaftStateRepository repository) {
         this.groupId = groupId;
@@ -37,7 +40,7 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     @Override
     public void markVotedFor(String candidate) {
         raftState.setVotedFor(candidate);
-        //sync();
+        dirty.set(true);
     }
 
     @Override
@@ -48,19 +51,21 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     @Override
     public void updateCurrentTerm(long term) {
         raftState.setCurrentTerm(term);
-        //sync();
+        dirty.set(true);
     }
 
     @Override
     public void updateLastApplied(long lastAppliedIndex, long lastAppliedTerm) {
         raftState.setLastAppliedIndex(lastAppliedIndex);
         raftState.setLastAppliedTerm(lastAppliedTerm);
+        dirty.set(true);
     }
 
     @Override
     public void updateCommit(long commitIndex, long commitTerm) {
         raftState.setCommitIndex(commitIndex);
         raftState.setCommitTerm(commitTerm);
+        dirty.set(true);
     }
 
     @Override
@@ -84,7 +89,9 @@ public class JpaRaftStateController implements ElectionStore, ProcessorStore {
     }
 
     public void sync() {
-        repository.save(raftState);
+        if (dirty.compareAndSet(true, false)) {
+            repository.save(raftState);
+        }
     }
 
     @Override

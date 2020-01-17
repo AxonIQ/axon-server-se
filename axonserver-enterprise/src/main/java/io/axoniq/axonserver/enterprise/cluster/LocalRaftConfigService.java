@@ -896,7 +896,11 @@ class LocalRaftConfigService implements RaftConfigService {
      */
     @EventListener
     public void on(ClusterEvents.LeaderConfirmation leaderConfirmation) {
-        checkPendingChanges(leaderConfirmation.getContext());
+        try {
+            checkPendingChanges(leaderConfirmation.getContext());
+        } catch (IllegalStateException ignore) {
+            // Node may be starting or stopping
+        }
     }
 
     /**

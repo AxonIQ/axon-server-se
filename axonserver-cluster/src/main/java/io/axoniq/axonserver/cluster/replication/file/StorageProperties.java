@@ -19,7 +19,7 @@ public class StorageProperties {
      * Delay to actually do the clear of the buffer when removing a file from primary storage (in seconds)
      */
     private int primaryCleanupDelay = 5;
-    private int segmentSize = 1024*1024*16;
+    private int segmentSize = 1024 * 1024 * 16;
     private long numberOfSegments = 1000;
     /**
      * Delay to actually do the clear of the buffer when removing a file from secondary storage (in seconds)

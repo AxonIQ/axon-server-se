@@ -109,7 +109,7 @@ public class LogEntryApplierTest {
         logEntryStore.appendEntry(Collections.singletonList(anEntry));
         processorStore.updateCommit(1, 0);
 
-        assertWithin(100, TimeUnit.MILLISECONDS, () -> {
+        assertWithin(1000, TimeUnit.MILLISECONDS, () -> {
             try {
                 verify(aLogEntryConsumer).consumeLogEntry(GROUP_ID, anEntry);
             } catch (Exception e) {
@@ -133,7 +133,7 @@ public class LogEntryApplierTest {
         logEntryStore.appendEntry(Collections.singletonList(anEntry));
         processorStore.updateCommit(1, 0);
 
-        assertWithin(100, TimeUnit.MILLISECONDS, () -> {
+        assertWithin(1000, TimeUnit.MILLISECONDS, () -> {
             try {
                 verify(newConfigurationConsumer).consume(config);
             } catch (Exception e) {
@@ -167,7 +167,7 @@ public class LogEntryApplierTest {
         logEntryStore.appendEntry(Collections.singletonList(anEntry));
         processorStore.updateCommit(1, 0);
 
-        assertWithin(500, TimeUnit.MILLISECONDS, () -> verify(lastLogEntryAppliedConsumer).accept(anEntry));
+        assertWithin(1500, TimeUnit.MILLISECONDS, () -> verify(lastLogEntryAppliedConsumer).accept(anEntry));
     }
 
     @Test

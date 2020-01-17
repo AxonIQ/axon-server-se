@@ -102,8 +102,16 @@ public class RaftServerTest {
                 assertEquals(futures.length, successCount.get());
                 Thread.sleep(100);
         } finally {
-            clusterNodes.forEach((id, node) -> node.stop());
+            clusterNodes.forEach((id, node) -> stop(node));
             raftServers.forEach(RaftServer::stop);
+        }
+    }
+
+    private void stop(RaftNode node) {
+        try {
+            node.stop();
+        } catch (Exception ex) {
+
         }
     }
 

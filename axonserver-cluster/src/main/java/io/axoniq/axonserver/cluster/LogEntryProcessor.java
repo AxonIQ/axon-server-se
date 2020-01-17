@@ -27,7 +27,8 @@ public class LogEntryProcessor {
         this.processorStore = processorStore;
     }
 
-    public void apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
+    public ApplyResult apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
+        ApplyResult result = ApplyResult.NO_WORK;
         if (applyRunning.compareAndSet(false, true)) {
             try {
                 if (processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
@@ -40,6 +41,7 @@ public class LogEntryProcessor {
                             beforeCommit = entry.getIndex() <= processorStore.commitIndex();
                             if (beforeCommit) {
                                 consumer.accept(entry);
+                                result = ApplyResult.APPLIED;
                                 processorStore.updateLastApplied(entry.getIndex(), entry.getTerm());
                                 logAppliedListeners.forEach(listener -> listener.accept(entry));
                             }
@@ -50,6 +52,7 @@ public class LogEntryProcessor {
                 }
             } catch (LogEntryApplyException ex) {
                 // Already logged
+                result = ApplyResult.FAILED;
             } catch (Exception ex) {
                 String error = String.format("%s: Apply failed last applied : %d, commitIndex: %d, %s",
                                              processorStore.groupId(),
@@ -61,10 +64,14 @@ public class LogEntryProcessor {
                     lastError = error;
                     logger.error(lastError);
                 }
+                result = ApplyResult.FAILED;
             } finally {
                 applyRunning.set(false);
             }
+        } else {
+            result = ApplyResult.RUNNING;
         }
+        return result;
     }
 
     public void markCommitted(long committedIndex, long term) {

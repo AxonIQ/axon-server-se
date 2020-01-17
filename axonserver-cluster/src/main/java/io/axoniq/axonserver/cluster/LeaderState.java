@@ -27,6 +27,7 @@ import reactor.core.publisher.FluxSink;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -369,6 +370,9 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public Iterator<ReplicatorPeerStatus> replicatorPeers() {
+        if (replicators == null) {
+            return Collections.emptyIterator();
+        }
         return replicators.replicatorPeerMap.values()
                                             .stream()
                                             .filter(peer -> !replicators.nonVotingReplicaMap.containsKey(peer.nodeId()))

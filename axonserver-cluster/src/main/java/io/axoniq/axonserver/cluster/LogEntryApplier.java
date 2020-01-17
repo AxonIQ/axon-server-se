@@ -26,11 +26,11 @@ import static java.lang.Math.min;
 class LogEntryApplier {
 
     private static final int MAX_DELAY_MILLIS = 60_000;
-
-    private AtomicLong currentDelayMillis = new AtomicLong(0);
-
+    private static final int MAX_NO_WORK_DELAY_MILLIS = 200;
+    private static final int MIN_DELAY_MILLIS = 1;
     private static final Logger logger = LoggerFactory.getLogger(LogEntryApplier.class);
-
+    public static final long LONG_PERIOD_WITHOUT_MESSAGES = TimeUnit.MINUTES.toMillis(5);
+    public static final long MEDIUM_PERIOD_WITHOUT_MESSAGES = TimeUnit.MINUTES.toMillis(1);
     private final RaftGroup raftGroup;
     private final Scheduler scheduler;
     private final Map<String, LogEntryConsumer> logEntryConsumers = new ConcurrentHashMap<>();
@@ -38,6 +38,8 @@ class LogEntryApplier {
     private final AtomicReference<ScheduledRegistration> applyTaskRef = new AtomicReference<>();
     private final AtomicReference<Exception> lastError = new AtomicReference<>();
     private final NewConfigurationConsumer newConfigurationConsumer;
+    private AtomicLong currentDelayMillis = new AtomicLong(0);
+    private AtomicLong lastApplied = new AtomicLong(0);
 
     /**
      * Initializes Log Entry Applier.
@@ -59,7 +61,7 @@ class LogEntryApplier {
      * Starts applying log entries.
      */
     void start() {
-        schedule(1);
+        schedule(MAX_NO_WORK_DELAY_MILLIS);
     }
 
     /**
@@ -86,27 +88,49 @@ class LogEntryApplier {
     private void schedule(long delayMillis) {
         currentDelayMillis.set(delayMillis);
         ScheduledRegistration applyTask =
-                scheduler.scheduleWithFixedDelay(() -> raftGroup.logEntryProcessor()
-                                                                .apply(raftGroup.localLogEntryStore()::createIterator,
-                                                                       this::applyLogEntryConsumers),
-                                                 delayMillis,
-                                                 delayMillis,
-                                                 TimeUnit.MILLISECONDS);
+                scheduler.schedule(this::processorRun,
+                                   delayMillis,
+                                   TimeUnit.MILLISECONDS);
         applyTaskRef.set(applyTask);
     }
 
-    private void reschedule(long delayMillis) {
-        long toBeScheduled = min(delayMillis, MAX_DELAY_MILLIS);
-        if (currentDelayMillis.get() == toBeScheduled) {
-            return;
+    private void processorRun() {
+        switch (raftGroup.logEntryProcessor()
+                         .apply(raftGroup.localLogEntryStore()::createIterator,
+                                this::applyLogEntryConsumers)) {
+            case FAILED:
+                long newSchedule = min(MAX_DELAY_MILLIS, 2 * currentDelayMillis.get());
+                schedule(newSchedule);
+                break;
+            case RUNNING:
+                break;
+            case APPLIED:
+                lastApplied.set(System.currentTimeMillis());
+                schedule(MIN_DELAY_MILLIS);
+                break;
+            case NO_WORK:
+                schedule(calculateDelay());
+                break;
         }
-        stop();
-        schedule(toBeScheduled);
     }
 
-    private void applyLogEntryConsumers(Entry e) {
-        logger.trace("{} in term {}: apply {}", groupId(), currentTerm(), e.getIndex());
-       
+    private long calculateDelay() {
+        long timeSinceLastApply = System.currentTimeMillis() - lastApplied.get();
+        if (timeSinceLastApply > LONG_PERIOD_WITHOUT_MESSAGES) {
+            return MAX_NO_WORK_DELAY_MILLIS;
+        }
+        if (timeSinceLastApply > MEDIUM_PERIOD_WITHOUT_MESSAGES) {
+            return MAX_NO_WORK_DELAY_MILLIS / 10;
+        }
+
+        return MIN_DELAY_MILLIS;
+    }
+
+    public void applyLogEntryConsumers(Entry e) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("{} in term {}: apply {}", groupId(), currentTerm(), e.getIndex());
+        }
+
         try {
             if (e.hasNewConfiguration()) {
                 logger.info("{} in term {}: Received new configuration {}.",
@@ -135,12 +159,9 @@ class LogEntryApplier {
                         e.getIndex(),
                         newSchedule,
                         ex);
-            reschedule(newSchedule);
             // TODO: 6/12/2019 rollback transaction?
             throw new LogEntryApplyException("Failed to apply entry", ex);
         }
-        
-        reschedule(1);
         logEntryAppliedConsumer.accept(e);
     }
 
