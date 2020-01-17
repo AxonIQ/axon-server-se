@@ -1,0 +1,13 @@
+[Unit]
+Description=Axon Server Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStartPre=/var/lib/axonserver/setup.sh
+ExecStart=/bin/sudo -Hu axonserver /bin/bash -cl /var/lib/axonserver/startup.sh
+ExecStop=/bin/sudo -Hu axonserver /bin/bash -cl /var/lib/axonserver/shutdown.sh
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

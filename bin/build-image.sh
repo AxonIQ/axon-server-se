@@ -1,9 +1,12 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(dirname $0)
+
 SHOW_USAGE=n
 
 VERSION=
-MVN_MODULE=
+TARGET=
+TARGET_DEF=target/packer
 IMG_VERSION=
 IMG_FAMILY=
 IMG_FAMILY_DEF=axonserver
@@ -20,7 +23,15 @@ NO_PUBLIC_IP=true
 
 while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
 
-  if [[ "$1" == "--project" ]] ; then
+  if [[ "$1" == "--target" ]] ; then
+    if [[ $# -gt 1 ]] ; then
+      TARGET=$2
+      shift 2
+    else
+      echo "Missing directory name after \"--target\"."
+      SHOW_USAGE=y
+    fi
+  elif [[ "$1" == "--project" ]] ; then
     if [[ $# -gt 1 ]] ; then
       PROJECT=$2
       shift 2
@@ -50,14 +61,6 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
       shift 2
     else
       echo "Missing subnet name after \"--subnet\"."
-      SHOW_USAGE=y
-    fi
-  elif [[ "$1" == "--mvn-module" ]] ; then
-    if [[ $# -gt 1 ]] ; then
-      MVN_MODULE=$2
-      shift 2
-    else
-      echo "Missing module name after \"--mvn-module\"."
       SHOW_USAGE=y
     fi
   elif [[ "$1" == "--img-version" ]] ; then
@@ -109,6 +112,9 @@ else
   SHOW_USAGE=y
 fi
 
+if [[ "${TARGET}" == "" ]] ; then
+  TARGET=${TARGET_DEF}
+fi
 if [[ "${IMG_VERSION}" == "" ]] ; then
   IMG_VERSION=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
 fi
@@ -133,9 +139,6 @@ fi
 if [[ "${SUBNET}" == "" ]] ; then
   SUBNET=${NETWORK}
 fi
-if [[ "${MVN_MODULE}" != "" ]] ; then
-  MVN_MODULE="${MVN_MODULE}/"
-fi
 
 if [[ "${IMG_FAMILY}" == "" ]] ; then
   echo "No Image family set."
@@ -143,21 +146,24 @@ if [[ "${IMG_FAMILY}" == "" ]] ; then
 fi
 
 if [[ "${SHOW_USAGE}" == "y" ]] ; then
-    echo "Usage: $0 [OPTIONS] <version>"
-    echo ""
-    echo "Options:"
-    echo "  --project <gce-project>   The GCE project to create the image in, default \"${PROJECT_DEF}\"."
-    echo "  --zone <gce-zone>         The GCE zone to create the image (and run the instance to build it from), default \"${ZONE_DEF}\"."
-    echo "  --network <gce-network>   The GCE network to use, default \"<project-name>-vpc\"."
-    echo "  --subnet <gce-subnet>     The GCE subnet to use, defaults to the same name is the network."
-    echo "  --mvn-module <name>       The Maven module containing the sources and JAR. Default is the root/parent project."
-    echo "  --img-version <version>   The version suffix to append to the image name. Default is the project version in lowercase."
-    echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
-    echo "  --img-name <name>         The name for the image. Default is the family name, a dash, and the version."
-    echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
-    echo "  --public-ip               Use a public IP during build."
-    exit 1
+  echo "Usage: $0 [OPTIONS] <version>"
+  echo ""
+  echo "Options:"
+  echo "  --target <dir-name>       The name for the target directory. Default is \"${TARGET_DEF}\"."
+  echo "  --project <gce-project>   The GCE project to create the image in, default \"${PROJECT_DEF}\"."
+  echo "  --zone <gce-zone>         The GCE zone to create the image (and run the instance to build it from), default \"${ZONE_DEF}\"."
+  echo "  --network <gce-network>   The GCE network to use, default \"<project-name>-vpc\"."
+  echo "  --subnet <gce-subnet>     The GCE subnet to use, defaults to the same name is the network."
+  echo "  --img-version <version>   The version suffix to append to the image name. Default is the project version in lowercase."
+  echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
+  echo "  --img-name <name>         The name for the image. Default is the family name, a dash, and the version."
+  echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
+  echo "  --public-ip               Use a public IP during build."
+  exit 1
 fi
+
+mkdir -p target
+${SCRIPT_DIR}/prep-files.sh --target ${TARGET} ${VERSION}
 
 LABEL=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
 cat > target/application-image.json <<EOF
@@ -184,45 +190,34 @@ cat > target/application-image.json <<EOF
   ],
   "provisioners": [
     {
-        "type": "file",
-        "source": "target/axoniq-${IMG_FAMILY}.conf",
-        "destination": "/tmp/axoniq-${IMG_FAMILY}.conf"
+        "type": "shell",
+        "inline": [ "mkdir /tmp/${LABEL}"]
     },
     {
         "type": "file",
-        "source": "${MVN_MODULE}target/${IMG_FAMILY}-${VERSION}-exec.jar",
-        "destination": "/tmp/${IMG_FAMILY}.jar"
-    },
-    {
-        "type": "file",
-        "source": "${MVN_MODULE}src/main/gce/axonserver.yml",
-        "destination": "/tmp/axonserver.yml"
-    },
-    {
-        "type": "file",
-        "source": "target/startup.sh",
-        "destination": "/tmp/startup.sh"
-    },
-    {
-        "type": "file",
-        "source": "${MVN_MODULE}src/main/gce/mount-disk.sh",
-        "destination": "/tmp/mount-disk.sh"
+        "source": "${TARGET}/",
+        "destination": "/tmp/${LABEL}/"
     },
     {
       "type": "shell",
       "inline": [ "sudo yum -y update",
-                  "sudo yum -y install java-11-openjdk-headless dejavu-sans-fonts urw-fonts wget curl",
-                  "sudo adduser -d /opt/${IMG_USER} -U ${IMG_USER}",
+                  "sudo yum -y install java-11-openjdk-headless dejavu-sans-fonts urw-fonts wget curl jq",
+                  "sudo adduser -d /var/lib/axonserver -U axonserver",
+                  "sudo cp /tmp/${LABEL}/* /var/lib/axonserver/",
+                  "sudo mkdir -p /var/log/axonserver",
+                  "sudo chown -R axonserver:axonserver /var/lib/axonserver /var/log/axonserver",
+                  "echo ''",
+                  "echo /var/lib/axonserver",
+                  "sudo ls -lF /var/lib/axonserver/",
+                  "echo ''",
                   "curl -sSO https://dl.google.com/cloudagents/install-logging-agent.sh",
                   "sudo bash ./install-logging-agent.sh",
-                  "sudo cp /tmp/axonserver.yml /opt/${IMG_USER}/",
-                  "sudo cp /tmp/${IMG_FAMILY}.jar /opt/${IMG_USER}/",
-                  "sudo cp /tmp/startup.sh /opt/${IMG_USER}/",
-                  "sudo cp /tmp/mount-disk.sh /opt/${IMG_USER}/",
-                  "sudo chown -R ${IMG_USER}:${IMG_USER} /opt/${IMG_USER}",
                   "sudo mkdir -p /etc/google-fluentd/config.d",
-                  "sudo cp /tmp/axoniq-${IMG_FAMILY}.conf /etc/google-fluentd/config.d/",
-                  "sudo service google-fluentd restart" ]
+                  "sudo cp /tmp/${LABEL}/axoniq-axonserver.conf /etc/google-fluentd/config.d/",
+                  "sudo service google-fluentd restart",
+                  "sudo rm -rf /tmp/${LABEL}",
+                  "sudo cp /var/lib/axonserver/axonserver.service /etc/systemd/system/axonserver.service",
+                  "sudo systemctl enable axonserver.service" ]
     }
   ]
 }

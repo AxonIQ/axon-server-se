@@ -47,13 +47,16 @@ podTemplate(label: label,
             envVars: [
                 envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ])
+            ]),
+        containerTemplate(name: 'gcloud', image: 'eu.gcr.io/axoniq-devops/gcloud-axoniq:latest', alwaysPullImage: true,
+            command: 'cat', ttyEnabled: true)
     ],
     volumes: [
         hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
         secretVolume(secretName: 'cacerts', mountPath: '/docker-java-home/lib/security'),
         secretVolume(secretName: 'dockercfg', mountPath: '/dockercfg'),
         secretVolume(secretName: 'jenkins-nexus', mountPath: '/nexus_settings'),
+        secretVolume(secretName: 'test-settings', mountPath: '/axoniq'),
         secretVolume(secretName: 'maven-settings', mountPath: '/maven_settings')
     ]) {
         node(label) {
@@ -106,6 +109,17 @@ podTemplate(label: label,
                     finally {
                         junit '**/target/surefire-reports/TEST-*.xml'
                         slackReport = slackReport + "\n" + getTestSummary()
+                    }
+                }
+            }
+
+            def testSettings = readProperties file: '/axoniq/test-settings.properties'
+            def gceZone = testSettings ['io.axoniq.axonserver.infrastructure.gce.zone']
+
+            stage ('VM image build') {
+                if (relevantBranch(gitBranch, dockerBranches)) {
+                    container("gcloud") {
+                        sh "bin/build-image.sh --project ${gcloudProjectName} --zone ${gceZone} --img-family axonserver-enterprise ${pomVersion}"
                     }
                 }
             }
