@@ -62,7 +62,6 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
     private volatile LocalEventStore localEventStore;
-    private Map<String, Long> deletedContexts = new ConcurrentHashMap<>();
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
                               MessagingPlatformConfiguration messagingPlatformConfiguration,
@@ -260,10 +259,6 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         if(raftGroup != null) return raftGroup.localNode();
 
         synchronized (raftGroupMap) {
-            long deleted = deletedContexts.getOrDefault(groupId, 0L);
-            if( deleted + 5000 > System.currentTimeMillis()) {
-                throw new RuntimeException(nodeId + " was recently removed from " + groupId);
-            }
             raftGroup = raftGroupMap.get(groupId);
             if(raftGroup == null) {
                 raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE, null);
@@ -327,7 +322,6 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     public void delete(String context, boolean preserveEventStore) {
-        deletedContexts.put(context, System.currentTimeMillis());
         raftGroupMap.remove(context);
         if( context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
