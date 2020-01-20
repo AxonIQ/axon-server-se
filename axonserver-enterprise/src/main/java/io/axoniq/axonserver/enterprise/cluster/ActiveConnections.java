@@ -43,6 +43,6 @@ public class ActiveConnections implements Iterable<String> {
      */
     @EventListener
     public void on(ClusterEvents.AxonServerInstanceDisconnected disconnected) {
-        activeConnections.add(disconnected.getNodeName());
+        activeConnections.remove(disconnected.getNodeName());
     }
 }
