@@ -12,11 +12,20 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserController;
+import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
+import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
+import io.axoniq.axonserver.grpc.InstructionAckSource;
+import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
+import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
+import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.file.DatafileEventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
@@ -27,15 +36,23 @@ import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MetricCollector;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
+import io.axoniq.axonserver.version.VersionInfoProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.ApplicationEventMulticaster;
+import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -50,6 +67,8 @@ import java.util.Set;
  */
 @Configuration
 public class AxonServerStandardConfiguration {
+
+    private final Logger logger = LoggerFactory.getLogger(AxonServerStandardConfiguration.class);
 
     @Bean
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
@@ -101,6 +120,12 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(EventStoreExistChecker.class)
+    public EventStoreExistChecker eventStoreExistChecker(EmbeddedDBProperties embeddedDBProperties) {
+        return new DatafileEventStoreExistChecker(embeddedDBProperties);
+    }
+
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -149,4 +174,53 @@ public class AxonServerStandardConfiguration {
         return Clock.systemUTC();
     }
 
+    @Bean
+    @Qualifier("platformInstructionAckSource")
+    public InstructionAckSource<PlatformOutboundInstruction> platformInstructionAckSource() {
+        return new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction.newBuilder()
+                                                                                   .setAck(ack)
+                                                                                   .build());
+    }
+
+    @Bean
+    @Qualifier("commandInstructionAckSource")
+    public InstructionAckSource<SerializedCommandProviderInbound> commandInstructionAckSource() {
+        return new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(CommandProviderInbound
+                                                                                                     .newBuilder()
+                                                                                                     .setAck(ack)
+                                                                                                     .build()));
+    }
+
+    @Bean
+    @Qualifier("queryInstructionAckSource")
+    public InstructionAckSource<QueryProviderInbound> queryInstructionAckSource() {
+        return new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
+                                                                            .setAck(ack)
+                                                                            .build());
+    }
+
+    /**
+     * Creates a default version information provider bean.
+     *
+     * @return a default version information provider
+     */
+    @Bean
+    @ConditionalOnMissingBean(VersionInfoProvider.class)
+    public VersionInfoProvider versionInfoProvider() {
+        return new DefaultVersionInfoProvider();
+    }
+
+    @Bean
+    public ApplicationEventMulticaster applicationEventMulticaster() {
+        return new SimpleApplicationEventMulticaster() {
+            @Override
+            protected void invokeListener(ApplicationListener<?> listener, ApplicationEvent event) {
+                try {
+                    super.invokeListener(listener, event);
+                } catch (RuntimeException ex) {
+                    logger.warn("Invoking listener {} failed", listener, ex);
+                }
+            }
+        };
+    }
 }

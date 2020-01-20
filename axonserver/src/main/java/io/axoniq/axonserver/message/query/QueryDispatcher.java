@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -37,9 +38,6 @@ import java.util.stream.Collectors;
  */
 @Component("QueryDispatcher")
 public class QueryDispatcher {
-    private static final String QUERY_RATE_NAME = "axon.queries";
-    private static final String ACTIVE_QUERY_GAUGE = "axon.queries.active";
-
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
     private final QueryCache queryCache;
@@ -51,7 +49,7 @@ public class QueryDispatcher {
         this.registrationCache = registrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
-        queryMetricsRegistry.gauge(ACTIVE_QUERY_GAUGE, queryCache, QueryCache::size);
+        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, QueryCache::size);
     }
 
 
@@ -63,7 +61,9 @@ public class QueryDispatcher {
             if( queryInformation.forward(client, queryResponse) <= 0) {
                 queryCache.remove(queryInformation.getKey());
                 if (!proxied) {
-                    queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client),
+                    queryMetricsRegistry.add(queryInformation.getQuery(),
+                                             queryInformation.getSourceClientId(),
+                                             new ClientIdentification(queryInformation.getContext(), client),
                                              System.currentTimeMillis() - queryInformation.getTimestamp());
 
                 }
@@ -89,7 +89,10 @@ public class QueryDispatcher {
                 queryCache.remove(queryInformation.getKey());
             }
             if (!proxied) {
-                queryMetricsRegistry.add(queryInformation.getQuery(), new ClientIdentification(queryInformation.getContext(), client), System.currentTimeMillis() - queryInformation.getTimestamp());
+                queryMetricsRegistry.add(queryInformation.getQuery(),
+                                         queryInformation.getSourceClientId(),
+                                         new ClientIdentification(queryInformation.getContext(), client),
+                                         System.currentTimeMillis() - queryInformation.getTimestamp());
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);
@@ -137,7 +140,8 @@ public class QueryDispatcher {
             if( nrOfResults > 0) {
                 expectedResults = Math.min(nrOfResults, expectedResults);
             }
-            QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(), queryDefinition,
+            QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(),
+                                                                     query.getClientId(), queryDefinition,
                                                                      handlers.stream().map(QueryHandler::getClientId).collect(Collectors.toSet()),
                                                                      expectedResults, callback,
                                                                      onCompleted);
@@ -147,7 +151,9 @@ public class QueryDispatcher {
     }
 
     public MeterFactory.RateMeter queryRate(String context) {
-        return queryRatePerContext.computeIfAbsent(context, c -> queryMetricsRegistry.rateMeter(QUERY_RATE_NAME, c));
+        return queryRatePerContext.computeIfAbsent(context,
+                                                   c -> queryMetricsRegistry
+                                                           .rateMeter(c, BaseMetricName.AXON_QUERY_RATE));
     }
 
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
@@ -174,7 +180,9 @@ public class QueryDispatcher {
             }
             String key = query.getMessageIdentifier() + "/" + client;
             QueryInformation queryInformation = new QueryInformation(key,
-                    queryDefinition, Collections.singleton(queryHandler.getClientId()),
+                                                                     serializedQuery.query().getClientId(),
+                                                                     queryDefinition,
+                                                                     Collections.singleton(queryHandler.getClientId()),
                                                                      expectedResults,
                                                                      callback,
                                                                      onCompleted);

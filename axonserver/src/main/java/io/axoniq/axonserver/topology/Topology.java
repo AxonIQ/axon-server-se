@@ -75,4 +75,8 @@ public interface Topology {
     default Iterable<String> getMyStorageContextNames() {
         return getMyContextNames();
     }
+
+    default boolean validContext(String context) {
+        return true;
+    }
 }

@@ -27,9 +27,13 @@ public class CommandInformation {
     private final long timestamp = System.currentTimeMillis();
     private final ClientIdentification clientId;
     private final String componentName;
+    private final String sourceClientId;
 
-    public CommandInformation(String requestIdentifier, Consumer<SerializedCommandResponse> responseConsumer, ClientIdentification clientId, String componentName) {
+    public CommandInformation(String requestIdentifier, String sourceClientId,
+                              Consumer<SerializedCommandResponse> responseConsumer, ClientIdentification clientId,
+                              String componentName) {
         this.requestIdentifier = requestIdentifier;
+        this.sourceClientId = sourceClientId;
         this.responseConsumer = responseConsumer;
         this.clientId = clientId;
         this.componentName = componentName;
@@ -67,5 +71,9 @@ public class CommandInformation {
                                                          .setErrorMessage(ErrorMessage.newBuilder().setMessage("Cancelled by AxonServer due to timeout"))
                                                          .build();
         responseConsumer.accept(new SerializedCommandResponse(commandResponse));
+    }
+
+    public String getSourceClientId() {
+        return sourceClientId;
     }
 }

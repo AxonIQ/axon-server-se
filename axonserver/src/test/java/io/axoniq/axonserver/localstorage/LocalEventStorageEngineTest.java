@@ -13,8 +13,12 @@ import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
+import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import java.io.ByteArrayInputStream;
@@ -40,6 +44,31 @@ public class LocalEventStorageEngineTest {
 
     @Before
     public void setup() {
+        StorageTransactionManagerFactory transactionManagerFactory = eventStore -> new StorageTransactionManager() {
+            @Override
+            public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
+                CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
+                pendingTransactions.add(pendingTransaction);
+                return pendingTransaction;
+            }
+
+            @Override
+            public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
+                return () -> {
+                };
+            }
+
+            @Override
+            public void cancelPendingTransactions() {
+                pendingTransactions.forEach(p -> p
+                        .completeExceptionally(new RuntimeException("Transaction cancelled")));
+            }
+
+            @Override
+            public void deleteAllEventData() {
+
+            }
+        };
         testSubject = new LocalEventStore(new EventStoreFactory() {
             @Override
             public EventStorageEngine createEventStorageEngine(String context) {
@@ -50,41 +79,14 @@ public class LocalEventStorageEngineTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return new FakeEventStore(EventType.SNAPSHOT);
             }
-
-            @Override
-            public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
-                return new StorageTransactionManager() {
-                    @Override
-                    public CompletableFuture<Long> store(List<SerializedEvent> eventList) {
-                        CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
-                        pendingTransactions.add(pendingTransaction);
-                        return pendingTransaction;
-                    }
-
-                    @Override
-                    public Runnable reserveSequenceNumbers(List<SerializedEvent> eventList) {
-                        return () -> {
-                        };
-                    }
-
-                    @Override
-                    public void cancelPendingTransactions() {
-                        pendingTransactions.forEach(p -> p.completeExceptionally(new RuntimeException("Transaction cancelled")));
-                    }
-
-                    @Override
-                    public void deleteAllEventData() {
-
-                    }
-                };
-            }
-        }, 5, 1000);
+        }, new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
+                                          transactionManagerFactory, c -> true, 5, 1000);
         testSubject.initContext(SAMPLE_CONTEXT, false);
     }
 
     @Test
     public void deleteContext() {
-        testSubject.deleteContext(SAMPLE_CONTEXT);
+        testSubject.deleteContext(SAMPLE_CONTEXT, false);
     }
 
     @Test

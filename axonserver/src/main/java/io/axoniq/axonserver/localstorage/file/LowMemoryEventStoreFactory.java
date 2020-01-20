@@ -13,7 +13,6 @@ import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
@@ -52,10 +51,5 @@ public class LowMemoryEventStoreFactory implements EventStoreFactory {
                                                                  embeddedDBProperties.getEvent());
         first.next(second);
         return first;
-    }
-
-    @Override
-    public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
-        return storageTransactionManagerFactory.createTransactionManager(eventStorageEngine);
     }
 }

@@ -82,12 +82,12 @@ public class MetricsRestControllerTest {
 
     @Test
     public void getCommandMetrics() {
-        List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics(null);
+        List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics();
         assertEquals(1, commands.size());
         assertEquals(testclient.toString(), commands.get(0).getClientId());
         assertEquals(0, commands.get(0).getCount());
-        commandMetricsRegistry.add("Sample", testclient, 1);
-        commands = testSubject.getCommandMetrics(null);
+        commandMetricsRegistry.add("Sample", "Source", testclient, 1);
+        commands = testSubject.getCommandMetrics();
         assertEquals(1, commands.size());
         assertEquals(testclient.toString(), commands.get(0).getClientId());
         assertEquals(1, commands.get(0).getCount());
@@ -95,14 +95,14 @@ public class MetricsRestControllerTest {
 
     @Test
     public void getQueryMetrics() {
-        List<QueryMetricsRegistry.QueryMetric> queries = testSubject.getQueryMetrics(null);
+        List<QueryMetricsRegistry.QueryMetric> queries = testSubject.getQueryMetrics();
         assertEquals(1, queries.size());
         assertEquals(queryClient.toString(), queries.get(0).getClientId());
         assertEquals(0, queries.get(0).getCount());
 
-        queryMetricsRegistry.add(new QueryDefinition("context", "query"), queryClient, 50);
+        queryMetricsRegistry.add(new QueryDefinition("context", "query"), "Source", queryClient, 50);
 
-        queries = testSubject.getQueryMetrics(null);
+        queries = testSubject.getQueryMetrics();
         assertEquals(1, queries.size());
         assertEquals(queryClient.toString(), queries.get(0).getClientId());
         assertEquals(1, queries.get(0).getCount());

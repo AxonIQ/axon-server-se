@@ -20,26 +20,26 @@ import static org.junit.Assert.*;
  */
 public class CompositeMetricTest {
 
-    CompositeMetric compositeMetric = new CompositeMetric(asList(new FakeClusterMetric(1, 4,8,9),
-                                                                 new FakeClusterMetric(2, 3,5,3)));
+    CompositeMetric compositeMetric = new CompositeMetric(asList(new FakeClusterMetric(1, 2, 4, 8, 9),
+                                                                 new FakeClusterMetric(2, 4, 3, 5, 3)));
 
     @Test
-    public void size() {
-        assertEquals(3L, compositeMetric.size());
+    public void count() {
+        assertEquals(3L, compositeMetric.count());
     }
 
     @Test
     public void min() {
-        assertEquals(3L, compositeMetric.min());
+        assertEquals(3, compositeMetric.min(), 0);
     }
 
     @Test
     public void max() {
-        assertEquals(8L, compositeMetric.max());
+        assertEquals(8, compositeMetric.max(), 0);
     }
 
     @Test
     public void mean() {
-        assertEquals((double) 5, compositeMetric.mean(), 0);
+        assertEquals(5, compositeMetric.mean(), 0);
     }
 }

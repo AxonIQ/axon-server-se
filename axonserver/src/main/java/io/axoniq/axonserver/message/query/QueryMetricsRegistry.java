@@ -13,9 +13,10 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.Metrics;
-import io.axoniq.axonserver.metric.SnapshotMetric;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
 
 /**
+ * Registry for metrics regarding query execution.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Service("QueryMetricsRegistry")
 public class QueryMetricsRegistry {
@@ -36,44 +39,96 @@ public class QueryMetricsRegistry {
     private final Map<String, Timer> timerMap = new ConcurrentHashMap<>();
     private final MeterFactory meterFactory;
 
+    /**
+     * Constructor of the registry.
+     *
+     * @param meterFactory factory to create meters.
+     */
     public QueryMetricsRegistry(MeterFactory meterFactory) {
         this.meterFactory = meterFactory;
     }
 
-    public void add(QueryDefinition query, ClientIdentification clientId, long duration) {
+    /**
+     * Registers the duration of the handling of a query by a client.
+     * @param query the name of the query
+     * @param sourceClientId the source application requesting the query
+     * @param clientId the application handling the query
+     * @param duration the duration
+     */
+    public void add(QueryDefinition query, String sourceClientId, ClientIdentification clientId, long duration) {
         try {
-            timer(query, clientId).record(duration, TimeUnit.MILLISECONDS);
+            timer(query, sourceClientId, clientId).record(duration, TimeUnit.MILLISECONDS);
         } catch( Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
+    /**
+     * Retrieves the number of times that a query has been handled by a specific client.
+     * @param query the definition of the query
+     * @param clientId the client handling the query
+     * @return cluster metric with access to the number of times the client has handled the query
+     */
     public ClusterMetric clusterMetric(QueryDefinition query, ClientIdentification clientId){
-        String metricName = metricName(query, clientId);
-        return new CompositeMetric(new SnapshotMetric(timer(query, clientId).takeSnapshot()), new Metrics(metricName, meterFactory.clusterMetrics()));
+        Tags tags = Tags.of(MeterFactory.CONTEXT, clientId.getContext(),
+                            MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                            MeterFactory.TARGET, clientId.getClient());
+        return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_QUERY, tags),
+                                   new Metrics(BaseMetricName.AXON_QUERY.metric(), tags, meterFactory.clusterMetrics()));
     }
 
 
-    private Timer timer(QueryDefinition query, ClientIdentification clientId) {
-        String metricName = metricName(query, clientId);
-        return timerMap.computeIfAbsent(metricName, meterFactory::timer);
+    private Timer timer(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
+        String metricName = metricName(query, sourceClientId, clientId);
+        return timerMap.computeIfAbsent(metricName, n ->
+                meterFactory.timer(BaseMetricName.AXON_QUERY,
+                                   Tags.of(
+                                           MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                                           MeterFactory.CONTEXT, clientId.getContext(),
+                                           MeterFactory.SOURCE, sourceClientId,
+                                           MeterFactory.TARGET, clientId.getClient())));
     }
 
-    private String metricName(QueryDefinition query, ClientIdentification clientId) {
-        return String.format( "axon.query.%s.%s", query.getQueryName(), clientId.metricName());
+    private String metricName(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
+        return String.format("%s.%s.%s", query.getQueryName(), sourceClientId, clientId.metricName());
     }
 
+    /**
+     * Retrieves the number of times that a query has been handled by a specific client.
+     * @param query the definition of the query
+     * @param clientId the client handling the query
+     * @param componentName the client application name
+     * @return QueryMetric containing the number of times that the query has been handled by this client
+     */
     public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
         ClusterMetric clusterMetric = clusterMetric(query, clientId);
-        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.size());
+        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.count());
     }
 
-    public <T> Gauge gauge(String name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+    /**
+     * Creates a gauge meter without any tags
+     *
+     * @param name          the name of the gauge
+     * @param objectToWatch the object to watch
+     * @param gaugeFunction function that will be applied on the object to retrieve the gauge value
+     * @param <T>           type of object to watch
+     * @return a gauge object
+     */
+    public <T> Gauge gauge(BaseMetricName name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return meterFactory.gauge(name, objectToWatch, gaugeFunction);
     }
 
-    public MeterFactory.RateMeter rateMeter(String... name) {
-        return meterFactory.rateMeter(name);
+    /**
+     * Creates a meter that will monitor the rate of certain events. The RateMeter will expose events/second for the
+     * last 1/5/15 minutes and a
+     * total count. The meter will have the context as a tag.
+     *
+     * @param context   the name of the context
+     * @param meterName the name of the meter
+     * @return a RateMeter object
+     */
+    public MeterFactory.RateMeter rateMeter(String context, BaseMetricName meterName) {
+        return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
     }
 
 
@@ -83,11 +138,11 @@ public class QueryMetricsRegistry {
         private final String componentName;
         private final long count;
 
-        QueryMetric(QueryDefinition queryDefinition, String clientId, String componentName, long count) {
+        QueryMetric(QueryDefinition queryDefinition, String clientId, String componentName, double count) {
             this.queryDefinition = queryDefinition;
             this.clientId = clientId;
             this.componentName = componentName;
-            this.count = count;
+            this.count = (long) count;
         }
 
         public QueryDefinition getQueryDefinition() {

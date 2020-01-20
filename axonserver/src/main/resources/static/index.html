@@ -104,12 +104,30 @@
 
         $(document).ready(function () {
             new Vue({
+                        el: "#logout",
+                        data: {
+                            user: null
+                        }, mounted() {
+                    axios.get("v1/public/user").then(
+                            response => {
+                                if (response.data && response.data.user) {
+                                    this.user = response.data.user;
+                                }
+                            });
+                }, methods: {
+                    loggedIn: function () {
+                        return this.user != null;
+                    }
+                }
+
+                    });
+            new Vue({
                         el: '#footer',
                         data: {
                             version: "Version"
                         }, mounted() {
-                    axios.get("actuator/info").then(response => {
-                        this.version = response.data.app.name + " " + response.data.app.version;
+                    axios.get("v1/public/version").then(response => {
+                        this.version = response.data.productName + " " + response.data.version;
                     });
                 }
                     });
@@ -207,7 +225,10 @@
 
 <article>
     <header>
-        <h1>AxonDashboard</h1>
+        <h1 style="float: left">AxonDashboard</h1>
+        <div id="logout" style="float:right; margin-top: 30px;">
+            <a v-if="loggedIn()" href="logout">Logout {{user}}</a>
+        </div>
     </header>
 
     <span id="pageContent">

@@ -26,18 +26,19 @@ public class SerializedCommandProviderInboundTest {
 
     @Test
     public void testSerializeDeserializeConfirmation() throws IOException {
-        Confirmation conformation = Confirmation.newBuilder()
-                                                .setSuccess(true)
-                                                .setMessageId("12345")
-                                                .build();
-        testSubject = new SerializedCommandProviderInbound(null, conformation);
+        InstructionAck instructionResult = InstructionAck.newBuilder()
+                                                         .setSuccess(true)
+                                                         .setInstructionId("12345")
+                                                         .build();
+        testSubject = new SerializedCommandProviderInbound(null, instructionResult);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         testSubject.writeTo(outputStream);
 
-        SerializedCommandProviderInbound parsed = (SerializedCommandProviderInbound) SerializedCommandProviderInbound.getDefaultInstance().getParserForType()
-                                                         .parseFrom(outputStream.toByteArray());
-        assertNotNull(parsed.getConfirmation());
-        assertEquals("12345", parsed.getConfirmation().getMessageId());
+        SerializedCommandProviderInbound parsed = (SerializedCommandProviderInbound) SerializedCommandProviderInbound
+                .getDefaultInstance().getParserForType()
+                .parseFrom(outputStream.toByteArray());
+        assertNotNull(parsed.getInstructionResult());
+        assertEquals("12345", parsed.getInstructionResult().getInstructionId());
     }
 
     @Test

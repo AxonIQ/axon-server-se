@@ -10,29 +10,33 @@
 package io.axoniq.axonserver.message.query.subscription.metric;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.UPDATE;
 
 /**
- * Created by Sara Pellegrini on 20/06/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 @Component
 public class QuerySubscriptionMetricRegistry  {
-    private final MeterRegistry localRegistry;
-    private final Function<String, ClusterMetric> clusterRegistry;
+
+    private static final String TAG_QUERY = "query";
+
+    private final MeterFactory localRegistry;
+    private final BiFunction<String, Tags, ClusterMetric> clusterMetricProvider;
     private final Map<String, String> queries = new ConcurrentHashMap<>();
     private final Map<String, String> contexts = new ConcurrentHashMap<>();
     private final Map<String, Counter> totalSubscriptionsMap = new ConcurrentHashMap<>();
@@ -40,19 +44,21 @@ public class QuerySubscriptionMetricRegistry  {
     private final Map<String, Counter> updatesMap = new ConcurrentHashMap<>();
 
 
-    public QuerySubscriptionMetricRegistry(MeterRegistry localRegistry,
-                                                 Function<String, ClusterMetric> clusterRegistry) {
+    public QuerySubscriptionMetricRegistry(MeterFactory localRegistry,
+                                           BiFunction<String, Tags, ClusterMetric> clusterMetricProvider) {
         this.localRegistry = localRegistry;
-        this.clusterRegistry = clusterRegistry;
+        this.clusterMetricProvider = clusterMetricProvider;
     }
 
     public HubSubscriptionMetrics get(String component, String query, String context) {
         AtomicInteger active = activeSubscriptionsMetric(query, context);
         Counter total = totalSubscriptionsMetric(query, context);
         Counter updates = updatesMetric(component,query, context);
-        return new HubSubscriptionMetrics(new CounterMetric(activeSubscriptionsMetricName(query, context), ()-> (long)active.get()),
-                                          new CounterMetric(total.getId().getName(), () -> (long)total.count()),
-                                          new CounterMetric(updates.getId().getName(), () -> (long)updates.count()), clusterRegistry);
+        return new HubSubscriptionMetrics(
+                Tags.of(MeterFactory.CONTEXT, context, TAG_QUERY, query),
+                new CounterMetric(activeSubscriptionsMetricName(query, context), () -> (long) active.get()),
+                new CounterMetric(total.getId().getName(), () -> (long)total.count()),
+                new CounterMetric(updates.getId().getName(), () -> (long) updates.count()), clusterMetricProvider);
     }
 
 
@@ -89,7 +95,11 @@ public class QuerySubscriptionMetricRegistry  {
 
         return activeSubscriptionsMap.computeIfAbsent(activeSubscriptionsMetricName(query, context), name -> {
             AtomicInteger atomicInt = new AtomicInteger(0);
-            Gauge.builder(name, atomicInt, AtomicInteger::get).register(localRegistry);
+            localRegistry.gauge(BaseMetricName.AXON_QUERY_SUBSCRIPTION_ACTIVE,
+                                Tags.of(MeterFactory.CONTEXT, context,
+                                        TAG_QUERY, query),
+                                atomicInt,
+                                AtomicInteger::get);
             return atomicInt;
             }
         );
@@ -106,11 +116,29 @@ public class QuerySubscriptionMetricRegistry  {
     }
 
     private Counter totalSubscriptionsMetric(String query, String context){
-        return totalSubscriptionsMap.computeIfAbsent(name(QuerySubscriptionMetricRegistry.class.getSimpleName(), query, context, "total"), name -> localRegistry.counter(name));
+        return totalSubscriptionsMap.computeIfAbsent(name(QuerySubscriptionMetricRegistry.class.getSimpleName(),
+                                                          query,
+                                                          context,
+                                                          "total"),
+                                                     name -> localRegistry
+                                                             .counter(BaseMetricName.AXON_QUERY_SUBSCRIPTION_TOTAL,
+                                                                      Tags.of(MeterFactory.CONTEXT,
+                                                                              context,
+                                                                              TAG_QUERY,
+                                                                              query)));
     }
 
     private Counter updatesMetric(String component, String query, String context){
-        return updatesMap.computeIfAbsent(name(QuerySubscriptionMetricRegistry.class.getSimpleName(), component, query, context, "updates"), name -> localRegistry.counter(name));
+        return updatesMap.computeIfAbsent(name(QuerySubscriptionMetricRegistry.class.getSimpleName(),
+                                               component,
+                                               query,
+                                               context,
+                                               "updates"),
+                                          name -> localRegistry.counter(BaseMetricName.AXON_QUERY_SUBSCRIPTION_UPDATES,
+                                                                        Tags.of(MeterFactory.CONTEXT,
+                                                                                context,
+                                                                                TAG_QUERY,
+                                                                                query)));
     }
 
 }

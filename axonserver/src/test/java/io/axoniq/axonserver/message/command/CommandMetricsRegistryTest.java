@@ -13,12 +13,18 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.runners.*;
 
-import static org.junit.Assert.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * @author Marc Gathier
@@ -36,9 +42,46 @@ public class CommandMetricsRegistryTest {
     @Test
     public void add() {
         ClientIdentification client1 = new ClientIdentification(Topology.DEFAULT_CONTEXT, "Client1");
-        testSubject.add("Command", client1, 1);
+//        testSubject.add("Command", client1, 1);
+//
+//        assertEquals(1L, testSubject.commandMetric("Command", client1, null).getCount());
+    }
 
-        assertEquals(1L, testSubject.commandMetric("Command", client1, null).getCount());
+
+    @Test
+    public void testRegistryWithLabels() {
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        Timer timer = meterRegistry.timer("sample", "tag1", "value1", "tag2", "value2");
+        timer.record(1, TimeUnit.SECONDS);
+        timer = meterRegistry.timer("sample", "tag1", "value2", "tag2", "value2");
+        timer.record(1, TimeUnit.SECONDS);
+
+
+        HistogramSnapshot snapshot = meterRegistry.find("sample")
+                                                  .tags("tag2", "value2")
+                                                  .timer().takeSnapshot();
+        System.out.println(snapshot);
+        meterRegistry.find("sample").tags("tag2", "value2").meters().forEach(m -> System.out
+                .printf("%s = %s%n", name(m), value(m)));
+    }
+
+    private String value(Meter m) {
+        if (m instanceof Timer) {
+            return String.valueOf(((Timer) m).count());
+        }
+        if (m instanceof Gauge) {
+            return String.valueOf(((Gauge) m).value());
+        }
+        if (m instanceof Counter) {
+            return String.valueOf(((Counter) m).count());
+        }
+        return m.getClass().getName();
+    }
+
+    private String name(Meter m) {
+        String tags = m.getId().getTags().stream().map(t -> t.getKey() + "=" + t.getValue()).collect(Collectors.joining(
+                ","));
+        return m.getId().getName() + "[" + tags + "]";
     }
 
 }

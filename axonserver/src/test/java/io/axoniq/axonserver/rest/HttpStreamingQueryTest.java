@@ -20,10 +20,10 @@ import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -129,6 +129,7 @@ public class HttpStreamingQueryTest {
 
             }
         };
+
         LocalEventStore localEventStore = new LocalEventStore(new EventStoreFactory() {
             @Override
             public EventStorageEngine createEventStorageEngine(String context) {
@@ -139,12 +140,7 @@ public class HttpStreamingQueryTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return engine;
             }
-
-            @Override
-            public StorageTransactionManager createTransactionManager(EventStorageEngine eventStorageEngine) {
-                return null;
-            }
-        });
+        }, new SimpleMeterRegistry(), eventStore -> null, c -> true);
         localEventStore.initContext(Topology.DEFAULT_CONTEXT, false);
         EventStoreLocator eventStoreLocator = new DefaultEventStoreLocator(localEventStore);
         testSubject = new HttpStreamingQuery(eventStoreLocator);

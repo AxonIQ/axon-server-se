@@ -77,10 +77,27 @@ podTemplate(label: label,
             def pomArtifactId = 'axonserver'
 
             def slackReport = "Maven build for Axon Server SE ${pomVersion} (branch \"${gitBranch}\")."
+            def mavenTarget = "clean verify"
+
             stage ('Maven build') {
                 container("maven") {
+                    if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
+                        mavenTarget = "clean deploy"
+                    }
+                    if (relevantBranch(gitBranch, dockerBranches)) {
+                        mavenTarget = "-Pdocker " + mavenTarget
+                    }
+
                     try {
-                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore clean verify"   // Ignore test failures; we want the numbers only.
+                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"   // Ignore test failures; we want the numbers only.
+
+                        if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
+                            slackReport = slackReport + "\nDeployed to dev-nexus"
+                         }
+
+                         if (relevantBranch(gitBranch, dockerBranches)) {
+                            slackReport = slackReport + "\nNew Docker images have been pushed"
+                         }
                     }
                     catch (err) {
                         slackReport = slackReport + "\nMaven build FAILED!"             // This means build itself failed, not 'just' tests
@@ -89,9 +106,6 @@ podTemplate(label: label,
                     finally {
                         junit '**/target/surefire-reports/TEST-*.xml'                   // Read the test results
                         slackReport = slackReport + "\n" + getTestSummary()
-                    }
-                    if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
-                        sh "mvn \${MVN_BLD} -DskipTests deploy"
                     }
                 }
             }
@@ -105,24 +119,6 @@ podTemplate(label: label,
             }
 
             stage('Trigger followup') {
-                /*
-                 * Run a subsidiary build to make Docker test images.
-                 */
-                if (relevantBranch(gitBranch, dockerBranches)) {
-                    def dockerBuild = build job: 'axon-server-dockerimages/master', propagate: false, wait: true,
-                        parameters: [
-                            string(name: 'groupId', value: pomGroupId),
-                            string(name: 'artifactId', value: pomArtifactId),
-                            string(name: 'projectVersion', value: pomVersion)
-                        ]
-                    if (dockerBuild.result == "FAILURE") {
-                        slackReport = slackReport + "\nBuild of Docker images FAILED!"
-                    }
-                    else {
-                        slackReport = slackReport + "\nNew Docker images have been pushed."
-                    }
-                }
-
                 /*
                  * If we have Docker images and artifacts in Nexus, we can run Canary tests on them.
                  */

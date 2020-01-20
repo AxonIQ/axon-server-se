@@ -30,10 +30,13 @@ public class QueryInformation {
     private final AtomicInteger remainingReplies;
     private final Consumer<String> onAllReceived;
     private final Set<String> handlerNames;
+    private final String sourceClientId;
 
-    public QueryInformation(String key, QueryDefinition query, Set<String> handlerNames, int expectedResults,
+    public QueryInformation(String key, String sourceClientId, QueryDefinition query, Set<String> handlerNames,
+                            int expectedResults,
                             Consumer<QueryResponse> responseConsumer, Consumer<String> onAllReceived) {
         this.key = key;
+        this.sourceClientId = sourceClientId;
         this.query = query;
         this.responseConsumer = responseConsumer;
         this.remainingReplies = new AtomicInteger(expectedResults);
@@ -99,5 +102,9 @@ public class QueryInformation {
                                              .build());
 
         return completed(client);
+    }
+
+    public String getSourceClientId() {
+        return sourceClientId;
     }
 }

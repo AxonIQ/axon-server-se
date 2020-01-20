@@ -13,9 +13,10 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.Metrics;
-import io.axoniq.axonserver.metric.SnapshotMetric;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
 
 /**
+ * Provides access to metrics regarding command execution.
  * @author Marc Gathier
+ * @since 4.0
  */
 @Service("CommandMetricsRegistry")
 public class CommandMetricsRegistry {
@@ -37,42 +40,99 @@ public class CommandMetricsRegistry {
     private final Map<String, Timer> timerMap = new ConcurrentHashMap<>();
     private final MeterFactory meterFactory;
 
-    public CommandMetricsRegistry( MeterFactory meterFactory) {
+    /**
+     * Constructor for the registy.
+     *
+     * @param meterFactory the factory to create meter objects
+     */
+    public CommandMetricsRegistry(MeterFactory meterFactory) {
         this.meterFactory = meterFactory;
     }
 
 
-    public void add(String command, ClientIdentification clientId, long duration) {
+    /**
+     * Registers the duration of a command in the registry. Timer name is "axon.command", tags are the context,
+     * the source, the target and the command name.
+     * @param command the name of the command
+     * @param sourceClientId the client issuing the command
+     * @param clientId the client handling the command
+     * @param duration the duration of the command handling
+     */
+    public void add(String command, String sourceClientId, ClientIdentification clientId, long duration) {
         try {
-            timer(command, clientId).record(duration, TimeUnit.MILLISECONDS);
+            timer(command, sourceClientId, clientId).record(duration, TimeUnit.MILLISECONDS);
         } catch( Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
-    private Timer timer(String command, ClientIdentification clientId) {
-        return timerMap.computeIfAbsent(metricName(command, clientId), meterFactory::timer);
+    private Timer timer(String command, String sourceClientId, ClientIdentification targetClientId) {
+        return timerMap.computeIfAbsent(metricName(command, sourceClientId, targetClientId),
+                                        n -> meterFactory.timer(BaseMetricName.AXON_COMMAND,
+                                                                Tags.of(
+                                                                        MeterFactory.REQUEST,
+                                                                        command.replaceAll("\\.", "/"),
+                                                                        MeterFactory.CONTEXT,
+                                                                        targetClientId.getContext(),
+                                                                        MeterFactory.SOURCE,
+                                                                        sourceClientId,
+                                                                        MeterFactory.TARGET,
+                                                                        targetClientId.getClient())));
     }
 
-    private static String metricName(String command, ClientIdentification clientId) {
-        return String.format("axon.command.%s.%s", command, clientId.metricName());
+    private static String metricName(String command, String sourceClientId, ClientIdentification targetClientId) {
+        return String.format("%s.%s.%s", command, sourceClientId, targetClientId.metricName());
     }
 
     private ClusterMetric clusterMetric(String command, ClientIdentification clientId){
-        String metricName = metricName(command, clientId);
-        return new CompositeMetric(new SnapshotMetric(timer(command, clientId).takeSnapshot()), new Metrics(metricName, meterFactory.clusterMetrics()));
+        Tags tags = Tags.of(MeterFactory.CONTEXT,
+                            clientId.getContext(),
+                            MeterFactory.REQUEST,
+                            command.replaceAll("\\.", "/"),
+                            MeterFactory.TARGET,
+                            clientId.getClient());
+        return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_COMMAND, tags),
+                                   new Metrics(BaseMetricName.AXON_COMMAND.metric(), tags, meterFactory.clusterMetrics()));
     }
 
+    /**
+     * Retrieves the number of times that a command has been handled by a client.
+     * @param command the name of the command
+     * @param clientId the client handling the command
+     * @param componentName the client application name handling the command
+     * @return CommandMetric containing the number of times that the command has been handled by this client
+     */
     public CommandMetric commandMetric(String command, ClientIdentification clientId, String componentName) {
-        return new CommandMetric(command,clientId.metricName(), componentName, clusterMetric(command, clientId).size());
+        return new CommandMetric(command,
+                                 clientId.metricName(),
+                                 componentName,
+                                 clusterMetric(command, clientId).count());
     }
 
-    public <T> Gauge gauge(String activeCommandsGauge, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
-        return meterFactory.gauge(activeCommandsGauge, objectToWatch, gaugeFunction);
+    /**
+     * Creates a gauge meter without any tags
+     *
+     * @param name          the name of the gauge
+     * @param objectToWatch the object to watch
+     * @param gaugeFunction function that will be applied on the object to retrieve the gauge value
+     * @param <T>           type of object to watch
+     * @return a gauge object
+     */
+    public <T> Gauge gauge(BaseMetricName name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+        return meterFactory.gauge(name, objectToWatch, gaugeFunction);
     }
 
-    public MeterFactory.RateMeter rateMeter(String... meterName) {
-        return meterFactory.rateMeter(meterName);
+    /**
+     * Creates a meter that will monitor the rate of certain events. The RateMeter will expose events/second for the
+     * last 1/5/15 minutes and a
+     * total count. The meter will have the context as a tag.
+     *
+     * @param context   the name of the context
+     * @param meterName the name of the meter
+     * @return a RateMeter object
+     */
+    public MeterFactory.RateMeter rateMeter(String context, BaseMetricName meterName) {
+        return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
     }
 
     public static class CommandMetric {

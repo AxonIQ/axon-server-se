@@ -638,6 +638,12 @@ select {
 	float: none !important;
 	width: 400px;
 }
+
+.nodeRoleName {
+    display: inline-block !important;
+    float: none !important;
+    width: 200px;
+}
 .contextName {
 	display: inline-block !important;
 	float: none !important;
@@ -655,6 +661,18 @@ select {
 .storage {
 	display: inline-block;
 	width: 100px;
+}
+
+.hidden {
+    display: none;
+}
+
+.modal {
+    padding: 20px;
+}
+
+.modal .button-bar {
+    margin-top: 20px;
 }
 
 @media only screen and (max-width: 1024px){
