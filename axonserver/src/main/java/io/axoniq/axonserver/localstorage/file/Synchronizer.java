@@ -10,7 +10,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
 
-
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -26,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
@@ -44,6 +47,7 @@ public class Synchronizer {
     private final Consumer<WritePosition> completeSegmentCallback;
     private volatile WritePosition current;
     private final ConcurrentSkipListSet<WritePosition> syncAndCloseFile = new ConcurrentSkipListSet<>();
+    private final AtomicBoolean updated = new AtomicBoolean();
     private volatile ScheduledFuture<?> forceJob;
     private volatile ScheduledFuture<?> syncJob;
 
@@ -64,7 +68,7 @@ public class Synchronizer {
                         WritePosition writePosition = writePositionEntry.getKey();
                         if (writePosition.isComplete() &&
                                 writePositionEntry.getValue().onCompleted(writePosition.sequence)) {
-
+                            updated.set(true);
 
                                 if (canSyncAt(writePosition)) {
                                     syncAndCloseFile.add(current);
@@ -101,10 +105,10 @@ public class Synchronizer {
 
 
     private boolean canSyncAt(WritePosition writePosition) {
-        if( current != null && current.segment != writePosition.segment) {
+        if (current != null && !Objects.equals(current.segment, writePosition.segment)) {
             log.debug("can sync at {}: {}", writePosition.segment, current.segment);
         }
-        return current != null && current.segment != writePosition.segment;
+        return current != null && !Objects.equals(current.segment, writePosition.segment);
     }
 
     public synchronized void init(WritePosition writePosition) {
@@ -121,8 +125,10 @@ public class Synchronizer {
     }
 
     public void forceCurrent() {
-        if( current != null) {
-            current.force();
+        if (updated.compareAndSet(true, false)) {
+            if (current != null) {
+                current.force();
+            }
         }
     }
 
@@ -131,10 +137,23 @@ public class Synchronizer {
         if( forceJob != null) forceJob.cancel(false);
         syncJob = null;
         forceJob = null;
+        waitForPendingWrites();
         while( ! syncAndCloseFile.isEmpty()) {
             syncAndCloseFile();
         }
         if( shutdown) fsync.shutdown();
     }
 
+    private void waitForPendingWrites() {
+        int retries = 1000;
+        while (!writePositions.isEmpty() && retries > 0) {
+            try {
+                Thread.sleep(1);
+                retries--;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new MessagingPlatformException(ErrorCode.INTERRUPTED, "Interrupted while closing synchronizer");
+            }
+        }
+    }
 }

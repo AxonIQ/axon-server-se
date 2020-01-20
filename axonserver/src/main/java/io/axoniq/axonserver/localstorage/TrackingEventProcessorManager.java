@@ -43,10 +43,11 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class TrackingEventProcessorManager {
 
     private static final int MAX_EVENTS_PER_RUN = 500;
+    private static final Logger logger = LoggerFactory.getLogger(TrackingEventProcessorManager.class);
+
     private final ScheduledExecutorService scheduledExecutorService;
     private final Set<EventTracker> eventTrackerSet = new CopyOnWriteArraySet<>();
     private final AtomicBoolean replicationRunning = new AtomicBoolean();
-    private final Logger logger = LoggerFactory.getLogger(TrackingEventProcessorManager.class);
     private final String context;
     private final Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder;
     private final int blacklistedSendAfter;
