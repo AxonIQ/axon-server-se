@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
@@ -16,10 +17,12 @@ import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +38,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/v1/public")
 public class MetricsRestController {
 
+    private static final Logger auditLog = AuditLog.getLogger();
+
     private final CommandRegistrationCache commandRegistrationCache;
     private final CommandMetricsRegistry commandMetricsRegistry;
     private final QueryRegistrationCache queryRegistrationCache;
@@ -49,7 +54,9 @@ public class MetricsRestController {
 
 
     @GetMapping("/command-metrics")
-    public List<CommandMetricsRegistry.CommandMetric> getCommandMetrics() {
+    public List<CommandMetricsRegistry.CommandMetric> getCommandMetrics(final Principal principal) {
+        auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
+
         List<CommandMetricsRegistry.CommandMetric> metrics = new ArrayList<>();
         commandRegistrationCache.getAll().forEach((commandHander, registrations) -> metrics.addAll(getMetrics(commandHander, registrations)));
         return metrics;
@@ -63,7 +70,9 @@ public class MetricsRestController {
     }
 
     @GetMapping("/query-metrics")
-    public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics() {
+    public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(final Principal principal) {
+        auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
+
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();
         queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics.addAll(getQueryMetrics(queryDefinition, handlersPerComponent)));
         return metrics;

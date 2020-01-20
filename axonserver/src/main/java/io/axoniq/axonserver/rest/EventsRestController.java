@@ -17,6 +17,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.rest.json.MetaDataJson;
 import io.axoniq.axonserver.rest.json.SerializedObjectJson;
@@ -39,6 +40,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -61,6 +63,9 @@ import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 @RestController("EventsRestController")
 @RequestMapping("/v1")
 public class EventsRestController {
+
+    private static final Logger auditLog = AuditLog.getLogger();
+
     private final EventDispatcher eventStoreClient;
     private final Logger logger = LoggerFactory.getLogger(EventsRestController.class);
 
@@ -68,65 +73,82 @@ public class EventsRestController {
         this.eventStoreClient = eventStoreClient;
     }
 
-    @GetMapping(path="snapshots")
+    @GetMapping(path = "snapshots")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataType = "string", paramType = "header")
     })
-    public SseEmitter findSnapshots(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
-                                    @RequestParam(value = "aggregateId", required = true) String aggregateId,
-                                    @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
-                                    @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence) {
+    public SseEmitter findSnapshots(
+            @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
+            @RequestParam(value = "aggregateId", required = true) String aggregateId,
+            @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
+            @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
+            final Principal principal) {
+        auditLog.info("[{}@{}] Request for list of snapshots of aggregate \"{}\", [{}-{}]",
+                      AuditLog.username(principal), context, aggregateId, initialSequence, maxSequence);
+
         SseEmitter sseEmitter = new SseEmitter();
         GetAggregateSnapshotsRequest request = GetAggregateSnapshotsRequest.newBuilder()
                                                                            .setAggregateId(aggregateId)
                                                                            .setInitialSequence(initialSequence)
-                                                                           .setMaxSequence(maxSequence >= 0? maxSequence : Long.MAX_VALUE)
+                                                                           .setMaxSequence(maxSequence
+                                                                                                   >= 0 ? maxSequence : Long.MAX_VALUE)
                                                                            .build();
-        eventStoreClient.listAggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT), request, new StreamObserver<InputStream>() {
-            @Override
-            public void onNext(InputStream event) {
-                try {
-                    sseEmitter.send(SseEmitter.event().data(new JsonEvent(Event.parseFrom(event))));
-                } catch (Exception e) {
-                    logger.debug("Exception on sending event - {}", e.getMessage(), e);
-                }
-            }
+        eventStoreClient.listAggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+                                                request,
+                                                new StreamObserver<InputStream>() {
+                                                    @Override
+                                                    public void onNext(InputStream event) {
+                                                        try {
+                                                            sseEmitter.send(SseEmitter.event()
+                                                                                      .data(new JsonEvent(Event.parseFrom(
+                                                                                              event))));
+                                                        } catch (Exception e) {
+                                                            logger.debug("Exception on sending event - {}",
+                                                                         e.getMessage(),
+                                                                         e);
+                                                        }
+                                                    }
 
-            @Override
-            public void onError(Throwable throwable) {
-                sseEmitter.completeWithError(throwable);
-            }
+                                                    @Override
+                                                    public void onError(Throwable throwable) {
+                                                        sseEmitter.completeWithError(throwable);
+                                                    }
 
-            @Override
-            public void onCompleted() {
-                try {
-                    sseEmitter.send(SseEmitter.event().comment("End of stream"));
-                } catch (IOException e) {
-                    logger.debug("Error on sending completed", e);
-                }
-                sseEmitter.complete();
-            }
-        });
+                                                    @Override
+                                                    public void onCompleted() {
+                                                        try {
+                                                            sseEmitter.send(SseEmitter.event()
+                                                                                      .comment("End of stream"));
+                                                        } catch (IOException e) {
+                                                            logger.debug("Error on sending completed", e);
+                                                        }
+                                                        sseEmitter.complete();
+                                                    }
+                                                });
 
         return sseEmitter;
     }
 
 
-    @GetMapping(path="events")
+    @GetMapping(path = "events")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataType = "string", paramType = "header")
     })
-    public SseEmitter listAggregateEvents(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
-                                          @RequestParam(value = "aggregateId", required = false) String aggregateId,
-                                          @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
-                                          @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
-                                          @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
-                                          @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout
-                                          ) {
+    public SseEmitter listAggregateEvents(
+            @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
+            @RequestParam(value = "aggregateId", required = false) String aggregateId,
+            @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
+            @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
+            @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
+            @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout,
+            final Principal principal) {
+        auditLog.info("[{}@{}] Request for an event-stream of aggregate \"{}\", starting at sequence {}, token {}.",
+                      AuditLog.username(principal), context, aggregateId, initialSequence, trackingToken);
+
         SseEmitter sseEmitter = new SseEmitter(TimeUnit.SECONDS.toMillis(timeout));
-        if( aggregateId != null) {
+        if (aggregateId != null) {
 
             GetAggregateEventsRequest request = GetAggregateEventsRequest.newBuilder()
                                                                          .setAggregateId(aggregateId)
@@ -169,7 +191,8 @@ public class EventsRestController {
                         public void onNext(InputStream inputStream) {
                             try {
                                 EventWithToken eventMessageWithToken = EventWithToken.parseFrom(inputStream);
-                                sseEmitter.send(SseEmitter.event().id(String.valueOf(eventMessageWithToken.getToken() + 1))
+                                sseEmitter.send(SseEmitter.event()
+                                                          .id(String.valueOf(eventMessageWithToken.getToken() + 1))
                                                           .data(new JsonEvent(eventMessageWithToken.getEvent())));
                             } catch (IOException e) {
                                 logger.debug("Exception on sending event - {}", e.getMessage(), e);
@@ -204,28 +227,39 @@ public class EventsRestController {
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataType = "string", paramType = "header")
     })
-    public Future<Void> submitEvents(@RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
-                                     @Valid @RequestBody JsonEventList jsonEvents) {
-        if( jsonEvents.messages.isEmpty()) throw new IllegalArgumentException("Missing messages");
+    public Future<Void> submitEvents(
+            @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
+            @Valid @RequestBody JsonEventList jsonEvents,
+            final Principal principal) {
+        auditLog.info("[{}@{}] Request to submit events.", AuditLog.username(principal), context);
+
+        if (jsonEvents.messages.isEmpty()) {
+            throw new IllegalArgumentException("Missing messages");
+        }
         CompletableFuture<Void> result = new CompletableFuture<>();
-        StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context, new StreamObserver<Confirmation>() {
-            @Override
-            public void onNext(Confirmation confirmation) {
-                result.complete(null);
-            }
+        StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context,
+                                                                                    new StreamObserver<Confirmation>() {
+                                                                                        @Override
+                                                                                        public void onNext(
+                                                                                                Confirmation confirmation) {
+                                                                                            result.complete(null);
+                                                                                        }
 
-            @Override
-            public void onError(Throwable throwable) {
-                result.completeExceptionally(throwable);
-            }
+                                                                                        @Override
+                                                                                        public void onError(
+                                                                                                Throwable throwable) {
+                                                                                            result.completeExceptionally(
+                                                                                                    throwable);
+                                                                                        }
 
-            @Override
-            public void onCompleted() {
-                // no action needed
-            }
-        });
-        if( eventInputStream != null) {
-            jsonEvents.messages.forEach(jsonEvent -> eventInputStream.onNext(new ByteArrayInputStream(jsonEvent.asEvent().toByteArray())));
+                                                                                        @Override
+                                                                                        public void onCompleted() {
+                                                                                            // no action needed
+                                                                                        }
+                                                                                    });
+        if (eventInputStream != null) {
+            jsonEvents.messages.forEach(jsonEvent -> eventInputStream
+                    .onNext(new ByteArrayInputStream(jsonEvent.asEvent().toByteArray())));
             eventInputStream.onCompleted();
         }
         return result;
@@ -248,8 +282,11 @@ public class EventsRestController {
     @Deprecated
     public Future<Void> appendSnapshotOld(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
-            @RequestBody @Valid JsonEvent jsonEvent) {
-        return appendSnapshot(context, jsonEvent);
+            @RequestBody @Valid JsonEvent jsonEvent,
+            final Principal principal) {
+        auditLog.warn("[{}@{}] Request to append event(s) using deprecated API", AuditLog.username(principal), context);
+
+        return appendSnapshot(context, jsonEvent, principal);
     }
 
     /**
@@ -264,32 +301,45 @@ public class EventsRestController {
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataType = "string", paramType = "header")
     })
-    public Future<Void> appendSnapshot(@RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
-                                       @RequestBody @Valid JsonEvent jsonEvent) {
+    public Future<Void> appendSnapshot(
+            @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
+            @RequestBody @Valid JsonEvent jsonEvent,
+            final Principal principal) {
+        auditLog.info("[{}@{}] Request to append event(s)", AuditLog.username(principal), context);
+
         Event event = jsonEvent.asEvent();
         CompletableFuture<Void> result = new CompletableFuture<>();
-        eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT), event, new StreamObserver<Confirmation>() {
-            @Override
-            public void onNext(Confirmation confirmation) {
-                result.complete(null);
-            }
+        eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+                                        event,
+                                        new StreamObserver<Confirmation>() {
+                                            @Override
+                                            public void onNext(Confirmation confirmation) {
+                                                result.complete(null);
+                                            }
 
-            @Override
-            public void onError(Throwable throwable) {
-                result.completeExceptionally(throwable);
-            }
+                                            @Override
+                                            public void onError(Throwable throwable) {
+                                                result.completeExceptionally(throwable);
+                                            }
 
-            @Override
-            public void onCompleted() {
-                // no action needed
+                                            @Override
+                                            public void onCompleted() {
+                                                // no action needed
 
-            }
-        });
+                                            }
+                                        });
         return result;
     }
 
-    @JsonPropertyOrder({ "messageIdentifier", "aggregateIdentifier", "aggregateSequenceNumber", "aggregateType", "payloadType"
-            , "payloadRevision" , "payload" , "timestamp" , "metaData" })
+    @JsonPropertyOrder({"messageIdentifier",
+            "aggregateIdentifier",
+            "aggregateSequenceNumber",
+            "aggregateType",
+            "payloadType",
+            "payloadRevision",
+            "payload",
+            "timestamp",
+            "metaData"})
     public static class JsonEvent {
 
         private MetaDataJson metaData = new MetaDataJson();
@@ -308,7 +358,7 @@ public class EventsRestController {
             aggregateIdentifier = event.getAggregateIdentifier();
             aggregateSequenceNumber = event.getAggregateSequenceNumber();
             aggregateType = event.getAggregateType();
-            if( event.hasPayload()) {
+            if (event.hasPayload()) {
                 payload = new SerializedObjectJson(event.getPayload());
             }
             timestamp = event.getTimestamp();
@@ -373,18 +423,18 @@ public class EventsRestController {
 
         public Event asEvent() {
             return Event.newBuilder()
-                                         .setMessageIdentifier(StringUtils.getOrDefault(messageIdentifier, UUID.randomUUID().toString()))
-                                         .setAggregateIdentifier(StringUtils.getOrDefault(aggregateIdentifier, ""))
-                                         .setAggregateType(StringUtils.getOrDefault(aggregateType, ""))
-                                         .setAggregateSequenceNumber(aggregateSequenceNumber)
-                                         .setPayload(payload.asSerializedObject())
-                    .setTimestamp(timestamp)
-                    .putAllMetaData(metaData.asMetaDataValueMap()).build();
-
+                        .setMessageIdentifier(StringUtils.getOrDefault(messageIdentifier, UUID.randomUUID().toString()))
+                        .setAggregateIdentifier(StringUtils.getOrDefault(aggregateIdentifier, ""))
+                        .setAggregateType(StringUtils.getOrDefault(aggregateType, ""))
+                        .setAggregateSequenceNumber(aggregateSequenceNumber)
+                        .setPayload(payload.asSerializedObject())
+                        .setTimestamp(timestamp)
+                        .putAllMetaData(metaData.asMetaDataValueMap()).build();
         }
     }
 
     public static class JsonEventList {
+
         @Size(min = 1, message = "'messages' field cannot be empty")
         @NotNull(message = "'messages' field cannot be missing")
         private List<JsonEvent> messages = new ArrayList<>();

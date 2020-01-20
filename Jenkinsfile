@@ -11,7 +11,7 @@ def deployingBranches = [   // The branches mentioned here will get their artifa
     "master", "axonserver-se-4.2.x"
 ]
 def dockerBranches = [      // The branches mentioned here will get Docker test images built
-    "master", "axonserver-se-4.2.x", "feature/docker-tar-on-release"
+    "master", "axonserver-se-4.2.x"
 ]
 def sonarBranches = [       // The branches mentioned here will get a SonarQube analysis
     "master", "axonserver-se-4.2.x"
