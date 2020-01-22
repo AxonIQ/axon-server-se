@@ -8,6 +8,7 @@ import io.axoniq.axonserver.enterprise.jpa.Task;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskManager;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
+import io.axoniq.axonserver.grpc.tasks.Status;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -47,6 +48,7 @@ public class TaskSnapshotDataStore implements SnapshotDataStore {
         List<Task> tasks = taskManager.findAllByContext(context);
 
         return Flux.fromIterable(tasks)
+                   .filter(t -> Status.SCHEDULED.equals(t.getStatus()))
                    .map(Task::asScheduleTask)
                    .map(this::toSerializedObject);
     }
