@@ -8,6 +8,7 @@ VERSION=
 TARGET=
 TARGET_DEF=target/packer
 IMG_VERSION=
+CLI_VERSION=
 IMG_FAMILY=
 IMG_FAMILY_DEF=axonserver
 IMG_NAME=
@@ -95,6 +96,14 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
       echo "Missing username after \"--img-user\"."
       SHOW_USAGE=y
     fi
+  elif [[ "$1" == "--cli-version" ]] ; then
+    if [[ $# -gt 1 ]] ; then
+      CLI_VERSION=$2
+      shift 2
+    else
+      echo "Missing version after \"--cli-version\"."
+      SHOW_USAGE=y
+    fi
   elif [[ "$1" == "--public-ip" ]] ; then
     NO_PUBLIC_IP=false
     shift
@@ -140,30 +149,38 @@ if [[ "${SUBNET}" == "" ]] ; then
   SUBNET=${NETWORK}
 fi
 
+if [[ "${CLI_VERSION}" == "" ]] ; then
+    echo "WARNING: Assuming CLI has version \"${IMG_VERSION}\"."
+    CLI_VERSION=${VERSION}
+fi
 if [[ "${IMG_FAMILY}" == "" ]] ; then
   echo "No Image family set."
   SHOW_USAGE=y
 fi
 
 if [[ "${SHOW_USAGE}" == "y" ]] ; then
-  echo "Usage: $0 [OPTIONS] <version>"
-  echo ""
-  echo "Options:"
-  echo "  --target <dir-name>       The name for the target directory. Default is \"${TARGET_DEF}\"."
-  echo "  --project <gce-project>   The GCE project to create the image in, default \"${PROJECT_DEF}\"."
-  echo "  --zone <gce-zone>         The GCE zone to create the image (and run the instance to build it from), default \"${ZONE_DEF}\"."
-  echo "  --network <gce-network>   The GCE network to use, default \"<project-name>-vpc\"."
-  echo "  --subnet <gce-subnet>     The GCE subnet to use, defaults to the same name is the network."
-  echo "  --img-version <version>   The version suffix to append to the image name. Default is the project version in lowercase."
-  echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
-  echo "  --img-name <name>         The name for the image. Default is the family name, a dash, and the version."
-  echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
-  echo "  --public-ip               Use a public IP during build."
-  exit 1
+    echo "Usage: $0 [OPTIONS] <version>"
+    echo ""
+    echo "Options:"
+    echo "  --target <dir-name>       The name for the target directory. Default is \"${TARGET_DEF}\"."
+    echo "  --project <gce-project>   The GCE project to create the image in, default \"${PROJECT_DEF}\"."
+    echo "  --zone <gce-zone>         The GCE zone to create the image (and run the instance to build it from), default \"${ZONE_DEF}\"."
+    echo "  --network <gce-network>   The GCE network to use, default \"<project-name>-vpc\"."
+    echo "  --subnet <gce-subnet>     The GCE subnet to use, defaults to the same name is the network."
+    echo "  --img-version <version>   The version suffix to append to the image name. Default is the project version in lowercase."
+    echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
+    echo "  --img-name <name>         The name for the image. Default is the family name, a dash, and the version."
+    echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
+    echo "  --cli-version <version>   The version of the Axon Server CLI. Default is to use the Axon Server EE version."
+    echo "  --public-ip               Use a public IP during build."
+    exit 1
 fi
 
 mkdir -p target
-${SCRIPT_DIR}/prep-files.sh --target ${TARGET} ${VERSION}
+if ! ${SCRIPT_DIR}/prep-files.sh --target ${TARGET} --cli-version ${CLI_VERSION} ${VERSION} ; then
+    echo "Failed to prepare files."
+    exit 1
+fi
 
 LABEL=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
 cat > target/application-image.json <<EOF
