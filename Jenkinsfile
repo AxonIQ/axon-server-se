@@ -122,7 +122,7 @@ podTemplate(label: label,
 
             def gceZone = testSettings ['io.axoniq.axonserver.infrastructure.gce.zone']
             def imgFamily = "axonserver-enterprise"
-            def imgVersion = pomVersion.toLowercase().replace("\.", "-")
+            def imgVersion = pomVersion.toLowercase().replace("\\.", "-")
 
             stage ('VM image build') {
                 if (releaseBuild) {
