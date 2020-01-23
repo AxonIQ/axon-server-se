@@ -129,7 +129,7 @@ podTemplate(label: label,
             stage ('VM image build') {
                 if (releaseBuild) {
                     container("gcloud") {
-                        sh "bin/build-image.sh --project ${gcloudProjectName} --zone ${gceZone} --img-family ${imgFamily} --img-version ${imgVersion} ${pomVersion}"
+                        sh "bin/build-image.sh --project ${gcloudProjectName} --zone ${gceZone} --img-family ${imgFamily} --img-version ${imgVersion} --cli-version ${seVersion} ${pomVersion}"
                     }
                     slackReport = slackReport + "\nNew VM image named \"${imgFamily}-${imgVersion}\" published in \"${gcloudProjectName}\"."
                 }
