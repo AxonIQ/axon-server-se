@@ -64,7 +64,9 @@ podTemplate(label: label,
             def previousGitCommit = sh(script: "git rev-parse ${gitCommit}~", returnStdout: true)
             def tag = sh(returnStdout: true, script: "git tag --contains | head -1").trim()
             def onTag = sh(returnStdout: true, script: "git tag --points-at | head -1").trim()
-            def releaseBuild = (!tag.isEmpty() && tag.equals(onTag))
+
+            def testRun = gitBranch.equals("feature/release-builds")
+            def releaseBuild = (!tag.isEmpty() && tag.equals(onTag)) || testRun
 
             pom = readMavenPom file: 'pom.xml'
             def pomVersion = pom.version
@@ -122,7 +124,7 @@ podTemplate(label: label,
 
             def gceZone = testSettings ['io.axoniq.axonserver.infrastructure.gce.zone']
             def imgFamily = "axonserver-enterprise"
-            def imgVersion = pomVersion.toLowercase().replace("\\.", "-")
+            def imgVersion = pomVersion.toLowerCase().replace("\\.", "-") + (testRun ? "-test" : "")
 
             stage ('VM image build') {
                 if (releaseBuild) {
