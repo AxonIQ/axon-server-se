@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
+import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
 import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextApplicationConsumer;
 import io.axoniq.axonserver.enterprise.logconsumer.DeleteContextUserConsumer;
@@ -47,7 +48,7 @@ import static java.util.stream.Collectors.toSet;
 public class LocalRaftGroupService implements RaftGroupService {
 
     private final Logger logger = LoggerFactory.getLogger(LocalRaftGroupService.class);
-    private final ExecutorService asyncPool = Executors.newCachedThreadPool();
+    private final ExecutorService asyncPool = Executors.newCachedThreadPool(new AxonThreadFactory("raft-async"));
 
     private final GrpcRaftController grpcRaftController;
 
@@ -61,8 +62,6 @@ public class LocalRaftGroupService implements RaftGroupService {
         RaftNode raftNode = grpcRaftController.getRaftNode(context);
         Set<String> members = raftNode.currentGroupMembers().stream().map(Node::getNodeName).collect(toSet());
         if (members.contains(node.getNodeName())) {
-//            MessagingPlatformException ex = new MessagingPlatformException(ErrorCode.ALREADY_MEMBER_OF_CLUSTER,
-//                                                                           "Node is already part of this context.");
             result.complete(ContextUpdateConfirmation.newBuilder()
                                                      .setSuccess(true)
                                                      .addAllMembers(raftNode.currentGroupMembers()

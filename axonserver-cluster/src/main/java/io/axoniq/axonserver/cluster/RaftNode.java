@@ -63,7 +63,7 @@ public class RaftNode {
      * @param snapshotManager          manages snapshot creation/installation
      */
     public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
-        this(nodeId, raftGroup, new DefaultScheduler("raftNode-" + nodeId), snapshotManager);
+        this(nodeId, raftGroup, new DefaultScheduler(nodeId + "-raftNode"), snapshotManager);
     }
 
     /**

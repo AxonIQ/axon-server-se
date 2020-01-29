@@ -192,7 +192,7 @@ public class GrpcRaftGroup implements RaftGroup {
         List<SnapshotDataStore> dataProviders = snapshotDataProvidersFactory.apply(groupId);
         localNode = new RaftNode(localNodeId,
                                  this,
-                                 new DefaultScheduler("raftNode-" + groupId),
+                                 new DefaultScheduler(groupId + "-raftNode"),
                                  new AxonServerSnapshotManager(dataProviders),
                                  newConfigurationConsumer);
 
