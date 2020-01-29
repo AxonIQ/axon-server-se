@@ -17,6 +17,7 @@ import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.io.Closeable;
 import java.io.File;
@@ -43,12 +44,14 @@ public class IndexManager {
     private final ConcurrentNavigableMap<Long, PersistedBloomFilter> bloomFilterPerSegment = new ConcurrentSkipListMap<>();
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
     private final String context;
-    private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduledExecutorService;
     private ScheduledFuture<?> cleanupTask;
 
     public IndexManager(String context, StorageProperties storageProperties) {
         this.storageProperties = storageProperties;
         this.context = context;
+        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(
+                context + "-index-manager"));
     }
 
     public void createIndex(Long segment, Map<String, SortedSet<PositionInfo>> positionsPerAggregate) {

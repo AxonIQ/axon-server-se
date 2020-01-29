@@ -136,6 +136,11 @@ public class MessagingPlatformConfiguration {
      */
     private int executorThreadCount = 16;
 
+    /**
+     * Number of threads for executing incoming gRPC requests for internal communication
+     */
+    private int clusterExecutorThreadCount = 16;
+
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
@@ -358,6 +363,14 @@ public class MessagingPlatformConfiguration {
 
     public void setExecutorThreadCount(int executorThreadCount) {
         this.executorThreadCount = executorThreadCount;
+    }
+
+    public int getClusterExecutorThreadCount() {
+        return clusterExecutorThreadCount;
+    }
+
+    public void setClusterExecutorThreadCount(int clusterExecutorThreadCount) {
+        this.clusterExecutorThreadCount = clusterExecutorThreadCount;
     }
 
     public boolean isSetWebSocketAllowedOrigins() {

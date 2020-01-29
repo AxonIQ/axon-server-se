@@ -72,7 +72,7 @@ public class TrackingEventProcessorManager {
         this.iteratorBuilder = iteratorBuilder;
         // Use 2 threads (one to send events and one to avoid queuing of reschedules.
         this.scheduledExecutorService = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory(
-                "trackers-" + context + "-"));
+                context + "-trackers-"));
         this.blacklistedSendAfter = blacklistedSendAfter;
     }
 
@@ -190,6 +190,7 @@ public class TrackingEventProcessorManager {
          */
         private final AtomicLong lastPermitTimestamp;
         private final StreamObserver<InputStream> eventStream;
+        private final String client;
         private volatile CloseableIterator<SerializedEventWithToken> eventIterator;
         private volatile boolean running = true;
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
@@ -197,6 +198,7 @@ public class TrackingEventProcessorManager {
 
         private EventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
             permits = new AtomicInteger((int) request.getNumberOfPermits());
+            client = request.getClientId();
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(request.getTrackingToken());
             if (request.getBlacklistCount() > 0) {
@@ -207,7 +209,8 @@ public class TrackingEventProcessorManager {
 
         private int sendNext() {
             if (!running) {
-                throw new MessagingPlatformException(ErrorCode.OTHER, "Tracking event processor stopped");
+                throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                     context + ":Tracking event processor stopped for " + client);
             }
             if (eventIterator == null) {
                 eventIterator = iteratorBuilder.apply(nextToken.get());
@@ -279,13 +282,15 @@ public class TrackingEventProcessorManager {
 
             if (lastPermitTimestamp.get() < minLastPermits) {
                 close();
-                sendError(new MessagingPlatformException(ErrorCode.OTHER, "Timeout waiting for permits from client"));
+                sendError(new MessagingPlatformException(ErrorCode.OTHER,
+                                                         context + ": Timeout waiting for permits from client "
+                                                                 + client));
             }
         }
 
         public void addBlacklist(List<PayloadDescription> blacklistList) {
             if (logger.isDebugEnabled()) {
-                blacklistList.forEach(i -> logger.debug("Blacklisting: {}", i));
+                blacklistList.forEach(i -> logger.debug("{}: Blacklisting: {} for {}", context, i, client));
             }
             blacklistedTypes.addAll(blacklistList);
         }
