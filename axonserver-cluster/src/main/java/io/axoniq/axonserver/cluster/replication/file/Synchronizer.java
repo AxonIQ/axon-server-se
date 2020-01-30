@@ -89,8 +89,8 @@ public class Synchronizer {
 
     private void syncAndCloseFile() {
         try {
-            WritePosition toSync = syncAndCloseFile.pollFirst();
-            if (toSync != null) {
+            WritePosition toSync;
+            while ((toSync = syncAndCloseFile.pollFirst()) != null) {
                 closeFile(toSync);
             }
         } catch (RuntimeException t) {
