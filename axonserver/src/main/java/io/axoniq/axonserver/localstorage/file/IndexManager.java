@@ -40,18 +40,17 @@ public class IndexManager {
 
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String AGGREGATE_MAP = "aggregateMap";
+    private static final ScheduledExecutorService scheduledExecutorService =
+            Executors.newScheduledThreadPool(1, new CustomizableThreadFactory("index-manager-"));
     private final StorageProperties storageProperties;
     private final ConcurrentNavigableMap<Long, PersistedBloomFilter> bloomFilterPerSegment = new ConcurrentSkipListMap<>();
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
     private final String context;
-    private final ScheduledExecutorService scheduledExecutorService;
     private ScheduledFuture<?> cleanupTask;
 
     public IndexManager(String context, StorageProperties storageProperties) {
         this.storageProperties = storageProperties;
         this.context = context;
-        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(
-                context + "-index-manager"));
     }
 
     public void createIndex(Long segment, Map<String, SortedSet<PositionInfo>> positionsPerAggregate) {
@@ -90,6 +89,7 @@ public class IndexManager {
         filter.create();
         filter.insertAll(positionsPerAggregate.keySet());
         filter.store();
+        bloomFilterPerSegment.put(segment, filter);
 
         getIndex(segment);
     }
@@ -121,9 +121,14 @@ public class IndexManager {
      * @throws IndexNotFoundException if the attempt to open tha index file fails
      */
     public Index getIndex(long segment) {
+        Index index = indexMap.get(segment);
+        if (index != null && !index.db.isClosed()) {
+            return index;
+        }
         synchronized (indexLock) {
-            Index index = indexMap.get(segment);
+            index = indexMap.get(segment);
             if (index == null || index.db.isClosed()) {
+                logger.debug("{}: open index for {}", context, segment);
                 if (!storageProperties.index(context, segment).exists()) {
                     throw new IndexNotFoundException("Index not found for segment: " + segment);
                 }
@@ -138,13 +143,13 @@ public class IndexManager {
     private void indexCleanup() {
         while (indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
             Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
-            logger.debug("Closing index {}", entry.getKey());
+            logger.debug("{}: Closing index {}", context, entry.getKey());
             cleanupTask = scheduledExecutorService.schedule(() -> entry.getValue().close(), 2, TimeUnit.SECONDS);
         }
 
         while (bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
             Map.Entry<Long, PersistedBloomFilter> removed = bloomFilterPerSegment.pollFirstEntry();
-            logger.debug("Removed bloomfilter for {} from memory", removed.getKey());
+            logger.debug("{}: Removed bloomfilter for {} from memory", context, removed.getKey());
         }
     }
 
@@ -155,6 +160,7 @@ public class IndexManager {
     }
 
     private PersistedBloomFilter loadBloomFilter(Long segment) {
+        logger.debug("{}: open bloom filter for {}", context, segment);
         PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment)
                                                                                 .getAbsolutePath(), 0, 0.03f);
         if (!filter.fileExists()) {
@@ -179,7 +185,6 @@ public class IndexManager {
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
-        scheduledExecutorService.shutdown();
     }
 
     public void remove(Long s) {
