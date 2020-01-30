@@ -29,6 +29,7 @@ public class StorageProperties {
     private boolean useMmapIndex;
     private boolean cleanerHackEnabled;
     private int minActiveBackups = 1;
+    private int maxIndexesInMemory = 5;
 
     public int getSyncInterval() {
         return syncInterval;
@@ -176,5 +177,13 @@ public class StorageProperties {
 
     public void setMinActiveBackups(int minActiveBackups) {
         this.minActiveBackups = minActiveBackups;
+    }
+
+    public int getMaxIndexesInMemory() {
+        return maxIndexesInMemory;
+    }
+
+    public void setMaxIndexesInMemory(int maxIndexesInMemory) {
+        this.maxIndexesInMemory = maxIndexesInMemory;
     }
 }
