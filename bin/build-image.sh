@@ -150,7 +150,7 @@ if [[ "${SUBNET}" == "" ]] ; then
 fi
 
 if [[ "${CLI_VERSION}" == "" ]] ; then
-    echo "WARNING: Assuming CLI has version \"${IMG_VERSION}\"."
+    echo "WARNING: Assuming CLI has version \"${VERSION}\"."
     CLI_VERSION=${VERSION}
 fi
 if [[ "${IMG_FAMILY}" == "" ]] ; then
