@@ -50,9 +50,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftController.class);
     private final JpaRaftStateRepository raftStateRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final Map<String,RaftGroup> raftGroupMap = new ConcurrentHashMap<>();
-    private boolean running;
-    private volatile boolean replicationServerStarted;
+    private final Map<String, RaftGroup> raftGroupMap = new ConcurrentHashMap<>();
     private final RaftGroupRepositoryManager raftGroupNodeRepository;
     private final RaftProperties raftProperties;
     private final ApplicationEventPublisher eventPublisher;
@@ -61,6 +59,8 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private final PlatformTransactionManager platformTransactionManager;
     private final JpaRaftGroupNodeRepository nodeRepository;
     private final SnapshotDataProviders snapshotDataProviders;
+    private boolean running;
+    private volatile boolean replicationServerStarted;
     private volatile LocalEventStore localEventStore;
 
     public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
@@ -87,6 +87,11 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
 
     public void start() {
+        if (raftProperties.getSegmentSize() < messagingPlatformConfiguration.getMaxMessageSize() * 2) {
+            raftProperties.setSegmentSize(messagingPlatformConfiguration.getMaxMessageSize() * 2);
+            logger.warn("Updating replication segment size (axoniq.axonserver.replication.segment-size) to {}",
+                        raftProperties.getSegmentSize());
+        }
         localEventStore = applicationContext.getBean(LocalEventStore.class);
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
@@ -101,8 +106,8 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
     @Override
     public void stop() {
-        stop(()->{});
-
+        stop(() -> {
+        });
     }
 
     @Override
@@ -130,7 +135,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                         .build();
         RaftGroup raftGroup = createRaftGroup(groupId, nodeLabel, !isAdmin(groupId), Role.PRIMARY);
         raftGroup.raftConfiguration().update(singletonList(node));
-        if( replicationServerStarted) {
+        if (replicationServerStarted) {
             raftGroup.connect();
         }
         return raftGroup;
@@ -139,7 +144,9 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     private RaftGroup createRaftGroup(String groupId, String localNodeId, boolean initializeEventStore, Role role) {
         synchronized (raftGroupMap) {
             RaftGroup existingRaftGroup = raftGroupMap.get(groupId);
-            if( existingRaftGroup != null) return existingRaftGroup;
+            if (existingRaftGroup != null) {
+                return existingRaftGroup;
+            }
 
             NewConfigurationConsumer newConfigurationConsumer = applicationContext
                     .getBean(NewConfigurationConsumer.class);
@@ -174,12 +181,12 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     private void stateChanged(RaftNode node, StateChanged stateChanged) {
-        if( stateChanged.fromLeader() && ! stateChanged.toLeader()) {
+        if (stateChanged.fromLeader() && !stateChanged.toLeader()) {
             eventPublisher.publishEvent(new ClusterEvents.LeaderStepDown(stateChanged.getGroupId(), false));
-        } else if( stateChanged.toLeader() && ! stateChanged.fromLeader()) {
+        } else if (stateChanged.toLeader() && !stateChanged.fromLeader()) {
             eventPublisher.publishEvent(new ClusterEvents.BecomeLeader(stateChanged.getGroupId(),
                                                                        node::unappliedEntries));
-        } else if( stateChanged.toCandidate() ) {
+        } else if (stateChanged.toCandidate()) {
             eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(), null, false));
         } else if (!StringUtils.isEmpty(node.getLeaderName())) {
             eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(stateChanged.getGroupId(),
@@ -191,7 +198,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     @EventListener
     public void on(ReplicationServerStarted replicationServerStarted) {
         this.replicationServerStarted = true;
-        raftGroupMap.forEach((k,raftGroup) -> raftGroup.localNode().start());
+        raftGroupMap.forEach((k, raftGroup) -> raftGroup.localNode().start());
     }
 
     public Collection<String> getContexts() {
@@ -202,9 +209,10 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         if (!running) {
             throw new IllegalStateException("Initialization or shutdown in progress");
         }
-        if( ! raftGroupMap.containsKey(context)) {
-            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, messagingPlatformConfiguration.getName() + ": Not a member of " + context);
-
+        if (!raftGroupMap.containsKey(context)) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
+                                                 messagingPlatformConfiguration.getName() + ": Not a member of "
+                                                         + context);
         }
         return raftGroupMap.get(context).localNode();
     }
@@ -218,8 +226,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     public void stop(Runnable callback) {
         raftGroupMap.values().forEach(r -> r.localNode().stop());
         callback.run();
-        running=false;
-
+        running = false;
     }
 
     @Override
@@ -228,13 +235,15 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     /**
-     * Wait for the newly created raftgroup to be fully initialized and having a leader. Needs to wait until it has at least
+     * Wait for the newly created raftgroup to be fully initialized and having a leader. Needs to wait until it has at
+     * least
      * applied the first entry (the fact that the current node is leader).
+     *
      * @param group the raft group
      * @return the raft node when it is leader
      */
     RaftNode waitForLeader(RaftGroup group) {
-        while (! group.localNode().isLeader() || group.logEntryProcessor().lastAppliedIndex() == 0) {
+        while (!group.localNode().isLeader() || group.logEntryProcessor().lastAppliedIndex() == 0) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -256,11 +265,13 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     @Override
     public RaftNode getOrCreateRaftNode(String groupId, String nodeId) {
         RaftGroup raftGroup = raftGroupMap.get(groupId);
-        if(raftGroup != null) return raftGroup.localNode();
+        if (raftGroup != null) {
+            return raftGroup.localNode();
+        }
 
         synchronized (raftGroupMap) {
             raftGroup = raftGroupMap.get(groupId);
-            if(raftGroup == null) {
+            if (raftGroup == null) {
                 raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE, null);
             }
         }
@@ -277,23 +288,27 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     /**
-     * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than 100 transactions per second.
+     * Scheduled job to persist Raft status every second. Storing on each change causes too much overhead with more than
+     * 100 transactions per second.
      */
     @Scheduled(fixedDelay = 1000)
     public void syncStore() {
-        raftGroupMap.forEach((k,e) -> ((GrpcRaftGroup)e).syncStore());
+        raftGroupMap.forEach((k, e) -> ((GrpcRaftGroup) e).syncStore());
     }
 
 
     /**
      * Returns the max election timeout
+     *
      * @return election timeout in ms.
      */
     public int electionTimeout() {
         return raftProperties.getMaxElectionTimeout();
     }
+
     /**
      * Retrieve all non-admin Contexts that this node is member of.
+     *
      * @return Iterable of context names
      */
     public Iterable<String> getStorageContexts() {
@@ -309,10 +324,10 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     public String getMyLabel(List<Node> raftNodes) {
-        for (Node node :raftNodes) {
-            if( node.getNodeName().equals(messagingPlatformConfiguration.getName()))
+        for (Node node : raftNodes) {
+            if (node.getNodeName().equals(messagingPlatformConfiguration.getName())) {
                 return node.getNodeId();
-
+            }
         }
         throw new RuntimeException("Could not find current node in nodes");
     }
@@ -323,7 +338,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
     public void delete(String context, boolean preserveEventStore) {
         raftGroupMap.remove(context);
-        if( context.equals(getAdmin())) {
+        if (context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
         } else {
             eventPublisher.publishEvent(new ContextEvents.ContextDeleted(context, preserveEventStore));
