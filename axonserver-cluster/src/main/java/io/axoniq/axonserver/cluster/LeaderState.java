@@ -375,7 +375,8 @@ public class LeaderState extends AbstractMembershipState {
         }
         return replicators.replicatorPeerMap.values()
                                             .stream()
-                                            .filter(peer -> !replicators.nonVotingReplicaMap.containsKey(peer.nodeId()))
+                                            .filter(peer -> !replicators.nonVotingReplicaMap
+                                                    .containsKey(peer.nodeName()))
                                             .map(peer -> (ReplicatorPeerStatus) peer)
                                             .iterator();
     }
