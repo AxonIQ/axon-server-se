@@ -21,10 +21,12 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.util.Optionals;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +47,7 @@ import java.util.stream.Stream;
  * @author Marc Gathier
  */
 @Controller("ClusterController")
-public class ClusterController implements SmartLifecycle {
+public class ClusterController implements SmartLifecycle, ApplicationContextAware {
 
     private final Logger logger = LoggerFactory.getLogger(ClusterController.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
@@ -64,6 +66,7 @@ public class ClusterController implements SmartLifecycle {
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ClusterNode> nodeMap = new ConcurrentHashMap<>();
     private volatile boolean running;
+    private ApplicationContext applicationContext;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              ClusterConfiguration clusterConfiguration,
@@ -152,22 +155,43 @@ public class ClusterController implements SmartLifecycle {
     }
 
     private void checkCurrentNodeSaved() {
-        Optionals.ifPresentOrElse(clusterNodeRepository.findById(messagingPlatformConfiguration.getName()),
-                                  node -> {
-                                  },
-                                  () -> {
-                                      ClusterNode newNode = new ClusterNode(messagingPlatformConfiguration.getName(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getFullyQualifiedHostname(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getFullyQualifiedInternalHostname(),
-                                                                            messagingPlatformConfiguration.getPort(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getInternalPort(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getHttpPort());
-                                      clusterNodeRepository.save(newNode);
-                                  });
+        Optional<ClusterNode> optionalNode = clusterNodeRepository.findById(messagingPlatformConfiguration.getName());
+        if (!optionalNode.isPresent()) {
+            if (clusterNodeRepository.findAll().size() > 0) {
+                logger.error("Current node name has changed, new name {}. Start AxonServer with recovery file.",
+                             messagingPlatformConfiguration.getName());
+                SpringApplication.exit(applicationContext, () -> {
+                    System.exit(1);
+                    return 1;
+                });
+            }
+
+            ClusterNode newNode = new ClusterNode(messagingPlatformConfiguration.getName(),
+                                                  messagingPlatformConfiguration
+                                                          .getFullyQualifiedHostname(),
+                                                  messagingPlatformConfiguration
+                                                          .getFullyQualifiedInternalHostname(),
+                                                  messagingPlatformConfiguration.getPort(),
+                                                  messagingPlatformConfiguration
+                                                          .getInternalPort(),
+                                                  messagingPlatformConfiguration
+                                                          .getHttpPort());
+            clusterNodeRepository.save(newNode);
+        } else {
+            ClusterNode node = optionalNode.get();
+            if (!node.getInternalHostName().equals(messagingPlatformConfiguration
+                                                                 .getFullyQualifiedInternalHostname()) ||
+                    !node.getGrpcInternalPort().equals(messagingPlatformConfiguration.getInternalPort())) {
+                logger.error(
+                        "Current node's internal hostname/port ({}:{}) has changed,  new values {}:{}. Start AxonServer with recovery file.",
+                        node.getInternalHostName(), node.getGrpcInternalPort(),
+                        messagingPlatformConfiguration.getFullyQualifiedHostname(), messagingPlatformConfiguration.getInternalPort());
+                SpringApplication.exit(applicationContext, () -> {
+                    System.exit(1);
+                    return 1;
+                });
+            }
+        }
     }
 
     Stream<RemoteConnection> activeConnections() {
@@ -415,5 +439,10 @@ public class ClusterController implements SmartLifecycle {
         if (!clusterNodeRepository.findById(node.getNodeName()).isPresent()) {
             startRemoteConnection(new ClusterNode(node), true);
         }
+    }
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
     }
 }

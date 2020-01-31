@@ -176,7 +176,6 @@ public class ClusterNode implements Serializable, AxonServerNode {
             addContext(newMember);
             context.addClusterNode(newMember);
         }
-        ;
     }
 
     @Override
