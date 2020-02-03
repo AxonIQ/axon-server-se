@@ -24,7 +24,7 @@ public enum BaseMetricName implements MetricName {
     /**
      * Metric for the rate of commands handled (tags: context)
      */
-    AXON_COMMAND_RATE("axon.command.rate"),
+    AXON_COMMAND_RATE("axon.command"),
     /**
      * Metric for the number of currently active commands
      */
@@ -36,7 +36,7 @@ public enum BaseMetricName implements MetricName {
     /**
      * Metric for the rate of queries handled (tags: context)
      */
-    AXON_QUERY_RATE("axon.query.rate"),
+    AXON_QUERY_RATE("axon.query"),
     /**
      * Metric for the number of currently active queries
      */
@@ -48,11 +48,11 @@ public enum BaseMetricName implements MetricName {
     /**
      * Metric for the rate of events stored (tags: context)
      */
-    AXON_EVENTS("axon.event.rate"),
+    AXON_EVENTS("axon.event"),
     /**
      * Metric for the rate of snapshots stored (tags: context)
      */
-    AXON_SNAPSHOTS("axon.snapshot.rate"),
+    AXON_SNAPSHOTS("axon.snapshot"),
     AXON_GLOBAL_SUBSCRIPTION_TOTAL("axon.GlobalSubscriptionMetricRegistry.total"),
     AXON_GLOBAL_SUBSCRIPTION_UPDATES("axon.GlobalSubscriptionMetricRegistry.updates"),
     AXON_GLOBAL_SUBSCRIPTION_ACTIVE("axon.GlobalSubscriptionMetricRegistry.active"),
