@@ -464,13 +464,7 @@
         </profile>
 
         <profile>
-            <id>build-docker-image</id>
-            <activation>
-                <property>
-                    <name>performRelease</name>
-                    <value>true</value>
-                </property>
-            </activation>
+            <id>dockerhub</id>
             <build>
                 <plugins>
                     <plugin>
