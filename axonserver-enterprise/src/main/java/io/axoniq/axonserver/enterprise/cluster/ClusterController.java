@@ -41,7 +41,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -63,7 +62,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ChannelCloser channelCloser;
-    private final AtomicReference<ClusterNode> me = new AtomicReference<>();
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
@@ -178,7 +176,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                                                   messagingPlatformConfiguration
                                                           .getHttpPort());
             clusterNodeRepository.save(newNode);
-            me.set(setTags(newNode));
         } else {
             ClusterNode node = optionalNode.get();
             if (!node.getInternalHostName().equals(messagingPlatformConfiguration
@@ -193,7 +190,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                     return 1;
                 });
             }
-            me.set(setTags(node));
         }
     }
 
@@ -342,7 +338,10 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     }
 
     public ClusterNode getMe() {
-        return me.get();
+        return clusterNodeRepository.findById(messagingPlatformConfiguration.getName())
+                                    .map(this::setTags)
+                                    .orElseThrow(() -> new MessagingPlatformException(ErrorCode.NO_SUCH_NODE,
+                                                                                      "Current node not found"));
     }
 
 
