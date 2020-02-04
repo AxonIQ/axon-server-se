@@ -41,8 +41,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
@@ -56,12 +58,12 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     private final ClusterNodeRepository clusterNodeRepository;
     private final ClusterTagsCache clusterTagsCache;
     private final StubFactory stubFactory;
-    private final RaftGroupRepositoryManager raftGroupRepositoryManager;
     private final QueryDispatcher queryDispatcher;
     private final CommandDispatcher commandDispatcher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ChannelCloser channelCloser;
+    private final AtomicReference<ClusterNode> me = new AtomicReference<>();
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
@@ -74,7 +76,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                              ClusterNodeRepository clusterNodeRepository,
                              ClusterTagsCache clusterTagsCache,
                              StubFactory stubFactory,
-                             RaftGroupRepositoryManager raftGroupRepositoryManager,
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
                              ApplicationEventPublisher applicationEventPublisher,
@@ -85,7 +86,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         this.clusterNodeRepository = clusterNodeRepository;
         this.clusterTagsCache = clusterTagsCache;
         this.stubFactory = stubFactory;
-        this.raftGroupRepositoryManager = raftGroupRepositoryManager;
         this.queryDispatcher = queryDispatcher;
         this.commandDispatcher = commandDispatcher;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -178,6 +178,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                                                   messagingPlatformConfiguration
                                                           .getHttpPort());
             clusterNodeRepository.save(newNode);
+            me.set(setTags(newNode));
         } else {
             ClusterNode node = optionalNode.get();
             if (!node.getInternalHostName().equals(messagingPlatformConfiguration
@@ -192,6 +193,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                     return 1;
                 });
             }
+            me.set(setTags(node));
         }
     }
 
@@ -253,7 +255,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
      * Only accepts connections if the other node is member of a context of this node or it is an admin node.
      *
      * @param nodeInfo the node information of the node connecting to this node
-     * @return true if connection is accepted
      */
     @Transactional
     public synchronized void handleRemoteConnection(NodeInfo nodeInfo) {
@@ -341,11 +342,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     }
 
     public ClusterNode getMe() {
-        ClusterNode clusterNode = clusterNodeRepository.findById(messagingPlatformConfiguration.getName())
-                                                       .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
-                                                                                                         "Cannot find current node in controldb"));
-        clusterNode.setTags(clusterTagsCache.getClusterTags().get(messagingPlatformConfiguration.getName()));
-        return clusterNode;
+        return me.get();
     }
 
 
@@ -364,8 +361,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         return clusterNodeRepository
                 .findAll()
                 .stream()
-                .peek(n -> n
-                        .setTags(clusterTagsCache.getClusterTags().getOrDefault(n.getName(), Collections.emptyMap())));
+                .peek(this::setTags);
     }
 
     public Stream<ClusterNode> activeNodes() {
@@ -392,8 +388,16 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     }
 
     public ClusterNode getNode(String name) {
-        return nodeMap.computeIfAbsent(name, id -> clusterNodeRepository.findById(id).orElse(null));
+        ClusterNode clusterNode = nodeMap.computeIfAbsent(name, id -> clusterNodeRepository.findById(id).orElse(null));
+        return clusterNode == null ? null : setTags(clusterNode);
     }
+
+    private ClusterNode setTags(ClusterNode clusterNode) {
+        clusterNode.setTags(clusterTagsCache.getClusterTags()
+                                            .getOrDefault(clusterNode.getName(), Collections.emptyMap()));
+        return clusterNode;
+    }
+
 
     public FlowControl getCommandFlowControl() {
         return clusterConfiguration.getCommandFlowControl();
@@ -447,7 +451,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     }
 
     @Override
-    public void setApplicationContext(ApplicationContext applicationContext) {
+    public void setApplicationContext(@Nonnull ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
     }
 }

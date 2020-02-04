@@ -57,8 +57,6 @@ import static org.mockito.Mockito.*;
 public class ClusterControllerTest {
     private ClusterController testSubject;
     @Mock
-    private NodeSelectionStrategy nodeSelectionStrategy;
-    @Mock
     private Limits limits;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -134,14 +132,12 @@ public class ClusterControllerTest {
 
         when(raftController.isAutoStartup()).thenReturn(false);
 
-        RaftGroupRepositoryManager mockRaftGroupRepositoryManager = mock(RaftGroupRepositoryManager.class);
         CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
         testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration,
                                             clusterNodeRepository,
                                             clusterTagsCache,
                                             stubFactory,
-                                            mockRaftGroupRepositoryManager,
                                             queryDispatcher, commandDispatcher,
                                             eventPublisher, limits, channelCloser);
     }

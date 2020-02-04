@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
@@ -123,8 +122,10 @@ public class ClusterRestController {
 
     @GetMapping
     public List<JsonClusterNode> list() {
-        Stream<JsonClusterNode> otherNodes = clusterController.getRemoteConnections().stream().map(e -> JsonClusterNode.from(e.getClusterNode(), e.isConnected(), clusterTagsCache));
-        return Stream.concat(Stream.of(JsonClusterNode.from(clusterController.getMe(), true, clusterTagsCache)), otherNodes).collect(Collectors.toList());
+        return clusterController
+                .nodes()
+                .map(e -> JsonClusterNode.from(e, clusterController.isActive(e.getName())))
+                .collect(Collectors.toList());
     }
 
     @GetMapping(path="{name}")
@@ -132,7 +133,7 @@ public class ClusterRestController {
         ClusterNode node = clusterController.getNode(name);
         if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, "Node " + name + " not found");
 
-        return JsonClusterNode.from(node, true, clusterTagsCache);
+        return JsonClusterNode.from(node, clusterController.isActive(name));
     }
 
     @KeepNames
@@ -210,7 +211,7 @@ public class ClusterRestController {
             this.tags = tags;
         }
 
-        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected, ClusterTagsCache clusterTagsCache) {
+        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected) {
             JsonClusterNode clusterNode = new JsonClusterNode();
             clusterNode.name = jpaClusterNode.getName();
             clusterNode.internalHostName = jpaClusterNode.getInternalHostName();
@@ -219,7 +220,7 @@ public class ClusterRestController {
             clusterNode.grpcPort = jpaClusterNode.getGrpcPort();
             clusterNode.httpPort = jpaClusterNode.getHttpPort();
             clusterNode.connected = connected;
-            clusterNode.tags = clusterTagsCache.getClusterTags().get(jpaClusterNode.getName());
+            clusterNode.tags = jpaClusterNode.getTags();
             return clusterNode;
         }
     }
