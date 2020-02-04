@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
@@ -112,6 +113,7 @@ public class ClusterControllerTest {
 
         TagsConfiguration tagsConfiguration = new TagsConfiguration();
         tagsConfiguration.setTags(tagMap);
+        ClusterTagsCache clusterTagsCache = new ClusterTagsCache(messagingPlatformConfiguration, tagsConfiguration);
 
         ClusterConfiguration clusterConfiguration = new ClusterConfiguration();
 
@@ -137,7 +139,7 @@ public class ClusterControllerTest {
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
         testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration,
                                             clusterNodeRepository,
-                                            tagsConfiguration,
+                                            clusterTagsCache,
                                             stubFactory,
                                             mockRaftGroupRepositoryManager,
                                             queryDispatcher, commandDispatcher,

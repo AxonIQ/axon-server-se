@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -8,7 +9,6 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.enterprise.config.FlowControl;
-import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -31,6 +31,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -53,7 +54,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final ClusterConfiguration clusterConfiguration;
     private final ClusterNodeRepository clusterNodeRepository;
-    private final TagsConfiguration tagsConfiguration;
+    private final ClusterTagsCache clusterTagsCache;
     private final StubFactory stubFactory;
     private final RaftGroupRepositoryManager raftGroupRepositoryManager;
     private final QueryDispatcher queryDispatcher;
@@ -71,7 +72,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              ClusterConfiguration clusterConfiguration,
                              ClusterNodeRepository clusterNodeRepository,
-                             TagsConfiguration tagsConfiguration,
+                             ClusterTagsCache clusterTagsCache,
                              StubFactory stubFactory,
                              RaftGroupRepositoryManager raftGroupRepositoryManager,
                              QueryDispatcher queryDispatcher,
@@ -82,7 +83,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.clusterConfiguration = clusterConfiguration;
         this.clusterNodeRepository = clusterNodeRepository;
-        this.tagsConfiguration = tagsConfiguration;
+        this.clusterTagsCache = clusterTagsCache;
         this.stubFactory = stubFactory;
         this.raftGroupRepositoryManager = raftGroupRepositoryManager;
         this.queryDispatcher = queryDispatcher;
@@ -157,7 +158,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     private void checkCurrentNodeSaved() {
         Optional<ClusterNode> optionalNode = clusterNodeRepository.findById(messagingPlatformConfiguration.getName());
         if (!optionalNode.isPresent()) {
-            if (clusterNodeRepository.findAll().size() > 0) {
+            if (!clusterNodeRepository.findAll().isEmpty()) {
                 logger.error("Current node name has changed, new name {}. Start AxonServer with recovery file.",
                              messagingPlatformConfiguration.getName());
                 SpringApplication.exit(applicationContext, () -> {
@@ -343,7 +344,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         ClusterNode clusterNode = clusterNodeRepository.findById(messagingPlatformConfiguration.getName())
                                                        .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
                                                                                                          "Cannot find current node in controldb"));
-        clusterNode.setTags(tagsConfiguration.getTags());
+        clusterNode.setTags(clusterTagsCache.getClusterTags().get(messagingPlatformConfiguration.getName()));
         return clusterNode;
     }
 
@@ -360,11 +361,15 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     }
 
     public Stream<ClusterNode> nodes() {
-        return clusterNodeRepository.findAll().stream();
+        return clusterNodeRepository
+                .findAll()
+                .stream()
+                .peek(n -> n
+                        .setTags(clusterTagsCache.getClusterTags().getOrDefault(n.getName(), Collections.emptyMap())));
     }
 
     public Stream<ClusterNode> activeNodes() {
-        return clusterNodeRepository.findAll().stream().filter(n -> isActive(n.getName()));
+        return nodes().filter(n -> isActive(n.getName()));
     }
 
     public void addNodeListener(Consumer<ClusterEvent> nodeListener) {
