@@ -11,11 +11,20 @@ package io.axoniq.cli.json;
 
 /**
  * @author Marc Gathier
+ * @since 4.3
  */
 public class NodeAndRole {
 
     private String node;
     private String role;
+
+    public NodeAndRole() {
+    }
+
+    public NodeAndRole(String node, String role) {
+        this.node = node;
+        this.role = role;
+    }
 
     public String getRole() {
         return role;
@@ -31,5 +40,10 @@ public class NodeAndRole {
 
     public void setNode(String node) {
         this.node = node;
+    }
+
+    @Override
+    public String toString() {
+        return node + '[' + role + ']';
     }
 }

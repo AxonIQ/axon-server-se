@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Marc Gathier
@@ -63,5 +64,21 @@ public class ContextNode {
 
     public void setRoles(List<NodeAndRole> roles) {
         this.roles = roles;
+    }
+
+    public boolean hasRoles() {
+        return roles != null && !roles.isEmpty();
+    }
+
+    public String concatNodes() {
+        return nodes == null ? "" : nodes.stream()
+                                         .map(Object::toString)
+                                         .collect(Collectors.joining(","));
+    }
+
+    public String concatRoles() {
+        return roles == null ? "" : roles.stream()
+                                         .map(Object::toString)
+                                         .collect(Collectors.joining(","));
     }
 }
