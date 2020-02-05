@@ -67,7 +67,7 @@ public class CommandOptions {
                                              .valueSeparator(',')
                                              .longOpt("nodes")
                                              .required()
-                                             .desc("[Optional - Enterprise Edition only] primary member nodes for context")
+                                             .desc("[Enterprise Edition only] primary member nodes for context")
                                              .build();
     /**
      * Comma separated list of Axon Server node names as active backup nodes for the context.
