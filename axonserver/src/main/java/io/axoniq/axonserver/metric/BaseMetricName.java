@@ -44,7 +44,7 @@ public enum BaseMetricName implements MetricName {
     /**
      * Metric for the token of the last event in the event store (tags: context)
      */
-    AXON_LAST_TOKEN("axon.lastToken", "Last token in the event store"),
+    AXON_EVENT_LAST_TOKEN("axon.event.lastToken", "Last token in the event store"),
     /**
      * Metric for the rate of events stored (tags: context)
      */
