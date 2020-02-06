@@ -5,7 +5,7 @@ services:
   config:
     build:
       context: shared
-      dockerfile: shared/Dockerfile-autocluster
+      dockerfile: Dockerfile-autocluster
     volumes:
       - axon-server-config:/config
 
