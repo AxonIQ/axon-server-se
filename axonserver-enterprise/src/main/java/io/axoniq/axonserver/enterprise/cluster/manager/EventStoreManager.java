@@ -71,7 +71,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
              channelProvider, () -> contextController.storageContexts().iterator(),
              leaderProvider::getLeaderOrWait,
-             lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
+             !lifecycleController.isCleanShutdown(),
+             messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
 
 
