@@ -59,6 +59,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -417,32 +418,48 @@ class LocalRaftConfigService implements RaftConfigService {
         }
 
         List<Node> raftNodes = new ArrayList<>();
+        AtomicReference<Node> target = new AtomicReference<>();
         contextDefinition.getMembersList().forEach(n -> {
             ClusterNode clusterNode = clusterController.getNode(n.getNodeName());
             String nodeLabel = generateNodeLabel(n.getNodeName());
-            raftNodes.add(createNode(clusterNode, nodeLabel, Role.PRIMARY));
+            Node raftNode = createNode(clusterNode, nodeLabel, n.getRole());
+            if (target.get() == null && Role.PRIMARY.equals(raftNode.getRole())) {
+                target.set(raftNode);
+            }
+            raftNodes.add(raftNode);
         });
-        Node target = raftNodes.get(0);
 
-        getFuture(
-            raftGroupServiceFactory.getRaftGroupServiceForNode(target.getNodeName()).initContext(context, raftNodes)
-                                   .thenAccept(contextConfiguration -> {
-                                       ContextConfiguration completed =
-                                               ContextConfiguration.newBuilder(contextConfiguration)
-                                                                   .setPending(false)
-                                                                   .putAllMetaData(contextDefinition.getMetaDataMap())
-                                                                   .build();
-                                       appendToAdmin(ContextConfiguration.class.getName(),
-                                                     completed.toByteArray());
-                                   }).whenComplete((success, error) -> {
-                contextsInProgress.remove(context);
-                if (error != null) {
-                    deleteContext(context);
-                } else {
-                    addWildcardApps(context);
-                    addWildcardUsers(context);
-                }
-            }));
+        if (target.get() == null) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                 "No primary nodes provided");
+        }
+
+        try {
+            getFuture(
+                    raftGroupServiceFactory.getRaftGroupServiceForNode(target.get().getNodeName()).initContext(context,
+                                                                                                               raftNodes)
+                                           .thenAccept(contextConfiguration -> {
+                                               ContextConfiguration completed =
+                                                       ContextConfiguration.newBuilder(contextConfiguration)
+                                                                           .setPending(false)
+                                                                           .putAllMetaData(contextDefinition
+                                                                                                   .getMetaDataMap())
+                                                                           .build();
+                                               appendToAdmin(ContextConfiguration.class.getName(),
+                                                             completed.toByteArray());
+                                           }).whenComplete((success, error) -> {
+                        contextsInProgress.remove(context);
+                        if (error != null) {
+                            deleteContext(context);
+                        } else {
+                            addWildcardApps(context);
+                            addWildcardUsers(context);
+                        }
+                    }));
+        } catch (RuntimeException runtimeException) {
+            contextsInProgress.remove(context);
+            throw runtimeException;
+        }
     }
 
     private void addWildcardUsers(String context) {

@@ -122,6 +122,7 @@ public class LocalRaftGroupService implements RaftGroupService {
             builder.addNodes(NodeInfoWithLabel
                                      .newBuilder()
                                      .setLabel(member.getNodeId())
+                                     .setRole(member.getRole())
                                      .setNode(NodeInfo
                                                       .newBuilder()
                                                       .setNodeName(member.getNodeName())

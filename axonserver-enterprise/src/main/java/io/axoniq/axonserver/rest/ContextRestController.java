@@ -180,7 +180,14 @@ public class ContextRestController {
             return new RestResponse(false, "License does not allow creating contexts")
                     .asResponseEntity(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED);
         }
-        if (contextJson.getNodes() == null || contextJson.getNodes().isEmpty()) {
+
+        // Backwards compatibility, if nodes is specified and no roles provide, add nodes as primary
+        if (!contextJson.hasRoles() && contextJson.getNodes() != null) {
+            List<ContextJSON.NodeAndRole> roles = new ArrayList<>();
+            contextJson.getNodes().forEach(n -> roles.add(new ContextJSON.NodeAndRole(n, Role.PRIMARY)));
+            contextJson.setRoles(roles);
+        }
+        if (!contextJson.hasRoles()) {
             return new RestResponse(false, "Add at least one node for context")
                     .asResponseEntity(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED);
         }
@@ -194,13 +201,19 @@ public class ContextRestController {
                               .addContext(
                                       io.axoniq.axonserver.grpc.internal.Context.newBuilder()
                                                                                 .setName(contextJson.getContext())
-                                                                                .addAllMembers(contextJson.getNodes()
-                                                                       .stream()
-                                                                       .map(n -> ContextMember.newBuilder()
-                                                                                              .setNodeName(n)
-                                                                                              .build()
-                                                                       )
-                                                                       .collect(Collectors.toList()))
+                                                                                .addAllMembers(contextJson.getRoles()
+                                                                                                          .stream()
+                                                                                                          .map(n -> ContextMember
+                                                                                                                  .newBuilder()
+                                                                                                                  .setNodeName(
+                                                                                                                          n.getNode())
+                                                                                                                  .setRole(
+                                                                                                                          n.getRole())
+                                                                                                                  .build()
+                                                                                                          )
+                                                                                                          .collect(
+                                                                                                                  Collectors
+                                                                                                                          .toList()))
                                                                                 .build());
             return ResponseEntity.ok(new RestResponse(true, null));
         } catch (Exception ex) {

@@ -109,15 +109,27 @@ public class ContextJSON {
         this.metaData = metaData;
     }
 
+    public boolean hasRoles() {
+        return roles != null && !roles.isEmpty();
+    }
+
     @KeepNames
     public static class NodeAndRole implements Comparable<NodeAndRole> {
 
         private String node;
-        private Role role;
+        private Role role = Role.PRIMARY;
+
+        public NodeAndRole() {
+        }
 
         public NodeAndRole(ContextClusterNode n) {
             role = n.getRole();
             node = n.getClusterNode().getName();
+        }
+
+        public NodeAndRole(String node, Role role) {
+            this.role = role;
+            this.node = node;
         }
 
         public String getNode() {
@@ -126,6 +138,14 @@ public class ContextJSON {
 
         public Role getRole() {
             return role;
+        }
+
+        public void setNode(String node) {
+            this.node = node;
+        }
+
+        public void setRole(Role role) {
+            this.role = role;
         }
 
         @Override

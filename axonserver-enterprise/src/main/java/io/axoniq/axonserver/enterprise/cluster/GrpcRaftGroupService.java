@@ -1,9 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.AxonServerInternalService;
-import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.ContextMemberConverter;
-import io.axoniq.axonserver.grpc.cluster.Node;
+import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.internal.Context;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
@@ -25,7 +24,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
+ * GRPC endpoint for the RaftGroupServiceGrpc service. Implements the handlers for RPCs in this service.
+ *
  * @author Marc Gathier
+ * @since 4.1
  */
 @Service
 public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceImplBase implements
@@ -34,35 +36,31 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftGroupService.class);
     private final LocalRaftGroupService localRaftGroupService;
 
+    /**
+     * Constructor of the service
+     * @param localRaftGroupService delegate to perform the actual work
+     */
     public GrpcRaftGroupService(LocalRaftGroupService localRaftGroupService) {
         this.localRaftGroupService = localRaftGroupService;
     }
 
+    /**
+     * Initializes a context on this node.
+     * @param request the context to create
+     * @param responseObserver observer for the results
+     */
     @Override
     public void initContext(Context request, StreamObserver<ContextConfiguration> responseObserver) {
         logger.debug("Init context: {}", request);
         try {
-            ContextConfiguration contextConfiguration = localRaftGroupService.initContext(request.getName(),
-                                                                                          request.getMembersList()
-                                                                                                 .stream()
-                                                                                                 .map(contextMember -> Node
-                                                                                                         .newBuilder()
-                                                                                                         .setNodeId(
-                                                                                                                 contextMember
-                                                                                                                         .getNodeId())
-                                                                                                         .setHost(
-                                                                                                                 contextMember
-                                                                                                                         .getHost())
-                                                                                                         .setPort(
-                                                                                                                 contextMember
-                                                                                                                         .getPort())
-                                                                                                         .setNodeName(
-                                                                                                                 contextMember
-                                                                                                                         .getNodeName())
-                                                                                                         .build())
-                                                                                                 .collect(Collectors
-                                                                                                                  .toList()))
-                                                                             .get();
+            ContextConfiguration contextConfiguration =
+                    localRaftGroupService.initContext(request.getName(),
+                                                      request.getMembersList()
+                                                             .stream()
+                                                             .map(ContextMemberConverter::asNode)
+                                                             .collect(Collectors
+                                                                              .toList()))
+                                         .get();
 
             responseObserver.onNext(contextConfiguration);
             responseObserver.onCompleted();
@@ -113,7 +111,7 @@ public class GrpcRaftGroupService extends RaftGroupServiceGrpc.RaftGroupServiceI
     public void deleteContext(DeleteContextRequest request, StreamObserver<InstructionAck> responseObserver) {
         try {
             CompletableFuture<Void> completable = localRaftGroupService.deleteContext(request.getContext(),
-                                                                                  request.getPreserveEventstore());
+                                                                                      request.getPreserveEventstore());
             confirm(responseObserver, completable);
         } catch (Exception ex) {
             logger.warn("Failed to delete context: {}", request.getContext(), ex);

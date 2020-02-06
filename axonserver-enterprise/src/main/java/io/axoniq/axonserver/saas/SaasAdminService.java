@@ -30,7 +30,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -95,6 +98,7 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
                                         .stream()
                                         .map(ccn -> ContextRole.newBuilder()
                                                                .setName(ccn.getContext().getName())
+                                                               .setRole(ccn.getRole())
                                                                .build())
                                         .collect(Collectors.toList()))
                        .build();
@@ -102,20 +106,24 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
 
     /**
      * Retrieves all contexts, and the nodes they are assigned to.
-     * @param request empty request, gRPC requires a request message
-     * @param responseObserver observer where contexts are published to. Each context is published as a separate response.
+     *
+     * @param request          empty request, gRPC requires a request message
+     * @param responseObserver observer where contexts are published to. Each context is published as a separate
+     *                         response.
      */
     @Override
     public void getContexts(EmptyRequest request, StreamObserver<Context> responseObserver) {
         contextProvider.get().forEach(c -> {
             responseObserver.onNext(Context.newBuilder().setName(c.getName())
-                                           .addAllMembers(c.getNodes().stream().map(ccn -> ContextMember.newBuilder()
-                                                                                                        .setNodeName(
-                                                                                                                ccn.getClusterNode()
-                                                                                                                   .getName())
-                                                                                                        .build())
-                                                           .collect(
-                                                                   Collectors.toList()))
+                                           .addAllMembers(c.getNodes()
+                                                           .stream()
+                                                           .map(ccn -> ContextMember.newBuilder()
+                                                                                    .setNodeName(
+                                                                                            ccn.getClusterNode()
+                                                                                               .getName())
+                                                                                    .setRole(ccn.getRole())
+                                                                                    .build())
+                                                           .collect(Collectors.toList()))
                                            .putAllMetaData(c.getMetaDataMap()).build());
         });
 
@@ -124,8 +132,10 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
 
     /**
      * Retrieves all applications, and the assigned roles.
-     * @param request empty request, gRPC requires a request message
-     * @param responseObserver observer where applications are published to. Each application is published as a separate response.
+     *
+     * @param request          empty request, gRPC requires a request message
+     * @param responseObserver observer where applications are published to. Each application is published as a separate
+     *                         response.
      */
     @Override
     public void getApplications(EmptyRequest request, StreamObserver<Application> responseObserver) {
@@ -135,11 +145,12 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
     }
 
     /**
-     * Creates a new context. If there is a meta data value {@code nodes} defined in the request, it will add the context to
+     * Creates a new context. If there is a meta data value {@code nodes} defined in the request, it will add the
+     * context to
      * that number of nodes. If this is not specified it will add it to one node.
      * The operation assigns the context to the nodes with the lowest number of contexts available.
      *
-     * @param request the context to create
+     * @param request          the context to create
      * @param responseObserver acknowledgement on successful completion
      */
     @Override
@@ -150,34 +161,51 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME, "Invalid context name");
             }
 
-            int nodes = Integer.valueOf(request.getMetaDataMap().getOrDefault("nodes", "1"));
-            if (nodes < 1) {
-                throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
-                                                     "Invalid number of nodes: " + nodes);
+            if (request.getMembersCount() > 0) {
+                Map<String, ClusterNode> activeNodes = new HashMap<>();
+                clusterProvider.get().forEach(clusterNode -> activeNodes.put(clusterNode.getName(), clusterNode));
+
+                Set<String> invalidNodes = request.getMembersList()
+                                                  .stream()
+                                                  .map(ContextMember::getNodeName)
+                                                  .filter(m -> !activeNodes.containsKey(m))
+                                                  .collect(Collectors.toSet());
+
+                if (!invalidNodes.isEmpty()) {
+                    throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                         "Nodes not active: " + invalidNodes);
+                }
+            } else {
+
+                int nodes = Integer.parseInt(request.getMetaDataMap().getOrDefault("nodes", "1"));
+                if (nodes < 1) {
+                    throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                         "Invalid number of nodes: " + nodes);
+                }
+
+
+                List<ContextMember> selectedNodes = clusterProvider.get().sorted(Comparator.comparingInt(c -> c
+                        .getContexts().size()))
+                                                                   .limit(nodes)
+                                                                   .map(c -> ContextMember.newBuilder()
+                                                                                          .setNodeId(c.getName())
+                                                                                          .setNodeName(c.getName())
+                                                                                          .setHost(c.getInternalHostName())
+                                                                                          .setPort(c.getGrpcInternalPort())
+                                                                                          .build()
+                                                                   )
+                                                                   .collect(Collectors.toList());
+                if (selectedNodes.size() < nodes) {
+                    throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                         "Invalid number of nodes: " + nodes);
+                }
+
+                request = Context.newBuilder(request)
+                                 .clearMembers()
+                                 .addAllMembers(selectedNodes)
+                                 .build();
             }
-
-
-            List<ContextMember> selectedNodes = clusterProvider.get().sorted(Comparator.comparingInt(c -> c
-                    .getContexts().size()))
-                                                                 .limit(nodes)
-                                                                 .map(c -> ContextMember.newBuilder()
-                                                                                        .setNodeId(c.getName())
-                                                                                        .setNodeName(c.getName())
-                                                                                        .setHost(c.getInternalHostName())
-                                                                                        .setPort(c.getGrpcInternalPort())
-                                                                                        .build()
-                                                                 )
-                                                                 .collect(Collectors.toList());
-            if (selectedNodes.size() < nodes) {
-                throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
-                                                     "Invalid number of nodes: " + nodes);
-            }
-
-            Context updatedContext = Context.newBuilder(request)
-                                            .clearMembers()
-                                            .addAllMembers(selectedNodes)
-                                            .build();
-            raftConfigServiceProvider.get().addContext(updatedContext);
+            raftConfigServiceProvider.get().addContext(request);
             responseObserver.onNext(CONFIRMATION);
             responseObserver.onCompleted();
         } catch (Exception ex) {
@@ -218,7 +246,8 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
 
     /**
      * Create a new application and grants roles to given contexts.
-     * @param request the application and grants
+     *
+     * @param request          the application and grants
      * @param responseObserver stream where application is returned when created
      */
     @Override
@@ -246,7 +275,8 @@ public class SaasAdminService extends SaasAdminServiceGrpc.SaasAdminServiceImplB
 
     /**
      * Refreshes the token for a specific application.
-     * @param request contains the application to refresh the token
+     *
+     * @param request          contains the application to refresh the token
      * @param responseObserver updated application, with new token inside
      */
     @Override

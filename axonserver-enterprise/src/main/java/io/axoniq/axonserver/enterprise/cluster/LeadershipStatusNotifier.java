@@ -119,6 +119,7 @@ public class LeadershipStatusNotifier {
     }
 
     private void updateLeader(Context context, Map<String, Set<String>> leadersPerContext) {
+        leadersPerContext.computeIfAbsent(context.getName(), n -> newKeySet());
         context.getMembersList()
                .stream()
                .filter(cm -> State.LEADER.getNumber() == cm.getState().getNumber())
