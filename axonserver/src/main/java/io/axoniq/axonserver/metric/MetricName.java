@@ -15,4 +15,6 @@ package io.axoniq.axonserver.metric;
 public interface MetricName {
 
     String metric();
+
+    String description();
 }

@@ -44,9 +44,8 @@ public class ListContexts extends AxonIQCliCommand {
                 for (ContextNode context : contexts) {
                     System.out.printf("%-20s %-20s %-60s\n", context.getContext(),
                                       context.getLeader(),
-                                      context.getNodes() == null ? "" : context.getNodes().stream()
-                                                                               .map(Object::toString)
-                                                                               .collect(Collectors.joining(",")));
+                                      context.hasRoles() ? context.concatRoles() : context.concatNodes()
+                    );
                 }
             }
         }

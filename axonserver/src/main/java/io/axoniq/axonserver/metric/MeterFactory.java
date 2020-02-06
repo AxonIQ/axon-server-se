@@ -54,7 +54,10 @@ public class MeterFactory {
     }
 
     public Counter counter(MetricName metric, Tags tags) {
-        return meterRegistry.counter(metric.metric(), tags);
+        return Counter.builder(metric.metric())
+                      .tags(tags)
+                      .description(metric.description())
+                      .register(meterRegistry);
     }
 
     public Counter counter(MetricName metric) {
@@ -62,17 +65,22 @@ public class MeterFactory {
     }
 
     public Timer timer(MetricName metric, Tags tags) {
-        return meterRegistry.timer(metric.metric(), tags);
+        return Timer.builder(metric.metric())
+                    .tags(tags)
+                    .description(metric.description())
+                    .register(meterRegistry);
     }
 
     public <T> Gauge gauge(MetricName metric, Tags tags, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
                     .tags(tags)
+                    .description(metric.description())
                     .register(meterRegistry);
     }
 
     public <T> Gauge gauge(MetricName metric, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
+                    .description(metric.description())
                     .register(meterRegistry);
     }
 
@@ -123,20 +131,29 @@ public class MeterFactory {
             this.name = metricName.metric();
             this.tags = tags;
             meter = new IntervalCounter(clock);
-            counter = meterRegistry.counter(name + ".count", tags);
-            deprecatedCounter = meterRegistry.counter(name + ".rate.count", tags);
-            meterRegistry.gauge(name + ONE_MINUTE_RATE,
-                                tags,
-                                meter,
-                                IntervalCounter::getOneMinuteRate);
-            meterRegistry.gauge(name + FIVE_MINUTE_RATE,
-                                tags,
-                                meter,
-                                IntervalCounter::getFiveMinuteRate);
-            meterRegistry.gauge(name + FIFTEEN_MINUTE_RATE,
-                                tags,
-                                meter,
-                                IntervalCounter::getFifteenMinuteRate);
+            counter = Counter.builder(name + ".count")
+                             .description(metricName.description() + " since start")
+                             .tags(tags)
+                             .register(meterRegistry);
+
+            deprecatedCounter =
+                    Counter.builder(name + ".rate.count")
+                           .description(metricName.description() + " since start [Deprecated]")
+                           .tags(tags)
+                           .register(meterRegistry);
+
+            Gauge.builder(name + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
+                 .description(metricName.description() + " per second (last minute)")
+                 .tags(tags)
+                 .register(meterRegistry);
+            Gauge.builder(name + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
+                 .description(metricName.description() + " per second (last 5 minutes)")
+                 .tags(tags)
+                 .register(meterRegistry);
+            Gauge.builder(name + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
+                 .description(metricName.description() + " per second (last 15 minutes)")
+                 .tags(tags)
+                 .register(meterRegistry);
         }
 
 

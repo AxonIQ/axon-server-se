@@ -498,7 +498,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
             this.eventWriteStorage.registerEventListener((token, events) -> this.trackingEventManager.reschedule());
-            this.gauge = meterFactory.gauge(BaseMetricName.AXON_LAST_TOKEN,
+            this.gauge = meterFactory.gauge(BaseMetricName.AXON_EVENT_LAST_TOKEN,
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,
                                             c -> (double) getLastToken(c));
