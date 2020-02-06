@@ -51,6 +51,7 @@ public class RegisterContext extends AxonIQCliCommand {
         addNodes(commandLine, MESSAGING_ONLY_NODES, "MESSAGING_ONLY", definedNodes, nodeRolesMap);
 
         contextNode.setRoles(nodeRolesMap);
+        contextNode.setNodes(new ArrayList<>(definedNodes));
 
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             postJSON(httpclient, url, contextNode, 200, getToken(commandLine),
