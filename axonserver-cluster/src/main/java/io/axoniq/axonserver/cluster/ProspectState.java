@@ -34,10 +34,10 @@ public class ProspectState extends BaseFollowerState {
 
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        currentConfiguration().refresh();
         Node currentNode = currentNode();
         if (currentNode == null) {
             logger.info("{} in term {}: Current node is empty", groupId(), currentTerm());
-            currentConfiguration().refresh();
             return super.appendEntries(request);
         }
         logger.trace("{} in term {}: Role: {}", groupId(), currentTerm(), currentNode().getRole());
