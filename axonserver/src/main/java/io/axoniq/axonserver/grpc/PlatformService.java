@@ -406,7 +406,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         private final String component;
         private final String context;
 
-        private ClientComponent(String client, String component, String context) {
+        public ClientComponent(String client, String component, String context) {
             this.client = client;
             this.component = component;
             this.context = context;
@@ -421,7 +421,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 return false;
             }
             ClientComponent that = (ClientComponent) o;
-            return Objects.equals(client, that.client);
+            return client.equals(that.client) &&
+                    context.equals(that.context);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(client, context);
         }
 
         /**
@@ -449,11 +455,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
          */
         public String getContext() {
             return context;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(client);
         }
 
         @Override
