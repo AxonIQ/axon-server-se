@@ -13,6 +13,8 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.ProxiedSub
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequestEvent;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -20,11 +22,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Created by Sara Pellegrini on 01/05/2018.
- * sara.pellegrini@gmail.com
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 @Component
 public class QueryUpdateDispatcher {
+
+    private final Logger logger = LoggerFactory.getLogger(QueryUpdateDispatcher.class);
 
     private final Map<String, UpdateHandler> handlers = new ConcurrentHashMap<>();
 
@@ -54,7 +58,12 @@ public class QueryUpdateDispatcher {
         if (handler == null) {
             event.unknownSubscriptionHandler().run();
         } else {
-            handler.onSubscriptionQueryResponse(event.response());
+            try {
+                handler.onSubscriptionQueryResponse(event.response());
+            } catch (Exception ex) {
+                logger.warn("Failed to forward response to update handler, removing the handler", ex);
+                handlers.remove(event.subscriptionId());
+            }
         }
     }
 }
