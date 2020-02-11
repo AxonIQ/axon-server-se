@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -333,17 +334,29 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-            long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
-            responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
-            responseObserver.onCompleted();
+        long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
+        responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
+        responseObserver.onCompleted();
     }
 
+    @Override
+    public Optional<Long> getLastSequenceNumber(String context, String aggregateIdentifier, int maxNrOfSegments) {
+        long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(aggregateIdentifier);
+        if (sequenceNumber >= 0) {
+            return Optional.of(sequenceNumber);
+        }
+        return Optional.empty();
+    }
 
     @Override
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
-        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage, workers.eventStreamReader, defaultLimit, timeout, responseObserver);
+        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage,
+                                                    workers.eventStreamReader,
+                                                    defaultLimit,
+                                                    timeout,
+                                                    responseObserver);
     }
 
     @Override
@@ -468,7 +481,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
+    public long getFirstToken(String context) {
+        return workers(context).eventStreamReader.getFirstToken();
+    }
+
     private class Workers {
+
         private final EventWriteStorage eventWriteStorage;
         private final SnapshotWriteStorage snapshotWriteStorage;
         private final AggregateReader aggregateReader;
@@ -481,6 +499,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final AtomicBoolean initialized = new AtomicBoolean();
         private final TrackingEventProcessorManager trackingEventManager;
         private final Gauge gauge;
+        private final Gauge snapshotGauge;
 
 
         public Workers(String context) {
@@ -502,7 +521,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,
                                             c -> (double) getLastToken(c));
-
+            this.snapshotGauge = meterFactory.gauge(BaseMetricName.AXON_SNAPSHOT_LAST_TOKEN,
+                                                    Tags.of(MeterFactory.CONTEXT, context),
+                                                    context,
+                                                    c -> (double) getLastSnapshot(c));
         }
 
         public synchronized void init(boolean validate) {
@@ -522,6 +544,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventStorageEngine.close(deleteData);
             snapshotStorageEngine.close(deleteData);
             meterFactory.remove(gauge);
+            meterFactory.remove(snapshotGauge);
         }
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {

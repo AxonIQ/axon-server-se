@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Marc Gathier
@@ -87,6 +88,7 @@ public class StorageProperties {
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
+    private long retentionTime = TimeUnit.HOURS.toMillis(1);
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -268,5 +270,13 @@ public class StorageProperties {
 
     public void setFlags(int flags) {
         this.flags = flags;
+    }
+
+    public long getRetentionTime() {
+        return retentionTime;
+    }
+
+    public void setRetentionTime(long retentionTime) {
+        this.retentionTime = retentionTime;
     }
 }
