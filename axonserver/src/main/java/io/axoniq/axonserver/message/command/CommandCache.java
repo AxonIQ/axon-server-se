@@ -52,6 +52,10 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
         if( ! toDelete.isEmpty()) {
             logger.warn("Found {} waiting commands to delete", toDelete.size());
             toDelete.forEach(e -> {
+                logger.warn("Cancelling command {} sent by {}, waiting for reply from {}",
+                            e.getValue().getRequestIdentifier(),
+                            e.getValue().getSourceClientId(),
+                            e.getValue().getClientId());
                 remove(e.getKey());
                 e.getValue().cancel();
             });

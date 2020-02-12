@@ -107,4 +107,8 @@ public class QueryInformation {
     public String getSourceClientId() {
         return sourceClientId;
     }
+
+    public Set<String> waitingFor() {
+        return handlerNames;
+    }
 }
