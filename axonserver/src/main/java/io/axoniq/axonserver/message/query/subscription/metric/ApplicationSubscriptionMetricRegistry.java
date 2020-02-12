@@ -85,7 +85,9 @@ public class ApplicationSubscriptionMetricRegistry {
         if (componentNames.containsKey(event.subscriptionId()) && event.response().getResponseCase().equals(UPDATE)){
             String component = componentNames.get(event.subscriptionId());
             String context = contexts.get(event.subscriptionId());
-            updatesMetric(component, context).increment();
+            if (component != null && context != null) {
+                updatesMetric(component, context).increment();
+            }
         }
     }
 

@@ -82,14 +82,27 @@ public class SubscriptionQueryDispatcher {
         SubscriptionQueryRequest queryRequest = SubscriptionQueryRequest.newBuilder()
                                                                         .setUnsubscribe(evt.unsubscribe())
                                                                         .build();
-        Collection<QueryHandler> handlers = registrationCache.findAll(evt.context(), evt.unsubscribe().getQueryRequest());
-        handlers.forEach(handler -> handler.dispatch(queryRequest));
+        Collection<QueryHandler> handlers = registrationCache.findAll(evt.context(),
+                                                                      evt.unsubscribe().getQueryRequest());
+        handlers.forEach(handler -> safeDispatch(handler, queryRequest));
+    }
+
+    private void safeDispatch(QueryHandler handler,
+                              SubscriptionQueryRequest queryRequest) {
+        try {
+            handler.dispatch(queryRequest);
+        } catch (Exception ex) {
+            logger.debug("Dispatch subscription query cancel with subscriptionId = {} failed",
+                         queryRequest.getUnsubscribe().getSubscriptionIdentifier(),
+                         ex);
+        }
     }
 
 
     @EventListener
-    public void on(SubscriptionEvents.SubscribeQuery event){
-        ClientIdentification clientName = new ClientIdentification(event.getContext(),event.getSubscription().getClientId());
+    public void on(SubscriptionEvents.SubscribeQuery event) {
+        ClientIdentification clientName = new ClientIdentification(event.getContext(),
+                                                                   event.getSubscription().getClientId());
         QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), event.getSubscription().getQuery());
         directSubscriptions.forEach(subscription -> {
             String subscriptionId = subscription.subscriptionQuery().getSubscriptionIdentifier();
