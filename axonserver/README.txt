@@ -1,7 +1,14 @@
-This is the Axon Server Standard Edition, version 4.2
+This is the Axon Server Standard Edition, version 4.3
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.3
+-------------------------------
+
+* Separate audit log for configuration changes
+* Changed metrics to use common names and tags
+* Changed docker image (base image changed and 2 volumes added)
 
 Release Notes for version 4.2.4
 -------------------------------
