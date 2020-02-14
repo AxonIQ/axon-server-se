@@ -63,9 +63,9 @@ mkdir -p ${TARGET}
 
 GOOGLE_CLOUD_LOGGING_JAR=google-cloud-logging-1.100.0.jar
 
-wget -O ${TARGET}/exts/GOOGLE_CLOUD_LOGGING_JAR "https://repo1.maven.org/maven2/com/google/cloud/google-cloud-logging/1.100.0/google-cloud-logging-1.100.0.jar"
+wget -O ${TARGET}/exts/${GOOGLE_CLOUD_LOGGING_JAR} "https://repo1.maven.org/maven2/com/google/cloud/google-cloud-logging/1.100.0/google-cloud-logging-1.100.0.jar"
 
-if [ ! -s ${TARGET}/GOOGLE_CLOUD_LOGGING_JAR ] ; then
+if [ ! -s ${TARGET}/${GOOGLE_CLOUD_LOGGING_JAR} ] ; then
     echo "ERROR: Could not download a ${GOOGLE_CLOUD_LOGGING_JAR} from https://repo1.maven.org."
     exit 1
 fi
