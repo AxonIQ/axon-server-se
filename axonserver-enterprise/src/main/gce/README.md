@@ -27,7 +27,7 @@
 
 ## Logging
 
-* VMs will have "`https://cloud.google.com/logging/docs/reference/libraries`" installed, with a log named "`axon-server.log`".
+* VMs will have the JARS from "`https://cloud.google.com/logging/docs/reference/libraries`" installed, with a log named "`axon-server.log`".
 
 ## Storage
 
