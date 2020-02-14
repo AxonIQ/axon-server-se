@@ -60,6 +60,7 @@ if [ -d ${TARGET} ] ; then
     rm -rf ${TARGET}
 fi
 mkdir -p ${TARGET}
+mkdir -p ${TARGET}/exts
 
 GOOGLE_CLOUD_LOGGING_JAR=google-cloud-logging-1.100.0.jar
 
