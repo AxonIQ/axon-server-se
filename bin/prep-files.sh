@@ -61,7 +61,16 @@ if [ -d ${TARGET} ] ; then
 fi
 mkdir -p ${TARGET}
 
-for f in setup.sh startup.sh shutdown.sh axonserver.service axoniq-axonserver.conf axonserver.properties check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh ; do
+GOOGLE_CLOUD_LOGGING_JAR=google-cloud-logging-1.100.0.jar
+
+wget -O ${TARGET}/exts/GOOGLE_CLOUD_LOGGING_JAR "https://repo1.maven.org/maven2/com/google/cloud/google-cloud-logging/1.100.0/google-cloud-logging-1.100.0.jar"
+
+if [ ! -s ${TARGET}/GOOGLE_CLOUD_LOGGING_JAR ] ; then
+    echo "ERROR: Could not download a ${GOOGLE_CLOUD_LOGGING_JAR} from https://repo1.maven.org."
+    exit 1
+fi
+
+for f in setup.sh startup.sh shutdown.sh axonserver.service axonserver.properties check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh logback-spring.xml ; do
     cp axonserver-enterprise/src/main/gce/${f} ${TARGET}/${f}
 done
 

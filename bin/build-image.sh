@@ -227,11 +227,6 @@ cat > target/application-image.json <<EOF
                   "echo /var/lib/axonserver",
                   "sudo ls -lF /var/lib/axonserver/",
                   "echo ''",
-                  "curl -sSO https://dl.google.com/cloudagents/install-logging-agent.sh",
-                  "sudo bash ./install-logging-agent.sh",
-                  "sudo mkdir -p /etc/google-fluentd/config.d",
-                  "sudo cp /tmp/${LABEL}/axoniq-axonserver.conf /etc/google-fluentd/config.d/",
-                  "sudo service google-fluentd restart",
                   "sudo rm -rf /tmp/${LABEL}",
                   "sudo cp /var/lib/axonserver/axonserver.service /etc/systemd/system/axonserver.service",
                   "sudo systemctl enable axonserver.service" ]
