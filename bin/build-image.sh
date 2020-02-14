@@ -220,7 +220,7 @@ cat > target/application-image.json <<EOF
       "inline": [ "sudo yum -y update",
                   "sudo yum -y install java-11-openjdk-headless dejavu-sans-fonts urw-fonts wget curl jq",
                   "sudo adduser -d /var/lib/axonserver -U axonserver",
-                  "sudo cp /tmp/${LABEL}/* /var/lib/axonserver/",
+                  "sudo cp -r /tmp/${LABEL}/* /var/lib/axonserver/",
                   "sudo mkdir -p /var/log/axonserver",
                   "sudo chown -R axonserver:axonserver /var/lib/axonserver /var/log/axonserver",
                   "echo ''",
