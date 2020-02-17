@@ -31,14 +31,14 @@ public class SameNodesPredicate implements BiPredicate<ContextConfiguration, Con
                             n1.getGrpcInternalPort() != n2.getGrpcInternalPort() ||
                             !n1.getNodeName().equals(n2.getNodeName())) {
                         logger.warn("{}: Node with different configuration, first: {} -> {}:{}, second {} -> {}:{}",
-                                    node.getLabel(),
+                                    configuration.getContext(),
                                     n1.getNodeName(),
                                     n1.getInternalHostName(),
                                     n1.getGrpcInternalPort(),
                                     n2.getNodeName(),
                                     n2.getInternalHostName(),
                                     n2.getGrpcInternalPort()
-                                    );
+                        );
                         return false;
                     }
                 }
