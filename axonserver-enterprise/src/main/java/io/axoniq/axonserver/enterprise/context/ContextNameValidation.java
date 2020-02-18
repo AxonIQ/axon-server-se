@@ -17,6 +17,6 @@ public class ContextNameValidation implements Predicate<String> {
      */
     @Override
     public boolean test(String contextName) {
-        return contextName.matches("[a-zA-Z][a-zA-Z_\\-0-9]*");
+        return contextName.matches("[a-zA-Z][a-zA-Z@_\\-0-9]*");
     }
 }
