@@ -13,9 +13,15 @@
             <method access="public"/>
         </class>
         <class template="@org.springframework.context.annotation.Configuration class *"/>
-        <class template="@org.springframework.stereotype.Component class *"/>
-        <class template="@org.springframework.stereotype.Controller class *"/>
-        <class template="@org.springframework.stereotype.Repository class *"/>
+        <class template="@org.springframework.stereotype.Component class *">
+            <method access="public"/>
+        </class>
+        <class template="@org.springframework.stereotype.Controller class *">
+            <method access="public"/>
+        </class>
+        <class template="@org.springframework.stereotype.Repository class *">
+            <method access="public"/>
+        </class>
         <class template="@org.springframework.stereotype.Service class *">
             <method access="protected+"/>
         </class>
