@@ -62,15 +62,14 @@ fi
 mkdir -p ${TARGET}
 mkdir -p ${TARGET}/exts
 
-GOOGLE_CLOUD_LOGGING_VERSION=1.100.0
-GOOGLE_CLOUD_LOGGING_JAR=google-cloud-logging-${GOOGLE_CLOUD_LOGGING_VERSION}.jar
+wget -O ${TARGET}/exts/jar_files.zip "https://download.jar-download.com/cache_jars/com.google.cloud/google-cloud-logging-logback/0.116.0-alpha/jar_files.zip"
 
-wget -O ${TARGET}/exts/${GOOGLE_CLOUD_LOGGING_JAR} "https://repo1.maven.org/maven2/com/google/cloud/google-cloud-logging/${GOOGLE_CLOUD_LOGGING_VERSION}/${GOOGLE_CLOUD_LOGGING_JAR}"
-
-if [ ! -s ${TARGET}/exts/${GOOGLE_CLOUD_LOGGING_JAR} ] ; then
-    echo "ERROR: Could not download a ${GOOGLE_CLOUD_LOGGING_JAR} from https://repo1.maven.org."
+if [ ! -s ${TARGET}/exts/jar_files.zip ] ; then
+    echo "ERROR: Could not download a google-cloud-logging-logback jars from https://download.jar-download.com."
     exit 1
 fi
+
+unzip ${TARGET}/exts/jar_files.zip
 
 for f in setup.sh startup.sh shutdown.sh axonserver.service axonserver.properties check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh logback-spring.xml ; do
     cp axonserver-enterprise/src/main/gce/${f} ${TARGET}/${f}
