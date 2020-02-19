@@ -22,6 +22,12 @@
         <class template="@org.springframework.stereotype.Repository class *">
             <method access="public"/>
         </class>
+        <class template="interface *">
+            <method access="public"/>
+        </class>
+        <class template="class io.axoniq.axonserver.grpc.*">
+            <method access="public"/>
+        </class>
         <class template="@org.springframework.stereotype.Service class *">
             <method access="protected+"/>
         </class>
@@ -40,9 +46,6 @@
         </class>
         <class template="@javax.persistence.Embeddable class *">
             <field template="*"/>
-            <method access="protected+"/>
-        </class>
-        <class template="class io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider">
             <method access="protected+"/>
         </class>
         <class template="class * implements org.springframework.data.jpa.repository.JpaRepository">

@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.KeepNames;
+
 import java.util.function.Predicate;
 
 /**
@@ -8,6 +10,7 @@ import java.util.function.Predicate;
  * @author Sara Pellegrini
  * @since 4.1
  */
+@KeepNames
 public class ContextNameValidation implements Predicate<String> {
 
     /**
