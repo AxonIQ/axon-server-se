@@ -69,7 +69,7 @@ if [ ! -s ${TARGET}/exts/jar_files.zip ] ; then
     exit 1
 fi
 
-unzip ${TARGET}/exts/jar_files.zip
+unzip -d ${TARGET}/exts ${TARGET}/exts/jar_files.zip
 
 for f in setup.sh startup.sh shutdown.sh axonserver.service axonserver.properties check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh logback-spring.xml ; do
     cp axonserver-enterprise/src/main/gce/${f} ${TARGET}/${f}
