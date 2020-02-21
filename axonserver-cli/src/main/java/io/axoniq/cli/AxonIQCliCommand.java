@@ -39,7 +39,6 @@ import java.io.InputStreamReader;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import javax.net.ssl.SSLContext;
 
 
 /**
