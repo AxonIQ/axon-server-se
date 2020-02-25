@@ -108,10 +108,5 @@ public class CommandRegistrationCacheLoadFactorTest {
         public void dispatch(SerializedCommand request) {
 
         }
-
-        @Override
-        public void confirm(String messageId) {
-
-        }
     }
 }

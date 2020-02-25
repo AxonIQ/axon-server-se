@@ -18,6 +18,7 @@ import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
@@ -49,16 +50,22 @@ public class CommandDispatcherTest {
     private CommandCache commandCache;
     @Mock
     private CommandRegistrationCache registrations;
+    private FlowControlQueues<WrappedCommand> commandQueue;
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
+        metricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                      new DefaultMetricCollector()));
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry);
+        commandQueue = new FlowControlQueues<>();
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
         Set<CommandRegistrationCache.RegistrationEntry> commands =
                 Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "Command"));
-        dummyRegistrations.put(new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),"component"),
-                commands);
+        dummyRegistrations.put(new DirectCommandHandler(new CountingStreamObserver<>(),
+                                                        new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                                        "component",
+                                                        commandQueue),
+                               commands);
     }
 
     @Test
@@ -77,14 +84,15 @@ public class CommandDispatcherTest {
         CountingStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
         ClientIdentification client = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client, "component");
+                                                               client, "component",
+                                                               commandQueue);
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), anyObject(), anyObject())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }, false);
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
+        assertEquals(1, commandQueue.getSegments().get(client.toString()).size());
         assertEquals(0, responseObserver.count);
         Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
 
@@ -133,17 +141,25 @@ public class CommandDispatcherTest {
     public void dispatchProxied() throws Exception {
         CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
         Command request = Command.newBuilder()
-                .setName("Command")
-                .setMessageIdentifier("12")
-                .build();
-        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,"client");
+                                 .setName("Command")
+                                 .setMessageIdentifier("12")
+                                 .build();
+        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
         CountingStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound, clientIdentification, "component");
+        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
+                                                               clientIdentification,
+                                                               "component",
+                                                               commandQueue);
         when(registrations.findByClientAndCommand(eq(clientIdentification), anyObject())).thenReturn(result);
 
-        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request.toByteArray(), "client", request.getMessageIdentifier()), responseObserver::onNext, true);
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.toString()).size());
-        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command().getMessageIdentifier());
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
+                                   new SerializedCommand(request.toByteArray(),
+                                                         "client",
+                                                         request.getMessageIdentifier()),
+                                   responseObserver::onNext,
+                                   true);
+        assertEquals(1, commandQueue.getSegments().get(clientIdentification.toString()).size());
+        assertEquals("12", commandQueue.take(clientIdentification.toString()).command().getMessageIdentifier());
         assertEquals(0, responseObserver.count);
         Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
     }

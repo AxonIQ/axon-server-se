@@ -16,15 +16,13 @@ import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,7 +43,6 @@ public class CommandDispatcher {
     private final CommandCache commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
-    private final FlowControlQueues<WrappedCommand> commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed());
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
 
     public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache, CommandMetricsRegistry metricRegistry) {
@@ -81,19 +78,16 @@ public class CommandDispatcher {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        handleDisconnection(event.clientIdentification(), event.isProxied());
+        handleDisconnection(event.clientIdentification());
     }
 
     @EventListener
     public void on(TopologyEvents.CommandHandlerDisconnected event){
-        handleDisconnection(event.clientIdentification(), event.isProxied());
+        handleDisconnection(event.clientIdentification());
     }
 
-    private void handleDisconnection(ClientIdentification client, boolean proxied){
+    private void handleDisconnection(ClientIdentification client) {
         cleanupRegistrations(client);
-        if(!proxied) {
-            getCommandQueues().move(client.toString(), this::redispatch);
-        }
         handlePendingCommands(client);
     }
 
@@ -117,7 +111,7 @@ public class CommandDispatcher {
                                                                                 responseObserver,
                                                                                 commandHandler.getClient(),
                                                                                 commandHandler.getComponentName()));
-        commandQueues.put(commandHandler.queueName(), new WrappedCommand( commandHandler.getClient(), command));
+        commandHandler.dispatch(command);
     }
 
 
@@ -138,25 +132,28 @@ public class CommandDispatcher {
 
     }
 
-    private void cleanupRegistrations(ClientIdentification client) {
+    public void cleanupRegistrations(ClientIdentification client) {
         registrations.remove(client);
     }
 
-    public FlowControlQueues<WrappedCommand> getCommandQueues() {
-        return commandQueues;
-    }
-
-    private String redispatch(WrappedCommand command) {
+    public String redispatch(WrappedCommand command) {
         SerializedCommand request = command.command();
         CommandInformation commandInformation = commandCache.remove(request.getMessageIdentifier());
-        if( commandInformation == null) return null;
+        if (commandInformation == null) {
+            return null;
+        }
 
         CommandHandler client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
                                                                    request.getRoutingKey());
         if (client == null) {
             commandInformation.getResponseConsumer().accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                    .setMessageIdentifier(request.getMessageIdentifier()).setRequestIdentifier(request.getMessageIdentifier())
-                    .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
+                                                                                                         .setMessageIdentifier(
+                                                                                                                 request.getMessageIdentifier())
+                                                                                                         .setRequestIdentifier(
+                                                                                                                 request.getMessageIdentifier())
+                                                                                                         .setErrorCode(
+                                                                                                                 ErrorCode.NO_HANDLER_FOR_COMMAND
+                                                                                                                         .getCode())
                     .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + request.getName()))
                     .build()));
             return null;

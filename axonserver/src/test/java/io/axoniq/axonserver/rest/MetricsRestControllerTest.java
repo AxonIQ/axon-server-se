@@ -57,11 +57,6 @@ public class MetricsRestControllerTest {
             }
 
             @Override
-            public void confirm(String messageId) {
-
-            }
-
-            @Override
             public int compareTo(@NotNull CommandHandler o) {
                 return 0;
             }

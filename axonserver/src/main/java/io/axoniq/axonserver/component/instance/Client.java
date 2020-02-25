@@ -23,8 +23,12 @@ public interface Client extends Printable, ComponentItem {
 
     String context();
 
+    default String axonServerNode() {
+        return null;
+    }
+
     @Override
-    default boolean belongsToContext(String context){
+    default boolean belongsToContext(String context) {
         return context.equals(context());
     }
 

@@ -51,7 +51,7 @@ public class CommandServiceTest {
         commandQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
 
-        when(commandDispatcher.getCommandQueues()).thenReturn(commandQueue);
+//        when(commandDispatcher.getCommandQueues()).thenReturn(commandQueue);
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);

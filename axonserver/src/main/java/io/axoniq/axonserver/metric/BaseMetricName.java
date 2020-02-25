@@ -48,7 +48,11 @@ public enum BaseMetricName implements MetricName {
     /**
      * Metric for the rate of events stored (tags: context)
      */
-    AXON_EVENTS("axon.event", "Number of event stored per second"),
+    AXON_EVENTS("axon.event", "Number of event stored"),
+    /**
+     * Metric for the rate of events stored (tags: context)
+     */
+    AXON_AGGREGATE_READS("axon.aggregate.reads", "Number of aggregates read"),
     /**
      * Metric for the rate of snapshots stored (tags: context)
      */

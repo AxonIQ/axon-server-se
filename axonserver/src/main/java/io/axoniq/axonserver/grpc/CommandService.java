@@ -15,13 +15,14 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
@@ -35,8 +36,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -75,7 +76,12 @@ public class CommandService implements AxonServerClientService {
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
-    private final Map<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
+    private final FlowControlQueues<WrappedCommand> commandQueues = new FlowControlQueues<>(Comparator
+                                                                                                    .comparing(
+                                                                                                            WrappedCommand::priority)
+                                                                                                    .reversed());
+
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
@@ -182,7 +188,7 @@ public class CommandService implements AxonServerClientService {
                                                                                      flowControl.getClientId());
                 clientRef.compareAndSet(null, clientIdentification);
                 if (listenerRef.compareAndSet(null,
-                                              new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
+                                              new GrpcCommandDispatcherListener(commandQueues,
                                                                                 clientRef.get().toString(),
                                                                                 wrappedResponseObserver,
                                                                                 processingThreads))) {
@@ -194,7 +200,8 @@ public class CommandService implements AxonServerClientService {
             private void checkInitClient(String clientId, String component) {
                 clientRef.compareAndSet(null, new ClientIdentification(context, clientId));
                 commandHandlerRef.compareAndSet(null, new DirectCommandHandler(wrappedResponseObserver,
-                                                                               clientRef.get(), component));
+                                                                               clientRef.get(), component,
+                                                                               commandQueues));
             }
 
             @Override
@@ -212,6 +219,8 @@ public class CommandService implements AxonServerClientService {
 
             private void cleanup() {
                 if (clientRef.get() != null) {
+                    commandDispatcher.cleanupRegistrations(clientRef.get());
+                    commandQueues.move(clientRef.get().toString(), commandDispatcher::redispatch);
                     eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get().getContext(),
                                                                                clientRef.get().getClient()));
                 }
@@ -282,5 +291,9 @@ public class CommandService implements AxonServerClientService {
     @EventListener
     public void on(ApplicationInactivityTimeout evt) {
         stopListenerFor(evt.clientIdentification());
+    }
+
+    public FlowControlQueues<WrappedCommand> getCommandQueues() {
+        return commandQueues;
     }
 }

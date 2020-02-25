@@ -93,6 +93,7 @@ public class EventDispatcher implements AxonServerClientService {
     private final ContextProvider contextProvider;
     private final Map<ClientIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
+    private final Map<String, MeterFactory.RateMeter> aggregateReadCounter = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
@@ -172,6 +173,10 @@ public class EventDispatcher implements AxonServerClientService {
     public void listAggregateEvents(String context, GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
+                aggregateReadCounter.computeIfAbsent(context,
+                                                     c -> meterFactory.rateMeter(BaseMetricName.AXON_AGGREGATE_READS,
+                                                                                 Tags.of(MeterFactory.CONTEXT,
+                                                                                         context))).mark();
                 eventStore.listAggregateEvents(context, request, responseObserver);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);

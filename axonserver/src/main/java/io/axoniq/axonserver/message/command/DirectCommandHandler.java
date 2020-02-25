@@ -9,33 +9,28 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 
 /**
  * @author Marc Gathier
  */
 public class DirectCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
-    public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver, ClientIdentification client, String componentName) {
+
+    private final FlowControlQueues<WrappedCommand> commandQueues;
+
+    public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver,
+                                ClientIdentification client, String componentName,
+                                FlowControlQueues<WrappedCommand> commandQueues) {
         super(responseObserver, client, componentName);
+        this.commandQueues = commandQueues;
     }
 
     @Override
     public void dispatch(SerializedCommand request) {
-        observer.onNext(SerializedCommandProviderInbound.newBuilder().setCommand(request).build());
+        commandQueues.put(queueName(), new WrappedCommand(client, request));
     }
-
-    @Override
-    public void confirm(String messageId) {
-        observer.onNext(SerializedCommandProviderInbound.newBuilder()
-                                                        .setAcknowledgement(InstructionAck.newBuilder()
-                                                                                          .setSuccess(true)
-                                                                                          .setInstructionId(messageId)
-                                                                                          .build())
-                                                        .build());
-    }
-
 }

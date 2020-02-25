@@ -62,8 +62,6 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
 
     public abstract void dispatch( SerializedCommand request);
 
-    public abstract void confirm( String messageId);
-
     public String queueName() {
         return client.toString();
     }

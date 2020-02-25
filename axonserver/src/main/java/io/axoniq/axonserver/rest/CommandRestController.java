@@ -12,6 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
+import io.axoniq.axonserver.grpc.CommandService;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -60,18 +61,26 @@ public class CommandRestController {
 
     private final CommandDispatcher commandDispatcher;
     private final CommandRegistrationCache registrationCache;
+    private final CommandService commandService;
 
 
-    public CommandRestController(CommandDispatcher commandDispatcher, CommandRegistrationCache registrationCache) {
+    public CommandRestController(CommandDispatcher commandDispatcher, CommandRegistrationCache registrationCache,
+                                 CommandService commandService) {
         this.commandDispatcher = commandDispatcher;
         this.registrationCache = registrationCache;
+        this.commandService = commandService;
     }
 
     @GetMapping("/components/{component}/commands")
-    public Iterable<ComponentCommand> getByComponent(@PathVariable("component") String component, @RequestParam("context") String context, Principal principal){
-        auditLog.info("[{}] Request to list all Commands for which component \"{}\" in context \"{}\" has a registered handler.", AuditLog.username(principal), component, context);
+    public Iterable<ComponentCommand> getByComponent(@PathVariable("component") String component,
+                                                     @RequestParam("context") String context, Principal principal) {
+        auditLog.info(
+                "[{}] Request to list all Commands for which component \"{}\" in context \"{}\" has a registered handler.",
+                AuditLog.username(principal),
+                component,
+                context);
 
-        return new ComponentItems<>(component, context, new DefaultCommands( registrationCache));
+        return new ComponentItems<>(component, context, new DefaultCommands(registrationCache));
     }
 
     @GetMapping("commands")
@@ -99,7 +108,8 @@ public class CommandRestController {
     public List<JsonQueueInfo> queues(Principal principal) {
         auditLog.info("[{}] Request to list all CommandQueues.", AuditLog.username(principal));
 
-        return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(Collectors.toList());
+        return commandService.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
+                Collectors.toList());
     }
 
     @GetMapping("commands/count")

@@ -40,9 +40,13 @@ public class CommandRestControllerTest {
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
-        commandRegistationCache.add("DoIt", new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                     "client"), "component"));
-        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
+        commandRegistationCache.add("DoIt",
+                                    new DirectCommandHandler(new CountingStreamObserver<>(),
+                                                             new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                      "client"),
+                                                             "component",
+                                                             null));
+        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache, null);
     }
 
     @Test
