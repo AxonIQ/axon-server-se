@@ -10,22 +10,20 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.grpc.stub.StreamObserver;
 
 /**
  * @author Marc Gathier
  */
-public class DirectCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
+public class DirectCommandHandler extends CommandHandler {
 
     private final FlowControlQueues<WrappedCommand> commandQueues;
 
-    public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver,
-                                ClientIdentification client, String componentName,
+    public DirectCommandHandler(ClientIdentification client,
+                                String componentName,
                                 FlowControlQueues<WrappedCommand> commandQueues) {
-        super(responseObserver, client, componentName);
+        super(client, componentName);
         this.commandQueues = commandQueues;
     }
 

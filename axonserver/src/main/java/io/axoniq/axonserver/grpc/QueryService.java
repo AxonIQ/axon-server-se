@@ -212,7 +212,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
             private void cleanup() {
                 if (client.get() != null) {
-                    eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client.get().getClient()));
+                    eventPublisher.publishEvent(new QueryHandlerDisconnected(client.get()));
                 }
                 if (listener.get() != null) {
                     dispatcherListeners.remove(client.get());

@@ -17,10 +17,14 @@ import io.grpc.stub.StreamObserver;
 /**
  * @author Marc Gathier
  */
-public class DirectQueryHandler extends QueryHandler<QueryProviderInbound> {
+public class DirectQueryHandler extends QueryHandler {
 
-    public DirectQueryHandler(StreamObserver<QueryProviderInbound> streamObserver, ClientIdentification clientIdentification, String componentName) {
-        super(streamObserver, clientIdentification, componentName);
+    private final StreamObserver<QueryProviderInbound> streamObserver;
+
+    public DirectQueryHandler(StreamObserver<QueryProviderInbound> streamObserver,
+                              ClientIdentification clientIdentification, String componentName) {
+        super(clientIdentification, componentName);
+        this.streamObserver = streamObserver;
     }
 
     @Override

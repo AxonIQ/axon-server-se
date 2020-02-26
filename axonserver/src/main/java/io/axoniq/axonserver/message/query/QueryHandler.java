@@ -14,23 +14,22 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.grpc.stub.StreamObserver;
 
 import java.util.Objects;
 
 /**
  * Basic handler for queries. Puts a query in a specific queue to send it based on its priority to the target client.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
-public abstract class QueryHandler<T>  {
+public abstract class QueryHandler {
+
     private final ClientIdentification client;
     private final String componentName;
-    protected final StreamObserver<T> streamObserver;
 
-    protected QueryHandler(StreamObserver<T> streamObserver, ClientIdentification client, String componentName) {
+    protected QueryHandler(ClientIdentification client, String componentName) {
         this.client = client;
-        this.streamObserver = streamObserver;
         this.componentName = componentName;
     }
 
@@ -74,7 +73,7 @@ public abstract class QueryHandler<T>  {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        QueryHandler<?> that = (QueryHandler<?>) o;
+        QueryHandler that = (QueryHandler) o;
         return Objects.equals(client, that.client);
     }
 

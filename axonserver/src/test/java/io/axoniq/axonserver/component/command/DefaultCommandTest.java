@@ -30,12 +30,12 @@ public class DefaultCommandTest {
 
     @Before
     public void setUp() throws Exception {
-        ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new DirectCommandHandler(null,
-                                                                                                new ClientIdentification(
-                                                                                                        Topology.DEFAULT_CONTEXT,
-                                                                                                        "client"),
-                                                                                                "componentA",
-                                                                                                null));
+        ImmutableSet<CommandHandler> commandHandlers = ImmutableSet
+                .of(new DirectCommandHandler(new ClientIdentification(
+                        Topology.DEFAULT_CONTEXT,
+                        "client"),
+                                             "componentA",
+                                             null));
         defaultCommand = new DefaultCommand(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT,
                                                                                            "commandName"), commandHandlers);
     }

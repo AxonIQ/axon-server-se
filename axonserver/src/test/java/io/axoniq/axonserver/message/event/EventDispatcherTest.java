@@ -133,7 +133,10 @@ public class EventDispatcherTest {
         inputStream.onNext(GetEventsRequest.newBuilder().setClientId("sampleClient").build());
         assertEquals(1, responseObserver.count);
         assertTrue(responseObserver.completed);
-        testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "myComponent", "sampleClient"));
+        testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
+                                                                  "myComponent",
+                                                                  "sampleClient",
+                                                                  null));
         assertTrue(testSubject.eventTrackerStatus(Topology.DEFAULT_CONTEXT).isEmpty());
     }
 

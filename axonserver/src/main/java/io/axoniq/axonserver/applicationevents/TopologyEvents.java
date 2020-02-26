@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.applicationevents;
 
+import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.message.ClientIdentification;
 
 /**
@@ -18,168 +19,129 @@ import io.axoniq.axonserver.message.ClientIdentification;
 public class TopologyEvents {
 
     public abstract static class TopologyBaseEvent {
-        private final boolean forwarded;
 
-        protected TopologyBaseEvent(boolean forwarded) {
-            this.forwarded = forwarded;
+        private final boolean proxied;
+
+        protected TopologyBaseEvent(boolean proxied) {
+            this.proxied = proxied;
         }
 
-        public boolean isForwarded() {
-            return forwarded;
+        public boolean isProxied() {
+            return proxied;
         }
-
     }
 
-    public static class ApplicationConnected extends TopologyBaseEvent {
-        private final String context;
+    public abstract static class ApplicationBaseEvent extends TopologyBaseEvent {
+
+        private final ClientIdentification client;
+
+        protected ApplicationBaseEvent(ClientIdentification client, boolean proxied) {
+            super(proxied);
+            this.client = client;
+        }
+
+        public String getClient() {
+            return client.getClient();
+        }
+
+        public String getContext() {
+            return client.getContext();
+        }
+
+        public ClientIdentification clientIdentification() {
+            return client;
+        }
+    }
+
+    public static class ApplicationConnected extends ApplicationBaseEvent {
+
         private final String componentName;
-        private final String client;
         private final String proxy;
+
+        public ApplicationConnected(ClientIdentification client, String componentName, String proxy) {
+            super(client, proxy != null);
+            this.componentName = componentName;
+            this.proxy = proxy;
+        }
+
+        public ApplicationConnected(PlatformService.ClientComponent clientComponent) {
+            this(new ClientIdentification(clientComponent.getContext(), clientComponent.getClient()),
+                 clientComponent.getComponent());
+        }
 
         public ApplicationConnected(String context, String componentName, String client, String proxy) {
-            super(proxy != null);
-            this.context = context;
-            this.componentName = componentName;
-            this.client = client;
-            this.proxy = proxy;
+            this(new ClientIdentification(context, client), componentName, proxy);
         }
-        public ApplicationConnected(String context, String componentName, String client) {
-            this(context, componentName, client, null);
+
+        public ApplicationConnected(ClientIdentification client, String componentName) {
+            this(client, componentName, null);
         }
 
         public String getComponentName() {
             return componentName;
         }
 
-        public String getClient() {
-            return client;
-        }
-
-        public String getContext() {
-            return context;
-        }
 
         public String getProxy() {
             return proxy;
         }
-
-        public boolean isProxied() {
-            return isForwarded();
-        }
-
-        public ClientIdentification clientIdentification() {
-            return new ClientIdentification(context, client);
-        }
     }
 
-    public static class ApplicationDisconnected extends TopologyBaseEvent {
-        private final String context;
+    public static class ApplicationDisconnected extends ApplicationBaseEvent {
+
         private final String componentName;
-        private final String client;
         private final String proxy;
 
-        public ApplicationDisconnected(String context, String componentName, String client, String proxy) {
-            super(proxy != null);
-            this.context = context;
+        public ApplicationDisconnected(ClientIdentification client, String componentName, String proxy) {
+            super(client, proxy != null);
             this.componentName = componentName;
-            this.client = client;
             this.proxy = proxy;
         }
 
-        public ApplicationDisconnected(String context,
-                                       String componentName, String client
+        public ApplicationDisconnected(ClientIdentification client,
+                                       String componentName
         ) {
-            this(context, componentName, client, null);
+            this(client, componentName, null);
+        }
+
+        public ApplicationDisconnected(String context, String componentName, String client, String proxy) {
+            this(new ClientIdentification(context, client), componentName, proxy);
+        }
+
+        public ApplicationDisconnected(PlatformService.ClientComponent clientComponent) {
+            this(new ClientIdentification(clientComponent.getContext(), clientComponent.getClient()),
+                 clientComponent.getComponent());
         }
 
         public String getComponentName() {
             return componentName;
         }
 
-        public String getClient() {
-            return client;
-        }
-
-        public String getContext() {
-            return context;
-        }
-
         public String getProxy() {
             return proxy;
         }
 
-        public boolean isProxied() {
-            return isForwarded();
-        }
-
-        public ClientIdentification clientIdentification() {
-            return new ClientIdentification(context, client);
-        }
-
     }
 
-    public static class CommandHandlerDisconnected extends TopologyBaseEvent {
-        private final String context;
-        private final String client;
+    public static class CommandHandlerDisconnected extends ApplicationBaseEvent {
 
-        public CommandHandlerDisconnected(String context, String client, boolean proxied) {
-            super(proxied);
-            this.context = context;
-            this.client = client;
+        public CommandHandlerDisconnected(ClientIdentification client, boolean proxied) {
+            super(client, proxied);
         }
 
-        public CommandHandlerDisconnected(String context, String client
-        ) {
-            this(context, client, false);
-        }
-
-        public String getClient() {
-            return client;
-        }
-
-        public String getContext() {
-            return context;
-        }
-
-        public boolean isProxied() {
-            return isForwarded();
-        }
-
-        public ClientIdentification clientIdentification() {
-            return new ClientIdentification(context, client);
+        public CommandHandlerDisconnected(ClientIdentification client) {
+            this(client, false);
         }
     }
 
-    public static class QueryHandlerDisconnected extends TopologyBaseEvent {
+    public static class QueryHandlerDisconnected extends ApplicationBaseEvent {
 
-        private final String context;
-        private final String client;
-
-        public QueryHandlerDisconnected(String context, String client, boolean proxied) {
-            super(proxied);
-            this.context = context;
-            this.client = client;
+        public QueryHandlerDisconnected(ClientIdentification client, boolean proxied) {
+            super(client, proxied);
         }
 
-        public QueryHandlerDisconnected(String context, String client
-        ) {
-            this(context, client, false);
-        }
-
-        public String getClient() {
-            return client;
-        }
-
-        public String getContext() {
-            return context;
-        }
-
-        public boolean isProxied() {
-            return isForwarded();
-        }
-
-        public ClientIdentification clientIdentification() {
-            return new ClientIdentification(context, client);
+        public QueryHandlerDisconnected(ClientIdentification client) {
+            this(client, false);
         }
     }
 

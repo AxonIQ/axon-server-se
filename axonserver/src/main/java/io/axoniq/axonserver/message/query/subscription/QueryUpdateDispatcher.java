@@ -35,10 +35,10 @@ public class QueryUpdateDispatcher {
     @EventListener
     public void on(ProxiedSubscriptionQueryRequest event) {
         String subscriptionId = event.subscriptionQuery().getSubscriptionIdentifier();
-        if (event.isSubscription()) {
-            handlers.put(subscriptionId, event.handler());
-        } else {
+        if (event.isUnsubscribe()) {
             handlers.remove(subscriptionId);
+        } else {
+            handlers.put(subscriptionId, event.handler());
         }
     }
 

@@ -53,20 +53,25 @@ public class CommandDispatcher {
     }
 
 
-    public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
-        if( proxied) {
-            CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
-            dispatchToCommandHandler( request, handler, responseObserver,
-                                      ErrorCode.CLIENT_DISCONNECTED,
-                                      String.format("Client %s not found while processing: %s"
-                                              , request.getClient(), request.getCommand()));
+    public void dispatch(String context, SerializedCommand request,
+                         Consumer<SerializedCommandResponse> responseConsumer, boolean proxied) {
+        if (proxied) {
+            CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,
+                                                                                                   request.getClient()),
+                                                                          request.getCommand());
+            dispatchToCommandHandler(request, handler, responseConsumer,
+                                     ErrorCode.CLIENT_DISCONNECTED,
+                                     String.format("Client %s not found while processing: %s"
+                                             , request.getClient(), request.getCommand()));
         } else {
             commandRate(context).mark();
-            CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
-            dispatchToCommandHandler( request, commandHandler, responseObserver,
-                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
-                                      "No Handler for command: " + request.getCommand()
-                                      );
+            CommandHandler commandHandler = registrations.getHandlerForCommand(context,
+                                                                               request.wrapped(),
+                                                                               request.getRoutingKey());
+            dispatchToCommandHandler(request, commandHandler, responseConsumer,
+                                     ErrorCode.NO_HANDLER_FOR_COMMAND,
+                                     "No Handler for command: " + request.getCommand()
+            );
         }
     }
 
@@ -92,23 +97,25 @@ public class CommandDispatcher {
     }
 
     private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
-                                          Consumer<SerializedCommandResponse> responseObserver,
+                                          Consumer<SerializedCommandResponse> responseConsumer,
                                           ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
             logger.warn("No Handler for command: {}", command.getName() );
-            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                                                   .setMessageIdentifier(command.getMessageIdentifier())
-                                                   .setRequestIdentifier(command.getMessageIdentifier())
-                                                   .setErrorCode(noHandlerErrorCode.getCode())
-                                                   .setErrorMessage(ErrorMessageFactory.build(noHandlerMessage))
-                                                   .build()));
+            responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
+                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
+                                                                                 .setErrorCode(noHandlerErrorCode
+                                                                                                       .getCode())
+                                                                                 .setErrorMessage(ErrorMessageFactory
+                                                                                                          .build(noHandlerMessage))
+                                                                                 .build()));
             return;
         }
 
         logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClient());
         commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(),
                                                                                 command.wrapped().getClientId(),
-                                                                                responseObserver,
+                                                                                responseConsumer,
                                                                                 commandHandler.getClient(),
                                                                                 commandHandler.getComponentName()));
         commandHandler.dispatch(command);

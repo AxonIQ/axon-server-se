@@ -330,9 +330,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         logger.debug("Registered client : {}", clientComponent);
 
         connectionMap.put(clientComponent, responseObserver);
-        eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(
-                clientComponent.context, clientComponent.component, clientComponent.client
-        ));
+        eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(clientComponent));
     }
 
     private void deregisterClient(ClientComponent clientComponent) {
@@ -340,9 +338,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
         if (clientComponent != null) {
             connectionMap.remove(clientComponent);
-            eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
-                    clientComponent.context, clientComponent.component, clientComponent.client, null
-            ));
+            eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(clientComponent));
         }
     }
 

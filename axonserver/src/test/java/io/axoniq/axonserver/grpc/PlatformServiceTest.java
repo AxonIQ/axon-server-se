@@ -29,7 +29,6 @@ import org.mockito.runners.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -227,7 +226,10 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName("component")
         ).build());
         assertEquals(1, platformService.getConnectedClients().size());
-        platformService.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "component", "Release"));
+        platformService.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
+                                                                      "component",
+                                                                      "Release",
+                                                                      null));
         assertEquals(0, platformService.getConnectedClients().size());
         assertTrue(responseObserver.completed);
     }

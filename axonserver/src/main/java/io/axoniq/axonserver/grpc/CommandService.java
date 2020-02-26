@@ -199,8 +199,7 @@ public class CommandService implements AxonServerClientService {
 
             private void checkInitClient(String clientId, String component) {
                 clientRef.compareAndSet(null, new ClientIdentification(context, clientId));
-                commandHandlerRef.compareAndSet(null, new DirectCommandHandler(wrappedResponseObserver,
-                                                                               clientRef.get(), component,
+                commandHandlerRef.compareAndSet(null, new DirectCommandHandler(clientRef.get(), component,
                                                                                commandQueues));
             }
 
@@ -221,8 +220,7 @@ public class CommandService implements AxonServerClientService {
                 if (clientRef.get() != null) {
                     commandDispatcher.cleanupRegistrations(clientRef.get());
                     commandQueues.move(clientRef.get().toString(), commandDispatcher::redispatch);
-                    eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get().getContext(),
-                                                                               clientRef.get().getClient()));
+                    eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get()));
                 }
                 GrpcCommandDispatcherListener listener = listenerRef.get();
                 if (listener != null) {

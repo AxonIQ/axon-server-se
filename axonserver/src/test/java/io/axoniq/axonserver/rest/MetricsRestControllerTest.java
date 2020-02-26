@@ -49,8 +49,7 @@ public class MetricsRestControllerTest {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
         testclient = new ClientIdentification(Topology.DEFAULT_CONTEXT,
                                                                    "testclient");
-        commandRegistrationCache.add("Sample", new CommandHandler<Object>(null,
-                                                                          testclient, "testcomponent") {
+        commandRegistrationCache.add("Sample", new CommandHandler(testclient, "testcomponent") {
             @Override
             public void dispatch(SerializedCommand request) {
 
@@ -66,13 +65,12 @@ public class MetricsRestControllerTest {
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientIdentification("context", "testclient");
         queryRegistrationCache.add(new QueryDefinition("context", "query"), "result",
-                                   new QueryHandler<Object>(null,
-                                                            queryClient, "testcomponent") {
-            @Override
-            public void dispatch(SubscriptionQueryRequest query) {
+                                   new QueryHandler(queryClient, "testcomponent") {
+                                       @Override
+                                       public void dispatch(SubscriptionQueryRequest query) {
 
-            }
-        });
+                                       }
+                                   });
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));

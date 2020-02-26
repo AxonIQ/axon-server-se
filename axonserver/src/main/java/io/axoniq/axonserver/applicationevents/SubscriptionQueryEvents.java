@@ -56,17 +56,20 @@ public class SubscriptionQueryEvents {
             return context;
         }
 
-        public SubscriptionQuery subscriptionQuery(){
-            switch (request.getRequestCase()){
-                case SUBSCRIBE: return request.getSubscribe();
-                case GET_INITIAL_RESULT: return request.getGetInitialResult();
-                case UNSUBSCRIBE: return request.getUnsubscribe();
+        public SubscriptionQuery subscriptionQuery() {
+            switch (request.getRequestCase()) {
+                case SUBSCRIBE:
+                    return request.getSubscribe();
+                case GET_INITIAL_RESULT:
+                    return request.getGetInitialResult();
+                case UNSUBSCRIBE:
+                    return request.getUnsubscribe();
             }
             return null;
         }
 
-        public boolean isSubscription() {
-            return !request.getRequestCase().equals(UNSUBSCRIBE);
+        public boolean isUnsubscribe() {
+            return request.getRequestCase().equals(UNSUBSCRIBE);
         }
     }
 
