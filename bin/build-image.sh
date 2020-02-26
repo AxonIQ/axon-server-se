@@ -10,7 +10,7 @@ TARGET_DEF=target/packer
 IMG_VERSION=
 CLI_VERSION=
 IMG_FAMILY=
-IMG_FAMILY_DEF=axonserver
+IMG_FAMILY_DEF=axonserver-enterprise
 IMG_NAME=
 IMG_USER=
 IMG_USER_DEF=axonserver
@@ -219,17 +219,11 @@ cat > target/application-image.json <<EOF
       "type": "shell",
       "inline": [ "sudo yum -y update",
                   "sudo yum -y install java-11-openjdk-headless dejavu-sans-fonts urw-fonts wget curl jq",
-                  "sudo adduser -d /var/lib/axonserver -U axonserver",
-                  "sudo cp -r /tmp/${LABEL}/* /var/lib/axonserver/",
-                  "sudo mkdir -p /var/log/axonserver",
-                  "sudo chown -R axonserver:axonserver /var/lib/axonserver /var/log/axonserver",
-                  "echo ''",
-                  "echo /var/lib/axonserver",
-                  "sudo ls -lF /var/lib/axonserver/",
-                  "echo ''",
-                  "sudo rm -rf /tmp/${LABEL}",
-                  "sudo cp /var/lib/axonserver/axonserver.service /etc/systemd/system/axonserver.service",
-                  "sudo systemctl enable axonserver.service" ]
+                  "sudo bash -c 'echo LANG=en_US.utf-8 >> /etc/environment'",
+                  "sudo bash -c 'echo LC_ALL=en_US.utf-8 >> /etc/environment'",
+                  "sudo chmod 755 /tmp/${LABEL}/setup-user.sh",
+                  "sudo /tmp/${LABEL}/setup-user.sh axonserver /tmp/${LABEL}",
+                  "sudo rm -rf /tmp/${LABEL}" ]
     }
   ]
 }

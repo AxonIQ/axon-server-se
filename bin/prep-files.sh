@@ -71,7 +71,10 @@ fi
 
 unzip -d ${TARGET}/exts ${TARGET}/exts/jar_files.zip
 
-for f in setup.sh startup.sh shutdown.sh axonserver.service axonserver.properties check-link.sh mount-disk.sh set-property.sh get-property-value.sh get-property-names.sh logback-spring.xml ; do
+for f in setup.sh setup-user.sh startup.sh shutdown.sh axonserver.service check-link.sh mount-disk.sh \
+         axonserver.properties set-property.sh get-property-value.sh get-property-names.sh \
+         logback-spring.xml
+do
     cp axonserver-enterprise/src/main/gce/${f} ${TARGET}/${f}
 done
 

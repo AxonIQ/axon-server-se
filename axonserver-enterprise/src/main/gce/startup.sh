@@ -41,4 +41,23 @@ fi
 echo "Downloading license file."
 curl -s -H "Metadata-Flavor:Google" -o ${HOME}/axoniq.license http://metadata.google.internal/computeMetadata/v1/instance/attributes/axoniq-license
 
+echo "Checking for certificate."
+if  curl -s -H "Metadata-Flavor:Google" -o ${HOME}/tls.crt http://metadata.google.internal/computeMetadata/v1/instance/attributes/certificate &&
+    curl -s -H "Metadata-Flavor:Google" -o ${HOME}/tls.key http://metadata.google.internal/computeMetadata/v1/instance/attributes/certificate-key &&
+    curl -s -H "Metadata-Flavor:Google" -o ${HOME}/tls.p12.64 http://metadata.google.internal/computeMetadata/v1/instance/attributes/certificate-p12 &&
+    curl -s -H "Metadata-Flavor:Google" -o ${HOME}/ca.crt http://metadata.google.internal/computeMetadata/v1/instance/attributes/certificate-ca
+then
+    echo "Updating SSL certificates from metadata"
+    base64 -d ${HOME}/tls.p12.64 > tls.p12
+    ${HOME}/set-property.sh server.ssl.key-store-type PKCS12
+    ${HOME}/set-property.sh server.ssl.key-store tls.p12
+    ${HOME}/set-property.sh server.ssl.key-store-password axonserver
+    ${HOME}/set-property.sh server.ssl.key-alias axonserver
+    ${HOME}/set-property.sh security.require-ssl true
+
+    ${HOME}/set-property.sh axoniq.axonserver.ssl.cert-chain-file tls.crt
+    ${HOME}/set-property.sh axoniq.axonserver.ssl.private-key-file tls.key
+    ${HOME}/set-property.sh axoniq.axonserver.ssl.internal-trust-manager-file ca.crt
+fi
+
 java -jar ${HOME}/axonserver.jar >/dev/null 2>&1
