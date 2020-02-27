@@ -10,13 +10,12 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
+import io.axoniq.axonserver.message.query.FakeQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
-import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -65,12 +64,7 @@ public class MetricsRestControllerTest {
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientIdentification("context", "testclient");
         queryRegistrationCache.add(new QueryDefinition("context", "query"), "result",
-                                   new QueryHandler(queryClient, "testcomponent") {
-                                       @Override
-                                       public void dispatch(SubscriptionQueryRequest query) {
-
-                                       }
-                                   });
+                                   new FakeQueryHandler(queryClient, "testcomponent"));
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));

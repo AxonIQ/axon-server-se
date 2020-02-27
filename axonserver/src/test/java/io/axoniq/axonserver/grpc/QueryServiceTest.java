@@ -21,7 +21,6 @@ import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.axoniq.axonserver.topology.DefaultTopology;
@@ -35,8 +34,8 @@ import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -44,16 +43,13 @@ import static org.mockito.Mockito.isA;
 public class QueryServiceTest {
     private QueryService testSubject;
     private QueryDispatcher queryDispatcher;
-    private FlowControlQueues<WrappedQuery> queryQueue;
 
     private ApplicationEventPublisher eventPublisher;
 
     @Before
     public void setUp()  {
         queryDispatcher = mock(QueryDispatcher.class);
-        queryQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
-        when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
         testSubject = new QueryService(topology,
@@ -71,17 +67,18 @@ public class QueryServiceTest {
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
         requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2).setClientId("name").build()).build());
         Thread.sleep(250);
-        assertEquals(1, queryQueue.getSegments().size());
+        assertEquals(1, testSubject.queryQueues().getSegments().size());
         ClientIdentification name = new ClientIdentification(Topology.DEFAULT_CONTEXT, "name");
-        queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
-                                                                     QueryRequest.newBuilder()
-                                                                                 .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
-                                                                                 .build()), System.currentTimeMillis() + 2000));
+        testSubject.queryQueues().put(name.toString(), new WrappedQuery(
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
+                                    QueryRequest.newBuilder()
+                                                .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
+                                                .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
+        testSubject.queryQueues().put(name.toString(), new WrappedQuery(
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()),
+                System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
         verify(queryDispatcher).removeFromCache(any(), any());

@@ -16,7 +16,7 @@ import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.message.query.QueryHandler;
+import io.axoniq.axonserver.message.query.FakeQueryHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import org.junit.*;
 
@@ -57,7 +57,7 @@ public class SubscriptionQueryDispatcherTest {
                 new SubscriptionEvents.SubscribeQuery("Demo",
                                                       QuerySubscription.newBuilder().setClientId("client")
                                                                        .setQuery("test").build(),
-                                                      new QueryHandler(
+                                                      new FakeQueryHandler(
                                                               new ClientIdentification("Demo", "client"),
                                                               "component") {
                                                           @Override

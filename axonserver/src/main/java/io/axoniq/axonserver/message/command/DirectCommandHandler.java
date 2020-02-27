@@ -29,6 +29,6 @@ public class DirectCommandHandler extends CommandHandler {
 
     @Override
     public void dispatch(SerializedCommand request) {
-        commandQueues.put(queueName(), new WrappedCommand(client, request));
+        commandQueues.put(client.toString(), new WrappedCommand(client, request));
     }
 }

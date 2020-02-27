@@ -36,4 +36,6 @@ public interface Client extends Printable, ComponentItem {
     default void printOn(Media media) {
         media.with("name", name());
     }
+
+    String componentName();
 }

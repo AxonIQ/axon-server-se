@@ -156,7 +156,7 @@ public class CommandRestController {
             CommandHandler commandHandler = entry.getKey();
             jsonCommandMapping.client = commandHandler.getClient().toString();
             jsonCommandMapping.component = commandHandler.getComponentName();
-            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
+            jsonCommandMapping.proxy = commandHandler.axonServerName();
 
             jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand()).collect(Collectors.toSet());
             return jsonCommandMapping;

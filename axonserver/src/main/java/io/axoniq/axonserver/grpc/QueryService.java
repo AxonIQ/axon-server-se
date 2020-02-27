@@ -25,10 +25,12 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;
+import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
@@ -40,6 +42,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -66,6 +69,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<QueryProviderInbound> instructionAckSource;
+    private final FlowControlQueues<WrappedQuery> queryQueue = new FlowControlQueues<>(Comparator
+                                                                                               .comparing(WrappedQuery::priority)
+                                                                                               .reversed());
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -181,6 +187,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                                      flowControl.getClientId());
                 client.compareAndSet(null, clientIdentification);
                 if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
+                                                                                 queryQueue,
                                                                                  client.get().toString(),
                                                                                  wrappedQueryProviderInboundObserver,
                                                                                  processingThreads))) {
@@ -192,7 +199,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void checkInitClient(String clientId, String componentName) {
                 client.compareAndSet(null, new ClientIdentification(context, clientId));
                 queryHandler.compareAndSet(null,
-                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver, client.get(),
+                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver,
+                                                                  queryQueue,
+                                                                  client.get(),
                                                                   componentName));
             }
 
@@ -269,6 +278,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
     public Set<GrpcQueryDispatcherListener> listeners() {
         return new HashSet<>(dispatcherListeners.values());
+    }
+
+    public FlowControlQueues<WrappedQuery> queryQueues() {
+        return queryQueue;
     }
 
     private class GrpcQueryResponseConsumer implements QueryResponseConsumer {

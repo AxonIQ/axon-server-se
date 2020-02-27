@@ -42,6 +42,11 @@ public class GenericClient implements Client {
     }
 
     @Override
+    public String componentName() {
+        return componentName;
+    }
+
+    @Override
     public String axonServerNode() {
         return axonServerNode;
     }

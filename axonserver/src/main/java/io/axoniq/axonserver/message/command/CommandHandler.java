@@ -54,17 +54,12 @@ public abstract class CommandHandler implements Comparable<CommandHandler> {
 
     @Override
     public int compareTo(CommandHandler o) {
-        int clientResult = client.compareTo(o.client);
-        return clientResult;
+        return client.compareTo(o.client);
     }
 
     public abstract void dispatch( SerializedCommand request);
 
-    public String queueName() {
-        return client.toString();
-    }
-
-    public String getMessagingServerName() {
+    public String axonServerName() {
         return null;
     }
 }

@@ -42,6 +42,11 @@ public class FakeClient implements Client {
     }
 
     @Override
+    public String componentName() {
+        return "";
+    }
+
+    @Override
     public Boolean belongsToComponent(String component) {
         return belongs;
     }

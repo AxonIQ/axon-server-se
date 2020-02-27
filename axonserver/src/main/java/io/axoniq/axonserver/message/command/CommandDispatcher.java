@@ -174,7 +174,7 @@ public class CommandDispatcher {
                                                                                         .getResponseConsumer(),
                                                                                 client.getClient(),
                                                                                 client.getComponentName()));
-        return client.queueName();
+        return client.getClient().toString();
     }
 
     private void handlePendingCommands(ClientIdentification client) {

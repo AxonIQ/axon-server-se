@@ -13,20 +13,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.query.Query;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.message.query.DirectQueryHandler;
+import io.axoniq.axonserver.message.query.FakeQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
 import org.junit.*;
 
 import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -46,7 +45,9 @@ public class QueryRestControllerTest {
                 .setClientId("client")
                 .setNrOfHandlers(1).build();
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
-                             new DirectQueryHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, querySubscription.getClientId()), querySubscription.getComponentName()));
+                             new FakeQueryHandler(new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                           querySubscription.getClientId()),
+                                                  querySubscription.getComponentName()));
 
         testSubject = new QueryRestController(registationCache, queryDispatcher);
     }

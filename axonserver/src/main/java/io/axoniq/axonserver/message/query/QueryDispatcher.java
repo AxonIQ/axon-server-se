@@ -17,16 +17,14 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +40,6 @@ public class QueryDispatcher {
     private final QueryRegistrationCache registrationCache;
     private final QueryCache queryCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
-    private final FlowControlQueues<WrappedQuery> queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed());
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache, QueryMetricsRegistry queryMetricsRegistry) {
@@ -116,11 +113,6 @@ public class QueryDispatcher {
         }
     }
 
-    public FlowControlQueues<WrappedQuery> getQueryQueue() {
-        return queryQueue;
-    }
-
-
     public void query(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
         QueryRequest query = serializedQuery.query();
@@ -192,7 +184,7 @@ public class QueryDispatcher {
     }
 
     private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
-        queryHandler.enqueue( query, queryQueue, timeout);
+        queryHandler.dispatch(query, timeout);
     }
 
 

@@ -20,7 +20,6 @@ import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.axoniq.axonserver.topology.DefaultTopology;
@@ -40,7 +39,6 @@ import static org.mockito.Mockito.*;
  */
 public class CommandServiceTest {
     private CommandService testSubject;
-    private FlowControlQueues<WrappedCommand> commandQueue;
     private ApplicationEventPublisher eventPublisher;
     private CommandDispatcher commandDispatcher;
 
@@ -48,7 +46,6 @@ public class CommandServiceTest {
     @Before
     public void setUp() {
         commandDispatcher = mock(CommandDispatcher.class);
-        commandQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
 
 //        when(commandDispatcher.getCommandQueues()).thenReturn(commandQueue);
@@ -69,11 +66,13 @@ public class CommandServiceTest {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
         requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         Thread.sleep(150);
-        assertEquals(1, commandQueue.getSegments().size());
+        assertEquals(1, testSubject.getCommandQueues().getSegments().size());
         ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,
                                                              "name");
-        commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
-                                                            new SerializedCommand(Command.newBuilder().build())));
+        testSubject.getCommandQueues().put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
+                                                                                               new SerializedCommand(
+                                                                                                       Command.newBuilder()
+                                                                                                              .build())));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);
     }
