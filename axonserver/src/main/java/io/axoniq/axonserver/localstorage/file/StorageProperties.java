@@ -88,13 +88,17 @@ public class StorageProperties {
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
-    private long retentionTime = TimeUnit.HOURS.toMillis(1);
+    private long[] retentionTime = {
+            TimeUnit.HOURS.toMillis(1),
+            TimeUnit.DAYS.toMillis(1),
+    };
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
 
-    public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix, String bloomIndexSuffix) {
+    public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix,
+                             String bloomIndexSuffix) {
         this(systemInfoProvider);
         this.eventsSuffix = eventsSuffix;
         this.indexSuffix = indexSuffix;
@@ -272,11 +276,14 @@ public class StorageProperties {
         this.flags = flags;
     }
 
-    public long getRetentionTime() {
-        return retentionTime;
+    public void setRetentionTime(long[] retentionTime) {
+        this.retentionTime = retentionTime;
     }
 
-    public void setRetentionTime(long retentionTime) {
-        this.retentionTime = retentionTime;
+    public long getRetentionTime(int tier) {
+        if (tier < 0 || tier >= retentionTime.length) {
+            return System.currentTimeMillis();
+        }
+        return retentionTime[tier];
     }
 }
