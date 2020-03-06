@@ -33,15 +33,15 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
 done
 
 if [[ $# == 1 ]] ; then
-    IMG_VERSION=$1
+    SERVER_VERSION=$1
 else
     echo "Expected only a version as argument."
     SHOW_USAGE=y
 fi
 
 if [[ "${CLI_VERSION}" == "" ]] ; then
-    echo "WARNING: Assuming CLI has version \"${IMG_VERSION}\"."
-    CLI_VERSION=${IMG_VERSION}
+    echo "WARNING: Assuming CLI has version \"${SERVER_VERSION}\"."
+    CLI_VERSION=${SERVER_VERSION}
 fi
 if [[ "${TARGET}" == "" ]] ; then
     TARGET=${TARGET_DEF}
@@ -78,19 +78,19 @@ do
     cp axonserver-enterprise/src/main/gce/${f} ${TARGET}/${f}
 done
 
-if [ -s axonserver-enterprise/target/axonserver-enterprise-${IMG_VERSION}-exec.jar ] ; then
-    cp axonserver-enterprise/target/axonserver-enterprise-${IMG_VERSION}-exec.jar ${TARGET}/axonserver.jar
+if [ -s axonserver-enterprise/target/axonserver-enterprise-${SERVER_VERSION}-exec.jar ] ; then
+    cp axonserver-enterprise/target/axonserver-enterprise-${SERVER_VERSION}-exec.jar ${TARGET}/axonserver.jar
 else
-    getLastFromNexus -v ${IMG_VERSION} -o ${TARGET}/axonserver.jar io.axoniq.axonserver axonserver-enterprise
+    getLastFromNexus -v ${SERVER_VERSION} -o ${TARGET}/axonserver.jar io.axoniq.axonserver axonserver-enterprise
 fi
 if [ ! -s ${TARGET}/axonserver.jar ] ; then
-    echo "ERROR: Could not find a JAR for Axon Server."
+    echo "ERROR: Could not find Axon Server EE version \"${SERVER_VERSION}\"."
     exit 1
 fi
 
 getLastFromNexus -v ${CLI_VERSION} -o ${TARGET}/axonserver-cli.jar io.axoniq.axonserver axonserver-cli
 if [ ! -s ${TARGET}/axonserver-cli.jar ] ; then
-    echo "ERROR: No CLI found with version \"${CLI_VERSION}\"."
+    echo "ERROR: Could not find Axon Server CLI version \"${CLI_VERSION}\"."
     exit 1
 fi
 

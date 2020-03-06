@@ -4,11 +4,11 @@ SCRIPT_DIR=$(dirname $0)
 
 SHOW_USAGE=n
 
-VERSION=
 TARGET=
 TARGET_DEF=target/packer
-IMG_VERSION=
+SERVER_VERSION=
 CLI_VERSION=
+IMG_VERSION=
 IMG_FAMILY=
 IMG_FAMILY_DEF=axonserver-enterprise
 IMG_NAME=
@@ -115,7 +115,7 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
 done
 
 if [[ $# == 1 ]] ; then
-  VERSION=$1
+  SERVER_VERSION=$1
 else
   echo "Missing project version."
   SHOW_USAGE=y
@@ -125,7 +125,7 @@ if [[ "${TARGET}" == "" ]] ; then
   TARGET=${TARGET_DEF}
 fi
 if [[ "${IMG_VERSION}" == "" ]] ; then
-  IMG_VERSION=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
+  IMG_VERSION=`echo ${SERVER_VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
 fi
 if [[ "${IMG_FAMILY}" == "" ]] ; then
   IMG_FAMILY=${IMG_FAMILY_DEF}
@@ -150,8 +150,8 @@ if [[ "${SUBNET}" == "" ]] ; then
 fi
 
 if [[ "${CLI_VERSION}" == "" ]] ; then
-    echo "WARNING: Assuming CLI has version \"${IMG_VERSION}\"."
-    CLI_VERSION=${VERSION}
+    echo "WARNING: Assuming CLI has version \"${SERVER_VERSION}\"."
+    CLI_VERSION=${SERVER_VERSION}
 fi
 if [[ "${IMG_FAMILY}" == "" ]] ; then
   echo "No Image family set."
@@ -177,12 +177,13 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
 fi
 
 mkdir -p target
-if ! ${SCRIPT_DIR}/prep-files.sh --target ${TARGET} --cli-version ${CLI_VERSION} ${VERSION} ; then
+if ! ${SCRIPT_DIR}/prep-files.sh --target ${TARGET} --cli-version ${CLI_VERSION} ${SERVER_VERSION} ; then
     echo "Failed to prepare files."
     exit 1
 fi
 
-LABEL=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
+LABEL=`echo ${SERVER_VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
+
 cat > target/application-image.json <<EOF
 {
   "builders": [
