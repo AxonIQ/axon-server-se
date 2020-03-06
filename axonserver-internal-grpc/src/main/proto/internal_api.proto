@@ -160,7 +160,6 @@ message ConnectorCommand {
         ClientEventProcessorStatus client_event_processor_status = 15;
         ClientEventProcessor start_client_event_processor = 16;
         ClientEventProcessor pause_client_event_processor = 17;
-        ContextUpdate context = 25;
         io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse subscription_query_response = 26;
         ClientEventProcessorSegment release_segment = 32;
         ClientEventProcessor request_processor_status = 35;
@@ -300,29 +299,8 @@ message ModelVersion {
 
 message ContextRole {
     string name = 1;
-    bool messaging = 2;
-    bool storage = 3;
     string node_label = 4;
-}
-
-message NodeRole {
-    string name = 1;
-    bool messaging = 2;
-    bool storage = 3;
-    string node_label = 4;
-}
-
-message ContextUpdate {
-    string name = 1;
-    repeated NodeRole nodes = 3;
-    ContextAction action = 4;
-    int64 generation = 5;
-}
-
-enum ContextAction {
-    MERGE_CONTEXT = 0;
-    DELETE_CONTEXT = 1;
-    NODES_UPDATED = 2;
+    io.axoniq.axonserver.grpc.cluster.Role role = 5;
 }
 
 message QueryComplete {

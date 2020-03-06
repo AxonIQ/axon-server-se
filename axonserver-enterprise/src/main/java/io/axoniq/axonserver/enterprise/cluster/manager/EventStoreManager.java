@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.manager;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.LifecycleController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -27,6 +28,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 /**
  * @author Marc Gathier
  */
+@KeepNames
 public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private final Logger logger = LoggerFactory.getLogger(EventStoreManager.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
@@ -71,7 +73,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         this(messagingPlatformConfiguration, lifecycleController, localEventStore,
              channelProvider, () -> contextController.storageContexts().iterator(),
              leaderProvider::getLeaderOrWait,
-             lifecycleController.isCleanShutdown(), messagingPlatformConfiguration.getName(), clusterController::getNode);
+             !lifecycleController.isCleanShutdown(),
+             messagingPlatformConfiguration.getName(), clusterController::getNode);
     }
 
 

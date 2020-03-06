@@ -66,7 +66,7 @@ public class GrpcRaftConfigurationSynchronizer {
         }
 
         if (!configuration.getPending() && !isConfirmed(configuration)){
-            logger.warn("The configuration is not synchronized with the raft status. {}", configuration );
+            logger.warn("{}: The configuration is not synchronized with the raft status.", configuration.getContext());
         }
     }
 

@@ -28,6 +28,19 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.3
+-------------------------------
+
+* Introduced new roles for nodes in context (ACTIVE_BACKUP, PASSIVE_BACKUP and MESSAGING_ONLY)
+* Improved support for running in containers
+* New option to configure cluster information in configuration files, to automatically build cluster at startup
+* Support load factor for commands
+* Support for moving Axon Server cluster to other nodes
+* Option to remove a node from a context without deleting the event store on that node
+* Separate audit log for configuration changes
+* Changed metrics to use common names and tags
+
+
 Changes in Axon Server 4.2.6
 ----------------------------
 
@@ -52,14 +65,6 @@ Changes in Axon Server 4.2.3
 
 - Fix for issue on cancelling queries on lost connection
 - Introduced acknowlegments on instructions between Axon Server and clients
-
-Changes in Axon Server 4.2.3
-----------------------------
-
-- Cleaned-up logging
-- Fix for specific error while reading aggregate
-- Optional heartbeat between Axon Server and Axon Framework clients
-- Added option to include gRPC metrics and tracing
 
 Changes in Axon Server 4.2.2
 ----------------------------

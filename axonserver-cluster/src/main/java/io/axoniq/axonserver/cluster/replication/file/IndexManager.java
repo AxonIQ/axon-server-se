@@ -13,6 +13,9 @@ import java.io.Closeable;
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Marc Gathier
@@ -21,6 +24,7 @@ public class IndexManager {
 
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String INDEX_MAP = "indexMap";
+    private static final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
     private final StorageProperties storageProperties;
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
     private final String context;
@@ -43,20 +47,28 @@ public class IndexManager {
 
     public Index getIndex(long segment) {
         Index index = indexMap.get(segment);
-        if( index == null || index.db.isClosed()) {
-            index = new IndexManager.Index(segment, false);
-            indexMap.put(segment, index);
-            indexCleanup();
+        if (index != null && !index.isClosed()) {
+            return index;
+        }
+
+        synchronized (indexMap) {
+            index = indexMap.get(segment);
+            if (index == null || index.isClosed()) {
+                logger.debug("{}: open index for {}", context, segment);
+                index = new IndexManager.Index(segment, false);
+                indexMap.put(segment, index);
+                indexCleanup();
+            }
         }
         return index;
     }
 
     private void indexCleanup() {
-//        while( indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
-//            Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
-//            logger.debug("Closing index {}", entry.getKey());
-//            scheduledExecutorService.schedule(() -> entry.getValue().db.close(), 2, TimeUnit.SECONDS);
-//        }
+        while (indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
+            Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
+            logger.debug("{}: Closing index {}", context, entry.getKey());
+            scheduledExecutorService.schedule(() -> entry.getValue().close(), 2, TimeUnit.SECONDS);
+        }
     }
 
     public void createIndex(Long segment, Map<Long, Integer> entriesMap, boolean force) {
@@ -64,6 +76,7 @@ public class IndexManager {
         if( tempFile.exists() && (! force || ! FileUtils.delete(tempFile))) {
             return;
         }
+
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
         if( storageProperties.isUseMmapIndex()) {
             maker.fileMmapEnable();
@@ -75,9 +88,9 @@ public class IndexManager {
         }
         DB db = maker.make();
         try (HTreeMap<Long, Integer> map = db.hashMap(INDEX_MAP,
-                                                                        Serializer.LONG,
-                                                                        Serializer.INTEGER)
-                                                               .createOrOpen() ) {
+                                                      Serializer.LONG,
+                                                      Serializer.INTEGER)
+                                             .createOrOpen()) {
             map.putAll(entriesMap);
         }
         db.close();
@@ -88,14 +101,14 @@ public class IndexManager {
     }
 
     public void cleanup() {
-
+        indexMap.forEach((segment, index) -> index.close());
     }
 
     public boolean remove(long segment) {
         Index index = indexMap.remove(segment);
         if( index != null) {
             try {
-                index.db.close();
+                index.close();
             } catch( Exception ex) {
                 // No action
             }
@@ -132,6 +145,10 @@ public class IndexManager {
 
         public void close() {
             if( !managed) db.close();
+        }
+
+        public boolean isClosed() {
+            return db.isClosed();
         }
     }
 }

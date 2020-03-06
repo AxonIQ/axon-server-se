@@ -133,7 +133,6 @@ public class SubscriptionSynchronizerTest {
                   null,
                   null,
                   null,
-                  null,
                   null);
         }
     }

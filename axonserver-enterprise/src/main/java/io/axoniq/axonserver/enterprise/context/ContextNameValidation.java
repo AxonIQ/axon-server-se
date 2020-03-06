@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.enterprise.context;
 
+import io.axoniq.axonserver.KeepNames;
+
 import java.util.function.Predicate;
 
 /**
@@ -8,6 +10,7 @@ import java.util.function.Predicate;
  * @author Sara Pellegrini
  * @since 4.1
  */
+@KeepNames
 public class ContextNameValidation implements Predicate<String> {
 
     /**
@@ -17,6 +20,6 @@ public class ContextNameValidation implements Predicate<String> {
      */
     @Override
     public boolean test(String contextName) {
-        return contextName.matches("[a-zA-Z][a-zA-Z_\\-0-9]*");
+        return contextName.matches("[a-zA-Z][a-zA-Z@_\\-0-9]*");
     }
 }
