@@ -129,7 +129,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
 
     @Override
     public void stop(Runnable runnable) {
-        reconnectExecutor.shutdownNow();
+        reconnectExecutor.shutdown();
         remoteConnections.forEach((k, v) -> v.close());
         runnable.run();
         running = false;

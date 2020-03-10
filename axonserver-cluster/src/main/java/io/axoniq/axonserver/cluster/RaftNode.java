@@ -380,9 +380,9 @@ public class RaftNode {
      */
     public void stop() {
         logger.info("{} in term {}: Stopping the node...", groupId(), currentTerm());
-        updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
-        logEntryApplier.stop();
         stopLogCleaning();
+        logEntryApplier.stop();
+        updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
         raftGroup.localLogEntryStore().close(false);
         logger.info("{} in term {}: Node stopped.", groupId(), currentTerm());
     }
