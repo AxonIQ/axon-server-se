@@ -30,7 +30,6 @@
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
 
         <mapdb.version>3.0.7</mapdb.version>
-        <jackson.version>2.9.10.3</jackson.version>
         <skip.integration.tests>false</skip.integration.tests>
     </properties>
 
@@ -202,7 +201,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-kotlin</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
