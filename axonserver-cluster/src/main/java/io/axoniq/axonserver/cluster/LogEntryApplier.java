@@ -70,7 +70,7 @@ class LogEntryApplier {
     void stop() {
         ScheduledRegistration applyTask = applyTaskRef.getAndSet(null);
         if (applyTask != null) {
-            applyTask.cancel(true);
+            applyTask.cancel(false);
         }
     }
 
