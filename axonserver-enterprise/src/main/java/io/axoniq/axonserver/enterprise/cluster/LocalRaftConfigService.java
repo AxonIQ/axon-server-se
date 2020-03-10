@@ -28,6 +28,7 @@ import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
@@ -280,8 +281,8 @@ class LocalRaftConfigService implements RaftConfigService {
             throw new MessagingPlatformException(ErrorCode.CANNOT_REMOVE_LAST_NODE,
                                                  String.format(
                                                          "Node %s is last node in context %s, to delete the context use unregister context",
-                                                               node,
-                                                               context));
+                                                         node,
+                                                         context));
         }
 
         removeNodeFromContext(contextDef, node, nodeLabel);
@@ -415,6 +416,17 @@ class LocalRaftConfigService implements RaftConfigService {
             contextsInProgress.remove(context);
             throw new MessagingPlatformException(ErrorCode.CONTEXT_EXISTS,
                                                  String.format("Context %s already exists", context));
+        }
+
+        Set<String> unknownNodes = contextDefinition.getMembersList()
+                                                    .stream()
+                                                    .filter(m -> clusterController.getNode(m.getNodeName()) == null)
+                                                    .map(ContextMember::getNodeName)
+                                                    .collect(Collectors.toSet());
+        if (!unknownNodes.isEmpty()) {
+            contextsInProgress.remove(context);
+            throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE,
+                                                 String.format("Node(s) %s not found", unknownNodes));
         }
 
         List<Node> raftNodes = new ArrayList<>();
