@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 /**
  * @author Marc Gathier
  */
-@JsonIgnoreProperties(ignoreUnknown=true)
 public class ContextNode {
     private String context;
     private String leader;
