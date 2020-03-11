@@ -213,6 +213,26 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>stackdriver</id>
+            <modules>
+                <module>axonserver-connector-api</module>
+                <module>sample-applications/sample-command-processor-axonhub-client</module>
+                <module>sample-applications/sample-command-processor-axonserver-client</module>
+                <module>axonserver-internal-grpc</module>
+                <module>axonserver-enterprise</module>
+                <module>axonserver-migration</module>
+                <module>axonserver-compatibility-tests</module>
+                <module>package-axonserver-enterprise</module>
+                <module>axonserver-cluster</module>
+                <module>axonserver-jdbc-storage</module>
+                <module>data-encryption</module>
+                <module>axonserver-stackdriver</module>
+            </modules>
+        </profile>
+    </profiles>
+
     <scm>
         <connection>scm:git:https://github.com/AxonIQ/axon-server.git</connection>
         <developerConnection>scm:git:https://github.com/AxonIQ/axon-server.git</developerConnection>
@@ -256,7 +276,6 @@
         <name>AxonIQ BV</name>
         <url>http://axoniq.io</url>
     </organization>
-
 
     <developers>
         <developer>

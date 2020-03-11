@@ -201,6 +201,7 @@ cat > target/application-image.json <<EOF
       "image_name": "${IMG_NAME}",
       "image_family": "${IMG_FAMILY}",
       "image_labels": {
+        "kind": "axonserver-enterprise",
         "version": "${LABEL}"
       },
       "ssh_username": "axoniq"

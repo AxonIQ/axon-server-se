@@ -62,11 +62,10 @@ fi
 mkdir -p ${TARGET}
 mkdir -p ${TARGET}/exts
 
-wget -O ${TARGET}/exts/jar_files.zip "https://download.jar-download.com/cache_jars/com.google.cloud/google-cloud-logging-logback/0.116.0-alpha/jar_files.zip"
-
-if [ ! -s ${TARGET}/exts/jar_files.zip ] ; then
-    echo "ERROR: Could not download a google-cloud-logging-logback jars from https://download.jar-download.com."
-    exit 1
+if [ ! -s axonserver-stackdriver/target/stackdriver-logging.jar ] ; then
+    echo "WARNING: Could not find StackDriver logging jar."
+else
+    cp axonserver-stackdriver/target/stackdriver-logging.jar ${TARGET}/exts
 fi
 
 unzip -d ${TARGET}/exts ${TARGET}/exts/jar_files.zip
