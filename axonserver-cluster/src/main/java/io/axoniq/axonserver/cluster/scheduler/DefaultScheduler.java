@@ -69,7 +69,7 @@ public class DefaultScheduler implements Scheduler {
     }
 
     @Override
-    public void shutdownNow() {
-        scheduledExecutorService.shutdownNow();
+    public void shutdown() {
+        scheduledExecutorService.shutdown();
     }
 }

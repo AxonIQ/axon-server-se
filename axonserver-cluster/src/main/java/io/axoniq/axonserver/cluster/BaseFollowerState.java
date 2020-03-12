@@ -63,7 +63,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
     @Override
     public void stop() {
         if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdownNow();
+            scheduler.getAndSet(null).shutdown();
         }
     }
 

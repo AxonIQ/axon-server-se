@@ -293,7 +293,9 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
      */
     @Scheduled(fixedDelay = 1000)
     public void syncStore() {
-        raftGroupMap.forEach((k, e) -> ((GrpcRaftGroup) e).syncStore());
+        if (running) {
+            raftGroupMap.forEach((k, e) -> ((GrpcRaftGroup) e).syncStore());
+        }
     }
 
 

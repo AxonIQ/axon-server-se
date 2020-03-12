@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
 import io.axoniq.axonserver.grpc.tasks.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -34,7 +35,7 @@ import javax.annotation.Nonnull;
  * @since 4.3
  */
 @Component
-public class LocalTaskManager {
+public class LocalTaskManager implements SmartLifecycle {
 
     private static final String DUMMY_CONTEXT_FOR_LOCAL_TASKS = "_local";
     private static final long MAX_RETRY_INTERVAL = TimeUnit.MINUTES.toMillis(1);
@@ -46,6 +47,7 @@ public class LocalTaskManager {
     private final PlatformTransactionManager platformTransactionManager;
     private final Clock clock;
     private final Map<String, String> pendingTasks = new HashMap<>();
+    private boolean running;
 
     public LocalTaskManager(ScheduledTaskExecutor taskExecutor,
                             TaskRepository taskRepository,
@@ -65,6 +67,9 @@ public class LocalTaskManager {
      */
     @Scheduled(fixedDelayString = "${axoniq.axonserver.task-manager-delay:1000}", initialDelayString = "${axoniq.axonserver.task-manager-initial-delay:1000}")
     public void checkForTasks() {
+        if (!running) {
+            return;
+        }
         try {
             Set<String> leaderFor = Collections.singleton(DUMMY_CONTEXT_FOR_LOCAL_TASKS);
             taskRepository.findExecutableTasks(clock.millis(), leaderFor)
@@ -187,5 +192,21 @@ public class LocalTaskManager {
                                         .build();
 
         taskRepository.save(new Task(DUMMY_CONTEXT_FOR_LOCAL_TASKS, task));
+    }
+
+    @Override
+    public void start() {
+        running = true;
+    }
+
+    @Override
+    public void stop() {
+        logger.info("Stop LocalTaskManager");
+        running = false;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
     }
 }
