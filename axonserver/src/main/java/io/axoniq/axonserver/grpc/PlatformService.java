@@ -33,6 +33,7 @@ import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
 import io.axoniq.axonserver.grpc.control.RequestReconnect;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -348,7 +349,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         logger.debug("De-registered client : {}", clientComponent);
 
         if (clientComponent != null) {
-            connectionMap.remove(clientComponent);
+            SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
+            if (stream != null) {
+                StreamObserverUtils.complete(stream);
+            }
+
             eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
                     clientComponent.context, clientComponent.component, clientComponent.client, null
             ));
