@@ -30,6 +30,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
  */
 @KeepNames
 public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
+
     private final Logger logger = LoggerFactory.getLogger(EventStoreManager.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final LifecycleController lifecycleController;
@@ -38,7 +39,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
     private volatile boolean running;
 
     private final Iterable<String> dynamicContexts;
-    private final BiFunction<String, Boolean, String> masterProvider;
+    private final BiFunction<String, Boolean, String> leaderProvider;
     private final boolean needsValidation;
     private final String nodeName;
     private final Function<String, ClusterNode> clusterNodeSupplier;
@@ -48,7 +49,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
                              LocalEventStore localEventStore,
                              ChannelProvider channelProvider,
                              Iterable<String> dynamicContexts,
-                             BiFunction<String, Boolean, String> masterProvider,
+                             BiFunction<String, Boolean, String> leaderProvider,
                              boolean needsValidation, String nodeName,
                              Function<String, ClusterNode> clusterNodeSupplier) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
@@ -56,7 +57,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         this.localEventStore = localEventStore;
         this.channelProvider = channelProvider;
         this.dynamicContexts = dynamicContexts;
-        this.masterProvider = masterProvider;
+        this.leaderProvider = leaderProvider;
         this.needsValidation = needsValidation;
         this.nodeName = nodeName;
         this.clusterNodeSupplier = clusterNodeSupplier;
@@ -100,6 +101,7 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
             initContext(becomeLeader.getContext(), false);
         }
     }
+
     @EventListener
     public void on(ContextEvents.ContextCreated contextCreated) {
         initContext(contextCreated.getContext(), false);
@@ -113,8 +115,8 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
 
     @Override
     public void stop() {
-        stop(() -> {});
-
+        stop(() -> {
+        });
     }
 
     @Override
@@ -144,24 +146,37 @@ public class EventStoreManager implements SmartLifecycle, EventStoreLocator {
         return 40;
     }
 
+    @Override
     public EventStore getEventStore(String context) {
-        if( isMaster( context)) {
+        if (isLeader(context)) {
             return localEventStore;
         }
-        String master = masterProvider.apply(context, true);
-        if( master == null) return null;
-        return new RemoteEventStore(clusterNodeSupplier.apply(master), messagingPlatformConfiguration, channelProvider);
+        String leader = leaderProvider.apply(context, true);
+        if (leader == null) {
+            return null;
+        }
+        return new RemoteEventStore(clusterNodeSupplier.apply(leader), messagingPlatformConfiguration, channelProvider);
     }
 
-    private boolean isMaster(String context) {
+    @Override
+    public EventStore getEventStore(String context, boolean useLocal) {
+        if (useLocal) {
+            for (String dynamicContext : dynamicContexts) {
+                if (context.equals(dynamicContext)) {
+                    return localEventStore;
+                }
+            }
+        }
+        return getEventStore(context);
+    }
+
+    private boolean isLeader(String context) {
         return isLeader(nodeName, context, true);
     }
 
     @Override
     public boolean isLeader(String nodeName, String context, boolean wait) {
-        String master = masterProvider.apply(context, wait);
-        return master != null && master.equals(nodeName);
+        String leader = leaderProvider.apply(context, wait);
+        return leader != null && leader.equals(nodeName);
     }
-
-
 }
