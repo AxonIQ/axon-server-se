@@ -4,13 +4,13 @@ SCRIPT_DIR=$(dirname $0)
 
 SHOW_USAGE=n
 
-VERSION=
 TARGET=
 TARGET_DEF=target/packer
-IMG_VERSION=
+SERVER_VERSION=
 CLI_VERSION=
+IMG_VERSION=
 IMG_FAMILY=
-IMG_FAMILY_DEF=axonserver
+IMG_FAMILY_DEF=axonserver-enterprise
 IMG_NAME=
 IMG_USER=
 IMG_USER_DEF=axonserver
@@ -115,7 +115,7 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
 done
 
 if [[ $# == 1 ]] ; then
-  VERSION=$1
+  SERVER_VERSION=$1
 else
   echo "Missing project version."
   SHOW_USAGE=y
@@ -125,7 +125,7 @@ if [[ "${TARGET}" == "" ]] ; then
   TARGET=${TARGET_DEF}
 fi
 if [[ "${IMG_VERSION}" == "" ]] ; then
-  IMG_VERSION=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
+  IMG_VERSION=`echo ${SERVER_VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
 fi
 if [[ "${IMG_FAMILY}" == "" ]] ; then
   IMG_FAMILY=${IMG_FAMILY_DEF}
@@ -150,8 +150,8 @@ if [[ "${SUBNET}" == "" ]] ; then
 fi
 
 if [[ "${CLI_VERSION}" == "" ]] ; then
-    echo "WARNING: Assuming CLI has version \"${VERSION}\"."
-    CLI_VERSION=${VERSION}
+    echo "WARNING: Assuming CLI has version \"${SERVER_VERSION}\"."
+    CLI_VERSION=${SERVER_VERSION}
 fi
 if [[ "${IMG_FAMILY}" == "" ]] ; then
   echo "No Image family set."
@@ -177,12 +177,13 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
 fi
 
 mkdir -p target
-if ! ${SCRIPT_DIR}/prep-files.sh --target ${TARGET} --cli-version ${CLI_VERSION} ${VERSION} ; then
+if ! ${SCRIPT_DIR}/prep-files.sh --target ${TARGET} --cli-version ${CLI_VERSION} ${SERVER_VERSION} ; then
     echo "Failed to prepare files."
     exit 1
 fi
 
-LABEL=`echo ${VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
+LABEL=`echo ${SERVER_VERSION} | tr '.' '-' | tr '[A-Z]' '[a-z]'`
+
 cat > target/application-image.json <<EOF
 {
   "builders": [
@@ -200,6 +201,7 @@ cat > target/application-image.json <<EOF
       "image_name": "${IMG_NAME}",
       "image_family": "${IMG_FAMILY}",
       "image_labels": {
+        "kind": "axonserver-enterprise",
         "version": "${LABEL}"
       },
       "ssh_username": "axoniq"
@@ -219,22 +221,11 @@ cat > target/application-image.json <<EOF
       "type": "shell",
       "inline": [ "sudo yum -y update",
                   "sudo yum -y install java-11-openjdk-headless dejavu-sans-fonts urw-fonts wget curl jq",
-                  "sudo adduser -d /var/lib/axonserver -U axonserver",
-                  "sudo cp /tmp/${LABEL}/* /var/lib/axonserver/",
-                  "sudo mkdir -p /var/log/axonserver",
-                  "sudo chown -R axonserver:axonserver /var/lib/axonserver /var/log/axonserver",
-                  "echo ''",
-                  "echo /var/lib/axonserver",
-                  "sudo ls -lF /var/lib/axonserver/",
-                  "echo ''",
-                  "curl -sSO https://dl.google.com/cloudagents/install-logging-agent.sh",
-                  "sudo bash ./install-logging-agent.sh",
-                  "sudo mkdir -p /etc/google-fluentd/config.d",
-                  "sudo cp /tmp/${LABEL}/axoniq-axonserver.conf /etc/google-fluentd/config.d/",
-                  "sudo service google-fluentd restart",
-                  "sudo rm -rf /tmp/${LABEL}",
-                  "sudo cp /var/lib/axonserver/axonserver.service /etc/systemd/system/axonserver.service",
-                  "sudo systemctl enable axonserver.service" ]
+                  "sudo bash -c 'echo LANG=en_US.utf-8 >> /etc/environment'",
+                  "sudo bash -c 'echo LC_ALL=en_US.utf-8 >> /etc/environment'",
+                  "sudo chmod 755 /tmp/${LABEL}/setup-user.sh",
+                  "sudo /tmp/${LABEL}/setup-user.sh axonserver /tmp/${LABEL}",
+                  "sudo rm -rf /tmp/${LABEL}" ]
     }
   ]
 }

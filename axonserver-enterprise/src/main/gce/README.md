@@ -14,7 +14,6 @@
 * The Axon Server startup script will, at first run, create symbolic links to the data and events disks.
 * An "`axonserver.properties`" file is provided with the following settings:
 
-    * Logging is configured to use "`/var/log/axonserver/axonserver.log`".
     * Clustering is enabled.
     * Event and Snapshot storage is configured to use "`./events`", which is a symbolic link pointing to the (root of the) events disk.
     * The Control DB path is set to "`./control`", which is a symbolic link to a subdirectory named "`control`" on the data disk.
@@ -28,7 +27,7 @@
 
 ## Logging
 
-* VMs will have "`google-fluentd`" installed, with a filter named "`axonserver`" aimed at "`/var/log/axonserver/axonserver.log`".
+* VMs will have the JARS from "`https://cloud.google.com/logging/docs/reference/libraries`" installed, with a log named "`axon-server.log`".
 
 ## Storage
 
