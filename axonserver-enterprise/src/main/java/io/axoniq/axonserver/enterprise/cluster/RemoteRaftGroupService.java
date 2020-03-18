@@ -67,7 +67,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
     public CompletableFuture<Void> updateApplication(ContextApplication application) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.mergeAppAuthorization(application,
-                                   new CompletableStreamObserver<>(result, "updateApplication", logger));
+                                   new CompletableStreamObserver<>(result, "updateApplication", logger, TO_VOID));
         return result;
     }
 
@@ -81,7 +81,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                            .setEntry(ByteString.copyFrom(bytes))
                                            .build();
         stub.appendEntry(request,
-                         new CompletableStreamObserver<>(result, "appendEntry", logger));
+                         new CompletableStreamObserver<>(result, "appendEntry", logger, TO_VOID));
         return result;
     }
 
