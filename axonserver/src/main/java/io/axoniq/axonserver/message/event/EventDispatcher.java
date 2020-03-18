@@ -151,7 +151,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void appendSnapshot(String context, Event request, StreamObserver<Confirmation> responseObserver) {
-        checkConnection(context, responseObserver, false).ifPresent(eventStore -> {
+        checkConnection(context, responseObserver).ifPresent(eventStore -> {
             eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
             eventStore.appendSnapshot(context, request).whenComplete((c, t) -> {
                 if (t != null) {
@@ -170,7 +170,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void listAggregateEvents(String context, GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
-        checkConnection(context, responseObserver, false).ifPresent(eventStore -> {
+        checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventStore.listAggregateEvents(context, request, responseObserver);
             } catch (RuntimeException t) {
@@ -291,14 +291,13 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger, "getFirstToken", responseObserver0);
-        checkConnection(contextProvider.getContext(), responseObserver, false).ifPresent(client ->
+        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
             client.getFirstToken(contextProvider.getContext(), request, responseObserver)
         );
     }
 
-    private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver,
-                                                 boolean useLocalStore) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context, useLocalStore);
+    private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
+        EventStore eventStore = eventStoreLocator.getEventStore(context, false);
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                     NO_EVENT_STORE_CONFIGURED + context));
@@ -309,14 +308,14 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver0) {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger, "getLastToken", responseObserver0);
-        checkConnection(contextProvider.getContext(), responseObserver, false).ifPresent(client ->
+        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
                                                             client.getLastToken(contextProvider.getContext(), request, responseObserver)
         );
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver0) {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger, "getTokenAt", responseObserver0);
-        checkConnection(contextProvider.getContext(), responseObserver, false)
+        checkConnection(contextProvider.getContext(), responseObserver)
                 .ifPresent(client ->client.getTokenAt(contextProvider.getContext(), request, responseObserver)
         );
     }
@@ -324,7 +323,7 @@ public class EventDispatcher implements AxonServerClientService {
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver0) {
         ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver = new ForwardingStreamObserver<>(logger, "readHighestSequenceNr", responseObserver0);
-        checkConnection(contextProvider.getContext(), responseObserver, false)
+        checkConnection(contextProvider.getContext(), responseObserver)
                 .ifPresent(client -> client.readHighestSequenceNr(contextProvider.getContext(), request, responseObserver)
         );
     }
@@ -381,7 +380,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
                                        StreamObserver<InputStream> responseObserver) {
-        checkConnection(context, responseObserver, false).ifPresent(eventStore -> {
+        checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventStore.listAggregateSnapshots(context, request, responseObserver);
             } catch (RuntimeException t) {
