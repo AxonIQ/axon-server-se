@@ -138,6 +138,7 @@ public class EventDispatcherTest {
                                            .build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.count);
+        inputStream = testSubject.listEvents(responseObserver);
         inputStream.onNext(GetEventsRequest.newBuilder()
                                            .setAllowReadingFromFollower(true)
                                            .setClientId("sampleClient")

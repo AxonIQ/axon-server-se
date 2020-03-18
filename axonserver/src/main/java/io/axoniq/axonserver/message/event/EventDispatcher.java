@@ -185,10 +185,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
-        EventStore leaderEventStore = eventStoreLocator.getEventStore(context, false);
-        EventStore localEventStore = eventStoreLocator.getEventStore(context, true);
-
-        return new GetEventsRequestStreamObserver(responseObserver, localEventStore, leaderEventStore, context);
+        return new GetEventsRequestStreamObserver(responseObserver, context);
     }
 
     @EventListener
@@ -330,8 +327,6 @@ public class EventDispatcher implements AxonServerClientService {
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver0) {
         String context = contextProvider.getContext();
-        EventStore leaderEventStore = eventStoreLocator.getEventStore(context, false);
-        EventStore localEventStore = eventStoreLocator.getEventStore(context, true);
 
         ForwardingStreamObserver<QueryEventsResponse> responseObserver =
                 new ForwardingStreamObserver<>(logger, "queryEvents", responseObserver0);
@@ -341,7 +336,7 @@ public class EventDispatcher implements AxonServerClientService {
 
             @Override
             public void onNext(QueryEventsRequest request) {
-                EventStore eventStore = request.getAllowReadingFromFollower() ? localEventStore : leaderEventStore;
+                EventStore eventStore = eventStoreLocator.getEventStore(context, request.getAllowReadingFromFollower());
                 if (eventStore == null) {
                     responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                             NO_EVENT_STORE_CONFIGURED + context));
@@ -451,17 +446,12 @@ public class EventDispatcher implements AxonServerClientService {
     private class GetEventsRequestStreamObserver implements StreamObserver<GetEventsRequest> {
 
         private final StreamObserver<InputStream> responseObserver;
-        private final EventStore leaderEventStore;
-        private final EventStore localEventStore;
         private final String context;
         volatile StreamObserver<GetEventsRequest> eventStoreRequestObserver;
         volatile EventTrackerInfo trackerInfo;
 
-        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, EventStore localEventStore,
-                                       EventStore leaderEventStore, String context) {
+        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, String context) {
             this.responseObserver = responseObserver;
-            this.localEventStore = localEventStore;
-            this.leaderEventStore = leaderEventStore;
             this.context = context;
         }
 
@@ -484,7 +474,8 @@ public class EventDispatcher implements AxonServerClientService {
             if( eventStoreRequestObserver == null) {
                 trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClientId(), context,getEventsRequest.getTrackingToken()-1);
                 try {
-                    EventStore eventStore = getEventsRequest.getAllowReadingFromFollower() ? localEventStore : leaderEventStore;
+                    EventStore eventStore = eventStoreLocator
+                            .getEventStore(context, getEventsRequest.getAllowReadingFromFollower());
                     if (eventStore == null) {
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                                 NO_EVENT_STORE_CONFIGURED + context));
