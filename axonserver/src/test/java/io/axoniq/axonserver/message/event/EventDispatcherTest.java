@@ -133,10 +133,15 @@ public class EventDispatcherTest {
             return eventStoreResponseStream;
         });
         StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(responseObserver);
-        inputStream.onNext(GetEventsRequest.newBuilder().setClientId("sampleClient").build());
+        inputStream.onNext(GetEventsRequest.newBuilder()
+                                           .setClientId("sampleClient")
+                                           .build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.count);
-        inputStream.onNext(GetEventsRequest.newBuilder().setUseLocalStore(true).setClientId("sampleClient").build());
+        inputStream.onNext(GetEventsRequest.newBuilder()
+                                           .setAllowReadingFromFollower(true)
+                                           .setClientId("sampleClient")
+                                           .build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
         assertTrue(responseObserver.completed);
         testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "myComponent", "sampleClient"));
@@ -173,7 +178,9 @@ public class EventDispatcherTest {
         inputStream.onNext(QueryEventsRequest.newBuilder().build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.count);
-        inputStream.onNext(QueryEventsRequest.newBuilder().setUseLocalStore(true).build());
+        inputStream.onNext(QueryEventsRequest.newBuilder()
+                                             .setAllowReadingFromFollower(true)
+                                             .build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
         assertTrue(responseObserver.completed);
     }

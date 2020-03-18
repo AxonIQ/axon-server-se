@@ -157,10 +157,10 @@ public class TrackingEventProcessorManager {
     }
 
     /**
-     * Stops all tracking event processors where request is not for local store only.
+     * Stops all tracking event processors where request does not allow reading from follower.
      */
-    public void stopAllWhereRequestIsNotForLocalStoreOnly() {
-        eventTrackerSet.forEach(EventTracker::stopAllWhereRequestIsNotForLocalStoreOnly);
+    public void stopAllWhereNotAllowedReadingFromFollower() {
+        eventTrackerSet.forEach(EventTracker::stopAllWhereNotAllowedReadingFromFollower);
     }
 
     /**
@@ -202,7 +202,7 @@ public class TrackingEventProcessorManager {
         private volatile boolean running = true;
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
         private volatile int force = blacklistedSendAfter;
-        private final boolean requestToUseLocalStore;
+        private final boolean allowReadingFromFollower;
 
         private EventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
             permits = new AtomicInteger((int) request.getNumberOfPermits());
@@ -212,7 +212,7 @@ public class TrackingEventProcessorManager {
             if (request.getBlacklistCount() > 0) {
                 addBlacklist(request.getBlacklistList());
             }
-            requestToUseLocalStore = request.getUseLocalStore();
+            allowReadingFromFollower = request.getAllowReadingFromFollower();
             this.eventStream = eventStream;
         }
 
@@ -284,8 +284,8 @@ public class TrackingEventProcessorManager {
             StreamObserverUtils.complete(eventStream);
         }
 
-        public void stopAllWhereRequestIsNotForLocalStoreOnly() {
-            if (!requestToUseLocalStore) {
+        public void stopAllWhereNotAllowedReadingFromFollower() {
+            if (!allowReadingFromFollower) {
                 stop();
             }
         }

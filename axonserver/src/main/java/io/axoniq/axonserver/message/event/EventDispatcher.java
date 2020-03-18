@@ -342,7 +342,7 @@ public class EventDispatcher implements AxonServerClientService {
 
             @Override
             public void onNext(QueryEventsRequest request) {
-                EventStore eventStore = request.getUseLocalStore() ? localEventStore : leaderEventStore;
+                EventStore eventStore = request.getAllowReadingFromFollower() ? localEventStore : leaderEventStore;
                 if (eventStore == null) {
                     responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                             NO_EVENT_STORE_CONFIGURED + context));
@@ -485,7 +485,7 @@ public class EventDispatcher implements AxonServerClientService {
             if( eventStoreRequestObserver == null) {
                 trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClientId(), context,getEventsRequest.getTrackingToken()-1);
                 try {
-                    EventStore eventStore = getEventsRequest.getUseLocalStore() ? localEventStore : leaderEventStore;
+                    EventStore eventStore = getEventsRequest.getAllowReadingFromFollower() ? localEventStore : leaderEventStore;
                     if (eventStore == null) {
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                                 NO_EVENT_STORE_CONFIGURED + context));

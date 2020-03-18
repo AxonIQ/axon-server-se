@@ -165,7 +165,7 @@ public class TrackingEventProcessorManagerTest {
         GetEventsRequest requestUseLocalStore = GetEventsRequest.newBuilder()
                                                                 .setTrackingToken(100)
                                                                 .setNumberOfPermits(5)
-                                                                .setUseLocalStore(true)
+                                                                .setAllowReadingFromFollower(true)
                                                                 .build();
         AtomicInteger useLocalStoreMessagesReceived = new AtomicInteger();
         AtomicBoolean useLocalStoreCompleted = new AtomicBoolean();
@@ -194,7 +194,7 @@ public class TrackingEventProcessorManagerTest {
         assertFalse(useLocalStoreCompleted.get());
         assertFalse(useLocalStoreFailed.get());
 
-        testSubject.stopAllWhereRequestIsNotForLocalStoreOnly();
+        testSubject.stopAllWhereNotAllowedReadingFromFollower();
 
         useLocalStoreTracker.addPermits(5);
 
