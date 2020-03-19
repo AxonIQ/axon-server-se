@@ -10,6 +10,7 @@
 package io.axoniq.cli;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -92,6 +93,7 @@ public class AxonIQCliCommand {
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected static <T> T getJSON(CloseableHttpClient httpclient, String url, Class<T> resultClass, int expectedStatusCode, String token) throws IOException {
         HttpGet httpGet = new HttpGet(url);
         httpGet.addHeader("Accept", "application/json");
@@ -99,7 +101,8 @@ public class AxonIQCliCommand {
             httpGet.addHeader("AxonIQ-Access-Token", token);
         }
 
-        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                                                                 false);
 
         CloseableHttpResponse response = httpclient.execute(httpGet);
         if (response.getStatusLine().getStatusCode() != expectedStatusCode) {

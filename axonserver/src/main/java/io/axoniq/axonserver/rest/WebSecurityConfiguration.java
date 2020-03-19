@@ -13,6 +13,7 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -206,14 +207,14 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                 }
 
                 if (token != null) {
-                    Set<String> roles = accessController.getRoles(token);
-                    if (roles != null) {
+                    try {
+                        Set<String> roles = accessController.getRoles(token);
                         auditLog.trace("Access using configured token.");
                         SecurityContextHolder.getContext().setAuthentication(
                                 new AuthenticationToken(true,
                                                         "AuthenticatedApp",
                                                         roles));
-                    } else {
+                    } catch (InvalidTokenException invalidTokenException) {
                         auditLog.error("Access attempted with invalid token.");
                         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
                         httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_INVALID_TOKEN.getHttpCode().value());

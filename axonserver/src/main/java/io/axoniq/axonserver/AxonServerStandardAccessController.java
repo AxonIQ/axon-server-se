@@ -10,6 +10,7 @@
 package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.InvalidTokenException;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -39,7 +40,11 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
 
     @Override
     public Set<String> getRoles(String token) {
-        return isTokenFromConfigFile(token) ? Collections.emptySet() : null;
+
+        if (!isTokenFromConfigFile(token)) {
+            throw new InvalidTokenException();
+        }
+        return Collections.emptySet();
     }
 
     private boolean isTokenFromConfigFile(String token) {

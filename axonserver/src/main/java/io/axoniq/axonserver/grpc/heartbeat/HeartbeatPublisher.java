@@ -56,7 +56,11 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
      */
     public void publish(PlatformOutboundInstruction heartbeat) {
         for (Client client : clientsSupportingHeartbeat) {
-            clientPublisher.accept(client.name(), heartbeat);
+            try {
+                clientPublisher.accept(client.name(), heartbeat);
+            } catch (RuntimeException ignore) {
+                // failing to send heartbeat can be ignored
+            }
         }
     }
 }

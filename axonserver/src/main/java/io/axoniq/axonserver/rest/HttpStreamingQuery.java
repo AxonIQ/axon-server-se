@@ -204,7 +204,11 @@ public class HttpStreamingQuery {
         }
 
         public synchronized void stop() {
-            querySender.onCompleted();
+            try {
+                querySender.onCompleted();
+            } catch (Exception ignore) {
+
+            }
         }
     }
 }
