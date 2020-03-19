@@ -1,6 +1,7 @@
 [Unit]
 Description=Axon Server Service
-After=network.target
+Requires=google-startup-scripts.service
+After=google-startup-scripts.service
 
 [Service]
 Type=simple

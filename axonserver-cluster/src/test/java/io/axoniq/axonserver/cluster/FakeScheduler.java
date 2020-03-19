@@ -103,7 +103,7 @@ public class FakeScheduler implements Scheduler {
     }
 
     @Override
-    public void shutdownNow() {
+    public void shutdown() {
         tasks.clear();
     }
 

@@ -5,6 +5,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentR
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.internal.*;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -218,5 +219,13 @@ public class MessagingClusterServiceTest {
         assertEquals(expectedClientName, mergeSegmentRequest.getClientName());
         assertEquals(expectedProcessorName, mergeSegmentRequest.getProcessorName());
         assertEquals(expectedSegmentId, mergeSegmentRequest.getSegmentId());
+    }
+
+    @Test
+    public void testAxonServerNodeDisconnected() {
+        testSubject.on(new TopologyEvents.ApplicationConnected("context", "component", "client", "proxy"));
+        assertFalse(testSubject.connectedClients().isEmpty());
+        testSubject.on(new ClusterEvents.AxonServerInstanceDisconnected("proxy"));
+        assertTrue(testSubject.connectedClients().isEmpty());
     }
 }

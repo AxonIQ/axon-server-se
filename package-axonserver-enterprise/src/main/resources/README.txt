@@ -28,6 +28,21 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.3.1
+-------------------------------
+
+* Updated usage output in CLI
+* Updated gRPC/Netty versions
+* Prevent errors in log (sending ad-hoc result to client that has gone, sending heartbeat to client that has gone)
+* Fix in CLI, application list failed
+* Removed retry option from H2 controldb URL
+* Fixed Axon Server keeping incorrect application references on restart of Axon Server node where application was connected
+* Fixed race condition when two Axon Server nodes are trying to become member of the same context at the same time
+* Fix for some REST reads were able with invalid token
+* Clean up of server shutdown process
+* Fixed error when adding a non-existing node to a context
+
+
 Release Notes for version 4.3
 -------------------------------
 

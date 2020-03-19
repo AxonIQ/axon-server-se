@@ -46,7 +46,7 @@ public abstract class VotingState extends AbstractMembershipState {
     public void stop() {
         running = false;
         if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdownNow();
+            scheduler.getAndSet(null).shutdown();
         }
     }
 

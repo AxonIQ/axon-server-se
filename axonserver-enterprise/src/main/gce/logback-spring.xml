@@ -1,0 +1,31 @@
+<configuration>
+    <!--
+    Default profile is used for production. Here we log using the Stackdriver Logging API
+    Check: https://cloud.google.com/logging/docs/reference/libraries
+    -->
+    <springProfile name="default">
+        <appender name="CLOUD" class="com.google.cloud.logging.logback.LoggingAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>INFO</level>
+            </filter>
+            <log>axon-server.log</log>
+            <flushLevel>WARN</flushLevel>
+        </appender>
+        <root level="info">
+            <appender-ref ref="CLOUD" />
+        </root>
+    </springProfile>
+    <!--
+    For every other profile we log to stdout
+    -->
+    <springProfile name="local,docker,docker-gcr">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{dd-MM-yyyy HH:mm:ss.SSS} %magenta([%thread]) %highlight(%-5level) %logger.%M - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+    </springProfile>
+</configuration>
