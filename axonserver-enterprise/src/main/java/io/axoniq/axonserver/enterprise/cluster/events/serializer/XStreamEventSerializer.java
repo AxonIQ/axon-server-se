@@ -19,6 +19,16 @@ public class XStreamEventSerializer implements AxonServerEventSerializer<AxonSer
 
     private final XStream xStream = new XStream();
 
+    /**
+     * Default constructor for {@link XStreamEventSerializer} that initializes security framework of XStream.
+     */
+    public XStreamEventSerializer() {
+        XStream.setupDefaultSecurity(xStream);
+        xStream.allowTypesByWildcard(new String[]{
+                "io.axoniq.**"
+        });
+    }
+
     @Override
     public Class<AxonServerEvent> eventType() {
         return AxonServerEvent.class;
