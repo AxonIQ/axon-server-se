@@ -97,8 +97,8 @@ public class TaskManagerTest {
                                       repository,
                                       leaderProvider,
                                       resultPublisher,
-                                      messagingPlatformConfiguration,
                                       clock);
+        testSubject.start();
     }
 
     @Test

@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.taskscheduler;
 
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.jpa.Task;
@@ -9,6 +8,7 @@ import io.axoniq.axonserver.grpc.tasks.Status;
 import io.axoniq.axonserver.grpc.tasks.UpdateTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
  * @since 4.3
  */
 @Component
-public class TaskManager {
+public class TaskManager implements SmartLifecycle {
 
     private static final long MAX_RETRY_INTERVAL = TimeUnit.MINUTES.toMillis(1);
     private final Logger logger = LoggerFactory.getLogger(TaskManager.class);
@@ -41,21 +41,19 @@ public class TaskManager {
     private final TaskRepository taskRepository;
     private final RaftLeaderProvider raftLeaderProvider;
     private final TaskResultPublisher taskResultPublisher;
-    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Clock clock;
     private final Map<String, String> pendingTasks = new HashMap<>();
+    private boolean running;
 
     public TaskManager(ScheduledTaskExecutor taskExecutor,
                        TaskRepository taskRepository,
                        RaftLeaderProvider raftLeaderProvider,
                        TaskResultPublisher taskResultPublisher,
-                       MessagingPlatformConfiguration messagingPlatformConfiguration,
                        Clock clock) {
         this.taskExecutor = taskExecutor;
         this.taskRepository = taskRepository;
         this.raftLeaderProvider = raftLeaderProvider;
         this.taskResultPublisher = taskResultPublisher;
-        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.clock = clock;
     }
 
@@ -66,6 +64,9 @@ public class TaskManager {
     @Scheduled(fixedDelayString = "${axoniq.axonserver.task-manager-delay:1000}", initialDelayString = "${axoniq.axonserver.task-manager-initial-delay:10000}")
     @Transactional
     public void checkForTasks() {
+        if (!running) {
+            return;
+        }
         try {
             Set<String> leaderFor = raftLeaderProvider.leaderFor();
             taskRepository.findExecutableTasks(clock.millis(), leaderFor)
@@ -219,5 +220,22 @@ public class TaskManager {
         task.setRetryInterval(updateTask.getRetryInterval());
         task.setStatus(updateTask.getStatus());
         taskRepository.save(task);
+    }
+
+
+    @Override
+    public void start() {
+        running = true;
+    }
+
+    @Override
+    public void stop() {
+        logger.info("Stop TaskManager");
+        running = false;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
     }
 }

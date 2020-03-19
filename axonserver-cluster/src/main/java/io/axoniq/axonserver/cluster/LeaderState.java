@@ -162,7 +162,7 @@ public class LeaderState extends AbstractMembershipState {
         pendingEntries.clear();
         logger.info("{} in term {}: {} steps down from Leader role.", groupId(), currentTerm(), me());
         if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdownNow();
+            scheduler.getAndSet(null).shutdown();
         }
     }
 

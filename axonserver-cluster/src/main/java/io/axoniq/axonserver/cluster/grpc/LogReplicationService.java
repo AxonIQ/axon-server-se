@@ -11,6 +11,8 @@ import io.axoniq.axonserver.grpc.cluster.LogReplicationServiceGrpc;
 import io.axoniq.axonserver.grpc.cluster.TimeoutNowRequest;
 import io.axoniq.axonserver.grpc.cluster.TimeoutNowResponse;
 import io.grpc.Context;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +57,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Failure on appendEntries on leader connection", throwable);
+                logCommunicationError("Failure on appendEntries on leader connection", throwable);
             }
 
             @Override
@@ -103,7 +105,7 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
 
             @Override
             public void onError(Throwable throwable) {
-                logger.trace("Failure on appendEntries on leader connection", throwable);
+                logCommunicationError("Failure on installSnapshot on leader connection", throwable);
             }
 
             @Override
@@ -114,9 +116,19 @@ public class LogReplicationService extends LogReplicationServiceGrpc.LogReplicat
         };
     }
 
+    private void logCommunicationError(String message, Throwable throwable) {
+        if (throwable instanceof StatusRuntimeException && Status.Code.CANCELLED
+                .equals(((StatusRuntimeException) throwable).getStatus().getCode())) {
+            logger.debug(message);
+        } else {
+            logger.warn(message, throwable);
+        }
+    }
+
     /**
      * Receives timeout now request from other node.
-     * @param request containing the raft group name
+     *
+     * @param request          containing the raft group name
      * @param responseObserver stream to send confirmation
      */
     @Override
