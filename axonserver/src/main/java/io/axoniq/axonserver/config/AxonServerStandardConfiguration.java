@@ -16,13 +16,15 @@ import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
+import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.DatafileEventStoreExistChecker;
@@ -32,6 +34,7 @@ import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionMa
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
@@ -42,9 +45,9 @@ import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.version.VersionInfoProvider;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -116,7 +119,8 @@ public class AxonServerStandardConfiguration {
     @Bean
     @ConditionalOnMissingBean(FeatureChecker.class)
     public FeatureChecker featureChecker() {
-        return new FeatureChecker() {};
+        return new FeatureChecker() {
+        };
     }
 
     @Bean
@@ -126,13 +130,21 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(EventSchedulerGrpc.EventSchedulerImplBase.class)
+    public AxonServerClientService eventSchedulerService() {
+        logger.warn("Creating SE EventSchedulerService");
+        return new EventSchedulerService();
+    }
+
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
     @ConditionalOnMissingBean(UserControllerFacade.class)
-    public UserControllerFacade userControllerFacade(UserController userController, ApplicationEventPublisher eventPublisher) {
+    public UserControllerFacade userControllerFacade(UserController userController,
+                                                     ApplicationEventPublisher eventPublisher) {
         return new UserControllerFacade() {
             @Override
             public void updateUser(String userName, String password, Set<UserRole> roles) {
