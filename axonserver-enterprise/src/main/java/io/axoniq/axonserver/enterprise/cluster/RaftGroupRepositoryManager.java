@@ -11,7 +11,9 @@ import org.springframework.stereotype.Component;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author Marc Gathier
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 public class RaftGroupRepositoryManager {
     private final JpaRaftGroupNodeRepository raftGroupNodeRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
+    private final AtomicReference<Set<String>> contextCache = new AtomicReference<>();
 
     public RaftGroupRepositoryManager(
             JpaRaftGroupNodeRepository raftGroupNodeRepository, MessagingPlatformConfiguration messagingPlatformConfiguration) {
@@ -36,12 +39,26 @@ public class RaftGroupRepositoryManager {
      * @return the names of all raft groups that have an event store on this node
      */
     public Set<String> storageContexts() {
-        return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
-                                      .stream()
-                                      .filter(group -> RoleUtils.hasStorage(group.getRole()))
-                                      .map(JpaRaftGroupNode::getGroupId)
-                                      .filter(n -> !RaftAdminGroup.isAdmin(n))
-                                      .collect(Collectors.toSet());
+        return contextCache.get();
+    }
+
+    /**
+     * Checks whether there is a given {@code context} within this node.
+     *
+     * @param context the context to check whether it exists within this node
+     * @return {@code true} if contexts exists within this node, {@code false} otherwise
+     */
+    public boolean containsStorageContext(String context) {
+        return contextCache.get().contains(context);
+    }
+
+    private void refreshContextCache() {
+        contextCache.set(raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
+                                                .stream()
+                                                .filter(group -> RoleUtils.hasStorage(group.getRole()))
+                                                .map(JpaRaftGroupNode::getGroupId)
+                                                .filter(n -> !RaftAdminGroup.isAdmin(n))
+                                                .collect(Collectors.toSet()));
     }
 
     public Set<JpaRaftGroupNode> findByGroupId(String groupId) {
@@ -50,7 +67,7 @@ public class RaftGroupRepositoryManager {
 
     public void delete(String groupId) {
         raftGroupNodeRepository.deleteAll(raftGroupNodeRepository.findByGroupId(groupId));
-
+        refreshContextCache();
     }
 
     public void update(String groupId, List<Node> nodes) {
@@ -59,6 +76,7 @@ public class RaftGroupRepositoryManager {
             JpaRaftGroupNode jpaRaftGroupNode = new JpaRaftGroupNode(groupId, n);
             raftGroupNodeRepository.save(jpaRaftGroupNode);
         });
+        refreshContextCache();
     }
 
     public Set<JpaRaftGroupNode> findByNodeName(String nodeName) {
@@ -70,6 +88,7 @@ public class RaftGroupRepositoryManager {
                                .ifPresent(n -> {
                                    n.setPendingDelete(true);
                                    raftGroupNodeRepository.save(n);
+                                   refreshContextCache();
                                });
     }
 
