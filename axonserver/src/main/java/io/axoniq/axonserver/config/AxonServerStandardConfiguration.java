@@ -39,6 +39,10 @@ import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.taskscheduler.LocalTaskManager;
+import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
+import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
+import io.axoniq.axonserver.taskscheduler.TaskRepository;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -56,12 +60,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+
+import static java.util.concurrent.Executors.newScheduledThreadPool;
 
 /**
  * Creates instances of Spring beans required by Axon Server.
@@ -131,14 +140,21 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventSchedulerGrpc.EventSchedulerImplBase.class)
-    public AxonServerClientService eventSchedulerService() {
+    public AxonServerClientService eventSchedulerService(LocalTaskManager localTaskManager) {
         logger.warn("Creating SE EventSchedulerService");
-        return new EventSchedulerService();
+        return new EventSchedulerService(localTaskManager);
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+
+    @Bean
+    @Qualifier("taskScheduler")
+    public ScheduledExecutorService scheduler() {
+        return newScheduledThreadPool(10, new CustomizableThreadFactory("task-scheduler"));
     }
 
     @Bean
@@ -221,6 +237,24 @@ public class AxonServerStandardConfiguration {
     public VersionInfoProvider versionInfoProvider() {
         return new DefaultVersionInfoProvider();
     }
+
+    @Bean
+    @ConditionalOnMissingBean(LocalTaskManager.class)
+    public LocalTaskManager localTaskManager(ScheduledTaskExecutor taskExecutor,
+                                             TaskRepository taskRepository,
+                                             TaskPayloadSerializer taskPayloadSerializer,
+                                             PlatformTransactionManager platformTransactionManager,
+                                             @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+                                             Clock clock) {
+        return new LocalTaskManager(Topology.DEFAULT_CONTEXT,
+                                    taskExecutor,
+                                    taskRepository,
+                                    taskPayloadSerializer,
+                                    platformTransactionManager,
+                                    scheduler,
+                                    clock);
+    }
+
 
     @Bean
     public ApplicationEventMulticaster applicationEventMulticaster() {

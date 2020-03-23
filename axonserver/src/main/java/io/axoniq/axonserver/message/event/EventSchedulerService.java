@@ -9,15 +9,17 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.event.CancelScheduledeEventRequest;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.event.RescheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleToken;
+import io.axoniq.axonserver.taskscheduler.LocalTaskManager;
+import io.axoniq.axonserver.taskscheduler.Payload;
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -26,19 +28,52 @@ import io.grpc.stub.StreamObserver;
 public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImplBase implements
         AxonServerClientService {
 
+    private final LocalTaskManager localTaskManager;
+
+    public EventSchedulerService(LocalTaskManager localTaskManager) {
+        this.localTaskManager = localTaskManager;
+    }
+
     @Override
     public void scheduleEvent(ScheduleEventRequest request, StreamObserver<ScheduleToken> responseObserver) {
-        responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.OTHER, "Not implemented in Axon Server SE yet"));
+        try {
+            Payload payload = new Payload(Event.class.getName(), request.getEvent().toByteArray());
+            String taskId = localTaskManager.createLocalTask(ScheduledEventExecutor.class.getName(),
+                                                             payload,
+                                                             request.getInstant());
+            responseObserver.onNext(ScheduleToken.newBuilder()
+                                                 .setToken(taskId)
+                                                 .build());
+            responseObserver.onCompleted();
+        } catch (Exception ex) {
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
+        }
     }
 
     @Override
     public void rescheduleEvent(RescheduleEventRequest request, StreamObserver<InstructionAck> responseObserver) {
-        responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.OTHER, "Not implemented in Axon Server SE yet"));
+        try {
+            localTaskManager.reschedule(request.getToken(), request.getInstant());
+            responseObserver.onNext(InstructionAck.newBuilder()
+                                                  .setSuccess(true)
+                                                  .build());
+            responseObserver.onCompleted();
+        } catch (Exception ex) {
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
+        }
     }
 
     @Override
     public void cancelScheduledEvent(CancelScheduledeEventRequest request,
                                      StreamObserver<InstructionAck> responseObserver) {
-        responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.OTHER, "Not implemented in Axon Server SE yet"));
+        try {
+            localTaskManager.cancel(request.getToken());
+            responseObserver.onNext(InstructionAck.newBuilder()
+                                                  .setSuccess(true)
+                                                  .build());
+            responseObserver.onCompleted();
+        } catch (Exception ex) {
+            responseObserver.onError(GrpcExceptionBuilder.build(ex));
+        }
     }
 }
