@@ -15,6 +15,8 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -55,8 +57,9 @@ public class EventDispatcherTest {
     @Before
     public void setUp() {
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
-        when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
+        when(eventStoreLocator.getEventStore(eq("OtherContext"), anyBoolean())).thenReturn(null);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
+        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
                                           new MeterFactory(Metrics.globalRegistry,
                                           new DefaultMetricCollector()));
@@ -130,12 +133,56 @@ public class EventDispatcherTest {
             return eventStoreResponseStream;
         });
         StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(responseObserver);
-        inputStream.onNext(GetEventsRequest.newBuilder().setClientId("sampleClient").build());
+        inputStream.onNext(GetEventsRequest.newBuilder()
+                                           .setClientId("sampleClient")
+                                           .build());
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.count);
+        inputStream = testSubject.listEvents(responseObserver);
+        inputStream.onNext(GetEventsRequest.newBuilder()
+                                           .setAllowReadingFromFollower(true)
+                                           .setClientId("sampleClient")
+                                           .build());
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
         assertTrue(responseObserver.completed);
         testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "myComponent", "sampleClient"));
         assertTrue(testSubject.eventTrackerStatus(Topology.DEFAULT_CONTEXT).isEmpty());
     }
 
+    @Test
+    public void queryEvents() {
+        CountingStreamObserver<QueryEventsResponse> responseObserver = new CountingStreamObserver<>();
+        AtomicReference<StreamObserver<QueryEventsResponse>> eventStoreOutputStreamRef = new AtomicReference<>();
+        StreamObserver<QueryEventsRequest> eventStoreResponseStream = new StreamObserver<QueryEventsRequest>() {
+            @Override
+            public void onNext(QueryEventsRequest value) {
+                StreamObserver<QueryEventsResponse> responseStream = eventStoreOutputStreamRef.get();
+                responseStream.onNext(QueryEventsResponse.newBuilder().build());
+                responseStream.onCompleted();
+            }
 
+            @Override
+            public void onError(Throwable t) {
+
+            }
+
+            @Override
+            public void onCompleted() {
+
+            }
+        };
+        when(eventStoreClient.queryEvents(any(), any(StreamObserver.class))).then(a -> {
+            eventStoreOutputStreamRef.set((StreamObserver<QueryEventsResponse>) a.getArguments()[1]);
+            return eventStoreResponseStream;
+        });
+        StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(responseObserver);
+        inputStream.onNext(QueryEventsRequest.newBuilder().build());
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
+        assertEquals(1, responseObserver.count);
+        inputStream.onNext(QueryEventsRequest.newBuilder()
+                                             .setAllowReadingFromFollower(true)
+                                             .build());
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
+        assertTrue(responseObserver.completed);
+    }
 }
