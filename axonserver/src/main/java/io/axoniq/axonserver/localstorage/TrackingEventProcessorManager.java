@@ -157,6 +157,13 @@ public class TrackingEventProcessorManager {
     }
 
     /**
+     * Stops all tracking event processors where request does not allow reading from follower.
+     */
+    public void stopAllWhereNotAllowedReadingFromFollower() {
+        eventTrackerSet.forEach(EventTracker::stopAllWhereNotAllowedReadingFromFollower);
+    }
+
+    /**
      * Kills all tracking event processors that are waiting for permits and not received any permits since minLastPermits.
      * @param minLastPermits expected minimum timestamp for new permits request
      */
@@ -195,6 +202,7 @@ public class TrackingEventProcessorManager {
         private volatile boolean running = true;
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
         private volatile int force = blacklistedSendAfter;
+        private final boolean allowReadingFromFollower;
 
         private EventTracker(long trackingToken, String clientId, StreamObserver<InputStream> eventStream) {
             client = clientId;
@@ -274,6 +282,12 @@ public class TrackingEventProcessorManager {
         public void stop() {
             close();
             StreamObserverUtils.complete(eventStream);
+        }
+
+        public void stopAllWhereNotAllowedReadingFromFollower() {
+            if (!allowReadingFromFollower) {
+                stop();
+            }
         }
 
         public void validateActiveConnection(long minLastPermits) {

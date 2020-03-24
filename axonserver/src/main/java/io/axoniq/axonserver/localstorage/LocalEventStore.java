@@ -542,7 +542,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
 
         private void cancelTrackingEventProcessors() {
-            trackingEventManager.stopAll();
+            trackingEventManager.stopAllWhereNotAllowedReadingFromFollower();
         }
 
         /**

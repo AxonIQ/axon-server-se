@@ -93,8 +93,7 @@ public class TrackingEventProcessorManagerTest {
                                                "",
                                                new StreamObserver<InputStream>() {
                                                    @Override
-                                                   public void onNext(
-                                                           InputStream value) {
+                                                   public void onNext(InputStream value) {
                                                        messagesReceived.incrementAndGet();
                                                    }
 
@@ -158,5 +157,46 @@ public class TrackingEventProcessorManagerTest {
                                                                          .build()));
         tracker.start();
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(10, messagesReceived.get()));
+    }
+
+    @Test
+    public void testStopAllWhereRequestIsNotForLocalStoreOnly() throws InterruptedException {
+        GetEventsRequest requestUseLocalStore = GetEventsRequest.newBuilder()
+                                                                .setTrackingToken(100)
+                                                                .setNumberOfPermits(5)
+                                                                .setAllowReadingFromFollower(true)
+                                                                .build();
+        AtomicInteger useLocalStoreMessagesReceived = new AtomicInteger();
+        AtomicBoolean useLocalStoreCompleted = new AtomicBoolean();
+        AtomicBoolean useLocalStoreFailed = new AtomicBoolean();
+
+        TrackingEventProcessorManager.EventTracker useLocalStoreTracker = testSubject.createEventTracker(
+                requestUseLocalStore,
+                new StreamObserver<InputStream>() {
+                    @Override
+                    public void onNext(InputStream value) {
+                        useLocalStoreMessagesReceived.incrementAndGet();
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        useLocalStoreFailed.set(true);
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        useLocalStoreCompleted.set(true);
+                    }
+                });
+
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(5, useLocalStoreMessagesReceived.get()));
+        assertFalse(useLocalStoreCompleted.get());
+        assertFalse(useLocalStoreFailed.get());
+
+        testSubject.stopAllWhereNotAllowedReadingFromFollower();
+
+        useLocalStoreTracker.addPermits(5);
+
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(10, useLocalStoreMessagesReceived.get()));
     }
 }

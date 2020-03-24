@@ -3,6 +3,13 @@ This is the Axon Server Standard Edition, version 4.3
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.3.1
+-------------------------------
+
+* Updated usage output in CLI
+* Updated gRPC/Netty versions
+* Prevent errors in log (sending ad-hoc result to client that has gone, sending heartbeat to client that has gone)
+
 Release Notes for version 4.3
 -------------------------------
 
