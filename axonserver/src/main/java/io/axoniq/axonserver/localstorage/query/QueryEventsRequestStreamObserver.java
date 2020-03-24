@@ -40,11 +40,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author Marc Gathier
@@ -62,7 +65,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private final StreamObserver<QueryEventsResponse> responseObserver;
     private volatile Registration registration;
     private volatile Pipeline pipeLine;
-    private volatile Sender sender;
+    private final AtomicReference<Sender> senderRef = new AtomicReference<>();
 
     public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader, long defaultLimit, long timeout,
                                             StreamObserver<QueryEventsResponse> responseObserver) {
@@ -76,10 +79,15 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     @Override
     public void onNext(QueryEventsRequest queryEventsRequest) {
         try {
-            if(sender == null) {
-                sender = new Sender(queryEventsRequest.getNumberOfPermits(),
-                                    queryEventsRequest.getLiveEvents(),
-                                    System.currentTimeMillis() + timeout);
+            Sender sender = senderRef.updateAndGet(s -> {
+                if (s == null) {
+                    return new Sender(queryEventsRequest.getNumberOfPermits(),
+                                      queryEventsRequest.getLiveEvents(),
+                                      System.currentTimeMillis() + timeout);
+                }
+                return s;
+            });
+            if(sender.start()) {
                 long connectionToken = eventStreamReader.getLastToken();
                 long minConnectionToken = StringUtils.isEmpty(queryEventsRequest.getQuery()) ? Math.max(
                         connectionToken - defaultLimit, 0) : 0;
@@ -99,14 +107,16 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                     eventStreamReader.query(minConnectionToken,
                                             query.getStartTime(),
                                             event -> pushEvent(event, pipeLine));
-                    sender.completed();
+                    Optional.ofNullable(senderRef.get())
+                            .ifPresent(Sender::completed);
                 });
             } else {
-                sender.addPermits(queryEventsRequest.getNumberOfPermits());
+                Optional.ofNullable(senderRef.get())
+                        .ifPresent(s -> s.addPermits(queryEventsRequest.getNumberOfPermits()));
             }
         } catch (Exception pe) {
             responseObserver.onError(pe);
-            sender = null;
+            senderRef.set(null);
         }
     }
 
@@ -141,11 +151,14 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     }
 
     private void sendColumns(Pipeline pipeLine) {
-        sender.sendColumnNames(pipeLine.columnNames(EventExpressionResult.COLUMN_NAMES));
+        Optional.ofNullable(senderRef.get())
+                .ifPresent(sender -> sender.sendColumnNames(pipeLine.columnNames(EventExpressionResult.COLUMN_NAMES)));
     }
 
     private boolean send(QueryResult exp) {
-        return sender.send(exp.getId(), exp);
+        return Optional.ofNullable(senderRef.get())
+                       .map(sender -> sender.send(exp.getId(), exp))
+                       .orElse(false);
     }
 
     @Override
@@ -160,9 +173,11 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     }
 
     private void close() {
-        if( registration != null) registration.cancel();
+        Optional.ofNullable(registration)
+                .ifPresent(Registration::cancel);
         pipeLine = null;
-        if( sender != null) sender.stop();
+        Optional.ofNullable(senderRef.get())
+                .ifPresent(Sender::stop);
     }
 
     private class Sender {
@@ -174,16 +189,24 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         private List<String> columns;
         private volatile QueryEventsResponse completeMessage;
         private final AtomicLong permits;
+        private final AtomicBoolean started = new AtomicBoolean(false);
 
         public Sender( long permits, boolean liveUpdates, long deadline) {
             this.liveUpdates = liveUpdates;
             this.deadline = deadline;
-            this.sendTask = senderService.scheduleWithFixedDelay(this::sendAll, 100, 100, TimeUnit.MILLISECONDS);
             this.permits = new AtomicLong(permits);
         }
 
         public void addPermits(long permits) {
             this.permits.addAndGet(permits);
+        }
+
+        public boolean start() {
+            boolean notStarted = started.compareAndSet(false, true);
+            if (notStarted) {
+                this.sendTask = senderService.scheduleWithFixedDelay(this::sendAll, 100, 100, TimeUnit.MILLISECONDS);
+            }
+            return notStarted;
         }
 
         public synchronized void stop() {
