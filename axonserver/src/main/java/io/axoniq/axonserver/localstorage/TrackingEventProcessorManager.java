@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -46,7 +47,7 @@ public class TrackingEventProcessorManager {
     private static final Logger logger = LoggerFactory.getLogger(TrackingEventProcessorManager.class);
 
     private final ScheduledExecutorService scheduledExecutorService;
-    private final Set<EventTracker> eventTrackerSet = new CopyOnWriteArraySet<>();
+    private final Set<EventTracker> eventTrackerSet = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean replicationRunning = new AtomicBoolean();
     private final String context;
     private final Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder;
@@ -128,16 +129,15 @@ public class TrackingEventProcessorManager {
 
 
     /**
-     * Registers a new event tracker and starts sending events.
-     * @param request the initial request to start the tracking event processor
-     * @param eventStream the output stream
+     * Creates a new event tracker.
+     *
+     * @param trackingToken the tracking token to start tracking events from
+     * @param clientId      the id of the client
+     * @param eventStream   the output stream
      * @return an EventTracker
      */
-    EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
-        EventTracker eventTracker = new EventTracker(request, eventStream);
-        eventTrackerSet.add(eventTracker);
-        reschedule();
-        return eventTracker;
+    EventTracker createEventTracker(long trackingToken, String clientId, StreamObserver<InputStream> eventStream) {
+        return new EventTracker(trackingToken, clientId, eventStream);
     }
 
     /**
@@ -180,7 +180,7 @@ public class TrackingEventProcessorManager {
         /**
          * Keeps number of permits still available.
          */
-        private final AtomicInteger permits;
+        private final AtomicInteger permits = new AtomicInteger();
         /**
          * Keeps next token to send to client.
          */
@@ -196,14 +196,10 @@ public class TrackingEventProcessorManager {
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
         private volatile int force = blacklistedSendAfter;
 
-        private EventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
-            permits = new AtomicInteger((int) request.getNumberOfPermits());
-            client = request.getClientId();
+        private EventTracker(long trackingToken, String clientId, StreamObserver<InputStream> eventStream) {
+            client = clientId;
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
-            nextToken = new AtomicLong(request.getTrackingToken());
-            if (request.getBlacklistCount() > 0) {
-                addBlacklist(request.getBlacklistList());
-            }
+            nextToken = new AtomicLong(trackingToken);
             this.eventStream = eventStream;
         }
 
@@ -268,6 +264,11 @@ public class TrackingEventProcessorManager {
                 eventIterator.close();
                 eventIterator = null;
             }
+        }
+
+        public void start() {
+            eventTrackerSet.add(this);
+            reschedule();
         }
 
         public void stop() {

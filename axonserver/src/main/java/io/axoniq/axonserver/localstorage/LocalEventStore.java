@@ -51,10 +51,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 /**
@@ -281,28 +283,37 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public StreamObserver<GetEventsRequest> listEvents(String context,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
-            private volatile TrackingEventProcessorManager.EventTracker controller;
+            private final AtomicReference<TrackingEventProcessorManager.EventTracker> controllerRef = new AtomicReference<>();
+
             @Override
             public void onNext(GetEventsRequest getEventsRequest) {
-                if( controller == null) {
-                    controller = workers(context).createEventTracker(getEventsRequest,responseStreamObserver);
-                } else {
-                    controller.addPermits((int) getEventsRequest.getNumberOfPermits());
-                    if (getEventsRequest.getBlacklistCount() > 0) {
-                        controller.addBlacklist(getEventsRequest.getBlacklistList());
+                TrackingEventProcessorManager.EventTracker controller = controllerRef.updateAndGet(c -> {
+                    if (c == null) {
+                        return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
+                                                                   getEventsRequest.getClientId(),
+                                                                   responseStreamObserver);
                     }
+                    return c;
+                });
+
+                controller.addPermits((int) getEventsRequest.getNumberOfPermits());
+                if (getEventsRequest.getBlacklistCount() > 0) {
+                    controller.addBlacklist(getEventsRequest.getBlacklistList());
                 }
+                controller.start();
             }
 
             @Override
             public void onError(Throwable throwable) {
-                if( controller != null) controller.close();
+                Optional.ofNullable(controllerRef.get())
+                        .ifPresent(TrackingEventProcessorManager.EventTracker::close);
                 StreamObserverUtils.complete(responseStreamObserver);
             }
 
             @Override
             public void onCompleted() {
-                if( controller != null) controller.close();
+                Optional.ofNullable(controllerRef.get())
+                        .ifPresent(TrackingEventProcessorManager.EventTracker::close);
                 StreamObserverUtils.complete(responseStreamObserver);
             }
         };
@@ -524,8 +535,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             meterFactory.remove(gauge);
         }
 
-        private TrackingEventProcessorManager.EventTracker createEventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
-            return trackingEventManager.createEventTracker(request, eventStream);
+        private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken, String clientId,
+                                                                              StreamObserver<InputStream> eventStream) {
+            return trackingEventManager.createEventTracker(trackingToken, clientId, eventStream);
         }
 
 
