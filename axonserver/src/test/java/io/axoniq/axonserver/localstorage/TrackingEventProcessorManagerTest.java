@@ -91,6 +91,7 @@ public class TrackingEventProcessorManagerTest {
         TrackingEventProcessorManager.EventTracker tracker =
                 testSubject.createEventTracker(100L,
                                                "",
+                                               true,
                                                new StreamObserver<InputStream>() {
                                                    @Override
                                                    public void onNext(InputStream value) {
@@ -133,6 +134,7 @@ public class TrackingEventProcessorManagerTest {
         TrackingEventProcessorManager.EventTracker tracker =
                 testSubject.createEventTracker(100L,
                                                "",
+                                               true,
                                                new StreamObserver<InputStream>() {
                                                    @Override
                                                    public void onNext(
@@ -161,17 +163,14 @@ public class TrackingEventProcessorManagerTest {
 
     @Test
     public void testStopAllWhereRequestIsNotForLocalStoreOnly() throws InterruptedException {
-        GetEventsRequest requestUseLocalStore = GetEventsRequest.newBuilder()
-                                                                .setTrackingToken(100)
-                                                                .setNumberOfPermits(5)
-                                                                .setAllowReadingFromFollower(true)
-                                                                .build();
         AtomicInteger useLocalStoreMessagesReceived = new AtomicInteger();
         AtomicBoolean useLocalStoreCompleted = new AtomicBoolean();
         AtomicBoolean useLocalStoreFailed = new AtomicBoolean();
 
         TrackingEventProcessorManager.EventTracker useLocalStoreTracker = testSubject.createEventTracker(
-                requestUseLocalStore,
+                100,
+                "",
+                true,
                 new StreamObserver<InputStream>() {
                     @Override
                     public void onNext(InputStream value) {
@@ -188,6 +187,8 @@ public class TrackingEventProcessorManagerTest {
                         useLocalStoreCompleted.set(true);
                     }
                 });
+        useLocalStoreTracker.addPermits(5);
+        useLocalStoreTracker.start();
 
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(5, useLocalStoreMessagesReceived.get()));
         assertFalse(useLocalStoreCompleted.get());

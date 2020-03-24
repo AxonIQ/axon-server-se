@@ -291,6 +291,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     if (c == null) {
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
+                                                                   getEventsRequest.getAllowReadingFromFollower(),
                                                                    responseStreamObserver);
                     }
                     return c;
@@ -535,9 +536,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             meterFactory.remove(gauge);
         }
 
-        private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken, String clientId,
+        private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,
+                                                                              String clientId,
+                                                                              boolean allowReadingFromFollower,
                                                                               StreamObserver<InputStream> eventStream) {
-            return trackingEventManager.createEventTracker(trackingToken, clientId, eventStream);
+            return trackingEventManager.createEventTracker(trackingToken,
+                                                           clientId,
+                                                           allowReadingFromFollower,
+                                                           eventStream);
         }
 
 

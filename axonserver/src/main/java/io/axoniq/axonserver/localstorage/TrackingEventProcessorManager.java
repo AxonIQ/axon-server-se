@@ -131,13 +131,15 @@ public class TrackingEventProcessorManager {
     /**
      * Creates a new event tracker.
      *
-     * @param trackingToken the tracking token to start tracking events from
-     * @param clientId      the id of the client
-     * @param eventStream   the output stream
+     * @param trackingToken            the tracking token to start tracking events from
+     * @param clientId                 the id of the client
+     * @param allowReadingFromFollower whether reading events from follower is allowed
+     * @param eventStream              the output stream
      * @return an EventTracker
      */
-    EventTracker createEventTracker(long trackingToken, String clientId, StreamObserver<InputStream> eventStream) {
-        return new EventTracker(trackingToken, clientId, eventStream);
+    EventTracker createEventTracker(long trackingToken, String clientId, boolean allowReadingFromFollower,
+                                    StreamObserver<InputStream> eventStream) {
+        return new EventTracker(trackingToken, clientId, allowReadingFromFollower, eventStream);
     }
 
     /**
@@ -204,11 +206,13 @@ public class TrackingEventProcessorManager {
         private volatile int force = blacklistedSendAfter;
         private final boolean allowReadingFromFollower;
 
-        private EventTracker(long trackingToken, String clientId, StreamObserver<InputStream> eventStream) {
+        private EventTracker(long trackingToken, String clientId, boolean allowReadingFromFollower,
+                             StreamObserver<InputStream> eventStream) {
             client = clientId;
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(trackingToken);
             this.eventStream = eventStream;
+            this.allowReadingFromFollower = allowReadingFromFollower;
         }
 
         private int sendNext() {
