@@ -20,12 +20,10 @@ import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import javax.transaction.Transactional;
 
 /**
  * Component that reads tasks from the controldb and tries to execute them.
- * It will only process tasks with context {@code DUMMY_CONTEXT_FOR_LOCAL_TASKS}.
+ * It will process tasks with context specified in the constructor.
  *
  * @author Marc Gathier
  * @since 4.3
@@ -35,6 +33,17 @@ public class LocalTaskManager extends BaseTaskManager {
     private final String context;
     private final TaskPayloadSerializer taskPayloadSerializer;
 
+    /**
+     * Instantiates a {@link LocalTaskManager}.
+     *
+     * @param context                    the context for the tasks to be processed by this task manager.
+     * @param taskExecutor               component responsible for executing the tasks
+     * @param taskRepository             repository of active tasks
+     * @param taskPayloadSerializer      serializer to (de-)serialize task contents
+     * @param platformTransactionManager transaction manager
+     * @param scheduler                  scheduler to schedule the tasks
+     * @param clock                      instance of a clock
+     */
     public LocalTaskManager(String context,
                             ScheduledTaskExecutor taskExecutor,
                             TaskRepository taskRepository,
@@ -49,6 +58,14 @@ public class LocalTaskManager extends BaseTaskManager {
         this.taskPayloadSerializer = taskPayloadSerializer;
     }
 
+    /**
+     * Creates a new task to be executed at some instant.
+     *
+     * @param taskHandler the class name of the component responsible for executng the task
+     * @param payload     the payload of the task
+     * @param instant     the timestamp when the task must be executed
+     * @return a unique reference to the task
+     */
     public String createLocalTask(String taskHandler, Payload payload, long instant) {
         Task task = new Task();
         task.setTaskId(UUID.randomUUID().toString());
@@ -61,6 +78,14 @@ public class LocalTaskManager extends BaseTaskManager {
         return task.getTaskId();
     }
 
+    /**
+     * Creates a new task to be executed at some instant.
+     *
+     * @param taskHandler the class name of the component responsible for executng the task
+     * @param payload     the un-serialized payload of the task
+     * @param delay       the time to wait before executing the task
+     * @return a unique reference to the task
+     */
     public void createLocalTask(String taskHandler, Object payload, Duration delay) {
         createLocalTask(taskHandler, taskPayloadSerializer.serialize(payload), clock.millis() + delay.toMillis());
     }
@@ -71,7 +96,7 @@ public class LocalTaskManager extends BaseTaskManager {
 
         if (TaskStatus.COMPLETED.equals(status) || TaskStatus.CANCELLED.equals(status)) {
             new TransactionTemplate(platformTransactionManager).execute(s -> {
-                taskRepository.deleteById(taskId);
+                taskRepository.findById(taskId).ifPresent(taskRepository::delete);
                 return null;
             });
         } else {
@@ -87,30 +112,18 @@ public class LocalTaskManager extends BaseTaskManager {
         return CompletableFuture.completedFuture(null);
     }
 
-    @Transactional
+    /**
+     * Cancels a scheduled task.
+     *
+     * @param taskId the reference to the task
+     */
     public void cancel(String taskId) {
         new TransactionTemplate(platformTransactionManager).execute(s -> {
-            taskRepository.deleteById(taskId);
+            taskRepository.findById(taskId).ifPresent(taskRepository::delete);
             return null;
         });
-        unschedule(taskId);
+        unschedule(context, taskId);
     }
 
-    public void reschedule(String taskId, long instant) {
-        unschedule(taskId);
 
-        taskRepository.findById(taskId).ifPresent(task -> {
-            task.setTimestamp(instant);
-            task.setRetryInterval(1000L);
-            saveAndSchedule(task);
-        });
-    }
-
-    private void unschedule(String taskId) {
-        ScheduledFuture<?> future = scheduledProcessors.getOrDefault(context, Collections.emptyMap())
-                                                       .remove(taskId);
-        if (future != null) {
-            future.cancel(false);
-        }
-    }
 }

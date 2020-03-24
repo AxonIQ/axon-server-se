@@ -12,13 +12,22 @@ package io.axoniq.axonserver.util;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Marc Gathier
  */
 public class ChangeableClock extends Clock {
 
-    Instant instant = Instant.now();
+    Instant instant;
+
+    public ChangeableClock() {
+        this(Instant.now());
+    }
+
+    public ChangeableClock(Instant instant) {
+        this.instant = instant;
+    }
 
     @Override
     public ZoneId getZone() {
@@ -37,5 +46,9 @@ public class ChangeableClock extends Clock {
 
     public void forward(long millis) {
         instant = instant.plusMillis(millis);
+    }
+
+    public void add(long delay, TimeUnit timeUnit) {
+        instant = instant.plusMillis(timeUnit.toMillis(delay));
     }
 }

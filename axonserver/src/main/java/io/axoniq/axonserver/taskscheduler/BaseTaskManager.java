@@ -34,7 +34,12 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
+ * Task scheduling component that will execute tasks at a specified moment.
+ * Tasks that fail with a {@link TransientException} will automatically be rescheduled, with an exponential backup.
+ * When tasks fail with another exception they will not be retried.
+ *
  * @author Marc Gathier
+ * @since 4.4
  */
 public abstract class BaseTaskManager implements SmartLifecycle {
 
@@ -48,11 +53,22 @@ public abstract class BaseTaskManager implements SmartLifecycle {
     protected final PlatformTransactionManager platformTransactionManager;
     protected final ScheduledExecutorService scheduler;
     protected final Clock clock;
-    protected final Map<String, Map<String, ScheduledFuture>> scheduledProcessors = new ConcurrentHashMap<>();
+    protected final Map<String, Map<String, ScheduledFuture<?>>> scheduledProcessors = new ConcurrentHashMap<>();
     protected final AtomicLong nextTimestamp = new AtomicLong();
     private final long window = Duration.ofMinutes(5).toMillis();
     private boolean running;
 
+    /**
+     * base constructor.
+     *
+     * @param taskExecutor               component that will execute the task
+     * @param taskRepository             repository of scheduled tasks
+     * @param raftGroupProvider          provides set of contexts where node is leader
+     * @param raftLeaderTest             predicate to check if current node is leader for this context
+     * @param platformTransactionManager transaction manager
+     * @param scheduler                  scheduler component to schedule tasks
+     * @param clock                      a clock instance
+     */
     public BaseTaskManager(
             ScheduledTaskExecutor taskExecutor, TaskRepository taskRepository,
             Supplier<Set<String>> raftGroupProvider,
@@ -96,23 +112,52 @@ public abstract class BaseTaskManager implements SmartLifecycle {
     }
 
 
+    /**
+     * Starts the task manager. Loads tasks to execute in near future from task repository and adds them to the
+     * scheduler.
+     */
     @Override
     public void start() {
         initFetchTasksRunner();
         running = true;
     }
 
+    /**
+     * Stops the task manager. Shuts down the scheduler to cancel all scheduled tasks.
+     */
     @Override
     public void stop() {
+        running = false;
         logger.info("Stop TaskManager");
         scheduler.shutdown();
-        running = false;
     }
 
+    /**
+     * Returns true if the component is started (and not stopped).
+     *
+     * @return true if the component is started (and not stopped)
+     */
     @Override
     public boolean isRunning() {
         return running;
     }
+
+    /**
+     * Updates the status of a task after the task has executed.
+     * Reschedules the task if the {@code status} is {@link TaskStatus}.SCHEDULED.
+     * Implementations of this method may be async, therefore returning a {@link CompletableFuture}.
+     *
+     * @param context       the context for the task
+     * @param taskId        the unique identification of the task
+     * @param status        the new status of the task
+     * @param newSchedule   timestamp when the task should be run again (if new status is scheduled)
+     * @param retryInterval new retry interval for the task
+     * @param message       message from last task execution
+     * @return completable future that completes when processing of the result is completed
+     */
+    protected abstract CompletableFuture<Void> processResult(String context, String taskId, TaskStatus status,
+                                                             long newSchedule, long retryInterval, String message);
+
 
     private void initFetchTasksRunner() {
         logger.debug("Init fetchTaskRunner, window = {}", window);
@@ -215,17 +260,13 @@ public abstract class BaseTaskManager implements SmartLifecycle {
         }
 
         publishResultFuture.exceptionally(e -> {
-            logger.warn("{}: Failed to publish result for task {}: {}", task.getContext(),
+            logger.warn("{}: Failed to process result for task {}: {}", task.getContext(),
                         task.getTaskId(),
                         task.getTaskExecutor(),
                         e);
             return null;
         });
     }
-
-    protected abstract CompletableFuture<Void> processResult(String context, String taskId, TaskStatus scheduled,
-                                                             long newSchedule, long min, String asString);
-
 
     protected void completed(Task task) {
         processResult(task.getContext(),
@@ -234,11 +275,19 @@ public abstract class BaseTaskManager implements SmartLifecycle {
                       clock.millis(),
                       0, null)
                 .exceptionally(e -> {
-                    logger.warn("{}: Failed to publish result for completed task {}: {}", task.getContext(),
+                    logger.warn("{}: Failed to process result for completed task {}: {}", task.getContext(),
                                 task.getTaskId(),
                                 task.getTaskExecutor(),
                                 e);
                     return null;
                 });
+    }
+
+    protected void unschedule(String context, String taskId) {
+        ScheduledFuture<?> future = scheduledProcessors.getOrDefault(context, Collections.emptyMap())
+                                                       .remove(taskId);
+        if (future != null) {
+            future.cancel(false);
+        }
     }
 }
