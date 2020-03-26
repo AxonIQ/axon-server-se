@@ -51,7 +51,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -251,28 +250,40 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
         AtomicInteger counter = new AtomicInteger();
-        workers(context).aggregateReader.readEvents( request.getAggregateId(),
-                                                            request.getAllowSnapshots(),
-                                                            request.getInitialSequence(),
-                                                            event -> {
-                                                                responseStreamObserver.onNext(event.asInputStream());
-                                                                counter.incrementAndGet();
-                                                            });
-        if( counter.get() == 0) {
+        workers(context).aggregateReader.readEvents(request.getAggregateId(),
+                                                    request.getAllowSnapshots(),
+                                                    request.getInitialSequence(),
+                                                    getMaxSequence(request),
+                                                    event -> {
+                                                        responseStreamObserver.onNext(event.asInputStream());
+                                                        counter.incrementAndGet();
+                                                    });
+        if (counter.get() == 0) {
             logger.debug("Aggregate not found: {}", request);
         }
         responseStreamObserver.onCompleted();
     }
 
+    private long getMaxSequence(GetAggregateEventsRequest request) {
+        if (request.getUnknownFields().hasField(99)) {
+            List<Long> max = request.getUnknownFields().getField(99).getFixed64List();
+            if (!max.isEmpty()) {
+                return max.get(0);
+            }
+        }
+        return Long.MAX_VALUE;
+    }
+
+
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
-                                    StreamObserver<InputStream> responseStreamObserver) {
-        if( request.getMaxSequence() >= 0) {
+                                       StreamObserver<InputStream> responseStreamObserver) {
+        if (request.getMaxSequence() >= 0) {
             workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
-                                                                  request.getInitialSequence(),
-                                                                  request.getMaxSequence(),
-                                                                  request.getMaxResults(),
-                                                                  event -> responseStreamObserver
+                                                           request.getInitialSequence(),
+                                                           request.getMaxSequence(),
+                                                           request.getMaxResults(),
+                                                           event -> responseStreamObserver
                                                                           .onNext(event.asInputStream()));
         }
         responseStreamObserver.onCompleted();
@@ -337,15 +348,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
         responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
         responseObserver.onCompleted();
-    }
-
-    @Override
-    public Optional<Long> getLastSequenceNumber(String context, String aggregateIdentifier, int maxNrOfSegments) {
-        long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(aggregateIdentifier);
-        if (sequenceNumber >= 0) {
-            return Optional.of(sequenceNumber);
-        }
-        return Optional.empty();
     }
 
     @Override

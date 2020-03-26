@@ -2,7 +2,6 @@ package io.axoniq.axonserver.rest;
 
 
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.swagger.annotations.ApiOperation;
 import org.slf4j.Logger;

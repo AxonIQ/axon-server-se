@@ -114,22 +114,26 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long maxSequenceNumber,
+                                          Consumer<SerializedEvent> eventConsumer) {
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber);
         boolean delegate = true;
-        if( ! positionInfos.isEmpty()) {
+        if (!positionInfos.isEmpty()) {
             SortedSet<PositionInfo> first = positionInfos.get(positionInfos.firstKey());
-            if( foundFirstSequenceNumber(first, firstSequenceNumber)) delegate = false;
+            if (foundFirstSequenceNumber(first, firstSequenceNumber)) {
+                delegate = false;
+            }
         }
 
-        if( delegate && next != null) {
-            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, eventConsumer);
+        if (delegate && next != null) {
+            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, maxSequenceNumber, eventConsumer);
         }
 
         positionInfos.keySet()
                      .forEach(segment -> retrieveEventsForAnAggregate(segment,
-                                                                          positionInfos.get(segment),
-                                                                          eventConsumer));
+                                                                      maxSequenceNumber,
+                                                                      positionInfos.get(segment),
+                                                                      eventConsumer));
 
     }
 
@@ -141,12 +145,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         if( ! positionInfos.isEmpty()) {
             SortedSet<PositionInfo> first = positionInfos.get(positionInfos.firstKey());
             positionInfos.keySet().forEach(segment -> retrieveEventsForAnAggregate(segment,
-                                                                          positionInfos.get(segment),
-                                                                          e -> {
-                                                                                if( toDo.getAndDecrement() > 0) {
-                                                                                    eventConsumer.accept(e);
-                                                                                }
-                                                                          }));
+                                                                                   maxSequenceNumber,
+                                                                                   positionInfos.get(segment),
+                                                                                   e -> {
+                                                                                       if (toDo.getAndDecrement() > 0) {
+                                                                                           eventConsumer.accept(e);
+                                                                                       }
+                                                                                   }));
             if( foundFirstSequenceNumber(first, firstSequenceNumber)) toDo.set(0);
         }
 
@@ -432,10 +437,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return reversedPositionInfos;
     }
 
-    private void retrieveEventsForAnAggregate(long segment, SortedSet<PositionInfo> positions, Consumer<SerializedEvent> onEvent) {
+    private void retrieveEventsForAnAggregate(long segment, long maxSequence, SortedSet<PositionInfo> positions,
+                                              Consumer<SerializedEvent> onEvent) {
         Optional<EventSource> buffer = getEventSource(segment);
         buffer.ifPresent(eventSource -> {
-            positions.forEach(positionInfo -> onEvent.accept(eventSource.readEvent(positionInfo.getPosition())));
+            positions.forEach(positionInfo -> {
+                if (positionInfo.getAggregateSequenceNumber() < maxSequence) {
+                    onEvent.accept(eventSource.readEvent(positionInfo.getPosition()));
+                }
+            });
             eventSource.close();
         });
     }

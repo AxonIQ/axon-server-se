@@ -97,12 +97,14 @@ public interface EventStorageEngine {
 
 
     /**
-     * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
-     * @param aggregateId the aggregate identifier
+     * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is
+     * found.
+     *
+     * @param aggregateId       the aggregate identifier
      * @param minSequenceNumber the first sequence number to retrieve
-     * @param eventConsumer the consumer to apply for each event
+     * @param eventConsumer     the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long minSequenceNumber,
+    void processEventsPerAggregate(String aggregateId, long minSequenceNumber, long maxSequenceNumber,
                                    Consumer<SerializedEvent> eventConsumer);
 
     /**

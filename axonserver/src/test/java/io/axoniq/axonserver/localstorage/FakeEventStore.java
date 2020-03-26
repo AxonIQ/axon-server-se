@@ -51,6 +51,7 @@ public class FakeEventStore implements EventStorageEngine {
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+                                          long actualMaxSequenceNumber,
                                           Consumer<SerializedEvent> eventConsumer) {
 
     }

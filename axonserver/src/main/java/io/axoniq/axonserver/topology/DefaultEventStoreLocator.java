@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.topology;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
 
@@ -39,10 +41,10 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
     }
 
     @Override
-    public EventStore getEventStore(String context, boolean useLocal) {
+    public EventStore getEventStore(String context) {
         if (Topology.DEFAULT_CONTEXT.equals(context)) {
             return localEventStore;
         }
-        return null;
+        throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "No eventstore found");
     }
 }

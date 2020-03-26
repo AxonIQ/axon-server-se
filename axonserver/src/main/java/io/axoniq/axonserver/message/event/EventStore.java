@@ -25,7 +25,6 @@ import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.grpc.stub.StreamObserver;
 
 import java.io.InputStream;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -64,5 +63,4 @@ public interface EventStore {
      */
     void deleteAllEventData(String context);
 
-    Optional<Long> getLastSequenceNumber(String context, String aggregateIdentifier, int maxNrOfSegments);
 }

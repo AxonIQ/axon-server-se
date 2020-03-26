@@ -16,6 +16,7 @@ package io.axoniq.axonserver.exception;
  */
 public class MessagingPlatformException extends RuntimeException {
     private final ErrorCode errorCode;
+
     public MessagingPlatformException(ErrorCode errorCode, String message) {
         super(message);
         this.errorCode = errorCode;
@@ -24,6 +25,13 @@ public class MessagingPlatformException extends RuntimeException {
     public MessagingPlatformException(ErrorCode errorCode, String message, Throwable cause) {
         super(message, cause);
         this.errorCode = errorCode;
+    }
+
+    public static MessagingPlatformException create(Throwable cause) {
+        if (cause instanceof MessagingPlatformException) {
+            return (MessagingPlatformException) cause;
+        }
+        return new MessagingPlatformException(ErrorCode.OTHER, cause.getMessage(), cause);
     }
 
     public ErrorCode getErrorCode() {
