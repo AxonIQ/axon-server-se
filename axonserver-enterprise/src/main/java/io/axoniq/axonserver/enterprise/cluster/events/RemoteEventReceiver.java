@@ -22,7 +22,7 @@ import java.util.function.Consumer;
  * @since 4.4
  */
 @Component
-public class RemoteEventTarget implements Consumer<ConnectorCommand> {
+public class RemoteEventReceiver {
 
     private final ApplicationEventPublisher localPublisher;
 
@@ -36,10 +36,10 @@ public class RemoteEventTarget implements Consumer<ConnectorCommand> {
      *                                received from the other Axon Server nodes in the same cluster
      */
     @Autowired
-    public RemoteEventTarget(@Qualifier("applicationEventPublisher") ApplicationEventPublisher localPublisher,
-                             List<AxonServerEventSerializer<?>> serializers,
-                             MessagingClusterService messagingClusterService) {
-        this(localPublisher, serializers, messagingClusterService::onConnectorCommand);
+    public RemoteEventReceiver(@Qualifier("applicationEventPublisher") ApplicationEventPublisher localPublisher,
+                               List<AxonServerEventSerializer<?>> serializers,
+                               MessagingClusterService messagingClusterService) {
+        this(localPublisher, serializers, messagingClusterService::registerConnectorCommandHandler);
     }
 
     /**
@@ -48,9 +48,9 @@ public class RemoteEventTarget implements Consumer<ConnectorCommand> {
      * @param registrationOnInternalEvents used to register this instance as a listener for all internal events
      *                                     received from the other Axon Server nodes in the same cluster
      */
-    public RemoteEventTarget(ApplicationEventPublisher localPublisher,
-                             List<AxonServerEventSerializer<?>> serializers,
-                             BiConsumer<RequestCase, Consumer<ConnectorCommand>> registrationOnInternalEvents) {
+    public RemoteEventReceiver(ApplicationEventPublisher localPublisher,
+                               List<AxonServerEventSerializer<?>> serializers,
+                               BiConsumer<RequestCase, Consumer<ConnectorCommand>> registrationOnInternalEvents) {
         this.localPublisher = localPublisher;
 
         serializers.forEach(s -> {
@@ -64,8 +64,7 @@ public class RemoteEventTarget implements Consumer<ConnectorCommand> {
      *
      * @param connectorCommand the gRPC message containing the internal {@link AxonServerEvent}
      */
-    @Override
-    public void accept(ConnectorCommand connectorCommand) {
+    private void accept(ConnectorCommand connectorCommand) {
         RequestCase requestCase = connectorCommand.getRequestCase();
         AxonServerEvent event = deserializers.get(requestCase).deserialize(connectorCommand);
         localPublisher.publishEvent(event);

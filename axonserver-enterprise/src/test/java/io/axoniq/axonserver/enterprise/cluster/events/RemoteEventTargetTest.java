@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.events;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.enterprise.cluster.events.serializer.EventProcessorStatusUpdateSerializer;
 import io.axoniq.axonserver.enterprise.cluster.internal.MessagingClusterService;
@@ -10,27 +11,37 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.test.context.junit4.SpringRunner;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Integration tests for {@link RemoteEventTarget}
+ * Integration tests for {@link RemoteEventReceiver}
  *
  * @author Sara Pellegrini
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = {RemoteEventTarget.class, EventProcessorStatusUpdateSerializer.class})
+@SpringBootTest(classes = {RemoteEventReceiver.class, EventProcessorStatusUpdateSerializer.class})
 @Configuration
 public class RemoteEventTargetTest {
 
     @Autowired
-    private RemoteEventTarget testSubject;
+    @Qualifier("applicationEventPublisher")
+    private ApplicationEventPublisher localPublisher;
+
+    @Autowired
+    private List<AxonServerEventSerializer<?>> serializers;
 
     @Autowired
     private EventProcessorStatusUpdateSerializer serializer;
@@ -43,6 +54,16 @@ public class RemoteEventTargetTest {
 
     @Test
     public void publishProcessorStatusUpdateEvent() {
+        AtomicReference<Consumer<ConnectorCommand>> commandHandler = new AtomicReference<>();
+        doAnswer(invocation -> {
+            commandHandler.set(invocation.getArgument(1));
+            return (Registration) () -> commandHandler.set(null);
+        }).when(messagingClusterService).registerConnectorCommandHandler(any(), any());
+
+        new RemoteEventReceiver(localPublisher,
+                                serializers,
+                                messagingClusterService);
+
         EventProcessorInfo processor = EventProcessorInfo
                 .newBuilder()
                 .setProcessorName("myProcessor")
@@ -52,7 +73,7 @@ public class RemoteEventTargetTest {
 
         ConnectorCommand command = serializer.serialize(event);
         verify(listener, times(0)).on(event);
-        testSubject.accept(command);
+        commandHandler.get().accept(command);
         ArgumentCaptor<EventProcessorStatusUpdate> captor = ArgumentCaptor.forClass(EventProcessorStatusUpdate.class);
         verify(listener, times(1)).on(captor.capture());
 

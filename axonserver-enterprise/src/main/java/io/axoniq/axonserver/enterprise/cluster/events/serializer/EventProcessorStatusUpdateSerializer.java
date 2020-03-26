@@ -8,7 +8,6 @@ import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import org.springframework.stereotype.Component;
 
 import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase.CLIENT_EVENT_PROCESSOR_STATUS;
-import static io.axoniq.axonserver.grpc.internal.ConnectorCommand.newBuilder;
 
 /**
  * Serialization and deserialization for {@link EventProcessorStatusUpdate} internal event.
@@ -40,7 +39,8 @@ public class EventProcessorStatusUpdateSerializer implements AxonServerEventSeri
                                                                       .setContext(info.getContext())
                                                                       .setEventProcessorInfo(info.getEventProcessorInfo())
                                                                       .build();
-        return newBuilder()
+        return ConnectorCommand
+                .newBuilder()
                 .setClientEventProcessorStatus(status)
                 .build();
     }

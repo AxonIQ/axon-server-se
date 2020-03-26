@@ -143,8 +143,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
      * @param handler     the handler to be registered
      * @return the {@link Registration}
      */
-    public Registration onConnectorCommand(RequestCase requestCase,
-                                           Consumer<ConnectorCommand> handler) {
+    public Registration registerConnectorCommandHandler(RequestCase requestCase,
+                                                        Consumer<ConnectorCommand> handler) {
         List<Consumer<ConnectorCommand>> consumers = handlers.computeIfAbsent(requestCase,
                                                                               rc -> new CopyOnWriteArrayList<>());
         consumers.add(handler);
