@@ -39,7 +39,11 @@ public class RaftGroupRepositoryManager {
      * @return the names of all raft groups that have an event store on this node
      */
     public Set<String> storageContexts() {
-        return contextCache.get();
+        Set<String> contexts = contextCache.get();
+        if (contexts == null) {
+            contexts = refreshContextCache();
+        }
+        return contexts;
     }
 
     /**
@@ -49,16 +53,18 @@ public class RaftGroupRepositoryManager {
      * @return {@code true} if contexts exists within this node, {@code false} otherwise
      */
     public boolean containsStorageContext(String context) {
-        return contextCache.get().contains(context);
+        return storageContexts().contains(context);
     }
 
-    private void refreshContextCache() {
-        contextCache.set(raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
-                                                .stream()
-                                                .filter(group -> RoleUtils.hasStorage(group.getRole()))
-                                                .map(JpaRaftGroupNode::getGroupId)
-                                                .filter(n -> !RaftAdminGroup.isAdmin(n))
-                                                .collect(Collectors.toSet()));
+    private Set<String> refreshContextCache() {
+        Set<String> contexts = raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
+                .stream()
+                .filter(group -> RoleUtils.hasStorage(group.getRole()))
+                .map(JpaRaftGroupNode::getGroupId)
+                .filter(n -> !RaftAdminGroup.isAdmin(n))
+                .collect(Collectors.toSet());
+        contextCache.set(contexts);
+        return contexts;
     }
 
     public Set<JpaRaftGroupNode> findByGroupId(String groupId) {
