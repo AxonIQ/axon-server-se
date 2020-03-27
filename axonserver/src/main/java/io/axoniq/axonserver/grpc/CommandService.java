@@ -15,7 +15,6 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -270,7 +269,7 @@ public class CommandService implements AxonServerClientService {
     private void stopListenerFor(ClientIdentification clientIdentification) {
         GrpcFlowControlledDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
         Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
-        logger.warn("GrpcCommandDispatcherListener stopped for client: {}", clientIdentification);
+        logger.debug("GrpcCommandDispatcherListener stopped for client: {}", clientIdentification);
     }
 
     /**
