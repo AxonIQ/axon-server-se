@@ -44,9 +44,12 @@ public class CommandMetricsWebSocket {
         this.webSocket = webSocket;
     }
 
-    @Scheduled(initialDelayString = "10000", fixedRateString = "1000")
+    @Scheduled(initialDelayString = "${axoniq.axonserver.websocket-update.initial-delay:10000}",
+            fixedRateString = "${axoniq.axonserver.websocket-update.rate:1000}")
     public void publish() {
-        if( subscriptions.isEmpty()) return;
+        if (subscriptions.isEmpty()) {
+            return;
+        }
         commandRegistrationCache.getAll().forEach(
                 (commandHandler, registrations) -> getMetrics(commandHandler, registrations).forEach(
                         commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric)
