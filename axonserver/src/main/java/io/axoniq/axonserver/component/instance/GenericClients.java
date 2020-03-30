@@ -16,19 +16,21 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Cache for connected client applications.
+ *
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 @Primary @Component
 public class GenericClients implements Clients {
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final Map<ClientIdentification, Client> clientRegistrations = new HashMap<>();
+    private final Map<ClientIdentification, Client> clientRegistrations = new ConcurrentHashMap<>();
 
     public GenericClients(MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
