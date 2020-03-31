@@ -24,6 +24,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
+import io.axoniq.axonserver.message.event.NoOpStreamObserver;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.stub.AbstractStub;
@@ -81,7 +82,16 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    StreamObserver<Confirmation> responseObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
-        return stub.appendEvent(new RemoteAxonServerStreamObserver<>(responseObserver));
+
+        try {
+            return io.grpc.Context.current()
+                                  .fork()
+                                  .wrap(() -> stub.appendEvent(new RemoteAxonServerStreamObserver<>(responseObserver)))
+                                  .call();
+        } catch (Exception e) {
+            responseObserver.onError(GrpcExceptionBuilder.build(e));
+            return new NoOpStreamObserver<>();
+        }
     }
 
     @Override
@@ -109,7 +119,16 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     public StreamObserver<GetEventsRequest> listEvents(String context,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
-        return stub.listEvents(new RemoteAxonServerStreamObserver<>(responseStreamObserver));
+        try {
+            return io.grpc.Context.current()
+                                  .fork()
+                                  .wrap(() -> stub
+                                          .listEvents(new RemoteAxonServerStreamObserver<>(responseStreamObserver)))
+                                  .call();
+        } catch (Exception e) {
+            responseStreamObserver.onError(GrpcExceptionBuilder.build(e));
+            return new NoOpStreamObserver<>();
+        }
     }
 
     @Override
@@ -139,7 +158,15 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     @Override
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
-        return getEventStoreStub(context).queryEvents(new RemoteAxonServerStreamObserver<>(responseObserver));
+        try {
+            return io.grpc.Context.current()
+                                  .fork()
+                                  .wrap(() -> getEventStoreStub(context)
+                                          .queryEvents(new RemoteAxonServerStreamObserver<>(responseObserver))).call();
+        } catch (Exception e) {
+            responseObserver.onError(GrpcExceptionBuilder.build(e));
+            return new NoOpStreamObserver<>();
+        }
     }
 
     private static class CompletableStreamObserver<T> implements StreamObserver<T> {
