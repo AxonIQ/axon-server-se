@@ -452,8 +452,13 @@ public class EventDispatcher implements AxonServerClientService {
 
                                 @Override
                                 public void onError(Throwable throwable) {
-                                    logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                throwable.getMessage());
+                                    if (throwable instanceof IllegalStateException) {
+                                        logger.debug(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                     throwable.getMessage());
+                                    } else {
+                                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                    throwable.getMessage());
+                                    }
                                     StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
                                     removeTrackerInfo();
                                 }
