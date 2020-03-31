@@ -1,19 +1,12 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
-import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.ClusterPublisher;
-import io.axoniq.axonserver.enterprise.jpa.Payload;
 import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
-import io.axoniq.axonserver.grpc.SerializedObject;
-import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.UUID;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
@@ -23,14 +16,14 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
  * @author Stefan Dragisic
  */
 @Component
-public class DelegateLicenceUpdateTask implements ScheduledTask {
+public class DelegateLicenseUpdateTask implements ScheduledTask {
 
     private final TaskPublisher taskPublisher;
 
     private final TaskPayloadSerializer taskPayloadSerializer;
     private final ClusterController clusterController;
 
-    public DelegateLicenceUpdateTask(TaskPublisher taskPublisher, TaskPayloadSerializer taskPayloadSerializer, ClusterController clusterController) {
+    public DelegateLicenseUpdateTask(TaskPublisher taskPublisher, TaskPayloadSerializer taskPayloadSerializer, ClusterController clusterController) {
         this.taskPublisher = taskPublisher;
 
         this.taskPayloadSerializer = taskPayloadSerializer;
@@ -39,12 +32,12 @@ public class DelegateLicenceUpdateTask implements ScheduledTask {
 
     @Override
     public void execute(Object payload) {
-        byte[] licencePayload = (byte[]) payload;
+        byte[] licensePayload = (byte[]) payload;
 
         clusterController.nodes()
-                .map(node -> new UpdateLicenceTaskPayload(node.getName(),licencePayload))
+                .map(node -> new UpdateLicenseTaskPayload(node.getName(),licensePayload))
                 .map(taskPayloadSerializer::serialize)
-                .forEach(task->taskPublisher.publishScheduledTask(getAdmin(),UpdateLicenceTask.class.getName(),task, Duration.ZERO));
+                .forEach(task->taskPublisher.publishScheduledTask(getAdmin(), UpdateLicenseTask.class.getName(),task, Duration.ZERO));
     }
 
 

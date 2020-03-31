@@ -16,11 +16,11 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
  * @author Stefan Dragisic
  */
 @Component
-public class PrepareUpdateLicenceTask implements ScheduledTask {
+public class PrepareUpdateLicenseTask implements ScheduledTask {
 
     private final TaskPublisher taskPublisher;
 
-    public PrepareUpdateLicenceTask(
+    public PrepareUpdateLicenseTask(
             TaskPublisher taskPublisher) {
         this.taskPublisher = taskPublisher;
     }
@@ -30,7 +30,7 @@ public class PrepareUpdateLicenceTask implements ScheduledTask {
      */
     @Override
     public CompletableFuture<Void> executeAsync(Object payload) {
-        return taskPublisher.publishScheduledTask(getAdmin(), DelegateLicenceUpdateTask.class.getName(),
+        return taskPublisher.publishScheduledTask(getAdmin(), DelegateLicenseUpdateTask.class.getName(),
                 payload,
                 Duration.of(100, ChronoUnit.MILLIS));
     }

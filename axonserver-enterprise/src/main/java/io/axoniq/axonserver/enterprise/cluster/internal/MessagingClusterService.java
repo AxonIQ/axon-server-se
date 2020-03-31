@@ -201,9 +201,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     }
 
     @EventListener
-    public void on(ClusterEvents.LicenceUpdated licenceUpdated) {
-        String s = new String(licenceUpdated.getLicence());
-        logger.info("Licence updated !!!!! !!!! !!!!! !!!!!!");
+    public void on(ClusterEvents.LicenseUpdated licenseUpdated) {
+        String s = new String(licenseUpdated.getLicense());
+        logger.info("License updated !!!!! !!!! !!!!! !!!!!!");
         logger.info(s);
     }
 
@@ -465,9 +465,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 case DELETE_NODE:
                     clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
                     break;
-                case DISTRIBUTE_LICENCE:
-                    eventPublisher.publishEvent(new ClusterEvents.LicenceUpdated(
-                            connectorCommand.getDistributeLicence().toByteArray()) {
+                case DISTRIBUTE_LICENSE:
+                    eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(
+                            connectorCommand.getDistributeLicense().toByteArray()) {
                     });
                     break;
                 default:

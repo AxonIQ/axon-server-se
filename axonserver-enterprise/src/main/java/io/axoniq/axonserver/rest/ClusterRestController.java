@@ -7,7 +7,7 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenceTask;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenseTask;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
@@ -51,17 +51,17 @@ public class ClusterRestController {
     private final RaftConfigServiceFactory raftServiceFactory;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
-    private final PrepareUpdateLicenceTask prepareUpdateLicenceTask;
+    private final PrepareUpdateLicenseTask prepareUpdateLicenseTask;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  FeatureChecker limits,
                                  ClusterTagsCache clusterTagsCache,
-                                 PrepareUpdateLicenceTask prepareUpdateLicenceTask) {
+                                 PrepareUpdateLicenseTask prepareUpdateLicenseTask) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.limits = limits;
-        this.prepareUpdateLicenceTask = prepareUpdateLicenceTask;
+        this.prepareUpdateLicenseTask = prepareUpdateLicenseTask;
     }
 
 
@@ -131,9 +131,9 @@ public class ClusterRestController {
     }
 
     @GetMapping("/test")
-    public void distributeLicence() {
+    public void distributeLicense() {
 
-        prepareUpdateLicenceTask.executeAsync("myLicence2".getBytes());
+        prepareUpdateLicenseTask.executeAsync("myLicense2".getBytes());
     }
 
     @GetMapping(path="{name}")
