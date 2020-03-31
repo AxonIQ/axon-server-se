@@ -1,11 +1,8 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
+import io.axoniq.axonserver.applicationevents.*;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
-import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
@@ -201,6 +198,13 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     @EventListener
     public void on(ClusterEvents.AxonServerNodeDeleted axonServerNodeDeleted) {
         blacklistedServers.put(axonServerNodeDeleted.node(), System.currentTimeMillis() + BLACKOUT_TIME);
+    }
+
+    @EventListener
+    public void on(ClusterEvents.LicenceUpdated licenceUpdated) {
+        String s = new String(licenceUpdated.getLicence());
+        logger.info("Licence updated !!!!! !!!! !!!!! !!!!!!");
+        logger.info(s);
     }
 
     @EventListener
@@ -461,6 +465,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 case DELETE_NODE:
                     clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
                     break;
+                case DISTRIBUTE_LICENCE:
+                    eventPublisher.publishEvent(new ClusterEvents.LicenceUpdated(
+                            connectorCommand.getDistributeLicence().toByteArray()) {
+                    });
+                    break;
                 default:
                     logger.warn("Unknown operation occurred [{}]", connectorCommand.getRequestCase());
                     break;
@@ -591,3 +600,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
     }
 }
+//TODO
+//testovi
+//UI
+//schedule task
+//store licence
+//check licence

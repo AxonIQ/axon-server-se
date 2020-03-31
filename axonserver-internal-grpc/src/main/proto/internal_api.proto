@@ -167,6 +167,7 @@ message ConnectorCommand {
         QueryHandlerStatus query_handler_status = 37;
         ClientEventProcessorSegment split_segment = 38;
         ClientEventProcessorSegment merge_segment = 39;
+        DistributeLicence distribute_licence = 40;
     }
 }
 
@@ -216,6 +217,10 @@ message ForwardedCommandResponse {
 message DeleteNode {
     string node_name = 1;
     int64 generation = 2;
+}
+
+message DistributeLicence {
+    bytes licence = 1;
 }
 
 message ClientStatus {
@@ -525,9 +530,9 @@ message NodeName {
 }
 
 message LoadBalanceStrategy {
-    string name = 1;
-    string factoryBean = 2;
-    string label = 3;
+     string name = 1;
+     string factoryBean = 2;
+     string label = 3;
 }
 
 message ProcessorLBStrategy {

@@ -7,6 +7,7 @@ import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenceTask;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
@@ -50,16 +51,17 @@ public class ClusterRestController {
     private final RaftConfigServiceFactory raftServiceFactory;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
-    private final ClusterTagsCache clusterTagsCache;
+    private final PrepareUpdateLicenceTask prepareUpdateLicenceTask;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  FeatureChecker limits,
-                                 ClusterTagsCache clusterTagsCache) {
+                                 ClusterTagsCache clusterTagsCache,
+                                 PrepareUpdateLicenceTask prepareUpdateLicenceTask) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.limits = limits;
-        this.clusterTagsCache = clusterTagsCache;
+        this.prepareUpdateLicenceTask = prepareUpdateLicenceTask;
     }
 
 
@@ -126,6 +128,12 @@ public class ClusterRestController {
                 .nodes()
                 .map(e -> JsonClusterNode.from(e, clusterController.isActive(e.getName())))
                 .collect(Collectors.toList());
+    }
+
+    @GetMapping("/test")
+    public void distributeLicence() {
+
+        prepareUpdateLicenceTask.executeAsync("myLicence2".getBytes());
     }
 
     @GetMapping(path="{name}")

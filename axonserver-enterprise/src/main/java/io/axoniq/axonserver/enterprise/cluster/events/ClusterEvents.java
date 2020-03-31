@@ -159,4 +159,15 @@ public class ClusterEvents {
         }
     }
 
+    public static class LicenceUpdated{
+        private final byte[] licence;
+
+        public LicenceUpdated(byte[] licence) {
+            this.licence = licence;
+        }
+
+        public byte[] getLicence() {
+            return licence;
+        }
+    }
 }
