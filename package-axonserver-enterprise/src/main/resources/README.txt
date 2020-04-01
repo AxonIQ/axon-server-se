@@ -1,4 +1,4 @@
-This is the Axon Server Enterprise Edition, version ${project.version}
+This is the Axon Server Enterprise Edition, version 4.2
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
@@ -28,6 +28,12 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Changes in Axon Server 4.2.7
+----------------------------
+
+- Fix for delete context causing admin context to block all subsequent actions
+- Removed need for retry option from H2 Control DB URL
+
 Changes in Axon Server 4.2.6
 ----------------------------
 
@@ -41,17 +47,8 @@ Changes in Axon Server 4.2.5
 Changes in Axon Server 4.2.4
 ----------------------------
 
-- Added instruction acknowledgements
-- Client applications heartbeat support
-- Cleaned-up logging
-- Fix for specific error while reading aggregate
-- Optional heartbeat between Axon Server and Axon Framework clients
-
-Changes in Axon Server 4.2.3
-----------------------------
-
 - Fix for issue on cancelling queries on lost connection
-- Introduced acknowlegments on instructions between Axon Server and clients
+- Introduced acknowledgments on instructions between Axon Server and clients
 
 Changes in Axon Server 4.2.3
 ----------------------------
