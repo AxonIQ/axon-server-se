@@ -227,11 +227,6 @@ public class CommandService implements AxonServerClientService {
             public void onCompleted() {
                 logger.debug("{}: Connection to subscriber closed by subscriber", clientRef);
                 cleanup();
-                try {
-                    responseObserver.onCompleted();
-                } catch (RuntimeException cause) {
-                    logger.warn("{}: Error completing connection to subscriber - {}", clientRef, cause.getMessage());
-                }
             }
         };
     }
