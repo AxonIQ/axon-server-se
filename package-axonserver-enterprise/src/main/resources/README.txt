@@ -1,4 +1,4 @@
-This is the Axon Server Enterprise Edition, version ${project.version}
+This is the Axon Server Enterprise Edition, version 4.3
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
@@ -27,6 +27,13 @@ For more information on setting up clusters and context check the reference guid
 https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
+
+Release Notes for version 4.3.2
+-------------------------------
+
+* Fix for tracking event processor updates to websocket causing high CPU load in specific situation
+* Reduced warnings in log file on clients disconnecting
+* Fix for concurrency issue in sending heartbeat while client connects/disconnects
 
 Release Notes for version 4.3.1
 -------------------------------
@@ -205,30 +212,6 @@ Changes in Axon Server 4.1
 - Default setting for health endpoint (/actuator/heath) has changed to show more details.
 - Change in TLS configuration for communication between AxonServer nodes (new property axoniq.axonserver.ssl.internal-trust-manager-file)
 
-
-Migrating from Axon Server Enterprise edition 4.0
--------------------------------------------------
-
-As the internal communication between Axon Server nodes has changed between versions 4.0 and 4.1 it is not possible to
-perform a rolling update of the nodes.
-
-To upgrade to 4.1 take the following steps:
-
-1. Stop all applications connected to Axon Server
-
-2. Stop all Axon Server nodes
-
-3. Verify that the event files and snapshot files are equal on all nodes by calculating the md5 hash for all *.events and *.snapshot files.
-   On Linux based systems you can use the command md5sum for this.
-
-4. Unpack the new Axon Server version on the nodes
-
-5. Check the axonserver.properties file, set property axoniq.axonserver.replication.log-storage-folder to a directory where the transaction log
-   files for replication should be stored
-
-6. Start all nodes, this will migrate the configuration data and create an _admin context will all nodes assigned to it.
-
-7. Start all applications connected to Axon Server
 
 Configuring Axon Server
 =======================
