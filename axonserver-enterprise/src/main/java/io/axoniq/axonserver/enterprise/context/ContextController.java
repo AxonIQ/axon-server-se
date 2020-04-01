@@ -50,7 +50,9 @@ public class ContextController {
     public void updateContext(ContextConfiguration contextConfiguration) {
         Context context = entityManager.find(Context.class, contextConfiguration.getContext());
         if( ! contextConfiguration.getPending() && contextConfiguration.getNodesCount() == 0) {
-            entityManager.remove(context);
+            if (context != null) {
+                entityManager.remove(context);
+            }
             return;
         }
 
