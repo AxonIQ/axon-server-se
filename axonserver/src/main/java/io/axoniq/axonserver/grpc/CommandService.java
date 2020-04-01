@@ -15,7 +15,6 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -23,6 +22,7 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -220,6 +220,7 @@ public class CommandService implements AxonServerClientService {
                     listener.cancel();
                     dispatcherListeners.remove(clientRef.get());
                 }
+                StreamObserverUtils.complete(responseObserver);
             }
 
             @Override
