@@ -60,6 +60,8 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private static final Logger logger = LoggerFactory.getLogger(QueryEventsRequestStreamObserver.class);
 
     private static final ScheduledExecutorService senderService = Executors.newScheduledThreadPool(3,
+                                                                                                   new CustomizableThreadFactory(
+                                                                                                           "ad-hoc-query-"));
 
     private final EventWriteStorage eventWriteStorage;
     private final EventStreamReader eventStreamReader;
