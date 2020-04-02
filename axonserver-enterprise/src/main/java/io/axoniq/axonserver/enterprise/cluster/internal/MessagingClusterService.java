@@ -602,9 +602,3 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
     }
 }
-//TODO
-//testovi
-//UI
-//schedule task
-//store licence
-//check licence

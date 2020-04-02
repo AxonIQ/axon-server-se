@@ -14,7 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
- * TODO
+ * Task that sends command to node that will create/update license
  *
  * @author Stefan Dragisic
  */
