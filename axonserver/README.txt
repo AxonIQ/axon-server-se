@@ -3,6 +3,13 @@ This is the Axon Server Standard Edition, version 4.3
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.3.2
+-------------------------------
+
+* Fix for tracking event processor updates to websocket causing high CPU load in specific situation
+* Reduced warnings in log file on clients disconnecting
+* Fix for concurrency issue in sending heartbeat while client connects/disconnects
+
 Release Notes for version 4.3.1
 -------------------------------
 

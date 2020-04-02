@@ -15,7 +15,6 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -23,6 +22,7 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -220,17 +220,13 @@ public class CommandService implements AxonServerClientService {
                     listener.cancel();
                     dispatcherListeners.remove(clientRef.get());
                 }
+                StreamObserverUtils.complete(responseObserver);
             }
 
             @Override
             public void onCompleted() {
                 logger.debug("{}: Connection to subscriber closed by subscriber", clientRef);
                 cleanup();
-                try {
-                    responseObserver.onCompleted();
-                } catch (RuntimeException cause) {
-                    logger.warn("{}: Error completing connection to subscriber - {}", clientRef, cause.getMessage());
-                }
             }
         };
     }
@@ -270,7 +266,7 @@ public class CommandService implements AxonServerClientService {
     private void stopListenerFor(ClientIdentification clientIdentification) {
         GrpcFlowControlledDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
         Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
-        logger.warn("GrpcCommandDispatcherListener stopped for client: {}", clientIdentification);
+        logger.debug("GrpcCommandDispatcherListener stopped for client: {}", clientIdentification);
     }
 
     /**

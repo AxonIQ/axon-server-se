@@ -9,6 +9,9 @@
 
 package io.axoniq.axonserver.localstorage.query;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.ExceptionUtils;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.ColumnsResponse;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -53,10 +56,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Marc Gathier
  */
 public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEventsRequest> {
+
     private static final Logger logger = LoggerFactory.getLogger(QueryEventsRequestStreamObserver.class);
 
     private static final ScheduledExecutorService senderService = Executors.newScheduledThreadPool(3,
-                                                                                                   new CustomizableThreadFactory("ad-hoc-query-"));
 
     private final EventWriteStorage eventWriteStorage;
     private final EventStreamReader eventStreamReader;
@@ -67,7 +70,8 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private volatile Pipeline pipeLine;
     private final AtomicReference<Sender> senderRef = new AtomicReference<>();
 
-    public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader, long defaultLimit, long timeout,
+    public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader,
+                                            long defaultLimit, long timeout,
                                             StreamObserver<QueryEventsResponse> responseObserver) {
         this.eventWriteStorage = eventWriteStorage;
         this.eventStreamReader = eventStreamReader;
@@ -101,7 +105,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 pipeLine = new QueryProcessor().buildPipeline(query, this::send);
                 sendColumns(pipeLine);
                 if (queryEventsRequest.getLiveEvents()) {
-                    registration = eventWriteStorage.registerEventListener((token,events) -> pushEventFromStream(token, events, pipeLine));
+                    registration = eventWriteStorage.registerEventListener((token, events) -> pushEventFromStream(token,
+                                                                                                                  events,
+                                                                                                                  pipeLine));
                 }
                 senderService.submit(() -> {
                     eventStreamReader.query(minConnectionToken,
@@ -125,13 +131,25 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         for (SerializedEvent event : events) {
             EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event.asEvent()).setToken(firstToken++)
                                                           .build();
-            if( !pushEvent(eventWithToken, pipeLine)) {
-                logger.debug("Cancelling registation");
-                registration.cancel();
-                return;
+            try {
+                if (!pushEvent(eventWithToken, pipeLine)) {
+                    logger.debug("Cancelling registation");
+                    cancelRegistration();
+                    return;
+                }
+            } catch (RuntimeException re) {
+                try {
+                    cancelRegistration();
+                    responseObserver.onError(re);
+                } catch (Exception ex) {
+                    //ignore
+                }
             }
-
         }
+    }
+
+    private void cancelRegistration() {
+        Optional.ofNullable(registration).ifPresent(Registration::cancel);
     }
 
     private boolean pushEvent(EventWithToken event, Pipeline pipeLine) {
@@ -142,8 +160,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             return pipeLine.process(new DefaultQueryResult(new EventExpressionResult(event)));
         } catch (RuntimeException re) {
             try {
+                cancelRegistration();
                 responseObserver.onError(re);
-            } catch( Exception ex ) {
+            } catch (Exception ex) {
                 //ignore
             }
             return false;
@@ -163,7 +182,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
 
     @Override
     public void onError(Throwable throwable) {
-        logger.warn("Query stream cancelled with error", throwable);
+        if (!ExceptionUtils.isCancelled(throwable)) {
+            logger.warn("Query stream cancelled with error", throwable);
+        }
         close();
     }
 
@@ -173,25 +194,25 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     }
 
     private void close() {
-        Optional.ofNullable(registration)
-                .ifPresent(Registration::cancel);
+        cancelRegistration();
         pipeLine = null;
         Optional.ofNullable(senderRef.get())
                 .ifPresent(Sender::stop);
     }
 
     private class Sender {
+
         private final boolean liveUpdates;
         private final long deadline;
         private final Map<Object, QueryResult> messages = new HashMap<>();
-        private ScheduledFuture<?> sendTask;
         private final AtomicLong generatedId = new AtomicLong(0);
+        private final AtomicLong permits;
+        private ScheduledFuture<?> sendTask;
         private List<String> columns;
         private volatile QueryEventsResponse completeMessage;
-        private final AtomicLong permits;
         private final AtomicBoolean started = new AtomicBoolean(false);
 
-        public Sender( long permits, boolean liveUpdates, long deadline) {
+        public Sender(long permits, boolean liveUpdates, long deadline) {
             this.liveUpdates = liveUpdates;
             this.deadline = deadline;
             this.permits = new AtomicLong(permits);
@@ -210,27 +231,31 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         public synchronized void stop() {
-            if( sendTask != null && ! sendTask.isCancelled()) {
+            if (sendTask != null && !sendTask.isCancelled()) {
                 sendTask.cancel(false);
                 sendTask = null;
             }
         }
 
         public boolean send(Object identifyingValues, QueryResult result) {
-            if(sendTask == null) return false;
+            if (sendTask == null) {
+                return false;
+            }
             synchronized (messages) {
-                if( messages.size() > 10000) {
-                    logger.warn("Cancelling query as too many waiting results -{} results waiting", messages.size());
-                    return false;
+                if (messages.size() > 10000) {
+                    throw new MessagingPlatformException(ErrorCode.TOO_MANY_EVENTS,
+                                                         String.format(
+                                                                 "Cancelling query as too many waiting results - %d results waiting",
+                                                                 messages.size()));
                 }
-                messages.put(identifyingValues == null ? generatedId.getAndIncrement(): identifyingValues, result);
+                messages.put(identifyingValues == null ? generatedId.getAndIncrement() : identifyingValues, result);
             }
             return true;
         }
 
 
         private boolean deadlineExpired() {
-            if( deadline < System.currentTimeMillis()) {
+            if (deadline < System.currentTimeMillis()) {
                 logger.info("Cancelling query as deadline expired");
                 responseObserver.onCompleted();
                 stop();
@@ -240,7 +265,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         private boolean permitsLeft() {
-            if( permits.get() <= 0) {
+            if (permits.get() <= 0) {
                 logger.debug("No permits: {}", permits.get());
                 return false;
             }
@@ -248,21 +273,21 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         public void sendAll() {
-            if( deadlineExpired() || ! permitsLeft()) {
+            if (deadlineExpired() || !permitsLeft()) {
                 return;
             }
             synchronized (messages) {
                 Iterator<Map.Entry<Object, QueryResult>> it = messages.entrySet().iterator();
-                while( it.hasNext() && permits.decrementAndGet() >= 0) {
+                while (it.hasNext() && permits.decrementAndGet() >= 0) {
                     sendToClient(responseObserver, it.next().getValue());
                     it.remove();
                 }
 
-                if( permits.get() >= 0 ) {
-                    if( completeMessage != null) {
+                if (permits.get() >= 0) {
+                    if (completeMessage != null) {
                         responseObserver.onNext(completeMessage);
                         completeMessage = null;
-                        if( ! liveUpdates) {
+                        if (!liveUpdates) {
                             responseObserver.onCompleted();
                             stop();
                         }
@@ -282,16 +307,13 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         private void addDeleted(QueryResult queryResult, RowResponse.Builder rowBuilder) {
-            if( ! queryResult.isDeleted()) {
+            if (!queryResult.isDeleted()) {
                 if (queryResult.getValue() instanceof AbstractMapExpressionResult) {
-                    AbstractMapExpressionResult abstractMapExpressionResult = (AbstractMapExpressionResult) queryResult.getValue();
+                    AbstractMapExpressionResult abstractMapExpressionResult = (AbstractMapExpressionResult) queryResult
+                            .getValue();
                     columns.forEach(column -> {
-                        try {
-                            ExpressionResult value = abstractMapExpressionResult.getByIdentifier(column);
-                            rowBuilder.putValues(column, wrap(value));
-                        } catch (Exception ex) {
-                            logger.warn("Failed to add results", ex);
-                        }
+                        ExpressionResult value = abstractMapExpressionResult.getByIdentifier(column);
+                        rowBuilder.putValues(column, wrap(value));
                     });
                 } else {
                     rowBuilder.putValues(columns.get(0), wrap(queryResult.getValue()));
@@ -300,7 +322,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         private void addSortValues(QueryResult queryResult, RowResponse.Builder rowBuilder) {
-            if( queryResult.getSortValues() != null) {
+            if (queryResult.getSortValues() != null) {
                 queryResult.getSortValues().getValue().forEach(expressionResult -> {
                     if (expressionResult.isNonNull()) {
                         rowBuilder.addSortValues(wrap(expressionResult));
@@ -310,7 +332,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         private void addIdValues(QueryResult queryResult, RowResponse.Builder rowBuilder) {
-            if( queryResult.getId() != null) {
+            if (queryResult.getId() != null) {
                 queryResult.getId().getValue().forEach(expressionResult -> {
                     if (expressionResult.isNonNull()) {
                         rowBuilder.addIdValues(wrap(expressionResult));
@@ -320,19 +342,25 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         private QueryValue wrap(ExpressionResult expressionResult) {
-            if( expressionResult == null) return QueryValue.newBuilder().build();
-            if( expressionResult instanceof TimestampExpressionResult) {
+            if (expressionResult == null) {
+                return QueryValue.newBuilder().build();
+            }
+            if (expressionResult instanceof TimestampExpressionResult) {
                 return QueryValue.newBuilder().setTextValue(expressionResult.toString()).build();
             }
-            if( expressionResult instanceof NumericExpressionResult) {
+            if (expressionResult instanceof NumericExpressionResult) {
                 BigDecimal bd = expressionResult.getNumericValue();
-                if( bd.scale() <= 0) return QueryValue.newBuilder().setNumberValue(expressionResult.getNumericValue().longValue()).build();
+                if (bd.scale() <= 0) {
+                    return QueryValue.newBuilder().setNumberValue(expressionResult.getNumericValue()
+                                                                                  .longValue())
+                                     .build();
+                }
                 return QueryValue.newBuilder().setDoubleValue(expressionResult.getNumericValue().doubleValue()).build();
             }
-            if( expressionResult instanceof BooleanExpressionResult) {
+            if (expressionResult instanceof BooleanExpressionResult) {
                 return QueryValue.newBuilder().setBooleanValue(expressionResult.isTrue()).build();
             }
-            if( expressionResult instanceof MapExpressionResult) {
+            if (expressionResult instanceof MapExpressionResult) {
                 return QueryValue.newBuilder().setTextValue(expressionResult.getValue().toString()).build();
             }
 
@@ -341,12 +369,15 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
 
         public void sendColumnNames(List<String> columns) {
             this.columns = columns;
-            responseObserver.onNext(QueryEventsResponse.newBuilder().setColumns(ColumnsResponse.newBuilder().addAllColumn(columns)).build());
+            responseObserver.onNext(QueryEventsResponse.newBuilder()
+                                                       .setColumns(ColumnsResponse.newBuilder().addAllColumn(columns))
+                                                       .build());
         }
 
         public void completed() {
-            this.completeMessage = QueryEventsResponse.newBuilder().setFilesCompleted(Confirmation.newBuilder().setSuccess(true)).build();
+            this.completeMessage = QueryEventsResponse.newBuilder().setFilesCompleted(Confirmation.newBuilder()
+                                                                                                  .setSuccess(true))
+                                                      .build();
         }
     }
-
 }
