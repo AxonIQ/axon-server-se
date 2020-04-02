@@ -37,4 +37,10 @@ public class LicenseException extends RuntimeException {
                         + "Trying to read from: '%s'", file.getAbsolutePath()));
     }
 
+    public static LicenseException unableToWrite(File file,Throwable e) {
+        return new LicenseException(String.format(
+                "Unable to write to license file. "
+                        + "Trying to write to: '%s' Reason %s", file.getAbsolutePath() , e.getLocalizedMessage()));
+    }
+
 }

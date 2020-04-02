@@ -23,6 +23,7 @@ import java.util.Properties;
  *
  * @author Frans van Buul
  */
+@Deprecated
 public class LicensePropertyReader {
 
     private static final String PUBKEY =

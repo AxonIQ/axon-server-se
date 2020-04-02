@@ -6,6 +6,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.storage.file.LicenseManager;
 import io.axoniq.axonserver.grpc.internal.*;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -32,14 +33,14 @@ public class MessagingClusterServiceTest {
     private final QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
     private final ClusterController clusterController = mock(ClusterController.class);
     private final FakeApplicationEventPublisher eventPublisher = new FakeApplicationEventPublisher();
-
+    private final LicenseManager licenseManager = mock(LicenseManager.class);;
     private MessagingClusterService testSubject;
 
     @Before
     public void setUp() {
         testSubject = new MessagingClusterService(
-                commandDispatcher, queryDispatcher, clusterController, null, eventPublisher
-        );
+                commandDispatcher, queryDispatcher, clusterController, null, eventPublisher,
+                licenseManager);
 
         eventPublisher.add(event -> {
             if (event instanceof TopologyEvents.ApplicationConnected) {

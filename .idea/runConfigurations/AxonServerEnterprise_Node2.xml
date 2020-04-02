@@ -56,6 +56,11 @@
         <option name="name" value="axoniq.axonserver.internal-port" />
         <option name="value" value="9224" />
       </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.enterprise.license-directory" />
+        <option name="value" value="./dev/node2/license" />
+      </param>
     </additionalParameters>
     <method v="2">
       <option name="Make" enabled="true" />

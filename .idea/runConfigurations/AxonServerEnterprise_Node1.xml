@@ -41,6 +41,11 @@
         <option name="name" value="axoniq.axonserver.controldb-path" />
         <option name="value" value="./dev/node1/controldb" />
       </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.enterprise.license-directory" />
+        <option name="value" value="./dev/node1/license" />
+      </param>
     </additionalParameters>
     <method v="2">
       <option name="Make" enabled="true" />

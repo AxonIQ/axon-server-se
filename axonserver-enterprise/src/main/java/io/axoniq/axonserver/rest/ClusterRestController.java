@@ -133,7 +133,22 @@ public class ClusterRestController {
     @GetMapping("/test")
     public void distributeLicense() {
 
-        prepareUpdateLicenseTask.executeAsync("myLicense2".getBytes());
+        String license = "#AxonIQ License File generated on 2019-10-18\n" +
+                "#Fri Oct 18 08:00:32 UTC 2019\n" +
+                "license_key_id=779a356b-e226-4dc8-8d43-32937549d081\n" +
+                "signature=sOMWdskQcXgqf1HghdGWeJo1s55T0jyYK2Uv7bFOJo6R4t77PsuMDERc1Il+RSfaLC/X5uMNoCca8uEdIbgBAk0K/JliMP8Ac69e+kziEaCvuM44vfJw3cPUngZcgrH5b7J790KQ4kxmEv8gnm6FbnvFnSwNAqwHqTqWDfUoBI02JC4DmRl2K1DTa0cE6qXvGNnHdt9vRfSoFVq0wzFbBd0gDiZWD0qsaTntskqtHtityrN8LcY90MGbwrJksg7Hbywtz7tinGBEmHohtP9ELOkHJ0TkHWt7/yUliBVypw08PKl93BSz4qg5jHovsWxFfUjbc3gxlyQ8Rq8sISC+zu/mZMr+Owmx1wBT/s1BBiPqYjNMyYPKV6Vdo3OLdWpfy27feWlxTJGEmKif99muvJO+xB7P0KORdPjgO85Mo6zeq4Hn5ApWRdHTexmc3ZekGejPNZJ38114wn0ND3DYmachUJE7oF4DZwNluPqfnp/GXYWs13LVraDg2/S+zaQHFYLaRZKuzdgf/7CWDdqJZd2yBxe+2pt5TWqc1N1ePknBWszdLaqtI/meCOwRVlJt1jXlk7RRPMPZcR4LkNgH8O0ETae/aNtM2elZczk4xeDUcBpmXX050cunosMTlcxxdrVyBhJijA2A9Krl9MH3PPhcacfqspUX/tYgm3IGDwo\\=\n" +
+                "reference=License for SAAS platform\n" +
+                "contexts=1000\n" +
+                "expiry_date=2025-10-18\n" +
+                "contact=\n" +
+                "edition=Enterprise\n" +
+                "issue_date=2019-10-18\n" +
+                "grace_date=2025-11-01\n" +
+                "product=AxonServer\n" +
+                "licensee=AxonIQ B.V.\n" +
+                "clusterNodes=1000\n";
+
+        prepareUpdateLicenseTask.executeAsync(license.getBytes());
     }
 
     @GetMapping(path="{name}")
