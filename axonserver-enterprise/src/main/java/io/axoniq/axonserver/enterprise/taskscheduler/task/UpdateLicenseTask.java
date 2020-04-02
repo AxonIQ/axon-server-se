@@ -14,9 +14,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
- * Task that sends command to node that will create/update license
+ * Task that sends command to nodes that will create/update license
  *
  * @author Stefan Dragisic
+ * @since 4.4
  */
 @Component
 public class UpdateLicenseTask implements ScheduledTask {

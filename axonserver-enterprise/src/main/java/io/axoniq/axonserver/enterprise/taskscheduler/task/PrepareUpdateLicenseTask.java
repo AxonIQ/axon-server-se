@@ -16,6 +16,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
  * Executes on admin node and schedules a task to create/update license on each node.
  *
  * @author Stefan Dragisic
+ * @since 4.4
  */
 @Component
 public class PrepareUpdateLicenseTask implements ScheduledTask {
