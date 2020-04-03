@@ -1,6 +1,9 @@
 <!-- Copyright (c) 2018 by Axoniq B.V. - All rights reserved -->
 # Axon Server
 
+[This README is out of date. Actual building of Docker Images is beeing done with Dockerfile and Readme outside of this repository.](https://github.com/AxonIQ/axon-server-se/issues/107#issuecomment-608245709)
+
+
 ### Supported tags
 
 * OpenJDK 8 based ([openjdk:8-jdk, aka openjdk:8u181-jdk-stretch](https://hub.docker.com/_/openjdk)):
