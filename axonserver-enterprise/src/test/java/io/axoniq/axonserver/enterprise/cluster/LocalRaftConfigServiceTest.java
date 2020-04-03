@@ -7,29 +7,30 @@ import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.Payload;
-import io.axoniq.axonserver.enterprise.taskscheduler.JacksonTaskPayloadSerializer;
-import io.axoniq.axonserver.enterprise.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
-import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
-import io.axoniq.axonserver.enterprise.taskscheduler.task.*;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.UnregisterNodeTask;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.grpc.internal.*;
-import junit.framework.TestCase;
+import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
+import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
+import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
+import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.junit.*;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.mockito.stubbing.*;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -44,7 +45,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
@@ -65,10 +65,6 @@ public class LocalRaftConfigServiceTest {
     private FakeRaftGroupService fakeRaftGroupService = new FakeRaftGroupService();
     private TaskPublisher taskPublisher;
     private Map<String, Set<String>> scheduledTasks = new ConcurrentHashMap<>();
-    private Map<String, Set<Object>> scheduledPayloadsTasks= new ConcurrentHashMap<>();
-    private ClusterController clusterController;
-    private ApplicationEventPublisher applicationEventPublisher;
-    private TaskPayloadSerializer serializer = new JacksonTaskPayloadSerializer();
 
     private ClusterNode createNode(String name) {
         return new ClusterNode(name, name, name, 1, 2,3);
@@ -82,9 +78,9 @@ public class LocalRaftConfigServiceTest {
             io.axoniq.axonserver.enterprise.jpa.Context context = contextMap.computeIfAbsent(name, io.axoniq.axonserver.enterprise.jpa.Context::new);
             for (String node : nodes) {
                 nodeMap.computeIfAbsent(node, LocalRaftConfigServiceTest.this::createNode).addContext(context,
-                                                                                                      node + "/"
-                                                                                                              + context,
-                                                                                                      Role.PRIMARY);
+                        node + "/"
+                                + context,
+                        Role.PRIMARY);
             }
         }
 
@@ -125,8 +121,8 @@ public class LocalRaftConfigServiceTest {
                     newNodes.forEach((node, nodeInfo) -> {
                         if( !currentNodes.containsKey(node)) {
                             clusterInfoMap.get(node).addContext(finalContext,
-                                                                nodeInfo.getLabel(),
-                                                                nodeInfo.getRole());
+                                    nodeInfo.getLabel(),
+                                    nodeInfo.getRole());
                         }
                     });
 
@@ -143,11 +139,11 @@ public class LocalRaftConfigServiceTest {
 
         private GroupDB(io.axoniq.axonserver.enterprise.jpa.Context context) {
             context.getNodes().forEach(ccn -> nodes.put(ccn.getClusterNodeLabel(), Node.newBuilder()
-                                                                                       .setNodeName(ccn.getClusterNode()
-                                                                                                          .getName())
-                                                                                       .setNodeId(ccn.getClusterNodeLabel())
-                                                                                       .setRole(ccn.getRole())
-                                                                                       .build()));
+                    .setNodeName(ccn.getClusterNode()
+                            .getName())
+                    .setNodeId(ccn.getClusterNodeLabel())
+                    .setRole(ccn.getRole())
+                    .build()));
         }
 
         public GroupDB() {
@@ -168,8 +164,8 @@ public class LocalRaftConfigServiceTest {
             ContextUpdateConfirmation.Builder contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder()
                     .setSuccess(true);
             groupDBs.get(context).nodes.forEach((id, n) ->
-                                                        contextUpdateConfirmation
-                                                                .addMembers(ContextMemberConverter.asContextMember(n)));
+                    contextUpdateConfirmation
+                            .addMembers(ContextMemberConverter.asContextMember(n)));
 
             return CompletableFuture.completedFuture(contextUpdateConfirmation.build());
         }
@@ -190,19 +186,19 @@ public class LocalRaftConfigServiceTest {
             nodes.forEach(n -> groupDB.nodes.put(n.getNodeId(), n));
             groupDBs.put(context, groupDB);
             ContextConfiguration contextConfiguration = ContextConfiguration.newBuilder()
-                                                                            .setContext(context)
-                                                                            .addAllNodes(nodes.stream()
-                                                                                              .map(n -> NodeInfoWithLabel
-                                                                                                      .newBuilder()
-                                                                                                      .setLabel(n.getNodeName())
-                                                                                                      .setNode(NodeInfo.newBuilder()
-                                                                                                                       .setNodeName(
-                                                                                                                               n.getNodeName()))
-                                                                                                      .setRole(n.getRole())
-                                                                                                      .build())
-                                                                                              .collect(Collectors
-                                                                                                               .toList()))
-                                                                            .build();
+                    .setContext(context)
+                    .addAllNodes(nodes.stream()
+                            .map(n -> NodeInfoWithLabel
+                                    .newBuilder()
+                                    .setLabel(n.getNodeName())
+                                    .setNode(NodeInfo.newBuilder()
+                                            .setNodeName(
+                                                    n.getNodeName()))
+                                    .setRole(n.getRole())
+                                    .build())
+                            .collect(Collectors
+                                    .toList()))
+                    .build();
             return CompletableFuture.completedFuture(contextConfiguration);
         }
 
@@ -210,10 +206,10 @@ public class LocalRaftConfigServiceTest {
         public CompletableFuture<ContextUpdateConfirmation> deleteNode(String context, String node) {
             groupDBs.get(context).nodes.remove(node);
             ContextUpdateConfirmation.Builder contextUpdateConfirmation = ContextUpdateConfirmation.newBuilder()
-                                                                                                   .setSuccess(true);
+                    .setSuccess(true);
             groupDBs.get(context).nodes.forEach((id, n) ->
-                                                        contextUpdateConfirmation
-                                                                .addMembers(ContextMemberConverter.asContextMember(n)));
+                    contextUpdateConfirmation
+                            .addMembers(ContextMemberConverter.asContextMember(n)));
 
             return CompletableFuture.completedFuture(contextUpdateConfirmation.build());
         }
@@ -293,14 +289,12 @@ public class LocalRaftConfigServiceTest {
 
         when(adminNode.appendEntry(any(), any())).then((Answer<CompletableFuture<Void>>) invocationOnMock -> {
             adminDB.applyEntry(invocationOnMock.getArgument(0), invocationOnMock.getArgument(1));
-                return CompletableFuture.completedFuture(null);
+            return CompletableFuture.completedFuture(null);
         });
 
         when(grpcRaftController.getRaftNode("_admin")).thenReturn(adminNode);
         ContextController contextcontroller = mock(ContextController.class);
-        clusterController = mock(ClusterController.class,  Mockito.RETURNS_DEEP_STUBS);
-        applicationEventPublisher = mock(ApplicationEventPublisher.class);
-
+        ClusterController clusterController = mock(ClusterController.class);
         RaftGroupServiceFactory raftGroupServiceFactory = mock(RaftGroupServiceFactory.class);
 
         when(raftGroupServiceFactory.getRaftGroupService(anyString())).thenReturn(fakeRaftGroupService);
@@ -318,20 +312,16 @@ public class LocalRaftConfigServiceTest {
                 return "localhost";
             }
         });
-
-        when(clusterController.nodes()).then((Answer<Stream<ClusterNode>>) invocationOnMock -> adminDB.nodeMap.values().stream());
-
         when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
             String name = invocationOnMock.getArgument(0);
             return adminDB.nodeMap.get(name);
         });
-
         when(contextcontroller
-                     .getContext(anyString()))
+                .getContext(anyString()))
                 .then((Answer<io.axoniq.axonserver.enterprise.jpa.Context>) invocationOnMock -> {
-            String name = invocationOnMock.getArgument(0);
-            return adminDB.contextMap.get(name);
-        });
+                    String name = invocationOnMock.getArgument(0);
+                    return adminDB.contextMap.get(name);
+                });
         RaftGroup fakeRaftGroup = mock(RaftGroup.class);
         when(fakeRaftGroup.localNode()).thenReturn(adminNode);
         when(grpcRaftController.initRaftGroup(anyString(), anyString(), anyString())).thenAnswer((Answer<RaftGroup>)invocationOnMock -> {
@@ -348,18 +338,17 @@ public class LocalRaftConfigServiceTest {
             public CompletableFuture<Void> publishScheduledTask(String context, String taskHandler, Object payload,
                                                                 Duration delay) {
                 scheduledTasks.computeIfAbsent(context, c -> new CopyOnWriteArraySet<>()).add(taskHandler);
-                scheduledPayloadsTasks.computeIfAbsent(taskHandler, c -> new CopyOnWriteArraySet<>()).add(payload);
                 return CompletableFuture.completedFuture(null);
             }
         };
         testSubject = new LocalRaftConfigService(grpcRaftController,
-                                                 contextcontroller,
-                                                 clusterController,
-                                                 raftGroupServiceFactory,
-                                                 applicationController,
-                                                 userController,
-                                                 messagingPlatformConfiguration,
-                                                 taskPublisher);
+                contextcontroller,
+                clusterController,
+                raftGroupServiceFactory,
+                applicationController,
+                userController,
+                messagingPlatformConfiguration,
+                taskPublisher);
     }
 
     @Test
@@ -367,7 +356,7 @@ public class LocalRaftConfigServiceTest {
         testSubject.addNodeToContext("sample", "node2", Role.PRIMARY);
         assertTrue(adminDB.contextMap.get("sample").getNodeNames().contains("node2"));
         assertTrue(fakeRaftGroupService.groupDBs.get("sample").nodes
-                           .values().stream().anyMatch(n -> n.getNodeName().equals("node2")));
+                .values().stream().anyMatch(n -> n.getNodeName().equals("node2")));
     }
 
     @Test
@@ -375,11 +364,11 @@ public class LocalRaftConfigServiceTest {
         testSubject.addNodeToContext("sample", "node2", Role.ACTIVE_BACKUP);
         assertTrue(adminDB.contextMap.get("sample").getNodeNames().contains("node2"));
         ContextClusterNode ccn = adminDB.contextMap.get("sample")
-                                                   .getNodes()
-                                                   .stream()
-                                                   .filter(c -> c.getClusterNode().getName().equals("node2"))
-                                                   .findFirst()
-                                                   .orElse(null);
+                .getNodes()
+                .stream()
+                .filter(c -> c.getClusterNode().getName().equals("node2"))
+                .findFirst()
+                .orElse(null);
 
         assertNotNull(ccn);
         assertEquals(Role.ACTIVE_BACKUP, ccn.getRole());
@@ -450,90 +439,6 @@ public class LocalRaftConfigServiceTest {
     }
 
     @Test
-    public void distributeLicense() {
-        testSubject.distributeLicense("myLicense".getBytes());
-        assertEquals(1, scheduledTasks.size());
-        Set<String> adminTasks = scheduledTasks.getOrDefault("_admin", Collections.emptySet());
-        assertTrue(adminTasks.contains(PrepareUpdateLicenseTask.class.getName()));
-    }
-
-    @Test
-    public void prepareUpdateLicenseTask() {
-
-        PrepareUpdateLicenseTask prepareUpdateLicenseTask = new PrepareUpdateLicenseTask(taskPublisher, serializer, clusterController);
-        prepareUpdateLicenseTask.execute("myLicense".getBytes());
-
-
-        Set<UpdateLicenseTaskPayload> scheduledPayloads = scheduledPayloadsTasks.getOrDefault(UpdateLicenseTask.class.getName(), Collections.emptySet())
-                .stream()
-                .map(it -> (UpdateLicenseTaskPayload) serializer.deserialize((Payload) it))
-                .collect(Collectors.toSet());
-
-        TestCase.assertEquals(2, scheduledPayloads.size());
-        TestCase.assertEquals(1, scheduledPayloads.stream().filter(it -> it.getNodeName().equals("node1")).count());
-        TestCase.assertEquals(1, scheduledPayloads.stream().filter(it -> it.getNodeName().equals("node2")).count());
-    }
-
-    @Test
-    public void updateLicenseTaskAdminNode() {
-        when(clusterController.getMe().getName()).thenReturn("adminNode");
-
-        UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("adminNode","myLicense".getBytes());
-
-        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
-        updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
-
-        verify(applicationEventPublisher, times(1)).publishEvent(any(ClusterEvents.LicenseUpdated.class));
-    }
-
-    @Test
-    public void updateLicenseTaskRemoteConnectedNode() {
-        when(clusterController.getMe().getName()).thenReturn("adminNode");
-
-        RemoteConnection remoteConnection = mock(RemoteConnection.class, RETURNS_DEEP_STUBS);
-        when(remoteConnection.isConnected()).thenReturn(true);
-        when(remoteConnection.getClusterNode().getName()).thenReturn("remoteNode");
-
-        when(clusterController.getRemoteConnections()).thenReturn(Arrays.asList(remoteConnection));
-
-        UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode","myLicense".getBytes());
-
-        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
-        updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
-
-        verify(remoteConnection, times(1)).publish(any(ConnectorCommand.class));
-
-        ArgumentCaptor<ConnectorCommand> captor = ArgumentCaptor.forClass(ConnectorCommand.class);
-
-        verify(remoteConnection, times(1)).publish(captor.capture());
-
-        String licenseContent = new String(captor.getValue().getDistributeLicense().getLicense().toByteArray());
-        assertEquals(licenseContent,"myLicense");
-    }
-
-    @Test
-    public void updateLicenseTaskRemoteDisconnectedNode() {
-        when(clusterController.getMe().getName()).thenReturn("adminNode");
-
-        RemoteConnection remoteConnection = mock(RemoteConnection.class, RETURNS_DEEP_STUBS);
-
-        when(remoteConnection.isConnected()).thenReturn(false);
-
-        when(clusterController.getRemoteConnections()).thenReturn(Arrays.asList(remoteConnection));
-
-        UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode","myLicense".getBytes());
-
-        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
-
-        try {
-            updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
-        } catch (TransientException e){
-            assertTrue(true);
-        }
-    }
-
-
-    @Test
     public void deleteNode() {
         testSubject.deleteNode("node2");
         assertEquals(1, scheduledTasks.size());
@@ -555,17 +460,17 @@ public class LocalRaftConfigServiceTest {
 
     private Context createContext(String twice, List<String> asList) {
         return Context.newBuilder().setName(twice).addAllMembers(asList.stream().map(n -> ContextMember.newBuilder()
-                                                                                                       .setNodeName(n)
-                                                                                                       .build())
-                                                                       .collect(
-                                                                               Collectors.toList())).build();
+                .setNodeName(n)
+                .build())
+                .collect(
+                        Collectors.toList())).build();
     }
 
     @Test
     public void join() {
         when(adminNode.isLeader()).thenReturn(true);
         testSubject.join(NodeInfo.newBuilder().setNodeName("node3").setInternalHostName("node3").setHostName("node3")
-                                 .addContexts(ContextRole.newBuilder().setName("sample").setNodeLabel("sample/node3")).build());
+                .addContexts(ContextRole.newBuilder().setName("sample").setNodeLabel("sample/node3")).build());
 
     }
 
@@ -573,7 +478,7 @@ public class LocalRaftConfigServiceTest {
     public void joinNewContext() {
         when(adminNode.isLeader()).thenReturn(true);
         testSubject.join(NodeInfo.newBuilder().setNodeName("node3").setInternalHostName("node3").setHostName("node3")
-                                 .addContexts(ContextRole.newBuilder().setName("sample2").setNodeLabel("sample2/node3")).build());
+                .addContexts(ContextRole.newBuilder().setName("sample2").setNodeLabel("sample2/node3")).build());
 
     }
 

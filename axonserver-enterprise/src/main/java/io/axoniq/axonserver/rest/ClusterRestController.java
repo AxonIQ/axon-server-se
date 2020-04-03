@@ -4,6 +4,7 @@ import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.DistributeLicenseService;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -48,17 +49,17 @@ public class ClusterRestController {
     private final RaftConfigServiceFactory raftServiceFactory;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
-    private final PrepareUpdateLicenseTask prepareUpdateLicenseTask;
+    private final DistributeLicenseService distributeLicenseService;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  FeatureChecker limits,
                                  ClusterTagsCache clusterTagsCache,
-                                 PrepareUpdateLicenseTask prepareUpdateLicenseTask) {
+                                 DistributeLicenseService distributeLicenseService) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.limits = limits;
-        this.prepareUpdateLicenseTask = prepareUpdateLicenseTask;
+        this.distributeLicenseService = distributeLicenseService;
     }
 
 
@@ -129,7 +130,8 @@ public class ClusterRestController {
 
     @PostMapping("/upload-license")
     public void distributeLicense(@RequestParam("licenseFile") MultipartFile licenseFile) throws IOException {
-        prepareUpdateLicenseTask.execute(licenseFile.getBytes());
+        logger.info("New license uploaded, performing license update...");
+        distributeLicenseService.distributeLicense(licenseFile.getBytes());
     }
 
     @GetMapping(path="{name}")
