@@ -18,6 +18,7 @@ import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.NodeContext;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenseTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.UnregisterNodeTask;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -48,7 +49,11 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -845,6 +850,14 @@ class LocalRaftConfigService implements RaftConfigService {
             }
         }
         return roles;
+    }
+
+    public void distributeLicense(byte[] license) {
+        taskPublisher.publishScheduledTask(getAdmin(),
+                PrepareUpdateLicenseTask.class
+                        .getName(),
+                license,
+                Duration.ZERO);
     }
 
     @Override

@@ -7,30 +7,29 @@ import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
+import io.axoniq.axonserver.enterprise.jpa.Payload;
+import io.axoniq.axonserver.enterprise.taskscheduler.JacksonTaskPayloadSerializer;
+import io.axoniq.axonserver.enterprise.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
-import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
-import io.axoniq.axonserver.enterprise.taskscheduler.task.UnregisterNodeTask;
+import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.*;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ContextMemberConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.ContextApplication;
-import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
-import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
-import io.axoniq.axonserver.grpc.internal.ContextUser;
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
+import io.axoniq.axonserver.grpc.internal.*;
+import junit.framework.TestCase;
 import org.junit.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.mockito.stubbing.*;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -45,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
@@ -65,6 +65,10 @@ public class LocalRaftConfigServiceTest {
     private FakeRaftGroupService fakeRaftGroupService = new FakeRaftGroupService();
     private TaskPublisher taskPublisher;
     private Map<String, Set<String>> scheduledTasks = new ConcurrentHashMap<>();
+    private Map<String, Set<Object>> scheduledPayloadsTasks= new ConcurrentHashMap<>();
+    private ClusterController clusterController;
+    private ApplicationEventPublisher applicationEventPublisher;
+    private TaskPayloadSerializer serializer = new JacksonTaskPayloadSerializer();
 
     private ClusterNode createNode(String name) {
         return new ClusterNode(name, name, name, 1, 2,3);
@@ -294,7 +298,9 @@ public class LocalRaftConfigServiceTest {
 
         when(grpcRaftController.getRaftNode("_admin")).thenReturn(adminNode);
         ContextController contextcontroller = mock(ContextController.class);
-        ClusterController clusterController = mock(ClusterController.class);
+        clusterController = mock(ClusterController.class,  Mockito.RETURNS_DEEP_STUBS);
+        applicationEventPublisher = mock(ApplicationEventPublisher.class);
+
         RaftGroupServiceFactory raftGroupServiceFactory = mock(RaftGroupServiceFactory.class);
 
         when(raftGroupServiceFactory.getRaftGroupService(anyString())).thenReturn(fakeRaftGroupService);
@@ -312,10 +318,14 @@ public class LocalRaftConfigServiceTest {
                 return "localhost";
             }
         });
+
+        when(clusterController.nodes()).then((Answer<Stream<ClusterNode>>) invocationOnMock -> adminDB.nodeMap.values().stream());
+
         when(clusterController.getNode(anyString())).then((Answer<ClusterNode>) invocationOnMock -> {
             String name = invocationOnMock.getArgument(0);
             return adminDB.nodeMap.get(name);
         });
+
         when(contextcontroller
                      .getContext(anyString()))
                 .then((Answer<io.axoniq.axonserver.enterprise.jpa.Context>) invocationOnMock -> {
@@ -338,6 +348,7 @@ public class LocalRaftConfigServiceTest {
             public CompletableFuture<Void> publishScheduledTask(String context, String taskHandler, Object payload,
                                                                 Duration delay) {
                 scheduledTasks.computeIfAbsent(context, c -> new CopyOnWriteArraySet<>()).add(taskHandler);
+                scheduledPayloadsTasks.computeIfAbsent(taskHandler, c -> new CopyOnWriteArraySet<>()).add(payload);
                 return CompletableFuture.completedFuture(null);
             }
         };
@@ -437,6 +448,90 @@ public class LocalRaftConfigServiceTest {
             assertEquals(ErrorCode.CANNOT_REMOVE_LAST_NODE, mpe.getErrorCode());
         }
     }
+
+    @Test
+    public void distributeLicense() {
+        testSubject.distributeLicense("myLicense".getBytes());
+        assertEquals(1, scheduledTasks.size());
+        Set<String> adminTasks = scheduledTasks.getOrDefault("_admin", Collections.emptySet());
+        assertTrue(adminTasks.contains(PrepareUpdateLicenseTask.class.getName()));
+    }
+
+    @Test
+    public void prepareUpdateLicenseTask() {
+
+        PrepareUpdateLicenseTask prepareUpdateLicenseTask = new PrepareUpdateLicenseTask(taskPublisher, serializer, clusterController);
+        prepareUpdateLicenseTask.execute("myLicense".getBytes());
+
+
+        Set<UpdateLicenseTaskPayload> scheduledPayloads = scheduledPayloadsTasks.getOrDefault(UpdateLicenseTask.class.getName(), Collections.emptySet())
+                .stream()
+                .map(it -> (UpdateLicenseTaskPayload) serializer.deserialize((Payload) it))
+                .collect(Collectors.toSet());
+
+        TestCase.assertEquals(2, scheduledPayloads.size());
+        TestCase.assertEquals(1, scheduledPayloads.stream().filter(it -> it.getNodeName().equals("node1")).count());
+        TestCase.assertEquals(1, scheduledPayloads.stream().filter(it -> it.getNodeName().equals("node2")).count());
+    }
+
+    @Test
+    public void updateLicenseTaskAdminNode() {
+        when(clusterController.getMe().getName()).thenReturn("adminNode");
+
+        UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("adminNode","myLicense".getBytes());
+
+        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
+        updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
+
+        verify(applicationEventPublisher, times(1)).publishEvent(any(ClusterEvents.LicenseUpdated.class));
+    }
+
+    @Test
+    public void updateLicenseTaskRemoteConnectedNode() {
+        when(clusterController.getMe().getName()).thenReturn("adminNode");
+
+        RemoteConnection remoteConnection = mock(RemoteConnection.class, RETURNS_DEEP_STUBS);
+        when(remoteConnection.isConnected()).thenReturn(true);
+        when(remoteConnection.getClusterNode().getName()).thenReturn("remoteNode");
+
+        when(clusterController.getRemoteConnections()).thenReturn(Arrays.asList(remoteConnection));
+
+        UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode","myLicense".getBytes());
+
+        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
+        updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
+
+        verify(remoteConnection, times(1)).publish(any(ConnectorCommand.class));
+
+        ArgumentCaptor<ConnectorCommand> captor = ArgumentCaptor.forClass(ConnectorCommand.class);
+
+        verify(remoteConnection, times(1)).publish(captor.capture());
+
+        String licenseContent = new String(captor.getValue().getDistributeLicense().getLicense().toByteArray());
+        assertEquals(licenseContent,"myLicense");
+    }
+
+    @Test
+    public void updateLicenseTaskRemoteDisconnectedNode() {
+        when(clusterController.getMe().getName()).thenReturn("adminNode");
+
+        RemoteConnection remoteConnection = mock(RemoteConnection.class, RETURNS_DEEP_STUBS);
+
+        when(remoteConnection.isConnected()).thenReturn(false);
+
+        when(clusterController.getRemoteConnections()).thenReturn(Arrays.asList(remoteConnection));
+
+        UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode","myLicense".getBytes());
+
+        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
+
+        try {
+            updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
+        } catch (TransientException e){
+            assertTrue(true);
+        }
+    }
+
 
     @Test
     public void deleteNode() {
