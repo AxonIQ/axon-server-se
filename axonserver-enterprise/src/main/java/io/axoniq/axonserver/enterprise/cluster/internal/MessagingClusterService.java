@@ -8,7 +8,6 @@ import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.storage.file.LicenseManager;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerInternalService;
@@ -51,9 +50,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -97,7 +95,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private final ClusterController clusterController;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ApplicationEventPublisher eventPublisher;
-    private final LicenseManager licenseManager;
 
 
     private final Map<ClientIdentification, String> connectedClients = new ConcurrentHashMap<>();
@@ -120,19 +117,17 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
      *                          query updates
      * @param clusterController the {@link ClusterController} used to add new nodes trying to connect to the cluster
      * @param eventPublisher    the {@link ApplicationEventPublisher} to publish events through this Axon Server
-     * @param licenseManager
      */
     public MessagingClusterService(CommandDispatcher commandDispatcher,
                                    QueryDispatcher queryDispatcher,
                                    ClusterController clusterController,
                                    RaftLeaderProvider raftLeaderProvider,
-                                   ApplicationEventPublisher eventPublisher, LicenseManager licenseManager) {
+                                   ApplicationEventPublisher eventPublisher) {
         this.commandDispatcher = commandDispatcher;
         this.queryDispatcher = queryDispatcher;
         this.clusterController = clusterController;
         this.raftLeaderProvider = raftLeaderProvider;
         this.eventPublisher = eventPublisher;
-        this.licenseManager = licenseManager;
     }
 
     @Override
@@ -202,11 +197,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     @EventListener
     public void on(ClusterEvents.AxonServerNodeDeleted axonServerNodeDeleted) {
         blacklistedServers.put(axonServerNodeDeleted.node(), System.currentTimeMillis() + BLACKOUT_TIME);
-    }
-
-    @EventListener
-    public void on(ClusterEvents.LicenseUpdated licenseUpdated) {
-        licenseManager.createOrUpdate(licenseUpdated.getLicense());
     }
 
     @EventListener
@@ -469,7 +459,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     break;
                 case DISTRIBUTE_LICENSE:
                     eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(
-                            connectorCommand.getDistributeLicense().toByteArray()) {
+                            connectorCommand.getDistributeLicense().getLicense().toByteArray()) {
                     });
                     break;
                 default:

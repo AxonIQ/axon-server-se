@@ -48,11 +48,8 @@ public class UpdateLicenseTask implements ScheduledTask {
             });
         } else {
             clusterController
-                    .getRemoteConnections()
-                    .stream()
+                    .getRemoteConnection(payloadNodeName)
                     .filter(RemoteConnection::isConnected)
-                    .filter(it->it.getClusterNode().getName().equals(payloadNodeName))
-                    .findFirst()
                     .<Runnable>map(it -> (() -> it.publish(createCommand(licenseTaskPayload))))
                     .orElseThrow(() -> new TransientException("Node '"+ payloadNodeName+ "' not active. Scheduling update license task for later..."+" Task sent from: "+ thisNodeName))
                     .run();

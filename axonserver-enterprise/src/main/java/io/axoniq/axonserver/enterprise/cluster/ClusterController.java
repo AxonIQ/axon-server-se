@@ -244,6 +244,11 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         return remoteConnections.values();
     }
 
+
+    public Optional<RemoteConnection> getRemoteConnection(String nodeName) {
+        return Optional.of(remoteConnections.get(nodeName));
+    }
+
     /**
      * Received connection from another Axon Server node. Update configuration if this node is not known.
      * Needs to be synchronized as it can be called in parallel with same node information, which would

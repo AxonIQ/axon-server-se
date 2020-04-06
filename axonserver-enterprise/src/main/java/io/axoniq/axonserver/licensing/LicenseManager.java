@@ -1,12 +1,12 @@
-package io.axoniq.axonserver.enterprise.storage.file;
+package io.axoniq.axonserver.licensing;
 
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.config.AxonServerEnterpriseProperties;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.licensing.LicenseException;
-import io.axoniq.axonserver.licensing.LicensePropertyReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -17,10 +17,22 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
+/**
+ * Manages all license operation:
+ *
+ * Provides access to information from the license key.
+ * Provides Read/Write file operations
+ * Provides license validation
+ * Handles request to update license to newer version
+ *
+ *
+ * @author Stefan Dragisic
+ * @since 4.4
+ */
 @Component
 public class LicenseManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger logger = LoggerFactory.getLogger(LicenseManager.class);
 
     private final AxonServerEnterpriseProperties axonServerEnterpriseProperties;
 
@@ -30,6 +42,16 @@ public class LicenseManager {
         this.axonServerEnterpriseProperties = axonServerEnterpriseProperties;
     }
 
+
+    @EventListener
+    public void on(ClusterEvents.LicenseUpdated licenseUpdated) {
+        createOrUpdate(licenseUpdated.getLicense()  );
+    }
+
+    /**
+     * Writes license file to the disk or updates overrides current if exists
+     * @param license license content
+     */
     public void createOrUpdate(byte[] license) {
 
         logger.info("Validating new license...");
@@ -52,6 +74,10 @@ public class LicenseManager {
         logger.info("New license saved!");
     }
 
+    /**
+     * Validates & reads license file properties
+     * @return license properties
+     */
     public Properties readLicenseProperties() {
         String licenseFile = System.getProperty("license", System.getenv("AXONIQ_LICENSE"));
         if (licenseFile == null) {
@@ -88,6 +114,15 @@ public class LicenseManager {
             throw LicenseException.noLicenseFile();
         }
         return licenseProperties;
+    }
+
+    /**
+     * Validates that license content is valid
+     * @param license
+     */
+    public void validate(byte[] license) {
+        Properties licenseProperties = load(license);
+        validate(licenseProperties);
     }
 
     private void validate(Properties licenseProperties) {

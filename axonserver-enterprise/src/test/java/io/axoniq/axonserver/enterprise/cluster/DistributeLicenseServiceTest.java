@@ -1,12 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.access.application.ApplicationController;
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Payload;
 import io.axoniq.axonserver.enterprise.taskscheduler.JacksonTaskPayloadSerializer;
@@ -18,6 +13,8 @@ import io.axoniq.axonserver.enterprise.taskscheduler.task.UpdateLicenseTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.UpdateLicenseTaskPayload;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.licensing.LicenseManager;
+import io.swagger.models.License;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,9 +26,9 @@ import org.mockito.stubbing.Answer;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -103,7 +100,7 @@ public class DistributeLicenseServiceTest {
             }
         };
         testSubject = new DistributeLicenseService(
-                taskPublisher);
+                taskPublisher, mock(LicenseManager.class));
     }
 
 
@@ -151,7 +148,7 @@ public class DistributeLicenseServiceTest {
         when(remoteConnection.isConnected()).thenReturn(true);
         when(remoteConnection.getClusterNode().getName()).thenReturn("remoteNode");
 
-        when(clusterController.getRemoteConnections()).thenReturn(Arrays.asList(remoteConnection));
+        when(clusterController.getRemoteConnection(eq("remoteNode"))).thenReturn(Optional.of(remoteConnection));
 
         UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode", "myLicense".getBytes());
 
@@ -176,7 +173,7 @@ public class DistributeLicenseServiceTest {
 
         when(remoteConnection.isConnected()).thenReturn(false);
 
-        when(clusterController.getRemoteConnections()).thenReturn(Arrays.asList(remoteConnection));
+        when(clusterController.getRemoteConnection(any())).thenReturn(Optional.of(remoteConnection));
 
         UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode", "myLicense".getBytes());
 
