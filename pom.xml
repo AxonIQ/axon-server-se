@@ -43,7 +43,7 @@
         <netty.tcnative.version>2.0.26.Final</netty.tcnative.version>
         <netty.version>4.1.42.Final</netty.version>
         <axonserver.api.version>4.3</axonserver.api.version>
-        <axonserver.se.version>4.3.2</axonserver.se.version>
+        <axonserver.se.version>4.3.3</axonserver.se.version>
         <axon.version>4.3</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <opencensus.version>0.25.0</opencensus.version>
