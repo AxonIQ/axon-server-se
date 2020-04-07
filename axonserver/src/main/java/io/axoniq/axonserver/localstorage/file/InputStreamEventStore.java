@@ -48,6 +48,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
 
     @Override
     public void close(boolean deleteData) {
+        indexManager.cleanup();
         if( deleteData) {
             segments.forEach(this::removeSegment);
         }

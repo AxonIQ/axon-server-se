@@ -3,6 +3,11 @@ This is the Axon Server Standard Edition, version 4.3
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.3.3
+-------------------------------
+
+* Fix for validation error starting up when there are multiple snapshot files (Standard Edition only)
+
 Release Notes for version 4.3.2
 -------------------------------
 

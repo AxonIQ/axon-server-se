@@ -182,6 +182,7 @@ public class IndexManager {
     public void cleanup() {
         bloomFilterPerSegment.clear();
         indexMap.forEach((segment, index) -> index.close());
+        indexMap.clear();
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
