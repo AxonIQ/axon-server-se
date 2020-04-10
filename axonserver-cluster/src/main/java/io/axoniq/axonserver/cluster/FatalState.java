@@ -11,7 +11,11 @@ import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 
 /**
  * Final state for a raft node when it has failed with an unrecoverable error. Responds to append entries requests with
@@ -24,9 +28,13 @@ public class FatalState implements MembershipState {
 
     private final ClusterConfiguration clusterConfiguration = new IdleConfiguration();
     private final RaftResponseFactory raftResponseFactory;
+    private final AtomicReference<String> leader = new AtomicReference<>();
+    private final AtomicLong currentTerm = new AtomicLong();
+    private final RaftGroup raftGroup;
 
-    public FatalState(RaftResponseFactory raftResponseFactory) {
+    public FatalState(RaftResponseFactory raftResponseFactory, RaftGroup raftGroup) {
         this.raftResponseFactory = raftResponseFactory;
+        this.raftGroup = raftGroup;
     }
 
     @Override
@@ -38,16 +46,42 @@ public class FatalState implements MembershipState {
         return true;
     }
 
+    /**
+     * Always rejects votes as this node should not influence leader election.
+     *
+     * @param request the vote request
+     * @return rejected vote
+     */
     @Override
     public RequestVoteResponse requestPreVote(RequestVoteRequest request) {
-        return raftResponseFactory.voteResponse(request.getRequestId(), true);
+        return raftResponseFactory.voteRejected(request.getRequestId());
     }
 
+    /**
+     * Handles request from leader. Checks if this request contains a new leader, to update the current leader known on
+     * this node.
+     *
+     * @param request the append entries request
+     * @return response indicating that this node is in fatal state
+     */
     @Override
     public AppendEntriesResponse appendEntries(AppendEntriesRequest request) {
+        if (request.getTerm() > currentTerm.get()) {
+            currentTerm.set(request.getTerm());
+            if (!request.getLeaderId().equals(leader.get())) {
+                leader.set(request.getLeaderId());
+                raftGroup.localNode().notifyNewLeader(request.getLeaderId());
+            }
+        }
         return raftResponseFactory.appendEntriesFailure(request.getRequestId(), "In fatal state", true);
     }
 
+    /**
+     * Always rejects votes as this node should not influence leader election.
+     *
+     * @param request the vote request
+     * @return rejected vote
+     */
     @Override
     public RequestVoteResponse requestVote(RequestVoteRequest request) {
         return raftResponseFactory.voteRejected(request.getRequestId());
@@ -71,5 +105,21 @@ public class FatalState implements MembershipState {
     @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         return clusterConfiguration.removeServer(nodeId);
+    }
+
+    @Override
+    public String getLeader() {
+        return leader.get();
+    }
+
+    @Override
+    public List<Node> currentGroupMembers() {
+        return raftGroup.raftConfiguration().groupMembers();
+    }
+
+    @Override
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        statusConsumer.accept(raftGroup.raftConfiguration().groupId() + ".status", "FATAL");
+        return false;
     }
 }

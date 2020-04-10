@@ -41,15 +41,15 @@ public class Synchronizer {
     private final ScheduledExecutorService fsync;
     private final String context;
     private final StorageProperties storageProperties;
-    private final Consumer<WritePosition> completeSegmentCallback;
+    private final Consumer<Long> completeSegmentCallback;
     private final AtomicReference<WritePosition> lastCompletedRef = new AtomicReference<>();
-    private final ConcurrentSkipListSet<WritePosition> syncAndCloseFile = new ConcurrentSkipListSet<>();
+    private final ConcurrentSkipListSet<Long> syncAndCloseFile = new ConcurrentSkipListSet<>();
     private final AtomicBoolean updated = new AtomicBoolean();
     private volatile ScheduledFuture<?> forceJob;
     private volatile ScheduledFuture<?> syncJob;
 
     public Synchronizer(String context, StorageProperties storageProperties,
-                        Consumer<WritePosition> completeSegmentCallback) {
+                        Consumer<Long> completeSegmentCallback) {
         this.context = context;
         this.storageProperties = storageProperties;
         this.completeSegmentCallback = completeSegmentCallback;
@@ -73,7 +73,7 @@ public class Synchronizer {
                         writePositionEntry.getValue().onCompleted(writePosition.sequence)) {
                     updated.set(true);
                     if (canSyncAt(writePosition)) {
-                        syncAndCloseFile.add(lastCompletedRef.get());
+                        syncAndCloseFile.add(lastCompletedRef.get().segment);
                     }
                     lastCompletedRef.set(writePosition);
                     iterator.remove();
@@ -89,21 +89,23 @@ public class Synchronizer {
 
     private void syncAndCloseFile() {
         try {
-            WritePosition toSync;
-            while ((toSync = syncAndCloseFile.pollFirst()) != null) {
-                closeFile(toSync);
+            Long toSync;
+            synchronized (syncAndCloseFile) {
+                while ((toSync = syncAndCloseFile.pollFirst()) != null) {
+                    closeFile(toSync);
+                }
             }
         } catch (RuntimeException t) {
             log.warn("syncAndClose job failed - {}", t.getMessage(), t);
         }
     }
 
-    private void closeFile(WritePosition toSync) {
+    private void closeFile(Long toSync) {
         log.debug("Syncing segment and index at {}", toSync);
         try {
             completeSegmentCallback.accept(toSync);
         } catch (Exception e) {
-            log.debug("Failed to close file {}", toSync.segment, e);
+            log.debug("Failed to close file {}", toSync, e);
         }
         log.info("Synced segment and index at {}", toSync);
     }
@@ -177,9 +179,7 @@ public class Synchronizer {
         syncJob = null;
         forceJob = null;
         waitForPendingWrites();
-        while (!syncAndCloseFile.isEmpty()) {
-            syncAndCloseFile();
-        }
+        syncAndCloseFile();
         if (!writePositions.isEmpty()) {
             writePositions.clear();
         }

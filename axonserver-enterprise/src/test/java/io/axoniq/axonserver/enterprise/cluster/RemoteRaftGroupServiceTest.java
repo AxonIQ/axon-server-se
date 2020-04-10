@@ -37,6 +37,7 @@ public class RemoteRaftGroupServiceTest {
     private static final String CONTEXT = "TEST";
     private static final String NODE = "NODE";
     private static final int port = 27777;
+    public static final int TIMEOUT = 5;
     private RemoteRaftGroupService testSubject;
     private static Server dummyServer;
 
@@ -68,90 +69,95 @@ public class RemoteRaftGroupServiceTest {
 
     @Test
     public void addNodeToContext() throws InterruptedException, ExecutionException, TimeoutException {
-        ContextUpdateConfirmation result = testSubject.addNodeToContext(CONTEXT, Node.getDefaultInstance()).get(1,
+        ContextUpdateConfirmation result = testSubject.addNodeToContext(CONTEXT, Node.getDefaultInstance()).get(TIMEOUT,
                                                                                                                 TimeUnit.SECONDS);
     }
 
     @Test
     public void deleteNode() throws InterruptedException, ExecutionException, TimeoutException {
-        ContextUpdateConfirmation result = testSubject.deleteNode(CONTEXT, NODE).get(1, TimeUnit.SECONDS);
+        ContextUpdateConfirmation result = testSubject.deleteNode(CONTEXT, NODE).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     @Test
     public void updateApplication() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.updateApplication(ContextApplication.getDefaultInstance()).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.updateApplication(ContextApplication.getDefaultInstance()).get(TIMEOUT,
+                                                                                                 TimeUnit.SECONDS);
     }
 
     @Test
     public void appendEntry() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.appendEntry(CONTEXT, "Entry", "Entry".getBytes()).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.appendEntry(CONTEXT, "Entry", "Entry".getBytes()).get(TIMEOUT, TimeUnit.SECONDS);
         System.out.println(result);
     }
 
     @Test
     public void getStatus() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.getStatus(c -> System.out.println(c)).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.getStatus(c -> System.out.println(c)).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     @Test
     public void initContext() throws InterruptedException, ExecutionException, TimeoutException {
         ContextConfiguration result = testSubject.initContext(CONTEXT,
                                                               Collections.singletonList(Node.getDefaultInstance())).get(
-                1,
+                TIMEOUT,
                 TimeUnit.SECONDS);
     }
 
     @Test
     public void updateLoadBalancingStrategy() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.updateLoadBalancingStrategy(CONTEXT, LoadBalanceStrategy.getDefaultInstance()).get(1,
-                                                                                                                     TimeUnit.SECONDS);
+        Void result = testSubject.updateLoadBalancingStrategy(CONTEXT, LoadBalanceStrategy.getDefaultInstance()).get(
+                TIMEOUT,
+                TimeUnit.SECONDS);
     }
 
     @Test
     public void updateProcessorLoadBalancing() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.updateProcessorLoadBalancing(CONTEXT, ProcessorLBStrategy.getDefaultInstance()).get(1,
-                                                                                                                      TimeUnit.SECONDS);
+        Void result = testSubject.updateProcessorLoadBalancing(CONTEXT, ProcessorLBStrategy.getDefaultInstance()).get(
+                TIMEOUT,
+                TimeUnit.SECONDS);
     }
 
     @Test
     public void deleteLoadBalancingStrategy() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.deleteLoadBalancingStrategy(CONTEXT, LoadBalanceStrategy.getDefaultInstance()).get(1,
-                                                                                                                     TimeUnit.SECONDS);
+        Void result = testSubject.deleteLoadBalancingStrategy(CONTEXT, LoadBalanceStrategy.getDefaultInstance()).get(
+                TIMEOUT,
+                TimeUnit.SECONDS);
     }
 
     @Test
     public void deleteContext() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.deleteContext(CONTEXT, false).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.deleteContext(CONTEXT, false).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     @Test
     public void configuration() throws InterruptedException, ExecutionException, TimeoutException {
-        ContextConfiguration result = testSubject.configuration(CONTEXT).get(1, TimeUnit.SECONDS);
+        ContextConfiguration result = testSubject.configuration(CONTEXT).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     @Test
     public void transferLeadership() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.transferLeadership(CONTEXT).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.transferLeadership(CONTEXT).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     @Test
     public void deleteApplication() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.deleteApplication(ContextApplication.getDefaultInstance()).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.deleteApplication(ContextApplication.getDefaultInstance()).get(TIMEOUT,
+                                                                                                 TimeUnit.SECONDS);
     }
 
     @Test
     public void updateUser() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.updateUser(ContextUser.getDefaultInstance()).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.updateUser(ContextUser.getDefaultInstance()).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     @Test
     public void deleteUser() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.deleteUser(ContextUser.getDefaultInstance()).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.deleteUser(ContextUser.getDefaultInstance()).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     @Test
     public void prepareDeleteNodeFromContext() throws InterruptedException, ExecutionException, TimeoutException {
-        Void result = testSubject.prepareDeleteNodeFromContext(CONTEXT, NODE).get(1, TimeUnit.SECONDS);
+        Void result = testSubject.prepareDeleteNodeFromContext(CONTEXT, NODE).get(TIMEOUT, TimeUnit.SECONDS);
     }
 
     private static class DummyRaftGroupServiceGrpc extends RaftGroupServiceGrpc.RaftGroupServiceImplBase {
