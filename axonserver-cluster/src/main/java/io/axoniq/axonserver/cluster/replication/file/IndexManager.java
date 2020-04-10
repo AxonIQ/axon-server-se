@@ -11,6 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
@@ -38,11 +41,16 @@ public class IndexManager {
 
     public boolean validIndex(long segment) {
         try {
-            return getIndex(segment) != null;
+            return fileExists(segment) && getIndex(segment) != null;
         } catch (Exception ex) {
             logger.warn("{}: Failed to validate index for segment: {}", context, segment, ex);
         }
         return false;
+    }
+
+    private boolean fileExists(long segment) {
+        return storageProperties.indexFile(context, segment).exists() &&
+                storageProperties.indexFile(context, segment).canRead();
     }
 
     public Index getIndex(long segment) {
@@ -78,9 +86,9 @@ public class IndexManager {
         }
 
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
-        if( storageProperties.isUseMmapIndex()) {
+        if (storageProperties.isUseMmapIndex()) {
             maker.fileMmapEnable();
-            if( storageProperties.isCleanerHackEnabled()) {
+            if (storageProperties.isCleanerHackEnabled()) {
                 maker.cleanerHackEnable();
             }
         } else {
@@ -95,8 +103,13 @@ public class IndexManager {
         }
         db.close();
 
-        if( ! tempFile.renameTo(storageProperties.indexFile(context, segment)) ) {
-            throw new LogException(ErrorCode.INDEX_WRITE_ERROR, context + ": Failed to rename index file:" + tempFile);
+        try {
+            Files.move(tempFile.toPath(), storageProperties.indexFile(context, segment).toPath(),
+                       StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new LogException(ErrorCode.INDEX_WRITE_ERROR,
+                                   "Failed to rename index file + storageProperties.indexFile(context, segment)",
+                                   e);
         }
     }
 

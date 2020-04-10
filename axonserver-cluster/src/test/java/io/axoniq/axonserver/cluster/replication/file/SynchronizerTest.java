@@ -20,10 +20,10 @@ public class SynchronizerTest {
 
     @Before
     public void setUp() throws Exception {
-        StorageProperties storageProperies = new StorageProperties();
-        storageProperies.setSyncInterval(1);
-        synchronizer = new Synchronizer("sample", storageProperies, w -> {
-            completedSegments.add(w.segment);
+        StorageProperties storageProperties = new StorageProperties();
+        storageProperties.setSyncInterval(1);
+        synchronizer = new Synchronizer("sample", storageProperties, w -> {
+            completedSegments.add(w);
         });
     }
 
@@ -33,7 +33,6 @@ public class SynchronizerTest {
         when(buffer.getInt(anyInt())).thenReturn(10);
         long segment = 10_000_000;
         Set<Long> completedSequences = new HashSet<>();
-        Set<Long> cancelledSequences = new HashSet<>();
         synchronizer.init(new WritePosition(1, 1, buffer, segment));
         StorageCallback callback = new StorageCallback() {
             @Override
@@ -67,6 +66,43 @@ public class SynchronizerTest {
         synchronizer.register(new WritePosition(4, 1, buffer, newSegment + 1), callback);
         synchronizer.notifyWritePositions();
         Thread.sleep(100);
+        assertEquals(1, completedSegments.size());
+    }
+
+    @Test
+    public void shutdownDuringCompleteSegment() throws InterruptedException {
+        StorageProperties storageProperties = new StorageProperties();
+        storageProperties.setSyncInterval(1);
+        synchronizer = new Synchronizer("sample", storageProperties, w -> {
+            try {
+                Thread.sleep(200);
+                completedSegments.add(w);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        WritableEntrySource buffer = mock(WritableEntrySource.class);
+        when(buffer.getInt(anyInt())).thenReturn(10);
+        long segment = 10_000_000;
+        synchronizer.init(new WritePosition(1, 1, buffer, segment));
+        StorageCallback callback = new StorageCallback() {
+            @Override
+            public boolean onCompleted(long firstToken) {
+                return true;
+            }
+
+            @Override
+            public void onError(Throwable cause) {
+            }
+        };
+        synchronizer.register(new WritePosition(1, 1, buffer, segment), callback);
+        synchronizer.notifyWritePositions();
+        synchronizer.register(new WritePosition(2, 1, buffer, segment + 1), callback);
+        synchronizer.notifyWritePositions();
+        Thread.sleep(20);
+
+        assertEquals(0, completedSegments.size());
+        synchronizer.shutdown(false);
         assertEquals(1, completedSegments.size());
     }
 }

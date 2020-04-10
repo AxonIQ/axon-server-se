@@ -28,6 +28,11 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.3.3
+-------------------------------
+
+* Fix for race condition during rollback of transaction log
+
 Release Notes for version 4.3.2
 -------------------------------
 
