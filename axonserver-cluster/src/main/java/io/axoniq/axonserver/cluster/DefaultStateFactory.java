@@ -60,7 +60,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
 
     @Override
     public MembershipState fatalState() {
-        return new FatalState(new DefaultResponseFactory(raftGroup));
+        return new FatalState(new DefaultResponseFactory(raftGroup), raftGroup);
     }
 
     @Override

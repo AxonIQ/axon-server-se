@@ -637,4 +637,28 @@ public class RaftNode {
     public long unappliedEntriesCount() {
         return raftGroup.logEntryProcessor().commitIndex() - raftGroup.logEntryProcessor().lastAppliedIndex();
     }
+
+    /**
+     * Checks health of the node.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if this node considers itself healthy
+     */
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        return state.get() == null || state.get().health(statusConsumer);
+    }
+
+    /**
+     * Forces node to move to fatal state.
+     */
+    public void changeToFatal() {
+        updateState(state.get(), stateFactory.fatalState(), "Force to fatal state");
+    }
+
+    /**
+     * Forces node to move to follower state.
+     */
+    public void changeToFollower() {
+        updateState(state.get(), stateFactory.followerState(), "Force to fatal state");
+    }
 }

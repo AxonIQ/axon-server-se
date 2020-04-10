@@ -395,4 +395,15 @@ public abstract class AbstractMembershipState implements MembershipState {
     public List<Node> currentGroupMembers() {
         return currentConfiguration.groupMembers();
     }
+
+    /**
+     * Checks health of the node based on its state. base implementation checks state of the logEntryProcessor.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if this node considers itself healthy
+     */
+    @Override
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        return raftGroup.logEntryProcessor().health(statusConsumer);
+    }
 }

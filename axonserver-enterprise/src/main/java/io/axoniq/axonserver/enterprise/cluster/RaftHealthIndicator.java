@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
@@ -27,37 +26,26 @@ public class RaftHealthIndicator extends AbstractHealthIndicator {
         builder.up();
         AtomicBoolean hasAnyLeader = new AtomicBoolean();
         raftController.getContexts().forEach(c -> {
-            RaftNode thisNode = raftController.getRaftNode(c);
-            if (thisNode.isLeader()) {
-                RaftGroup raftGroup = raftController.getRaftGroup(c);
-                long lastLogIndex = raftGroup.localLogEntryStore().lastLogIndex();
-                long now = System.currentTimeMillis();
-                thisNode.replicatorPeers().forEachRemaining(
-                        rp -> {
-                            long lastMessageAge = now - rp.lastMessageReceived();
-                            long raftMsgBuffer = lastLogIndex - (rp.nextIndex() - 1);
-                            if (lastMessageAge > raftGroup.raftConfiguration().maxElectionTimeout()) {
-                                builder.withDetail(c + ".follower." + rp.nodeName() + ".status", "NO_ACK_RECEIVED");
-                                builder.status(WARN_STATUS);
-                            } else if(raftMsgBuffer > 100) {
-                                builder.withDetail(c + ".follower." + rp.nodeName() + ".status", "BEHIND");
-                                builder.status(WARN_STATUS);
-                            } else {
-                                builder.withDetail(c + ".follower." + rp.nodeName() + ".status", "UP");
-                            }
-                        }
-                );
-            }
-            String leader = thisNode.getLeaderName();
-            if (leader == null) {
-                builder.status(WARN_STATUS);
-            } else {
-                hasAnyLeader.set(true);
-            }
-            builder.withDetail(c + ".leader", StringUtils.getOrDefault(leader, "None"));
+            try {
+                RaftNode thisNode = raftController.getRaftNode(c);
+                if (!thisNode.health(builder::withDetail)) {
+                    builder.status(WARN_STATUS);
+                }
 
-            if (thisNode.unappliedEntriesCount() > 100) {
-                builder.withDetail(c + ".status", "BEHIND");
+                String leader = thisNode.getLeaderName();
+                if (leader == null) {
+                    builder.status(WARN_STATUS);
+                } else {
+                    hasAnyLeader.set(true);
+                }
+                builder.withDetail(c + ".leader", StringUtils.getOrDefault(leader, "None"));
+
+                if (thisNode.unappliedEntriesCount() > 100) {
+                    builder.withDetail(c + ".status", "BEHIND");
+                    builder.status(WARN_STATUS);
+                }
+            } catch (IllegalStateException ex) {
+                builder.withDetail(c + ".status", ex.getMessage());
                 builder.status(WARN_STATUS);
             }
         });
