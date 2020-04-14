@@ -265,11 +265,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private long getMaxSequence(GetAggregateEventsRequest request) {
-        if (request.getUnknownFields().hasField(99)) {
-            List<Long> max = request.getUnknownFields().getField(99).getFixed64List();
-            if (!max.isEmpty()) {
-                return max.get(0);
-            }
+        if (request.getMaxSequence() > 0) {
+            return request.getMaxSequence();
         }
         return Long.MAX_VALUE;
     }
@@ -398,7 +395,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workersMap.forEach((k, v) -> v.validateActiveConnections());
     }
 
-    public long getLastToken(String context) {
+    public long getLastEvent(String context) {
         workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).eventStorageEngine.getLastToken();
     }
@@ -483,7 +480,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
-    public long getFirstToken(String context) {
+    public long firstToken(String context) {
         return workers(context).eventStreamReader.getFirstToken();
     }
 
@@ -522,7 +519,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.gauge = meterFactory.gauge(BaseMetricName.AXON_EVENT_LAST_TOKEN,
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,
-                                            c -> (double) getLastToken(c));
+                                            c -> (double) getLastEvent(c));
             this.snapshotGauge = meterFactory.gauge(BaseMetricName.AXON_SNAPSHOT_LAST_TOKEN,
                                                     Tags.of(MeterFactory.CONTEXT, context),
                                                     context,

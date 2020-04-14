@@ -28,31 +28,29 @@ import javax.annotation.Nonnull;
 public class AxonServers implements Iterable<AxonServer> {
     private static final String ADMIN = "_admin";
 
-    private final Topology clusterController;
-    private final EventStoreLocator eventStoreLocator;
+    private final Topology topology;
 
-    public AxonServers(Topology clusterController,
+    public AxonServers(Topology topology,
                        EventStoreLocator eventStoreLocator) {
-        this.clusterController = clusterController;
-        this.eventStoreLocator = eventStoreLocator;
+        this.topology = topology;
     }
 
     @Override
     @Nonnull
     public Iterator<AxonServer> iterator() {
-        return  clusterController.nodes()
-                                 .sorted(Comparator.comparing(AxonServerNode::getName))
-                                 .map(node -> (AxonServer) new AxonServer() {
+        return topology.nodes()
+                       .sorted(Comparator.comparing(AxonServerNode::getName))
+                       .map(node -> (AxonServer) new AxonServer() {
 
-                                     @Override
-                                     public boolean isActive() {
-                                         return clusterController.isActive(node);
-                                     }
+                           @Override
+                           public boolean isActive() {
+                               return topology.isActive(node);
+                           }
 
-                                     @Override
-                                     public AxonServerNode node() {
-                                         return node;
-                                     }
+                           @Override
+                           public AxonServerNode node() {
+                               return node;
+                           }
 
                                      @Override
                                      public List<String> contexts() {
@@ -70,16 +68,15 @@ public class AxonServers implements Iterable<AxonServer> {
 
                                              @Override
                                              public boolean master() {
-                                                 return eventStoreLocator.isLeader(node.getName(), contextName, false);
+                                                 return topology.isLeader(node.getName(), contextName);
                                              }
                                          } ).sorted(Comparator.comparing(Storage::context)).collect(Collectors.toList());
                                      }
 
                                      @Override
                                      public boolean isAdminLeader() {
-                                         return eventStoreLocator.isLeader(node.getName(),
-                                                                           ADMIN,
-                                                                           false);
+                                         return topology.isLeader(node.getName(),
+                                                                  ADMIN);
                                      }
                                  }).iterator();
     }

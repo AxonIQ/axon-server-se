@@ -36,11 +36,6 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
     }
 
     @Override
-    public boolean isLeader(String nodeName, String contextName, boolean waitForLeader) {
-        return true;
-    }
-
-    @Override
     public EventStore getEventStore(String context) {
         if (Topology.DEFAULT_CONTEXT.equals(context)) {
             return localEventStore;

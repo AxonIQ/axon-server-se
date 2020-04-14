@@ -442,7 +442,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         Optional<EventSource> buffer = getEventSource(segment);
         buffer.ifPresent(eventSource -> {
             positions.forEach(positionInfo -> {
-                if (positionInfo.getAggregateSequenceNumber() < maxSequence) {
+                if (positionInfo.getAggregateSequenceNumber() <= maxSequence) {
                     onEvent.accept(eventSource.readEvent(positionInfo.getPosition()));
                 }
             });

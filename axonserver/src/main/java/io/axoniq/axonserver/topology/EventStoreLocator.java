@@ -21,18 +21,8 @@ import io.axoniq.axonserver.message.event.EventStore;
 public interface EventStoreLocator {
 
     /**
-     * Checks if a specific node is leader for the specified context.
-     * @param nodeName the node to consider as leader
-     * @param contextName the context name
-     * @param waitForLeader option to wait until leader elected (within time limit)
-     * @return true if node is leader
-     */
-    boolean isLeader(String nodeName, String contextName, boolean waitForLeader);
-
-    /**
      * Retrieve an EventStore instance which can be used to store and retrieve events. Returns null when there is no
-     * leader for
-     * the specified context.
+     * leader for the specified context.
      *
      * @param context the context to get the eventstore for
      * @return an EventStore
@@ -43,14 +33,12 @@ public interface EventStoreLocator {
      * Retrieve an EventStore instance which can be used to store and retrieve events. Returns null when there is no
      * leader for the specified context.
      *
-     * @param context       the context to get the local EventStore for
-     * @param useLocal      use local event store (if possible - if current node has event store for this context,
-     *                      otherwise
-     *                      opens a remote connection)
-     * @param trackingToken this tracking token must be available on the event store node to use
+     * @param context  the context to get the local EventStore for
+     * @param useLocal use local event store (if possible - if current node has event store for this context,
+     *                 otherwise opens a remote connection)
      * @return an EventStore
      */
-    default EventStore getEventStore(String context, boolean useLocal, long trackingToken) {
+    default EventStore getEventStore(String context, boolean useLocal) {
         return getEventStore(context);
     }
 }
