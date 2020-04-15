@@ -228,7 +228,7 @@ public class EventProcessorEvents {
     }
 
     /**
-     * Axon Server Event that is notified any time a split instruction for
+     * Axon Server Event that is published any time a split instruction for
      * a tracking event processor is successfully executed.
      */
     public static class SplitSegmentsSucceeded implements AxonServerEvent {
