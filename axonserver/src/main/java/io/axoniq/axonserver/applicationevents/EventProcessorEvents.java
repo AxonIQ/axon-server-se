@@ -34,7 +34,7 @@ public class EventProcessorEvents {
     }
 
     /**
-     * Internal Axon Server event that is notified any time is received an update about the Event Processors Status
+     * Internal Axon Server event that is published any time is received an update about the Event Processors Status
      * from a client application. This class implements {@link AxonServerEvent} as this event must be forwarded
      * among all instances of AxonServer belonging to the same cluster.
      */
