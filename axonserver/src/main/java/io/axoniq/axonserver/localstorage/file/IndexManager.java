@@ -42,10 +42,10 @@ public class IndexManager {
     private static final String AGGREGATE_MAP = "aggregateMap";
     private static final ScheduledExecutorService scheduledExecutorService =
             Executors.newScheduledThreadPool(1, new CustomizableThreadFactory("index-manager-"));
-    private final StorageProperties storageProperties;
+    protected final StorageProperties storageProperties;
     private final ConcurrentNavigableMap<Long, PersistedBloomFilter> bloomFilterPerSegment = new ConcurrentSkipListMap<>();
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
-    private final String context;
+    protected final String context;
     private ScheduledFuture<?> cleanupTask;
 
     public IndexManager(String context, StorageProperties storageProperties) {
@@ -213,7 +213,7 @@ public class IndexManager {
                 maker.fileChannelEnable();
             }
             this.db = maker.make();
-            this.positions = db.hashMap(AGGREGATE_MAP, Serializer.STRING, PositionInfoSerializer.get()).createOrOpen();
+            this.positions = db.hashMap(AGGREGATE_MAP, Serializer.STRING, PositionInfoSerializer.get()).open();
         }
 
         public SortedSet<PositionInfo> getPositions(String aggregateId) {

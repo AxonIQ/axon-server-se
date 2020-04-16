@@ -52,15 +52,15 @@ import java.util.stream.Stream;
  */
 public class PrimaryEventStore extends SegmentBasedEventStore {
 
-    private static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
+    protected static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
 
-    private final EventTransformerFactory eventTransformerFactory;
-    private final Synchronizer synchronizer;
-    private final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
-    private final AtomicLong lastToken = new AtomicLong(-1);
+    protected final EventTransformerFactory eventTransformerFactory;
+    protected final Synchronizer synchronizer;
+    protected final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
+    protected final AtomicLong lastToken = new AtomicLong(-1);
     private final ConcurrentNavigableMap<Long, Map<String, SortedSet<PositionInfo>>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
-    private final Map<Long, ByteBufferEventSource> readBuffers = new ConcurrentHashMap<>();
-    private EventTransformer eventTransformer;
+    protected final Map<Long, ByteBufferEventSource> readBuffers = new ConcurrentHashMap<>();
+    protected EventTransformer eventTransformer;
 
     public PrimaryEventStore(EventTypeContext context, IndexManager indexCreator,
                              EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
@@ -126,7 +126,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private long getFirstFile(long lastInitialized, File events) {
+    protected long getFirstFile(long lastInitialized, File events) {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
 
         return Arrays.stream(eventFiles)
@@ -136,7 +136,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                      .orElse(0L);
     }
 
-    private FilePreparedTransaction prepareTransaction(List<SerializedEvent> origEventList) {
+    protected FilePreparedTransaction prepareTransaction(List<SerializedEvent> origEventList) {
         List<ProcessedEvent> eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
                 Collectors.toList());
         int eventSize = eventBlockSize(eventList);
@@ -221,7 +221,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected Optional<EventSource> getEventSource(long segment) {
+    public Optional<EventSource> getEventSource(long segment) {
         if (readBuffers.containsKey(segment)) {
             return Optional.of(readBuffers.get(segment).duplicate());
         }
@@ -329,7 +329,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         FileUtils.delete(storageProperties.dataFile(context, segment));
     }
 
-    private void completeSegment(WritePosition writePosition) {
+    protected void completeSegment(WritePosition writePosition) {
         indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment));
         if (next != null) {
             next.handover(writePosition.segment, () -> {
@@ -407,7 +407,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         rollback(-1);
     }
 
-    private WritableEventSource getOrOpenDatafile(long segment) {
+    protected WritableEventSource getOrOpenDatafile(long segment) {
         File file = storageProperties.dataFile(context, segment);
         long size = storageProperties.getSegmentSize();
         if (file.exists()) {

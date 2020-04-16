@@ -59,25 +59,27 @@ import static org.apache.commons.lang3.ArrayUtils.contains;
  * @author Marc Gathier
  */
 public abstract class SegmentBasedEventStore implements EventStorageEngine {
+
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
     protected static final int MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK = 10;
 
     private static final int TRANSACTION_LENGTH_BYTES = 4;
     private static final int NUMBER_OF_EVENTS_BYTES = 2;
-    static final int VERSION_BYTES = 1;
-    static final int FILE_OPTIONS_BYTES = 4;
-    static final int TX_CHECKSUM_BYTES = 4;
-    static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
-    static final byte VERSION = 2;
-    static final byte TRANSACTION_VERSION = 2;
+    protected static final int VERSION_BYTES = 1;
+    protected static final int FILE_OPTIONS_BYTES = 4;
+    protected static final int TX_CHECKSUM_BYTES = 4;
+    protected static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
+    protected static final byte VERSION = 2;
+    protected static final byte TRANSACTION_VERSION = 2;
     protected final String context;
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;
     protected volatile SegmentBasedEventStore next;
-    private final EventTypeContext type;
+    protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
 
-    public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager, StorageProperties storageProperties) {
+    public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
+                                  StorageProperties storageProperties) {
         this.type = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
@@ -115,6 +117,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+        long before = System.currentTimeMillis();
         SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber);
         boolean delegate = true;
         if( ! positionInfos.isEmpty()) {
@@ -128,8 +131,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
         positionInfos.keySet()
                      .forEach(segment -> retrieveEventsForAnAggregate(segment,
-                                                                          positionInfos.get(segment),
-                                                                          eventConsumer));
+                                                                      positionInfos.get(segment),
+                                                                      eventConsumer));
+        logger.warn("Reading {} took {}ms", aggregateId, System.currentTimeMillis() - before);
 
     }
 
@@ -507,7 +511,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
      * @param segment gets an EventSource for the segment
      * @return the event source or Optional.empty() if segment not managed by this handler
      */
-    protected abstract Optional<EventSource> getEventSource(long segment);
+    public abstract Optional<EventSource> getEventSource(long segment);
 
     /**
      * Get all segments

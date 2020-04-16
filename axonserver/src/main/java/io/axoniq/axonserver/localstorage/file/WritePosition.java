@@ -14,30 +14,33 @@ import java.util.Comparator;
 /**
  * @author Marc Gathier
  */
-public class WritePosition  implements Comparable<WritePosition> {
+public class WritePosition implements Comparable<WritePosition> {
 
     static final WritePosition INVALID = new WritePosition(Long.MAX_VALUE, Integer.MAX_VALUE, null, null);
     private static final Comparator<WritePosition> writePositionComparator =
             Comparator.comparingLong(WritePosition::getSegment)
                       .thenComparingInt(WritePosition::getPosition);
-    final long sequence;
-    final int position;
-    final WritableEventSource buffer;
-    final Long segment;
+    public final long sequence;
+    public final int position;
+    public final WritableEventSource buffer;
+    public final Long segment;
 
-    WritePosition(long sequence, int position) {
+    public WritePosition(long sequence, int position) {
         this(sequence, position, null, null);
     }
 
-    WritePosition(long sequence, int position, WritableEventSource buffer, Long segment) {
+    public WritePosition(long sequence, int position, WritableEventSource buffer, Long segment) {
         this.sequence = sequence;
         this.position = position;
         this.buffer = buffer;
         this.segment = segment;
     }
 
-    WritePosition reset(WritableEventSource buffer) {
-        return new WritePosition(sequence, SegmentBasedEventStore.VERSION_BYTES + SegmentBasedEventStore.FILE_OPTIONS_BYTES, buffer, sequence);
+    public WritePosition reset(WritableEventSource buffer) {
+        return new WritePosition(sequence,
+                                 SegmentBasedEventStore.VERSION_BYTES + SegmentBasedEventStore.FILE_OPTIONS_BYTES,
+                                 buffer,
+                                 sequence);
     }
 
     boolean isOverflow(int transactionLength) {
