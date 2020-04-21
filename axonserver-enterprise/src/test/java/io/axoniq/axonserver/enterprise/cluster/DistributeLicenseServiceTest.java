@@ -50,10 +50,9 @@ public class DistributeLicenseServiceTest {
     private AdminDB adminDB;
 
     private TaskPublisher taskPublisher;
-    private Map<String, Set<Object>> scheduledPayloadsTasks = new ConcurrentHashMap<>();
+    private final Map<String, Set<Object>> scheduledPayloadsTasks = new ConcurrentHashMap<>();
     private ClusterController clusterController;
     private ApplicationEventPublisher applicationEventPublisher;
-    private TaskPayloadSerializer serializer = new JacksonTaskPayloadSerializer();
 
     private ClusterNode createNode(String name) {
         return new ClusterNode(name, name, name, 1, 2, 3);
@@ -114,13 +113,13 @@ public class DistributeLicenseServiceTest {
     @Test
     public void prepareUpdateLicenseTask() {
 
-        PrepareUpdateLicenseTask prepareUpdateLicenseTask = new PrepareUpdateLicenseTask(taskPublisher, serializer, clusterController);
+        PrepareUpdateLicenseTask prepareUpdateLicenseTask = new PrepareUpdateLicenseTask(taskPublisher, clusterController);
         prepareUpdateLicenseTask.execute("myLicense".getBytes());
 
 
         Set<UpdateLicenseTaskPayload> scheduledPayloads = scheduledPayloadsTasks.getOrDefault(UpdateLicenseTask.class.getName(), Collections.emptySet())
                 .stream()
-                .map(it -> (UpdateLicenseTaskPayload) serializer.deserialize((Payload) it))
+                .map(it -> (UpdateLicenseTaskPayload) it)
                 .collect(Collectors.toSet());
 
         TestCase.assertEquals(2, scheduledPayloads.size());
@@ -134,8 +133,8 @@ public class DistributeLicenseServiceTest {
 
         UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("adminNode", "myLicense".getBytes());
 
-        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
-        updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
+        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(clusterController, applicationEventPublisher);
+        updateLicenseTask.execute(updateLicenseTaskPayload);
 
         verify(applicationEventPublisher, times(1)).publishEvent(any(ClusterEvents.LicenseUpdated.class));
     }
@@ -152,8 +151,8 @@ public class DistributeLicenseServiceTest {
 
         UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode", "myLicense".getBytes());
 
-        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
-        updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
+        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(clusterController, applicationEventPublisher);
+        updateLicenseTask.execute(updateLicenseTaskPayload);
 
         verify(remoteConnection, times(1)).publish(any(ConnectorCommand.class));
 
@@ -177,10 +176,10 @@ public class DistributeLicenseServiceTest {
 
         UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode", "myLicense".getBytes());
 
-        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(serializer, clusterController, applicationEventPublisher);
+        UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(clusterController, applicationEventPublisher);
 
         try {
-            updateLicenseTask.execute(serializer.serialize(updateLicenseTaskPayload));
+            updateLicenseTask.execute(updateLicenseTaskPayload);
         } catch (TransientException e) {
             assertTrue(true);
         }

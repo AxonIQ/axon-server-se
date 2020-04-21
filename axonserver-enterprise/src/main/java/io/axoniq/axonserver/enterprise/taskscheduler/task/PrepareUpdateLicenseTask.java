@@ -22,14 +22,10 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 public class PrepareUpdateLicenseTask implements ScheduledTask {
 
     private final TaskPublisher taskPublisher;
-
-    private final TaskPayloadSerializer taskPayloadSerializer;
     private final ClusterController clusterController;
 
-    public PrepareUpdateLicenseTask(TaskPublisher taskPublisher, TaskPayloadSerializer taskPayloadSerializer, ClusterController clusterController) {
-        this.taskPublisher = taskPublisher;
-
-        this.taskPayloadSerializer = taskPayloadSerializer;
+    public PrepareUpdateLicenseTask(TaskPublisher taskPublisher, ClusterController clusterController) {
+        this.taskPublisher = taskPublisher;;
         this.clusterController = clusterController;
     }
 
@@ -39,7 +35,6 @@ public class PrepareUpdateLicenseTask implements ScheduledTask {
 
         clusterController.nodes()
                 .map(node -> new UpdateLicenseTaskPayload(node.getName(),licensePayload))
-                .map(taskPayloadSerializer::serialize)
                 .forEach(task->taskPublisher.publishScheduledTask(getAdmin(), UpdateLicenseTask.class.getName(),task, Duration.ZERO));
     }
 

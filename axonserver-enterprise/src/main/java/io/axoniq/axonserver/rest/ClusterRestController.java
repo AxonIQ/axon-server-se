@@ -54,7 +54,6 @@ public class ClusterRestController {
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  FeatureChecker limits,
-                                 ClusterTagsCache clusterTagsCache,
                                  DistributeLicenseService distributeLicenseService) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;

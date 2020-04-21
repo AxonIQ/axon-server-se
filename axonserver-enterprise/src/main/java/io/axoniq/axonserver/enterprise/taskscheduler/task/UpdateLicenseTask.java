@@ -22,14 +22,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class UpdateLicenseTask implements ScheduledTask {
 
-    private final TaskPayloadSerializer taskPayloadSerializer;
-
     private final ClusterController clusterController;
 
     private final ApplicationEventPublisher eventPublisher;
 
-    public UpdateLicenseTask(TaskPayloadSerializer taskPayloadSerializer, ClusterController clusterController, ApplicationEventPublisher eventPublisher) {
-        this.taskPayloadSerializer = taskPayloadSerializer;
+    public UpdateLicenseTask(ClusterController clusterController, ApplicationEventPublisher eventPublisher) {
         this.clusterController = clusterController;
         this.eventPublisher = eventPublisher;
     }
@@ -37,7 +34,7 @@ public class UpdateLicenseTask implements ScheduledTask {
     @Override
     public void execute(Object payload) {
 
-        UpdateLicenseTaskPayload licenseTaskPayload = (UpdateLicenseTaskPayload) taskPayloadSerializer.deserialize((Payload) payload);
+        UpdateLicenseTaskPayload licenseTaskPayload = (UpdateLicenseTaskPayload) payload;
 
         String payloadNodeName = licenseTaskPayload.getNodeName();
         String thisNodeName = clusterController.getMe().getName();

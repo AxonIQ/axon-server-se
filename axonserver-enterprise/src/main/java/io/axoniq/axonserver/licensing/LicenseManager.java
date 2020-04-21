@@ -10,8 +10,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
-import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -19,12 +19,11 @@ import java.util.*;
 
 /**
  * Manages all license operation:
- *
+ * <p>
  * Provides access to information from the license key.
  * Provides Read/Write file operations
  * Provides license validation
  * Handles request to update license to newer version
- *
  *
  * @author Stefan Dragisic
  * @since 4.4
@@ -33,23 +32,35 @@ import java.util.*;
 public class LicenseManager {
 
     private static final Logger logger = LoggerFactory.getLogger(LicenseManager.class);
-
+    private static final String PUBKEY =
+            "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA0xyNKA5aL42X7eXy1zwe\n" +
+                    "9V6do3TYhrH7smWa6RBtCkhQ2holCEalrdiEX3LQoyhPmvV8lqWrDc9JHuYheWQL\n" +
+                    "pQXKB84sb9DCCWZWTPV0OZpe8nyotgmwBYohvEzTGLLRrAp+pM/J+/IVSiMyiP5E\n" +
+                    "Kf6ODcRWQH/us+4x4IsjTZC+o0HsYjSXG62Bo7pXFXLKjUqA3rpTyT1v3Yafgp4C\n" +
+                    "78wHa/fqKCE562B2IEEhxWdsJl//wOsk/I8bYH+YoZtceGpRJlkMjK3t/KOExU61\n" +
+                    "ae5NJruyXbqRBWOtrcBb37b2cgykqaZlCwQczsZwl8Pglm1Yl0t8lTdTM+wxLErI\n" +
+                    "AbxYE50UtvMLCaIG8lqT9W28UQgOr+RPdkEwUWYNeWWH2R0Kukva9loB+LBDe/Ce\n" +
+                    "YhRvh41KpekJhU0NYjymCizNFohQ0rUDtt8p+i/IpIxfWBtgJODOrP2tbr8necX8\n" +
+                    "X5oMyN4H/ar6favdWCHXi9FtTrHv1lchisXn3R9/obJptkxyZc8yvWuEBhXBFJ6H\n" +
+                    "ydOPNdbiWIH9TptZ2vaQrSFyaPR5yCoG/kyZ6o7TQE8lK6MrULiJNB/6ZKujri5x\n" +
+                    "LovNJrtY/w69qVkC/8lIJhwJMSJKySeUYBhOjVN4f7vVEVYncYx8HJU2utQ1j6+e\n" +
+                    "9T0pQ8CjhkOpmcTcaaMmU0UCAwEAAQ==";
     private final AxonServerEnterpriseProperties axonServerEnterpriseProperties;
-
     private final String LICENSE_FILENAME = "axoniq.license";
+
 
     public LicenseManager(AxonServerEnterpriseProperties axonServerEnterpriseProperties) {
         this.axonServerEnterpriseProperties = axonServerEnterpriseProperties;
     }
 
-
     @EventListener
     public void on(ClusterEvents.LicenseUpdated licenseUpdated) {
-        createOrUpdate(licenseUpdated.getLicense()  );
+        createOrUpdate(licenseUpdated.getLicense());
     }
 
     /**
      * Writes license file to the disk or updates overrides current if exists
+     *
      * @param license license content
      */
     public void createOrUpdate(byte[] license) {
@@ -59,7 +70,10 @@ public class LicenseManager {
         Properties licenseProperties = load(license);
         validate(licenseProperties);
 
-        File path = new File(axonServerEnterpriseProperties.getLicenseDirectory());
+        String licenseDirectory = axonServerEnterpriseProperties.getLicenseDirectory() == null
+                ? Paths.get("").toAbsolutePath().toString() : axonServerEnterpriseProperties.getLicenseDirectory();
+
+        File path = new File(licenseDirectory);
         if (!path.exists() && !path.mkdirs()) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
                     "Failed to create directory: " + path.getAbsolutePath());
@@ -68,7 +82,7 @@ public class LicenseManager {
         try (FileOutputStream out = new FileOutputStream(path.getAbsolutePath() + "/" + LICENSE_FILENAME)) {
             out.write(license);
         } catch (IOException e) {
-            throw LicenseException.unableToWrite(path,e);
+            throw LicenseException.unableToWrite(path, e);
         }
 
         logger.info("New license saved!");
@@ -76,6 +90,7 @@ public class LicenseManager {
 
     /**
      * Validates & reads license file properties
+     *
      * @return license properties
      */
     public Properties readLicenseProperties() {
@@ -109,7 +124,7 @@ public class LicenseManager {
 
         Properties licenseProperties = new Properties();
         try {
-            licenseProperties.load( new ByteArrayInputStream(licenseFile));
+            licenseProperties.load(new ByteArrayInputStream(licenseFile));
         } catch (IOException ex) {
             throw LicenseException.noLicenseFile();
         }
@@ -118,6 +133,7 @@ public class LicenseManager {
 
     /**
      * Validates that license content is valid
+     *
      * @param license
      */
     public void validate(byte[] license) {
@@ -150,20 +166,6 @@ public class LicenseManager {
             throw new Error("This should never happen", ex);
         }
     }
-
-    private static final String PUBKEY =
-            "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA0xyNKA5aL42X7eXy1zwe\n" +
-                    "9V6do3TYhrH7smWa6RBtCkhQ2holCEalrdiEX3LQoyhPmvV8lqWrDc9JHuYheWQL\n" +
-                    "pQXKB84sb9DCCWZWTPV0OZpe8nyotgmwBYohvEzTGLLRrAp+pM/J+/IVSiMyiP5E\n" +
-                    "Kf6ODcRWQH/us+4x4IsjTZC+o0HsYjSXG62Bo7pXFXLKjUqA3rpTyT1v3Yafgp4C\n" +
-                    "78wHa/fqKCE562B2IEEhxWdsJl//wOsk/I8bYH+YoZtceGpRJlkMjK3t/KOExU61\n" +
-                    "ae5NJruyXbqRBWOtrcBb37b2cgykqaZlCwQczsZwl8Pglm1Yl0t8lTdTM+wxLErI\n" +
-                    "AbxYE50UtvMLCaIG8lqT9W28UQgOr+RPdkEwUWYNeWWH2R0Kukva9loB+LBDe/Ce\n" +
-                    "YhRvh41KpekJhU0NYjymCizNFohQ0rUDtt8p+i/IpIxfWBtgJODOrP2tbr8necX8\n" +
-                    "X5oMyN4H/ar6favdWCHXi9FtTrHv1lchisXn3R9/obJptkxyZc8yvWuEBhXBFJ6H\n" +
-                    "ydOPNdbiWIH9TptZ2vaQrSFyaPR5yCoG/kyZ6o7TQE8lK6MrULiJNB/6ZKujri5x\n" +
-                    "LovNJrtY/w69qVkC/8lIJhwJMSJKySeUYBhOjVN4f7vVEVYncYx8HJU2utQ1j6+e\n" +
-                    "9T0pQ8CjhkOpmcTcaaMmU0UCAwEAAQ==";
 
 
 }
