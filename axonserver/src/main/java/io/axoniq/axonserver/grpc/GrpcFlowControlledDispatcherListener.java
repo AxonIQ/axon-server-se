@@ -73,23 +73,22 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
         long old = permitsLeft.getAndAdd(count);
         getLogger().debug("Adding {} permits, #permits was: {}", count, old);
         if (old <= 0) {
-            IntStream.range(0, futures.length).forEach(i -> {
+            for (int i = 0; i < futures.length; i++) {
                 futures[i] = executorService.submit(this::process);
-            });
+            }
         }
     }
 
     public void cancel() {
         permitsLeft.set(0);
         getLogger().debug("cancel listener for {} ", queueName);
-        IntStream.range(0, futures.length).forEach(i -> {
-            if( futures[i] != null) {
-                futures[i].cancel(true);
+        for (Future<?> future : futures) {
+            if (future != null) {
+                future.cancel(true);
             }
-        });
+        }
         running = false;
     }
-
 
     public static void shutdown() {
         executorService.shutdown();
