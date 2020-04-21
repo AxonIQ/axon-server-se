@@ -16,12 +16,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
@@ -29,49 +27,44 @@ import java.util.function.Function;
  */
 public class FlowControlQueues<T> {
     private static final Logger logger = LoggerFactory.getLogger(FlowControlQueues.class);
-    private static final AtomicLong requestId = new AtomicLong(0);
+
     private final Comparator<T> comparator;
 
-    private final Map<String, BlockingQueue<FilterNode>> segments = new ConcurrentHashMap<>();
+    private final Map<String, BlockingQueue<T>> segments = new ConcurrentHashMap<>();
 
     public FlowControlQueues(Comparator<T> comparator) {
         this.comparator = comparator;
     }
 
     public FlowControlQueues() {
-        this(null);
+        this((t1, t2) -> 0);
     }
 
     public T take(String filterValue) throws InterruptedException {
-        BlockingQueue<FilterNode> filterSegment = segments.computeIfAbsent(filterValue, f -> new PriorityBlockingQueue<>());
-        FilterNode message = filterSegment.poll(1, TimeUnit.SECONDS);
-        return message == null ? null : message.value;
+        BlockingQueue<T> filterSegment = segments.computeIfAbsent(filterValue, f -> new PriorityBlockingQueue<>(100, comparator));
+        return filterSegment.poll(1, TimeUnit.SECONDS);
     }
 
-    public void put(String filterValue, T value)  {
-        if( value == null) throw new NullPointerException();
-        BlockingQueue<FilterNode> filterSegment = segments.computeIfAbsent(filterValue, f -> new PriorityBlockingQueue<>());
-        FilterNode filterNode = new FilterNode(value);
-        if( !filterSegment.offer(filterNode)) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
-
+    public void put(String filterValue, T value) {
+        if (value == null) {
+            throw new NullPointerException();
         }
-
-        if( logger.isTraceEnabled()) {
-            filterSegment.forEach(node -> logger.trace("entry: {}", node.id));
+        BlockingQueue<T> filterSegment = segments.computeIfAbsent(filterValue, f -> new PriorityBlockingQueue<>(100, comparator));
+        if (!filterSegment.offer(value)) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
         }
     }
 
     public void move(String oldFilterValue, Function<T, String> newFilterAssignment) {
         logger.debug("Remove: {}", oldFilterValue);
-        BlockingQueue<FilterNode> filterSegment = segments.remove(oldFilterValue);
+        BlockingQueue<T> filterSegment = segments.remove(oldFilterValue);
         if( filterSegment == null) return;
 
         filterSegment.forEach(filterNode -> {
-            String newFilterValue = newFilterAssignment.apply(filterNode.value);
+            String newFilterValue = newFilterAssignment.apply(filterNode);
             if( newFilterValue != null) {
                 try {
-                    segments.computeIfAbsent(newFilterValue, f -> new PriorityBlockingQueue<>()).put(filterNode);
+                    segments.computeIfAbsent(newFilterValue, f -> new PriorityBlockingQueue<>(100, comparator)).put(filterNode);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     logger.debug("Interrupt during move");
@@ -82,47 +75,9 @@ public class FlowControlQueues<T> {
         });
     }
 
-    public Map<String, BlockingQueue<FilterNode>> getSegments() {
+    public Map<String, BlockingQueue<T>> getSegments() {
         return segments;
     }
 
-    public class FilterNode implements Comparable<FilterNode> {
-        private final T value;
-        private final long id;
-
-        public FilterNode(T value) {
-            this.value = value;
-            this.id = requestId.getAndIncrement();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            FilterNode that = (FilterNode) o;
-            return id == that.id;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id);
-        }
-
-        @Override
-        public int compareTo(FilterNode o) {
-            if( comparator != null) {
-                int rc = comparator.compare(value, o.value);
-                if( rc != 0) return rc;
-
-            }
-            return Long.compare(id, o.id);
-
-
-        }
-    }
 
 }
