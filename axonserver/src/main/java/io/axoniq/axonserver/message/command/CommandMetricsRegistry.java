@@ -10,10 +10,10 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.Metrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
@@ -81,7 +81,7 @@ public class CommandMetricsRegistry {
     }
 
     private static String metricName(String command, String sourceClientId, ClientIdentification targetClientId) {
-        return String.format("%s.%s.%s", command, sourceClientId, targetClientId.metricName());
+        return String.join(".", command, sourceClientId, targetClientId.metricName());
     }
 
     private ClusterMetric clusterMetric(String command, ClientIdentification clientId){
