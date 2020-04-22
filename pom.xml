@@ -30,6 +30,7 @@
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>docker/axonserver-docker-hub</module>
+        <module>axonserver-test-utils</module>
     </modules>
 
     <properties>

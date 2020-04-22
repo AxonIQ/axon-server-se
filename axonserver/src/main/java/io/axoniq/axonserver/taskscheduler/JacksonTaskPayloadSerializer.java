@@ -19,7 +19,7 @@ import java.io.IOException;
  * Serializer to serialize task payloads in JSON format.
  *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
 @Component
 public class JacksonTaskPayloadSerializer implements TaskPayloadSerializer {
@@ -33,7 +33,7 @@ public class JacksonTaskPayloadSerializer implements TaskPayloadSerializer {
      * @return the deserialized object
      */
     @Override
-    public Object deserialize(Payload payload) {
+    public Object deserialize(TaskPayload payload) {
         try {
             return objectMapper.readValue(new String(payload.getData()),
                                           objectMapper.getTypeFactory().findClass(payload.getType()));
@@ -49,9 +49,9 @@ public class JacksonTaskPayloadSerializer implements TaskPayloadSerializer {
      * @return the serialized object
      */
     @Override
-    public Payload serialize(Object object) {
+    public TaskPayload serialize(Object object) {
         try {
-            return new Payload(object.getClass().getName(), objectMapper.writeValueAsString(object).getBytes());
+            return new TaskPayload(object.getClass().getName(), objectMapper.writeValueAsString(object).getBytes());
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Serializing payload failed", e);
         }

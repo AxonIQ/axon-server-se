@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
  * needs.
  *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
 public interface ScheduledTask {
 
@@ -46,6 +46,11 @@ public interface ScheduledTask {
     default void execute(String context, Object payload) {
     }
 
+    /**
+     * Returns true if the payload for tasks of this type is json serialized.
+     *
+     * @return true if the payload for tasks of this type is json serialized
+     */
     default boolean isSerialized() {
         return true;
     }

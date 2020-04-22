@@ -15,10 +15,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 /**
- * Repository of tasks to execute on the admin leader.
+ * Repository of tasks to execute.
  *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
 public interface TaskRepository extends JpaRepository<Task, String> {
 
@@ -30,7 +30,16 @@ public interface TaskRepository extends JpaRepository<Task, String> {
      */
     List<Task> findAllByContext(String context);
 
-    Iterable<Task> findAllByContextAndStatusAndTimestampGreaterThanEqualAndTimestampLessThan(
+    /**
+     * Finds all tasks for a {@code context} with given {@code status} to be executed within given time period.
+     *
+     * @param context      the name of the context
+     * @param status       the status of the task
+     * @param minTimestamp minimum timestamp (exclusive)
+     * @param maxTimestamp maximum timestamp (inclusive)
+     * @return list of matching tasks
+     */
+    List<Task> findAllByContextAndStatusAndTimestampGreaterThanEqualAndTimestampLessThan(
             String context, TaskStatus status, long minTimestamp, long maxTimestamp);
 
     /**
@@ -40,7 +49,15 @@ public interface TaskRepository extends JpaRepository<Task, String> {
      */
     void deleteAllByContext(String context);
 
-    default Iterable<Task> findScheduled(String context, long minTimestamp, long maxTimestamp) {
+    /**
+     * Finds all scheduled tasks for a {@code context} to be executed within given time period.
+     *
+     * @param context      the name of the context
+     * @param minTimestamp minimum timestamp (exclusive)
+     * @param maxTimestamp maximum timestamp (inclusive)
+     * @return list of scheduled tasks
+     */
+    default List<Task> findScheduled(String context, long minTimestamp, long maxTimestamp) {
         return findAllByContextAndStatusAndTimestampGreaterThanEqualAndTimestampLessThan(context,
                                                                                          TaskStatus.SCHEDULED,
                                                                                          minTimestamp,

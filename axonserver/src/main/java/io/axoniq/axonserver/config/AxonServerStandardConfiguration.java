@@ -39,7 +39,7 @@ import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MetricCollector;
-import io.axoniq.axonserver.taskscheduler.LocalTaskManager;
+import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
 import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.taskscheduler.TaskRepository;
@@ -140,8 +140,8 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventSchedulerGrpc.EventSchedulerImplBase.class)
-    public AxonServerClientService eventSchedulerService(LocalTaskManager localTaskManager) {
-        logger.warn("Creating SE EventSchedulerService");
+    public AxonServerClientService eventSchedulerService(StandaloneTaskManager localTaskManager) {
+        logger.info("Creating SE EventSchedulerService");
         return new EventSchedulerService(localTaskManager);
     }
 
@@ -239,20 +239,20 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(LocalTaskManager.class)
-    public LocalTaskManager localTaskManager(ScheduledTaskExecutor taskExecutor,
-                                             TaskRepository taskRepository,
-                                             TaskPayloadSerializer taskPayloadSerializer,
-                                             PlatformTransactionManager platformTransactionManager,
-                                             @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
-                                             Clock clock) {
-        return new LocalTaskManager(Topology.DEFAULT_CONTEXT,
-                                    taskExecutor,
-                                    taskRepository,
-                                    taskPayloadSerializer,
-                                    platformTransactionManager,
-                                    scheduler,
-                                    clock);
+    @ConditionalOnMissingBean(StandaloneTaskManager.class)
+    public StandaloneTaskManager localTaskManager(ScheduledTaskExecutor taskExecutor,
+                                                  TaskRepository taskRepository,
+                                                  TaskPayloadSerializer taskPayloadSerializer,
+                                                  PlatformTransactionManager platformTransactionManager,
+                                                  @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+                                                  Clock clock) {
+        return new StandaloneTaskManager(Topology.DEFAULT_CONTEXT,
+                                         taskExecutor,
+                                         taskRepository,
+                                         taskPayloadSerializer,
+                                         platformTransactionManager,
+                                         scheduler,
+                                         clock);
     }
 
 

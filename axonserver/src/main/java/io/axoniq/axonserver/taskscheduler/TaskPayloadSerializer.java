@@ -13,7 +13,7 @@ package io.axoniq.axonserver.taskscheduler;
  * Defines the interface for serializing/deserializing task payloads.
  *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
 public interface TaskPayloadSerializer {
 
@@ -23,7 +23,7 @@ public interface TaskPayloadSerializer {
      * @param payload the serialized payload
      * @return the java object
      */
-    Object deserialize(Payload payload);
+    Object deserialize(TaskPayload payload);
 
     /**
      * Serializes a Java object to a Payload object. Throws an exception if there is a problem serializing the data.
@@ -31,5 +31,5 @@ public interface TaskPayloadSerializer {
      * @param object the java object
      * @return the serialized payload
      */
-    Payload serialize(Object object);
+    TaskPayload serialize(Object object);
 }

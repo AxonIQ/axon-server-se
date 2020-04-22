@@ -19,7 +19,7 @@ import javax.persistence.Id;
  * Scheduled task to be run by the admin leader.
  *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
 @Entity
 public class Task {
@@ -29,7 +29,7 @@ public class Task {
 
     private String taskExecutor;
 
-    private Payload payload;
+    private TaskPayload payload;
 
     private Long timestamp;
 
@@ -59,11 +59,11 @@ public class Task {
         this.taskExecutor = taskExecutor;
     }
 
-    public Payload getPayload() {
+    public TaskPayload getPayload() {
         return payload;
     }
 
-    public void setPayload(Payload payload) {
+    public void setPayload(TaskPayload payload) {
         this.payload = payload;
     }
 

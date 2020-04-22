@@ -22,17 +22,30 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Component that executes scheduled events. Stores the events in the event store when the scheduled time has arrived.
+ *
  * @author Marc Gathier
+ * @since 4.4
  */
 @Component
 public class ScheduledEventExecutor implements ScheduledTask {
 
     private final LocalEventStore localEventStore;
 
+    /**
+     * Constructs the component.
+     * @param localEventStore the event store facade
+     */
     public ScheduledEventExecutor(LocalEventStore localEventStore) {
         this.localEventStore = localEventStore;
     }
 
+    /**
+     * Executes the scheduled task to store an event. The payload contains the protobuf serialized event message.
+     * @param context the context in which to store the event
+     * @param payload the payload for the task
+     * @return completable future that completes when event is successfully stored
+     */
     @Override
     public CompletableFuture<Void> executeAsync(String context, Object payload) {
         CompletableFuture<Void> result = new CompletableFuture<>();
@@ -70,6 +83,12 @@ public class ScheduledEventExecutor implements ScheduledTask {
         return result;
     }
 
+    /**
+     * Overrides the default value for serialized. The payload for these tasks are not json serialized (they are
+     * protobuf serialized).
+     *
+     * @return always false
+     */
     @Override
     public boolean isSerialized() {
         return false;

@@ -21,7 +21,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,8 +57,10 @@ public class CommandDispatcherTest {
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
         Set<CommandRegistrationCache.RegistrationEntry> commands =
                 Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "Command"));
-        dummyRegistrations.put(new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),"component"),
-                commands);
+        dummyRegistrations.put(new DirectCommandHandler(new FakeStreamObserver<>(),
+                                                        new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                                        "component"),
+                               commands);
     }
 
     @Test
@@ -68,13 +70,13 @@ public class CommandDispatcherTest {
 
     @Test
     public void dispatch()  {
-        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
-                .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
-                .setName("Command")
-                .setMessageIdentifier("12")
-                .build();
-        CountingStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
+                                 .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
+                                 .setName("Command")
+                                 .setMessageIdentifier("12")
+                                 .build();
+        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientIdentification client = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
                                                                client, "component");
@@ -85,33 +87,32 @@ public class CommandDispatcherTest {
             responseObserver.onCompleted();
         }, false);
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
-        assertEquals(0, responseObserver.count);
+        assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
 
     }
     @Test
     public void dispatchNotFound() {
-        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
-                .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
-                .setName("Command")
-                .setMessageIdentifier("12")
-                .build();
+                                 .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
+                                 .setName("Command")
+                                 .setMessageIdentifier("12")
+                                 .build();
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(null);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }, false);
-        assertEquals(1, responseObserver.count);
-        assertNotEquals("", responseObserver.responseList.get(0).getErrorCode());
+        assertEquals(1, responseObserver.values().size());
+        assertNotEquals("", responseObserver.values().get(0).getErrorCode());
         Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
-
     }
 
     @Test
     public void dispatchUnknownContext() {
-        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
                                  .setName("Command")
@@ -123,42 +124,47 @@ public class CommandDispatcherTest {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }, false);
-        assertEquals(1, responseObserver.count);
-        assertEquals("AXONIQ-4000", responseObserver.responseList.get(0).getErrorCode());
+        assertEquals(1, responseObserver.values().size());
+        assertEquals("AXONIQ-4000", responseObserver.values().get(0).getErrorCode());
         Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
-
     }
 
     @Test
     public void dispatchProxied() throws Exception {
-        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
-                .setName("Command")
-                .setMessageIdentifier("12")
-                .build();
-        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,"client");
-        CountingStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound, clientIdentification, "component");
+                                 .setName("Command")
+                                 .setMessageIdentifier("12")
+                                 .build();
+        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
+        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
+        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
+                                                               clientIdentification,
+                                                               "component");
         when(registrations.findByClientAndCommand(eq(clientIdentification), anyObject())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request.toByteArray(), "client", request.getMessageIdentifier()), responseObserver::onNext, true);
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.toString()).size());
-        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command().getMessageIdentifier());
-        assertEquals(0, responseObserver.count);
+        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command()
+                                            .getMessageIdentifier());
+        assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
     }
 
     @Test
     public void dispatchProxiedClientNotFound()  {
-        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
-                .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
-                .setName("Command")
-                .setMessageIdentifier("12")
-                .build();
+                                 .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
+                                 .setName("Command")
+                                 .setMessageIdentifier("12")
+                                 .build();
 
-        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), responseObserver::onNext, true);
-        assertEquals(1, responseObserver.count);
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
+                                   new SerializedCommand(request),
+                                   responseObserver::onNext,
+                                   true);
+        assertEquals(1, responseObserver.values().size());
         Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
     }
 

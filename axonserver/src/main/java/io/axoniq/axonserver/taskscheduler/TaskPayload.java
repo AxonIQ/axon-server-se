@@ -16,28 +16,42 @@ import javax.persistence.Embeddable;
 import javax.persistence.Lob;
 
 /**
- * Serialized payload for a scheduled task
+ * Serialized payload for a scheduled task.
  *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
 @Embeddable
-public class Payload {
+public class TaskPayload {
 
     private String type;
 
     @Lob
     private byte[] data;
 
-    public Payload() {
+    /**
+     * Constructor used by JPA.
+     */
+    public TaskPayload() {
     }
 
-    public Payload(String type, byte[] bytes) {
+    /**
+     * Constructor used to create an initialized payload.
+     *
+     * @param type the type of the payload
+     * @param data the serialized data for the payload
+     */
+    public TaskPayload(String type, byte[] data) {
         this.type = type;
-        this.data = bytes;
+        this.data = data;
     }
 
-    public Payload(SerializedObject payload) {
+    /**
+     * Constructor that initializes a payload from a {@link SerializedObject}.
+     *
+     * @param payload serialized object containing a payload
+     */
+    public TaskPayload(SerializedObject payload) {
         this(payload.getType(), payload.getData().toByteArray());
     }
 
@@ -57,6 +71,11 @@ public class Payload {
         this.data = data;
     }
 
+    /**
+     * Creates a {@link SerializedObject} representation of the payload.
+     *
+     * @return SerializedObject representation of the payload
+     */
     public SerializedObject asSerializedObject() {
         return SerializedObject.newBuilder()
                                .setType(type)

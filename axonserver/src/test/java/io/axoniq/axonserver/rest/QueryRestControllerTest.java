@@ -19,7 +19,7 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 
 import java.util.Iterator;
@@ -46,7 +46,10 @@ public class QueryRestControllerTest {
                 .setClientId("client")
                 .setNrOfHandlers(1).build();
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
-                             new DirectQueryHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, querySubscription.getClientId()), querySubscription.getComponentName()));
+                             new DirectQueryHandler(new FakeStreamObserver<>(),
+                                                    new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                             querySubscription.getClientId()),
+                                                    querySubscription.getComponentName()));
 
         testSubject = new QueryRestController(registationCache, queryDispatcher);
     }

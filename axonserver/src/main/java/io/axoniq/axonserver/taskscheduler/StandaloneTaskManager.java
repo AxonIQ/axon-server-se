@@ -26,15 +26,15 @@ import java.util.concurrent.ScheduledExecutorService;
  * It will process tasks with context specified in the constructor.
  *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
-public class LocalTaskManager extends BaseTaskManager {
+public class StandaloneTaskManager extends BaseTaskManager {
 
     private final String context;
     private final TaskPayloadSerializer taskPayloadSerializer;
 
     /**
-     * Instantiates a {@link LocalTaskManager}.
+     * Instantiates a {@link StandaloneTaskManager}.
      *
      * @param context                    the context for the tasks to be processed by this task manager.
      * @param taskExecutor               component responsible for executing the tasks
@@ -44,13 +44,13 @@ public class LocalTaskManager extends BaseTaskManager {
      * @param scheduler                  scheduler to schedule the tasks
      * @param clock                      instance of a clock
      */
-    public LocalTaskManager(String context,
-                            ScheduledTaskExecutor taskExecutor,
-                            TaskRepository taskRepository,
-                            TaskPayloadSerializer taskPayloadSerializer,
-                            PlatformTransactionManager platformTransactionManager,
-                            @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
-                            Clock clock) {
+    public StandaloneTaskManager(String context,
+                                 ScheduledTaskExecutor taskExecutor,
+                                 TaskRepository taskRepository,
+                                 TaskPayloadSerializer taskPayloadSerializer,
+                                 PlatformTransactionManager platformTransactionManager,
+                                 @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+                                 Clock clock) {
         super(taskExecutor, taskRepository, () -> Collections.singleton(context),
               context::equals,
               platformTransactionManager, scheduler, clock);
@@ -66,7 +66,7 @@ public class LocalTaskManager extends BaseTaskManager {
      * @param instant     the timestamp when the task must be executed
      * @return a unique reference to the task
      */
-    public String createLocalTask(String taskHandler, Payload payload, long instant) {
+    public String createLocalTask(String taskHandler, TaskPayload payload, long instant) {
         Task task = new Task();
         task.setTaskId(UUID.randomUUID().toString());
         task.setStatus(TaskStatus.SCHEDULED);

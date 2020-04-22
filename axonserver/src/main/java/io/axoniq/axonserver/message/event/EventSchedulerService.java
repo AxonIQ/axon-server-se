@@ -18,8 +18,8 @@ import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.event.RescheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleToken;
-import io.axoniq.axonserver.taskscheduler.LocalTaskManager;
-import io.axoniq.axonserver.taskscheduler.Payload;
+import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
+import io.axoniq.axonserver.taskscheduler.TaskPayload;
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -31,14 +31,14 @@ import io.grpc.stub.StreamObserver;
 public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImplBase implements
         AxonServerClientService {
 
-    private final LocalTaskManager localTaskManager;
+    private final StandaloneTaskManager localTaskManager;
 
     /**
      * Instantiates the service
      *
      * @param localTaskManager component responsible maintaining scheduled tasks.
      */
-    public EventSchedulerService(LocalTaskManager localTaskManager) {
+    public EventSchedulerService(StandaloneTaskManager localTaskManager) {
         this.localTaskManager = localTaskManager;
     }
 
@@ -91,7 +91,7 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
 
     private void doScheduleEvent(Event event, long instant, StreamObserver<ScheduleToken> responseObserver) {
         try {
-            Payload payload = new Payload(Event.class.getName(), event.toByteArray());
+            TaskPayload payload = new TaskPayload(Event.class.getName(), event.toByteArray());
             String taskId = localTaskManager.createLocalTask(ScheduledEventExecutor.class.getName(),
                                                              payload,
                                                              instant);

@@ -16,7 +16,7 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 
-import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 
 /**
@@ -91,14 +91,15 @@ public class LocalEventStorageEngineTest {
 
     @Test
     public void cancel() {
-        CountingStreamObserver<Confirmation> countingStreamObserver = new CountingStreamObserver<>();
-        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT, countingStreamObserver);
+        FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
+        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT,
+                                                                                         fakeStreamObserver);
         connection.onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray()));
         connection.onCompleted();
 
         testSubject.cancel(SAMPLE_CONTEXT);
         assertEquals(1, pendingTransactions.size());
-        assertNotNull(countingStreamObserver.error);
+        assertFalse(fakeStreamObserver.errors().isEmpty());
         assertTrue(pendingTransactions.get(0).isDone());
     }
 
@@ -123,27 +124,30 @@ public class LocalEventStorageEngineTest {
 
     @Test
     public void createAppendEventConnection() {
-        CountingStreamObserver<Confirmation> countingStreamObserver = new CountingStreamObserver<>();
-        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT, countingStreamObserver);
+        FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
+        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT,
+                                                                                         fakeStreamObserver);
         connection.onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray()));
         connection.onCompleted();
 
         assertEquals(1, pendingTransactions.size());
         pendingTransactions.get(0).complete(100L);
-        assertNull(countingStreamObserver.error);
-        assertEquals(1, countingStreamObserver.responseList.size());
+        assertTrue(fakeStreamObserver.errors().isEmpty());
+        assertEquals(1, fakeStreamObserver.values().size());
         assertTrue(pendingTransactions.get(0).isDone());
     }
 
     @Test
     public void createAppendEventConnectionWithTooManyEvents() {
-        CountingStreamObserver<Confirmation> countingStreamObserver = new CountingStreamObserver<>();
-        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT, countingStreamObserver);
-        IntStream.range(0, 10).forEach(i -> connection.onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray())));
+        FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
+        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT,
+                                                                                         fakeStreamObserver);
+        IntStream.range(0, 10).forEach(i -> connection
+                .onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray())));
         connection.onCompleted();
 
         assertEquals(0, pendingTransactions.size());
-        assertNotNull(countingStreamObserver.error);
+        assertFalse(fakeStreamObserver.errors().isEmpty());
     }
 
     @Test
@@ -156,19 +160,19 @@ public class LocalEventStorageEngineTest {
 
     @Test
     public void listEvents() throws InterruptedException {
-        CountingStreamObserver<InputStream> countingStreamObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<InputStream> fakeStreamObserver = new FakeStreamObserver<>();
         StreamObserver<GetEventsRequest> requestStreamObserver = testSubject.listEvents(
                 SAMPLE_CONTEXT,
-                countingStreamObserver);
+                fakeStreamObserver);
         requestStreamObserver.onNext(GetEventsRequest.newBuilder()
                                                      .setTrackingToken(100)
                                                      .setNumberOfPermits(10)
                                                      .build());
-        assertWithin(2000, TimeUnit.MILLISECONDS, () -> assertEquals(10, countingStreamObserver.count));
+        assertWithin(2000, TimeUnit.MILLISECONDS, () -> assertEquals(10, fakeStreamObserver.values().size()));
         requestStreamObserver.onNext(GetEventsRequest.newBuilder()
                                                      .setNumberOfPermits(10)
                                                      .build());
-        assertWithin(2000, TimeUnit.MILLISECONDS, () -> assertEquals(20, countingStreamObserver.count));
+        assertWithin(2000, TimeUnit.MILLISECONDS, () -> assertEquals(20, fakeStreamObserver.values().size()));
 
         requestStreamObserver.onCompleted();
     }

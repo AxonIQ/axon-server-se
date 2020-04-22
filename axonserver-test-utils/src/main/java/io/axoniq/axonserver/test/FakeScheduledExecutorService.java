@@ -1,7 +1,7 @@
-package io.axoniq.axonserver.util;
+package io.axoniq.axonserver.test;
 
-import org.apache.commons.lang3.NotImplementedException;
-import org.jetbrains.annotations.NotNull;
+
+import org.apache.commons.lang.NotImplementedException;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nonnull;
 
 import static java.lang.Integer.compare;
 import static java.time.Duration.between;
@@ -28,7 +29,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @author Marc Gathier
  * @since 4.4
  */
-public class FakeScheduler implements ScheduledExecutorService {
+public class FakeScheduledExecutorService implements ScheduledExecutorService {
 
     private static class ScheduledTask implements Comparable<ScheduledTask> {
 
@@ -52,12 +53,12 @@ public class FakeScheduler implements ScheduledExecutorService {
     }
 
     private NavigableSet<ScheduledTask> tasks = new TreeSet<>();
-    private ChangeableClock clock;
+    private FakeClock clock;
 
     /**
      * Instantiates the Fake Scheduler with {@link Instant#now()} time moment.
      */
-    public FakeScheduler() {
+    public FakeScheduledExecutorService() {
         this(Instant.now());
     }
 
@@ -66,8 +67,8 @@ public class FakeScheduler implements ScheduledExecutorService {
      *
      * @param currentTime current time this scheduler is aware of
      */
-    public FakeScheduler(Instant currentTime) {
-        clock = new ChangeableClock(currentTime);
+    public FakeScheduledExecutorService(Instant currentTime) {
+        clock = new FakeClock(currentTime);
     }
 
     public int tasks() {
@@ -78,9 +79,9 @@ public class FakeScheduler implements ScheduledExecutorService {
         return clock;
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public synchronized FakeScheduledRegistration<?> schedule(@NotNull Runnable command, long delay,
+    public synchronized FakeScheduledRegistration<?> schedule(@Nonnull Runnable command, long delay,
                                                               TimeUnit timeUnit) {
         Instant triggerTime = clock.instant().plusMillis(timeUnit.toMillis(delay));
         ScheduledTask task = new ScheduledTask(command, triggerTime);
@@ -88,22 +89,22 @@ public class FakeScheduler implements ScheduledExecutorService {
         return new FakeScheduledRegistration<>(task);
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public <V> ScheduledFuture<V> schedule(@NotNull Callable<V> callable, long delay, @NotNull TimeUnit unit) {
+    public <V> ScheduledFuture<V> schedule(@Nonnull Callable<V> callable, long delay, @Nonnull TimeUnit unit) {
         throw new NotImplementedException("schedule");
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public ScheduledFuture<?> scheduleAtFixedRate(@NotNull Runnable command, long initialDelay, long period,
-                                                  @NotNull TimeUnit unit) {
+    public ScheduledFuture<?> scheduleAtFixedRate(@Nonnull Runnable command, long initialDelay, long period,
+                                                  @Nonnull TimeUnit unit) {
         throw new NotImplementedException("scheduleAtFixedRate");
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public ScheduledFuture<?> scheduleWithFixedDelay(@NotNull Runnable command, long initialDelay, long delay,
+    public ScheduledFuture<?> scheduleWithFixedDelay(@Nonnull Runnable command, long initialDelay, long delay,
                                                      TimeUnit timeUnit) {
         AtomicReference<FakeScheduledRegistration<?>> registration = new AtomicReference<>();
         Runnable runnable = new Runnable() {
@@ -132,7 +133,7 @@ public class FakeScheduler implements ScheduledExecutorService {
         tasks.clear();
     }
 
-    @NotNull
+    @Nonnull
     @Override
     public List<Runnable> shutdownNow() {
         tasks.clear();
@@ -150,49 +151,49 @@ public class FakeScheduler implements ScheduledExecutorService {
     }
 
     @Override
-    public boolean awaitTermination(long timeout, @NotNull TimeUnit unit) {
+    public boolean awaitTermination(long timeout, @Nonnull TimeUnit unit) {
         return true;
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public <T> Future<T> submit(@NotNull Callable<T> task) {
+    public <T> Future<T> submit(@Nonnull Callable<T> task) {
         throw new NotImplementedException("submit");
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public <T> Future<T> submit(@NotNull Runnable task, T result) {
+    public <T> Future<T> submit(@Nonnull Runnable task, T result) {
         throw new NotImplementedException("submit");
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public Future<?> submit(@NotNull Runnable task) {
+    public Future<?> submit(@Nonnull Runnable task) {
         throw new NotImplementedException("submit");
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public <T> List<Future<T>> invokeAll(@NotNull Collection<? extends Callable<T>> tasks) {
+    public <T> List<Future<T>> invokeAll(@Nonnull Collection<? extends Callable<T>> tasks) {
         throw new NotImplementedException("invokeAll");
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public <T> List<Future<T>> invokeAll(@NotNull Collection<? extends Callable<T>> tasks, long timeout,
-                                         @NotNull TimeUnit unit) {
+    public <T> List<Future<T>> invokeAll(@Nonnull Collection<? extends Callable<T>> tasks, long timeout,
+                                         @Nonnull TimeUnit unit) {
         throw new NotImplementedException("invokeAll");
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public <T> T invokeAny(@NotNull Collection<? extends Callable<T>> tasks) {
+    public <T> T invokeAny(@Nonnull Collection<? extends Callable<T>> tasks) {
         throw new NotImplementedException("invokeAny");
     }
 
     @Override
-    public <T> T invokeAny(@NotNull Collection<? extends Callable<T>> tasks, long timeout, @NotNull TimeUnit unit) {
+    public <T> T invokeAny(@Nonnull Collection<? extends Callable<T>> tasks, long timeout, @Nonnull TimeUnit unit) {
         throw new NotImplementedException("invokeAny");
     }
 
@@ -212,7 +213,7 @@ public class FakeScheduler implements ScheduledExecutorService {
      * @param timeUnit time unit
      */
     public synchronized void timeElapses(long delay, TimeUnit timeUnit) {
-        clock.add(delay, timeUnit);
+        clock.timeElapses(delay, timeUnit);
         while (!tasks.isEmpty() && !tasks.first().scheduledTime.isAfter(clock.instant())) {
             tasks.pollFirst().run();
         }
@@ -227,12 +228,12 @@ public class FakeScheduler implements ScheduledExecutorService {
         }
 
         @Override
-        public long getDelay(@NotNull TimeUnit unit) {
+        public long getDelay(@Nonnull TimeUnit unit) {
             return 0;
         }
 
         @Override
-        public int compareTo(@NotNull Delayed o) {
+        public int compareTo(@Nonnull Delayed o) {
             return 0;
         }
 
@@ -258,7 +259,7 @@ public class FakeScheduler implements ScheduledExecutorService {
         }
 
         @Override
-        public T get(long timeout, @NotNull TimeUnit unit) {
+        public T get(long timeout, @Nonnull TimeUnit unit) {
             return null;
         }
     }

@@ -44,11 +44,11 @@ import java.util.function.Supplier;
 public abstract class BaseTaskManager implements SmartLifecycle {
 
     protected static final long MAX_RETRY_INTERVAL = TimeUnit.MINUTES.toMillis(1);
+    protected static final Logger logger = LoggerFactory.getLogger(BaseTaskManager.class);
 
-    protected final Logger logger = LoggerFactory.getLogger(BaseTaskManager.class);
     protected final ScheduledTaskExecutor taskExecutor;
     protected final TaskRepository taskRepository;
-    protected final Supplier<Set<String>> raftGroupProvider;
+    protected final Supplier<Set<String>> leaderForGroupProvider;
     protected final Predicate<String> raftLeaderTest;
     protected final PlatformTransactionManager platformTransactionManager;
     protected final ScheduledExecutorService scheduler;
@@ -63,7 +63,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
      *
      * @param taskExecutor               component that will execute the task
      * @param taskRepository             repository of scheduled tasks
-     * @param raftGroupProvider          provides set of contexts where node is leader
+     * @param leaderForGroupProvider     provides set of contexts where node is leader
      * @param raftLeaderTest             predicate to check if current node is leader for this context
      * @param platformTransactionManager transaction manager
      * @param scheduler                  scheduler component to schedule tasks
@@ -71,14 +71,14 @@ public abstract class BaseTaskManager implements SmartLifecycle {
      */
     public BaseTaskManager(
             ScheduledTaskExecutor taskExecutor, TaskRepository taskRepository,
-            Supplier<Set<String>> raftGroupProvider,
+            Supplier<Set<String>> leaderForGroupProvider,
             Predicate<String> raftLeaderTest,
             PlatformTransactionManager platformTransactionManager,
             @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
             Clock clock) {
         this.taskExecutor = taskExecutor;
         this.taskRepository = taskRepository;
-        this.raftGroupProvider = raftGroupProvider;
+        this.leaderForGroupProvider = leaderForGroupProvider;
         this.raftLeaderTest = raftLeaderTest;
         this.platformTransactionManager = platformTransactionManager;
         this.scheduler = scheduler;
@@ -171,7 +171,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
             if (min == 0) {
                 nextTimestamp.getAndAdd(window);
             }
-            Set<String> leaderFor = raftGroupProvider.get();
+            Set<String> leaderFor = leaderForGroupProvider.get();
             leaderFor.forEach(context -> {
                 Iterable<Task> tasks = taskRepository.findScheduled(context, min, nextTimestamp.get());
                 logger.trace("{}: scheduling more tasks {} between {} and {}",

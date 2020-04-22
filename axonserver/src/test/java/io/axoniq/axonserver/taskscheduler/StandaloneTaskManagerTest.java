@@ -11,7 +11,7 @@ package io.axoniq.axonserver.taskscheduler;
 
 import io.axoniq.axonserver.grpc.TaskStatus;
 import io.axoniq.axonserver.rest.json.UserInfo;
-import io.axoniq.axonserver.util.FakeScheduler;
+import io.axoniq.axonserver.test.FakeScheduledExecutorService;
 import org.junit.*;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -36,11 +36,11 @@ import static org.mockito.Mockito.*;
 /**
  * @author Marc Gathier
  */
-public class LocalTaskManagerTest {
+public class StandaloneTaskManagerTest {
 
-    private LocalTaskManager testSubject;
+    private StandaloneTaskManager testSubject;
     private Map<String, Task> tasks = new HashMap<>();
-    private FakeScheduler scheduler = new FakeScheduler();
+    private FakeScheduledExecutorService scheduler = new FakeScheduledExecutorService();
     private AtomicBoolean transientException = new AtomicBoolean();
     private AtomicBoolean nonTransientException = new AtomicBoolean();
     private AtomicInteger executionCounter = new AtomicInteger();
@@ -75,44 +75,45 @@ public class LocalTaskManagerTest {
                 .then(invocation -> Optional.ofNullable(tasks.get(invocation.getArgument(0))));
 
 
-        testSubject = new LocalTaskManager("context",
-                                           t -> {
-                                               executionCounter.getAndIncrement();
-                                               CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-                                               if (transientException.get()) {
-                                                   completableFuture.completeExceptionally(new TransientException(
-                                                           "Failed, please try again"));
-                                               } else if (nonTransientException.get()) {
-                                                   completableFuture.completeExceptionally(new RuntimeException(
-                                                           "Failed, don't try again"));
-                                               } else {
-                                                   completableFuture.complete(null);
-                                               }
-                                               return completableFuture;
-                                           },
-                                           repository,
-                                           new JacksonTaskPayloadSerializer(),
-                                           new PlatformTransactionManager() {
-                                               @Override
-                                               public TransactionStatus getTransaction(TransactionDefinition definition)
-                                                       throws TransactionException {
-                                                   return new SimpleTransactionStatus();
-                                               }
+        testSubject = new StandaloneTaskManager("context",
+                                                t -> {
+                                                    executionCounter.getAndIncrement();
+                                                    CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+                                                    if (transientException.get()) {
+                                                        completableFuture.completeExceptionally(new TransientException(
+                                                                "Failed, please try again"));
+                                                    } else if (nonTransientException.get()) {
+                                                        completableFuture.completeExceptionally(new RuntimeException(
+                                                                "Failed, don't try again"));
+                                                    } else {
+                                                        completableFuture.complete(null);
+                                                    }
+                                                    return completableFuture;
+                                                },
+                                                repository,
+                                                new JacksonTaskPayloadSerializer(),
+                                                new PlatformTransactionManager() {
+                                                    @Override
+                                                    public TransactionStatus getTransaction(
+                                                            TransactionDefinition definition)
+                                                            throws TransactionException {
+                                                        return new SimpleTransactionStatus();
+                                                    }
 
-                                               @Override
-                                               public void commit(TransactionStatus status)
-                                                       throws TransactionException {
+                                                    @Override
+                                                    public void commit(TransactionStatus status)
+                                                            throws TransactionException {
 
-                                               }
+                                                    }
 
-                                               @Override
-                                               public void rollback(TransactionStatus status)
-                                                       throws TransactionException {
+                                                    @Override
+                                                    public void rollback(TransactionStatus status)
+                                                            throws TransactionException {
 
-                                               }
-                                           },
-                                           scheduler,
-                                           scheduler.clock());
+                                                    }
+                                                },
+                                                scheduler,
+                                                scheduler.clock());
         testSubject.start();
     }
 
@@ -178,7 +179,7 @@ public class LocalTaskManagerTest {
     @Test
     public void cancel() {
         String taskId = testSubject.createLocalTask("DummyHandler",
-                                                    new Payload("Dummy", "DummyPayload".getBytes()),
+                                                    new TaskPayload("Dummy", "DummyPayload".getBytes()),
                                                     scheduler.clock().millis() + TimeUnit.MINUTES.toMillis(1));
         assertEquals(1, tasks.size());
         assertEquals(2, scheduler.tasks());

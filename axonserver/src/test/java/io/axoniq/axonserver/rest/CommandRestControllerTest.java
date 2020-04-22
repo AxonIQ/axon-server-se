@@ -17,7 +17,7 @@ import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -40,8 +40,11 @@ public class CommandRestControllerTest {
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
-        commandRegistationCache.add("DoIt", new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                     "client"), "component"));
+        commandRegistationCache.add("DoIt",
+                                    new DirectCommandHandler(new FakeStreamObserver<>(),
+                                                             new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                      "client"),
+                                                             "component"));
         testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
     }
 

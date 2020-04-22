@@ -41,6 +41,12 @@
         </dependency>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-test-utils</artifactId>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver-query-parser</artifactId>
             <version>${project.parent.version}</version>
         </dependency>

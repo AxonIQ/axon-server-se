@@ -16,19 +16,26 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Component that manages the execution of a scheduled task.
+ *
  * @author Marc Gathier
- * @since 4.3
+ * @since 4.4
  */
 @Service
 public class ScheduledTaskExecutorImpl implements ScheduledTaskExecutor {
 
     private final ApplicationContext applicationContext;
-    private final TaskPayloadSerializer serializer;
+    private final TaskPayloadSerializer taskPayloadSerializer;
 
+    /**
+     * Creates an instance.
+     * @param applicationContext used to retrieve the bean implementing a task
+     * @param taskPayloadSerializer to deserialize the payload of task (if needed)
+     */
     public ScheduledTaskExecutorImpl(ApplicationContext applicationContext,
-                                     TaskPayloadSerializer serializer) {
+                                     TaskPayloadSerializer taskPayloadSerializer) {
         this.applicationContext = applicationContext;
-        this.serializer = serializer;
+        this.taskPayloadSerializer = taskPayloadSerializer;
     }
 
 
@@ -38,7 +45,7 @@ public class ScheduledTaskExecutorImpl implements ScheduledTaskExecutor {
             ScheduledTask job = (ScheduledTask) applicationContext.getBean(Class.forName(task.getTaskExecutor()));
             Object payload = task.getPayload().asSerializedObject();
             if (job.isSerialized()) {
-                payload = serializer.deserialize(task.getPayload());
+                payload = taskPayloadSerializer.deserialize(task.getPayload());
             }
             return job.executeAsync(task.getContext(), payload);
         } catch (ClassNotFoundException ex) {
