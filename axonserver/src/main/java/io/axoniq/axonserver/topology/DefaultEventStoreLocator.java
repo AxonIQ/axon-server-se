@@ -16,10 +16,12 @@ import javax.annotation.PostConstruct;
 
 /**
  * Default implementation for an EventStoreLocator.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
 public class DefaultEventStoreLocator implements EventStoreLocator {
+
     private final LocalEventStore localEventStore;
 
     public DefaultEventStoreLocator(LocalEventStore localEventStore) {
@@ -37,10 +39,10 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
     }
 
     @Override
-    public EventStore getEventStore(String context) {
-        if( Topology.DEFAULT_CONTEXT.equals(context))
+    public EventStore getEventStore(String context, boolean useLocal) {
+        if (Topology.DEFAULT_CONTEXT.equals(context)) {
             return localEventStore;
+        }
         return null;
     }
-
 }

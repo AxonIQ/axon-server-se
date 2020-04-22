@@ -185,14 +185,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-        if (eventStore == null) {
-            responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
-                                                                    NO_EVENT_STORE_CONFIGURED + context));
-            return new NoOpStreamObserver<>();
-        }
-
-        return new GetEventsRequestStreamObserver(responseObserver, eventStore, context);
+        return new GetEventsRequestStreamObserver(responseObserver, context);
     }
 
     @EventListener
@@ -301,7 +294,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
+        EventStore eventStore = eventStoreLocator.getEventStore(context, false);
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                     NO_EVENT_STORE_CONFIGURED + context));
@@ -332,10 +325,52 @@ public class EventDispatcher implements AxonServerClientService {
         );
     }
 
-
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver0) {
-        ForwardingStreamObserver<QueryEventsResponse> responseObserver = new ForwardingStreamObserver<>(logger, "queryEvents", responseObserver0);
-        return checkConnection(contextProvider.getContext(), responseObserver).map(client -> client.queryEvents(contextProvider.getContext(), responseObserver)).orElse(null);
+        String context = contextProvider.getContext();
+
+        ForwardingStreamObserver<QueryEventsResponse> responseObserver =
+                new ForwardingStreamObserver<>(logger, "queryEvents", responseObserver0);
+        return new StreamObserver<QueryEventsRequest>() {
+
+            private StreamObserver<QueryEventsRequest> requestObserver;
+
+            @Override
+            public void onNext(QueryEventsRequest request) {
+                EventStore eventStore = eventStoreLocator.getEventStore(context, request.getAllowReadingFromFollower());
+                if (eventStore == null) {
+                    responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
+                                                                            NO_EVENT_STORE_CONFIGURED + context));
+                    return;
+                }
+                try {
+                    requestObserver = eventStore.queryEvents(context, responseObserver);
+                    requestObserver.onNext(request);
+                } catch (Exception reason) {
+                    logger.warn("Error on connection sending event to client: {}", reason.getMessage());
+                    if (requestObserver != null) {
+                        requestObserver.onCompleted();
+                    }
+                }
+            }
+
+            @Override
+            public void onError(Throwable reason) {
+                if (!ExceptionUtils.isCancelled(reason)) {
+                    logger.warn("Error on connection from client: {}", reason.getMessage());
+                }
+                cleanup();
+            }
+
+            @Override
+            public void onCompleted() {
+                cleanup();
+                StreamObserverUtils.complete(responseObserver);
+            }
+
+            private void cleanup() {
+                StreamObserverUtils.complete(requestObserver);
+            }
+        };
     }
 
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
@@ -411,15 +446,12 @@ public class EventDispatcher implements AxonServerClientService {
     private class GetEventsRequestStreamObserver implements StreamObserver<GetEventsRequest> {
 
         private final StreamObserver<InputStream> responseObserver;
-        private final EventStore eventStore;
         private final String context;
         volatile StreamObserver<GetEventsRequest> eventStoreRequestObserver;
         volatile EventTrackerInfo trackerInfo;
 
-        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, EventStore eventStore,
-                                              String context) {
+        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, String context) {
             this.responseObserver = responseObserver;
-            this.eventStore = eventStore;
             this.context = context;
         }
 
@@ -442,6 +474,13 @@ public class EventDispatcher implements AxonServerClientService {
             if( eventStoreRequestObserver == null) {
                 trackerInfo = new EventTrackerInfo(responseObserver, getEventsRequest.getClientId(), context,getEventsRequest.getTrackingToken()-1);
                 try {
+                    EventStore eventStore = eventStoreLocator
+                            .getEventStore(context, getEventsRequest.getAllowReadingFromFollower());
+                    if (eventStore == null) {
+                        responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
+                                                                                NO_EVENT_STORE_CONFIGURED + context));
+                        return false;
+                    }
                     eventStoreRequestObserver =
                             eventStore.listEvents(context, new StreamObserver<InputStream>() {
                                 @Override
@@ -452,8 +491,13 @@ public class EventDispatcher implements AxonServerClientService {
 
                                 @Override
                                 public void onError(Throwable throwable) {
-                                    logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                throwable.getMessage());
+                                    if (throwable instanceof IllegalStateException) {
+                                        logger.debug(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                     throwable.getMessage());
+                                    } else {
+                                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                    throwable.getMessage());
+                                    }
                                     StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
                                     removeTrackerInfo();
                                 }

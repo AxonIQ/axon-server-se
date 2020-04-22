@@ -24,6 +24,7 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -39,7 +40,6 @@ import java.io.InputStreamReader;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import javax.net.ssl.SSLContext;
 
 
 /**
@@ -47,7 +47,11 @@ import javax.net.ssl.SSLContext;
  */
 public class AxonIQCliCommand {
     protected static CommandLine processCommandLine(String name, String[] args, Option... options) {
-        Options cliOptions = new Options().addOption(CommandOptions.ADDRESS).addOption(CommandOptions.OUTPUT);
+        Options cliOptions = new Options()
+                .addOption(CommandOptions.ADDRESS)
+                .addOption(CommandOptions.USE_HTTPS)
+                .addOption(CommandOptions.CONNECT_INSECURE)
+                .addOption(CommandOptions.OUTPUT);
         for (Option option : options) {
             cliOptions.addOption(option);
         }
@@ -64,7 +68,10 @@ public class AxonIQCliCommand {
 
     protected static String createUrl(CommandLine commandLine, String uri, Option... args) {
         String address = commandLine.getOptionValue(CommandOptions.ADDRESS.getOpt());
-        if( address == null) address = "http://localhost:8024";
+        if( address == null) {
+            address = commandLine.hasOption(CommandOptions.USE_HTTPS.getOpt())
+                    ? "https://localhost:8024" : "http://localhost:8024";
+        }
         StringBuilder builder = new StringBuilder();
         builder.append(address).append(uri);
 
@@ -77,14 +84,21 @@ public class AxonIQCliCommand {
     protected static CloseableHttpClient createClient(CommandLine commandLine)  {
         try {
             String address = commandLine.getOptionValue(CommandOptions.ADDRESS.getOpt());
-            if (address == null) address = "http://localhost:8024";
+            if (address == null) {
+                address = commandLine.hasOption(CommandOptions.USE_HTTPS.getOpt())
+                        ? "https://localhost:8024" : "http://localhost:8024";
+            }
             if (address.startsWith("https")) {
-                SSLContext sslContext = new SSLContextBuilder().loadTrustMaterial(null, (certificate, authType) -> true)
-                                                               .build();
-                return HttpClients.custom()
-                                  .disableRedirectHandling()
-                                  .setSSLContext(sslContext)
-                                  .build();
+                HttpClientBuilder clientBuilder = HttpClients
+                        .custom()
+                        .disableRedirectHandling();
+                if (commandLine.hasOption(CommandOptions.CONNECT_INSECURE.getOpt())) {
+                    clientBuilder
+                            .setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, (certificate, authType) -> true).build())
+                            .setSSLHostnameVerifier(new NoopHostnameVerifier());
+                }
+
+                return clientBuilder.build();
             }
 
             return HttpClientBuilder.create().disableRedirectHandling().build();

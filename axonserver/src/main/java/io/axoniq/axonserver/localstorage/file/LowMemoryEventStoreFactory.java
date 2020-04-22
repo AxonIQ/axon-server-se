@@ -45,10 +45,14 @@ public class LowMemoryEventStoreFactory implements EventStoreFactory {
     @Override
     public EventStorageEngine createSnapshotStorageEngine(String context) {
         IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getSnapshot());
-        PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT), indexManager, eventTransformerFactory, embeddedDBProperties.getSnapshot());
-        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
+        PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
+                                                        indexManager,
+                                                        eventTransformerFactory,
+                                                        embeddedDBProperties.getSnapshot());
+        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
+                                                                 indexManager,
                                                                  eventTransformerFactory,
-                                                                 embeddedDBProperties.getEvent());
+                                                                 embeddedDBProperties.getSnapshot());
         first.next(second);
         return first;
     }

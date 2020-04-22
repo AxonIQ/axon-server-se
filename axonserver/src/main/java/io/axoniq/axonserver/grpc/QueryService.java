@@ -30,6 +30,7 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -111,6 +112,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         QuerySubscription subscription = queryProviderOutbound
                                 .getSubscribe();
                         checkInitClient(subscription.getClientId(), subscription.getComponentName());
+                        logger.debug("{}: Subscribe Query {} for {}",
+                                     context,
+                                     subscription.getQuery(),
+                                     subscription.getClientId());
                         eventPublisher.publishEvent(
                                 new SubscriptionEvents.SubscribeQuery(context,
                                                                       queryProviderOutbound
@@ -218,17 +223,12 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     dispatcherListeners.remove(client.get());
                     listener.get().cancel();
                 }
+                StreamObserverUtils.complete(inboundStreamObserver);
             }
 
             @Override
             public void onCompleted() {
                 cleanup();
-
-                try {
-                    inboundStreamObserver.onCompleted();
-                } catch (RuntimeException cause) {
-                    logger.warn("{}: Error completing connection to subscriber - {}", client, cause.getMessage());
-                }
             }
         };
     }
@@ -297,7 +297,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private void stopListenerFor(ClientIdentification clientIdentification) {
         GrpcQueryDispatcherListener listener = dispatcherListeners.remove(clientIdentification);
         Optional.ofNullable(listener).ifPresent(GrpcFlowControlledDispatcherListener::cancel);
-        logger.warn("GrpcQueryDispatcherListener stopped for client: {}", clientIdentification);
+        logger.debug("GrpcQueryDispatcherListener stopped for client: {}", clientIdentification);
     }
 
     /**
