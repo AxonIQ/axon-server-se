@@ -1,11 +1,13 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.access.application.ApplicationController;
 import io.axoniq.axonserver.access.application.ApplicationNotFoundException;
 import io.axoniq.axonserver.access.application.JpaApplication;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.CompetableFutureUtils;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
@@ -25,21 +27,9 @@ import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.grpc.internal.Application;
-import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
-import io.axoniq.axonserver.grpc.internal.ContextApplication;
-import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
-import io.axoniq.axonserver.grpc.internal.ContextMember;
-import io.axoniq.axonserver.grpc.internal.ContextRole;
-import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
-import io.axoniq.axonserver.grpc.internal.ContextUser;
-import io.axoniq.axonserver.grpc.internal.DeleteNode;
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.User;
-import io.axoniq.axonserver.grpc.internal.UserContextRole;
+import io.axoniq.axonserver.grpc.internal.*;
+import io.axoniq.axonserver.licensing.Feature;
+import io.axoniq.axonserver.licensing.LicenseManager;
 import io.axoniq.axonserver.util.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -51,13 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
@@ -94,6 +78,8 @@ class LocalRaftConfigService implements RaftConfigService {
     private final TaskPublisher taskPublisher;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final CopyOnWriteArraySet<String> contextsInProgress = new CopyOnWriteArraySet<>();
+    private final LicenseManager licenseManager;
+    private final FeatureChecker limits;
     private final Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
 
 
@@ -104,7 +90,8 @@ class LocalRaftConfigService implements RaftConfigService {
                                   ApplicationController applicationController,
                                   UserController userController,
                                   MessagingPlatformConfiguration messagingPlatformConfiguration,
-                                  TaskPublisher taskPublisher) {
+                                  TaskPublisher taskPublisher,
+                                  LicenseManager licenseManager, FeatureChecker limits) {
         this.grpcRaftController = grpcRaftController;
         this.contextController = contextController;
         this.clusterController = clusterController;
@@ -113,6 +100,8 @@ class LocalRaftConfigService implements RaftConfigService {
         this.userController = userController;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.taskPublisher = taskPublisher;
+        this.licenseManager = licenseManager;
+        this.limits = limits;
     }
 
     @Override
@@ -514,13 +503,20 @@ class LocalRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void join(NodeInfo nodeInfo) {
+    public UpdateLicense join(NodeInfo nodeInfo) {
+        if( !Feature.CLUSTERING.enabled(limits) ) {
+            throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
+        }
+
         RaftNode adminNode = grpcRaftController.getRaftNode(getAdmin());
         if (!adminNode.isLeader()) {
             throw new MessagingPlatformException(ErrorCode.NODE_IS_REPLICA,
                     "Send join request to the leader of _admin context: " + adminNode
                             .getLeaderName());
         }
+
+        byte[] licenseContent = readLicense();
+
         List<String> contexts = contextsToJoin(nodeInfo);
 
         String nodeLabel = generateNodeLabel(nodeInfo.getNodeName());
@@ -585,6 +581,12 @@ class LocalRaftConfigService implements RaftConfigService {
                 resetAdminConfiguration(oldConfiguration, "Error while adding node " + node.getNodeName(), ex);
             }
         });
+
+        return UpdateLicense.newBuilder().setLicense(ByteString.copyFrom(licenseContent)).build();
+    }
+
+    private byte[] readLicense() {
+        return licenseManager.readLicense();
     }
 
     @NotNull

@@ -68,7 +68,7 @@ public class AutoRebalancing {
      */
     @Scheduled(fixedRateString = "${axoniq.axonserver.cluster.balancing-rate:15000}")
     protected void rebalance() {
-        if (!Feature.CONNECTION_BALANCING.enabled(featureChecker) || !enabled) {
+        if (!enabled) {
             return;
         }
         logger.debug("Rebalance: {}", clientWhitelist);

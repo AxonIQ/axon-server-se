@@ -29,6 +29,8 @@ import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
+import io.axoniq.axonserver.licensing.LicenseManager;
+import io.axoniq.axonserver.licensing.Limits;
 import org.junit.*;
 import org.mockito.stubbing.*;
 
@@ -65,6 +67,8 @@ public class LocalRaftConfigServiceTest {
     private FakeRaftGroupService fakeRaftGroupService = new FakeRaftGroupService();
     private TaskPublisher taskPublisher;
     private Map<String, Set<String>> scheduledTasks = new ConcurrentHashMap<>();
+    private LicenseManager licenseManager = mock(LicenseManager.class);
+    private Limits limits = mock(Limits.class);
 
     private ClusterNode createNode(String name) {
         return new ClusterNode(name, name, name, 1, 2,3);
@@ -341,6 +345,10 @@ public class LocalRaftConfigServiceTest {
                 return CompletableFuture.completedFuture(null);
             }
         };
+
+        when(limits.isEnterprise()).thenReturn(true);
+        when(licenseManager.readLicense()).thenReturn("license".getBytes());
+
         testSubject = new LocalRaftConfigService(grpcRaftController,
                 contextcontroller,
                 clusterController,
@@ -348,7 +356,8 @@ public class LocalRaftConfigServiceTest {
                 applicationController,
                 userController,
                 messagingPlatformConfiguration,
-                taskPublisher);
+                taskPublisher,
+                licenseManager, limits);
     }
 
     @Test

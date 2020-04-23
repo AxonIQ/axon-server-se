@@ -1,22 +1,23 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.DistributeLicenseService;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenseTask;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +25,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -50,24 +50,22 @@ public class ClusterRestController {
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final DistributeLicenseService distributeLicenseService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  FeatureChecker limits,
-                                 DistributeLicenseService distributeLicenseService) {
+                                 DistributeLicenseService distributeLicenseService, ApplicationEventPublisher eventPublisher) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.limits = limits;
         this.distributeLicenseService = distributeLicenseService;
+        this.eventPublisher = eventPublisher;
     }
 
 
     @PostMapping
     public ResponseEntity<RestResponse> add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
-        if (!Feature.CLUSTERING.enabled(limits)) {
-            return new RestResponse(false, "License does not allow clustering of Axon servers")
-                    .asResponseEntity(ErrorCode.CLUSTER_NOT_ALLOWED);
-        }
 
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
         String context = jsonClusterNode.getContext();
@@ -97,9 +95,11 @@ public class ClusterRestController {
         }
 
         try {
-            raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName,
-                                                        jsonClusterNode.internalGrpcPort)
-                              .joinCluster(nodeInfoBuilder.build());
+            UpdateLicense updateLicense = raftServiceFactory.getRaftConfigServiceStub(jsonClusterNode.internalHostName,
+                    jsonClusterNode.internalGrpcPort)
+                    .joinCluster(nodeInfoBuilder.build());
+
+            eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(updateLicense.getLicense().toByteArray()));
 
             return ResponseEntity.accepted()
                                  .body(new RestResponse(true,

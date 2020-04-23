@@ -27,14 +27,15 @@ public class DistributeLicenseService {
         this.licenseManager = licenseManager;
     }
 
-    public void distributeLicense(byte[] license) {
+    public void distributeLicense(byte[] licenseContent) {
+        licenseManager.validate(licenseContent);
 
-        licenseManager.validate(license);
+        //will work only if we initialize cluster, otherwise we cant upload license to initial node... to be discussed
 
         taskPublisher.publishScheduledTask(getAdmin(),
                 PrepareUpdateLicenseTask.class
                         .getName(),
-                license,
+                licenseContent,
                 Duration.ZERO);
     }
 

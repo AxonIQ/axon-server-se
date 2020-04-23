@@ -3,9 +3,6 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.Payload;
-import io.axoniq.axonserver.enterprise.taskscheduler.JacksonTaskPayloadSerializer;
-import io.axoniq.axonserver.enterprise.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenseTask;
@@ -14,7 +11,7 @@ import io.axoniq.axonserver.enterprise.taskscheduler.task.UpdateLicenseTaskPaylo
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.licensing.LicenseManager;
-import io.swagger.models.License;
+import io.axoniq.axonserver.licensing.Limits;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
@@ -160,7 +157,7 @@ public class DistributeLicenseServiceTest {
 
         verify(remoteConnection, times(1)).publish(captor.capture());
 
-        String licenseContent = new String(captor.getValue().getDistributeLicense().getLicense().toByteArray());
+        String licenseContent = new String(captor.getValue().getUpdateLicense().getLicense().toByteArray());
         assertEquals(licenseContent, "myLicense");
     }
 

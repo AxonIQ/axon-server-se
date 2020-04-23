@@ -3,13 +3,16 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.taskscheduler.LocalTaskManager;
 import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -30,13 +33,15 @@ public class RegisterNodeTask implements ScheduledTask {
     private final LocalTaskManager localTaskManager;
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RegisterNodeTask(LocalTaskManager localTaskManager,
                             ClusterController clusterController,
-                            RaftConfigServiceFactory raftServiceFactory) {
+                            RaftConfigServiceFactory raftServiceFactory, ApplicationEventPublisher eventPublisher) {
         this.localTaskManager = localTaskManager;
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -47,9 +52,11 @@ public class RegisterNodeTask implements ScheduledTask {
                                         .addContexts(ContextRole.newBuilder().setName(CONTEXT_NONE))
                                         .build();
 
-            raftServiceFactory.getRaftConfigServiceStub(registerNodePayload.getHostname(),
-                                                        registerNodePayload.getPort())
-                              .joinCluster(nodeInfo);
+            UpdateLicense updateLicense = raftServiceFactory.getRaftConfigServiceStub(registerNodePayload.getHostname(),
+                    registerNodePayload.getPort())
+                    .joinCluster(nodeInfo);
+
+            eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(updateLicense.getLicense().toByteArray()));
 
             registerNodePayload.contexts.forEach(context ->
                 localTaskManager.createLocalTask(AddNodeToContextTask.class.getName(),

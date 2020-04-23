@@ -457,9 +457,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 case DELETE_NODE:
                     clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
                     break;
-                case DISTRIBUTE_LICENSE:
+                case UPDATE_LICENSE:
                     eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(
-                            connectorCommand.getDistributeLicense().getLicense().toByteArray()) {
+                            connectorCommand.getUpdateLicense().getLicense().toByteArray()) {
                     });
                     break;
                 default:

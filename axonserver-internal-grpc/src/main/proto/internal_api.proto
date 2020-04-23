@@ -28,7 +28,7 @@ service RaftConfigService {
     rpc InitCluster (ContextNames) returns (InstructionAck) {
     }
 
-    rpc JoinCluster (NodeInfo) returns (InstructionAck) {
+    rpc JoinCluster (NodeInfo) returns (UpdateLicense) {
     }
 
     rpc DeleteNode (NodeName) returns (InstructionAck) {
@@ -167,7 +167,7 @@ message ConnectorCommand {
         QueryHandlerStatus query_handler_status = 37;
         ClientEventProcessorSegment split_segment = 38;
         ClientEventProcessorSegment merge_segment = 39;
-        DistributeLicense distribute_license = 40;
+        UpdateLicense update_license = 40;
     }
 }
 
@@ -219,7 +219,7 @@ message DeleteNode {
     int64 generation = 2;
 }
 
-message DistributeLicense {
+message UpdateLicense {
     bytes license = 1;
 }
 

@@ -9,7 +9,7 @@ import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
-import io.axoniq.axonserver.grpc.internal.DistributeLicense;
+import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -56,8 +56,8 @@ public class UpdateLicenseTask implements ScheduledTask {
 
     private ConnectorCommand createCommand(UpdateLicenseTaskPayload licenseTaskPayload) {
         return ConnectorCommand.newBuilder()
-                .setDistributeLicense(
-                        DistributeLicense.newBuilder()
+                .setUpdateLicense(
+                        UpdateLicense.newBuilder()
                                 .setLicense(ByteString.copyFrom(licenseTaskPayload.getLicensePayload()))
                                 .build())
                 .build();

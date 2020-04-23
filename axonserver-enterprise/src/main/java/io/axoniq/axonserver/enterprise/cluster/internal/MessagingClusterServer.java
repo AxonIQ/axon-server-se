@@ -62,7 +62,7 @@ public class MessagingClusterServer implements SmartLifecycle {
 
     @Override
     public boolean isAutoStartup() {
-        return Feature.CLUSTERING.enabled(limits);
+        return true; //Feature.CLUSTERING.enabled(limits) this is blocking me, is it safe to delete?
     }
 
     @Override

@@ -140,7 +140,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     public void start() {
         checkCurrentNodeSaved();
 
-        if (Feature.CLUSTERING.enabled(limits)) {
             logger.debug("Start cluster controller");
 
             nodes().forEach(clusterNode -> startRemoteConnection(clusterNode, true));
@@ -149,7 +148,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                                                      clusterConfiguration.getConnectionCheckDelay(),
                                                      clusterConfiguration.getConnectionCheckInterval(),
                                                      TimeUnit.MILLISECONDS);
-        }
         running = true;
     }
 
@@ -282,7 +280,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
 
     @Transactional
     public synchronized ClusterNode addConnection(NodeInfo nodeInfo) {
-        checkLimit(nodeInfo.getNodeName());
+        //checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
             logger.info("Trying to join with current node name: {}", nodeInfo.getNodeName());
             return getMe();

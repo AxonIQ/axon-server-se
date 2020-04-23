@@ -1,11 +1,15 @@
 package io.axoniq.axonserver.licensing;
 
 import io.axoniq.axonserver.config.FeatureChecker;
+import io.axoniq.axonserver.util.StringUtils;
+import io.netty.util.internal.StringUtil;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,10 +18,25 @@ import java.util.stream.Collectors;
  */
 @Component
 @Primary
+@DependsOn({"licenseManager"})
 public class Limits implements FeatureChecker  {
+
+    private final LicenseManager licenseManager;
+
+    public Limits(LicenseManager licenseManager) {
+        this.licenseManager = licenseManager;
+    }
+
     public int getMaxClusterSize() {
-        if( Feature.CLUSTERING.enabled(this)) return LicenseConfiguration.getInstance().getClusterNodes();
-        return 1;
+        try {
+            if( Feature.CLUSTERING.enabled(this)) {
+                return licenseManager.getLicenseConfiguration().getClusterNodes();
+            } else {
+                return 1;
+            }
+        } catch (Exception e) {
+            return 1;
+        }
     }
 
     @Override
@@ -26,7 +45,11 @@ public class Limits implements FeatureChecker  {
     }
 
     public boolean isEnterprise() {
-        return LicenseConfiguration.isEnterprise();
+        try {
+            return licenseManager.getLicenseConfiguration().isEnterprise();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
@@ -45,28 +68,49 @@ public class Limits implements FeatureChecker  {
     }
 
     public int getMaxContexts() {
-        return LicenseConfiguration.getInstance().getContexts();
+        try {
+            return licenseManager.getLicenseConfiguration().getContexts();
+        }
+        catch (Exception e) {
+           return 1;
+        }
     }
 
     public List<String> getFeatureList() {
-        return Arrays.stream(Feature.values())
-                     .filter(f -> f.enabled(this))
-                     .map(Enum::name)
-                     .collect(Collectors.toList());
+        try {
+            return Arrays.stream(Feature.values())
+                    .filter(f -> f.enabled(this))
+                    .map(Enum::name)
+                    .collect(Collectors.toList());
+        } catch (Exception e){
+            return Collections.emptyList();
+        }
     }
 
     @Override
     public LocalDate getExpiryDate() {
-        return LicenseConfiguration.getInstance().getExpiryDate();
+        try {
+            return licenseManager.getLicenseConfiguration().getExpiryDate();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
     public String getEdition() {
-        return LicenseConfiguration.getInstance().getEdition().displayName();
+        try {
+            return licenseManager.getLicenseConfiguration().getEdition().displayName();
+        } catch (Exception e) {
+            return LicenseConfiguration.Edition.Standard.displayName();
+        }
     }
 
     @Override
     public String getLicensee() {
-        return LicenseConfiguration.getInstance().getLicensee();
+        try {
+            return licenseManager.getLicenseConfiguration().getLicensee();
+        } catch (Exception e) {
+            return StringUtil.EMPTY_STRING;
+        }
     }
 }

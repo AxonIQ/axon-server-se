@@ -3,7 +3,6 @@
     <module name="axonserver-enterprise" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="io.axoniq.axonserver.AxonServerEnterprise" />
     <option name="ACTIVE_PROFILES" value="internal" />
-    <option name="VM_PARAMETERS" value="-Dlicense=dev/developer.license" />
     <option name="ALTERNATIVE_JRE_PATH" />
     <additionalParameters>
       <param>
