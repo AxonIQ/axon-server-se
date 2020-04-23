@@ -119,9 +119,9 @@ public class StandaloneTaskManagerTest {
 
     @Test
     public void createLocalTask() {
-        testSubject.createLocalTask("DummyHandler",
-                                    new UserInfo("user", Collections.emptySet()),
-                                    Duration.ofSeconds(5));
+        testSubject.createTask("DummyHandler",
+                               new UserInfo("user", Collections.emptySet()),
+                               Duration.ofSeconds(5));
         assertEquals(1, tasks.size());
         scheduler.timeElapses(5, TimeUnit.SECONDS);
         assertEquals(0, tasks.size());
@@ -129,9 +129,9 @@ public class StandaloneTaskManagerTest {
 
     @Test
     public void createLocalTaskAfter11Minutes() {
-        testSubject.createLocalTask("DummyHandler",
-                                    new UserInfo("user", Collections.emptySet()),
-                                    Duration.ofMinutes(11));
+        testSubject.createTask("DummyHandler",
+                               new UserInfo("user", Collections.emptySet()),
+                               Duration.ofMinutes(11));
         assertEquals(1, tasks.size());
         assertEquals(1, scheduler.tasks());
         scheduler.timeElapses(5, TimeUnit.MINUTES);
@@ -148,9 +148,9 @@ public class StandaloneTaskManagerTest {
     @Test
     public void createLocalTaskTransientException() {
         transientException.set(true);
-        testSubject.createLocalTask("DummyHandler",
-                                    new UserInfo("user", Collections.emptySet()),
-                                    Duration.ofSeconds(5));
+        testSubject.createTask("DummyHandler",
+                               new UserInfo("user", Collections.emptySet()),
+                               Duration.ofSeconds(5));
         assertEquals(1, tasks.size());
         scheduler.timeElapses(5, TimeUnit.SECONDS);
         assertEquals(1, executionCounter.get());
@@ -164,9 +164,9 @@ public class StandaloneTaskManagerTest {
     @Test
     public void createLocalTaskNonTransientException() {
         nonTransientException.set(true);
-        testSubject.createLocalTask("DummyHandler",
-                                    new UserInfo("user", Collections.emptySet()),
-                                    Duration.ofSeconds(5));
+        testSubject.createTask("DummyHandler",
+                               new UserInfo("user", Collections.emptySet()),
+                               Duration.ofSeconds(5));
         assertEquals(1, tasks.size());
         scheduler.timeElapses(5, TimeUnit.SECONDS);
         assertEquals(1, executionCounter.get());
@@ -178,9 +178,9 @@ public class StandaloneTaskManagerTest {
 
     @Test
     public void cancel() {
-        String taskId = testSubject.createLocalTask("DummyHandler",
-                                                    new TaskPayload("Dummy", "DummyPayload".getBytes()),
-                                                    scheduler.clock().millis() + TimeUnit.MINUTES.toMillis(1));
+        String taskId = testSubject.createTask("DummyHandler",
+                                               new TaskPayload("Dummy", "DummyPayload".getBytes()),
+                                               scheduler.clock().millis() + TimeUnit.MINUTES.toMillis(1));
         assertEquals(1, tasks.size());
         assertEquals(2, scheduler.tasks());
         scheduler.timeElapses(5, TimeUnit.SECONDS);

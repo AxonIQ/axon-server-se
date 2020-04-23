@@ -31,15 +31,15 @@ import io.grpc.stub.StreamObserver;
 public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImplBase implements
         AxonServerClientService {
 
-    private final StandaloneTaskManager localTaskManager;
+    private final StandaloneTaskManager standaloneTaskManager;
 
     /**
      * Instantiates the service
      *
-     * @param localTaskManager component responsible maintaining scheduled tasks.
+     * @param standaloneTaskManager component responsible maintaining scheduled tasks.
      */
-    public EventSchedulerService(StandaloneTaskManager localTaskManager) {
-        this.localTaskManager = localTaskManager;
+    public EventSchedulerService(StandaloneTaskManager standaloneTaskManager) {
+        this.standaloneTaskManager = standaloneTaskManager;
     }
 
     /**
@@ -64,7 +64,7 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
     public void rescheduleEvent(RescheduleEventRequest request,
                                 StreamObserver<ScheduleToken> responseObserver) {
         if (!request.getToken().equals("")) {
-            localTaskManager.cancel(request.getToken());
+            standaloneTaskManager.cancel(request.getToken());
         }
         doScheduleEvent(request.getEvent(), request.getInstant(), responseObserver);
     }
@@ -79,7 +79,7 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
     public void cancelScheduledEvent(CancelScheduledEventRequest request,
                                      StreamObserver<InstructionAck> responseObserver) {
         try {
-            localTaskManager.cancel(request.getToken());
+            standaloneTaskManager.cancel(request.getToken());
             responseObserver.onNext(InstructionAck.newBuilder()
                                                   .setSuccess(true)
                                                   .build());
@@ -92,7 +92,7 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
     private void doScheduleEvent(Event event, long instant, StreamObserver<ScheduleToken> responseObserver) {
         try {
             TaskPayload payload = new TaskPayload(Event.class.getName(), event.toByteArray());
-            String taskId = localTaskManager.createLocalTask(ScheduledEventExecutor.class.getName(),
+            String taskId = standaloneTaskManager.createTask(ScheduledEventExecutor.class.getName(),
                                                              payload,
                                                              instant);
             responseObserver.onNext(ScheduleToken.newBuilder()

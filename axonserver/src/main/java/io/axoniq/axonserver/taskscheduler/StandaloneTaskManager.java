@@ -66,7 +66,7 @@ public class StandaloneTaskManager extends BaseTaskManager {
      * @param instant     the timestamp when the task must be executed
      * @return a unique reference to the task
      */
-    public String createLocalTask(String taskHandler, TaskPayload payload, long instant) {
+    public String createTask(String taskHandler, TaskPayload payload, long instant) {
         Task task = new Task();
         task.setTaskId(UUID.randomUUID().toString());
         task.setStatus(TaskStatus.SCHEDULED);
@@ -86,8 +86,8 @@ public class StandaloneTaskManager extends BaseTaskManager {
      * @param delay       the time to wait before executing the task
      * @return a unique reference to the task
      */
-    public void createLocalTask(String taskHandler, Object payload, Duration delay) {
-        createLocalTask(taskHandler, taskPayloadSerializer.serialize(payload), clock.millis() + delay.toMillis());
+    public void createTask(String taskHandler, Object payload, Duration delay) {
+        createTask(taskHandler, taskPayloadSerializer.serialize(payload), clock.millis() + delay.toMillis());
     }
 
     @Override
