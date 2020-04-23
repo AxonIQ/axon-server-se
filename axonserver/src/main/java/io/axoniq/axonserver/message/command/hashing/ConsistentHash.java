@@ -58,24 +58,29 @@ public class ConsistentHash {
      * @param routingKey the routing that should be used to select a member
      * @return the member that should handle the message or an empty Optional if no suitable member was found
      */
-    public Optional<ConsistentHashMember> getMember(String routingKey) {
+    public Optional<ConsistentHashMember> getMember(String routingKey,
+                                                    Set<String> candidates) {
+
         String hash = hash(routingKey);
         SortedMap<String, ConsistentHashMember> tailMap = hashToMember.tailMap(hash);
         Iterator<Map.Entry<String, ConsistentHashMember>> tailIterator = tailMap.entrySet().iterator();
-        Optional<ConsistentHashMember> foundMember = findSuitableMember(tailIterator);
+        Optional<ConsistentHashMember> foundMember = findSuitableMember(tailIterator, candidates);
         if (!foundMember.isPresent()) {
             Iterator<Map.Entry<String, ConsistentHashMember>> headIterator =
                     hashToMember.headMap(hash).entrySet().iterator();
-            foundMember = findSuitableMember(headIterator);
+            foundMember = findSuitableMember(headIterator, candidates);
         }
         return foundMember;
     }
 
     private Optional<ConsistentHashMember> findSuitableMember(
-            Iterator<Map.Entry<String, ConsistentHashMember>> iterator) {
-        if (iterator.hasNext()) {
+            Iterator<Map.Entry<String, ConsistentHashMember>> iterator,
+            Set<String> bestMatches) {
+        while (iterator.hasNext()) {
             Map.Entry<String, ConsistentHashMember> entry = iterator.next();
-            return Optional.of(entry.getValue());
+            if (bestMatches == null || bestMatches.contains(entry.getValue().member)) {
+                return Optional.of(entry.getValue());
+            }
         }
         return Optional.empty();
     }

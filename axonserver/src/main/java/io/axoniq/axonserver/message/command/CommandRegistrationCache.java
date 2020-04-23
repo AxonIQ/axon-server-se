@@ -21,11 +21,13 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
@@ -44,18 +46,32 @@ public class CommandRegistrationCache {
     private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
     private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
+    private final BiFunction<Command, ClientIdentification, Integer> filter;
 
     @Autowired
+    public CommandRegistrationCache(BiFunction<Command, ClientIdentification, Integer> filter) {
+        this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
+        this.filter = filter;
+    }
+
     public CommandRegistrationCache() {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
+        this.filter = (command, target) -> 0;
     }
 
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory) {
+        this(selectorFactory, (command, target) -> 0);
+    }
+
+    public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory,
+                                    BiFunction<Command, ClientIdentification, Integer> filter) {
         this.selectorFactory = selectorFactory;
+        this.filter = filter;
     }
 
     /**
      * Removes all registrations for a client
+     *
      * @param client the clientId to remove
      */
     public void remove(ClientIdentification client) {
@@ -146,18 +162,53 @@ public class CommandRegistrationCache {
      */
     public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
         String command = request.getName();
+        Set<ClientIdentification> candidates = getCandidates(request);
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        if (candidates.size() == 1) {
+            return commandHandlersPerClientContext.get(candidates.iterator().next());
+        }
+        Set<String> candidateNames = candidates.stream().map(s -> s.getClient()).collect(Collectors.toSet());
         RoutingSelector<String> routingSelector = routingSelector(context, command);
         return routingSelector
-                .selectHandler(routingKey)
+                .selectHandler(routingKey, candidateNames)
                 .map(client -> commandHandlersPerClientContext.get(new ClientIdentification(context, client)))
                 .orElse(null);
+    }
+
+    private Set<ClientIdentification> getCandidates(Command command) {
+
+        Map<ClientIdentification, Integer> scorePerClient = new HashMap<>();
+        registrationsPerClient.entrySet()
+                              .stream()
+                              .filter(entry -> entry.getValue().containsKey(command.getName()))
+                              .forEach(entry -> scorePerClient.computeIfAbsent(entry.getKey(),
+                                                                               m -> filter.apply(command,
+                                                                                                 entry.getKey())));
+
+        return getHighestScore(scorePerClient);
+    }
+
+    private Set<ClientIdentification> getHighestScore(Map<ClientIdentification, Integer> scorePerClient) {
+        Set<ClientIdentification> bestClients = new HashSet<>();
+        int highest = Integer.MIN_VALUE;
+        for (Map.Entry<ClientIdentification, Integer> score : scorePerClient.entrySet()) {
+            if (score.getValue() > highest) {
+                bestClients = new HashSet<>();
+                highest = score.getValue();
+            }
+            if (score.getValue() == highest) {
+                bestClients.add(score.getKey());
+            }
+        }
+        return bestClients;
     }
 
     @Nonnull
     private RoutingSelector<String> routingSelector(String context, String command) {
         CommandTypeIdentifier commandIdentification = new CommandTypeIdentifier(context, command);
-        return routingSelectors.computeIfAbsent(commandIdentification,
-                                                c -> selectorFactory.apply(commandIdentification));
+        return routingSelectors.computeIfAbsent(commandIdentification, selectorFactory::apply);
     }
 
     private Function<String, Integer> loadFactorSolver(CommandTypeIdentifier command) {
