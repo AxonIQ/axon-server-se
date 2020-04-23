@@ -48,9 +48,14 @@ public class AxonServerPopupMapping implements Mapping<AxonServer> {
         lines.add("Internal Hostname: " + node.getInternalHostName());
         lines.add("Internal Grpc Port: " + node.getGrpcInternalPort());
         lines.add("Http Port: " + node.getHttpPort());
-        List<TextLine> textLines = lines.stream().map(text -> new TextLine(text, fonts.popup(), StyleClass.POPUP)).collect(toList());
+        if (!hub.tags().isEmpty()) {
+            lines.add("Tags:");
+            hub.tags().forEach((key, value) -> lines.add("- " + key + "=" + value));
+        }
+        List<TextLine> textLines = lines.stream().map(text -> new TextLine(text, fonts.popup(), StyleClass.POPUP))
+                                        .collect(toList());
         Rectangle r = hubRegistry.get(node.getName()).rectangle();
-        Position position = r.position().shift(10, r.height()-5);
+        Position position = r.position().shift(10, r.height() - 5);
         TextBox content = new TextBox(textLines, position, StyleClass.POPUP, new TextBox.Left(5), 10);
         return new Hidden(node.getName() + "-details", content, StyleClass.POPUP);
     }
