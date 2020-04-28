@@ -138,6 +138,7 @@ public class EventDispatcherTest {
                                            .build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT);
         assertEquals(1, responseObserver.values().size());
+        responseObserver = new FakeStreamObserver<>();
         inputStream = testSubject.listEvents(responseObserver);
         inputStream.onNext(GetEventsRequest.newBuilder()
                                            .setAllowReadingFromFollower(true)
@@ -181,6 +182,9 @@ public class EventDispatcherTest {
         inputStream.onNext(QueryEventsRequest.newBuilder().build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT);
         assertEquals(1, responseObserver.values().size());
+
+        responseObserver = new FakeStreamObserver<>();
+        inputStream = testSubject.queryEvents(responseObserver);
         inputStream.onNext(QueryEventsRequest.newBuilder()
                                              .setAllowReadingFromFollower(true)
                                              .build());

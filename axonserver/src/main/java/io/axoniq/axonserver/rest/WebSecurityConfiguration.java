@@ -93,7 +93,10 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                                     new RestRequestAccessDecisionVoter(accessController))));
             } else {
                 auth.antMatchers("/", "/**/*.html", "/v1/**")
-                    .authenticated();
+                    .authenticated()
+                    .accessDecisionManager(new AffirmativeBased(
+                            Collections.singletonList(
+                                    new StandardEditionRestRequestAccessDecisionVoter())));
             }
             auth
                     .anyRequest().permitAll()
