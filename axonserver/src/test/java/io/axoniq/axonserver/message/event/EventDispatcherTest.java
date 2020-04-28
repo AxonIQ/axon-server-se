@@ -56,7 +56,7 @@ public class EventDispatcherTest {
     public void setUp() {
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
         when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
-        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
+        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
                                           new MeterFactory(Metrics.globalRegistry,
@@ -136,7 +136,7 @@ public class EventDispatcherTest {
         inputStream.onNext(GetEventsRequest.newBuilder()
                                            .setClientId("sampleClient")
                                            .build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT);
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.values().size());
         responseObserver = new FakeStreamObserver<>();
         inputStream = testSubject.listEvents(responseObserver);
@@ -144,7 +144,7 @@ public class EventDispatcherTest {
                                            .setAllowReadingFromFollower(true)
                                            .setClientId("sampleClient")
                                            .build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT);
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
         assertEquals(1, responseObserver.completedCount());
         testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
                                                                   "myComponent",
@@ -180,7 +180,7 @@ public class EventDispatcherTest {
         });
         StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(responseObserver);
         inputStream.onNext(QueryEventsRequest.newBuilder().build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT);
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.values().size());
 
         responseObserver = new FakeStreamObserver<>();
@@ -188,7 +188,7 @@ public class EventDispatcherTest {
         inputStream.onNext(QueryEventsRequest.newBuilder()
                                              .setAllowReadingFromFollower(true)
                                              .build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT);
+        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
         assertEquals(1, responseObserver.completedCount());
     }
 }
