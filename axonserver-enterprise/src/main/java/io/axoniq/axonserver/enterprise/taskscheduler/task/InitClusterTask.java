@@ -2,8 +2,8 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.taskscheduler.LocalTaskManager;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
+import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -23,10 +23,10 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 @Component
 public class InitClusterTask implements ScheduledTask {
 
-    private final LocalTaskManager taskManager;
+    private final StandaloneTaskManager taskManager;
     private final RaftConfigServiceFactory raftConfigServiceFactory;
 
-    public InitClusterTask(LocalTaskManager taskManager,
+    public InitClusterTask(StandaloneTaskManager taskManager,
                            RaftConfigServiceFactory raftConfigServiceFactory) {
         this.taskManager = taskManager;
         this.raftConfigServiceFactory = raftConfigServiceFactory;
@@ -35,11 +35,11 @@ public class InitClusterTask implements ScheduledTask {
     public void schedule(String[] contexts) {
         InitClusterPayload initClusterPayload = new InitClusterPayload(contexts);
 
-        taskManager.createLocalTask(InitClusterTask.class.getName(), initClusterPayload, Duration.ZERO);
+        taskManager.createTask(InitClusterTask.class.getName(), initClusterPayload, Duration.ZERO);
     }
 
     @Override
-    public void execute(Object payload) {
+    public void execute(String context, Object payload) {
         InitClusterPayload initClusterPayload = (InitClusterPayload) payload;
         List<String> contextList = Arrays.stream(initClusterPayload.getContexts())
                                          .filter(name -> !getAdmin().equals(name))

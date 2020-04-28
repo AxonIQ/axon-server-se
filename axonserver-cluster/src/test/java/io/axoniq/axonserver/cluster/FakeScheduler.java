@@ -93,7 +93,8 @@ public class FakeScheduler implements Scheduler {
 
         registration.set(schedule(runnable, initialDelay, timeUnit));
         return new DefaultScheduledRegistration(clock,
-                                                mayInterruptIfRunning -> registration.get().cancel(mayInterruptIfRunning),
+                                                mayInterruptIfRunning -> registration.get()
+                                                                                     .cancel(mayInterruptIfRunning),
                                                 unit -> registration.get().getDelay(unit));
     }
 

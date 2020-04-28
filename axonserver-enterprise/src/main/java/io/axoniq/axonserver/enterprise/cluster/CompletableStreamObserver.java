@@ -8,7 +8,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
+ * Stream observer implementation that maps a stream observer to a completable future. Completable future completes on
+ * the first message received.
+ *
  * @author Marc Gathier
+ * @since 4.1
  */
 public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
 
@@ -19,6 +23,7 @@ public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
     private final Function<T, R> converter;
 
     public CompletableStreamObserver(CompletableFuture<R> completableFuture, String action, Logger logger) {
+        //noinspection unchecked
         this(completableFuture, action, logger, result -> (R) result);
     }
 

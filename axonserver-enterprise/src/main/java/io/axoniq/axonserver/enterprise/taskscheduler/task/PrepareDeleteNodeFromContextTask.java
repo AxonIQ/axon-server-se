@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextController;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -49,7 +49,7 @@ public class PrepareDeleteNodeFromContextTask implements ScheduledTask {
     }
 
     @Override
-    public CompletableFuture<Void> executeAsync(Object payload) {
+    public CompletableFuture<Void> executeAsync(String context, Object payload) {
         NodeContext nodeContext = (NodeContext) payload;
         Collection<String> nodesInContext = contextController.getContext(nodeContext.getContext()).getNodeNames();
         Collection<String> adminNodes = contextController.getContext(getAdmin()).getNodeNames();
@@ -59,7 +59,8 @@ public class PrepareDeleteNodeFromContextTask implements ScheduledTask {
 
         return taskPublisher.publishScheduledTask(getAdmin(), DeleteNodeFromContextTask.class.getName(),
                                                   nodeContext,
-                                                  Duration.of(1, ChronoUnit.SECONDS));
+                                                  Duration.of(1, ChronoUnit.SECONDS))
+                            .thenApply(taskId -> null);
     }
 
     private void sendPreDeleteNodeFromContext(String node, NodeContext nodeContext) {

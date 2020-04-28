@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import org.springframework.stereotype.Component;
 
@@ -38,12 +38,13 @@ public class DeleteNodeFromContextTask implements ScheduledTask {
      * @param payload the {@link NodeContext} information
      */
     @Override
-    public CompletableFuture<Void> executeAsync(Object payload) {
+    public CompletableFuture<Void> executeAsync(String context, Object payload) {
         NodeContext nodeContext = (NodeContext) payload;
         raftConfigServiceFactory.getRaftConfigService().deleteNodeFromContext(nodeContext.getContext(),
                                                                               nodeContext.getNode());
         return taskPublisher.publishScheduledTask(getAdmin(), DeleteContextFromNodeTask.class.getName(),
                                                   nodeContext,
-                                                  Duration.of(100, ChronoUnit.MILLIS));
+                                                  Duration.of(100, ChronoUnit.MILLIS))
+                            .thenApply(taskId -> null);
     }
 }
