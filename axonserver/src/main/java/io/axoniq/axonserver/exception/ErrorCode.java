@@ -55,6 +55,8 @@ public enum ErrorCode {
     CANNOT_JOIN("AXONIQ-2502", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
     UNKNOWN_ROLE("AXONIQ-2510", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
 
+    SCHEDULED_EVENT_NOT_FOUND("AXONIQ-2610", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
+
     // Rate limit errors
     EVENT_RATE_EXCEEDED("AXONIQ-3000", Status.RESOURCE_EXHAUSTED, HttpStatus.TOO_MANY_REQUESTS, true),
 

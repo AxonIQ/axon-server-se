@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -23,7 +23,7 @@ import static org.junit.Assert.*;
 public class FlowControlledStreamObserverTest {
     private FlowControlledStreamObserver<String> testSubject;
     private AtomicReference<Throwable> errorReference = new AtomicReference<>();
-    private CountingStreamObserver<String> delegate = new CountingStreamObserver<>();
+    private FakeStreamObserver<String> delegate = new FakeStreamObserver<>();
 
     @Before
     public void setUp() throws Exception {
@@ -34,10 +34,10 @@ public class FlowControlledStreamObserverTest {
     @Test
     public void testNoMorePermits() {
         IntStream.range(0, 20).forEach(i -> testSubject.onNext("Sample"));
-        assertEquals(10, delegate.count);
+        assertEquals(10, delegate.values().size());
         assertEquals(IllegalStateException.class, errorReference.get().getClass());
         testSubject.addPermits(10);
         IntStream.range(0, 20).forEach(i -> testSubject.onNext("Sample"));
-        assertEquals(20, delegate.count);
+        assertEquals(20, delegate.values().size());
     }
 }
