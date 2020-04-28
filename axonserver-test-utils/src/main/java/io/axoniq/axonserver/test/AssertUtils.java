@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.util;
+package io.axoniq.axonserver.test;
 
 import java.util.concurrent.TimeUnit;
 

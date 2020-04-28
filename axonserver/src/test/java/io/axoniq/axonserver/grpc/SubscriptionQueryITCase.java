@@ -26,7 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 
 /**

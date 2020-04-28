@@ -11,7 +11,7 @@ package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.util.ChangeableClock;
+import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,12 +22,13 @@ import static org.junit.Assert.assertNotNull;
  * @author Marc Gathier
  */
 public class CommandCacheTest {
+
     private CommandCache testSubject;
-    private ChangeableClock clock;
+    private FakeClock clock;
 
     @Before
     public void setUp() {
-        clock= new ChangeableClock();
+        clock = new FakeClock();
         testSubject = new CommandCache(50000, clock);
     }
 
@@ -37,7 +38,7 @@ public class CommandCacheTest {
         testSubject.put("1234", new CommandInformation("1234", "Source", responseAtomicReference::set,
                                                        new ClientIdentification("context", "client"),
                                                        "component"));
-        clock.forward(100000);
+        clock.timeElapses(100000);
         testSubject.clearOnTimeout();
         assertNotNull(responseAtomicReference.get());
 

@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.util;
+package io.axoniq.axonserver.test;
 
 import io.grpc.stub.StreamObserver;
 

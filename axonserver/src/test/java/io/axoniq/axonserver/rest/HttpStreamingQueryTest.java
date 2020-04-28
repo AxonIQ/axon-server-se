@@ -170,16 +170,12 @@ public class HttpStreamingQueryTest {
             latch.countDown();
         });
 
-        emitter.onCompletion(()-> {
-            latch.countDown();
-        });
+        emitter.onCompletion(latch::countDown);
 
-        emitter.onTimeout(() -> latch.countDown());
+        emitter.onTimeout(latch::countDown);
         testSubject.query(Topology.DEFAULT_CONTEXT, "aggregateIdentifier = \"demo\" | limit( 10)", "token", emitter);
 
         latch.await(1, TimeUnit.SECONDS);
         assertEquals(13, messages.size());
-
-
     }
 }
