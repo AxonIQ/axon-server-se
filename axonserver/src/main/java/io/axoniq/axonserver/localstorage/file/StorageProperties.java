@@ -88,9 +88,11 @@ public class StorageProperties {
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
+    /**
+     * Time to keep events in primary tier before deleting them, if secondary tier is defined.
+     */
     private long[] retentionTime = {
-            TimeUnit.HOURS.toMillis(1),
-            TimeUnit.DAYS.toMillis(1),
+            TimeUnit.DAYS.toMillis(7)
     };
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {

@@ -19,15 +19,15 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -35,8 +35,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.*;
 
 /**
@@ -87,7 +85,7 @@ public class EventDispatcherTest {
         assertTrue(responseObserver.values().isEmpty());
         inputStream.onError(new Throwable());
         assertTrue(responseObserver.errors().isEmpty());
-        verify(appendEventConnection).onError(anyObject());
+        verify(appendEventConnection).onError(any());
     }
 
     @Test
