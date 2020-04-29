@@ -10,15 +10,16 @@
 <script src="js/settings.js" language="JavaScript"></script>
 <script language="JavaScript">
     $(document).ready(function(){
-        $("#license_upload_button").click(function(event){
-            event.preventDefault();
+        $("body").on('submit', '#licenseForm', function(event) {
             var fd = new FormData();
             var files = $('#license')[0].files[0];
             fd.append('licenseFile',files);
 
+            console.log(files);
+
             if(files == undefined) {
                 alert("Choose license file first")
-                return;
+                return false;
             }
 
             $.ajax({
@@ -37,6 +38,8 @@
                     alert("Error occured: " + XMLHttpRequest.responseText);
                 }
             });
+
+            return false;
         });
     });
 </script>
@@ -159,9 +162,9 @@
             </section>
             <section>
                 <h3>Upload license</h3>
-                <form id="licenseForm" method="post" enctype="multipart/form-data">
-                    <input type="file" id="license" name="licenseFile"  value="Choose license"/>
-                    <input type="submit" value="Upload" id="license_upload_button" />
+                <form id="licenseForm" enctype="multipart/form-data">
+                    <input type="file" id="license" name="licenseFile"/>
+                    <input type="submit" value="Upload"  id="license_upload_button" />
                 </form>
             </section>
         </div>
