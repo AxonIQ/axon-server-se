@@ -69,7 +69,13 @@ public class Limits implements FeatureChecker  {
 
     public int getMaxContexts() {
         try {
-            return licenseManager.getLicenseConfiguration().getContexts();
+             if (licenseManager.getLicenseConfiguration()
+                     .getEdition().equals(LicenseConfiguration.Edition.Enterprise)) {
+                 return Integer.MAX_VALUE;
+             }
+             else {
+                 return 1;
+             }
         }
         catch (Exception e) {
            return 1;

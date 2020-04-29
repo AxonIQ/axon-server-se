@@ -60,7 +60,7 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
             responseObserver.onNext(serviceFactory.get().join(request));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            responseObserver.onError(GrpcExceptionBuilder.build(e));
         }
     }
 

@@ -30,8 +30,6 @@ public class DistributeLicenseService {
     public void distributeLicense(byte[] licenseContent) {
         licenseManager.validate(licenseContent);
 
-        //will work only if we initialize cluster, otherwise we cant upload license to initial node... to be discussed
-
         taskPublisher.publishScheduledTask(getAdmin(),
                 PrepareUpdateLicenseTask.class
                         .getName(),

@@ -280,7 +280,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
 
     @Transactional
     public synchronized ClusterNode addConnection(NodeInfo nodeInfo) {
-        //checkLimit(nodeInfo.getNodeName());
+        checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
             logger.info("Trying to join with current node name: {}", nodeInfo.getNodeName());
             return getMe();
@@ -304,7 +304,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         if (remoteConnections.containsKey(nodeName) || messagingPlatformConfiguration.getName().equals(nodeName)) {
             return;
         }
-        if (limits.getMaxClusterSize() == remoteConnections.size() + 1) {
+        if (remoteConnections.size() + 1 > limits.getMaxClusterSize()) {
             throw new MessagingPlatformException(ErrorCode.MAX_CLUSTER_SIZE_REACHED,
                                                  "Maximum allowed number of nodes reached " + nodeName);
         }

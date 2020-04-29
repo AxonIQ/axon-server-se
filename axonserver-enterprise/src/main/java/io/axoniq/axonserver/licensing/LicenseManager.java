@@ -210,6 +210,7 @@ public class LicenseManager {
                 if (LocalDate.now().isBefore(Objects.requireNonNull(graceDate))) {
                     logger.warn("License has expired, AxonServer will continue working until {}", graceDate);
                 } else {
+                    logger.error("AxonServer License has expired");
                     throw LicenseException.expired(expiryDate);
                 }
             }

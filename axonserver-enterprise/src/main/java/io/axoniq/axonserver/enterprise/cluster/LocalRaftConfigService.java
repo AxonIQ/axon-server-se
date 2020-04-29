@@ -508,6 +508,11 @@ class LocalRaftConfigService implements RaftConfigService {
             throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
         }
 
+        if (clusterController.nodes().count() + 1 > limits.getMaxClusterSize()) {
+            throw new MessagingPlatformException(ErrorCode.MAX_CLUSTER_SIZE_REACHED,
+                    "Maximum allowed number of nodes reached: " + limits.getMaxClusterSize());
+        }
+
         RaftNode adminNode = grpcRaftController.getRaftNode(getAdmin());
         if (!adminNode.isLeader()) {
             throw new MessagingPlatformException(ErrorCode.NODE_IS_REPLICA,
