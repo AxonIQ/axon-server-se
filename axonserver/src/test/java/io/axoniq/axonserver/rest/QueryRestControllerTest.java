@@ -41,10 +41,10 @@ public class QueryRestControllerTest {
         registationCache = new QueryRegistrationCache(null);
         queryDispatcher = mock(QueryDispatcher.class);
         QuerySubscription querySubscription = QuerySubscription.newBuilder()
-                .setQuery("Request")
-                .setComponentName("Component")
-                .setClientId("client")
-                .setNrOfHandlers(1).build();
+                                                               .setQuery("Request")
+                                                               .setComponentName("Component")
+                                                               .setClientId("client")
+                                                               .build();
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
                              new DirectQueryHandler(new FakeStreamObserver<>(),
                                                     new ClientIdentification(Topology.DEFAULT_CONTEXT,
