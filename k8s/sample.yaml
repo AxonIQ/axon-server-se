@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: sample
-          image: eu.gcr.io/axoniq-devops/sample-command-processor-axonserver-client:4.3-SNAPSHOT
+          image: eu.gcr.io/axoniq-devops/sample-command-processor-axonserver-client:4.4-SNAPSHOT
           ports:
             - containerPort: 9900
               protocol: TCP
