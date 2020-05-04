@@ -21,6 +21,30 @@
                         replicationGroup: null,
                         metaData: {"sample": "123"}
                     },
+                    contextProperties: [
+                        {
+                            name: "event.storage",
+                            description: "Base location where event files will be stored.",
+                            type: "path"
+                        },
+                        {name: "event.segment-size", description: "Size of event files.", type: "long"},
+                        {
+                            name: "event.max-bloom-filters-in-memory",
+                            description: "Maximum number of bloom filters that will be kept in memory.",
+                            type: "integer"
+                        },
+                        {
+                            name: "snapshot.storage",
+                            description: "Base location where snapshot files will be stored.",
+                            type: "path"
+                        },
+                        {name: "snapshot.segment-size", description: "Size of snapshot files.", type: "long"},
+                        {
+                            name: "snapshot.max-bloom-filters-in-memory",
+                            description: "Maximum number of bloom filters that will be kept in memory.",
+                            type: "integer"
+                        },
+                    ],
                     admin: globals.admin,
                     webSocketInfo: globals.webSocketInfo,
                     nodes: [],
@@ -114,7 +138,7 @@
                         return false;
                     },
                     deleteContext(context) {
-                        if( this.isInternalContext(context) ) {
+                        if (this.isInternalContext(context)) {
                             alert("Cannot delete internal context")
                         } else {
                             this.deleteContextData = {
@@ -158,6 +182,7 @@
                     },
                     deleteMetaData(key) {
                         delete this.newContext.metaData[key];
+                        this.$forceUpdate();
                     },
                     addMetaData() {
                         this.newContext.metaData[this.newContext.metaDataLabel] = this.newContext.metaDataValue;
@@ -177,7 +202,7 @@
             <tr>
                 <th class="contextColumn">Context Name</th>
                 <th class="contextColumn">Replication Group Name</th>
-                <th class="nodesColumn">Context options</th>
+                <th class="nodesColumn">Context Options</th>
             </tr>
             </thead>
             <tbody>
@@ -221,7 +246,7 @@
                             <span class="narrow">Replication Group</span>
                             <span>
                                     <select class="nodeRoleName" v-model="newContext.selectedReplicationGroup">
-                                        <option value="">-- Create New --</option>
+                                        <option value="">-- create new --</option>
                                         <option v-for="n in replicationGroups" :value="n.name">{{n.name}}</option>
                                     </select>
                             </span>
@@ -233,40 +258,53 @@
                         <li v-if="createReplicationGroup(newContext)">
                             <span class="narrow">Nodes</span>
                             <span>
-                                <div v-for="node in newContext.nodes">
-                                    <span class="nodeName">{{node.name}}</span>
-                                    <select class="nodeRoleName" v-model="node.selectedRole">
-                                        <option value="none">-- none --</option>
-                                        <option v-for="n in roles" :value="n">{{n}}</option>
-                                    </select>
-                                </div>
+                                 <table class="nestedTable">
+                                     <tr v-for="node in newContext.nodes">
+                                         <td style="width: 60%">{{node.name}}</td>
+                                         <td>
+                                            <select class="nodeRoleName" v-model="node.selectedRole">
+                                                <option value="none">-- none --</option>
+                                                <option v-for="n in roles" :value="n">{{n}}</option>
+                                            </select>
+                                         </td>
+                                     </tr>
+                                 </table>
                             </span>
                         </li>
                         <li>
                             <span class="narrow">Context Properties</span>
                             <span>
-                                <div v-for="key in Object.keys(newContext.metaData)">
-                                    <span class="narrow">{{key}}</span>
-                                    <span class="nodeRoleName">
-                                        <input v-model="newContext.metaData[key]">
-                                    </span>
-                                    <span @click="deleteMetaData(key)" title="Delete Context Property">
-                                        <i class="far fa-trash-alt"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="narrow">
-                                        <input v-model="newContext.metaDataLabel">
-                                    </span>
-                                    <span class="nodeRoleName">
-                                        <input v-model="newContext.metaDataValue">
-                                    </span>
-
+                                <table class="nestedTable">
+                                    <tbody>
+                                        <tr v-for="key in Object.keys(newContext.metaData)">
+                                            <td style="width: 60%">{{key}}</td>
+                                            <td><input class="propertyValue" style="width:100%"
+                                                       v-model="newContext.metaData[key]"></td>
+                                            <td style="width: 20px">
+                                                <span @click="deleteMetaData(key)" title="Delete Context Property">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="width: 60%">
+                                                <select class="propertyName" v-model="newContext.metaDataLabel">
+                                                    <option v-for="n in contextProperties" :value="n.name"
+                                                            :title="n.description">{{n.name}}</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input class="propertyValue" style="width:100%"
+                                                       v-model="newContext.metaDataValue">
+                                            </td>
+                                            <td style="width: 20px">
                                     <span @click="addMetaData()" title="Add Context Property">
                                         <i class="fas fa-plus"></i>
                                     </span>
-
-                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </span>
                         </li>
                         <li>
@@ -278,7 +316,7 @@
             </div>
     </section>
 
-    <modal name="delete-context" width="600" height="250">
+    <modal name="delete-context" width="600" height="270">
             <div class="column configuration modal">
                 <h2>Delete context {{deleteContextData.context}}</h2>
                 <p>

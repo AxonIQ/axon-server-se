@@ -623,8 +623,8 @@ ul {
 }
 
 select {
-	font-family: Lato, sans-serif;
-	font-size: 16px;
+    font-family: Lato, sans-serif;
+    font-size: 14px;
 }
 
 #applicationDetails, #userDetails {
@@ -675,15 +675,38 @@ select {
     margin-top: 20px;
 }
 
-@media only screen and (max-width: 1024px){
-	.column-wrapper{
-		display: block;
-		margin: 20px 0;
-	}
-		.column{
-			display: block;
-			border: none;
-		}
+.propertyName {
+    width: 100%;
+}
+
+.propertyValue {
+    width: 100%;
+}
+
+.nestedTable td {
+    border-top: none;
+    padding-top: 0;
+    padding-bottom: 2px;
+    padding-left: 0;
+}
+
+.nestedTable th {
+    border-top: none;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 0;
+}
+
+@media only screen and (max-width: 1024px) {
+    .column-wrapper {
+        display: block;
+        margin: 20px 0;
+    }
+
+    .column {
+        display: block;
+        border: none;
+    }
 		.configuration,
 		.status,
 		.license{

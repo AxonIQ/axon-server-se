@@ -63,4 +63,6 @@ public interface TaskRepository extends JpaRepository<Task, String> {
                                                                                          minTimestamp,
                                                                                          maxTimestamp);
     }
+
+    List<Task> findAllByContextIn(List<String> context);
 }
