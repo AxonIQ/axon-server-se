@@ -156,47 +156,6 @@ public class PlatformServiceTest {
     }
 
     @Test
-    public void onMergeSegmentRequest() {
-        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
-        requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("MergeClient")
-                                                                                                     .setComponentName("component")
-        ).build());
-        EventProcessorEvents.MergeSegmentRequest mergeSegmentRequest =
-                new EventProcessorEvents.MergeSegmentRequest(false,
-                                                             "MergeClient",
-                                                             "Processor",
-                                                             1);
-        platformService.on(mergeSegmentRequest);
-
-        assertEquals(1, responseObserver.values().size());
-    }
-
-    @Test
-    public void onSplitSegmentRequest() {
-        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
-        requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("MergeClient")
-                                                                                                     .setComponentName("component")
-        ).build());
-        FakeStreamObserver<PlatformOutboundInstruction> responseObserver2 = new FakeStreamObserver<>();
-        StreamObserver<PlatformInboundInstruction> requestStream2 = platformService.openStream(responseObserver2);
-        requestStream2.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                      .setClientId(
-                                                                                                              "SplitClient")
-                                                                                                      .setComponentName(
-                                                                                                              "component")
-        ).build());
-        EventProcessorEvents.SplitSegmentRequest splitSegmentRequest =
-                new EventProcessorEvents.SplitSegmentRequest(false, "SplitClient", "processor", 1);
-        platformService.on(splitSegmentRequest);
-        assertEquals(0, responseObserver.values().size());
-        assertEquals(1, responseObserver2.values().size());
-    }
-
-    @Test
     public void onInboundInstruction() {
         AtomicBoolean eventProcessorInfoReceived = new AtomicBoolean();
         platformService.onInboundInstruction(PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO,
@@ -209,18 +168,6 @@ public class PlatformServiceTest {
         ).build());
         clientStreamObserver.onNext(PlatformInboundInstruction.newBuilder().setEventProcessorInfo(EventProcessorInfo.getDefaultInstance()).build());
         assertTrue(eventProcessorInfoReceived.get());
-    }
-
-    @Test
-    public void onReleaseSegmentRequest() {
-        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
-        requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("Release")
-                                                                                                     .setComponentName("component")
-        ).build());
-        platformService.on(new EventProcessorEvents.ReleaseSegmentRequest("Release", "processor", 1, false));
-        assertEquals(1, responseObserver.values().size());
     }
 
     @Test
