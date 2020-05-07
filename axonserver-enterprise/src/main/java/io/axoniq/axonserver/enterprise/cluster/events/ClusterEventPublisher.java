@@ -25,6 +25,14 @@ public class ClusterEventPublisher implements AxonServerEventPublisher {
 
     private final Publisher<Object> localPublisher;
 
+    /**
+     * Creates an instance with the specified remote and local publisher.
+     *
+     * @param remotePublisher {@link RemoteEventPublisher} used to publish internal events to other Axon Server
+     *                        instances into the same cluster
+     * @param localPublisher  {@link LocalEventPublisher} used to publish internal events to the local instance of Axon
+     *                        Server
+     */
     @Autowired
     public ClusterEventPublisher(RemoteEventPublisher remotePublisher,
                                  LocalEventPublisher localPublisher) {
