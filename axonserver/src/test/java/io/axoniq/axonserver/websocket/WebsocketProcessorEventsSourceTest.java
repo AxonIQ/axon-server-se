@@ -67,7 +67,7 @@ public class WebsocketProcessorEventsSourceTest {
 
         for (int run = 0; run < 10; run++) {
             IntStream.range(0, 1000).parallel().forEach(i -> testSubject
-                    .on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true)));
+                    .on(new EventProcessorEvents.EventProcessorStatusUpdate(null)));
             Thread.sleep(100);
         }
 
