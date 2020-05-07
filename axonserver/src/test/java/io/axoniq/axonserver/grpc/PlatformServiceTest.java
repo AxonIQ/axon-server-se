@@ -21,7 +21,7 @@ import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
@@ -103,7 +103,7 @@ public class PlatformServiceTest {
 
     @Test
     public void unsupportedInstruction() {
-        CountingStreamObserver<PlatformOutboundInstruction> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<PlatformOutboundInstruction> responseStream = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseStream);
 
         String instructionId = "instructionId";
@@ -111,7 +111,7 @@ public class PlatformServiceTest {
                                                        .setInstructionId(instructionId)
                                                        .build());
 
-        InstructionAck ack = responseStream.responseList.get(responseStream.responseList.size() - 1).getAck();
+        InstructionAck ack = responseStream.values().get(responseStream.values().size() - 1).getAck();
         assertEquals(instructionId, ack.getInstructionId());
         assertTrue(ack.hasError());
         assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), ack.getError().getErrorCode());
@@ -119,36 +119,40 @@ public class PlatformServiceTest {
 
     @Test
     public void unsupportedInstructionWithoutInstructionId() {
-        CountingStreamObserver<PlatformOutboundInstruction> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<PlatformOutboundInstruction> responseStream = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseStream);
 
         requestStream.onNext(PlatformInboundInstruction.newBuilder().build());
 
-        assertEquals(0, responseStream.responseList.size());
+        assertEquals(0, responseStream.values().size());
     }
 
     @Test
     public void onPauseEventProcessorRequest() {
-        CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
                                                                                                      .setClientId("Release")
                                                                                                      .setComponentName("component")
         ).build());
-        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest("Release", "processor", false));
-        assertEquals(1, responseObserver.count);
+        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest("Release",
+                                                                                                         "processor",
+                                                                                                         false));
+        assertEquals(1, responseObserver.values().size());
     }
 
     @Test
     public void onStartEventProcessorRequest() {
-        CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
                                                                                                      .setClientId("Release")
                                                                                                      .setComponentName("component")
         ).build());
-        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest("Release", "processor", false));
-        assertEquals(1, responseObserver.count);
+        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest("Release",
+                                                                                                         "processor",
+                                                                                                         false));
+        assertEquals(1, responseObserver.values().size());
     }
 
     @Test
@@ -157,7 +161,7 @@ public class PlatformServiceTest {
         platformService.onInboundInstruction(PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO,
                                              (client, context, instruction) -> eventProcessorInfoReceived.set(true));
         StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService
-                .openStream(new CountingStreamObserver<>());
+                .openStream(new FakeStreamObserver<>());
         clientStreamObserver.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
                                                                                                      .setClientId("MergeClient")
                                                                                                      .setComponentName("component")
@@ -168,7 +172,7 @@ public class PlatformServiceTest {
 
     @Test
     public void onApplicationDisconnected() {
-        CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
                                                                                                      .setClientId("Release")
@@ -177,7 +181,7 @@ public class PlatformServiceTest {
         assertEquals(1, platformService.getConnectedClients().size());
         platformService.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "component", "Release"));
         assertEquals(0, platformService.getConnectedClients().size());
-        assertTrue(responseObserver.completed);
+        assertTrue(responseObserver.completedCount() == 1);
     }
 
 }

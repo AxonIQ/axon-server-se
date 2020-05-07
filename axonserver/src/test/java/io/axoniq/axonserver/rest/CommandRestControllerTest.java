@@ -17,7 +17,7 @@ import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -40,21 +40,24 @@ public class CommandRestControllerTest {
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
-        commandRegistationCache.add("DoIt", new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                     "client"), "component"));
+        commandRegistationCache.add("DoIt",
+                                    new DirectCommandHandler(new FakeStreamObserver<>(),
+                                                             new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                      "client"),
+                                                             "component"));
         testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
     }
 
     @Test
     public void get() throws Exception {
-        List<CommandRestController.JsonClientMapping> commands = testSubject.get();
+        List<CommandRestController.JsonClientMapping> commands = testSubject.get(null);
         ObjectMapper mapper = new ObjectMapper();
         assertNotEquals("[]", mapper.writeValueAsString(commands));
     }
 
     @Test
     public void getByComponent(){
-        Iterator<ComponentCommand> iterator = testSubject.getByComponent("component", Topology.DEFAULT_CONTEXT).iterator();
+        Iterator<ComponentCommand> iterator = testSubject.getByComponent("component", Topology.DEFAULT_CONTEXT, null).iterator();
         assertTrue(iterator.hasNext());
         GsonMedia gsonMedia = new GsonMedia();
         iterator.next().printOn(gsonMedia);
@@ -65,7 +68,7 @@ public class CommandRestControllerTest {
 
     @Test
     public void getByNotExistingComponent(){
-        Iterator<ComponentCommand> iterator = testSubject.getByComponent("otherComponent", Topology.DEFAULT_CONTEXT).iterator();
+        Iterator<ComponentCommand> iterator = testSubject.getByComponent("otherComponent", Topology.DEFAULT_CONTEXT, null).iterator();
         assertFalse(iterator.hasNext());
     }
 

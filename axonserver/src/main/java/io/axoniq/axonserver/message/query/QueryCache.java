@@ -50,6 +50,10 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         if( ! toDelete.isEmpty()) {
             logger.warn("Found {} waiting queries to delete", toDelete.size());
             toDelete.forEach(e -> {
+                logger.warn("Cancelling query {} sent by {}, waiting for reply from {}",
+                            e.getValue().getQuery().getQueryName(),
+                            e.getValue().getSourceClientId(),
+                            e.getValue().waitingFor());
                 remove(e.getKey());
                 e.getValue().cancel();
             });

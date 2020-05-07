@@ -16,41 +16,90 @@ import java.util.Map;
  * @author Marc Gathier
  */
 public class CommandDispatcher {
+
     @FunctionalInterface
     interface CommandProcessor {
+
         void process(String[] strings) throws Exception;
     }
 
-    private static final Map<String, CommandProcessor> executorMap = new HashMap<>();
-    static  {
-        executorMap.put("cluster", Cluster::run);
-        executorMap.put("delete-application", DeleteApplication::run);
-        executorMap.put("register-application", RegisterApplication::run);
-        executorMap.put("applications", ListApplications::run);
-        executorMap.put("register-node", RegisterNode::run);
-        executorMap.put("unregister-node", UnregisterNode::run);
-        executorMap.put("register-context", RegisterContext::run);
-        executorMap.put("delete-context", DeleteContext::run);
-        executorMap.put("add-node-to-context", AddNodeToContext::run);
-        executorMap.put("delete-node-from-context", DeleteNodeFromContext::run);
-        executorMap.put("contexts", ListContexts::run);
-        executorMap.put("register-user", RegisterUser::run);
-        executorMap.put("delete-user", DeleteUser::run);
-        executorMap.put("users", ListUsers::run);
-        executorMap.put("metrics", Metrics::run);
-        executorMap.put("init-cluster", InitNode::run);
-        executorMap.put("purge-events", DeleteEvents::run);
+    enum Group {
+        APPLICATION(true, false, "Applications"),
+        CLUSTER(true, false, "Cluster"),
+        CONTEXT(true, false, "Context"),
+        METRICS(true, true, "Metrics"),
+        USER(true, true, "Users"),
+        OTHER(false, true, "Other"),
+        ;
+
+        private final boolean eeSupport;
+        private final boolean seSupport;
+        private final String description;
+
+        Group(boolean eeSupport, boolean seSupport, String description) {
+            this.eeSupport = eeSupport;
+            this.seSupport = seSupport;
+            this.description = description;
+        }
+
+        @Override
+        public String toString() {
+            if (!seSupport) {
+                return description + " [Enterprise edition only]";
+            }
+            if (!eeSupport) {
+                return description + " [Standard edition only]";
+            }
+            return description;
+        }
+    }
+
+    static class CommandInformation {
+
+        CommandInformation(Group group, CommandProcessor commandProcessor) {
+            this.group = group;
+            this.commandProcessor = commandProcessor;
+        }
+
+        public void process(String[] args) throws Exception {
+            commandProcessor.process(args);
+        }
+
+        final Group group;
+        final CommandProcessor commandProcessor;
+    }
+
+    private static final Map<String, CommandInformation> executorMap = new HashMap<>();
+
+    static {
+        executorMap.put("cluster", new CommandInformation(Group.CLUSTER, Cluster::run));
+        executorMap.put("delete-application", new CommandInformation(Group.APPLICATION, DeleteApplication::run));
+        executorMap.put("register-application", new CommandInformation(Group.APPLICATION, RegisterApplication::run));
+        executorMap.put("applications", new CommandInformation(Group.APPLICATION, ListApplications::run));
+        executorMap.put("register-node", new CommandInformation(Group.CLUSTER, RegisterNode::run));
+        executorMap.put("unregister-node", new CommandInformation(Group.CLUSTER, UnregisterNode::run));
+        executorMap.put("register-context", new CommandInformation(Group.CONTEXT, RegisterContext::run));
+        executorMap.put("delete-context", new CommandInformation(Group.CONTEXT, DeleteContext::run));
+        executorMap.put("add-node-to-context", new CommandInformation(Group.CONTEXT, AddNodeToContext::run));
+        executorMap.put("delete-node-from-context", new CommandInformation(Group.CONTEXT, DeleteNodeFromContext::run));
+        executorMap.put("contexts", new CommandInformation(Group.CONTEXT, ListContexts::run));
+        executorMap.put("register-user", new CommandInformation(Group.USER, RegisterUser::run));
+        executorMap.put("delete-user", new CommandInformation(Group.USER, DeleteUser::run));
+        executorMap.put("users", new CommandInformation(Group.USER, ListUsers::run));
+        executorMap.put("metrics", new CommandInformation(Group.METRICS, Metrics::run));
+        executorMap.put("init-cluster", new CommandInformation(Group.CLUSTER, InitNode::run));
+        executorMap.put("purge-events", new CommandInformation(Group.OTHER, DeleteEvents::run));
     }
 
     public static void main(String[] args)  {
         if( args.length == 0) {
             System.err.println("No command specified. Valid commands: ");
-            executorMap.keySet().forEach(System.err::println);
+            usage();
 
             System.exit(1);
         }
 
-        CommandProcessor executor = executorMap.get(args[0]);
+        CommandInformation executor = executorMap.get(args[0]);
         if( executor != null) {
             try {
                 executor.process(args);
@@ -62,9 +111,20 @@ public class CommandDispatcher {
                 System.exit(1);
             }
         } else {
-            System.err.println("Invalid command specified: " + args[0] +". Valid commands: ");
-            executorMap.keySet().forEach(System.err::println);
+            System.err.println("Invalid command specified: " + args[0] + ". Valid commands: ");
+            usage();
             System.exit(1);
+        }
+    }
+
+    private static void usage() {
+        for (Group value : Group.values()) {
+            System.err.println(value);
+            executorMap.entrySet()
+                       .stream()
+                       .filter(e -> e.getValue().group.equals(value))
+                       .sorted(Map.Entry.comparingByKey())
+                       .forEach(e -> System.err.println("  " + e.getKey()));
         }
     }
 }

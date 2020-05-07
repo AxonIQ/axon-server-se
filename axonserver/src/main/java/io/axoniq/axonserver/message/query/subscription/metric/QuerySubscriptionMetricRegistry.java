@@ -87,7 +87,9 @@ public class QuerySubscriptionMetricRegistry  {
             String componentName = event.response().getUpdate().getComponentName();
             String query = queries.get(event.subscriptionId());
             String context = contexts.get(event.subscriptionId());
-            updatesMetric(componentName, query, context).increment();
+            if (query != null && context != null) {
+                updatesMetric(componentName, query, context).increment();
+            }
         }
     }
 

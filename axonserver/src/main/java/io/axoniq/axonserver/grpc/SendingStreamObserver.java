@@ -35,9 +35,8 @@ public class SendingStreamObserver<T> implements StreamObserver<T> {
                 delegate.onNext(t);
             }
         } catch( RuntimeException | OutOfMemoryError e) {
-            logger.warn("Error while sending message: {}", e.getMessage(), e);
             StreamObserverUtils.error(delegate, e);
-            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage());
+            throw new MessagingPlatformException(ErrorCode.OTHER, e.getMessage(), e);
         }
     }
 

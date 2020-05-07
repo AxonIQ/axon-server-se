@@ -43,7 +43,9 @@ public interface AxonServerAccessController {
     boolean isRoleBasedAuthentication();
 
     /**
-     * Returns the roles granted to the application identified by this token. If token is unknown it returns null.
+     * Returns the roles granted to the application identified by this token.
+     * If token is unknown it throws an {@link io.axoniq.axonserver.exception.InvalidTokenException}.
+     *
      * @param token the app's token
      * @return the roles granted to the application identified by this token
      */

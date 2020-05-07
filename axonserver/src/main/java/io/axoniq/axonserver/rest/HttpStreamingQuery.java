@@ -53,7 +53,7 @@ public class HttpStreamingQuery {
         try {
             EventStore eventStore =eventStoreManager.getEventStore(context);
             if( eventStore == null) {
-                sseEmitter.send(SseEmitter.event().name("error").data("No Master for context: " + context));
+                sseEmitter.send(SseEmitter.event().name("error").data("No leader for context: " + context));
                 sseEmitter.complete();
                 return;
             }
@@ -204,7 +204,11 @@ public class HttpStreamingQuery {
         }
 
         public synchronized void stop() {
-            querySender.onCompleted();
+            try {
+                querySender.onCompleted();
+            } catch (Exception ignore) {
+
+            }
         }
     }
 }

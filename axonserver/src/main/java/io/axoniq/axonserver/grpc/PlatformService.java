@@ -16,6 +16,8 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
 import io.axoniq.axonserver.component.version.ClientVersionUpdate;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.ExceptionUtils;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.EventProcessorReference;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
@@ -27,6 +29,7 @@ import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
 import io.axoniq.axonserver.grpc.control.RequestReconnect;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,6 +119,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                                                     .setHttpPort(connectTo.getHttpPort())
                                                 ).build());
             responseObserver.onCompleted();
+        } catch (MessagingPlatformException cause) {
+            logger.info("Error finding target for client {}/{}: {}", request.getClientId(),
+                        context,
+                        cause.getMessage());
+            responseObserver.onError(GrpcExceptionBuilder.build(cause));
         } catch (RuntimeException cause) {
             logger.warn("Error processing client request {}", request, cause);
             responseObserver.onError(GrpcExceptionBuilder.build(cause));
@@ -167,7 +175,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("{}: error on connection - {}", sender(), throwable.getMessage());
+                if (!ExceptionUtils.isCancelled(throwable)) {
+                    logger.warn("{}: error on connection - {}", sender(), throwable.getMessage());
+                }
                 deregisterClient(clientComponent);
             }
 
@@ -290,7 +300,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         logger.debug("De-registered client : {}", clientComponent);
 
         if (clientComponent != null) {
-            connectionMap.remove(clientComponent);
+            SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
+            if (stream != null) {
+                StreamObserverUtils.complete(stream);
+            }
+
             eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
                     clientComponent.context, clientComponent.component, clientComponent.client, null
             ));
@@ -357,7 +371,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         private final String component;
         private final String context;
 
-        private ClientComponent(String client, String component, String context) {
+        public ClientComponent(String client, String component, String context) {
             this.client = client;
             this.component = component;
             this.context = context;
@@ -372,7 +386,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 return false;
             }
             ClientComponent that = (ClientComponent) o;
-            return Objects.equals(client, that.client);
+            return client.equals(that.client) &&
+                    context.equals(that.context);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(client, context);
         }
 
         /**
@@ -400,11 +420,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
          */
         public String getContext() {
             return context;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(client);
         }
 
         @Override

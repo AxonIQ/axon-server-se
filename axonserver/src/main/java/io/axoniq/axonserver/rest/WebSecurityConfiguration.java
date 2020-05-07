@@ -13,6 +13,9 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.InvalidTokenException;
+import io.axoniq.axonserver.logging.AuditLog;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -90,7 +93,10 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                                     new RestRequestAccessDecisionVoter(accessController))));
             } else {
                 auth.antMatchers("/", "/**/*.html", "/v1/**")
-                    .authenticated();
+                    .authenticated()
+                    .accessDecisionManager(new AffirmativeBased(
+                            Collections.singletonList(
+                                    new StandardEditionRestRequestAccessDecisionVoter())));
             }
             auth
                     .anyRequest().permitAll()
@@ -185,6 +191,8 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     public static class TokenAuthenticationFilter extends GenericFilterBean {
 
+        private static final Logger auditLog = AuditLog.getLogger();
+
         private final AxonServerAccessController accessController;
 
         public TokenAuthenticationFilter(AxonServerAccessController accessController) {
@@ -202,13 +210,15 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                 }
 
                 if (token != null) {
-                    Set<String> roles = accessController.getRoles(token);
-                    if (roles != null) {
+                    try {
+                        Set<String> roles = accessController.getRoles(token);
+                        auditLog.trace("Access using configured token.");
                         SecurityContextHolder.getContext().setAuthentication(
                                 new AuthenticationToken(true,
                                                         "AuthenticatedApp",
                                                         roles));
-                    } else {
+                    } catch (InvalidTokenException invalidTokenException) {
+                        auditLog.error("Access attempted with invalid token.");
                         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
                         httpServletResponse.setStatus(ErrorCode.AUTHENTICATION_INVALID_TOKEN.getHttpCode().value());
                         try (ServletOutputStream outputStream = httpServletResponse.getOutputStream()) {

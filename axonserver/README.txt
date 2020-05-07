@@ -1,7 +1,33 @@
-This is the Axon Server Standard Edition, version 4.2
+This is the Axon Server Standard Edition, version 4.3
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.3.3
+-------------------------------
+
+* Fix for validation error starting up when there are multiple snapshot files (Standard Edition only)
+
+Release Notes for version 4.3.2
+-------------------------------
+
+* Fix for tracking event processor updates to websocket causing high CPU load in specific situation
+* Reduced warnings in log file on clients disconnecting
+* Fix for concurrency issue in sending heartbeat while client connects/disconnects
+
+Release Notes for version 4.3.1
+-------------------------------
+
+* Updated usage output in CLI
+* Updated gRPC/Netty versions
+* Prevent errors in log (sending ad-hoc result to client that has gone, sending heartbeat to client that has gone)
+
+Release Notes for version 4.3
+-------------------------------
+
+* Separate audit log for configuration changes
+* Changed metrics to use common names and tags
+* Changed docker image (base image changed and 2 volumes added)
 
 Release Notes for version 4.2.4
 -------------------------------

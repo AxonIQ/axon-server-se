@@ -27,9 +27,11 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 
+import java.security.Principal;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -40,6 +42,7 @@ public class MetricsRestControllerTest {
     private QueryMetricsRegistry queryMetricsRegistry;
     private ClientIdentification testclient;
     private ClientIdentification queryClient;
+    private Principal principal;
 
     @Before
     public void setUp()  {
@@ -75,6 +78,8 @@ public class MetricsRestControllerTest {
 
             }
         });
+        principal = mock(Principal.class);
+        when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
         testSubject = new MetricsRestController(commandRegistrationCache, commandMetricsRegistry,
                                                 queryRegistrationCache, queryMetricsRegistry);
@@ -82,12 +87,12 @@ public class MetricsRestControllerTest {
 
     @Test
     public void getCommandMetrics() {
-        List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics();
+        List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics(principal);
         assertEquals(1, commands.size());
         assertEquals(testclient.toString(), commands.get(0).getClientId());
         assertEquals(0, commands.get(0).getCount());
         commandMetricsRegistry.add("Sample", "Source", testclient, 1);
-        commands = testSubject.getCommandMetrics();
+        commands = testSubject.getCommandMetrics(principal);
         assertEquals(1, commands.size());
         assertEquals(testclient.toString(), commands.get(0).getClientId());
         assertEquals(1, commands.get(0).getCount());
@@ -95,14 +100,14 @@ public class MetricsRestControllerTest {
 
     @Test
     public void getQueryMetrics() {
-        List<QueryMetricsRegistry.QueryMetric> queries = testSubject.getQueryMetrics();
+        List<QueryMetricsRegistry.QueryMetric> queries = testSubject.getQueryMetrics(principal);
         assertEquals(1, queries.size());
         assertEquals(queryClient.toString(), queries.get(0).getClientId());
         assertEquals(0, queries.get(0).getCount());
 
         queryMetricsRegistry.add(new QueryDefinition("context", "query"), "Source", queryClient, 50);
 
-        queries = testSubject.getQueryMetrics();
+        queries = testSubject.getQueryMetrics(principal);
         assertEquals(1, queries.size());
         assertEquals(queryClient.toString(), queries.get(0).getClientId());
         assertEquals(1, queries.get(0).getCount());

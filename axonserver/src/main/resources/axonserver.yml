@@ -22,6 +22,7 @@ spring:
 logging:
   level:
     root: WARN
+    AUDIT: INFO
     io.axoniq.axonserver.AxonServer: INFO
     io.axoniq.axonserver.grpc.Gateway: INFO
     io.axoniq.axonserver.logging: INFO

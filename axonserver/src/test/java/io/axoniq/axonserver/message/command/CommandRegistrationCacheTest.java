@@ -13,7 +13,7 @@ import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 
@@ -35,15 +35,24 @@ public class CommandRegistrationCacheTest {
     public void setup() {
         registrationCache = new CommandRegistrationCache();
 
-        streamObserver1 = new CountingStreamObserver<>();
-        streamObserver2 = new CountingStreamObserver<>();
+        streamObserver1 = new FakeStreamObserver<>();
+        streamObserver2 = new FakeStreamObserver<>();
 
-        registrationCache.add("command1", new DirectCommandHandler(streamObserver1, new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                   "client1"), "component"));
-        registrationCache.add("command1", new DirectCommandHandler(streamObserver2, new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                                             "client2"), "component"));
-        registrationCache.add("command2", new DirectCommandHandler(streamObserver2, new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                                             "client2"), "component"));
+        registrationCache.add("command1",
+                              new DirectCommandHandler(streamObserver1,
+                                                       new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                "client1"),
+                                                       "component"));
+        registrationCache.add("command1",
+                              new DirectCommandHandler(streamObserver2,
+                                                       new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                "client2"),
+                                                       "component"));
+        registrationCache.add("command2",
+                              new DirectCommandHandler(streamObserver2,
+                                                       new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                "client2"),
+                                                       "component"));
     }
 
     @Test

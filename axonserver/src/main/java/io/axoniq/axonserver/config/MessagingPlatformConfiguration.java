@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.util.StringUtils;
 import io.grpc.internal.GrpcUtil;
 import org.slf4j.Logger;
@@ -18,6 +19,9 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
 import java.net.UnknownHostException;
+import javax.annotation.PostConstruct;
+
+import static io.axoniq.axonserver.logging.AuditLog.enablement;
 
 /**
  * @author Marc Gathier
@@ -27,6 +31,8 @@ import java.net.UnknownHostException;
 public class MessagingPlatformConfiguration {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingPlatformConfiguration.class);
+    private static final Logger auditLog = AuditLog.getLogger();
+
     private static final int RESERVED = 10000;
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
@@ -130,8 +136,20 @@ public class MessagingPlatformConfiguration {
      */
     private int executorThreadCount = 16;
 
+    /**
+     * Number of threads for executing incoming gRPC requests for internal communication
+     */
+    private int clusterExecutorThreadCount = 16;
+
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
+    }
+
+    @PostConstruct
+    public void postConstruct() {
+        auditLog.info("Configuration initialized with SSL {} and access control {}.",
+                      enablement(ssl.isEnabled()),
+                      enablement(accesscontrol.isEnabled()));
     }
 
     public int getPort() {
@@ -238,6 +256,13 @@ public class MessagingPlatformConfiguration {
     }
 
     public void setSsl(SslConfiguration ssl) {
+        if (ssl == null) {
+            if (this.ssl != null) {
+                auditLog.info("SSL configuration REMOVED.");
+            }
+        } else if ((this.ssl == null) || (ssl.isEnabled() != this.ssl.isEnabled())) {
+            auditLog.info("SSL is now {}.", enablement(ssl.isEnabled()));
+        }
         this.ssl = ssl;
     }
 
@@ -246,6 +271,13 @@ public class MessagingPlatformConfiguration {
     }
 
     public void setAccesscontrol(AccessControlConfiguration accesscontrol) {
+        if (accesscontrol == null) {
+            if (this.accesscontrol != null) {
+                auditLog.info("Access control configuration REMOVED.");
+            }
+        } else if ((this.accesscontrol == null) || (accesscontrol.isEnabled() != this.accesscontrol.isEnabled())) {
+            auditLog.info("Access control is now {}.", enablement(accesscontrol.isEnabled()));
+        }
         this.accesscontrol = accesscontrol;
     }
 
@@ -331,6 +363,14 @@ public class MessagingPlatformConfiguration {
 
     public void setExecutorThreadCount(int executorThreadCount) {
         this.executorThreadCount = executorThreadCount;
+    }
+
+    public int getClusterExecutorThreadCount() {
+        return clusterExecutorThreadCount;
+    }
+
+    public void setClusterExecutorThreadCount(int clusterExecutorThreadCount) {
+        this.clusterExecutorThreadCount = clusterExecutorThreadCount;
     }
 
     public boolean isSetWebSocketAllowedOrigins() {

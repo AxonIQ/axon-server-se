@@ -9,10 +9,13 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.logging.AuditLog;
+import org.slf4j.Logger;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.sql.SQLException;
 
 /**
@@ -27,6 +30,8 @@ import java.sql.SQLException;
 @RestController
 public class BackupControlDBRestController {
 
+    private static final Logger auditLog = AuditLog.getLogger();
+
     private final BackupInfoRestController backupInfoRestController;
 
     public BackupControlDBRestController(BackupInfoRestController backupInfoRestController) {
@@ -34,7 +39,9 @@ public class BackupControlDBRestController {
     }
 
     @PostMapping("/createControlDbBackup")
-    public String createControlDbBackup() throws SQLException {
+    public String createControlDbBackup(Principal principal) throws SQLException {
+        auditLog.info("[{}] Request for a backup of the controlDB.", AuditLog.username(principal));
+
         return backupInfoRestController.createControlDbBackup();
     }
 

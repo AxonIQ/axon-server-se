@@ -38,10 +38,11 @@
                     }
                 }, methods: {
                     initNewContext() {
+                        this.newContext.context = "";
                         for (var a = 0; a < this.nodes.length; a++) {
                             this.newContext.nodes[a] = {
                                 name: this.nodes[a].name,
-                                selected: false
+                                selectedRole: "none"
                             };
                         }
 
@@ -116,12 +117,25 @@
                             alert("Context " + this.newContext.context + " already exists");
                             return;
                         }
-                        var context = {context: this.newContext.context, nodes: []};
+                        let context = {context: this.newContext.context, roles: []};
+                        let primaryNode = false;
                         for (var i = 0; i < this.newContext.nodes.length; i++) {
-                            if (this.newContext.nodes[i].selected ) {
-                                context.nodes.push(this.newContext.nodes[i].name);
+                            if (this.newContext.nodes[i].selectedRole !== "none") {
+                                context.roles.push({
+                                                       "node": this.newContext.nodes[i].name,
+                                                       "role": this.newContext.nodes[i].selectedRole,
+                                                   });
+                                if (this.newContext.nodes[i].selectedRole === "PRIMARY") {
+                                    primaryNode = true;
+                                }
                             }
                         }
+
+                        if (!primaryNode) {
+                            alert("Select at least one node as primary node");
+                            return;
+                        }
+
                         axios.post("v1/context", context).then(response => {
                             this.initNewContext();
                             this.loadContexts();
@@ -233,11 +247,14 @@
                             <span><input v-model="newContext.context"/></span>
                         </li>
                         <li>
-                            <span class="narrow">Primary Nodes</span>
+                            <span class="narrow">Nodes</span>
                             <span>
                                 <div v-for="node in newContext.nodes">
                                     <span class="nodeName">{{node.name}}</span>
-                                    <input type="checkbox" v-model="node.selected"/> Add
+                                    <select class="nodeRoleName" v-model="node.selectedRole">
+                                        <option value="none">-- none --</option>
+                                        <option v-for="n in roles" :value="n">{{n}}</option>
+                                    </select>
                                 </div>
                             </span>
                         </li>

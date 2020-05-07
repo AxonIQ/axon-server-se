@@ -16,6 +16,7 @@ import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -103,7 +104,8 @@ public class Gateway implements SmartLifecycle {
             serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
                          .keepAliveTimeout(routingConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
         }
-        serverBuilder.executor(Executors.newFixedThreadPool(routingConfiguration.getExecutorThreadCount()));
+        serverBuilder.executor(Executors.newFixedThreadPool(routingConfiguration.getExecutorThreadCount(),
+                                                            new CustomizableThreadFactory("grpc-executor-")));
 
         server = serverBuilder.build();
 

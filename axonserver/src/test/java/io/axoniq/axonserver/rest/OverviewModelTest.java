@@ -53,7 +53,7 @@ public class OverviewModelTest {
 
     @Test
     public void overview() {
-        OverviewModel.SvgOverview overview = testSubject.overview();
+        OverviewModel.SvgOverview overview = testSubject.overview(null);
         assertTrue(overview.getHeight() > 0);
         assertTrue(overview.getWidth() > 0);
         assertTrue(overview.getSvgObjects().length() > 0);

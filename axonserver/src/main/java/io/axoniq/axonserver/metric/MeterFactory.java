@@ -54,7 +54,10 @@ public class MeterFactory {
     }
 
     public Counter counter(MetricName metric, Tags tags) {
-        return meterRegistry.counter(metric.metric(), tags);
+        return Counter.builder(metric.metric())
+                      .tags(tags)
+                      .description(metric.description())
+                      .register(meterRegistry);
     }
 
     public Counter counter(MetricName metric) {
@@ -62,17 +65,22 @@ public class MeterFactory {
     }
 
     public Timer timer(MetricName metric, Tags tags) {
-        return meterRegistry.timer(metric.metric(), tags);
+        return Timer.builder(metric.metric())
+                    .tags(tags)
+                    .description(metric.description())
+                    .register(meterRegistry);
     }
 
     public <T> Gauge gauge(MetricName metric, Tags tags, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
                     .tags(tags)
+                    .description(metric.description())
                     .register(meterRegistry);
     }
 
     public <T> Gauge gauge(MetricName metric, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
+                    .description(metric.description())
                     .register(meterRegistry);
     }
 
@@ -102,12 +110,19 @@ public class MeterFactory {
     }
 
     /**
-     * Meter to keep rates of events. These are implemented using an IntervalCounter (that counts number of events in a specific timebucket), and
+     * Meter to keep rates of events. These are implemented using an IntervalCounter (that counts number of events in a
+     * specific timebucket), and
      * exposed to the actuator/metrics endpoints by {@link Gauge}s.
      */
     public class RateMeter implements Printable {
+
+        public static final String ONE_MINUTE_RATE = ".rate.oneMinuteRate";
+        public static final String FIVE_MINUTE_RATE = ".rate.fiveMinuteRate";
+        public static final String FIFTEEN_MINUTE_RATE = ".rate.fifteenMinuteRate";
+        public static final String COUNT = ".count";
         private final IntervalCounter meter;
 
+        private final Counter deprecatedCounter;
         private final Counter counter;
         private final String name;
         private final Tags tags;
@@ -116,48 +131,59 @@ public class MeterFactory {
             this.name = metricName.metric();
             this.tags = tags;
             meter = new IntervalCounter(clock);
-            counter = meterRegistry.counter(name + ".count", tags);
-            meterRegistry.gauge(name + ".oneMinuteRate",
-                                tags,
-                                meter,
-                                IntervalCounter::getOneMinuteRate);
-            meterRegistry.gauge(name + ".fiveMinuteRate",
-                                tags,
-                                meter,
-                                IntervalCounter::getFiveMinuteRate);
-            meterRegistry.gauge(name + ".fifteenMinuteRate",
-                                tags,
-                                meter,
-                                IntervalCounter::getFifteenMinuteRate);
+            counter = Counter.builder(name + ".count")
+                             .description(metricName.description() + " since start")
+                             .tags(tags)
+                             .register(meterRegistry);
+
+            deprecatedCounter =
+                    Counter.builder(name + ".rate.count")
+                           .description(metricName.description() + " since start [Deprecated]")
+                           .tags(tags)
+                           .register(meterRegistry);
+
+            Gauge.builder(name + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
+                 .description(metricName.description() + " per second (last minute)")
+                 .tags(tags)
+                 .register(meterRegistry);
+            Gauge.builder(name + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
+                 .description(metricName.description() + " per second (last 5 minutes)")
+                 .tags(tags)
+                 .register(meterRegistry);
+            Gauge.builder(name + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
+                 .description(metricName.description() + " per second (last 15 minutes)")
+                 .tags(tags)
+                 .register(meterRegistry);
         }
 
 
         public void mark() {
             meter.mark();
             counter.increment();
+            deprecatedCounter.increment();
         }
 
         public long getCount() {
             AtomicLong count = new AtomicLong(meter.count());
-            new Metrics(name + ".count", tags, clusterMetrics).forEach(m -> count.addAndGet(m.count()));
+            new Metrics(name + COUNT, tags, clusterMetrics).forEach(m -> count.addAndGet(m.count()));
             return count.get();
         }
 
         public double getOneMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getOneMinuteRate());
-            new Metrics(name + ".oneMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
+            new Metrics(name + ONE_MINUTE_RATE, tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
             return rate.get();
         }
 
         public double getFiveMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFiveMinuteRate());
-            new Metrics(name + ".fiveMinuteRate", tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
+            new Metrics(name + FIVE_MINUTE_RATE, tags, clusterMetrics).forEach(m -> rate.addAndGet(m.value()));
             return rate.get();
         }
 
         public double getFifteenMinuteRate() {
             AtomicDouble rate = new AtomicDouble(meter.getFifteenMinuteRate());
-            new Metrics(name + ".fifteenMinuteRate", tags, clusterMetrics).forEach(m -> rate
+            new Metrics(name + FIFTEEN_MINUTE_RATE, tags, clusterMetrics).forEach(m -> rate
                     .addAndGet(m.value()));
             return rate.get();
         }

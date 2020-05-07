@@ -11,13 +11,13 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.PayloadDescription;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,19 +85,16 @@ public class TrackingEventProcessorManagerTest {
 
     @Test
     public void createEventTracker() throws InterruptedException {
-        GetEventsRequest request = GetEventsRequest.newBuilder()
-                                                   .setTrackingToken(100)
-                                                   .setNumberOfPermits(5)
-                                                   .build();
         AtomicInteger messagesReceived = new AtomicInteger();
         AtomicBoolean completed = new AtomicBoolean();
         AtomicBoolean failed = new AtomicBoolean();
         TrackingEventProcessorManager.EventTracker tracker =
-                testSubject.createEventTracker(request,
+                testSubject.createEventTracker(100L,
+                                               "",
+                                               true,
                                                new StreamObserver<InputStream>() {
                                                    @Override
-                                                   public void onNext(
-                                                           InputStream value) {
+                                                   public void onNext(InputStream value) {
                                                        messagesReceived.incrementAndGet();
                                                    }
 
@@ -111,6 +108,8 @@ public class TrackingEventProcessorManagerTest {
                                                        completed.set(true);
                                                    }
                                                });
+        tracker.addPermits(5);
+        tracker.start();
 
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(5, messagesReceived.get()));
         tracker.addPermits(10);
@@ -129,18 +128,13 @@ public class TrackingEventProcessorManagerTest {
     @Test
     public void blacklist() throws InterruptedException {
         eventsLeft.set(50);
-        GetEventsRequest request = GetEventsRequest.newBuilder()
-                                                   .setTrackingToken(100)
-                                                   .setNumberOfPermits(50)
-                                                   .addBlacklist( PayloadDescription.newBuilder()
-                                                   .setType("DemoType")
-                                                   .setRevision("1.0"))
-                                                   .build();
         AtomicInteger messagesReceived = new AtomicInteger();
         AtomicBoolean completed = new AtomicBoolean();
         AtomicBoolean failed = new AtomicBoolean();
         TrackingEventProcessorManager.EventTracker tracker =
-                testSubject.createEventTracker(request,
+                testSubject.createEventTracker(100L,
+                                               "",
+                                               true,
                                                new StreamObserver<InputStream>() {
                                                    @Override
                                                    public void onNext(
@@ -158,6 +152,52 @@ public class TrackingEventProcessorManagerTest {
                                                        completed.set(true);
                                                    }
                                                });
+        tracker.addPermits(50);
+        tracker.addBlacklist(Collections.singletonList(PayloadDescription.newBuilder()
+                                                                         .setType("DemoType")
+                                                                         .setRevision("1.0")
+                                                                         .build()));
+        tracker.start();
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(10, messagesReceived.get()));
+    }
+
+    @Test
+    public void testStopAllWhereRequestIsNotForLocalStoreOnly() throws InterruptedException {
+        AtomicInteger useLocalStoreMessagesReceived = new AtomicInteger();
+        AtomicBoolean useLocalStoreCompleted = new AtomicBoolean();
+        AtomicBoolean useLocalStoreFailed = new AtomicBoolean();
+
+        TrackingEventProcessorManager.EventTracker useLocalStoreTracker = testSubject.createEventTracker(
+                100,
+                "",
+                true,
+                new StreamObserver<InputStream>() {
+                    @Override
+                    public void onNext(InputStream value) {
+                        useLocalStoreMessagesReceived.incrementAndGet();
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        useLocalStoreFailed.set(true);
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        useLocalStoreCompleted.set(true);
+                    }
+                });
+        useLocalStoreTracker.addPermits(5);
+        useLocalStoreTracker.start();
+
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(5, useLocalStoreMessagesReceived.get()));
+        assertFalse(useLocalStoreCompleted.get());
+        assertFalse(useLocalStoreFailed.get());
+
+        testSubject.stopAllWhereNotAllowedReadingFromFollower();
+
+        useLocalStoreTracker.addPermits(5);
+
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(10, useLocalStoreMessagesReceived.get()));
     }
 }

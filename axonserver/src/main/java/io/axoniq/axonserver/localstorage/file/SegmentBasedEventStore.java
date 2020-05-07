@@ -283,7 +283,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             ValidationResult thisResult = resultList.get(i);
             ValidationResult nextResult = resultList.get(i+1);
             if( thisResult.getLastToken() != nextResult.getSegment()) {
-                throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED, String.format("Validation exception: segment %d ending at %d", thisResult.getSegment(), thisResult.getLastToken()));
+                throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED,
+                                                     String.format(
+                                                             "Validation exception: segment %d ending at token, %d, next segment starts at token %d",
+                                                             thisResult.getSegment(),
+                                                             thisResult.getLastToken() - 1,
+                                                             nextResult.getSegment()));
             }
         }
     }
