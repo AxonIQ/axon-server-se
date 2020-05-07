@@ -8,7 +8,7 @@
   -->
 
 <script>
-    //# sourceURL=context.js
+    //# sourceURL=replicationGroups.js
     globals.pageView = new Vue(
             {
                 el: '#replicationGroups',
@@ -24,7 +24,7 @@
                     roles: []
                 }, mounted() {
                     this.loadReplicationGroups();
-                    axios.get("v1/context/roles").then(response => {
+                    axios.get("v1/replicationgroups/roles").then(response => {
                         this.roles = response.data;
                     });
                     axios.get("v1/public").then(response => {
@@ -162,7 +162,6 @@
                         } else {
                             this.deleteReplicationGroupData = {"name": replicationGroup.name, "retypeName": ""};
                             this.$modal.show('delete-replication-group');
-                            // } if (confirm("Delete context " + context.context)) {
                         }
                     },
                     doDeleteReplicationGroup() {
@@ -263,7 +262,7 @@
                     <ul>
                         <li>
                             <span class="narrow">Replication Group Name</span>
-                            <span><input v-model="newReplicationGroup.context"/></span>
+                            <span><input v-model="newReplicationGroup.name"/></span>
                         </li>
                         <li>
                             <span class="narrow">Nodes</span>

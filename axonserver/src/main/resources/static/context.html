@@ -53,7 +53,7 @@
                     roles: []
                 }, mounted() {
                     this.loadContexts();
-                    axios.get("v1/context/roles").then(response => {
+                    axios.get("v1/replicationgroups/roles").then(response => {
                         this.roles = response.data;
                     });
                     axios.get("v1/public").then(response => {
