@@ -19,12 +19,14 @@ public interface InstructionResultSource {
     /**
      * The default timeout for an {@link InstructionResult} to be notified. The value is 10 seconds.
      */
-    Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
+    default Duration defaultTimeout() {
+        return Duration.ofSeconds(10);
+    }
 
     /**
      * Subscribes the specified handlers to this source of {@link InstructionResult}.
      * In case of successful result the {@code onSuccess} {@link Runnable} is executed.
-     * In case of a failure or after the {@link InstructionResultSource#DEFAULT_TIMEOUT} is elapsed without
+     * In case of a failure or after the {@link InstructionResultSource#defaultTimeout()} is elapsed without
      * any {@link InstructionResult}, the {@code onFailureOrTimeout} {@link Consumer} is invoked.
      *
      * @param onSuccess          invoked in case of successful {@link InstructionResult}
@@ -33,7 +35,7 @@ public interface InstructionResultSource {
      */
     default void subscribe(Runnable onSuccess,
                            Consumer<ErrorMessage> onFailureOrTimeout) {
-        subscribe(onSuccess, onFailureOrTimeout, DEFAULT_TIMEOUT);
+        subscribe(onSuccess, onFailureOrTimeout, defaultTimeout());
     }
 
     /**
@@ -58,7 +60,7 @@ public interface InstructionResultSource {
      * Subscribes the specified handlers to this source of {@link InstructionResult}.
      * In case of successful result the {@code onSuccess} {@link Runnable} is executed.
      * In case of a failure the {@code onFailure} {@link Consumer} is invoked.
-     * After the {@link InstructionResultSource#DEFAULT_TIMEOUT} is elapsed without any {@link InstructionResult},
+     * After the {@link InstructionResultSource#defaultTimeout()} is elapsed without any {@link InstructionResult},
      * the {@code onTimeout} {@link Consumer} is invoked.
      *
      * @param onSuccess invoked in case of successful {@link InstructionResult}
@@ -68,7 +70,7 @@ public interface InstructionResultSource {
     default void subscribe(Runnable onSuccess,
                            Consumer<ErrorMessage> onFailure,
                            Consumer<ErrorMessage> onTimeout) {
-        subscribe(onSuccess, onFailure, onTimeout, DEFAULT_TIMEOUT);
+        subscribe(onSuccess, onFailure, onTimeout, defaultTimeout());
     }
 
     /**
@@ -111,7 +113,7 @@ public interface InstructionResultSource {
 
     /**
      * Subscribes the specified {@link Consumer} to this source of {@link InstructionResult}. After the
-     * {@link InstructionResultSource#DEFAULT_TIMEOUT} is elapsed without any {@link InstructionResult},
+     * {@link InstructionResultSource#defaultTimeout()} is elapsed without any {@link InstructionResult},
      * the {@code onTimeout} {@link Runnable} is invoked.
      *
      * @param onResult  the consumer of the {@link InstructionResult}
@@ -119,7 +121,7 @@ public interface InstructionResultSource {
      */
     default void subscribe(Consumer<InstructionResult> onResult,
                            Runnable onTimeout) {
-        subscribe(onResult, onTimeout, DEFAULT_TIMEOUT);
+        subscribe(onResult, onTimeout, defaultTimeout());
     }
 
     /**
@@ -150,13 +152,13 @@ public interface InstructionResultSource {
 
     /**
      * Subscribes the specified {@link ResultSubscriber} to this source of {@link InstructionResult}. After the
-     * {@link InstructionResultSource#DEFAULT_TIMEOUT} is elapsed without any {@link InstructionResult}, the
+     * {@link InstructionResultSource#defaultTimeout()} is elapsed without any {@link InstructionResult}, the
      * subscriber's {@link ResultSubscriber#onTimeout()} is invoked.
      *
      * @param resultSubscriber the subscriber of the {@link InstructionResult}
      */
     default void subscribe(ResultSubscriber resultSubscriber) {
-        subscribe(resultSubscriber, DEFAULT_TIMEOUT);
+        subscribe(resultSubscriber, defaultTimeout());
     }
 
     /**

@@ -3,7 +3,9 @@ package io.axoniq.axonserver.grpc.istruction.result;
 import io.axoniq.axonserver.grpc.InstructionResult;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.istruction.result.InstructionResultSource.ResultSubscriber;
+import io.axoniq.axonserver.util.AxonThreadFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -30,33 +32,38 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @since 4.4
  */
 @Component
-public class InstructionResultTarget implements InstructionResultSource.Factory {
+public class InstructionResultSourceFactory implements InstructionResultSource.Factory {
 
     private static final ScheduledExecutorService scheduledExecutorService = Executors
-            .newSingleThreadScheduledExecutor();
+            .newSingleThreadScheduledExecutor(new AxonThreadFactory("instruction-result"));
+    /*Timeout for instruction result in seconds*/
+    private int resultTimeout = 10;
     private final ConcurrentMap<String, List<ResultSubscriber>> subscribersMap = new ConcurrentHashMap<>();
 
     /**
-     * Creates an instance of {@link InstructionResultTarget} base on the {@link PlatformService}
+     * Creates an instance of {@link InstructionResultSourceFactory} base on the {@link PlatformService}
      *
      * @param platformService used to register the new instance as a listener of the {@link InstructionResult}s
      */
     @Autowired
-    public InstructionResultTarget(PlatformService platformService) {
+    public InstructionResultSourceFactory(PlatformService platformService,
+                                          @Value("${axoniq.axonserver.instruction.result.timeout:10}") int resultTimeout) {
         this(resultHandler -> platformService.onInboundInstruction(
                 RESULT, (client, context, instruction) -> resultHandler.accept(instruction.getResult())
-        ));
+        ), resultTimeout);
     }
 
 
     /**
-     * Creates a new instance of {@link InstructionResultTarget} based on the specified registration.
+     * Creates a new instance of {@link InstructionResultSourceFactory} based on the specified registration.
      *
      * @param registration the registration used to register the current instance as a listener
      *                     for all the {@link InstructionResult} received by this Axon Server node
      */
-    public InstructionResultTarget(Consumer<Consumer<InstructionResult>> registration) {
+    public InstructionResultSourceFactory(Consumer<Consumer<InstructionResult>> registration,
+                                          int resultTimeout) {
         registration.accept(this::on);
+        this.resultTimeout = resultTimeout;
     }
 
     private void on(InstructionResult instructionResult) {
@@ -75,10 +82,20 @@ public class InstructionResultTarget implements InstructionResultSource.Factory 
      */
     @Override
     public InstructionResultSource onInstructionResultFor(String instructionId) {
-        return (resultSubscriber, timeout) -> {
-            Function<String, List<ResultSubscriber>> copyOnWriteArrayList = id -> new CopyOnWriteArrayList<>();
-            List<ResultSubscriber> subscribers = subscribersMap.computeIfAbsent(instructionId, copyOnWriteArrayList);
-            subscribers.add(new TimeoutResultSubscriber(resultSubscriber, timeout, subscribers::remove));
+        return new InstructionResultSource() {
+
+            @Override
+            public void subscribe(ResultSubscriber resultSubscriber, Duration timeout) {
+                Function<String, List<ResultSubscriber>> copyOnWriteArrayList = id -> new CopyOnWriteArrayList<>();
+                List<ResultSubscriber> subscribers = subscribersMap.computeIfAbsent(instructionId,
+                                                                                    copyOnWriteArrayList);
+                subscribers.add(new TimeoutResultSubscriber(resultSubscriber, timeout, subscribers::remove));
+            }
+
+            @Override
+            public Duration defaultTimeout() {
+                return Duration.ofSeconds(resultTimeout);
+            }
         };
     }
 

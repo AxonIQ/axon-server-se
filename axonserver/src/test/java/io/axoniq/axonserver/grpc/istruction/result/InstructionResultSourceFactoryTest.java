@@ -12,15 +12,16 @@ import java.util.function.Consumer;
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for {@link InstructionResultTarget}
+ * Unit tests for {@link InstructionResultSourceFactory}
  *
  * @author Sara Pellegrini
  */
-public class InstructionResultTargetTest {
+public class InstructionResultSourceFactoryTest {
 
     private List<Consumer<InstructionResult>> instructionResultListeners = new ArrayList<>();
 
-    private InstructionResultTarget testSubject = new InstructionResultTarget(instructionResultListeners::add);
+    private InstructionResultSourceFactory testSubject = new InstructionResultSourceFactory(instructionResultListeners::add,
+                                                                                            10);
 
     @Test
     public void testOnSuccess() {

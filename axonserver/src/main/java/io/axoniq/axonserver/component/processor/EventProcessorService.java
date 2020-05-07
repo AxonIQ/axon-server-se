@@ -83,7 +83,6 @@ public class EventProcessorService {
         EventProcessorSegmentReference splitSegmentRequest =
                 EventProcessorSegmentReference.newBuilder()
                                               .setProcessorName(event.getProcessorName())
-                                              //TODO in order to identify the correct tracking event processor we should add the token identifier in this message
                                               .setSegmentIdentifier(event.getSegmentId())
                                               .build();
 
@@ -91,7 +90,6 @@ public class EventProcessorService {
                 PlatformOutboundInstruction.newBuilder()
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
                                            .build();
-        //TODO this processor id should be replaced by an new implementation that consider also the token identifier
         EventProcessorIdentifier processorId = new NameBasedEventProcessorIdentifier(event.getProcessorName());
         SplitSegmentsSucceeded success = new SplitSegmentsSucceeded(processorId);
         instructionResultSource
@@ -116,14 +114,12 @@ public class EventProcessorService {
         EventProcessorSegmentReference mergeSegmentRequest =
                 EventProcessorSegmentReference.newBuilder()
                                               .setProcessorName(event.getProcessorName())
-                                              //TODO in order to identify the correct tracking event processor we should add the token identifier in this message
                                               .setSegmentIdentifier(event.getSegmentId())
                                               .build();
         PlatformOutboundInstruction instruction =
                 PlatformOutboundInstruction.newBuilder()
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        //TODO this processor id should be replaced by an new implementation that consider also the token identifier
         EventProcessorIdentifier processorId = new NameBasedEventProcessorIdentifier(event.getProcessorName());
         MergeSegmentsSucceeded success = new MergeSegmentsSucceeded(processorId);
 
