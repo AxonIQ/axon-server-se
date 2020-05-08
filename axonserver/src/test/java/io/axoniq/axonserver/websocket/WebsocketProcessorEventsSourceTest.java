@@ -12,7 +12,11 @@ package io.axoniq.axonserver.websocket;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import org.junit.*;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -24,19 +28,50 @@ public class WebsocketProcessorEventsSourceTest {
     @Test
     public void on() throws InterruptedException {
         AtomicInteger triggers = new AtomicInteger();
-        WebsocketProcessorEventsSource testSubject = new WebsocketProcessorEventsSource(e -> {
+        WebsocketProcessorEventsSource testSubject = new WebsocketProcessorEventsSource(() -> {
             triggers.incrementAndGet();
-        }, 10);
+        });
+        ScheduledFuture<?> scheduler = Executors.newSingleThreadScheduledExecutor()
+                                                .scheduleAtFixedRate(testSubject::applyIfUpdates,
+                                                                     10,
+                                                                     10,
+                                                                     TimeUnit.MILLISECONDS);
 
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         Thread.sleep(20);
         assertEquals(1, triggers.get());
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         Thread.sleep(15);
         assertEquals(2, triggers.get());
+
+        scheduler.cancel(false);
+    }
+
+    @Test
+    public void onExecption() throws InterruptedException {
+        AtomicInteger triggers = new AtomicInteger();
+        WebsocketProcessorEventsSource testSubject = new WebsocketProcessorEventsSource(() -> {
+            if (triggers.getAndIncrement() == 5) {
+                throw new IllegalArgumentException("Failed");
+            }
+        });
+        ScheduledFuture<?> scheduler = Executors.newSingleThreadScheduledExecutor()
+                                                .scheduleAtFixedRate(testSubject::applyIfUpdates,
+                                                                     50,
+                                                                     50,
+                                                                     TimeUnit.MILLISECONDS);
+
+        for (int run = 0; run < 10; run++) {
+            IntStream.range(0, 1000).parallel().forEach(i -> testSubject
+                    .on(new EventProcessorEvents.EventProcessorStatusUpdate(null)));
+            Thread.sleep(100);
+        }
+
+        assertEquals(10, triggers.get());
+        scheduler.cancel(false);
     }
 }
