@@ -2,7 +2,7 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterPublisher;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import org.springframework.stereotype.Component;
@@ -23,7 +23,7 @@ public class UnregisterNodeTask implements ScheduledTask {
     }
 
     @Override
-    public void execute(Object payload) {
+    public void execute(String context, Object payload) {
         String node = (String) payload;
         raftGroupServiceFactory.getRaftConfigService()
                                .deleteNodeIfEmpty(node);

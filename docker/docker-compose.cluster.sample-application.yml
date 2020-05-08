@@ -2,7 +2,7 @@ version: '3.3'
 
 services:
   sample-command-processor-axonserver-client:
-    image: eu.gcr.io/axoniq-devops/sample-command-processor-axonserver-client:4.3-SNAPSHOT
+    image: eu.gcr.io/axoniq-devops/sample-command-processor-axonserver-client:4.4-SNAPSHOT
     environment:
       - SPRING_PROFILES_ACTIVE=events,commands,queries
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/sample

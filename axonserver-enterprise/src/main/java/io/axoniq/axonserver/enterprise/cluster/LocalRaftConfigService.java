@@ -17,7 +17,7 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.logconsumer.AdminNodeConsumer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
-import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
+import io.axoniq.axonserver.taskscheduler.TransientException;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.NodeContext;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.UnregisterNodeTask;

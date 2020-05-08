@@ -54,18 +54,18 @@ public class MessagingClusterServiceTest {
 
     @Test
     public void connect() {
-        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
         requestStream.onNext(ConnectorCommand.newBuilder().setConnect(
                 ConnectRequest.newBuilder().setNodeInfo(NodeInfo.newBuilder().setNodeName("application-server1"))
         ).build());
-        assertEquals(1, responseStream.count); // connect response
-        assertEquals(CONNECT_RESPONSE, responseStream.responseList.get(0).getResponseCase());
+        assertEquals(1, responseStream.values().size()); // connect response
+        assertEquals(CONNECT_RESPONSE, responseStream.values().get(0).getResponseCase());
     }
 
     @Test
     public void subscribeQuery() {
-        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
 
         InternalQuerySubscription testMessage =
                 InternalQuerySubscription.newBuilder()
@@ -73,8 +73,7 @@ public class MessagingClusterServiceTest {
                                                                     .setQuery("query")
                                                                     .setComponentName("Component")
                                                                     .setClientId("Client")
-                                                                    .setResultName("Result")
-                                                                    .setNrOfHandlers(1))
+                                                                    .setResultName("Result"))
                                          .setContext(Topology.DEFAULT_CONTEXT)
                                          .build();
 
@@ -86,7 +85,7 @@ public class MessagingClusterServiceTest {
                                                                                     ).build());
 
         requestStream.onNext(ConnectorCommand.newBuilder().setSubscribeQuery(testMessage).build());
-        assertEquals(1, responseStream.count);
+        assertEquals(1, responseStream.values().size());
 
         requestStream.onCompleted();
         Iterator<Object> eventIterator = eventPublisher.events().iterator();
@@ -100,7 +99,7 @@ public class MessagingClusterServiceTest {
 
     @Test
     public void connectDisconnect() {
-        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
         requestStream.onNext(ConnectorCommand.newBuilder().setConnect(ConnectRequest.newBuilder()
                                                                                     .setNodeInfo(NodeInfo.newBuilder()
@@ -140,12 +139,12 @@ public class MessagingClusterServiceTest {
                                                              .setNodeName("node1")
                                                              .setPermits(1000)
                                                              .build();
-        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
 
         requestStream.onNext(ConnectorCommand.newBuilder().setFlowControl(testMessage).build());
 
-        assertEquals(0, responseStream.count);
+        assertEquals(0, responseStream.values().size());
         requestStream.onCompleted();
     }
 
@@ -157,12 +156,12 @@ public class MessagingClusterServiceTest {
                                                              .setPermits(1000)
                                                              .build();
 
-        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
 
         requestStream.onNext(ConnectorCommand.newBuilder().setFlowControl(testMessage).build());
 
-        assertEquals(0, responseStream.count);
+        assertEquals(0, responseStream.values().size());
         requestStream.onCompleted();
     }
 
@@ -178,12 +177,12 @@ public class MessagingClusterServiceTest {
                                            .setSegmentIdentifier(expectedSegmentId)
                                            .build();
 
-        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
 
         requestStream.onNext(ConnectorCommand.newBuilder().setSplitSegment(testSplitMessage).build());
 
-        assertEquals(0, responseStream.count);
+        assertEquals(0, responseStream.values().size());
         requestStream.onCompleted();
 
         Iterator<Object> publishedEvents = eventPublisher.events().iterator();
@@ -206,12 +205,12 @@ public class MessagingClusterServiceTest {
                                            .setSegmentIdentifier(expectedSegmentId)
                                            .build();
 
-        CountingStreamObserver<ConnectorResponse> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
 
         requestStream.onNext(ConnectorCommand.newBuilder().setMergeSegment(testMergeMessage).build());
 
-        assertEquals(0, responseStream.count);
+        assertEquals(0, responseStream.values().size());
         requestStream.onCompleted();
 
         Iterator<Object> publishedEvents = eventPublisher.events().iterator();

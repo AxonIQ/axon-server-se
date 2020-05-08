@@ -15,8 +15,12 @@ import org.springframework.stereotype.Component;
 public class EchoEventProcessor {
 
     @EventHandler
-    public void on(EchoEvent echoEvent){
+    public void on(EchoEvent echoEvent) {
         System.out.println(echoEvent.getId());
     }
 
+    @EventHandler
+    public void on(String echoEvent) {
+        System.out.println(echoEvent);
+    }
 }

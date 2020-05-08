@@ -8,8 +8,8 @@ import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
 import org.junit.*;
 
 import java.util.Arrays;
@@ -46,10 +46,15 @@ public class SubscriptionCountBasedNodeSelectionStrategyTest {
     public void selectNodeWithComponent() {
         Collection<String> activeNodes = Arrays.asList(ME, "server1");
         commandRegistry.add("command1",
-                            new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                     "client1"), "component1"));
+                            new DirectCommandHandler(new FakeStreamObserver<>(),
+                                                     new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                              "client1"),
+                                                     "component1"));
         commandRegistry.add("command1",
-                new ProxyCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"), "component2",  "server1"));
+                            new ProxyCommandHandler(new FakeStreamObserver<>(),
+                                                    new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"),
+                                                    "component2",
+                                                    "server1"));
 
         assertEquals(ME,testSubject.selectNode(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client3"), "component2", activeNodes));
         assertEquals("server1", testSubject.selectNode(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client3"), "component1", activeNodes) );
@@ -58,9 +63,14 @@ public class SubscriptionCountBasedNodeSelectionStrategyTest {
     public void selectNodeWithoutSubscriptions() {
         Collection<String> activeNodes = Arrays.asList(ME, "server1", "server2");
         commandRegistry.add("command1",
-                new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1"), "component1"));
+                            new DirectCommandHandler(new FakeStreamObserver<>(),
+                                                     new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1"),
+                                                     "component1"));
         commandRegistry.add("command1",
-                new ProxyCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"), "component2", "server1"));
+                            new ProxyCommandHandler(new FakeStreamObserver<>(),
+                                                    new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"),
+                                                    "component2",
+                                                    "server1"));
 
         assertEquals("server2",testSubject.selectNode(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client3"), "component3", activeNodes) );
     }

@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.persistence.EntityManager;
 
-import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 

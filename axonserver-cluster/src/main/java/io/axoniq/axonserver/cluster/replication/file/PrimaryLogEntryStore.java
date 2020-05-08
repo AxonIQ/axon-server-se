@@ -272,20 +272,20 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         FileUtils.delete(storageProperties.logFile(context, segment));
     }
 
-    private void completeSegment(WritePosition writePosition) {
+    private void completeSegment(Long segment) {
         try {
-            logger.debug("{}: Completing segment {}", context, writePosition.segment);
-            indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment), false);
+            logger.debug("{}: Completing segment {}", context, segment);
+            indexManager.createIndex(segment, positionsPerSegmentMap.get(segment), false);
         } catch (RuntimeException re) {
             logger.warn("{}: Failed to create index", context, re);
         }
         if (next != null) {
-            next.handover(writePosition.segment, () -> {
-                positionsPerSegmentMap.remove(writePosition.segment);
-                ByteBufferEntrySource source = readBuffers.remove(writePosition.segment);
+            next.handover(segment, () -> {
+                positionsPerSegmentMap.remove(segment);
+                ByteBufferEntrySource source = readBuffers.remove(segment);
                 logger.debug("{}: Handed over {}, remaining segments: {}",
                              context,
-                             writePosition.segment,
+                             segment,
                              positionsPerSegmentMap.keySet());
                 source.clean(storageProperties.getPrimaryCleanupDelay());
             });

@@ -337,10 +337,10 @@ public class LocalRaftConfigServiceTest {
         when(grpcRaftController.waitForLeader(any())).thenReturn(adminNode);
         when(adminNode.addNode(any())).thenReturn(CompletableFuture.completedFuture(null));
         UserController userController = mock(UserController.class);
-        taskPublisher = new TaskPublisher(null, null) {
+        taskPublisher = new TaskPublisher(null, null, null) {
             @Override
-            public CompletableFuture<Void> publishScheduledTask(String context, String taskHandler, Object payload,
-                                                                Duration delay) {
+            public CompletableFuture<String> publishScheduledTask(String context, String taskHandler, Object payload,
+                                                                  Duration delay) {
                 scheduledTasks.computeIfAbsent(context, c -> new CopyOnWriteArraySet<>()).add(taskHandler);
                 return CompletableFuture.completedFuture(null);
             }

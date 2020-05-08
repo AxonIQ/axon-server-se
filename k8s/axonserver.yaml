@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: axonserver-enterprise
-          image: eu.gcr.io/axoniq-devops/axonserver-enterprise:4.3-SNAPSHOT
+          image: eu.gcr.io/axoniq-devops/axonserver-enterprise:4.4-SNAPSHOT
           ports:
             - containerPort: 8124
               protocol: TCP

@@ -2,8 +2,8 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
-import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
+import io.axoniq.axonserver.taskscheduler.TransientException;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Role;
@@ -26,7 +26,7 @@ public class AddNodeToContextTask implements ScheduledTask {
         this.raftServiceFactory = raftServiceFactory;
     }
 
-    public CompletableFuture<Void> executeAsync(Object payload) {
+    public CompletableFuture<Void> executeAsync(String context, Object payload) {
         AddNodeToContext addNodeToContext = (AddNodeToContext) payload;
         try {
             return doExecute(addNodeToContext);

@@ -3,16 +3,13 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.taskscheduler.LocalTaskManager;
 import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -30,22 +27,22 @@ import static io.axoniq.axonserver.rest.ClusterRestController.CONTEXT_NONE;
 @Component
 public class RegisterNodeTask implements ScheduledTask {
 
-    private final LocalTaskManager localTaskManager;
+    private final StandaloneTaskManager taskManager;
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
     private final ApplicationEventPublisher eventPublisher;
 
-    public RegisterNodeTask(LocalTaskManager localTaskManager,
+    public RegisterNodeTask(StandaloneTaskManager taskManager,
                             ClusterController clusterController,
-                            RaftConfigServiceFactory raftServiceFactory, ApplicationEventPublisher eventPublisher) {
-        this.localTaskManager = localTaskManager;
+                            RaftConfigServiceFactory raftServiceFactory) {
+        this.taskManager = taskManager;
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.eventPublisher = eventPublisher;
     }
 
     @Override
-    public void execute(Object payload) {
+    public void execute(String context, Object payload) {
         try {
             RegisterNodePayload registerNodePayload = (RegisterNodePayload) payload;
             NodeInfo nodeInfo = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo())
@@ -56,12 +53,18 @@ public class RegisterNodeTask implements ScheduledTask {
                     registerNodePayload.getPort())
                     .joinCluster(nodeInfo);
 
+            registerNodePayload.contexts.forEach(c ->
+                                                         taskManager
+                                                                 .createTask(AddNodeToContextTask.class.getName(),
+                                                                             new AddNodeToContext(c),
+                                                                             Duration.ZERO));
             eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(updateLicense.getLicense().toByteArray()));
 
-            registerNodePayload.contexts.forEach(context ->
-                localTaskManager.createLocalTask(AddNodeToContextTask.class.getName(),
-                                                 new AddNodeToContext(context),
-                                                 Duration.ZERO));
+            registerNodePayload.contexts.forEach(c ->
+                    taskManager
+                            .createTask(AddNodeToContextTask.class.getName(),
+                                    new AddNodeToContext(c),
+                                    Duration.ZERO));
 
         } catch (StatusRuntimeException ex) {
             if (ex.getStatus().getCode().equals(Status.Code.UNAVAILABLE)
@@ -74,9 +77,9 @@ public class RegisterNodeTask implements ScheduledTask {
     }
 
     public void schedule(String hostname, int port, List<String> contexts) {
-        localTaskManager.createLocalTask(RegisterNodeTask.class.getName(),
-                                         new RegisterNodePayload(hostname, port, contexts),
-                                         Duration.ZERO);
+        taskManager.createTask(RegisterNodeTask.class.getName(),
+                               new RegisterNodePayload(hostname, port, contexts),
+                               Duration.ZERO);
     }
 
     @KeepNames

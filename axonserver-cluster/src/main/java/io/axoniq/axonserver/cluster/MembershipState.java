@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 import static java.util.Collections.emptyList;
 
@@ -96,4 +97,14 @@ public interface MembershipState extends ClusterConfiguration{
      * @return pre-vote allowed
      */
     RequestVoteResponse requestPreVote(RequestVoteRequest request);
+
+    /**
+     * Checks health of the node based on the current state.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if this node considers itself healthy
+     */
+    default boolean health(BiConsumer<String, String> statusConsumer) {
+        return true;
+    }
 }

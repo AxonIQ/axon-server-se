@@ -12,7 +12,7 @@ import io.axoniq.axonserver.localstorage.file.InputStreamEventStore;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.TestUtils;
+import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 
 import java.io.IOException;

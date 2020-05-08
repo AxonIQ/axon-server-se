@@ -9,7 +9,17 @@ import java.util.concurrent.TimeUnit;
  * @author Marc Gathier
  */
 public class FakeClock extends Clock {
-    private long timeInMillis = System.currentTimeMillis();
+
+    private long timeInMillis;
+
+    public FakeClock() {
+        this(Instant.now());
+    }
+
+    public FakeClock(Instant currentTime) {
+        timeInMillis = currentTime.toEpochMilli();
+    }
+
     @Override
     public ZoneId getZone() {
         return null;

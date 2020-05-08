@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.enterprise.jpa.Task;
-import io.axoniq.axonserver.enterprise.taskscheduler.TaskRepository;
+import io.axoniq.axonserver.taskscheduler.Task;
+import io.axoniq.axonserver.taskscheduler.TaskRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 

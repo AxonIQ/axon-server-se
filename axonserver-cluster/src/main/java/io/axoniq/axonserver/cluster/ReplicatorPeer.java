@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.FluxSink;
 
 import java.time.Clock;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -90,13 +89,14 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
         return raftPeer.nodeName();
     }
 
-    private void changeStateTo(ReplicatorPeerState newState) {
+    private <T extends ReplicatorPeerState> T changeStateTo(T newState) {
         if (currentState != null) {
             currentState.stop();
         }
         logger.info("{} in term {}: Changing state from {} to {}.", groupId(), currentTerm(), currentState, newState);
         currentState = newState;
         newState.start();
+        return newState;
     }
 
     public void start() {
@@ -165,6 +165,33 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
     public Role role() {
         return raftPeer.role();
     }
+
+    public void sendHeartbeat() {
+        logger.trace("{} in term {}: Sending heartbeat to {}.", groupId(), currentTerm(), nodeId());
+        long commitIndex = raftGroup.logEntryProcessor().commitIndex();
+        TermIndex lastTermIndex = raftGroup.localLogEntryStore().lastLog();
+        AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
+                                                             .setRequestId(UUID.randomUUID().toString())
+                                                             .setCommitIndex(commitIndex)
+                                                             .setLeaderId(me())
+                                                             .setGroupId(raftGroup.raftConfiguration()
+                                                                                  .groupId())
+                                                             .setTerm(raftGroup.localElectionStore()
+                                                                               .currentTerm())
+                                                             .setTargetId(raftPeer.nodeId())
+                                                             .setPrevLogTerm(lastTermIndex.getTerm())
+                                                             .setPrevLogIndex(lastTermIndex.getIndex())
+                                                             .build();
+        send(heartbeat);
+    }
+
+    private void send(AppendEntriesRequest request) {
+        logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
+        raftPeer.appendEntries(request);
+        logger.trace("{}: Request sent to {}: {}", groupId(), raftPeer.nodeId(), request);
+        lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
+    }
+
 
     private interface ReplicatorPeerState {
 
@@ -381,16 +408,65 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
         }
     }
 
+    /**
+     * Represents a peer that is in fatal state. For peers in fatal state we only send heartbeats, until we get a
+     * response that it is no longer in fatal state.
+     * Heartbeats are sent in lower frequency, as we expect failures anyway.
+     */
+    private class FatalState implements ReplicatorPeerState {
+
+        private Registration registration;
+
+        @Override
+        public void start() {
+            registration = raftPeer.registerAppendEntriesResponseListener(this::handleResponse);
+        }
+
+        /**
+         * Handle a response from the remote peer. If the response does not have a fatal flag, the peer can
+         * move to {@link AppendEntryState}.
+         *
+         * @param appendEntriesResponse
+         */
+        private void handleResponse(AppendEntriesResponse appendEntriesResponse) {
+            if (!(appendEntriesResponse.hasFailure() && appendEntriesResponse.getFailure().getFatal())) {
+                changeStateTo(new AppendEntryState()).handleResponse(appendEntriesResponse);
+            }
+        }
+
+        @Override
+        public void stop() {
+            Optional.ofNullable(registration).ifPresent(Registration::cancel);
+        }
+
+        /**
+         * Sends a heartbeat if last heartbeat was send more than 5 seconds ago.
+         *
+         * @return 0, as it will never send any real entries
+         */
+        @Override
+        public int sendNextEntries() {
+            long now = clock.millis();
+            if (now - lastMessageSent.get() > TimeUnit.SECONDS.toMillis(5)) {
+                sendHeartbeat();
+            }
+            return 0;
+        }
+
+        @Override
+        public String toString() {
+            return "Fatal Replicator Peer State";
+        }
+    }
+
     private class AppendEntryState implements ReplicatorPeerState {
 
-        private final AtomicLong blockUntil = new AtomicLong();
         private volatile EntryIterator entryIterator;
         private Registration registration;
         private volatile boolean logCannotSend = true;
 
         @Override
         public void start() {
-            blockUntil.set(0);
             registration = raftPeer.registerAppendEntriesResponseListener(this::handleResponse);
             logCannotSend = true;
             try {
@@ -407,6 +483,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
         @Override
         public void stop() {
             Optional.ofNullable(registration).ifPresent(Registration::cancel);
+            Optional.ofNullable(entryIterator).ifPresent(EntryIterator::close);
         }
 
         /**
@@ -420,10 +497,6 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
          */
         @Override
         public int sendNextEntries() {
-            if (clock.millis() < blockUntil.get()) {
-                return 0;
-            }
-
             int sent = 0;
             try {
                 long maxTime = System.currentTimeMillis() + raftGroup.raftConfiguration().heartbeatTimeout();
@@ -549,7 +622,8 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
                 }
 
                 if (response.getFailure().getFatal()) {
-                    blacklist();
+                    changeStateTo(new FatalState());
+                    return;
                 }
                 setMatchIndex(response.getFailure().getLastAppliedIndex());
                 nextIndex.set(response.getFailure().getLastAppliedIndex() + 1);
@@ -563,32 +637,6 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
             if (canSend()) {
                 logCannotSend = true;
             }
-        }
-
-        public void sendHeartbeat() {
-            logger.trace("{} in term {}: Sending heartbeat to {}.", groupId(), currentTerm(), nodeId());
-            long commitIndex = raftGroup.logEntryProcessor().commitIndex();
-            TermIndex lastTermIndex = raftGroup.localLogEntryStore().lastLog();
-            AppendEntriesRequest heartbeat = AppendEntriesRequest.newBuilder()
-                                                                 .setRequestId(UUID.randomUUID().toString())
-                                                                 .setCommitIndex(commitIndex)
-                                                                 .setLeaderId(me())
-                                                                 .setGroupId(raftGroup.raftConfiguration()
-                                                                                      .groupId())
-                                                                 .setTerm(raftGroup.localElectionStore()
-                                                                                   .currentTerm())
-                                                                 .setTargetId(raftPeer.nodeId())
-                                                                 .setPrevLogTerm(lastTermIndex.getTerm())
-                                                                 .setPrevLogIndex(lastTermIndex.getIndex())
-                                                                 .build();
-            send(heartbeat);
-        }
-
-        private void send(AppendEntriesRequest request) {
-            logger.trace("{}: Send request to {}: {}", groupId(), raftPeer.nodeId(), request);
-            raftPeer.appendEntries(request);
-            logger.trace("{}: Request sent to {}: {}", groupId(), raftPeer.nodeId(), request);
-            lastMessageSent.getAndUpdate(old -> Math.max(old, clock.millis()));
         }
 
         private boolean forceSnapshot() {
@@ -633,17 +681,5 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
             return "Append Entries Replicator Peer State";
         }
 
-        /**
-         * Fatal error occurred on remote peer (peer is active but responded with fatal error). Stop sending to that
-         * peer for one minute.
-         */
-        private void blacklist() {
-            blockUntil.set(clock.millis() + TimeUnit.MINUTES.toMillis(1));
-            logger.warn("{} in term {}: Received fatal error from {}. Blacklisting until {}",
-                        groupId(),
-                        currentTerm(),
-                        raftPeer.nodeId(),
-                        new Date(blockUntil.get()));
-        }
     }
 }

@@ -8,7 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Consumer for {@link ScheduleTask} log entries. Creates an entry in the controldb.
+ * Consumer for {@link ScheduleTask} log entries. Sends the task to the task manager to be scheduled.
+ *
  * @author Marc Gathier
  * @since 4.3
  */
@@ -17,9 +18,9 @@ public class ScheduleTaskConsumer implements LogEntryConsumer {
 
     private final Logger logger = LoggerFactory.getLogger(ScheduleTaskConsumer.class);
 
-    private final TaskManager taskManager;
+    private final ClusterTaskManager taskManager;
 
-    public ScheduleTaskConsumer(TaskManager taskManager) {
+    public ScheduleTaskConsumer(ClusterTaskManager taskManager) {
         this.taskManager = taskManager;
     }
 

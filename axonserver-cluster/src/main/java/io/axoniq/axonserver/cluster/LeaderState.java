@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -408,6 +409,35 @@ public class LeaderState extends AbstractMembershipState {
             this.matchStrategy = matchStrategy;
             return this;
         }
+    }
+
+    /**
+     * Checks health of the node if it is in leader state.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if this node considers itself healthy
+     */
+    @Override
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        long lastLogIndex = lastLogIndex();
+        long now = System.currentTimeMillis();
+        AtomicBoolean result = new AtomicBoolean(super.health(statusConsumer));
+        replicatorPeers().forEachRemaining(
+                rp -> {
+                    long lastMessageAge = now - rp.lastMessageReceived();
+                    long raftMsgBuffer = lastLogIndex - (rp.nextIndex() - 1);
+                    if (lastMessageAge > maxElectionTimeout()) {
+                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "NO_ACK_RECEIVED");
+                        result.set(false);
+                    } else if (raftMsgBuffer > 100) {
+                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "BEHIND");
+                        result.set(false);
+                    } else {
+                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "UP");
+                    }
+                }
+        );
+        return result.get();
     }
 
     private class Replicators {

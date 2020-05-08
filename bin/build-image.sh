@@ -8,6 +8,12 @@ TARGET=
 TARGET_DEF=target/packer
 SERVER_VERSION=
 CLI_VERSION=
+DISK_IMAGE_FAMILY=
+DISK_IMAGE_FAMILY_DEF=centos-7
+DISK_IMAGE_PROJECT=
+DISK_IMAGE_PROJECT_DEF=gce-uefi-images
+DISK_SIZE=
+DISK_SIZE_DEF=20
 IMG_VERSION=
 IMG_FAMILY=
 IMG_FAMILY_DEF=axonserver-enterprise
@@ -96,6 +102,30 @@ while [[ "${SHOW_USAGE}" == "n" && $# -gt 0 && $(expr "x$1" : x-) = 2 ]] ; do
       echo "Missing username after \"--img-user\"."
       SHOW_USAGE=y
     fi
+  elif [[ "$1" == "--disk-img-family" ]] ; then
+    if [[ $# -gt 1 ]] ; then
+      DISK_IMAGE_FAMILY=$2
+      shift 2
+    else
+      echo "Missing image family name after \"--disk-img-family\"."
+      SHOW_USAGE=y
+    fi
+  elif [[ "$1" == "--disk-img-project" ]] ; then
+    if [[ $# -gt 1 ]] ; then
+      DISK_IMAGE_PROJECT=$2
+      shift 2
+    else
+      echo "Missing project family name after \"--disk-img-project\"."
+      SHOW_USAGE=y
+    fi
+  elif [[ "$1" == "--disk-size" ]] ; then
+    if [[ $# -gt 1 ]] ; then
+      DISK_SIZE=$2
+      shift 2
+    else
+      echo "Missing image name after \"--disk-size\"."
+      SHOW_USAGE=y
+    fi
   elif [[ "$1" == "--cli-version" ]] ; then
     if [[ $# -gt 1 ]] ; then
       CLI_VERSION=$2
@@ -136,6 +166,15 @@ fi
 if [[ "${IMG_USER}" == "" ]] ; then
   IMG_USER=${IMG_USER_DEF}
 fi
+if [[ "${DISK_IMAGE_FAMILY}" == "" ]] ; then
+  DISK_IMAGE_FAMILY=${DISK_IMAGE_FAMILY_DEF}
+fi
+if [[ "${DISK_IMAGE_PROJECT}" == "" ]] ; then
+  DISK_IMAGE_PROJECT=${DISK_IMAGE_PROJECT_DEF}
+fi
+if [[ "${DISK_SIZE}" == "" ]] ; then
+  DISK_SIZE=${DISK_SIZE_DEF}
+fi
 if [[ "${PROJECT}" == "" ]] ; then
   PROJECT=${PROJECT_DEF}
 fi
@@ -171,6 +210,9 @@ if [[ "${SHOW_USAGE}" == "y" ]] ; then
     echo "  --img-family <name>       The name for the image-family. Default is \"${IMG_FAMILY_DEF}\"."
     echo "  --img-name <name>         The name for the image. Default is the family name, a dash, and the version."
     echo "  --img-user <username>     The username for the application owner. Default is \"${IMG_USER_DEF}\"."
+    echo "  --disk-img-family <name>  The name of the base disk image's family. Default is \"${DISK_IMAGE_FAMILY_DEF}\"."
+    echo "  --disk-img-project <name> The name of the project for the base disk image. Default is \"${DISK_IMAGE_PROJECT_DEF}\"."
+    echo "  --disk-size <size-in-gb>  The size of the base disk image in GiB. Default is \"${DISK_SIZE_DEF}\"."
     echo "  --cli-version <version>   The version of the Axon Server CLI. Default is to use the Axon Server EE version."
     echo "  --public-ip               Use a public IP during build."
     exit 1
@@ -190,14 +232,14 @@ cat > target/application-image.json <<EOF
     {
       "type": "googlecompute",
       "project_id": "${PROJECT}",
-      "source_image_family": "centos-7",
-      "source_image_project_id": "gce-uefi-images",
+      "source_image_family": "${DISK_IMAGE_FAMILY}",
+      "source_image_project_id": "${DISK_IMAGE_PROJECT}",
+      "disk_size": "${DISK_SIZE}",
       "zone": "${ZONE}",
       "network": "${NETWORK}",
       "subnetwork": "${SUBNET}",
       "omit_external_ip": ${NO_PUBLIC_IP},
       "use_internal_ip": ${NO_PUBLIC_IP},
-      "disk_size": "10",
       "image_name": "${IMG_NAME}",
       "image_family": "${IMG_FAMILY}",
       "image_labels": {
